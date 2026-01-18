@@ -9218,10 +9218,9 @@ async def generar_reporte_calidad_gdb(
     resumen_data = [
         ["Concepto", "Rural", "Urbano", "Total"],
         ["Geometrías en archivo GDB", str(stats.get('rurales_archivo', 0)), str(stats.get('urbanos_archivo', 0)), str(stats.get('rurales_archivo', 0) + stats.get('urbanos_archivo', 0))],
-        ["Geometrías cargadas", str(stats.get('rurales', 0)), str(stats.get('urbanos', 0)), str(stats.get('rurales', 0) + stats.get('urbanos', 0))],
+        ["Geometrías cargadas", str(stats.get('rurales_guardadas', stats.get('rurales', 0))), str(stats.get('urbanos_guardadas', stats.get('urbanos', 0))), str(stats.get('rurales_guardadas', stats.get('rurales', 0)) + stats.get('urbanos_guardadas', stats.get('urbanos', 0)))],
         ["Geometrías rechazadas", str(errores.get('rurales_rechazados', 0)), str(errores.get('urbanos_rechazados', 0)), str(errores.get('rurales_rechazados', 0) + errores.get('urbanos_rechazados', 0))],
         ["Construcciones cargadas", str(stats.get('construcciones_rurales', 0)), str(stats.get('construcciones_urbanas', 0)), str(stats.get('construcciones', 0))],
-        ["Predios vinculados", "-", "-", str(stats.get('relacionados', 0))],
     ]
     
     resumen_table = Table(resumen_data, colWidths=[2.5*inch, 1.2*inch, 1.2*inch, 1.2*inch])
@@ -9237,6 +9236,31 @@ async def generar_reporte_calidad_gdb(
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')]),
     ]))
     elements.append(resumen_table)
+    elements.append(Spacer(1, 15))
+    
+    # Tabla de vinculación con predios R1/R2
+    elements.append(Paragraph("📋 Vinculación con Base de Datos R1/R2", styles['Heading2']))
+    
+    vinculacion_data = [
+        ["Concepto", "Cantidad"],
+        ["Predios R1/R2 en el municipio", f"{stats.get('predios_municipio', 0):,}"],
+        ["Predios con cartografía (vinculados)", f"{stats.get('predios_con_cartografia', 0):,}"],
+        ["Predios sin cartografía", f"{max(0, stats.get('predios_municipio', 0) - stats.get('predios_con_cartografia', 0)):,}"],
+    ]
+    
+    vinc_table = Table(vinculacion_data, colWidths=[3.5*inch, 2*inch])
+    vinc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2e7d32')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#e8f5e9')]),
+    ]))
+    elements.append(vinc_table)
     elements.append(Spacer(1, 20))
     
     # Indicador de calidad - Basado en cobertura de predios R1/R2
