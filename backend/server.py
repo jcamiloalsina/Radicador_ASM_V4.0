@@ -9239,10 +9239,19 @@ async def generar_reporte_calidad_gdb(
     elements.append(resumen_table)
     elements.append(Spacer(1, 20))
     
-    # Indicador de calidad
-    total_archivo = stats.get('rurales_archivo', 0) + stats.get('urbanos_archivo', 0)
-    total_cargadas = stats.get('rurales', 0) + stats.get('urbanos', 0)
-    calidad_pct = (total_cargadas / total_archivo * 100) if total_archivo > 0 else 0
+    # Indicador de calidad - Basado en cobertura de predios R1/R2
+    predios_municipio = stats.get('predios_municipio', 0)
+    predios_con_cartografia = stats.get('predios_con_cartografia', 0)
+    
+    if predios_municipio > 0:
+        calidad_pct = (predios_con_cartografia / predios_municipio * 100)
+        calidad_base = f"Predios R1/R2 del municipio: {predios_municipio:,} | Con cartografía: {predios_con_cartografia:,}"
+    else:
+        # Fallback al cálculo de geometrías
+        total_archivo = stats.get('rurales_archivo', 0) + stats.get('urbanos_archivo', 0)
+        total_cargadas = stats.get('rurales', 0) + stats.get('urbanos', 0)
+        calidad_pct = (total_cargadas / total_archivo * 100) if total_archivo > 0 else 0
+        calidad_base = f"Geometrías en archivo: {total_archivo:,} | Cargadas: {total_cargadas:,}"
     
     if calidad_pct >= 95:
         calidad_color = colors.HexColor('#28a745')
@@ -9259,6 +9268,7 @@ async def generar_reporte_calidad_gdb(
     
     calidad_style = ParagraphStyle('Calidad', parent=styles['Normal'], fontSize=12, textColor=calidad_color, fontName='Helvetica-Bold')
     elements.append(Paragraph(f"📈 Calidad de la carga: {calidad_pct:.1f}% - {calidad_texto}", calidad_style))
+    elements.append(Paragraph(calidad_base, styles['Normal']))
     elements.append(Spacer(1, 20))
     
     # Errores de códigos (no 30 dígitos)
