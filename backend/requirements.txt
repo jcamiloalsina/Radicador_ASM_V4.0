@@ -70,3 +70,5 @@ tzdata==2025.3
 urllib3==2.6.2
 uvicorn==0.25.0
 watchfiles==1.1.1
+
+# Sistema: requiere gdal-bin python3-gdal instalados (apt-get install gdal-bin python3-gdal)
