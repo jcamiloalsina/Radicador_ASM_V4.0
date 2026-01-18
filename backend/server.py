@@ -9064,11 +9064,23 @@ async def upload_gdb_file(
         total_archivo = rurales_en_archivo + urbanos_en_archivo
         total_cargadas = rural_guardadas + urban_guardadas
         
-        # La calidad es el porcentaje de geometrías que se guardaron exitosamente
-        # NO puede superar 100%
-        calidad_pct = min(100.0, (total_cargadas / total_archivo * 100)) if total_archivo > 0 else 100.0
+        # CALIDAD = Porcentaje de predios R1/R2 del municipio que ahora tienen cartografía
+        # Contar predios R1/R2 del municipio que NO tenían cartografía antes
+        predios_municipio = await db.predios.count_documents({"municipio": municipio_nombre})
         
-        logger.info(f"GDB {municipio_nombre}: Calidad={calidad_pct:.1f}% (archivo:{total_archivo}, guardadas:{total_cargadas})")
+        # Contar predios que ahora tienen geometría (match exitoso)
+        predios_con_cartografia = stats.get("relacionados", 0)
+        
+        # Calcular calidad basada en cobertura de predios
+        if predios_municipio > 0:
+            calidad_pct = min(100.0, (predios_con_cartografia / predios_municipio * 100))
+        else:
+            # Si no hay predios en BD, usar el cálculo de geometrías guardadas vs archivo
+            total_archivo = rurales_en_archivo + urbanos_en_archivo
+            total_cargadas = rural_guardadas + urban_guardadas
+            calidad_pct = min(100.0, (total_cargadas / total_archivo * 100)) if total_archivo > 0 else 100.0
+        
+        logger.info(f"GDB {municipio_nombre}: Calidad={calidad_pct:.1f}% (predios BD:{predios_municipio}, con cartografía:{predios_con_cartografia})")
         
         # Siempre generar reporte PDF para tener registro de la carga
         reporte_path = None
@@ -9092,6 +9104,8 @@ async def upload_gdb_file(
                     'urbanos_archivo': urbanos_en_archivo,
                     'rurales_guardadas': rural_guardadas,
                     'urbanos_guardadas': urban_guardadas,
+                    'predios_municipio': predios_municipio,
+                    'predios_con_cartografia': predios_con_cartografia,
                     'calidad_pct': calidad_pct
                 },
                 errores=errores_calidad
