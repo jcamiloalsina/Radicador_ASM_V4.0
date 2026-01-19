@@ -217,7 +217,6 @@ function MunicipalityLimits({ limitesMunicipios, filterMunicipio, setFilterMunic
 
 export default function VisorPredios() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [searchCode, setSearchCode] = useState('');
   const [selectedPredio, setSelectedPredio] = useState(null);
@@ -229,11 +228,7 @@ export default function VisorPredios() {
   const [uploadProgress, setUploadProgress] = useState(null); // Estado del progreso de carga
   const [gdbAnalisis, setGdbAnalisis] = useState(null); // Resultado del análisis de GDB antes de cargar
   const [gdbArchivoPendiente, setGdbArchivoPendiente] = useState(null); // Archivo pendiente de confirmación
-  
-  // Leer municipio de la URL si viene de un proyecto de actualización
-  const urlMunicipio = searchParams.get('municipio');
-  const proyectoId = searchParams.get('proyecto');
-  const [filterMunicipio, setFilterMunicipio] = useState(urlMunicipio || '');
+  const [filterMunicipio, setFilterMunicipio] = useState('');
   const [filterZona, setFilterZona] = useState('todos');
   const [allGeometries, setAllGeometries] = useState(null);
   const [limitesMunicipios, setLimitesMunicipios] = useState(null); // Límites de municipios
