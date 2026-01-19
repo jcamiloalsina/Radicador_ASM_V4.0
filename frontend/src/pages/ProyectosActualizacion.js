@@ -305,7 +305,7 @@ export default function ProyectosActualizacion() {
   const handleAbrirVisorProyecto = () => {
     if (!proyectoSeleccionado) return;
     // Navegar al visor de predios con el municipio del proyecto
-    navigate(`/dashboard/visor?municipio=${encodeURIComponent(proyectoSeleccionado.municipio)}&proyecto=${proyectoSeleccionado.id}`);
+    navigate(`/dashboard/visor-predios?municipio=${encodeURIComponent(proyectoSeleccionado.municipio)}&proyecto=${proyectoSeleccionado.id}`);
   };
 
   const handleUploadBaseGrafica = async (event) => {
