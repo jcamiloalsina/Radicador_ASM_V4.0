@@ -1050,16 +1050,45 @@ export default function ProyectosActualizacion() {
                       </CardContent>
                     </Card>
                     
-                    {/* Mensaje si ambos archivos están cargados */}
-                    {proyectoSeleccionado.base_grafica_archivo && proyectoSeleccionado.info_alfanumerica_archivo && (
+                    {/* Mensaje si GDB está procesado - Botón para abrir visor */}
+                    {proyectoSeleccionado.gdb_procesado && (
                       <Card className="bg-blue-50 border-blue-200">
                         <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <CheckCircle className="w-5 h-5 text-blue-600" />
+                              <div>
+                                <p className="font-medium text-blue-800">Visor de campo disponible</p>
+                                <p className="text-xs text-blue-600">
+                                  {proyectoSeleccionado.base_grafica_total_predios?.toLocaleString() || 0} predios en Base Gráfica
+                                  {proyectoSeleccionado.info_alfanumerica_total_registros > 0 && 
+                                    ` • ${proyectoSeleccionado.info_alfanumerica_total_registros.toLocaleString()} registros R1/R2`
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                            <Button 
+                              onClick={() => navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}`)}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              <MapPin className="w-4 h-4 mr-2" />
+                              Abrir Visor de Campo
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    {/* Mensaje si no hay archivos cargados */}
+                    {!proyectoSeleccionado.gdb_procesado && !proyectoSeleccionado.base_grafica_archivo && (
+                      <Card className="bg-amber-50 border-amber-200">
+                        <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <CheckCircle className="w-5 h-5 text-blue-600" />
+                            <AlertCircle className="w-5 h-5 text-amber-500" />
                             <div>
-                              <p className="font-medium text-blue-800">Proyecto listo para trabajo en campo</p>
-                              <p className="text-xs text-blue-600">
-                                Base Gráfica y datos R1/R2 cargados. El visor de predios del proyecto está disponible.
+                              <p className="font-medium text-amber-800">Archivos requeridos</p>
+                              <p className="text-xs text-amber-600">
+                                Cargue la Base Gráfica (GDB) para habilitar el visor de campo.
                               </p>
                             </div>
                           </div>
