@@ -1335,7 +1335,7 @@ export default function VisorPredios() {
           <div className="flex items-center gap-4 text-sm">
             <Badge variant="outline" className="bg-emerald-50">
               <Layers className="w-3 h-3 mr-1" />
-              {gdbStats.total_geometrias?.toLocaleString()} geometrías
+              {gdbStats.total_geometrias?.toLocaleString()} predios en Base Gráfica
             </Badge>
             <Badge variant="secondary">
               Rural: {gdbStats.predios_rurales?.toLocaleString()}
@@ -1354,7 +1354,7 @@ export default function VisorPredios() {
           <Card className="border-emerald-200">
             <CardHeader className="py-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-700" /> Filtrar Geometrías
+                <Layers className="w-4 h-4 text-emerald-700" /> Filtrar Base Gráfica
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
