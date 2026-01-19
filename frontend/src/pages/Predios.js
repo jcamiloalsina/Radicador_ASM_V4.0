@@ -1296,7 +1296,7 @@ export default function Predios() {
       const token = localStorage.getItem('token');
       const params = municipioParam ? `?municipio=${encodeURIComponent(municipioParam)}` : '';
       
-      toast.info('Iniciando revinculación de geometrías GDB. Este proceso puede tardar unos minutos...');
+      toast.info('Iniciando revinculación de Base Gráfica GDB. Este proceso puede tardar unos minutos...');
       
       const response = await axios.post(`${API}/gdb/revincular-predios${params}`, {}, {
         headers: { Authorization: `Bearer ${token}` },
@@ -1307,7 +1307,7 @@ export default function Predios() {
       const totalVinculados = data.total_vinculados || 0;
       
       if (totalVinculados > 0) {
-        toast.success(`¡Revinculación completada! ${totalVinculados.toLocaleString()} predios vinculados con geometría GDB`);
+        toast.success(`¡Revinculación completada! ${totalVinculados.toLocaleString()} predios vinculados con Base Gráfica GDB`);
         // Refrescar estadísticas
         fetchGdbStats();
         fetchPrediosStats();
@@ -1326,7 +1326,7 @@ export default function Predios() {
       
     } catch (error) {
       console.error('Error en revinculación:', error);
-      toast.error(error.response?.data?.detail || 'Error al revincular geometrías GDB');
+      toast.error(error.response?.data?.detail || 'Error al revincular Base Gráfica GDB');
     } finally {
       setRevinculandoGdb(false);
     }
