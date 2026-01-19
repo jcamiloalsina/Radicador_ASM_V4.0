@@ -10698,6 +10698,66 @@ async def upload_info_alfanumerica_proyecto(
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
 
 
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/descargar-base-grafica")
+async def descargar_base_grafica_proyecto(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Descarga el archivo de Base Gráfica de un proyecto"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para descargar archivos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if not proyecto.get("base_grafica_archivo"):
+        raise HTTPException(status_code=404, detail="No hay Base Gráfica cargada")
+    
+    file_path = Path(proyecto["base_grafica_archivo"])
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+    
+    return FileResponse(
+        file_path,
+        media_type="application/zip",
+        filename=file_path.name,
+        headers={"Content-Disposition": f'attachment; filename="{file_path.name}"'}
+    )
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/descargar-info-alfanumerica")
+async def descargar_info_alfanumerica_proyecto(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Descarga el archivo de Información Alfanumérica (R1/R2) de un proyecto"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para descargar archivos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if not proyecto.get("info_alfanumerica_archivo"):
+        raise HTTPException(status_code=404, detail="No hay Información Alfanumérica cargada")
+    
+    file_path = Path(proyecto["info_alfanumerica_archivo"])
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en el servidor")
+    
+    # Determinar el tipo de archivo
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if file_path.suffix.lower() == ".xls":
+        media_type = "application/vnd.ms-excel"
+    
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        filename=file_path.name,
+        headers={"Content-Disposition": f'attachment; filename="{file_path.name}"'}
+    )
+
+
 # ===== ENDPOINTS DE CRONOGRAMA - ETAPAS =====
 
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/etapas")
