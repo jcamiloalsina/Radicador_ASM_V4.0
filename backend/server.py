@@ -10599,8 +10599,8 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
         raise HTTPException(status_code=403, detail="No tiene permiso para esta operación")
     
     # Obtener todos los municipios
-    municipios = await db.limites_municipales.find({}, {"_id": 0, "nombre": 1}).to_list(100)
-    todos_municipios = [m["nombre"] for m in municipios]
+    municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).to_list(100)
+    todos_municipios = [m["municipio"] for m in municipios]
     
     # Obtener municipios con proyectos activos o pausados
     proyectos_activos = await db.proyectos_actualizacion.find(
