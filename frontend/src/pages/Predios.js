@@ -3372,7 +3372,7 @@ export default function Predios() {
                   
                   <div className="col-span-2"><span className="text-slate-500">Avalúo:</span> <strong className="text-emerald-700">{formatCurrency(selectedPredio.avaluo)}</strong></div>
                   {selectedPredio.tiene_geometria && !selectedPredio.area_gdb && (
-                    <div><span className="text-slate-500">GDB:</span> <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700">✓ Con geometría</Badge></div>
+                    <div><span className="text-slate-500">GDB:</span> <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700">✓ Con Base Gráfica</Badge></div>
                   )}
                 </CardContent>
               </Card>
