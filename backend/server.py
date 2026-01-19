@@ -1597,30 +1597,24 @@ async def forgot_password(request: ForgotPasswordRequest):
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
     reset_link = f"{frontend_url}/reset-password?token={reset_token}"
     
-    # Send email
-    email_body = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #047857; padding: 20px; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0;">Asomunicipios</h1>
-            <p style="color: #d1fae5; margin: 5px 0 0 0;">Sistema de Gestión Catastral</p>
-        </div>
-        <div style="background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
-            <h2 style="color: #1e293b; margin-top: 0;">Recuperación de Contraseña</h2>
-            <p style="color: #475569;">Hola <strong>{user['full_name']}</strong>,</p>
-            <p style="color: #475569;">Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>
-            <p style="color: #475569;">Haz clic en el siguiente botón para crear una nueva contraseña:</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{reset_link}" style="background-color: #047857; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Restablecer Contraseña</a>
-            </div>
-            <p style="color: #64748b; font-size: 14px;">Este enlace expirará en 1 hora.</p>
-            <p style="color: #64748b; font-size: 14px;">Si no solicitaste este cambio, puedes ignorar este correo.</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0;">Este es un mensaje automático, por favor no responda a este correo.</p>
-        </div>
-    </body>
-    </html>
-    """
+    # Send email using standard template
+    contenido = f'''
+    <p>Hola <strong>{user['full_name']}</strong>,</p>
+    <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en el Sistema de Gestión Catastral.</p>
+    <p>Haz clic en el siguiente botón para crear una nueva contraseña:</p>
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; color: #92400e;"><strong>⏰ Importante:</strong> Este enlace expirará en 1 hora.</p>
+    </div>
+    <p style="color: #64748b; font-size: 14px;">Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
+    '''
+    
+    email_body = get_email_template(
+        titulo="Recuperación de Contraseña",
+        contenido=contenido,
+        tipo_notificacion="warning",
+        boton_texto="Restablecer Contraseña",
+        boton_url=reset_link
+    )
     
     try:
         await send_email(request.email, "Recuperación de Contraseña - Asomunicipios", email_body)
