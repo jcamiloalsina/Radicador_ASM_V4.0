@@ -1047,7 +1047,8 @@ export default function ProyectosActualizacion() {
                   </div>
                 </TabsContent>
                 
-                {/* Tab Cronograma */}
+                {/* Tab Cronograma - Solo para admin/coordinador */}
+                {canCreate && (
                 <TabsContent value="cronograma" className="space-y-4 mt-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-slate-900">Cronograma de Actividades</h4>
