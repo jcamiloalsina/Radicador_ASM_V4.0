@@ -449,16 +449,17 @@ class ProyectoActualizacion(BaseModel):
     municipio: str
     descripcion: Optional[str] = None
     estado: str = ProyectoActualizacionEstado.ACTIVO
-    # Archivos asociados
-    gdb_archivo: Optional[str] = None
-    gdb_cargado_en: Optional[datetime] = None
-    gdb_total_predios: int = 0
-    r1_archivo: Optional[str] = None
-    r1_cargado_en: Optional[datetime] = None
-    r1_total_registros: int = 0
-    r2_archivo: Optional[str] = None
-    r2_cargado_en: Optional[datetime] = None
-    r2_total_registros: int = 0
+    # Archivos asociados - Unificados
+    base_grafica_archivo: Optional[str] = None
+    base_grafica_cargado_en: Optional[datetime] = None
+    base_grafica_total_predios: int = 0
+    info_alfanumerica_archivo: Optional[str] = None  # R1/R2 unificado
+    info_alfanumerica_cargado_en: Optional[datetime] = None
+    info_alfanumerica_total_registros: int = 0
+    # Fechas del proyecto
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin_planificada: Optional[datetime] = None
+    fecha_fin_real: Optional[datetime] = None
     # Estadísticas
     predios_actualizados: int = 0
     predios_no_identificados: int = 0
@@ -467,6 +468,68 @@ class ProyectoActualizacion(BaseModel):
     creado_por_nombre: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ===== MODELOS PARA CRONOGRAMA DE ACTUALIZACIÓN =====
+
+class EtapaProyectoTipo:
+    """Tipos de etapas fijas del proyecto"""
+    PREOPERATIVA = "preoperativa"
+    OPERATIVA = "operativa"
+    POSTOPERATIVA = "postoperativa"
+
+class ActividadEstado:
+    """Estados de una actividad"""
+    PENDIENTE = "pendiente"
+    EN_PROGRESO = "en_progreso"
+    COMPLETADA = "completada"
+    BLOQUEADA = "bloqueada"
+
+class ActividadPrioridad:
+    """Prioridades de actividad"""
+    ALTA = "alta"
+    MEDIA = "media"
+    BAJA = "baja"
+
+class EtapaProyectoCreate(BaseModel):
+    """Modelo para crear una etapa"""
+    tipo: str  # preoperativa, operativa, postoperativa
+    nombre: str
+    fecha_inicio: Optional[str] = None
+    fecha_fin_planificada: Optional[str] = None
+    duracion_dias: Optional[int] = None
+
+class EtapaProyectoUpdate(BaseModel):
+    """Modelo para actualizar una etapa"""
+    nombre: Optional[str] = None
+    fecha_inicio: Optional[str] = None
+    fecha_fin_planificada: Optional[str] = None
+    fecha_fin_real: Optional[str] = None
+    estado: Optional[str] = None
+
+class ActividadCreate(BaseModel):
+    """Modelo para crear una actividad"""
+    nombre: str
+    descripcion: Optional[str] = None
+    fase: Optional[str] = None  # Para agrupar dentro de la etapa
+    fecha_inicio: Optional[str] = None
+    fecha_fin_planificada: Optional[str] = None
+    prioridad: str = ActividadPrioridad.MEDIA
+    responsables_ids: Optional[List[str]] = None
+    actividad_previa_id: Optional[str] = None  # Dependencia
+
+class ActividadUpdate(BaseModel):
+    """Modelo para actualizar una actividad"""
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    fase: Optional[str] = None
+    fecha_inicio: Optional[str] = None
+    fecha_fin_planificada: Optional[str] = None
+    fecha_fin_real: Optional[str] = None
+    estado: Optional[str] = None
+    prioridad: Optional[str] = None
+    porcentaje_avance: Optional[int] = None
+    notas: Optional[str] = None
 
 
 # ===== UTILITY FUNCTIONS =====
