@@ -154,10 +154,12 @@ export default function DashboardLayout() {
       const alertas = response.data.alertas || [];
       setAlertasCronograma(alertas);
       
-      // Mostrar alerta flotante solo para coordinadores/admins si hay alertas urgentes
+      // Mostrar alerta flotante solo si hay alertas vencidas o urgentes
       const urgentes = alertas.filter(a => a.tipo_alerta === 'vencida' || a.tipo_alerta === 'urgente');
       if (urgentes.length > 0) {
         setShowAlertaFlotante(true);
+      } else {
+        setShowAlertaFlotante(false);
       }
     } catch (error) {
       console.error('Error fetching alertas cronograma:', error);
