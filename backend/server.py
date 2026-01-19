@@ -420,6 +420,55 @@ class CambioAprobacionRequest(BaseModel):
     comentario: Optional[str] = None
 
 
+# ===== MODELOS PARA MÓDULO DE ACTUALIZACIÓN =====
+
+class ProyectoActualizacionEstado:
+    """Estados de un proyecto de actualización"""
+    ACTIVO = "activo"           # Proyecto en proceso
+    PAUSADO = "pausado"         # Proyecto pausado temporalmente
+    COMPLETADO = "completado"   # Trabajo de campo terminado
+    ARCHIVADO = "archivado"     # Proyecto archivado (no editable)
+
+class ProyectoActualizacionCreate(BaseModel):
+    """Modelo para crear un proyecto de actualización"""
+    nombre: str
+    municipio: str
+    descripcion: Optional[str] = None
+
+class ProyectoActualizacionUpdate(BaseModel):
+    """Modelo para actualizar un proyecto"""
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    estado: Optional[str] = None
+
+class ProyectoActualizacion(BaseModel):
+    """Modelo completo de proyecto de actualización"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nombre: str
+    municipio: str
+    descripcion: Optional[str] = None
+    estado: str = ProyectoActualizacionEstado.ACTIVO
+    # Archivos asociados
+    gdb_archivo: Optional[str] = None
+    gdb_cargado_en: Optional[datetime] = None
+    gdb_total_predios: int = 0
+    r1_archivo: Optional[str] = None
+    r1_cargado_en: Optional[datetime] = None
+    r1_total_registros: int = 0
+    r2_archivo: Optional[str] = None
+    r2_cargado_en: Optional[datetime] = None
+    r2_total_registros: int = 0
+    # Estadísticas
+    predios_actualizados: int = 0
+    predios_no_identificados: int = 0
+    # Metadatos
+    creado_por: str
+    creado_por_nombre: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 # ===== UTILITY FUNCTIONS =====
 
 import re
