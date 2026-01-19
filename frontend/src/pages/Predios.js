@@ -1860,7 +1860,7 @@ export default function Predios() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-purple-600 font-medium">Geometrías GDB</p>
+                      <p className="text-sm text-purple-600 font-medium">Base Gráfica</p>
                       <p className="text-3xl font-bold text-purple-800">{(prediosStats.total_con_geometria || 0).toLocaleString()}</p>
                       {prediosStats.total_area_gdb > 0 && (
                         <p className="text-xs text-purple-500 mt-1">
