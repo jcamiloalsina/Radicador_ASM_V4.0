@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -16,13 +16,11 @@ function MenuSection({ title, icon: Icon, children, isOpen, onToggle, accentColo
   const colorClasses = {
     emerald: {
       bg: 'bg-emerald-800/30',
-      border: 'border-emerald-700',
       text: 'text-emerald-200',
       iconBg: 'bg-emerald-700/50'
     },
     amber: {
       bg: 'bg-amber-900/20',
-      border: 'border-amber-700/50',
       text: 'text-amber-200',
       iconBg: 'bg-amber-700/50'
     }
@@ -55,6 +53,35 @@ function MenuSection({ title, icon: Icon, children, isOpen, onToggle, accentColo
   );
 }
 
+// Componente MenuItem
+function MenuItem({ item, isActive, onNavigate }) {
+  const Icon = item.icon;
+  const showBadge = item.badge && item.badge > 0;
+  
+  return (
+    <Link
+      to={item.path}
+      onClick={onNavigate}
+      className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors text-sm ${
+        isActive
+          ? 'bg-emerald-800 text-white'
+          : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
+      }`}
+      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <div className="flex items-center">
+        <Icon className="w-4 h-4 mr-2.5" />
+        {item.label}
+      </div>
+      {showBadge && (
+        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+          {item.badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default function DashboardLayout() {
   const { user, logout, loading, showTimeoutWarning, extendSession } = useAuth();
   const location = useLocation();
@@ -69,7 +96,7 @@ export default function DashboardLayout() {
   const [actualizacionOpen, setActualizacionOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(true);
 
-  const fetchCambiosPendientes = async () => {
+  const fetchCambiosPendientes = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/predios/cambios/stats`, {
@@ -79,9 +106,9 @@ export default function DashboardLayout() {
     } catch (error) {
       console.error('Error fetching pending changes:', error);
     }
-  };
+  }, []);
 
-  const fetchNotificaciones = async () => {
+  const fetchNotificaciones = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/notificaciones`, {
@@ -92,9 +119,9 @@ export default function DashboardLayout() {
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
-  };
+  }, []);
 
-  const checkGdbAlert = async () => {
+  const checkGdbAlert = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/gdb/verificar-alerta-mensual`, {
@@ -112,7 +139,7 @@ export default function DashboardLayout() {
     } catch (error) {
       console.error('Error checking GDB alert:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -122,7 +149,7 @@ export default function DashboardLayout() {
         fetchCambiosPendientes();
       }
     }
-  }, [user]);
+  }, [user, fetchNotificaciones, checkGdbAlert, fetchCambiosPendientes]);
 
   const marcarLeida = async (notificacionId) => {
     try {
@@ -149,6 +176,71 @@ export default function DashboardLayout() {
     }
   };
 
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // Memoized role names
+  const getRoleName = useCallback((role) => {
+    const roles = {
+      usuario: 'Usuario',
+      atencion_usuario: 'Atención al Usuario',
+      gestor: 'Gestor',
+      coordinador: 'Coordinador',
+      administrador: 'Administrador',
+      comunicaciones: 'Comunicaciones'
+    };
+    return roles[role] || role;
+  }, []);
+
+  // Memoized menu items
+  const menuData = useMemo(() => {
+    if (!user) return { baseMenuItems: [], conservacionItems: [], actualizacionItems: [], adminItems: [] };
+
+    const isStaff = user.role !== 'usuario';
+    const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
+    const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
+    const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
+
+    const baseMenuItems = [
+      { path: '/dashboard', label: 'Inicio', icon: Activity },
+      { path: '/dashboard/peticiones', label: 'Mis Peticiones', icon: FileText },
+    ];
+
+    const conservacionItems = [];
+    if (isStaff) {
+      conservacionItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
+      conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
+      conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+    }
+    if (isCoordAdmin) {
+      conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
+    }
+
+    const actualizacionItems = [];
+    if (canAccessActualizacion) {
+      actualizacionItems.push({ path: '/dashboard/proyectos-actualizacion', label: 'Proyectos', icon: FolderKanban });
+    }
+
+    const adminItems = [];
+    if (canManageUsers) {
+      adminItems.push({ path: '/dashboard/usuarios', label: 'Gestión de Usuarios', icon: UserCog });
+      adminItems.push({ path: '/dashboard/estadisticas', label: 'Estadísticas y Reportes', icon: BarChart3 });
+    }
+    if (isCoordAdmin) {
+      adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
+    }
+
+    return { baseMenuItems, conservacionItems, actualizacionItems, adminItems };
+  }, [user, cambiosPendientesCount]);
+
+  const { baseMenuItems, conservacionItems, actualizacionItems, adminItems } = menuData;
+
+  // Get current page title
+  const currentPageTitle = useMemo(() => {
+    const allItems = [...baseMenuItems, ...conservacionItems, ...actualizacionItems, ...adminItems];
+    const currentItem = allItems.find(item => item.path === location.pathname);
+    return currentItem?.label || 'Dashboard';
+  }, [baseMenuItems, conservacionItems, actualizacionItems, adminItems, location.pathname]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -164,207 +256,195 @@ export default function DashboardLayout() {
     return <Navigate to="/login" />;
   }
 
-  const getRoleName = (role) => {
-    const roles = {
-      usuario: 'Usuario',
-      atencion_usuario: 'Atención al Usuario',
-      gestor: 'Gestor',
-      coordinador: 'Coordinador',
-      administrador: 'Administrador',
-      comunicaciones: 'Comunicaciones'
-    };
-    return roles[role] || role;
-  };
-
-  // Determinar qué items mostrar según el rol
-  const isStaff = user.role !== 'usuario';
-  const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
-  const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
-  const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
-
-  // Items de menú base (siempre visibles)
-  const baseMenuItems = [
-    { path: '/dashboard', label: 'Inicio', icon: Activity },
-    { path: '/dashboard/peticiones', label: 'Mis Peticiones', icon: FileText },
-  ];
-
-  // Items de Conservación (módulo existente)
-  const conservacionItems = [];
-  if (isStaff) {
-    conservacionItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
-    conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
-    conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
-  }
-  if (isCoordAdmin) {
-    conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
-  }
-
-  // Items de Actualización (nuevo módulo)
-  const actualizacionItems = [];
-  if (canAccessActualizacion) {
-    actualizacionItems.push({ path: '/dashboard/proyectos-actualizacion', label: 'Proyectos', icon: FolderKanban });
-    // Futuras páginas del módulo de actualización
-    // actualizacionItems.push({ path: '/dashboard/trabajo-campo', label: 'Trabajo de Campo', icon: MapPin });
-  }
-
-  // Items de Administración
-  const adminItems = [];
-  if (canManageUsers) {
-    adminItems.push({ path: '/dashboard/usuarios', label: 'Gestión de Usuarios', icon: UserCog });
-    adminItems.push({ path: '/dashboard/estadisticas', label: 'Estadísticas y Reportes', icon: BarChart3 });
-  }
-  if (isCoordAdmin) {
-    adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
-  }
-
-  // Función para renderizar un item de menú
-  const renderMenuItem = (item, closeSidebar = false) => {
-    const Icon = item.icon;
-    const isActive = location.pathname === item.path;
-    const showBadge = item.badge && item.badge > 0;
-    
-    return (
-      <Link
-        key={item.path}
-        to={item.path}
-        onClick={closeSidebar ? () => setSidebarOpen(false) : undefined}
-        className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors text-sm ${
-          isActive
-            ? 'bg-emerald-800 text-white'
-            : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
-        }`}
-        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-      >
-        <div className="flex items-center">
-          <Icon className="w-4 h-4 mr-2.5" />
-          {item.label}
-        </div>
-        {showBadge && (
-          <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-            {item.badge}
-          </span>
-        )}
-      </Link>
-    );
-  };
-
-  // Función para obtener el título de la página actual
-  const getCurrentPageTitle = () => {
-    const allItems = [
-      ...baseMenuItems, 
-      ...conservacionItems, 
-      ...actualizacionItems, 
-      ...adminItems
-    ];
-    const currentItem = allItems.find(item => item.path === location.pathname);
-    return currentItem?.label || 'Dashboard';
-  };
-
-  // Sidebar content (reutilizado en desktop y mobile)
-  const SidebarContent = ({ mobile = false }) => (
-    <>
-      {/* Header con logo */}
-      <div className="p-4 border-b border-emerald-800 flex-shrink-0">
-        <img 
-          src="/logo-asomunicipios.png" 
-          alt="Asomunicipios Logo" 
-          className="w-24 mx-auto mb-2 rounded"
-          data-testid="sidebar-logo"
-        />
-        <h2 className="text-xs font-bold font-outfit leading-tight text-center" data-testid="sidebar-title">
-          Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
-        </h2>
-        <p className="text-emerald-200 text-xs mt-1 text-center font-semibold">– Asomunicipios –</p>
-        <p className="text-emerald-100 text-xs mt-2 text-center">{getRoleName(user.role)}</p>
-      </div>
-
-      {/* Navegación */}
-      <nav className="flex-1 p-3 space-y-4 overflow-y-auto" data-testid="sidebar-nav">
-        {/* Items base */}
-        <div className="space-y-1">
-          {baseMenuItems.map(item => renderMenuItem(item, mobile))}
-        </div>
-
-        {/* Sección Conservación */}
-        {conservacionItems.length > 0 && (
-          <MenuSection
-            title="Conservación"
-            icon={Layers}
-            isOpen={conservacionOpen}
-            onToggle={setConservacionOpen}
-            accentColor="emerald"
-            testId="section-conservacion"
-          >
-            {conservacionItems.map(item => renderMenuItem(item, mobile))}
-          </MenuSection>
-        )}
-
-        {/* Sección Actualización */}
-        {actualizacionItems.length > 0 && (
-          <MenuSection
-            title="Actualización"
-            icon={RefreshCcw}
-            isOpen={actualizacionOpen}
-            onToggle={setActualizacionOpen}
-            accentColor="amber"
-            testId="section-actualizacion"
-          >
-            {actualizacionItems.map(item => renderMenuItem(item, mobile))}
-          </MenuSection>
-        )}
-
-        {/* Sección Administración */}
-        {adminItems.length > 0 && (
-          <MenuSection
-            title="Administración"
-            icon={UserCog}
-            isOpen={adminOpen}
-            onToggle={setAdminOpen}
-            accentColor="emerald"
-            testId="section-administracion"
-          >
-            {adminItems.map(item => renderMenuItem(item, mobile))}
-          </MenuSection>
-        )}
-      </nav>
-
-      {/* Footer con info de usuario */}
-      <div className="p-4 border-t border-emerald-800 flex-shrink-0">
-        <div className="px-3 py-2 mb-2">
-          <p className="text-sm font-medium text-white truncate" data-testid="user-name">{user.full_name}</p>
-          <p className="text-xs text-emerald-200 truncate" data-testid="user-email">{user.email}</p>
-        </div>
-        <Button
-          onClick={logout}
-          variant="ghost"
-          className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
-          data-testid="logout-button"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Cerrar Sesión
-        </Button>
-      </div>
-    </>
-  );
-
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Sidebar - Desktop */}
       <div className="hidden md:flex w-64 flex-col bg-emerald-900 text-white border-r border-emerald-800 overflow-y-auto">
-        <SidebarContent />
+        {/* Header con logo */}
+        <div className="p-4 border-b border-emerald-800 flex-shrink-0">
+          <img 
+            src="/logo-asomunicipios.png" 
+            alt="Asomunicipios Logo" 
+            className="w-24 mx-auto mb-2 rounded"
+            data-testid="sidebar-logo"
+          />
+          <h2 className="text-xs font-bold font-outfit leading-tight text-center" data-testid="sidebar-title">
+            Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
+          </h2>
+          <p className="text-emerald-200 text-xs mt-1 text-center font-semibold">– Asomunicipios –</p>
+          <p className="text-emerald-100 text-xs mt-2 text-center">{getRoleName(user.role)}</p>
+        </div>
+
+        {/* Navegación */}
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto" data-testid="sidebar-nav">
+          {/* Items base */}
+          <div className="space-y-1">
+            {baseMenuItems.map(item => (
+              <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} />
+            ))}
+          </div>
+
+          {/* Sección Conservación */}
+          {conservacionItems.length > 0 && (
+            <MenuSection
+              title="Conservación"
+              icon={Layers}
+              isOpen={conservacionOpen}
+              onToggle={setConservacionOpen}
+              accentColor="emerald"
+              testId="section-conservacion"
+            >
+              {conservacionItems.map(item => (
+                <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} />
+              ))}
+            </MenuSection>
+          )}
+
+          {/* Sección Actualización */}
+          {actualizacionItems.length > 0 && (
+            <MenuSection
+              title="Actualización"
+              icon={RefreshCcw}
+              isOpen={actualizacionOpen}
+              onToggle={setActualizacionOpen}
+              accentColor="amber"
+              testId="section-actualizacion"
+            >
+              {actualizacionItems.map(item => (
+                <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} />
+              ))}
+            </MenuSection>
+          )}
+
+          {/* Sección Administración */}
+          {adminItems.length > 0 && (
+            <MenuSection
+              title="Administración"
+              icon={UserCog}
+              isOpen={adminOpen}
+              onToggle={setAdminOpen}
+              accentColor="emerald"
+              testId="section-administracion"
+            >
+              {adminItems.map(item => (
+                <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} />
+              ))}
+            </MenuSection>
+          )}
+        </nav>
+
+        {/* Footer con info de usuario */}
+        <div className="p-4 border-t border-emerald-800 flex-shrink-0">
+          <div className="px-3 py-2 mb-2">
+            <p className="text-sm font-medium text-white truncate" data-testid="user-name">{user.full_name}</p>
+            <p className="text-xs text-emerald-200 truncate" data-testid="user-email">{user.email}</p>
+          </div>
+          <Button
+            onClick={logout}
+            variant="ghost"
+            className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
+            data-testid="logout-button"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Cerrar Sesión
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
+          <div className="absolute inset-0 bg-black/50" onClick={closeSidebar}></div>
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white flex flex-col">
             <div className="absolute right-2 top-2">
-              <button onClick={() => setSidebarOpen(false)} className="text-white p-1 hover:bg-emerald-800 rounded">
+              <button onClick={closeSidebar} className="text-white p-1 hover:bg-emerald-800 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <SidebarContent mobile />
+            
+            {/* Header con logo - Mobile */}
+            <div className="p-4 border-b border-emerald-800 flex-shrink-0">
+              <img 
+                src="/logo-asomunicipios.png" 
+                alt="Asomunicipios Logo" 
+                className="w-24 mx-auto mb-2 rounded"
+              />
+              <h2 className="text-xs font-bold font-outfit leading-tight text-center">
+                Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
+              </h2>
+              <p className="text-emerald-200 text-xs mt-1 text-center font-semibold">– Asomunicipios –</p>
+              <p className="text-emerald-100 text-xs mt-2 text-center">{getRoleName(user.role)}</p>
+            </div>
+
+            {/* Navegación - Mobile */}
+            <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+              <div className="space-y-1">
+                {baseMenuItems.map(item => (
+                  <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} onNavigate={closeSidebar} />
+                ))}
+              </div>
+
+              {conservacionItems.length > 0 && (
+                <MenuSection
+                  title="Conservación"
+                  icon={Layers}
+                  isOpen={conservacionOpen}
+                  onToggle={setConservacionOpen}
+                  accentColor="emerald"
+                  testId="section-conservacion-mobile"
+                >
+                  {conservacionItems.map(item => (
+                    <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} onNavigate={closeSidebar} />
+                  ))}
+                </MenuSection>
+              )}
+
+              {actualizacionItems.length > 0 && (
+                <MenuSection
+                  title="Actualización"
+                  icon={RefreshCcw}
+                  isOpen={actualizacionOpen}
+                  onToggle={setActualizacionOpen}
+                  accentColor="amber"
+                  testId="section-actualizacion-mobile"
+                >
+                  {actualizacionItems.map(item => (
+                    <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} onNavigate={closeSidebar} />
+                  ))}
+                </MenuSection>
+              )}
+
+              {adminItems.length > 0 && (
+                <MenuSection
+                  title="Administración"
+                  icon={UserCog}
+                  isOpen={adminOpen}
+                  onToggle={setAdminOpen}
+                  accentColor="emerald"
+                  testId="section-administracion-mobile"
+                >
+                  {adminItems.map(item => (
+                    <MenuItem key={item.path} item={item} isActive={location.pathname === item.path} onNavigate={closeSidebar} />
+                  ))}
+                </MenuSection>
+              )}
+            </nav>
+
+            {/* Footer - Mobile */}
+            <div className="p-4 border-t border-emerald-800 flex-shrink-0">
+              <div className="px-3 py-2 mb-2">
+                <p className="text-sm font-medium text-white truncate">{user.full_name}</p>
+                <p className="text-xs text-emerald-200 truncate">{user.email}</p>
+              </div>
+              <Button
+                onClick={logout}
+                variant="ghost"
+                className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -413,7 +493,7 @@ export default function DashboardLayout() {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-semibold text-slate-900 font-outfit" data-testid="page-title">
-              {getCurrentPageTitle()}
+              {currentPageTitle}
             </h1>
           </div>
           
