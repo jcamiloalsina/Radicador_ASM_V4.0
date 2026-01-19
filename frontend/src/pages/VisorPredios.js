@@ -656,7 +656,7 @@ export default function VisorPredios() {
       toast.success('Predio encontrado');
     } catch (error) {
       if (error.response?.status === 404) {
-        toast.warning('Predio encontrado pero sin geometría disponible');
+        toast.warning('Predio encontrado pero sin Base Gráfica disponible');
       } else {
         toast.error('Error al buscar el predio');
       }
