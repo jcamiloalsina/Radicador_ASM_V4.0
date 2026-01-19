@@ -63,48 +63,36 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
-### Sesión 19 Enero 2026 - Fork (Actual)
-**Correcciones y Nuevas Funcionalidades:**
+### Sesión 19 Enero 2026 - Fork (Continuación)
+**Correcciones y Cambios de Arquitectura:**
 
-1. ✅ **Bug Eliminación de Proyectos:** 
-   - Corregido: `canDelete` ahora incluye `coordinador` además de `administrador`
-   - El dropdown de acciones aparece con condición `(canCreate || canDelete)`
+1. ✅ **Desvinculación Completa Conservación-Actualización:**
+   - Eliminado todo código de vinculación de datos entre módulos
+   - Eliminados endpoints: `vincular-datos-existentes`, `datos-municipio`
+   - Eliminado código de lectura de URL params en VisorPredios
+   - Actualización ahora es un módulo 100% independiente
 
-2. ✅ **Código Duplicado en ProyectosActualizacion.js:**
-   - Eliminado bloque duplicado de líneas 1047-1072
+2. ✅ **Bug de Alerta "Actividades Pendientes":**
+   - Limpiadas etapas y actividades huérfanas de proyectos eliminados
+   - La alerta solo aparece si hay actividades reales vencidas/urgentes
 
-3. ✅ **Terminología "geometría" → "Base Gráfica":**
-   - Cambiado en `Predios.js` y `VisorPredios.js`
+3. ✅ **Permisos de Eliminación:**
+   - `canDelete` incluye rol `coordinador` además de `administrador`
+   - Condición: `proyecto.estado !== 'archivado'`
 
-4. ✅ **Alerta "Actividades Pendientes":**
-   - Corregido: Solo se muestra si hay actividades vencidas o urgentes (no cuando está vacío)
+4. ✅ **UI de Archivos Simplificada:**
+   - Solo muestra carga de GDB y R1/R2 propios del proyecto
+   - Botones destacados "Cargar GDB" y "Cargar R1/R2"
+   - Sin referencia a datos de Conservación
 
-5. ✅ **Municipios Excluidos:**
-   - Ocaña, La Esperanza, González y Tibú excluidos de la lista de municipios disponibles
+5. ✅ **Ordenamiento de Municipios:**
+   - Ábrego aparece primero (normalización unicode: Á = A)
+   - Excluidos: Ocaña, La Esperanza, González, Tibú
 
-6. ✅ **Ordenamiento Alfabético Español:**
-   - Ábrego ahora aparece primero (Á normalizado como A)
-   - Implementado usando `unicodedata.normalize()`
+6. ✅ **Restricción de Cronograma:**
+   - Gestores NO ven la pestaña Cronograma (solo Información y Archivos)
 
-7. ✅ **Restricción de Cronograma para Gestores:**
-   - La pestaña "Cronograma" solo es visible para administradores y coordinadores
-   - Los gestores solo ven "Información" y "Archivos"
-
-8. ✅ **Vinculación de Datos Existentes:**
-   - Nuevo endpoint `POST /api/actualizacion/proyectos/{id}/vincular-datos-existentes`
-   - Permite vincular GDB y R1/R2 existentes del módulo Conservación
-   - UI muestra estadísticas: geometrías, predios y construcciones
-
-9. ✅ **Integración Visor-Proyecto:**
-   - Botón "Abrir Visor de Predios" en proyectos de actualización
-   - Navegación con parámetros de URL (`?municipio=X&proyecto=Y`)
-   - Visor pre-selecciona municipio automáticamente
-
-10. ✅ **Proyecto de Prueba Ábrego:**
-    - Creado proyecto "Actualización Catastral Ábrego 2026"
-    - Datos vinculados: 9,893 geometrías, 44,475 predios, 5,183 construcciones
-
-**Testing:** 11/11 tests pasaron - Ver `/app/test_reports/iteration_9.json`
+**Próximo paso: Crear visor propio de Actualización con GPS para trabajo de campo**
 
 ### Sesión 18 Enero 2026 - Fork
 **Bug Crítico Corregido - Carga de GDB procesaba archivo equivocado:**
