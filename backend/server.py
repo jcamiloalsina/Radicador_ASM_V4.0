@@ -10207,6 +10207,419 @@ async def servir_tile_ortoimagen(orto_id: str, z: int, x: int, y: int):
     )
 
 
+# ===== MÓDULO DE ACTUALIZACIÓN - PROYECTOS =====
+
+# Directorio para archivos de proyectos de actualización
+PROYECTOS_ACTUALIZACION_PATH = Path('/app/proyectos_actualizacion')
+PROYECTOS_ACTUALIZACION_PATH.mkdir(exist_ok=True)
+
+@api_router.get("/actualizacion/proyectos")
+async def listar_proyectos_actualizacion(
+    estado: Optional[str] = None,
+    municipio: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista todos los proyectos de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver proyectos de actualización")
+    
+    query = {}
+    if estado:
+        query["estado"] = estado
+    if municipio:
+        query["municipio"] = municipio
+    
+    # Si es gestor, solo ver proyectos activos o de su municipio
+    # Por ahora, todos los usuarios autorizados pueden ver todos los proyectos
+    
+    proyectos = await db.proyectos_actualizacion.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    return {"proyectos": proyectos}
+
+@api_router.get("/actualizacion/proyectos/estadisticas")
+async def estadisticas_proyectos_actualizacion(current_user: dict = Depends(get_current_user)):
+    """Obtiene estadísticas generales de proyectos de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver estadísticas")
+    
+    pipeline = [
+        {
+            "$group": {
+                "_id": "$estado",
+                "count": {"$sum": 1}
+            }
+        }
+    ]
+    
+    resultados = await db.proyectos_actualizacion.aggregate(pipeline).to_list(100)
+    
+    stats = {
+        "activos": 0,
+        "pausados": 0,
+        "completados": 0,
+        "archivados": 0,
+        "total": 0
+    }
+    
+    for r in resultados:
+        estado = r["_id"]
+        count = r["count"]
+        stats["total"] += count
+        if estado == ProyectoActualizacionEstado.ACTIVO:
+            stats["activos"] = count
+        elif estado == ProyectoActualizacionEstado.PAUSADO:
+            stats["pausados"] = count
+        elif estado == ProyectoActualizacionEstado.COMPLETADO:
+            stats["completados"] = count
+        elif estado == ProyectoActualizacionEstado.ARCHIVADO:
+            stats["archivados"] = count
+    
+    return stats
+
+@api_router.post("/actualizacion/proyectos")
+async def crear_proyecto_actualizacion(
+    proyecto_data: ProyectoActualizacionCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crea un nuevo proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden crear proyectos")
+    
+    # Verificar que el municipio existe
+    municipio = await db.limites_municipales.find_one({"nombre": proyecto_data.municipio}, {"_id": 0})
+    if not municipio:
+        raise HTTPException(status_code=400, detail=f"Municipio '{proyecto_data.municipio}' no encontrado")
+    
+    # Verificar que no existe un proyecto activo para el mismo municipio
+    proyecto_existente = await db.proyectos_actualizacion.find_one({
+        "municipio": proyecto_data.municipio,
+        "estado": {"$in": [ProyectoActualizacionEstado.ACTIVO, ProyectoActualizacionEstado.PAUSADO]}
+    }, {"_id": 0})
+    
+    if proyecto_existente:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ya existe un proyecto activo o pausado para el municipio '{proyecto_data.municipio}'"
+        )
+    
+    proyecto_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    proyecto = {
+        "id": proyecto_id,
+        "nombre": proyecto_data.nombre.strip(),
+        "municipio": proyecto_data.municipio,
+        "descripcion": proyecto_data.descripcion.strip() if proyecto_data.descripcion else None,
+        "estado": ProyectoActualizacionEstado.ACTIVO,
+        "gdb_archivo": None,
+        "gdb_cargado_en": None,
+        "gdb_total_predios": 0,
+        "r1_archivo": None,
+        "r1_cargado_en": None,
+        "r1_total_registros": 0,
+        "r2_archivo": None,
+        "r2_cargado_en": None,
+        "r2_total_registros": 0,
+        "predios_actualizados": 0,
+        "predios_no_identificados": 0,
+        "creado_por": current_user["id"],
+        "creado_por_nombre": current_user["full_name"],
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    # Crear directorio para archivos del proyecto
+    proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
+    proyecto_dir.mkdir(exist_ok=True)
+    
+    await db.proyectos_actualizacion.insert_one(proyecto)
+    
+    # Remover _id de la respuesta
+    proyecto.pop("_id", None)
+    
+    return {"message": "Proyecto creado exitosamente", "proyecto": proyecto}
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}")
+async def obtener_proyecto_actualizacion(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene los detalles de un proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver este proyecto")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    return proyecto
+
+@api_router.patch("/actualizacion/proyectos/{proyecto_id}")
+async def actualizar_proyecto_actualizacion(
+    proyecto_id: str,
+    update_data: ProyectoActualizacionUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza un proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden actualizar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # No permitir modificar proyectos archivados
+    if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="No se puede modificar un proyecto archivado")
+    
+    updates = {"updated_at": datetime.now(timezone.utc)}
+    
+    if update_data.nombre is not None:
+        updates["nombre"] = update_data.nombre.strip()
+    if update_data.descripcion is not None:
+        updates["descripcion"] = update_data.descripcion.strip()
+    if update_data.estado is not None:
+        # Validar el nuevo estado
+        valid_states = [
+            ProyectoActualizacionEstado.ACTIVO,
+            ProyectoActualizacionEstado.PAUSADO,
+            ProyectoActualizacionEstado.COMPLETADO,
+            ProyectoActualizacionEstado.ARCHIVADO
+        ]
+        if update_data.estado not in valid_states:
+            raise HTTPException(status_code=400, detail=f"Estado inválido. Debe ser uno de: {valid_states}")
+        updates["estado"] = update_data.estado
+    
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {"$set": updates}
+    )
+    
+    proyecto_actualizado = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    return {"message": "Proyecto actualizado", "proyecto": proyecto_actualizado}
+
+@api_router.delete("/actualizacion/proyectos/{proyecto_id}")
+async def eliminar_proyecto_actualizacion(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Elimina un proyecto de actualización y todos sus archivos asociados"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Eliminar directorio de archivos del proyecto
+    proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
+    if proyecto_dir.exists():
+        shutil.rmtree(proyecto_dir)
+    
+    # Eliminar datos del proyecto en MongoDB
+    # Colecciones específicas del proyecto
+    await db.actualizacion_predios.delete_many({"proyecto_id": proyecto_id})
+    await db.actualizacion_r1.delete_many({"proyecto_id": proyecto_id})
+    await db.actualizacion_r2.delete_many({"proyecto_id": proyecto_id})
+    
+    # Eliminar el proyecto
+    await db.proyectos_actualizacion.delete_one({"id": proyecto_id})
+    
+    return {"message": f"Proyecto '{proyecto['nombre']}' eliminado exitosamente"}
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/archivar")
+async def archivar_proyecto_actualizacion(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Archiva un proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden archivar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="El proyecto ya está archivado")
+    
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {"$set": {
+            "estado": ProyectoActualizacionEstado.ARCHIVADO,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"message": "Proyecto archivado exitosamente"}
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/restaurar")
+async def restaurar_proyecto_actualizacion(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Restaura un proyecto archivado a estado pausado"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden restaurar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto["estado"] != ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="Solo se pueden restaurar proyectos archivados")
+    
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {"$set": {
+            "estado": ProyectoActualizacionEstado.PAUSADO,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"message": "Proyecto restaurado exitosamente"}
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-gdb")
+async def upload_gdb_proyecto_actualizacion(
+    proyecto_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Sube un archivo GDB (ZIP) para un proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para cargar archivos GDB")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="No se pueden cargar archivos a proyectos archivados")
+    
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un ZIP que contenga la geodatabase (.gdb)")
+    
+    proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
+    proyecto_dir.mkdir(exist_ok=True)
+    
+    # Guardar archivo
+    gdb_path = proyecto_dir / f"gdb_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    try:
+        with open(gdb_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # TODO: Procesar el GDB (similar al módulo de conservación)
+        # Por ahora solo guardamos la referencia
+        
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {"$set": {
+                "gdb_archivo": str(gdb_path),
+                "gdb_cargado_en": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        return {
+            "message": "Archivo GDB cargado exitosamente",
+            "archivo": str(gdb_path)
+        }
+        
+    except Exception as e:
+        if gdb_path.exists():
+            gdb_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-r1r2")
+async def upload_r1r2_proyecto_actualizacion(
+    proyecto_id: str,
+    tipo: str = Form(...),  # "r1" o "r2"
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Sube un archivo R1 o R2 (Excel) para un proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para cargar archivos R1/R2")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="No se pueden cargar archivos a proyectos archivados")
+    
+    if tipo not in ["r1", "r2"]:
+        raise HTTPException(status_code=400, detail="Tipo debe ser 'r1' o 'r2'")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un Excel (.xlsx o .xls)")
+    
+    proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
+    proyecto_dir.mkdir(exist_ok=True)
+    
+    # Guardar archivo
+    ext = Path(file.filename).suffix
+    file_path = proyecto_dir / f"{tipo}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{ext}"
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # TODO: Procesar el Excel y cargar datos a MongoDB
+        # Por ahora solo guardamos la referencia
+        
+        update_fields = {
+            f"{tipo}_archivo": str(file_path),
+            f"{tipo}_cargado_en": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {"$set": update_fields}
+        )
+        
+        return {
+            "message": f"Archivo {tipo.upper()} cargado exitosamente",
+            "archivo": str(file_path)
+        }
+        
+    except Exception as e:
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
+
+@api_router.get("/actualizacion/municipios-disponibles")
+async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_current_user)):
+    """Lista los municipios que no tienen un proyecto activo"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para esta operación")
+    
+    # Obtener todos los municipios
+    municipios = await db.limites_municipales.find({}, {"_id": 0, "nombre": 1}).to_list(100)
+    todos_municipios = [m["nombre"] for m in municipios]
+    
+    # Obtener municipios con proyectos activos o pausados
+    proyectos_activos = await db.proyectos_actualizacion.find(
+        {"estado": {"$in": [ProyectoActualizacionEstado.ACTIVO, ProyectoActualizacionEstado.PAUSADO]}},
+        {"_id": 0, "municipio": 1}
+    ).to_list(100)
+    
+    municipios_ocupados = set(p["municipio"] for p in proyectos_activos)
+    
+    # Municipios disponibles
+    disponibles = [m for m in todos_municipios if m not in municipios_ocupados]
+    
+    return {
+        "disponibles": sorted(disponibles),
+        "ocupados": sorted(list(municipios_ocupados)),
+        "total": len(todos_municipios)
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
