@@ -74,8 +74,8 @@
 
 ## Test Credentials
 - **Admin**: catastro@asomunicipios.gov.co / Asm*123* ✅ WORKING
-- **Frontend URL**: https://cadastral-update.preview.emergentagent.com
-- **Backend API**: https://cadastral-update.preview.emergentagent.com/api
+- **Frontend URL**: https://property-sync-10.preview.emergentagent.com
+- **Backend API**: https://property-sync-10.preview.emergentagent.com/api
 
 ## Test Environment
 - **Date**: January 8, 2026
@@ -270,8 +270,8 @@
 
 ## Test Credentials
 - **Admin**: catastro@asomunicipios.gov.co / Asm*123* ✅ WORKING
-- **Frontend URL**: https://cadastral-update.preview.emergentagent.com
-- **Backend API**: https://cadastral-update.preview.emergentagent.com/api
+- **Frontend URL**: https://property-sync-10.preview.emergentagent.com
+- **Backend API**: https://property-sync-10.preview.emergentagent.com/api
 
 ## Test Environment
 - **Date**: January 8, 2026
@@ -410,7 +410,7 @@
 
 **Credentials Verified:**
 - ✅ Admin: catastro@asomunicipios.gov.co / Asm*123* - WORKING
-- ✅ API Base URL: https://cadastral-update.preview.emergentagent.com - WORKING
+- ✅ API Base URL: https://property-sync-10.preview.emergentagent.com - WORKING
 
 - **Pending**: Verificación visual por usuario
 
@@ -511,8 +511,8 @@
 
 ## Test Credentials
 - **Admin**: catastro@asomunicipios.gov.co / Asm*123* ✅ WORKING
-- **Frontend URL**: https://cadastral-update.preview.emergentagent.com
-- **Backend API**: https://cadastral-update.preview.emergentagent.com/api
+- **Frontend URL**: https://property-sync-10.preview.emergentagent.com
+- **Backend API**: https://property-sync-10.preview.emergentagent.com/api
 
 ## Test Environment
 - **Date**: January 8, 2026
@@ -589,7 +589,7 @@
 
 ### Test Credentials Verified
 - **Admin**: catastro@asomunicipios.gov.co / Asm*123* ✅ WORKING
-- **API Base URL**: https://cadastral-update.preview.emergentagent.com ✅ WORKING
+- **API Base URL**: https://property-sync-10.preview.emergentagent.com ✅ WORKING
 
 ### Test Environment
 - **Date**: January 8, 2026
