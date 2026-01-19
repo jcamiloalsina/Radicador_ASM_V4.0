@@ -10286,7 +10286,7 @@ async def crear_proyecto_actualizacion(
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden crear proyectos")
     
     # Verificar que el municipio existe
-    municipio = await db.limites_municipales.find_one({"nombre": proyecto_data.municipio}, {"_id": 0})
+    municipio = await db.limites_municipales.find_one({"municipio": proyecto_data.municipio}, {"_id": 0})
     if not municipio:
         raise HTTPException(status_code=400, detail=f"Municipio '{proyecto_data.municipio}' no encontrado")
     
