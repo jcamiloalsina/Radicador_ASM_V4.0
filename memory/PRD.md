@@ -63,36 +63,46 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
-### Sesión 19 Enero 2026 - Fork (Continuación)
-**Correcciones y Cambios de Arquitectura:**
+### Sesión 19 Enero 2026 - Fork (Final)
+**Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
-1. ✅ **Desvinculación Completa Conservación-Actualización:**
-   - Eliminado todo código de vinculación de datos entre módulos
-   - Eliminados endpoints: `vincular-datos-existentes`, `datos-municipio`
-   - Eliminado código de lectura de URL params en VisorPredios
-   - Actualización ahora es un módulo 100% independiente
+1. ✅ **Nuevo componente VisorActualizacion.js:**
+   - Visor de mapas independiente para proyectos de actualización
+   - Soporte para GPS del dispositivo (watchPosition con alta precisión)
+   - Indicador de precisión GPS en metros
+   - Botón para centrar mapa en ubicación actual
+   - Cambio entre mapa satélite y calles
+   - Filtro por zona (urbano/rural/todos)
+   - Búsqueda por código predial
+   - Modal de detalle de predio con tabs (General, Propietarios, Físico)
 
-2. ✅ **Bug de Alerta "Actividades Pendientes":**
-   - Limpiadas etapas y actividades huérfanas de proyectos eliminados
-   - La alerta solo aparece si hay actividades reales vencidas/urgentes
+2. ✅ **Backend - Procesamiento de GDB para Actualización:**
+   - Función `procesar_gdb_actualizacion()` que procesa GDB usando mismos estándares de capas
+   - Capas soportadas: R_TERRENO, U_TERRENO, R_TERRENO_1, U_TERRENO_1, CONSTRUCCION, etc.
+   - Colecciones separadas: `geometrias_actualizacion`, `construcciones_actualizacion`
+   - Endpoint `GET /api/actualizacion/proyectos/{id}/geometrias` para obtener GeoJSON
 
-3. ✅ **Permisos de Eliminación:**
-   - `canDelete` incluye rol `coordinador` además de `administrador`
-   - Condición: `proyecto.estado !== 'archivado'`
+3. ✅ **Backend - Procesamiento de R1/R2:**
+   - Función `procesar_r1r2_actualizacion()` que procesa Excel R1/R2
+   - Mapeo de columnas estándar (NUMERO_PREDIAL, DIRECCION, AREA_TERRENO, etc.)
+   - Colección separada: `predios_actualizacion`
+   - Endpoint `GET /api/actualizacion/proyectos/{id}/predios`
 
-4. ✅ **UI de Archivos Simplificada:**
-   - Solo muestra carga de GDB y R1/R2 propios del proyecto
-   - Botones destacados "Cargar GDB" y "Cargar R1/R2"
-   - Sin referencia a datos de Conservación
+4. ✅ **UI actualizada en ProyectosActualizacion.js:**
+   - Botón "Abrir Visor de Campo" cuando GDB está procesado
+   - Muestra estadísticas de predios y registros
+   - Mensaje de archivos requeridos cuando no hay GDB
 
-5. ✅ **Ordenamiento de Municipios:**
-   - Ábrego aparece primero (normalización unicode: Á = A)
-   - Excluidos: Ocaña, La Esperanza, González, Tibú
+5. ✅ **Ruta agregada en App.js:**
+   - `/dashboard/visor-actualizacion/:proyectoId`
 
-6. ✅ **Restricción de Cronograma:**
-   - Gestores NO ven la pestaña Cronograma (solo Información y Archivos)
-
-**Próximo paso: Crear visor propio de Actualización con GPS para trabajo de campo**
+**Correcciones previas también completadas:**
+- Desvinculación completa Conservación-Actualización
+- Bug alerta "Actividades Pendientes" corregido
+- Eliminación para coordinadores habilitada
+- Municipios excluidos
+- Ordenamiento alfabético español (Ábrego primero)
+- Cronograma oculto para gestores
 
 ### Sesión 18 Enero 2026 - Fork
 **Bug Crítico Corregido - Carga de GDB procesaba archivo equivocado:**
