@@ -1006,38 +1006,30 @@ async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict
     with open(temp_path, 'wb') as f:
         f.write(buffer.getvalue())
     
-    # Send email with attachment
-    html_body = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #047857 0%, #065f46 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; text-align: center;">Asomunicipios</h1>
-            <p style="color: #d1fae5; text-align: center; margin: 10px 0 0 0;">Sistema de Gestión Catastral</p>
-        </div>
-        <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
-            <h2 style="color: #047857; margin-top: 0;">📋 Ficha Técnica del Sistema</h2>
-            <p style="color: #475569; line-height: 1.6;">
-                Adjunto encontrará la <strong>Ficha Técnica</strong> del Sistema de Gestión Catastral de Asomunicipios, 
-                la cual incluye:
-            </p>
-            <ul style="color: #475569; line-height: 1.8;">
-                <li>Descripción general del sistema</li>
-                <li>Funcionalidades principales implementadas</li>
-                <li>Beneficios clave para la organización</li>
-                <li>Estadísticas actuales del sistema</li>
-                <li>Stack tecnológico utilizado</li>
-                <li>Roadmap de mejoras futuras</li>
-            </ul>
-            <div style="background: #ecfdf5; border-left: 4px solid #047857; padding: 15px; margin: 20px 0;">
-                <p style="color: #047857; margin: 0;">
-                    <strong>📎 Archivo adjunto:</strong> {pdf_filename}
-                </p>
-            </div>
-            <p style="color: #64748b; font-size: 12px; margin-top: 30px; text-align: center;">
-                Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
-            </p>
-        </div>
+    # Send email with attachment using standard template
+    contenido = f'''
+    <p>Adjunto encontrará la <strong>Ficha Técnica</strong> del Sistema de Gestión Catastral de Asomunicipios, 
+    la cual incluye:</p>
+    <ul style="line-height: 1.8;">
+        <li>Descripción general del sistema</li>
+        <li>Funcionalidades principales implementadas</li>
+        <li>Beneficios clave para la organización</li>
+        <li>Estadísticas actuales del sistema</li>
+        <li>Stack tecnológico utilizado</li>
+        <li>Roadmap de mejoras futuras</li>
+    </ul>
+    <div style="background: #ecfdf5; border-left: 4px solid #047857; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="color: #047857; margin: 0;">
+            <strong>📎 Archivo adjunto:</strong> {pdf_filename}
+        </p>
     </div>
-    """
+    '''
+    
+    html_body = get_email_template(
+        titulo="📋 Ficha Técnica del Sistema",
+        contenido=contenido,
+        tipo_notificacion="info"
+    )
     
     try:
         await send_email(
