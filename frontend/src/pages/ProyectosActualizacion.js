@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Progress } from '../components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { 
   Plus, 
   FolderOpen, 
@@ -30,7 +32,15 @@ import {
   AlertCircle,
   Upload,
   Eye,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  AlertTriangle,
+  CalendarDays,
+  ListTodo,
+  Users,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,6 +60,19 @@ const estadoConfig = {
   archivado: { label: 'Archivado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: Archive }
 };
 
+const actividadEstadoConfig = {
+  pendiente: { label: 'Pendiente', color: 'bg-slate-100 text-slate-700' },
+  en_progreso: { label: 'En Progreso', color: 'bg-blue-100 text-blue-700' },
+  completada: { label: 'Completada', color: 'bg-emerald-100 text-emerald-700' },
+  bloqueada: { label: 'Bloqueada', color: 'bg-red-100 text-red-700' }
+};
+
+const prioridadConfig = {
+  alta: { label: 'Alta', color: 'text-red-600' },
+  media: { label: 'Media', color: 'text-amber-600' },
+  baja: { label: 'Baja', color: 'text-slate-500' }
+};
+
 export default function ProyectosActualizacion() {
   const { user } = useAuth();
   const [proyectos, setProyectos] = useState([]);
@@ -62,12 +85,25 @@ export default function ProyectosActualizacion() {
   const [showCrearModal, setShowCrearModal] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [showEliminarModal, setShowEliminarModal] = useState(false);
+  const [showActividadModal, setShowActividadModal] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
+  const [etapas, setEtapas] = useState([]);
+  const [etapasAbiertas, setEtapasAbiertas] = useState({});
+  const [etapaSeleccionada, setEtapaSeleccionada] = useState(null);
   
   // Form states
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', municipio: '', descripcion: '' });
   const [municipiosDisponibles, setMunicipiosDisponibles] = useState([]);
   const [creando, setCreando] = useState(false);
+  const [nuevaActividad, setNuevaActividad] = useState({ nombre: '', descripcion: '', fase: '', fecha_fin_planificada: '', prioridad: 'media' });
+  
+  // Upload refs
+  const baseGraficaRef = useRef(null);
+  const infoAlfanumericaRef = useRef(null);
+  const [uploading, setUploading] = useState({ base_grafica: false, info_alfanumerica: false });
+
+  // Tab del modal de detalle
+  const [detalleTab, setDetalleTab] = useState('info');
 
   const fetchProyectos = useCallback(async () => {
     try {
@@ -112,6 +148,22 @@ export default function ProyectosActualizacion() {
     }
   };
 
+  const fetchEtapas = async (proyectoId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/etapas`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEtapas(response.data.etapas || []);
+      // Abrir todas las etapas por defecto
+      const abiertasInit = {};
+      (response.data.etapas || []).forEach(e => { abiertasInit[e.id] = true; });
+      setEtapasAbiertas(abiertasInit);
+    } catch (error) {
+      console.error('Error fetching etapas:', error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -134,11 +186,11 @@ export default function ProyectosActualizacion() {
     setCreando(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API}/actualizacion/proyectos`, nuevoProyecto, {
+      await axios.post(`${API}/actualizacion/proyectos`, nuevoProyecto, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success('Proyecto creado exitosamente');
+      toast.success('Proyecto creado exitosamente con sus 3 etapas');
       setShowCrearModal(false);
       setNuevoProyecto({ nombre: '', municipio: '', descripcion: '' });
       fetchProyectos();
@@ -210,6 +262,124 @@ export default function ProyectosActualizacion() {
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al eliminar');
     }
+  };
+
+  const handleUploadBaseGrafica = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !proyectoSeleccionado) return;
+
+    setUploading(prev => ({ ...prev, base_grafica: true }));
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/upload-base-grafica`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      toast.success('Base Gráfica cargada exitosamente');
+      // Refrescar proyecto
+      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProyectoSeleccionado(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al cargar el archivo');
+    } finally {
+      setUploading(prev => ({ ...prev, base_grafica: false }));
+      if (baseGraficaRef.current) baseGraficaRef.current.value = '';
+    }
+  };
+
+  const handleUploadInfoAlfanumerica = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !proyectoSeleccionado) return;
+
+    setUploading(prev => ({ ...prev, info_alfanumerica: true }));
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/upload-info-alfanumerica`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+      );
+      toast.success('Información Alfanumérica cargada exitosamente');
+      // Refrescar proyecto
+      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProyectoSeleccionado(response.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al cargar el archivo');
+    } finally {
+      setUploading(prev => ({ ...prev, info_alfanumerica: false }));
+      if (infoAlfanumericaRef.current) infoAlfanumericaRef.current.value = '';
+    }
+  };
+
+  const handleCrearActividad = async () => {
+    if (!nuevaActividad.nombre.trim()) {
+      toast.error('El nombre de la actividad es requerido');
+      return;
+    }
+    if (!etapaSeleccionada) {
+      toast.error('Debe seleccionar una etapa');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API}/actualizacion/etapas/${etapaSeleccionada.id}/actividades`,
+        nuevaActividad,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Actividad creada');
+      setShowActividadModal(false);
+      setNuevaActividad({ nombre: '', descripcion: '', fase: '', fecha_fin_planificada: '', prioridad: 'media' });
+      fetchEtapas(proyectoSeleccionado.id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al crear la actividad');
+    }
+  };
+
+  const handleActualizarActividad = async (actividadId, updates) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${API}/actualizacion/actividades/${actividadId}`,
+        updates,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchEtapas(proyectoSeleccionado.id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al actualizar');
+    }
+  };
+
+  const handleEliminarActividad = async (actividadId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/actualizacion/actividades/${actividadId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Actividad eliminada');
+      fetchEtapas(proyectoSeleccionado.id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar');
+    }
+  };
+
+  const abrirDetalleProyecto = async (proyecto) => {
+    setProyectoSeleccionado(proyecto);
+    setDetalleTab('info');
+    await fetchEtapas(proyecto.id);
+    setShowDetalleModal(true);
   };
 
   const proyectosFiltrados = proyectos.filter(p => 
@@ -335,14 +505,14 @@ export default function ProyectosActualizacion() {
             </div>
             <Tabs value={filtroEstado} onValueChange={setFiltroEstado} className="w-full md:w-auto">
               <TabsList className="grid grid-cols-5 w-full md:w-auto">
-                <TabsTrigger value="todos" data-testid="filter-todos">Todos</TabsTrigger>
-                <TabsTrigger value="activo" data-testid="filter-activo">Activos</TabsTrigger>
-                <TabsTrigger value="pausado" data-testid="filter-pausado">Pausados</TabsTrigger>
-                <TabsTrigger value="completado" data-testid="filter-completado">Completados</TabsTrigger>
-                <TabsTrigger value="archivado" data-testid="filter-archivado">Archivados</TabsTrigger>
+                <TabsTrigger value="todos">Todos</TabsTrigger>
+                <TabsTrigger value="activo">Activos</TabsTrigger>
+                <TabsTrigger value="pausado">Pausados</TabsTrigger>
+                <TabsTrigger value="completado">Completados</TabsTrigger>
+                <TabsTrigger value="archivado">Archivados</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button variant="outline" onClick={() => { fetchProyectos(); fetchEstadisticas(); }} data-testid="refresh-btn">
+            <Button variant="outline" onClick={() => { fetchProyectos(); fetchEstadisticas(); }}>
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
@@ -429,22 +599,16 @@ export default function ProyectosActualizacion() {
                     {/* Indicadores de archivos */}
                     <div className="flex gap-2 flex-shrink-0">
                       <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        proyecto.gdb_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                        proyecto.base_grafica_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
                       }`}>
                         <Database className="w-3 h-3" />
-                        GDB
+                        Base Gráfica
                       </div>
                       <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        proyecto.r1_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                        proyecto.info_alfanumerica_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
                       }`}>
                         <FileSpreadsheet className="w-3 h-3" />
-                        R1
-                      </div>
-                      <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        proyecto.r2_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
-                      }`}>
-                        <FileSpreadsheet className="w-3 h-3" />
-                        R2
+                        Info. Alfanumérica
                       </div>
                     </div>
                     
@@ -453,10 +617,7 @@ export default function ProyectosActualizacion() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => {
-                          setProyectoSeleccionado(proyecto);
-                          setShowDetalleModal(true);
-                        }}
+                        onClick={() => abrirDetalleProyecto(proyecto)}
                         data-testid={`ver-proyecto-${proyecto.id}`}
                       >
                         <Eye className="w-4 h-4 mr-1" />
@@ -466,7 +627,7 @@ export default function ProyectosActualizacion() {
                       {canCreate && proyecto.estado !== 'archivado' && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" data-testid={`menu-proyecto-${proyecto.id}`}>
+                            <Button variant="ghost" size="sm">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -534,7 +695,7 @@ export default function ProyectosActualizacion() {
 
       {/* Modal Crear Proyecto */}
       <Dialog open={showCrearModal} onOpenChange={setShowCrearModal}>
-        <DialogContent className="sm:max-w-lg" data-testid="crear-proyecto-modal">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-amber-600" />
@@ -553,7 +714,6 @@ export default function ProyectosActualizacion() {
                 placeholder="Ej: Actualización Catastral 2025"
                 value={nuevoProyecto.nombre}
                 onChange={(e) => setNuevoProyecto(prev => ({ ...prev, nombre: e.target.value }))}
-                data-testid="input-nombre-proyecto"
               />
             </div>
             
@@ -563,7 +723,7 @@ export default function ProyectosActualizacion() {
                 value={nuevoProyecto.municipio}
                 onValueChange={(value) => setNuevoProyecto(prev => ({ ...prev, municipio: value }))}
               >
-                <SelectTrigger data-testid="select-municipio">
+                <SelectTrigger>
                   <SelectValue placeholder="Seleccionar municipio" />
                 </SelectTrigger>
                 <SelectContent>
@@ -591,7 +751,6 @@ export default function ProyectosActualizacion() {
                 value={nuevoProyecto.descripcion}
                 onChange={(e) => setNuevoProyecto(prev => ({ ...prev, descripcion: e.target.value }))}
                 rows={3}
-                data-testid="input-descripcion-proyecto"
               />
             </div>
           </div>
@@ -604,7 +763,6 @@ export default function ProyectosActualizacion() {
               onClick={handleCrearProyecto}
               disabled={creando}
               className="bg-amber-600 hover:bg-amber-700"
-              data-testid="confirmar-crear-proyecto"
             >
               {creando ? (
                 <>
@@ -622,9 +780,9 @@ export default function ProyectosActualizacion() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalle Proyecto */}
+      {/* Modal Detalle Proyecto - Expandido con Cronograma */}
       <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
-        <DialogContent className="sm:max-w-2xl" data-testid="detalle-proyecto-modal">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           {proyectoSeleccionado && (
             <>
               <DialogHeader>
@@ -633,55 +791,72 @@ export default function ProyectosActualizacion() {
                   {proyectoSeleccionado.nombre}
                 </DialogTitle>
                 <DialogDescription>
-                  Detalles y archivos del proyecto de actualización
+                  {proyectoSeleccionado.municipio} • {estadoConfig[proyectoSeleccionado.estado]?.label}
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-6 py-4">
-                {/* Info general */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase">Municipio</p>
-                    <p className="font-medium">{proyectoSeleccionado.municipio}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase">Estado</p>
-                    <Badge className={`${estadoConfig[proyectoSeleccionado.estado]?.color} border`}>
-                      {estadoConfig[proyectoSeleccionado.estado]?.label}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase">Creado por</p>
-                    <p className="font-medium">{proyectoSeleccionado.creado_por_nombre}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase">Fecha creación</p>
-                    <p className="font-medium">{formatDate(proyectoSeleccionado.created_at)}</p>
-                  </div>
-                </div>
+              <Tabs value={detalleTab} onValueChange={setDetalleTab} className="w-full">
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger value="info" className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Información
+                  </TabsTrigger>
+                  <TabsTrigger value="archivos" className="flex items-center gap-2">
+                    <Database className="w-4 h-4" />
+                    Archivos
+                  </TabsTrigger>
+                  <TabsTrigger value="cronograma" className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4" />
+                    Cronograma
+                  </TabsTrigger>
+                </TabsList>
                 
-                {proyectoSeleccionado.descripcion && (
-                  <div>
-                    <p className="text-xs text-slate-500 uppercase mb-1">Descripción</p>
-                    <p className="text-slate-700">{proyectoSeleccionado.descripcion}</p>
+                {/* Tab Información */}
+                <TabsContent value="info" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Municipio</p>
+                      <p className="font-medium">{proyectoSeleccionado.municipio}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Estado</p>
+                      <Badge className={`${estadoConfig[proyectoSeleccionado.estado]?.color} border`}>
+                        {estadoConfig[proyectoSeleccionado.estado]?.label}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Creado por</p>
+                      <p className="font-medium">{proyectoSeleccionado.creado_por_nombre}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Fecha creación</p>
+                      <p className="font-medium">{formatDate(proyectoSeleccionado.created_at)}</p>
+                    </div>
                   </div>
-                )}
+                  
+                  {proyectoSeleccionado.descripcion && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase mb-1">Descripción</p>
+                      <p className="text-slate-700">{proyectoSeleccionado.descripcion}</p>
+                    </div>
+                  )}
+                </TabsContent>
                 
-                {/* Archivos */}
-                <div className="space-y-3">
+                {/* Tab Archivos */}
+                <TabsContent value="archivos" className="space-y-4 mt-4">
                   <h4 className="font-semibold text-slate-900">Archivos del Proyecto</h4>
                   
                   <div className="grid gap-3">
-                    {/* GDB */}
-                    <Card className={`${proyectoSeleccionado.gdb_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    {/* Base Gráfica */}
+                    <Card className={`${proyectoSeleccionado.base_grafica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
                       <CardContent className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <Database className={`w-5 h-5 ${proyectoSeleccionado.gdb_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                          <Database className={`w-5 h-5 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
                           <div>
                             <p className="font-medium">Base Gráfica (GDB)</p>
-                            {proyectoSeleccionado.gdb_archivo ? (
+                            {proyectoSeleccionado.base_grafica_archivo ? (
                               <p className="text-xs text-slate-500">
-                                Cargado: {formatDate(proyectoSeleccionado.gdb_cargado_en)}
+                                Cargado: {formatDate(proyectoSeleccionado.base_grafica_cargado_en)}
                               </p>
                             ) : (
                               <p className="text-xs text-slate-400">Sin cargar</p>
@@ -689,24 +864,42 @@ export default function ProyectosActualizacion() {
                           </div>
                         </div>
                         {proyectoSeleccionado.estado !== 'archivado' && canCreate && (
-                          <Button variant="outline" size="sm" disabled>
-                            <Upload className="w-4 h-4 mr-1" />
-                            {proyectoSeleccionado.gdb_archivo ? 'Reemplazar' : 'Cargar'}
-                          </Button>
+                          <>
+                            <input
+                              type="file"
+                              ref={baseGraficaRef}
+                              accept=".zip"
+                              onChange={handleUploadBaseGrafica}
+                              className="hidden"
+                            />
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => baseGraficaRef.current?.click()}
+                              disabled={uploading.base_grafica}
+                            >
+                              {uploading.base_grafica ? (
+                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                              ) : (
+                                <Upload className="w-4 h-4 mr-1" />
+                              )}
+                              {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
+                            </Button>
+                          </>
                         )}
                       </CardContent>
                     </Card>
                     
-                    {/* R1 */}
-                    <Card className={`${proyectoSeleccionado.r1_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                    {/* Información Alfanumérica (R1/R2 unificado) */}
+                    <Card className={`${proyectoSeleccionado.info_alfanumerica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
                       <CardContent className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.r1_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                          <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.info_alfanumerica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
                           <div>
-                            <p className="font-medium">Información Física (R1)</p>
-                            {proyectoSeleccionado.r1_archivo ? (
+                            <p className="font-medium">Información Alfanumérica (R1/R2)</p>
+                            {proyectoSeleccionado.info_alfanumerica_archivo ? (
                               <p className="text-xs text-slate-500">
-                                Cargado: {formatDate(proyectoSeleccionado.r1_cargado_en)} • {proyectoSeleccionado.r1_total_registros} registros
+                                Cargado: {formatDate(proyectoSeleccionado.info_alfanumerica_cargado_en)}
                               </p>
                             ) : (
                               <p className="text-xs text-slate-400">Sin cargar</p>
@@ -714,45 +907,168 @@ export default function ProyectosActualizacion() {
                           </div>
                         </div>
                         {proyectoSeleccionado.estado !== 'archivado' && canCreate && (
-                          <Button variant="outline" size="sm" disabled>
-                            <Upload className="w-4 h-4 mr-1" />
-                            {proyectoSeleccionado.r1_archivo ? 'Reemplazar' : 'Cargar'}
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                    
-                    {/* R2 */}
-                    <Card className={`${proyectoSeleccionado.r2_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.r2_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
-                          <div>
-                            <p className="font-medium">Información Jurídica (R2)</p>
-                            {proyectoSeleccionado.r2_archivo ? (
-                              <p className="text-xs text-slate-500">
-                                Cargado: {formatDate(proyectoSeleccionado.r2_cargado_en)} • {proyectoSeleccionado.r2_total_registros} registros
-                              </p>
-                            ) : (
-                              <p className="text-xs text-slate-400">Sin cargar</p>
-                            )}
-                          </div>
-                        </div>
-                        {proyectoSeleccionado.estado !== 'archivado' && canCreate && (
-                          <Button variant="outline" size="sm" disabled>
-                            <Upload className="w-4 h-4 mr-1" />
-                            {proyectoSeleccionado.r2_archivo ? 'Reemplazar' : 'Cargar'}
-                          </Button>
+                          <>
+                            <input
+                              type="file"
+                              ref={infoAlfanumericaRef}
+                              accept=".xlsx,.xls"
+                              onChange={handleUploadInfoAlfanumerica}
+                              className="hidden"
+                            />
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => infoAlfanumericaRef.current?.click()}
+                              disabled={uploading.info_alfanumerica}
+                            >
+                              {uploading.info_alfanumerica ? (
+                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                              ) : (
+                                <Upload className="w-4 h-4 mr-1" />
+                              )}
+                              {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
+                            </Button>
+                          </>
                         )}
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+                
+                {/* Tab Cronograma */}
+                <TabsContent value="cronograma" className="space-y-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-slate-900">Cronograma de Actividades</h4>
+                  </div>
                   
-                  <p className="text-xs text-slate-500 italic">
-                    La carga de archivos estará disponible en la siguiente fase del desarrollo.
-                  </p>
-                </div>
-              </div>
+                  {etapas.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      Cargando etapas...
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {etapas.map((etapa) => (
+                        <Card key={etapa.id} className="border-l-4 border-l-amber-500">
+                          <Collapsible 
+                            open={etapasAbiertas[etapa.id]} 
+                            onOpenChange={(open) => setEtapasAbiertas(prev => ({ ...prev, [etapa.id]: open }))}
+                          >
+                            <CardHeader className="pb-2">
+                              <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
+                                <div className="flex items-center gap-3">
+                                  {etapasAbiertas[etapa.id] ? (
+                                    <ChevronDown className="w-5 h-5 text-slate-400" />
+                                  ) : (
+                                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                                  )}
+                                  <div>
+                                    <CardTitle className="text-base">{etapa.nombre}</CardTitle>
+                                    <p className="text-xs text-slate-500">{etapa.descripcion}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <p className="text-xs text-slate-500">Progreso</p>
+                                    <p className="font-semibold text-amber-600">{etapa.progreso}%</p>
+                                  </div>
+                                  <Progress value={etapa.progreso} className="w-24 h-2" />
+                                </div>
+                              </CollapsibleTrigger>
+                            </CardHeader>
+                            
+                            <CollapsibleContent>
+                              <CardContent className="pt-0">
+                                {/* Actividades de la etapa */}
+                                <div className="space-y-2 mt-2">
+                                  {etapa.actividades?.length === 0 ? (
+                                    <p className="text-sm text-slate-400 text-center py-4">
+                                      No hay actividades en esta etapa
+                                    </p>
+                                  ) : (
+                                    etapa.actividades?.map((actividad) => (
+                                      <div 
+                                        key={actividad.id}
+                                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <ListTodo className={`w-4 h-4 ${prioridadConfig[actividad.prioridad]?.color || 'text-slate-400'}`} />
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <p className="font-medium text-sm">{actividad.nombre}</p>
+                                              {actividad.fase && (
+                                                <Badge variant="outline" className="text-xs">{actividad.fase}</Badge>
+                                              )}
+                                            </div>
+                                            {actividad.fecha_fin_planificada && (
+                                              <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                <Clock className="w-3 h-3" />
+                                                Vence: {formatDate(actividad.fecha_fin_planificada)}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {actividad.responsables?.length > 0 && (
+                                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                                              <Users className="w-3 h-3" />
+                                              {actividad.responsables.length}
+                                            </div>
+                                          )}
+                                          <Select
+                                            value={actividad.estado}
+                                            onValueChange={(val) => handleActualizarActividad(actividad.id, { estado: val })}
+                                            disabled={!canCreate}
+                                          >
+                                            <SelectTrigger className="w-32 h-7 text-xs">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="pendiente">Pendiente</SelectItem>
+                                              <SelectItem value="en_progreso">En Progreso</SelectItem>
+                                              <SelectItem value="completada">Completada</SelectItem>
+                                              <SelectItem value="bloqueada">Bloqueada</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          {canCreate && (
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm"
+                                              onClick={() => handleEliminarActividad(actividad.id)}
+                                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                                            >
+                                              <X className="w-4 h-4" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                                
+                                {/* Botón agregar actividad */}
+                                {canCreate && proyectoSeleccionado.estado !== 'archivado' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3 w-full border-dashed"
+                                    onClick={() => {
+                                      setEtapaSeleccionada(etapa);
+                                      setShowActividadModal(true);
+                                    }}
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Agregar Actividad
+                                  </Button>
+                                )}
+                              </CardContent>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
               
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDetalleModal(false)}>
@@ -764,9 +1080,91 @@ export default function ProyectosActualizacion() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal Crear Actividad */}
+      <Dialog open={showActividadModal} onOpenChange={setShowActividadModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-amber-600" />
+              Nueva Actividad
+            </DialogTitle>
+            <DialogDescription>
+              {etapaSeleccionada?.nombre}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre de la Actividad *</Label>
+              <Input
+                placeholder="Ej: Análisis del perímetro urbano"
+                value={nuevaActividad.nombre}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, nombre: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Fase (opcional)</Label>
+              <Input
+                placeholder="Ej: Alistamiento, Planeación, etc."
+                value={nuevaActividad.fase}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, fase: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Descripción (opcional)</Label>
+              <Textarea
+                placeholder="Descripción de la actividad..."
+                value={nuevaActividad.descripcion}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, descripcion: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fecha Límite</Label>
+                <Input
+                  type="date"
+                  value={nuevaActividad.fecha_fin_planificada}
+                  onChange={(e) => setNuevaActividad(prev => ({ ...prev, fecha_fin_planificada: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridad</Label>
+                <Select
+                  value={nuevaActividad.prioridad}
+                  onValueChange={(val) => setNuevaActividad(prev => ({ ...prev, prioridad: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="baja">Baja</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActividadModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCrearActividad} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Actividad
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Confirmar Eliminación */}
       <Dialog open={showEliminarModal} onOpenChange={setShowEliminarModal}>
-        <DialogContent className="sm:max-w-md" data-testid="eliminar-proyecto-modal">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertCircle className="w-5 h-5" />
@@ -792,7 +1190,6 @@ export default function ProyectosActualizacion() {
             <Button 
               variant="destructive"
               onClick={handleEliminar}
-              data-testid="confirmar-eliminar-proyecto"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Eliminar
