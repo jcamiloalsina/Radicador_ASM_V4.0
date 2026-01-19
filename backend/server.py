@@ -10865,6 +10865,8 @@ async def actualizar_actividad(
         updates["porcentaje_avance"] = min(100, max(0, update_data.porcentaje_avance))
     if update_data.notas is not None:
         updates["notas"] = update_data.notas
+    if update_data.actividad_padre_id is not None:
+        updates["actividad_padre_id"] = update_data.actividad_padre_id
     
     await db.actividades_proyecto.update_one({"id": actividad_id}, {"$set": updates})
     
