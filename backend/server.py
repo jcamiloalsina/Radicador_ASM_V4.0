@@ -516,7 +516,7 @@ class ActividadCreate(BaseModel):
     fecha_fin_planificada: Optional[str] = None
     prioridad: str = ActividadPrioridad.MEDIA
     responsables_ids: Optional[List[str]] = None
-    actividad_previa_id: Optional[str] = None  # Dependencia
+    actividad_padre_id: Optional[str] = None  # Para jerarquía de actividades
 
 class ActividadUpdate(BaseModel):
     """Modelo para actualizar una actividad"""
@@ -530,6 +530,7 @@ class ActividadUpdate(BaseModel):
     prioridad: Optional[str] = None
     porcentaje_avance: Optional[int] = None
     notas: Optional[str] = None
+    actividad_padre_id: Optional[str] = None
 
 
 # ===== UTILITY FUNCTIONS =====
