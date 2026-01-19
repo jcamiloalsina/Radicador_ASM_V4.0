@@ -902,221 +902,168 @@ export default function ProyectosActualizacion() {
                   )}
                 </TabsContent>
                 
-                {/* Tab Archivos */}
+                {/* Tab Archivos - Solo archivos propios del proyecto */}
                 <TabsContent value="archivos" className="space-y-4 mt-4">
-                  <h4 className="font-semibold text-slate-900">Datos del Proyecto</h4>
+                  <h4 className="font-semibold text-slate-900">Archivos del Proyecto</h4>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Cargue la Base Gráfica (GDB) y la información R1/R2 específica para este proyecto de actualización.
+                  </p>
                   
-                  {/* Sección de Datos Vinculados de Conservación */}
-                  {proyectoSeleccionado.datos_vinculados ? (
-                    <Card className="bg-emerald-50 border-emerald-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle className="w-6 h-6 text-emerald-600" />
-                            <div>
-                              <p className="font-semibold text-emerald-800">Datos Vinculados del Módulo Conservación</p>
-                              <p className="text-xs text-emerald-600">
-                                Los datos existentes de {proyectoSeleccionado.municipio} están disponibles para este proyecto
-                              </p>
-                            </div>
-                          </div>
-                          <Button 
-                            variant="default" 
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                            onClick={handleAbrirVisorProyecto}
-                          >
-                            <MapPin className="w-4 h-4 mr-2" />
-                            Abrir Visor de Predios
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Database className="w-4 h-4 text-emerald-600" />
-                              <p className="text-xs text-slate-500 uppercase">Base Gráfica</p>
-                            </div>
-                            <p className="text-xl font-bold text-emerald-700">
-                              {(proyectoSeleccionado.base_grafica_total_predios || 0).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-slate-500">geometrías</p>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                              <p className="text-xs text-slate-500 uppercase">Predios R1/R2</p>
-                            </div>
-                            <p className="text-xl font-bold text-blue-700">
-                              {(proyectoSeleccionado.info_alfanumerica_total_registros || 0).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-slate-500">registros</p>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 border border-emerald-200">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Database className="w-4 h-4 text-amber-600" />
-                              <p className="text-xs text-slate-500 uppercase">Construcciones</p>
-                            </div>
-                            <p className="text-xl font-bold text-amber-700">
-                              {(proyectoSeleccionado.total_construcciones || 0).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-slate-500">registros</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="bg-amber-50 border-amber-200">
+                  <div className="grid gap-4">
+                    {/* Base Gráfica del Proyecto */}
+                    <Card className={`${proyectoSeleccionado.base_grafica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <AlertCircle className="w-6 h-6 text-amber-500" />
+                            <Database className={`w-5 h-5 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
                             <div>
-                              <p className="font-semibold text-slate-800">Datos no vinculados</p>
-                              <p className="text-xs text-slate-500">
-                                Vincule los datos existentes de {proyectoSeleccionado.municipio} para usar la Base Gráfica y R1/R2
-                              </p>
+                              <p className="font-medium">Base Gráfica (GDB)</p>
+                              {proyectoSeleccionado.base_grafica_archivo ? (
+                                <>
+                                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                    <FileCheck className="w-3 h-3" />
+                                    Archivo cargado
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {proyectoSeleccionado.base_grafica_total_predios > 0 && 
+                                      `${proyectoSeleccionado.base_grafica_total_predios.toLocaleString()} predios procesados`
+                                    }
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-xs text-slate-400">Archivo ZIP con geodatabase (.gdb) - Requerido para el visor</p>
+                              )}
                             </div>
                           </div>
-                          {canCreate && (
-                            <Button 
-                              variant="default" 
-                              className="bg-amber-600 hover:bg-amber-700"
-                              onClick={handleVincularDatosExistentes}
-                              disabled={vinculandoDatos}
-                            >
-                              {vinculandoDatos ? (
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <Database className="w-4 h-4 mr-2" />
-                              )}
-                              Vincular Datos Existentes
-                            </Button>
-                          )}
+                          <div className="flex gap-2">
+                            {proyectoSeleccionado.base_grafica_archivo && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  const token = localStorage.getItem('token');
+                                  window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-base-grafica?token=${token}`, '_blank');
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Descargar
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <>
+                                <input
+                                  type="file"
+                                  ref={baseGraficaRef}
+                                  accept=".zip"
+                                  onChange={handleUploadBaseGrafica}
+                                  className="hidden"
+                                />
+                                <Button 
+                                  variant={proyectoSeleccionado.base_grafica_archivo ? "outline" : "default"}
+                                  size="sm"
+                                  className={!proyectoSeleccionado.base_grafica_archivo ? "bg-amber-600 hover:bg-amber-700" : ""}
+                                  onClick={() => baseGraficaRef.current?.click()}
+                                  disabled={uploading.base_grafica}
+                                >
+                                  {uploading.base_grafica ? (
+                                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4 mr-1" />
+                                  )}
+                                  {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar GDB'}
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                  )}
-                  
-                  {/* Sección de Archivos Propios del Proyecto (opcional) */}
-                  <div className="border-t pt-4 mt-4">
-                    <p className="text-sm font-medium text-slate-700 mb-3">Archivos Adicionales del Proyecto (Opcional)</p>
-                    <div className="grid gap-3">
-                      {/* Base Gráfica Propia */}
-                      <Card className={`${proyectoSeleccionado.base_grafica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Database className={`w-4 h-4 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
-                              <div>
-                                <p className="text-sm font-medium">Base Gráfica Específica (GDB)</p>
-                                {proyectoSeleccionado.base_grafica_archivo ? (
-                                  <p className="text-xs text-emerald-600">✓ Archivo cargado</p>
-                                ) : (
-                                  <p className="text-xs text-slate-400">Opcional - Si tiene GDB específico para este proyecto</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              {proyectoSeleccionado.base_grafica_archivo && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    const token = localStorage.getItem('token');
-                                    window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-base-grafica?token=${token}`, '_blank');
-                                  }}
-                                >
-                                  <Eye className="w-3 h-3 mr-1" />
-                                  Descargar
-                                </Button>
-                              )}
-                              {canCreate && (
+                    
+                    {/* Información Alfanumérica R1/R2 */}
+                    <Card className={`${proyectoSeleccionado.info_alfanumerica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.info_alfanumerica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <div>
+                              <p className="font-medium">Información Alfanumérica (R1/R2)</p>
+                              {proyectoSeleccionado.info_alfanumerica_archivo ? (
                                 <>
-                                  <input
-                                    type="file"
-                                    ref={baseGraficaRef}
-                                    accept=".zip"
-                                    onChange={handleUploadBaseGrafica}
-                                    className="hidden"
-                                  />
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => baseGraficaRef.current?.click()}
-                                    disabled={uploading.base_grafica}
-                                  >
-                                    {uploading.base_grafica ? (
-                                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                                    ) : (
-                                      <Upload className="w-3 h-3 mr-1" />
-                                    )}
-                                    {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
-                                  </Button>
+                                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                    <FileCheck className="w-3 h-3" />
+                                    Archivo cargado
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {proyectoSeleccionado.info_alfanumerica_total_registros > 0 && 
+                                      `${proyectoSeleccionado.info_alfanumerica_total_registros.toLocaleString()} registros importados`
+                                    }
+                                  </p>
                                 </>
+                              ) : (
+                                <p className="text-xs text-slate-400">Archivo Excel (.xlsx) con datos R1 y R2 - Requerido para consulta</p>
                               )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            {proyectoSeleccionado.info_alfanumerica_archivo && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  const token = localStorage.getItem('token');
+                                  window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-info-alfanumerica?token=${token}`, '_blank');
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Descargar
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <>
+                                <input
+                                  type="file"
+                                  ref={infoAlfanumericaRef}
+                                  accept=".xlsx,.xls"
+                                  onChange={handleUploadInfoAlfanumerica}
+                                  className="hidden"
+                                />
+                                <Button 
+                                  variant={proyectoSeleccionado.info_alfanumerica_archivo ? "outline" : "default"}
+                                  size="sm"
+                                  className={!proyectoSeleccionado.info_alfanumerica_archivo ? "bg-amber-600 hover:bg-amber-700" : ""}
+                                  onClick={() => infoAlfanumericaRef.current?.click()}
+                                  disabled={uploading.info_alfanumerica}
+                                >
+                                  {uploading.info_alfanumerica ? (
+                                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4 mr-1" />
+                                  )}
+                                  {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar R1/R2'}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Mensaje si ambos archivos están cargados */}
+                    {proyectoSeleccionado.base_grafica_archivo && proyectoSeleccionado.info_alfanumerica_archivo && (
+                      <Card className="bg-blue-50 border-blue-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="w-5 h-5 text-blue-600" />
+                            <div>
+                              <p className="font-medium text-blue-800">Proyecto listo para trabajo en campo</p>
+                              <p className="text-xs text-blue-600">
+                                Base Gráfica y datos R1/R2 cargados. El visor de predios del proyecto está disponible.
+                              </p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                      
-                      {/* Info Alfanumérica Propia */}
-                      <Card className={`${proyectoSeleccionado.info_alfanumerica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileSpreadsheet className={`w-4 h-4 ${proyectoSeleccionado.info_alfanumerica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
-                              <div>
-                                <p className="text-sm font-medium">Info. Alfanumérica Específica (R1/R2)</p>
-                                {proyectoSeleccionado.info_alfanumerica_archivo ? (
-                                  <p className="text-xs text-emerald-600">✓ Archivo cargado</p>
-                                ) : (
-                                  <p className="text-xs text-slate-400">Opcional - Si tiene Excel R1/R2 específico</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              {proyectoSeleccionado.info_alfanumerica_archivo && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    const token = localStorage.getItem('token');
-                                    window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-info-alfanumerica?token=${token}`, '_blank');
-                                  }}
-                                >
-                                  <Eye className="w-3 h-3 mr-1" />
-                                  Descargar
-                                </Button>
-                              )}
-                              {canCreate && (
-                                <>
-                                  <input
-                                    type="file"
-                                    ref={infoAlfanumericaRef}
-                                    accept=".xlsx,.xls"
-                                    onChange={handleUploadInfoAlfanumerica}
-                                    className="hidden"
-                                  />
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => infoAlfanumericaRef.current?.click()}
-                                    disabled={uploading.info_alfanumerica}
-                                  >
-                                    {uploading.info_alfanumerica ? (
-                                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                                    ) : (
-                                      <Upload className="w-3 h-3 mr-1" />
-                                    )}
-                                    {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                    )}
                   </div>
                 </TabsContent>
                 
