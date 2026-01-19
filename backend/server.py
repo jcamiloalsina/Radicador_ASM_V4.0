@@ -10598,9 +10598,10 @@ async def restaurar_proyecto_actualizacion(
 async def upload_base_grafica_proyecto(
     proyecto_id: str,
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Sube un archivo de Base Gráfica (ZIP con GDB) para un proyecto de actualización"""
+    """Sube un archivo de Base Gráfica (ZIP con GDB) para un proyecto de actualización y lo procesa"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para cargar la Base Gráfica")
     
@@ -10625,17 +10626,11 @@ async def upload_base_grafica_proyecto(
             content = await file.read()
             buffer.write(content)
         
-        await db.proyectos_actualizacion.update_one(
-            {"id": proyecto_id},
-            {"$set": {
-                "base_grafica_archivo": str(gdb_path),
-                "base_grafica_cargado_en": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc)
-            }}
-        )
+        # Procesar GDB en background
+        await procesar_gdb_actualizacion(proyecto_id, str(gdb_path), proyecto["municipio"])
         
         return {
-            "message": "Base Gráfica cargada exitosamente",
+            "message": "Base Gráfica cargada y procesada exitosamente",
             "archivo": str(gdb_path),
             "nombre_archivo": file.filename
         }
@@ -10644,6 +10639,228 @@ async def upload_base_grafica_proyecto(
         if gdb_path.exists():
             gdb_path.unlink()
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
+
+
+async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio: str):
+    """Procesa el GDB de un proyecto de actualización y guarda las geometrías"""
+    import zipfile
+    import tempfile
+    import shutil
+    
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Extraer ZIP
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+        
+        # Buscar .gdb
+        gdb_path = None
+        for root, dirs, files in os.walk(temp_dir):
+            for d in dirs:
+                if d.endswith('.gdb'):
+                    gdb_path = os.path.join(root, d)
+                    break
+            if gdb_path:
+                break
+        
+        if not gdb_path:
+            raise Exception("No se encontró archivo .gdb en el ZIP")
+        
+        # Leer capas con pyogrio
+        import pyogrio
+        layers = pyogrio.list_layers(gdb_path)
+        layer_names = [l[0] for l in layers]
+        
+        # Buscar capas de terreno (usar mismos estándares que Conservación)
+        rural_layers = ['R_TERRENO', 'R_TERRENO_1', 'r_terreno', 'TERRENO']
+        urban_layers = ['U_TERRENO', 'U_TERRENO_1', 'u_terreno']
+        construccion_layers = ['U_CONSTRUCCION', 'R_CONSTRUCCION', 'CONSTRUCCION', 'U_UNIDAD', 'R_UNIDAD']
+        
+        geometrias_guardadas = 0
+        construcciones_guardadas = 0
+        
+        # Eliminar geometrías anteriores del proyecto
+        await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
+        await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
+        
+        # Procesar terrenos rurales
+        for layer_name in rural_layers:
+            if layer_name in layer_names:
+                try:
+                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
+                    if len(gdf) > 0:
+                        gdf = gdf.to_crs(epsg=4326)
+                        for idx, row in gdf.iterrows():
+                            geom = row.geometry.__geo_interface__
+                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                            props['zona'] = 'rural'
+                            props['proyecto_id'] = proyecto_id
+                            props['municipio'] = municipio
+                            
+                            await db.geometrias_actualizacion.insert_one({
+                                "proyecto_id": proyecto_id,
+                                "municipio": municipio,
+                                "zona": "rural",
+                                "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
+                                "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
+                                "geometry": geom,
+                                "properties": props,
+                                "created_at": datetime.now(timezone.utc)
+                            })
+                            geometrias_guardadas += 1
+                except Exception as e:
+                    print(f"Error procesando capa {layer_name}: {e}")
+        
+        # Procesar terrenos urbanos
+        for layer_name in urban_layers:
+            if layer_name in layer_names:
+                try:
+                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
+                    if len(gdf) > 0:
+                        gdf = gdf.to_crs(epsg=4326)
+                        for idx, row in gdf.iterrows():
+                            geom = row.geometry.__geo_interface__
+                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                            props['zona'] = 'urbano'
+                            props['proyecto_id'] = proyecto_id
+                            props['municipio'] = municipio
+                            
+                            await db.geometrias_actualizacion.insert_one({
+                                "proyecto_id": proyecto_id,
+                                "municipio": municipio,
+                                "zona": "urbano",
+                                "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
+                                "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
+                                "geometry": geom,
+                                "properties": props,
+                                "created_at": datetime.now(timezone.utc)
+                            })
+                            geometrias_guardadas += 1
+                except Exception as e:
+                    print(f"Error procesando capa {layer_name}: {e}")
+        
+        # Procesar construcciones
+        for layer_name in construccion_layers:
+            if layer_name in layer_names:
+                try:
+                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
+                    if len(gdf) > 0:
+                        gdf = gdf.to_crs(epsg=4326)
+                        for idx, row in gdf.iterrows():
+                            geom = row.geometry.__geo_interface__
+                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                            
+                            await db.construcciones_actualizacion.insert_one({
+                                "proyecto_id": proyecto_id,
+                                "municipio": municipio,
+                                "codigo_predial": props.get('CODIGO', props.get('codigo', '')),
+                                "geometry": geom,
+                                "properties": props,
+                                "created_at": datetime.now(timezone.utc)
+                            })
+                            construcciones_guardadas += 1
+                except Exception as e:
+                    print(f"Error procesando capa {layer_name}: {e}")
+        
+        # Actualizar proyecto
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {"$set": {
+                "gdb_procesado": True,
+                "base_grafica_total_predios": geometrias_guardadas,
+                "total_construcciones": construcciones_guardadas,
+                "gdb_procesado_en": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        print(f"GDB procesado: {geometrias_guardadas} geometrías, {construcciones_guardadas} construcciones")
+        
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/geometrias")
+async def get_geometrias_proyecto(
+    proyecto_id: str,
+    zona: str = Query(None, description="Filtrar por zona: urbano, rural"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las geometrías procesadas del proyecto para el visor"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver geometrías")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Query de geometrías
+    query = {"proyecto_id": proyecto_id}
+    if zona:
+        query["zona"] = zona
+    
+    geometrias = await db.geometrias_actualizacion.find(query, {"_id": 0}).to_list(50000)
+    construcciones = await db.construcciones_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
+    
+    # Convertir a GeoJSON FeatureCollection
+    geom_features = []
+    for g in geometrias:
+        geom_features.append({
+            "type": "Feature",
+            "geometry": g.get("geometry"),
+            "properties": {
+                "codigo_predial": g.get("codigo_predial"),
+                "numero_predial": g.get("numero_predial"),
+                "zona": g.get("zona"),
+                **g.get("properties", {})
+            }
+        })
+    
+    constr_features = []
+    for c in construcciones:
+        constr_features.append({
+            "type": "Feature",
+            "geometry": c.get("geometry"),
+            "properties": c.get("properties", {})
+        })
+    
+    return {
+        "geometrias": {
+            "type": "FeatureCollection",
+            "features": geom_features
+        },
+        "construcciones": {
+            "type": "FeatureCollection",
+            "features": constr_features
+        },
+        "total_geometrias": len(geom_features),
+        "total_construcciones": len(constr_features)
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios")
+async def get_predios_proyecto(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene los predios R1/R2 cargados para el proyecto"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver predios")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Obtener predios del proyecto
+    predios = await db.predios_actualizacion.find(
+        {"proyecto_id": proyecto_id},
+        {"_id": 0}
+    ).to_list(50000)
+    
+    return {
+        "predios": predios,
+        "total": len(predios)
+    }
 
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")
 async def upload_info_alfanumerica_proyecto(
