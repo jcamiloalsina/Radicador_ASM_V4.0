@@ -1205,6 +1205,7 @@ export default function ProyectosActualizacion() {
                     </div>
                   )}
                 </TabsContent>
+                )}
               </Tabs>
               
               <DialogFooter>
