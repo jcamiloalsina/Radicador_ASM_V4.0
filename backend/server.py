@@ -1359,26 +1359,23 @@ async def register(user_data: UserRegister):
 
 async def enviar_codigo_verificacion(email: str, codigo: str, nombre: str):
     """Envía el código de verificación por email"""
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #065f46; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0;">Asomunicipios</h1>
-            <p style="margin: 5px 0 0 0;">Sistema de Gestión Catastral</p>
-        </div>
-        <div style="background-color: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-            <h2 style="color: #1e293b; margin-top: 0;">¡Hola {nombre}!</h2>
-            <p style="color: #475569;">Para completar tu registro, ingresa el siguiente código de verificación:</p>
-            <div style="background-color: #065f46; color: white; font-size: 32px; font-weight: bold; padding: 20px; text-align: center; border-radius: 8px; letter-spacing: 8px; margin: 20px 0;">
-                {codigo}
-            </div>
-            <p style="color: #64748b; font-size: 14px;">Este código expira en <strong>30 minutos</strong>.</p>
-            <p style="color: #64748b; font-size: 14px;">Si no solicitaste este registro, puedes ignorar este mensaje.</p>
-        </div>
-        <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">
-            <p>© 2025 Asomunicipios. Todos los derechos reservados.</p>
-        </div>
+    contenido = f'''
+    <h2 style="color: #1e293b; margin-top: 0;">¡Hola {nombre}!</h2>
+    <p>Para completar tu registro en el Sistema de Gestión Catastral, ingresa el siguiente código de verificación:</p>
+    <div style="background-color: #065f46; color: white; font-size: 32px; font-weight: bold; padding: 20px; text-align: center; border-radius: 8px; letter-spacing: 8px; margin: 20px 0;">
+        {codigo}
     </div>
-    """
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; color: #92400e;"><strong>⏰ Importante:</strong> Este código expira en <strong>30 minutos</strong>.</p>
+    </div>
+    <p style="color: #64748b; font-size: 14px;">Si no solicitaste este registro, puedes ignorar este mensaje.</p>
+    '''
+    
+    html_content = get_email_template(
+        titulo="Verificación de Cuenta",
+        contenido=contenido,
+        tipo_notificacion="info"
+    )
     
     await send_email_notification(
         to_email=email,
