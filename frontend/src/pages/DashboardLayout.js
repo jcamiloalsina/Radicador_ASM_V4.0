@@ -170,9 +170,10 @@ export default function DashboardLayout() {
       checkGdbAlert();
       if (['administrador', 'coordinador'].includes(user.role)) {
         fetchCambiosPendientes();
+        fetchAlertasCronograma();
       }
     }
-  }, [user, fetchNotificaciones, checkGdbAlert, fetchCambiosPendientes]);
+  }, [user, fetchNotificaciones, checkGdbAlert, fetchCambiosPendientes, fetchAlertasCronograma]);
 
   const marcarLeida = async (notificacionId) => {
     try {
