@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
