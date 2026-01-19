@@ -11136,13 +11136,25 @@ async def obtener_alertas_proximas(current_user: dict = Depends(get_current_user
 
 @api_router.get("/actualizacion/municipios-disponibles")
 async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_current_user)):
-    """Lista los municipios que no tienen un proyecto activo - ordenados alfabéticamente"""
+    """Lista los municipios que no tienen un proyecto activo - ordenados alfabéticamente (español)"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para esta operación")
     
-    # Obtener todos los municipios ordenados alfabéticamente
-    municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).sort("municipio", 1).to_list(100)
-    todos_municipios = [m["municipio"] for m in municipios]
+    # Municipios que NO deben estar disponibles para proyectos de actualización
+    MUNICIPIOS_EXCLUIDOS = ["Ocaña", "La Esperanza", "González", "Tibú"]
+    
+    # Obtener todos los municipios
+    municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).to_list(100)
+    todos_municipios = [m["municipio"] for m in municipios if m["municipio"] not in MUNICIPIOS_EXCLUIDOS]
+    
+    # Ordenar alfabéticamente con locale español (Á antes de B)
+    import locale
+    try:
+        locale.setlocale(locale.LC_COLLATE, 'es_ES.UTF-8')
+        todos_municipios.sort(key=locale.strxfrm)
+    except:
+        # Fallback: ordenar manualmente poniendo Ábrego primero
+        todos_municipios.sort(key=lambda x: ('0' + x) if x.startswith('Á') or x.startswith('á') else ('1' + x))
     
     # Obtener municipios con proyectos activos o pausados
     proyectos_activos = await db.proyectos_actualizacion.find(
@@ -11152,11 +11164,11 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
     
     municipios_ocupados = set(p["municipio"] for p in proyectos_activos)
     
-    # Municipios disponibles (ya vienen ordenados de la consulta)
+    # Municipios disponibles (ya vienen ordenados)
     disponibles = [m for m in todos_municipios if m not in municipios_ocupados]
     
     return {
-        "disponibles": disponibles,  # Ya ordenados alfabéticamente
+        "disponibles": disponibles,
         "ocupados": sorted(list(municipios_ocupados)),
         "total": len(todos_municipios)
     }
