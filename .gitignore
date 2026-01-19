@@ -219,3 +219,7 @@ ortoimagenes/originales/orto_37569e88.tif
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
