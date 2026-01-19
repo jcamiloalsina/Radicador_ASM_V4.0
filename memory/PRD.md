@@ -298,3 +298,77 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Con geometría: 143,354
 - Sin geometría: 31,065
 - Total usuarios: 25+
+
+### Sesión 19 Enero 2026 - Módulo de Actualización Fase 1
+**Nueva Arquitectura de la Aplicación:**
+La aplicación ahora se estructura en dos flujos principales:
+
+1. **Conservación** (módulo existente):
+   - Visor de Predios
+   - Gestión de Predios
+   - Peticiones
+   - Sistema de aprobación de cambios
+
+2. **Actualización** (NUEVO módulo):
+   - Proyectos de actualización catastral por municipio
+   - Gestión de archivos GDB y R1/R2 específicos por proyecto
+   - Tracking de trabajo de campo (futuro)
+
+**Implementado en Fase 1:**
+- ✅ **Sidebar Reestructurado:** 
+  - Secciones colapsables con diferenciación visual
+  - Conservación (verde esmeralda)
+  - Actualización (ámbar/naranja)
+  - Administración
+  
+- ✅ **Página de Proyectos de Actualización:**
+  - Cards de estadísticas (Total, Activos, Pausados, Completados, Archivados)
+  - Filtros por estado (tabs)
+  - Búsqueda por nombre/municipio
+  - CRUD completo de proyectos
+  
+- ✅ **Backend - Endpoints de Actualización:**
+  - `GET /api/actualizacion/proyectos` - Listar proyectos
+  - `GET /api/actualizacion/proyectos/estadisticas` - Estadísticas
+  - `POST /api/actualizacion/proyectos` - Crear proyecto
+  - `GET /api/actualizacion/proyectos/{id}` - Detalle proyecto
+  - `PATCH /api/actualizacion/proyectos/{id}` - Actualizar proyecto
+  - `DELETE /api/actualizacion/proyectos/{id}` - Eliminar proyecto
+  - `POST /api/actualizacion/proyectos/{id}/archivar` - Archivar
+  - `POST /api/actualizacion/proyectos/{id}/restaurar` - Restaurar
+  - `POST /api/actualizacion/proyectos/{id}/upload-gdb` - Cargar GDB
+  - `POST /api/actualizacion/proyectos/{id}/upload-r1r2` - Cargar R1/R2
+  - `GET /api/actualizacion/municipios-disponibles` - Municipios sin proyecto activo
+
+- ✅ **Modelo de Datos - Proyectos de Actualización:**
+  - Estados: activo, pausado, completado, archivado
+  - Referencias a archivos GDB, R1, R2
+  - Metadatos de creación y actualización
+  - Estadísticas de predios actualizados/no identificados
+
+**Pendiente para Fase 2:**
+- Procesamiento real de archivos GDB/R1/R2 para proyectos
+- UI para edición de datos de predios en campo
+- Sistema de predios no identificados
+- Capacidades offline (PWA) para trabajo de campo
+
+## Backlog Priorizado
+
+### P0 - Próximas tareas
+- Habilitar carga funcional de archivos GDB/R1/R2 en proyectos de actualización
+- UI de edición de predios dentro de un proyecto
+
+### P1 - Funcionalidades pendientes
+- Trabajo de campo offline (PWA)
+- Sistema de predios no identificados
+- Adjuntar fotos/formularios a visitas de campo
+
+### P2 - Mejoras futuras
+- Integración de logos en UI y PDFs
+- Z-index global para elementos sobre mapas
+- Historial de cambios de permisos
+- Generación de archivos XTF
+- Rediseño de certificado catastral PDF
+- Tracking de productividad de gestores
+- Firmas digitales para PDFs
+- Backups automáticos de BD
