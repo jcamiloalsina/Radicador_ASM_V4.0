@@ -372,3 +372,45 @@ La aplicación ahora se estructura en dos flujos principales:
 - Tracking de productividad de gestores
 - Firmas digitales para PDFs
 - Backups automáticos de BD
+
+### Actualización 19 Enero 2026 - Sistema de Cronograma
+
+**Mejoras de Terminología:**
+- "Base Gráfica" para archivos GDB (antes era solo "GDB")
+- "Información Alfanumérica" unificado para R1/R2 (antes eran campos separados)
+- Municipios ordenados alfabéticamente en todos los selectores
+
+**Sistema de Cronograma de Actividades:**
+- 3 etapas fijas creadas automáticamente: Preoperativa, Operativa, Post-Operativa
+- Actividades manuales por etapa con:
+  - Nombre, descripción y fase
+  - Fecha límite
+  - Prioridad (Alta, Media, Baja)
+  - Estado (Pendiente, En Progreso, Completada, Bloqueada)
+  - Asignación de responsables
+- Barra de progreso por etapa
+
+**Sistema de Alertas:**
+- Alertas de actividades por vencer (7, 3, 1 día)
+- Indicadores: vencida, urgente, próxima, recordatorio
+- Alerta flotante al iniciar sesión para Coordinadores/Administradores
+
+**Carga de Archivos Habilitada:**
+- Endpoint: POST /api/actualizacion/proyectos/{id}/upload-base-grafica
+- Endpoint: POST /api/actualizacion/proyectos/{id}/upload-info-alfanumerica
+- UI con botones de carga en el tab "Archivos"
+
+**Nuevas Colecciones MongoDB:**
+- `proyectos_actualizacion`: Proyectos de actualización
+- `etapas_proyecto`: Etapas del cronograma (3 por proyecto)
+- `actividades_proyecto`: Actividades del cronograma
+
+**Endpoints de Cronograma:**
+- GET /api/actualizacion/proyectos/{id}/etapas - Listar etapas con actividades
+- PATCH /api/actualizacion/etapas/{id} - Actualizar etapa
+- POST /api/actualizacion/etapas/{id}/actividades - Crear actividad
+- PATCH /api/actualizacion/actividades/{id} - Actualizar actividad
+- DELETE /api/actualizacion/actividades/{id} - Eliminar actividad
+- POST /api/actualizacion/actividades/{id}/asignar - Asignar responsable
+- DELETE /api/actualizacion/actividades/{id}/asignar/{user_id} - Desasignar
+- GET /api/actualizacion/alertas-proximas - Obtener alertas de vencimiento
