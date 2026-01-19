@@ -63,6 +63,29 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
+### Sesión 19 Enero 2026 - Fork (Actual)
+**Correcciones Críticas Módulo Actualización:**
+1. ✅ **Bug Eliminación de Proyectos:** 
+   - Corregido: El dropdown de acciones no aparecía para administradores
+   - Ahora: La condición `(canCreate || canDelete)` permite ver el dropdown 
+   - La opción "Eliminar" aparece para rol `administrador` independiente del estado del proyecto (excepto archivados)
+
+2. ✅ **Código Duplicado en ProyectosActualizacion.js:**
+   - Eliminado bloque duplicado de líneas 1047-1072 que quedó de edición interrumpida
+   - Archivo reducido de 1394 a 1368 líneas
+
+3. ✅ **Terminología "geometría" → "Base Gráfica":**
+   - Cambiado en `Predios.js`: filtro, badges, labels, toasts
+   - Cambiado en `VisorPredios.js`: estado de predio, progreso de upload, comentarios
+   - Ahora toda la UI del módulo Conservación usa "Base Gráfica"
+
+4. ✅ **Descarga de R1/R2 en Proyectos:**
+   - Backend: Endpoints `/descargar-info-alfanumerica` y `/descargar-base-grafica` ahora aceptan token por query param
+   - Esto permite usar `window.open()` para descargas de archivos
+   - Frontend: Botón "Descargar" funcional en pestaña Archivos del proyecto
+
+**Testing:** 11/11 tests pasaron - Ver `/app/test_reports/iteration_9.json`
+
 ### Sesión 18 Enero 2026 - Fork
 **Bug Crítico Corregido - Carga de GDB procesaba archivo equivocado:**
 1. ✅ **Identificación de GDB en ZIP:** El sistema ahora identifica el nombre de la carpeta .gdb DENTRO del ZIP antes de extraerlo, en lugar de buscar cualquier .gdb en el directorio
