@@ -95,6 +95,10 @@ export default function DashboardLayout() {
   const [conservacionOpen, setConservacionOpen] = useState(true);
   const [actualizacionOpen, setActualizacionOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(true);
+  
+  // Estado para alertas de cronograma
+  const [alertasCronograma, setAlertasCronograma] = useState([]);
+  const [showAlertaFlotante, setShowAlertaFlotante] = useState(false);
 
   const fetchCambiosPendientes = useCallback(async () => {
     try {
@@ -138,6 +142,25 @@ export default function DashboardLayout() {
       }
     } catch (error) {
       console.error('Error checking GDB alert:', error);
+    }
+  }, []);
+
+  const fetchAlertasCronograma = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/actualizacion/alertas-proximas`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const alertas = response.data.alertas || [];
+      setAlertasCronograma(alertas);
+      
+      // Mostrar alerta flotante solo para coordinadores/admins si hay alertas urgentes
+      const urgentes = alertas.filter(a => a.tipo_alerta === 'vencida' || a.tipo_alerta === 'urgente');
+      if (urgentes.length > 0) {
+        setShowAlertaFlotante(true);
+      }
+    } catch (error) {
+      console.error('Error fetching alertas cronograma:', error);
     }
   }, []);
 
