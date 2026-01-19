@@ -8045,30 +8045,25 @@ async def crear_notificacion(usuario_id: str, titulo: str, mensaje: str, tipo: s
     return notificacion
 
 async def send_notification_email(to_email: str, to_name: str, subject: str, message: str):
-    """Envía un email de notificación"""
+    """Envía un email de notificación usando la plantilla estándar"""
     try:
         msg = MIMEMultipart()
         msg['From'] = SMTP_FROM
         msg['To'] = to_email
         msg['Subject'] = f"[Asomunicipios] {subject}"
         
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; padding: 20px;">
-            <div style="max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h2 style="color: #059669;">Asomunicipios</h2>
-                </div>
-                <p>Hola {to_name},</p>
-                <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0; color: #166534;">{subject}</h3>
-                    <p>{message}</p>
-                </div>
-                <p style="color: #666; font-size: 12px;">Este es un mensaje automático del sistema de gestión catastral.</p>
-            </div>
-        </body>
-        </html>
-        """
+        contenido = f'''
+        <p>Hola <strong>{to_name}</strong>,</p>
+        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #047857;">
+            <p style="margin: 0;">{message}</p>
+        </div>
+        '''
+        
+        html_body = get_email_template(
+            titulo=subject,
+            contenido=contenido,
+            tipo_notificacion="info"
+        )
         msg.attach(MIMEText(html_body, 'html'))
         
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
