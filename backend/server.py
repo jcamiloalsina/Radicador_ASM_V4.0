@@ -11233,14 +11233,18 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
     municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).to_list(100)
     todos_municipios = [m["municipio"] for m in municipios if m["municipio"] not in MUNICIPIOS_EXCLUIDOS]
     
-    # Ordenar alfabéticamente con locale español (Á antes de B)
-    import locale
-    try:
-        locale.setlocale(locale.LC_COLLATE, 'es_ES.UTF-8')
-        todos_municipios.sort(key=locale.strxfrm)
-    except:
-        # Fallback: ordenar manualmente poniendo Ábrego primero
-        todos_municipios.sort(key=lambda x: ('0' + x) if x.startswith('Á') or x.startswith('á') else ('1' + x))
+    # Ordenar alfabéticamente con soporte para acentos español
+    import unicodedata
+    
+    def normalize_for_sort(s):
+        """Normaliza el texto para ordenar correctamente en español (Á = A, etc.)"""
+        # Normalizar NFD y luego quitar los diacríticos para el ordenamiento
+        normalized = unicodedata.normalize('NFD', s)
+        # Remover los caracteres diacríticos (acentos) para ordenar
+        ascii_str = ''.join(c for c in normalized if not unicodedata.combining(c))
+        return ascii_str.lower()
+    
+    todos_municipios.sort(key=normalize_for_sort)
     
     # Obtener municipios con proyectos activos o pausados
     proyectos_activos = await db.proyectos_actualizacion.find(
