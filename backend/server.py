@@ -576,7 +576,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -714,7 +714,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -778,7 +778,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -816,7 +816,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -846,7 +846,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -879,7 +879,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://landmapbug.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://cadastral-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
