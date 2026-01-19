@@ -70,6 +70,7 @@ const prioridadConfig = {
 
 export default function ProyectosActualizacion() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [proyectos, setProyectos] = useState([]);
   const [estadisticas, setEstadisticas] = useState({ activos: 0, pausados: 0, completados: 0, archivados: 0, total: 0 });
   const [loading, setLoading] = useState(true);
