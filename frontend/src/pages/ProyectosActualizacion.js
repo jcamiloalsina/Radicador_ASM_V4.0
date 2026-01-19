@@ -931,30 +931,45 @@ export default function ProyectosActualizacion() {
                               )}
                             </div>
                           </div>
-                          {canCreate && (
-                            <>
-                              <input
-                                type="file"
-                                ref={baseGraficaRef}
-                                accept=".zip"
-                                onChange={handleUploadBaseGrafica}
-                                className="hidden"
-                              />
+                          <div className="flex gap-2">
+                            {proyectoSeleccionado.base_grafica_archivo && (
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => baseGraficaRef.current?.click()}
-                                disabled={uploading.base_grafica}
+                                onClick={() => {
+                                  const token = localStorage.getItem('token');
+                                  window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-base-grafica?token=${token}`, '_blank');
+                                }}
                               >
-                                {uploading.base_grafica ? (
-                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                                ) : (
-                                  <Upload className="w-4 h-4 mr-1" />
-                                )}
-                                {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
+                                <Eye className="w-4 h-4 mr-1" />
+                                Descargar
                               </Button>
-                            </>
-                          )}
+                            )}
+                            {canCreate && (
+                              <>
+                                <input
+                                  type="file"
+                                  ref={baseGraficaRef}
+                                  accept=".zip"
+                                  onChange={handleUploadBaseGrafica}
+                                  className="hidden"
+                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => baseGraficaRef.current?.click()}
+                                  disabled={uploading.base_grafica}
+                                >
+                                  {uploading.base_grafica ? (
+                                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4 mr-1" />
+                                  )}
+                                  {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -985,9 +1000,50 @@ export default function ProyectosActualizacion() {
                               )}
                             </div>
                           </div>
-                          {canCreate && (
-                            <>
-                              <input
+                          <div className="flex gap-2">
+                            {proyectoSeleccionado.info_alfanumerica_archivo && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  const token = localStorage.getItem('token');
+                                  window.open(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/descargar-info-alfanumerica?token=${token}`, '_blank');
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Descargar
+                              </Button>
+                            )}
+                            {canCreate && (
+                              <>
+                                <input
+                                  type="file"
+                                  ref={infoAlfanumericaRef}
+                                  accept=".xlsx,.xls"
+                                  onChange={handleUploadInfoAlfanumerica}
+                                  className="hidden"
+                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => infoAlfanumericaRef.current?.click()}
+                                  disabled={uploading.info_alfanumerica}
+                                >
+                                  {uploading.info_alfanumerica ? (
+                                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4 mr-1" />
+                                  )}
+                                  {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
                                 type="file"
                                 ref={infoAlfanumericaRef}
                                 accept=".xlsx,.xls"
