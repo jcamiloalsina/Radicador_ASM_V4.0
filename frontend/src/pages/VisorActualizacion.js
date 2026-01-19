@@ -51,7 +51,7 @@ import {
   Map as MapIcon
 } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Componente para manejar eventos del mapa y ubicación GPS
 function MapController({ onLocationFound, userPosition, setCurrentZoom, flyToPosition }) {
