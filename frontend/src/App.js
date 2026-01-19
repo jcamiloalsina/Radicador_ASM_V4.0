@@ -20,6 +20,7 @@ import VisorPredios from "./pages/VisorPredios";
 import Pendientes from "./pages/Pendientes";
 import PermissionsManagement from "./pages/PermissionsManagement";
 import ProyectosActualizacion from "./pages/ProyectosActualizacion";
+import VisorActualizacion from "./pages/VisorActualizacion";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
