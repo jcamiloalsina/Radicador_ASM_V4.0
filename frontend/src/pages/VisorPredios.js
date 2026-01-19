@@ -2137,6 +2137,27 @@ export default function VisorPredios() {
                               });
                             }
                             
+                            // VERIFICAR CONSTRUCCIONES
+                            try {
+                              const codigoParaBuscar = predio.codigo_gdb || predio.codigo_predial_nacional;
+                              const constResponse = await fetch(`${API}/gdb/construcciones/${codigoParaBuscar}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              const constData = await constResponse.json();
+                              
+                              if (constData && constData.construcciones && constData.construcciones.length > 0) {
+                                setTieneConstrucciones(true);
+                                setConstrucciones(null);
+                                setMostrarConstrucciones(false);
+                              } else {
+                                setTieneConstrucciones(false);
+                                setConstrucciones(null);
+                              }
+                            } catch (constError) {
+                              setTieneConstrucciones(false);
+                              setConstrucciones(null);
+                            }
+                            
                             toast.success('Predio seleccionado');
                           } else {
                             toast.warning('Predio no encontrado en la base de datos');
