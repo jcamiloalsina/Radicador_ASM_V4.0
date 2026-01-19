@@ -1044,32 +1044,6 @@ export default function ProyectosActualizacion() {
                     </Card>
                   </div>
                 </TabsContent>
-                                type="file"
-                                ref={infoAlfanumericaRef}
-                                accept=".xlsx,.xls"
-                                onChange={handleUploadInfoAlfanumerica}
-                                className="hidden"
-                              />
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => infoAlfanumericaRef.current?.click()}
-                                disabled={uploading.info_alfanumerica}
-                              >
-                                {uploading.info_alfanumerica ? (
-                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                                ) : (
-                                  <Upload className="w-4 h-4 mr-1" />
-                                )}
-                                {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
                 
                 {/* Tab Cronograma */}
                 <TabsContent value="cronograma" className="space-y-4 mt-4">
