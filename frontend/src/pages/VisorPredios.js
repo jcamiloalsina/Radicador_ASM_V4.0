@@ -951,7 +951,7 @@ export default function VisorPredios() {
                   );
                 }
               } else {
-                toast.success(`¡Completado! ${response.data.predios_relacionados} predios relacionados de ${response.data.total_geometrias_gdb} geometrías GDB`);
+                toast.success(`¡Completado! ${response.data.predios_relacionados} predios relacionados de ${response.data.total_geometrias_gdb} en Base Gráfica`);
               }
               
               fetchGdbStats();
@@ -974,7 +974,7 @@ export default function VisorPredios() {
         if (calidad && calidad.porcentaje < 80) {
           toast.warning(`⚠️ Carga con observaciones. Calidad: ${calidad.porcentaje}%. Revisar reporte PDF.`);
         } else {
-          toast.success(`Base gráfica de ${response.data.municipio || 'municipio'} actualizada. ${response.data.total_geometrias_gdb || response.data.total_geometrias} geometrías, ${response.data.predios_relacionados} predios relacionados.`);
+          toast.success(`Base Gráfica de ${response.data.municipio || 'municipio'} actualizada. ${response.data.total_geometrias_gdb || response.data.total_geometrias} predios, ${response.data.predios_relacionados} relacionados.`);
         }
         fetchGdbStats();
         verificarCargasMensuales(); // Actualizar estado de cargas mensuales
