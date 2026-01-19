@@ -10701,9 +10701,21 @@ async def upload_info_alfanumerica_proyecto(
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/descargar-base-grafica")
 async def descargar_base_grafica_proyecto(
     proyecto_id: str,
-    current_user: dict = Depends(get_current_user)
+    token: str = Query(None, description="JWT token para autenticación vía query param")
 ):
     """Descarga el archivo de Base Gráfica de un proyecto"""
+    # Autenticación via query param para permitir window.open
+    if not token:
+        raise HTTPException(status_code=401, detail="Token requerido")
+    
+    try:
+        payload = decode_token(token)
+        current_user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para descargar archivos")
     
@@ -10728,9 +10740,21 @@ async def descargar_base_grafica_proyecto(
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/descargar-info-alfanumerica")
 async def descargar_info_alfanumerica_proyecto(
     proyecto_id: str,
-    current_user: dict = Depends(get_current_user)
+    token: str = Query(None, description="JWT token para autenticación vía query param")
 ):
     """Descarga el archivo de Información Alfanumérica (R1/R2) de un proyecto"""
+    # Autenticación via query param para permitir window.open
+    if not token:
+        raise HTTPException(status_code=401, detail="Token requerido")
+    
+    try:
+        payload = decode_token(token)
+        current_user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para descargar archivos")
     
