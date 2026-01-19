@@ -2048,21 +2048,21 @@ export default function Predios() {
                     </Button>
                   </div>
                 </div>
-                {/* Filtro de geometría GDB */}
+                {/* Filtro de Base Gráfica */}
                 <Select value={filterGeometria} onValueChange={setFilterGeometria}>
                   <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Geometría GDB" />
+                    <SelectValue placeholder="Base Gráfica" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="con">Con geometría</SelectItem>
-                    <SelectItem value="sin">Sin geometría</SelectItem>
+                    <SelectItem value="con">Con Base Gráfica</SelectItem>
+                    <SelectItem value="sin">Sin Base Gráfica</SelectItem>
                   </SelectContent>
                 </Select>
                 {gdbStats?.por_municipio?.[filterMunicipio] && (
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
                     <Map className="w-3 h-3 mr-1" />
-                    {gdbStats.por_municipio[filterMunicipio]?.total || 0} geometrías GDB
+                    {gdbStats.por_municipio[filterMunicipio]?.total || 0} en Base Gráfica
                   </Badge>
                 )}
                 {canModifyPredios && (
