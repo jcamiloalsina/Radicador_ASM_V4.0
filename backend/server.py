@@ -10594,12 +10594,12 @@ async def upload_r1r2_proyecto_actualizacion(
 
 @api_router.get("/actualizacion/municipios-disponibles")
 async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_current_user)):
-    """Lista los municipios que no tienen un proyecto activo"""
+    """Lista los municipios que no tienen un proyecto activo - ordenados alfabéticamente"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para esta operación")
     
-    # Obtener todos los municipios
-    municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).to_list(100)
+    # Obtener todos los municipios ordenados alfabéticamente
+    municipios = await db.limites_municipales.find({}, {"_id": 0, "municipio": 1}).sort("municipio", 1).to_list(100)
     todos_municipios = [m["municipio"] for m in municipios]
     
     # Obtener municipios con proyectos activos o pausados
@@ -10610,11 +10610,11 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
     
     municipios_ocupados = set(p["municipio"] for p in proyectos_activos)
     
-    # Municipios disponibles
+    # Municipios disponibles (ya vienen ordenados de la consulta)
     disponibles = [m for m in todos_municipios if m not in municipios_ocupados]
     
     return {
-        "disponibles": sorted(disponibles),
+        "disponibles": disponibles,  # Ya ordenados alfabéticamente
         "ocupados": sorted(list(municipios_ocupados)),
         "total": len(todos_municipios)
     }
