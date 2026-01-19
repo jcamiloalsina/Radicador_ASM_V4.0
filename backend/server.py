@@ -10817,7 +10817,7 @@ async def crear_actividad(
         "prioridad": actividad_data.prioridad or ActividadPrioridad.MEDIA,
         "porcentaje_avance": 0,
         "responsables_ids": actividad_data.responsables_ids or [],
-        "actividad_previa_id": actividad_data.actividad_previa_id,
+        "actividad_padre_id": actividad_data.actividad_padre_id,
         "notas": None,
         "creado_por": current_user["id"],
         "created_at": now,
