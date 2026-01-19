@@ -2423,7 +2423,7 @@ export default function Predios() {
                       <p className="font-bold text-slate-800 text-xs font-mono">{terrenoInfo.codigo_sugerido}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Info. Gráfica (GDB):</span>
+                      <span className="text-slate-500">Base Gráfica:</span>
                       <p className={`font-bold ${terrenoInfo.tiene_geometria_gdb ? 'text-emerald-700' : 'text-amber-600'}`}>
                         {terrenoInfo.tiene_geometria_gdb ? '✅ Disponible' : '⚠️ No disponible'}
                       </p>
