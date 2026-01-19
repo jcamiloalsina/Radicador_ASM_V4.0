@@ -1598,13 +1598,13 @@ export default function VisorPredios() {
                           </div>
                           <div>
                             <p className="text-[10px] text-emerald-600">Estado</p>
-                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700">✓ Con geometría</Badge>
+                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700">✓ Con Base Gráfica</Badge>
                           </div>
                         </div>
                       ) : (
                         <div>
                           <p className="text-[10px] text-slate-500">Área GDB</p>
-                          <p className="text-xs text-slate-400">Sin geometría</p>
+                          <p className="text-xs text-slate-400">Sin Base Gráfica</p>
                         </div>
                       )}
                     </div>
@@ -1951,7 +1951,7 @@ export default function VisorPredios() {
                       {uploadProgress.status === 'extrayendo' && <span>📦 Extrayendo ZIP...</span>}
                       {uploadProgress.status === 'leyendo_rural' && <span>🌾 Leyendo capa rural...</span>}
                       {uploadProgress.status === 'leyendo_urbano' && <span>🏘️ Leyendo capa urbana...</span>}
-                      {uploadProgress.status === 'guardando_geometrias' && <span>💾 Guardando geometrías...</span>}
+                      {uploadProgress.status === 'guardando_geometrias' && <span>💾 Guardando Base Gráfica...</span>}
                       {uploadProgress.status === 'relacionando' && <span>🔗 Relacionando con predios...</span>}
                       {uploadProgress.status === 'matching_avanzado' && <span>🔍 Búsqueda avanzada de coincidencias...</span>}
                       {uploadProgress.status === 'completado' && <span>✅ ¡Proceso completado!</span>}
@@ -2171,7 +2171,7 @@ export default function VisorPredios() {
                   />
                 )}
                 
-                {/* Geometría del predio seleccionado (resaltado) */}
+                {/* Base Gráfica del predio seleccionado (resaltado) */}
                 {geometry && (
                   <>
                     <GeoJSON 
