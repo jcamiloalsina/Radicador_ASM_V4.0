@@ -780,7 +780,7 @@ export default function ProyectosActualizacion() {
           {proyectoSeleccionado && (
             <div className="py-4">
               <p className="text-slate-700">
-                ¿Estás seguro de que deseas eliminar el proyecto <strong>"{proyectoSeleccionado.nombre}"</strong> del municipio <strong>{proyectoSeleccionado.municipio}</strong>?
+                ¿Estás seguro de que deseas eliminar el proyecto <strong>&quot;{proyectoSeleccionado.nombre}&quot;</strong> del municipio <strong>{proyectoSeleccionado.municipio}</strong>?
               </p>
             </div>
           )}
