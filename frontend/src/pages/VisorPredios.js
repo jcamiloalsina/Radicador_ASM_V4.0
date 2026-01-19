@@ -548,10 +548,10 @@ export default function VisorPredios() {
       });
       setAllGeometries(response.data);
       const zonaText = filterZona === 'todos' ? 'todas las zonas' : filterZona;
-      toast.success(`${response.data.total} geometrías (${zonaText}) cargadas`);
+      toast.success(`${response.data.total} predios de Base Gráfica (${zonaText}) cargados`);
     } catch (error) {
       console.error('Error loading geometries:', error);
-      toast.error(error.response?.data?.detail || 'Error al cargar geometrías');
+      toast.error(error.response?.data?.detail || 'Error al cargar Base Gráfica');
       setAllGeometries(null);
     } finally {
       setLoadingGeometries(false);
