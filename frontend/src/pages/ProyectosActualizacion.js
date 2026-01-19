@@ -441,7 +441,7 @@ export default function ProyectosActualizacion() {
   );
 
   const canCreate = ['administrador', 'coordinador'].includes(user?.role);
-  const canDelete = user?.role === 'administrador';
+  const canDelete = ['administrador', 'coordinador'].includes(user?.role);
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
