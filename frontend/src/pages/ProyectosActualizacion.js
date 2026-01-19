@@ -676,7 +676,7 @@ export default function ProyectosActualizacion() {
                         Ver
                       </Button>
                       
-                      {canCreate && (
+                      {(canCreate || canDelete) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm">
@@ -684,31 +684,31 @@ export default function ProyectosActualizacion() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            {proyecto.estado === 'activo' && (
+                            {canCreate && proyecto.estado === 'activo' && (
                               <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'pausado')}>
                                 <Pause className="w-4 h-4 mr-2" />
                                 Pausar
                               </DropdownMenuItem>
                             )}
-                            {proyecto.estado === 'pausado' && (
+                            {canCreate && proyecto.estado === 'pausado' && (
                               <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'activo')}>
                                 <Play className="w-4 h-4 mr-2" />
                                 Reactivar
                               </DropdownMenuItem>
                             )}
-                            {proyecto.estado === 'completado' && (
+                            {canCreate && proyecto.estado === 'completado' && (
                               <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'activo')}>
                                 <Play className="w-4 h-4 mr-2" />
                                 Reactivar
                               </DropdownMenuItem>
                             )}
-                            {['activo', 'pausado'].includes(proyecto.estado) && (
+                            {canCreate && ['activo', 'pausado'].includes(proyecto.estado) && (
                               <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'completado')}>
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Marcar Completado
                               </DropdownMenuItem>
                             )}
-                            {proyecto.estado !== 'archivado' && (
+                            {canCreate && proyecto.estado !== 'archivado' && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleArchivar(proyecto.id)}>
@@ -717,13 +717,13 @@ export default function ProyectosActualizacion() {
                                 </DropdownMenuItem>
                               </>
                             )}
-                            {proyecto.estado === 'archivado' && (
+                            {canCreate && proyecto.estado === 'archivado' && (
                               <DropdownMenuItem onClick={() => handleRestaurar(proyecto.id)}>
                                 <RotateCcw className="w-4 h-4 mr-2" />
                                 Restaurar
                               </DropdownMenuItem>
                             )}
-                            {canDelete && (
+                            {canDelete && proyecto.estado !== 'archivado' && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
