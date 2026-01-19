@@ -367,6 +367,16 @@ export default function VisorPredios() {
     }
   }, []);
   
+  // Si viene de un proyecto de actualización con municipio, activar mostrar predios automáticamente
+  useEffect(() => {
+    if (urlMunicipio && filterMunicipio === urlMunicipio) {
+      setMostrarPredios(true);
+      toast.info(`Visor de predios para proyecto: ${urlMunicipio}`, {
+        duration: 3000
+      });
+    }
+  }, [urlMunicipio, filterMunicipio]);
+  
   // Fetch ortoimágenes disponibles
   const fetchOrtoimagenes = async () => {
     try {
