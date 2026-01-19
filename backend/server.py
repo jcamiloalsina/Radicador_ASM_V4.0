@@ -10868,7 +10868,7 @@ async def upload_info_alfanumerica_proyecto(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Sube un archivo de Información Alfanumérica (R1/R2 Excel) para un proyecto de actualización"""
+    """Sube un archivo de Información Alfanumérica (R1/R2 Excel) para un proyecto de actualización y lo procesa"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para cargar Información Alfanumérica")
     
@@ -10894,25 +10894,110 @@ async def upload_info_alfanumerica_proyecto(
             content = await file.read()
             buffer.write(content)
         
-        await db.proyectos_actualizacion.update_one(
-            {"id": proyecto_id},
-            {"$set": {
-                "info_alfanumerica_archivo": str(file_path),
-                "info_alfanumerica_cargado_en": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc)
-            }}
-        )
+        # Procesar Excel R1/R2
+        registros_procesados = await procesar_r1r2_actualizacion(proyecto_id, str(file_path), proyecto["municipio"])
         
         return {
-            "message": "Información Alfanumérica cargada exitosamente",
+            "message": f"Información Alfanumérica cargada y procesada ({registros_procesados} registros)",
             "archivo": str(file_path),
-            "nombre_archivo": file.filename
+            "nombre_archivo": file.filename,
+            "registros_procesados": registros_procesados
         }
         
     except Exception as e:
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
+
+
+async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipio: str):
+    """Procesa el Excel R1/R2 y guarda los predios en la colección del proyecto"""
+    import pandas as pd
+    
+    # Leer Excel
+    try:
+        # Intentar leer con openpyxl (xlsx)
+        df_r1 = pd.read_excel(file_path, sheet_name=0, engine='openpyxl')  # Primera hoja (R1)
+        try:
+            df_r2 = pd.read_excel(file_path, sheet_name=1, engine='openpyxl')  # Segunda hoja (R2)
+        except:
+            df_r2 = pd.DataFrame()  # R2 opcional
+    except:
+        # Fallback a xlrd (xls)
+        df_r1 = pd.read_excel(file_path, sheet_name=0, engine='xlrd')
+        try:
+            df_r2 = pd.read_excel(file_path, sheet_name=1, engine='xlrd')
+        except:
+            df_r2 = pd.DataFrame()
+    
+    # Normalizar nombres de columnas
+    df_r1.columns = [str(c).strip().upper() for c in df_r1.columns]
+    if len(df_r2) > 0:
+        df_r2.columns = [str(c).strip().upper() for c in df_r2.columns]
+    
+    # Eliminar predios anteriores del proyecto
+    await db.predios_actualizacion.delete_many({"proyecto_id": proyecto_id})
+    
+    registros = 0
+    
+    # Mapear columnas R1 a campos estándar
+    col_mapping_r1 = {
+        'NUMERO PREDIAL': 'numero_predial',
+        'NUMERO_PREDIAL': 'numero_predial',
+        'CODIGO': 'codigo_predial',
+        'CODIGO_PREDIAL': 'codigo_predial',
+        'DIRECCION': 'direccion',
+        'DESTINO ECONOMICO': 'destino_economico',
+        'DESTINO_ECONOMICO': 'destino_economico',
+        'AREA TERRENO': 'area_terreno',
+        'AREA_TERRENO': 'area_terreno',
+        'AREA CONSTRUIDA': 'area_construida',
+        'AREA_CONSTRUIDA': 'area_construida',
+        'AVALUO CATASTRAL': 'avaluo_catastral',
+        'AVALUO_CATASTRAL': 'avaluo_catastral',
+        'VIGENCIA': 'vigencia',
+        'ESTRATO': 'estrato',
+        'TIPO PREDIO': 'tipo_predio',
+        'TIPO_PREDIO': 'tipo_predio'
+    }
+    
+    # Procesar R1
+    for _, row in df_r1.iterrows():
+        predio = {
+            "proyecto_id": proyecto_id,
+            "municipio": municipio,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        for col, field in col_mapping_r1.items():
+            if col in df_r1.columns:
+                val = row[col]
+                if pd.notna(val):
+                    if field in ['area_terreno', 'area_construida', 'avaluo_catastral']:
+                        try:
+                            predio[field] = float(val)
+                        except:
+                            predio[field] = None
+                    else:
+                        predio[field] = str(val).strip()
+        
+        # Solo guardar si tiene código o número predial
+        if predio.get('codigo_predial') or predio.get('numero_predial'):
+            await db.predios_actualizacion.insert_one(predio)
+            registros += 1
+    
+    # Actualizar proyecto
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {"$set": {
+            "info_alfanumerica_archivo": file_path,
+            "info_alfanumerica_cargado_en": datetime.now(timezone.utc),
+            "info_alfanumerica_total_registros": registros,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return registros
 
 
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/descargar-base-grafica")
