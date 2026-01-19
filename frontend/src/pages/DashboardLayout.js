@@ -2,13 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, PieChart, MapPin, Map, Clock, Bell, Shield, AlertTriangle } from 'lucide-react';
+import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Bell, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Componente para sección colapsable del menú
+function MenuSection({ title, icon: Icon, children, isOpen, onToggle, accentColor = 'emerald', testId }) {
+  const colorClasses = {
+    emerald: {
+      bg: 'bg-emerald-800/30',
+      border: 'border-emerald-700',
+      text: 'text-emerald-200',
+      iconBg: 'bg-emerald-700/50'
+    },
+    amber: {
+      bg: 'bg-amber-900/20',
+      border: 'border-amber-700/50',
+      text: 'text-amber-200',
+      iconBg: 'bg-amber-700/50'
+    }
+  };
+  
+  const colors = colorClasses[accentColor] || colorClasses.emerald;
+  
+  return (
+    <Collapsible open={isOpen} onOpenChange={onToggle}>
+      <CollapsibleTrigger 
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg ${colors.bg} hover:bg-opacity-50 transition-colors mb-1`}
+        data-testid={testId}
+      >
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded ${colors.iconBg}`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <span className={`font-semibold text-sm ${colors.text}`}>{title}</span>
+        </div>
+        {isOpen ? (
+          <ChevronDown className="w-4 h-4 text-white/60" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-white/60" />
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1 ml-2">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function DashboardLayout() {
   const { user, logout, loading, showTimeoutWarning, extendSession } = useAuth();
@@ -18,6 +63,11 @@ export default function DashboardLayout() {
   const [noLeidas, setNoLeidas] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
+  
+  // Estado de secciones colapsables
+  const [conservacionOpen, setConservacionOpen] = useState(true);
+  const [actualizacionOpen, setActualizacionOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(true);
 
   const fetchCambiosPendientes = async () => {
     try {
@@ -126,154 +176,195 @@ export default function DashboardLayout() {
     return roles[role] || role;
   };
 
-  const menuItems = [
+  // Determinar qué items mostrar según el rol
+  const isStaff = user.role !== 'usuario';
+  const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
+  const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
+  const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
+
+  // Items de menú base (siempre visibles)
+  const baseMenuItems = [
     { path: '/dashboard', label: 'Inicio', icon: Activity },
     { path: '/dashboard/peticiones', label: 'Mis Peticiones', icon: FileText },
   ];
 
-  // Comunicaciones y otros roles de staff pueden ver predios y visor
-  if (user.role !== 'usuario') {
-    menuItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
-    menuItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
-    menuItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+  // Items de Conservación (módulo existente)
+  const conservacionItems = [];
+  if (isStaff) {
+    conservacionItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
+    conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
+    conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+  }
+  if (isCoordAdmin) {
+    conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
   }
 
-  if (['administrador', 'coordinador'].includes(user.role)) {
-    menuItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock });
+  // Items de Actualización (nuevo módulo)
+  const actualizacionItems = [];
+  if (canAccessActualizacion) {
+    actualizacionItems.push({ path: '/dashboard/proyectos-actualizacion', label: 'Proyectos', icon: FolderKanban });
+    // Futuras páginas del módulo de actualización
+    // actualizacionItems.push({ path: '/dashboard/trabajo-campo', label: 'Trabajo de Campo', icon: MapPin });
   }
 
-  if (['administrador', 'coordinador', 'atencion_usuario'].includes(user.role)) {
-    menuItems.push({ path: '/dashboard/usuarios', label: 'Gestión de Usuarios', icon: UserCog });
-    menuItems.push({ path: '/dashboard/estadisticas', label: 'Estadísticas y Reportes', icon: BarChart3 });
+  // Items de Administración
+  const adminItems = [];
+  if (canManageUsers) {
+    adminItems.push({ path: '/dashboard/usuarios', label: 'Gestión de Usuarios', icon: UserCog });
+    adminItems.push({ path: '/dashboard/estadisticas', label: 'Estadísticas y Reportes', icon: BarChart3 });
+  }
+  if (isCoordAdmin) {
+    adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
   }
 
-  if (['administrador', 'coordinador'].includes(user.role)) {
-    menuItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
-  }
+  // Función para renderizar un item de menú
+  const renderMenuItem = (item, closeSidebar = false) => {
+    const Icon = item.icon;
+    const isActive = location.pathname === item.path;
+    const showBadge = item.badge && item.badge > 0;
+    
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        onClick={closeSidebar ? () => setSidebarOpen(false) : undefined}
+        className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors text-sm ${
+          isActive
+            ? 'bg-emerald-800 text-white'
+            : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
+        }`}
+        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <div className="flex items-center">
+          <Icon className="w-4 h-4 mr-2.5" />
+          {item.label}
+        </div>
+        {showBadge && (
+          <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
+  // Función para obtener el título de la página actual
+  const getCurrentPageTitle = () => {
+    const allItems = [
+      ...baseMenuItems, 
+      ...conservacionItems, 
+      ...actualizacionItems, 
+      ...adminItems
+    ];
+    const currentItem = allItems.find(item => item.path === location.pathname);
+    return currentItem?.label || 'Dashboard';
+  };
+
+  // Sidebar content (reutilizado en desktop y mobile)
+  const SidebarContent = ({ mobile = false }) => (
+    <>
+      {/* Header con logo */}
+      <div className="p-4 border-b border-emerald-800 flex-shrink-0">
+        <img 
+          src="/logo-asomunicipios.png" 
+          alt="Asomunicipios Logo" 
+          className="w-24 mx-auto mb-2 rounded"
+          data-testid="sidebar-logo"
+        />
+        <h2 className="text-xs font-bold font-outfit leading-tight text-center" data-testid="sidebar-title">
+          Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
+        </h2>
+        <p className="text-emerald-200 text-xs mt-1 text-center font-semibold">– Asomunicipios –</p>
+        <p className="text-emerald-100 text-xs mt-2 text-center">{getRoleName(user.role)}</p>
+      </div>
+
+      {/* Navegación */}
+      <nav className="flex-1 p-3 space-y-4 overflow-y-auto" data-testid="sidebar-nav">
+        {/* Items base */}
+        <div className="space-y-1">
+          {baseMenuItems.map(item => renderMenuItem(item, mobile))}
+        </div>
+
+        {/* Sección Conservación */}
+        {conservacionItems.length > 0 && (
+          <MenuSection
+            title="Conservación"
+            icon={Layers}
+            isOpen={conservacionOpen}
+            onToggle={setConservacionOpen}
+            accentColor="emerald"
+            testId="section-conservacion"
+          >
+            {conservacionItems.map(item => renderMenuItem(item, mobile))}
+          </MenuSection>
+        )}
+
+        {/* Sección Actualización */}
+        {actualizacionItems.length > 0 && (
+          <MenuSection
+            title="Actualización"
+            icon={RefreshCcw}
+            isOpen={actualizacionOpen}
+            onToggle={setActualizacionOpen}
+            accentColor="amber"
+            testId="section-actualizacion"
+          >
+            {actualizacionItems.map(item => renderMenuItem(item, mobile))}
+          </MenuSection>
+        )}
+
+        {/* Sección Administración */}
+        {adminItems.length > 0 && (
+          <MenuSection
+            title="Administración"
+            icon={UserCog}
+            isOpen={adminOpen}
+            onToggle={setAdminOpen}
+            accentColor="emerald"
+            testId="section-administracion"
+          >
+            {adminItems.map(item => renderMenuItem(item, mobile))}
+          </MenuSection>
+        )}
+      </nav>
+
+      {/* Footer con info de usuario */}
+      <div className="p-4 border-t border-emerald-800 flex-shrink-0">
+        <div className="px-3 py-2 mb-2">
+          <p className="text-sm font-medium text-white truncate" data-testid="user-name">{user.full_name}</p>
+          <p className="text-xs text-emerald-200 truncate" data-testid="user-email">{user.email}</p>
+        </div>
+        <Button
+          onClick={logout}
+          variant="ghost"
+          className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
+          data-testid="logout-button"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Cerrar Sesión
+        </Button>
+      </div>
+    </>
+  );
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Sidebar - Desktop */}
       <div className="hidden md:flex w-64 flex-col bg-emerald-900 text-white border-r border-emerald-800 overflow-y-auto">
-        <div className="p-4 border-b border-emerald-800 flex-shrink-0">
-          <img 
-            src="/logo-asomunicipios.png" 
-            alt="Asomunicipios Logo" 
-            className="w-24 mx-auto mb-2 rounded"
-            data-testid="sidebar-logo"
-          />
-          <h2 className="text-xs font-bold font-outfit leading-tight text-center" data-testid="sidebar-title">
-            Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar
-          </h2>
-          <p className="text-emerald-200 text-xs mt-1 text-center font-semibold">– Asomunicipios –</p>
-          <p className="text-emerald-100 text-xs mt-2 text-center">{getRoleName(user.role)}</p>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto" data-testid="sidebar-nav">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            // Mostrar badge para Pendientes si hay cambios
-            const showBadge = item.path === '/dashboard/pendientes' && cambiosPendientesCount > 0;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center justify-between px-4 py-3 rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-emerald-800 text-white'
-                    : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
-                }`}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <div className="flex items-center">
-                  <Icon className="w-5 h-5 mr-3" />
-                  {item.label}
-                </div>
-                {showBadge && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                    {cambiosPendientesCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-emerald-800 flex-shrink-0">
-          <div className="px-4 py-2 mb-2">
-            <p className="text-sm font-medium text-white" data-testid="user-name">{user.full_name}</p>
-            <p className="text-xs text-emerald-200" data-testid="user-email">{user.email}</p>
-          </div>
-          <Button
-            onClick={logout}
-            variant="ghost"
-            className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
-            data-testid="logout-button"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Cerrar Sesión
-          </Button>
-        </div>
+        <SidebarContent />
       </div>
 
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white">
-            <div className="p-6 border-b border-emerald-800 flex justify-between items-start">
-              <div className="flex-1">
-                <img 
-                  src="/logo-asomunicipios.png" 
-                  alt="Asomunicipios Logo" 
-                  className="w-full mb-2 rounded"
-                />
-                <h2 className="text-xs font-bold font-outfit leading-tight text-center">Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</h2>
-                <p className="text-emerald-200 text-xs mt-1 text-center">– Asomunicipios –</p>
-                <p className="text-emerald-100 text-xs mt-1">{getRoleName(user.role)}</p>
-              </div>
-              <button onClick={() => setSidebarOpen(false)} className="text-white ml-2">
-                <X className="w-6 h-6" />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-emerald-900 text-white flex flex-col">
+            <div className="absolute right-2 top-2">
+              <button onClick={() => setSidebarOpen(false)} className="text-white p-1 hover:bg-emerald-800 rounded">
+                <X className="w-5 h-5" />
               </button>
             </div>
-
-            <nav className="flex-1 p-4 space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3 rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-emerald-800 text-white'
-                        : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mr-3" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="p-4 border-t border-emerald-800">
-              <div className="px-4 py-2 mb-2">
-                <p className="text-sm font-medium text-white">{user.full_name}</p>
-                <p className="text-xs text-emerald-200">{user.email}</p>
-              </div>
-              <Button
-                onClick={logout}
-                variant="ghost"
-                className="w-full justify-start text-emerald-100 hover:bg-emerald-800 hover:text-white"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Cerrar Sesión
-              </Button>
-            </div>
+            <SidebarContent mobile />
           </div>
         </div>
       )}
@@ -313,22 +404,25 @@ export default function DashboardLayout() {
 
         {/* Header */}
         <div className="h-16 border-b border-slate-200 bg-white flex items-center px-6 justify-between" data-testid="dashboard-header">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden text-slate-700"
-            data-testid="mobile-menu-button"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-semibold text-slate-900 font-outfit" data-testid="page-title">
-            {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
-          </h1>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden text-slate-700"
+              data-testid="mobile-menu-button"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl font-semibold text-slate-900 font-outfit" data-testid="page-title">
+              {getCurrentPageTitle()}
+            </h1>
+          </div>
           
           {/* Notificaciones */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full transition-colors"
+              data-testid="notifications-button"
             >
               <Bell className="w-5 h-5" />
               {noLeidas > 0 && (
