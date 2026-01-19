@@ -841,7 +841,7 @@ export default function ProyectosActualizacion() {
               </DialogHeader>
               
               <Tabs value={detalleTab} onValueChange={setDetalleTab} className="w-full">
-                <TabsList className="grid grid-cols-3 w-full">
+                <TabsList className={`grid w-full ${canCreate ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   <TabsTrigger value="info" className="flex items-center gap-2">
                     <FileSpreadsheet className="w-4 h-4" />
                     Información
@@ -850,10 +850,12 @@ export default function ProyectosActualizacion() {
                     <Database className="w-4 h-4" />
                     Archivos
                   </TabsTrigger>
-                  <TabsTrigger value="cronograma" className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4" />
-                    Cronograma
-                  </TabsTrigger>
+                  {canCreate && (
+                    <TabsTrigger value="cronograma" className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4" />
+                      Cronograma
+                    </TabsTrigger>
+                  )}
                 </TabsList>
                 
                 {/* Tab Información */}
