@@ -10344,7 +10344,7 @@ async def crear_proyecto_actualizacion(
     proyecto_data: ProyectoActualizacionCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Crea un nuevo proyecto de actualización"""
+    """Crea un nuevo proyecto de actualización con etapas predefinidas"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden crear proyectos")
     
@@ -10374,15 +10374,18 @@ async def crear_proyecto_actualizacion(
         "municipio": proyecto_data.municipio,
         "descripcion": proyecto_data.descripcion.strip() if proyecto_data.descripcion else None,
         "estado": ProyectoActualizacionEstado.ACTIVO,
-        "gdb_archivo": None,
-        "gdb_cargado_en": None,
-        "gdb_total_predios": 0,
-        "r1_archivo": None,
-        "r1_cargado_en": None,
-        "r1_total_registros": 0,
-        "r2_archivo": None,
-        "r2_cargado_en": None,
-        "r2_total_registros": 0,
+        # Archivos unificados
+        "base_grafica_archivo": None,
+        "base_grafica_cargado_en": None,
+        "base_grafica_total_predios": 0,
+        "info_alfanumerica_archivo": None,
+        "info_alfanumerica_cargado_en": None,
+        "info_alfanumerica_total_registros": 0,
+        # Fechas
+        "fecha_inicio": None,
+        "fecha_fin_planificada": None,
+        "fecha_fin_real": None,
+        # Estadísticas
         "predios_actualizados": 0,
         "predios_no_identificados": 0,
         "creado_por": current_user["id"],
@@ -10397,10 +10400,58 @@ async def crear_proyecto_actualizacion(
     
     await db.proyectos_actualizacion.insert_one(proyecto)
     
+    # Crear las 3 etapas predefinidas
+    etapas_default = [
+        {
+            "id": str(uuid.uuid4()),
+            "proyecto_id": proyecto_id,
+            "tipo": EtapaProyectoTipo.PREOPERATIVA,
+            "nombre": "Etapa Preoperativa",
+            "orden": 1,
+            "descripcion": "Ejecución de las actividades de alistamiento y planeación del proyecto",
+            "fecha_inicio": None,
+            "fecha_fin_planificada": None,
+            "fecha_fin_real": None,
+            "estado": ActividadEstado.PENDIENTE,
+            "created_at": now,
+            "updated_at": now
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "proyecto_id": proyecto_id,
+            "tipo": EtapaProyectoTipo.OPERATIVA,
+            "nombre": "Etapa Operativa",
+            "orden": 2,
+            "descripcion": "Implementación de levantamientos prediales y consolidación de componentes",
+            "fecha_inicio": None,
+            "fecha_fin_planificada": None,
+            "fecha_fin_real": None,
+            "estado": ActividadEstado.PENDIENTE,
+            "created_at": now,
+            "updated_at": now
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "proyecto_id": proyecto_id,
+            "tipo": EtapaProyectoTipo.POSTOPERATIVA,
+            "nombre": "Etapa Post-Operativa",
+            "orden": 3,
+            "descripcion": "Construcción de memoria técnica, liquidación y cierre del proyecto",
+            "fecha_inicio": None,
+            "fecha_fin_planificada": None,
+            "fecha_fin_real": None,
+            "estado": ActividadEstado.PENDIENTE,
+            "created_at": now,
+            "updated_at": now
+        }
+    ]
+    
+    await db.etapas_proyecto.insert_many(etapas_default)
+    
     # Remover _id de la respuesta
     proyecto.pop("_id", None)
     
-    return {"message": "Proyecto creado exitosamente", "proyecto": proyecto}
+    return {"message": "Proyecto creado exitosamente", "proyecto": proyecto, "etapas_creadas": 3}
 
 @api_router.get("/actualizacion/proyectos/{proyecto_id}")
 async def obtener_proyecto_actualizacion(
