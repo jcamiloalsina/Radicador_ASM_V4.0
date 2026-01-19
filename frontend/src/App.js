@@ -19,6 +19,7 @@ import Predios from "./pages/Predios";
 import VisorPredios from "./pages/VisorPredios";
 import Pendientes from "./pages/Pendientes";
 import PermissionsManagement from "./pages/PermissionsManagement";
+import ProyectosActualizacion from "./pages/ProyectosActualizacion";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
             <Route path="visor-predios" element={<VisorPredios />} />
             <Route path="pendientes" element={<Pendientes />} />
             <Route path="permisos" element={<PermissionsManagement />} />
+            <Route path="proyectos-actualizacion" element={<ProyectosActualizacion />} />
           </Route>
         </Routes>
       </BrowserRouter>
