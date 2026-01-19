@@ -36,11 +36,12 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  AlertTriangle,
   CalendarDays,
   ListTodo,
   Users,
-  X
+  X,
+  FileCheck,
+  CornerDownRight
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -58,13 +59,6 @@ const estadoConfig = {
   pausado: { label: 'Pausado', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Pause },
   completado: { label: 'Completado', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: CheckCircle },
   archivado: { label: 'Archivado', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: Archive }
-};
-
-const actividadEstadoConfig = {
-  pendiente: { label: 'Pendiente', color: 'bg-slate-100 text-slate-700' },
-  en_progreso: { label: 'En Progreso', color: 'bg-blue-100 text-blue-700' },
-  completada: { label: 'Completada', color: 'bg-emerald-100 text-emerald-700' },
-  bloqueada: { label: 'Bloqueada', color: 'bg-red-100 text-red-700' }
 };
 
 const prioridadConfig = {
@@ -95,7 +89,15 @@ export default function ProyectosActualizacion() {
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', municipio: '', descripcion: '' });
   const [municipiosDisponibles, setMunicipiosDisponibles] = useState([]);
   const [creando, setCreando] = useState(false);
-  const [nuevaActividad, setNuevaActividad] = useState({ nombre: '', descripcion: '', fase: '', fecha_fin_planificada: '', prioridad: 'media' });
+  const [nuevaActividad, setNuevaActividad] = useState({ 
+    nombre: '', 
+    descripcion: '', 
+    fase: '', 
+    fecha_inicio: '',
+    fecha_fin_planificada: '', 
+    prioridad: 'media',
+    actividad_padre_id: ''
+  });
   
   // Upload refs
   const baseGraficaRef = useRef(null);
@@ -161,6 +163,7 @@ export default function ProyectosActualizacion() {
       setEtapasAbiertas(abiertasInit);
     } catch (error) {
       console.error('Error fetching etapas:', error);
+      setEtapas([]);
     }
   };
 
@@ -256,6 +259,7 @@ export default function ProyectosActualizacion() {
       });
       toast.success('Proyecto eliminado');
       setShowEliminarModal(false);
+      setShowDetalleModal(false);
       setProyectoSeleccionado(null);
       fetchProyectos();
       fetchEstadisticas();
@@ -285,6 +289,7 @@ export default function ProyectosActualizacion() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProyectoSeleccionado(response.data);
+      fetchProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al cargar el archivo');
     } finally {
@@ -314,6 +319,7 @@ export default function ProyectosActualizacion() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProyectoSeleccionado(response.data);
+      fetchProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al cargar el archivo');
     } finally {
@@ -334,16 +340,27 @@ export default function ProyectosActualizacion() {
 
     try {
       const token = localStorage.getItem('token');
+      const dataToSend = {
+        nombre: nuevaActividad.nombre,
+        descripcion: nuevaActividad.descripcion || null,
+        fase: nuevaActividad.fase || null,
+        fecha_inicio: nuevaActividad.fecha_inicio || null,
+        fecha_fin_planificada: nuevaActividad.fecha_fin_planificada || null,
+        prioridad: nuevaActividad.prioridad,
+        actividad_padre_id: nuevaActividad.actividad_padre_id || null
+      };
+      
       await axios.post(
         `${API}/actualizacion/etapas/${etapaSeleccionada.id}/actividades`,
-        nuevaActividad,
+        dataToSend,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success('Actividad creada');
       setShowActividadModal(false);
-      setNuevaActividad({ nombre: '', descripcion: '', fase: '', fecha_fin_planificada: '', prioridad: 'media' });
+      setNuevaActividad({ nombre: '', descripcion: '', fase: '', fecha_inicio: '', fecha_fin_planificada: '', prioridad: 'media', actividad_padre_id: '' });
       fetchEtapas(proyectoSeleccionado.id);
     } catch (error) {
+      console.error('Error creating actividad:', error);
       toast.error(error.response?.data?.detail || 'Error al crear la actividad');
     }
   };
@@ -382,6 +399,42 @@ export default function ProyectosActualizacion() {
     setShowDetalleModal(true);
   };
 
+  // Obtener actividades principales (sin padre) de una etapa para el selector
+  const getActividadesPrincipales = (etapaId) => {
+    const etapa = etapas.find(e => e.id === etapaId);
+    if (!etapa) return [];
+    return (etapa.actividades || []).filter(a => !a.actividad_padre_id);
+  };
+
+  // Organizar actividades en jerarquía
+  const organizarActividadesJerarquicamente = (actividades) => {
+    const principales = actividades.filter(a => !a.actividad_padre_id);
+    const resultado = [];
+    
+    principales.forEach(principal => {
+      resultado.push({ ...principal, nivel: 0 });
+      // Buscar hijos
+      const hijos = actividades.filter(a => a.actividad_padre_id === principal.id);
+      hijos.forEach(hijo => {
+        resultado.push({ ...hijo, nivel: 1 });
+        // Buscar nietos
+        const nietos = actividades.filter(a => a.actividad_padre_id === hijo.id);
+        nietos.forEach(nieto => {
+          resultado.push({ ...nieto, nivel: 2 });
+        });
+      });
+    });
+    
+    // Agregar las que no tienen padre y no fueron incluidas
+    actividades.forEach(a => {
+      if (!resultado.find(r => r.id === a.id)) {
+        resultado.push({ ...a, nivel: 0 });
+      }
+    });
+    
+    return resultado;
+  };
+
   const proyectosFiltrados = proyectos.filter(p => 
     p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.municipio.toLowerCase().includes(searchTerm.toLowerCase())
@@ -397,6 +450,12 @@ export default function ProyectosActualizacion() {
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  const getFileName = (filePath) => {
+    if (!filePath) return null;
+    const parts = filePath.split('/');
+    return parts[parts.length - 1];
   };
 
   return (
@@ -588,12 +647,6 @@ export default function ProyectosActualizacion() {
                           {proyecto.creado_por_nombre}
                         </span>
                       </div>
-                      
-                      {proyecto.descripcion && (
-                        <p className="text-sm text-slate-600 mt-2 line-clamp-1">
-                          {proyecto.descripcion}
-                        </p>
-                      )}
                     </div>
                     
                     {/* Indicadores de archivos */}
@@ -618,13 +671,12 @@ export default function ProyectosActualizacion() {
                         variant="outline" 
                         size="sm"
                         onClick={() => abrirDetalleProyecto(proyecto)}
-                        data-testid={`ver-proyecto-${proyecto.id}`}
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Ver
                       </Button>
                       
-                      {canCreate && proyecto.estado !== 'archivado' && (
+                      {canCreate && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm">
@@ -644,17 +696,33 @@ export default function ProyectosActualizacion() {
                                 Reactivar
                               </DropdownMenuItem>
                             )}
+                            {proyecto.estado === 'completado' && (
+                              <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'activo')}>
+                                <Play className="w-4 h-4 mr-2" />
+                                Reactivar
+                              </DropdownMenuItem>
+                            )}
                             {['activo', 'pausado'].includes(proyecto.estado) && (
                               <DropdownMenuItem onClick={() => handleCambiarEstado(proyecto.id, 'completado')}>
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Marcar Completado
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleArchivar(proyecto.id)}>
-                              <Archive className="w-4 h-4 mr-2" />
-                              Archivar
-                            </DropdownMenuItem>
+                            {proyecto.estado !== 'archivado' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleArchivar(proyecto.id)}>
+                                  <Archive className="w-4 h-4 mr-2" />
+                                  Archivar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {proyecto.estado === 'archivado' && (
+                              <DropdownMenuItem onClick={() => handleRestaurar(proyecto.id)}>
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                Restaurar
+                              </DropdownMenuItem>
+                            )}
                             {canDelete && (
                               <>
                                 <DropdownMenuSeparator />
@@ -672,17 +740,6 @@ export default function ProyectosActualizacion() {
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
-                      
-                      {proyecto.estado === 'archivado' && canCreate && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleRestaurar(proyecto.id)}
-                        >
-                          <RotateCcw className="w-4 h-4 mr-1" />
-                          Restaurar
-                        </Button>
                       )}
                     </div>
                   </div>
@@ -738,9 +795,6 @@ export default function ProyectosActualizacion() {
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500">
-                Solo se muestran municipios sin proyectos activos o pausados
-              </p>
             </div>
             
             <div className="space-y-2">
@@ -764,23 +818,14 @@ export default function ProyectosActualizacion() {
               disabled={creando}
               className="bg-amber-600 hover:bg-amber-700"
             >
-              {creando ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Crear Proyecto
-                </>
-              )}
+              {creando ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              {creando ? 'Creando...' : 'Crear Proyecto'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Modal Detalle Proyecto - Expandido con Cronograma */}
+      {/* Modal Detalle Proyecto */}
       <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           {proyectoSeleccionado && (
@@ -840,6 +885,19 @@ export default function ProyectosActualizacion() {
                       <p className="text-slate-700">{proyectoSeleccionado.descripcion}</p>
                     </div>
                   )}
+
+                  {/* Botón eliminar en info */}
+                  {canDelete && (
+                    <div className="pt-4 border-t">
+                      <Button 
+                        variant="destructive"
+                        onClick={() => setShowEliminarModal(true)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar Proyecto
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
                 
                 {/* Tab Archivos */}
@@ -849,87 +907,109 @@ export default function ProyectosActualizacion() {
                   <div className="grid gap-3">
                     {/* Base Gráfica */}
                     <Card className={`${proyectoSeleccionado.base_grafica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Database className={`w-5 h-5 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
-                          <div>
-                            <p className="font-medium">Base Gráfica (GDB)</p>
-                            {proyectoSeleccionado.base_grafica_archivo ? (
-                              <p className="text-xs text-slate-500">
-                                Cargado: {formatDate(proyectoSeleccionado.base_grafica_cargado_en)}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-slate-400">Sin cargar</p>
-                            )}
-                          </div>
-                        </div>
-                        {proyectoSeleccionado.estado !== 'archivado' && canCreate && (
-                          <>
-                            <input
-                              type="file"
-                              ref={baseGraficaRef}
-                              accept=".zip"
-                              onChange={handleUploadBaseGrafica}
-                              className="hidden"
-                            />
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => baseGraficaRef.current?.click()}
-                              disabled={uploading.base_grafica}
-                            >
-                              {uploading.base_grafica ? (
-                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Database className={`w-5 h-5 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <div>
+                              <p className="font-medium">Base Gráfica (GDB)</p>
+                              {proyectoSeleccionado.base_grafica_archivo ? (
+                                <>
+                                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                    <FileCheck className="w-3 h-3" />
+                                    Archivo cargado
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {getFileName(proyectoSeleccionado.base_grafica_archivo)}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    Cargado: {formatDate(proyectoSeleccionado.base_grafica_cargado_en)}
+                                  </p>
+                                </>
                               ) : (
-                                <Upload className="w-4 h-4 mr-1" />
+                                <p className="text-xs text-slate-400">Sin cargar - Archivo ZIP con geodatabase</p>
                               )}
-                              {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
-                            </Button>
-                          </>
-                        )}
+                            </div>
+                          </div>
+                          {canCreate && (
+                            <>
+                              <input
+                                type="file"
+                                ref={baseGraficaRef}
+                                accept=".zip"
+                                onChange={handleUploadBaseGrafica}
+                                className="hidden"
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => baseGraficaRef.current?.click()}
+                                disabled={uploading.base_grafica}
+                              >
+                                {uploading.base_grafica ? (
+                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Upload className="w-4 h-4 mr-1" />
+                                )}
+                                {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar'}
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                     
-                    {/* Información Alfanumérica (R1/R2 unificado) */}
+                    {/* Información Alfanumérica */}
                     <Card className={`${proyectoSeleccionado.info_alfanumerica_archivo ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.info_alfanumerica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
-                          <div>
-                            <p className="font-medium">Información Alfanumérica (R1/R2)</p>
-                            {proyectoSeleccionado.info_alfanumerica_archivo ? (
-                              <p className="text-xs text-slate-500">
-                                Cargado: {formatDate(proyectoSeleccionado.info_alfanumerica_cargado_en)}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-slate-400">Sin cargar</p>
-                            )}
-                          </div>
-                        </div>
-                        {proyectoSeleccionado.estado !== 'archivado' && canCreate && (
-                          <>
-                            <input
-                              type="file"
-                              ref={infoAlfanumericaRef}
-                              accept=".xlsx,.xls"
-                              onChange={handleUploadInfoAlfanumerica}
-                              className="hidden"
-                            />
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => infoAlfanumericaRef.current?.click()}
-                              disabled={uploading.info_alfanumerica}
-                            >
-                              {uploading.info_alfanumerica ? (
-                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileSpreadsheet className={`w-5 h-5 ${proyectoSeleccionado.info_alfanumerica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <div>
+                              <p className="font-medium">Información Alfanumérica (R1/R2)</p>
+                              {proyectoSeleccionado.info_alfanumerica_archivo ? (
+                                <>
+                                  <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                    <FileCheck className="w-3 h-3" />
+                                    Archivo cargado
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {getFileName(proyectoSeleccionado.info_alfanumerica_archivo)}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    Cargado: {formatDate(proyectoSeleccionado.info_alfanumerica_cargado_en)}
+                                  </p>
+                                </>
                               ) : (
-                                <Upload className="w-4 h-4 mr-1" />
+                                <p className="text-xs text-slate-400">Sin cargar - Archivo Excel (.xlsx)</p>
                               )}
-                              {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
-                            </Button>
-                          </>
-                        )}
+                            </div>
+                          </div>
+                          {canCreate && (
+                            <>
+                              <input
+                                type="file"
+                                ref={infoAlfanumericaRef}
+                                accept=".xlsx,.xls"
+                                onChange={handleUploadInfoAlfanumerica}
+                                className="hidden"
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => infoAlfanumericaRef.current?.click()}
+                                disabled={uploading.info_alfanumerica}
+                              >
+                                {uploading.info_alfanumerica ? (
+                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Upload className="w-4 h-4 mr-1" />
+                                )}
+                                {proyectoSeleccionado.info_alfanumerica_archivo ? 'Reemplazar' : 'Cargar'}
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -942,129 +1022,153 @@ export default function ProyectosActualizacion() {
                   </div>
                   
                   {etapas.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500">
-                      Cargando etapas...
-                    </div>
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="p-6 text-center">
+                        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                        <p className="text-slate-700 font-medium">Este proyecto no tiene etapas</p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Los proyectos creados antes del sistema de cronograma no tienen etapas.
+                          Puede crear un nuevo proyecto para usar esta funcionalidad.
+                        </p>
+                      </CardContent>
+                    </Card>
                   ) : (
                     <div className="space-y-4">
-                      {etapas.map((etapa) => (
-                        <Card key={etapa.id} className="border-l-4 border-l-amber-500">
-                          <Collapsible 
-                            open={etapasAbiertas[etapa.id]} 
-                            onOpenChange={(open) => setEtapasAbiertas(prev => ({ ...prev, [etapa.id]: open }))}
-                          >
-                            <CardHeader className="pb-2">
-                              <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
-                                <div className="flex items-center gap-3">
-                                  {etapasAbiertas[etapa.id] ? (
-                                    <ChevronDown className="w-5 h-5 text-slate-400" />
-                                  ) : (
-                                    <ChevronRight className="w-5 h-5 text-slate-400" />
-                                  )}
-                                  <div>
-                                    <CardTitle className="text-base">{etapa.nombre}</CardTitle>
-                                    <p className="text-xs text-slate-500">{etapa.descripcion}</p>
+                      {etapas.map((etapa) => {
+                        const actividadesOrganizadas = organizarActividadesJerarquicamente(etapa.actividades || []);
+                        
+                        return (
+                          <Card key={etapa.id} className="border-l-4 border-l-amber-500">
+                            <Collapsible 
+                              open={etapasAbiertas[etapa.id]} 
+                              onOpenChange={(open) => setEtapasAbiertas(prev => ({ ...prev, [etapa.id]: open }))}
+                            >
+                              <CardHeader className="pb-2">
+                                <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
+                                  <div className="flex items-center gap-3">
+                                    {etapasAbiertas[etapa.id] ? (
+                                      <ChevronDown className="w-5 h-5 text-slate-400" />
+                                    ) : (
+                                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                                    )}
+                                    <div>
+                                      <CardTitle className="text-base">{etapa.nombre}</CardTitle>
+                                      <p className="text-xs text-slate-500">{etapa.descripcion}</p>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                  <div className="text-right">
-                                    <p className="text-xs text-slate-500">Progreso</p>
-                                    <p className="font-semibold text-amber-600">{etapa.progreso}%</p>
+                                  <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                      <p className="text-xs text-slate-500">Progreso</p>
+                                      <p className="font-semibold text-amber-600">{etapa.progreso || 0}%</p>
+                                    </div>
+                                    <Progress value={etapa.progreso || 0} className="w-24 h-2" />
                                   </div>
-                                  <Progress value={etapa.progreso} className="w-24 h-2" />
-                                </div>
-                              </CollapsibleTrigger>
-                            </CardHeader>
-                            
-                            <CollapsibleContent>
-                              <CardContent className="pt-0">
-                                {/* Actividades de la etapa */}
-                                <div className="space-y-2 mt-2">
-                                  {etapa.actividades?.length === 0 ? (
-                                    <p className="text-sm text-slate-400 text-center py-4">
-                                      No hay actividades en esta etapa
-                                    </p>
-                                  ) : (
-                                    etapa.actividades?.map((actividad) => (
-                                      <div 
-                                        key={actividad.id}
-                                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <ListTodo className={`w-4 h-4 ${prioridadConfig[actividad.prioridad]?.color || 'text-slate-400'}`} />
-                                          <div>
-                                            <div className="flex items-center gap-2">
-                                              <p className="font-medium text-sm">{actividad.nombre}</p>
-                                              {actividad.fase && (
-                                                <Badge variant="outline" className="text-xs">{actividad.fase}</Badge>
-                                              )}
+                                </CollapsibleTrigger>
+                              </CardHeader>
+                              
+                              <CollapsibleContent>
+                                <CardContent className="pt-0">
+                                  {/* Actividades */}
+                                  <div className="space-y-2 mt-2">
+                                    {actividadesOrganizadas.length === 0 ? (
+                                      <p className="text-sm text-slate-400 text-center py-4">
+                                        No hay actividades en esta etapa
+                                      </p>
+                                    ) : (
+                                      actividadesOrganizadas.map((actividad) => (
+                                        <div 
+                                          key={actividad.id}
+                                          className={`flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 ${actividad.nivel > 0 ? 'ml-' + (actividad.nivel * 6) : ''}`}
+                                          style={{ marginLeft: actividad.nivel * 24 }}
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            {actividad.nivel > 0 && (
+                                              <CornerDownRight className="w-4 h-4 text-slate-300" />
+                                            )}
+                                            <ListTodo className={`w-4 h-4 ${prioridadConfig[actividad.prioridad]?.color || 'text-slate-400'}`} />
+                                            <div>
+                                              <div className="flex items-center gap-2">
+                                                <p className="font-medium text-sm">{actividad.nombre}</p>
+                                                {actividad.fase && (
+                                                  <Badge variant="outline" className="text-xs">{actividad.fase}</Badge>
+                                                )}
+                                              </div>
+                                              <div className="flex gap-3 text-xs text-slate-500">
+                                                {actividad.fecha_inicio && (
+                                                  <span className="flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    Inicio: {formatDate(actividad.fecha_inicio)}
+                                                  </span>
+                                                )}
+                                                {actividad.fecha_fin_planificada && (
+                                                  <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    Vence: {formatDate(actividad.fecha_fin_planificada)}
+                                                  </span>
+                                                )}
+                                              </div>
                                             </div>
-                                            {actividad.fecha_fin_planificada && (
-                                              <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                Vence: {formatDate(actividad.fecha_fin_planificada)}
-                                              </p>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {actividad.responsables?.length > 0 && (
+                                              <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                <Users className="w-3 h-3" />
+                                                {actividad.responsables.length}
+                                              </div>
+                                            )}
+                                            <Select
+                                              value={actividad.estado}
+                                              onValueChange={(val) => handleActualizarActividad(actividad.id, { estado: val })}
+                                              disabled={!canCreate}
+                                            >
+                                              <SelectTrigger className="w-32 h-7 text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="pendiente">Pendiente</SelectItem>
+                                                <SelectItem value="en_progreso">En Progreso</SelectItem>
+                                                <SelectItem value="completada">Completada</SelectItem>
+                                                <SelectItem value="bloqueada">Bloqueada</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            {canCreate && (
+                                              <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => handleEliminarActividad(actividad.id)}
+                                                className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </Button>
                                             )}
                                           </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                          {actividad.responsables?.length > 0 && (
-                                            <div className="flex items-center gap-1 text-xs text-slate-500">
-                                              <Users className="w-3 h-3" />
-                                              {actividad.responsables.length}
-                                            </div>
-                                          )}
-                                          <Select
-                                            value={actividad.estado}
-                                            onValueChange={(val) => handleActualizarActividad(actividad.id, { estado: val })}
-                                            disabled={!canCreate}
-                                          >
-                                            <SelectTrigger className="w-32 h-7 text-xs">
-                                              <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              <SelectItem value="pendiente">Pendiente</SelectItem>
-                                              <SelectItem value="en_progreso">En Progreso</SelectItem>
-                                              <SelectItem value="completada">Completada</SelectItem>
-                                              <SelectItem value="bloqueada">Bloqueada</SelectItem>
-                                            </SelectContent>
-                                          </Select>
-                                          {canCreate && (
-                                            <Button 
-                                              variant="ghost" 
-                                              size="sm"
-                                              onClick={() => handleEliminarActividad(actividad.id)}
-                                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
-                                            >
-                                              <X className="w-4 h-4" />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))
+                                      ))
+                                    )}
+                                  </div>
+                                  
+                                  {/* Botón agregar actividad */}
+                                  {canCreate && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="mt-3 w-full border-dashed"
+                                      onClick={() => {
+                                        setEtapaSeleccionada(etapa);
+                                        setNuevaActividad({ nombre: '', descripcion: '', fase: '', fecha_inicio: '', fecha_fin_planificada: '', prioridad: 'media', actividad_padre_id: '' });
+                                        setShowActividadModal(true);
+                                      }}
+                                    >
+                                      <Plus className="w-4 h-4 mr-2" />
+                                      Agregar Actividad
+                                    </Button>
                                   )}
-                                </div>
-                                
-                                {/* Botón agregar actividad */}
-                                {canCreate && proyectoSeleccionado.estado !== 'archivado' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-3 w-full border-dashed"
-                                    onClick={() => {
-                                      setEtapaSeleccionada(etapa);
-                                      setShowActividadModal(true);
-                                    }}
-                                  >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Agregar Actividad
-                                  </Button>
-                                )}
-                              </CardContent>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </Card>
-                      ))}
+                                </CardContent>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </TabsContent>
@@ -1102,6 +1206,29 @@ export default function ProyectosActualizacion() {
                 onChange={(e) => setNuevaActividad(prev => ({ ...prev, nombre: e.target.value }))}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Actividad Padre (opcional)</Label>
+              <Select 
+                value={nuevaActividad.actividad_padre_id}
+                onValueChange={(value) => setNuevaActividad(prev => ({ ...prev, actividad_padre_id: value === 'ninguna' ? '' : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Ninguna - Es actividad principal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ninguna">Ninguna - Es actividad principal</SelectItem>
+                  {etapaSeleccionada && getActividadesPrincipales(etapaSeleccionada.id).map((act) => (
+                    <SelectItem key={act.id} value={act.id}>
+                      ↳ {act.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                Selecciona una actividad padre si esta es una sub-actividad
+              </p>
+            </div>
             
             <div className="space-y-2">
               <Label>Fase (opcional)</Label>
@@ -1124,29 +1251,38 @@ export default function ProyectosActualizacion() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Fecha Límite</Label>
+                <Label>Fecha Inicio (opcional)</Label>
+                <Input
+                  type="date"
+                  value={nuevaActividad.fecha_inicio}
+                  onChange={(e) => setNuevaActividad(prev => ({ ...prev, fecha_inicio: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha Límite (opcional)</Label>
                 <Input
                   type="date"
                   value={nuevaActividad.fecha_fin_planificada}
                   onChange={(e) => setNuevaActividad(prev => ({ ...prev, fecha_fin_planificada: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Prioridad</Label>
-                <Select
-                  value={nuevaActividad.prioridad}
-                  onValueChange={(val) => setNuevaActividad(prev => ({ ...prev, prioridad: val }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="baja">Baja</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Prioridad</Label>
+              <Select
+                value={nuevaActividad.prioridad}
+                onValueChange={(val) => setNuevaActividad(prev => ({ ...prev, prioridad: val }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="baja">Baja</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
@@ -1171,7 +1307,7 @@ export default function ProyectosActualizacion() {
               Eliminar Proyecto
             </DialogTitle>
             <DialogDescription>
-              Esta acción no se puede deshacer. Se eliminarán todos los archivos y datos asociados al proyecto.
+              Esta acción no se puede deshacer. Se eliminarán todos los archivos, etapas y actividades del proyecto.
             </DialogDescription>
           </DialogHeader>
           
