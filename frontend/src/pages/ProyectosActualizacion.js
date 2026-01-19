@@ -271,6 +271,43 @@ export default function ProyectosActualizacion() {
     }
   };
 
+  const handleVincularDatosExistentes = async () => {
+    if (!proyectoSeleccionado) return;
+    
+    setVinculandoDatos(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/vincular-datos-existentes`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success(response.data.message);
+      
+      // Actualizar proyecto seleccionado con los nuevos datos
+      setProyectoSeleccionado(prev => ({
+        ...prev,
+        datos_vinculados: true,
+        base_grafica_total_predios: response.data.estadisticas.geometrias_gdb,
+        info_alfanumerica_total_registros: response.data.estadisticas.predios_r1r2,
+        total_construcciones: response.data.estadisticas.construcciones
+      }));
+      
+      fetchProyectos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al vincular datos');
+    } finally {
+      setVinculandoDatos(false);
+    }
+  };
+
+  const handleAbrirVisorProyecto = () => {
+    if (!proyectoSeleccionado) return;
+    // Navegar al visor de predios con el municipio del proyecto
+    navigate(`/dashboard/visor?municipio=${encodeURIComponent(proyectoSeleccionado.municipio)}&proyecto=${proyectoSeleccionado.id}`);
+  };
+
   const handleUploadBaseGrafica = async (event) => {
     const file = event.target.files?.[0];
     if (!file || !proyectoSeleccionado) return;
