@@ -506,6 +506,68 @@ export default function DashboardLayout() {
           </DialogContent>
         </Dialog>
 
+        {/* Alerta Flotante de Cronograma para Coordinadores */}
+        {showAlertaFlotante && alertasCronograma.length > 0 && ['administrador', 'coordinador'].includes(user?.role) && (
+          <div className="fixed top-20 right-4 z-[9998] max-w-md animate-in slide-in-from-right">
+            <div className="bg-white rounded-lg shadow-xl border-l-4 border-amber-500 p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-900">Actividades Pendientes</h4>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Tienes <strong className="text-red-600">
+                        {alertasCronograma.filter(a => a.tipo_alerta === 'vencida').length} vencidas
+                      </strong> y <strong className="text-amber-600">
+                        {alertasCronograma.filter(a => a.tipo_alerta === 'urgente').length} urgentes
+                      </strong>
+                    </p>
+                    <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                      {alertasCronograma.slice(0, 3).map((alerta, idx) => (
+                        <div key={idx} className="text-xs bg-slate-50 p-2 rounded flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            alerta.tipo_alerta === 'vencida' ? 'bg-red-500' :
+                            alerta.tipo_alerta === 'urgente' ? 'bg-amber-500' : 'bg-blue-500'
+                          }`}></span>
+                          <span className="truncate">{alerta.actividad_nombre}</span>
+                          <span className="text-slate-400 flex-shrink-0">• {alerta.municipio}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setShowAlertaFlotante(false)}
+                      >
+                        Cerrar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="bg-amber-600 hover:bg-amber-700"
+                        onClick={() => {
+                          setShowAlertaFlotante(false);
+                          window.location.href = '/dashboard/proyectos-actualizacion';
+                        }}
+                      >
+                        Ver Proyectos
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowAlertaFlotante(false)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="h-16 border-b border-slate-200 bg-white flex items-center px-6 justify-between" data-testid="dashboard-header">
           <div className="flex items-center gap-4">
