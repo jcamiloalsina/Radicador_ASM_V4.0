@@ -10593,15 +10593,15 @@ async def restaurar_proyecto_actualizacion(
     
     return {"message": "Proyecto restaurado exitosamente"}
 
-@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-gdb")
-async def upload_gdb_proyecto_actualizacion(
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-base-grafica")
+async def upload_base_grafica_proyecto(
     proyecto_id: str,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Sube un archivo GDB (ZIP) para un proyecto de actualización"""
+    """Sube un archivo de Base Gráfica (ZIP con GDB) para un proyecto de actualización"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="No tiene permiso para cargar archivos GDB")
+        raise HTTPException(status_code=403, detail="No tiene permiso para cargar la Base Gráfica")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
@@ -10617,28 +10617,26 @@ async def upload_gdb_proyecto_actualizacion(
     proyecto_dir.mkdir(exist_ok=True)
     
     # Guardar archivo
-    gdb_path = proyecto_dir / f"gdb_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
+    gdb_path = proyecto_dir / f"base_grafica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
     
     try:
         with open(gdb_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
         
-        # TODO: Procesar el GDB (similar al módulo de conservación)
-        # Por ahora solo guardamos la referencia
-        
         await db.proyectos_actualizacion.update_one(
             {"id": proyecto_id},
             {"$set": {
-                "gdb_archivo": str(gdb_path),
-                "gdb_cargado_en": datetime.now(timezone.utc),
+                "base_grafica_archivo": str(gdb_path),
+                "base_grafica_cargado_en": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
         
         return {
-            "message": "Archivo GDB cargado exitosamente",
-            "archivo": str(gdb_path)
+            "message": "Base Gráfica cargada exitosamente",
+            "archivo": str(gdb_path),
+            "nombre_archivo": file.filename
         }
         
     except Exception as e:
@@ -10646,16 +10644,15 @@ async def upload_gdb_proyecto_actualizacion(
             gdb_path.unlink()
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
 
-@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-r1r2")
-async def upload_r1r2_proyecto_actualizacion(
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")
+async def upload_info_alfanumerica_proyecto(
     proyecto_id: str,
-    tipo: str = Form(...),  # "r1" o "r2"
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Sube un archivo R1 o R2 (Excel) para un proyecto de actualización"""
+    """Sube un archivo de Información Alfanumérica (R1/R2 Excel) para un proyecto de actualización"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="No tiene permiso para cargar archivos R1/R2")
+        raise HTTPException(status_code=403, detail="No tiene permiso para cargar Información Alfanumérica")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
@@ -10663,9 +10660,6 @@ async def upload_r1r2_proyecto_actualizacion(
     
     if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
         raise HTTPException(status_code=400, detail="No se pueden cargar archivos a proyectos archivados")
-    
-    if tipo not in ["r1", "r2"]:
-        raise HTTPException(status_code=400, detail="Tipo debe ser 'r1' o 'r2'")
     
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="El archivo debe ser un Excel (.xlsx o .xls)")
@@ -10675,36 +10669,383 @@ async def upload_r1r2_proyecto_actualizacion(
     
     # Guardar archivo
     ext = Path(file.filename).suffix
-    file_path = proyecto_dir / f"{tipo}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{ext}"
+    file_path = proyecto_dir / f"info_alfanumerica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{ext}"
     
     try:
         with open(file_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
         
-        # TODO: Procesar el Excel y cargar datos a MongoDB
-        # Por ahora solo guardamos la referencia
-        
-        update_fields = {
-            f"{tipo}_archivo": str(file_path),
-            f"{tipo}_cargado_en": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc)
-        }
-        
         await db.proyectos_actualizacion.update_one(
             {"id": proyecto_id},
-            {"$set": update_fields}
+            {"$set": {
+                "info_alfanumerica_archivo": str(file_path),
+                "info_alfanumerica_cargado_en": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }}
         )
         
         return {
-            "message": f"Archivo {tipo.upper()} cargado exitosamente",
-            "archivo": str(file_path)
+            "message": "Información Alfanumérica cargada exitosamente",
+            "archivo": str(file_path),
+            "nombre_archivo": file.filename
         }
         
     except Exception as e:
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
+
+
+# ===== ENDPOINTS DE CRONOGRAMA - ETAPAS =====
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/etapas")
+async def listar_etapas_proyecto(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista las etapas de un proyecto con sus actividades"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver las etapas")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    etapas = await db.etapas_proyecto.find({"proyecto_id": proyecto_id}, {"_id": 0}).sort("orden", 1).to_list(10)
+    
+    # Para cada etapa, obtener sus actividades
+    for etapa in etapas:
+        actividades = await db.actividades_proyecto.find(
+            {"etapa_id": etapa["id"]}, 
+            {"_id": 0}
+        ).sort("orden", 1).to_list(1000)
+        
+        # Obtener nombres de responsables
+        for act in actividades:
+            if act.get("responsables_ids"):
+                responsables = await db.users.find(
+                    {"id": {"$in": act["responsables_ids"]}},
+                    {"_id": 0, "id": 1, "full_name": 1}
+                ).to_list(100)
+                act["responsables"] = responsables
+            else:
+                act["responsables"] = []
+        
+        etapa["actividades"] = actividades
+        
+        # Calcular progreso de la etapa
+        total_actividades = len(actividades)
+        completadas = sum(1 for a in actividades if a.get("estado") == ActividadEstado.COMPLETADA)
+        etapa["progreso"] = round((completadas / total_actividades * 100) if total_actividades > 0 else 0)
+    
+    return {"etapas": etapas}
+
+@api_router.patch("/actualizacion/etapas/{etapa_id}")
+async def actualizar_etapa(
+    etapa_id: str,
+    update_data: EtapaProyectoUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza una etapa del proyecto"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden actualizar etapas")
+    
+    etapa = await db.etapas_proyecto.find_one({"id": etapa_id}, {"_id": 0})
+    if not etapa:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada")
+    
+    updates = {"updated_at": datetime.now(timezone.utc)}
+    
+    if update_data.nombre is not None:
+        updates["nombre"] = update_data.nombre.strip()
+    if update_data.fecha_inicio is not None:
+        updates["fecha_inicio"] = update_data.fecha_inicio
+    if update_data.fecha_fin_planificada is not None:
+        updates["fecha_fin_planificada"] = update_data.fecha_fin_planificada
+    if update_data.fecha_fin_real is not None:
+        updates["fecha_fin_real"] = update_data.fecha_fin_real
+    if update_data.estado is not None:
+        updates["estado"] = update_data.estado
+    
+    await db.etapas_proyecto.update_one({"id": etapa_id}, {"$set": updates})
+    
+    etapa_actualizada = await db.etapas_proyecto.find_one({"id": etapa_id}, {"_id": 0})
+    return {"message": "Etapa actualizada", "etapa": etapa_actualizada}
+
+
+# ===== ENDPOINTS DE CRONOGRAMA - ACTIVIDADES =====
+
+@api_router.post("/actualizacion/etapas/{etapa_id}/actividades")
+async def crear_actividad(
+    etapa_id: str,
+    actividad_data: ActividadCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crea una nueva actividad en una etapa"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden crear actividades")
+    
+    etapa = await db.etapas_proyecto.find_one({"id": etapa_id}, {"_id": 0})
+    if not etapa:
+        raise HTTPException(status_code=404, detail="Etapa no encontrada")
+    
+    # Obtener el orden máximo actual
+    ultima_actividad = await db.actividades_proyecto.find_one(
+        {"etapa_id": etapa_id},
+        {"_id": 0, "orden": 1},
+        sort=[("orden", -1)]
+    )
+    nuevo_orden = (ultima_actividad.get("orden", 0) if ultima_actividad else 0) + 1
+    
+    now = datetime.now(timezone.utc)
+    actividad_id = str(uuid.uuid4())
+    
+    actividad = {
+        "id": actividad_id,
+        "etapa_id": etapa_id,
+        "proyecto_id": etapa["proyecto_id"],
+        "nombre": actividad_data.nombre.strip(),
+        "descripcion": actividad_data.descripcion.strip() if actividad_data.descripcion else None,
+        "fase": actividad_data.fase.strip() if actividad_data.fase else None,
+        "orden": nuevo_orden,
+        "fecha_inicio": actividad_data.fecha_inicio,
+        "fecha_fin_planificada": actividad_data.fecha_fin_planificada,
+        "fecha_fin_real": None,
+        "estado": ActividadEstado.PENDIENTE,
+        "prioridad": actividad_data.prioridad or ActividadPrioridad.MEDIA,
+        "porcentaje_avance": 0,
+        "responsables_ids": actividad_data.responsables_ids or [],
+        "actividad_previa_id": actividad_data.actividad_previa_id,
+        "notas": None,
+        "creado_por": current_user["id"],
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.actividades_proyecto.insert_one(actividad)
+    actividad.pop("_id", None)
+    
+    return {"message": "Actividad creada", "actividad": actividad}
+
+@api_router.patch("/actualizacion/actividades/{actividad_id}")
+async def actualizar_actividad(
+    actividad_id: str,
+    update_data: ActividadUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza una actividad"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden actualizar actividades")
+    
+    actividad = await db.actividades_proyecto.find_one({"id": actividad_id}, {"_id": 0})
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    
+    updates = {"updated_at": datetime.now(timezone.utc)}
+    
+    if update_data.nombre is not None:
+        updates["nombre"] = update_data.nombre.strip()
+    if update_data.descripcion is not None:
+        updates["descripcion"] = update_data.descripcion.strip()
+    if update_data.fase is not None:
+        updates["fase"] = update_data.fase.strip()
+    if update_data.fecha_inicio is not None:
+        updates["fecha_inicio"] = update_data.fecha_inicio
+    if update_data.fecha_fin_planificada is not None:
+        updates["fecha_fin_planificada"] = update_data.fecha_fin_planificada
+    if update_data.fecha_fin_real is not None:
+        updates["fecha_fin_real"] = update_data.fecha_fin_real
+    if update_data.estado is not None:
+        updates["estado"] = update_data.estado
+    if update_data.prioridad is not None:
+        updates["prioridad"] = update_data.prioridad
+    if update_data.porcentaje_avance is not None:
+        updates["porcentaje_avance"] = min(100, max(0, update_data.porcentaje_avance))
+    if update_data.notas is not None:
+        updates["notas"] = update_data.notas
+    
+    await db.actividades_proyecto.update_one({"id": actividad_id}, {"$set": updates})
+    
+    actividad_actualizada = await db.actividades_proyecto.find_one({"id": actividad_id}, {"_id": 0})
+    return {"message": "Actividad actualizada", "actividad": actividad_actualizada}
+
+@api_router.delete("/actualizacion/actividades/{actividad_id}")
+async def eliminar_actividad(
+    actividad_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Elimina una actividad"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden eliminar actividades")
+    
+    actividad = await db.actividades_proyecto.find_one({"id": actividad_id}, {"_id": 0})
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    
+    await db.actividades_proyecto.delete_one({"id": actividad_id})
+    
+    return {"message": "Actividad eliminada"}
+
+@api_router.post("/actualizacion/actividades/{actividad_id}/asignar")
+async def asignar_responsable(
+    actividad_id: str,
+    user_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Asigna un responsable a una actividad"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden asignar responsables")
+    
+    actividad = await db.actividades_proyecto.find_one({"id": actividad_id}, {"_id": 0})
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    
+    usuario = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    responsables = actividad.get("responsables_ids", [])
+    if user_id not in responsables:
+        responsables.append(user_id)
+        await db.actividades_proyecto.update_one(
+            {"id": actividad_id},
+            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(timezone.utc)}}
+        )
+    
+    return {"message": f"Usuario {usuario['full_name']} asignado a la actividad"}
+
+@api_router.delete("/actualizacion/actividades/{actividad_id}/asignar/{user_id}")
+async def desasignar_responsable(
+    actividad_id: str,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Quita un responsable de una actividad"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden desasignar responsables")
+    
+    actividad = await db.actividades_proyecto.find_one({"id": actividad_id}, {"_id": 0})
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    
+    responsables = actividad.get("responsables_ids", [])
+    if user_id in responsables:
+        responsables.remove(user_id)
+        await db.actividades_proyecto.update_one(
+            {"id": actividad_id},
+            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(timezone.utc)}}
+        )
+    
+    return {"message": "Responsable removido de la actividad"}
+
+
+# ===== ENDPOINTS DE ALERTAS =====
+
+@api_router.get("/actualizacion/alertas-proximas")
+async def obtener_alertas_proximas(current_user: dict = Depends(get_current_user)):
+    """Obtiene las actividades próximas a vencer (7, 3, 1 día) para mostrar alertas"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver alertas")
+    
+    hoy = datetime.now(timezone.utc).date()
+    alertas = []
+    
+    # Obtener actividades pendientes o en progreso con fecha límite
+    actividades = await db.actividades_proyecto.find(
+        {
+            "estado": {"$in": [ActividadEstado.PENDIENTE, ActividadEstado.EN_PROGRESO]},
+            "fecha_fin_planificada": {"$ne": None}
+        },
+        {"_id": 0}
+    ).to_list(1000)
+    
+    for act in actividades:
+        fecha_fin_str = act.get("fecha_fin_planificada")
+        if not fecha_fin_str:
+            continue
+        
+        try:
+            # Parsear fecha (puede ser string o datetime)
+            if isinstance(fecha_fin_str, str):
+                fecha_fin = datetime.fromisoformat(fecha_fin_str.replace('Z', '+00:00')).date()
+            else:
+                fecha_fin = fecha_fin_str.date() if hasattr(fecha_fin_str, 'date') else fecha_fin_str
+            
+            dias_restantes = (fecha_fin - hoy).days
+            
+            if dias_restantes < 0:
+                # Vencida
+                alertas.append({
+                    "actividad_id": act["id"],
+                    "actividad_nombre": act["nombre"],
+                    "proyecto_id": act["proyecto_id"],
+                    "etapa_id": act["etapa_id"],
+                    "fecha_fin": str(fecha_fin),
+                    "dias_restantes": dias_restantes,
+                    "tipo_alerta": "vencida",
+                    "prioridad": "critica"
+                })
+            elif dias_restantes <= 1:
+                alertas.append({
+                    "actividad_id": act["id"],
+                    "actividad_nombre": act["nombre"],
+                    "proyecto_id": act["proyecto_id"],
+                    "etapa_id": act["etapa_id"],
+                    "fecha_fin": str(fecha_fin),
+                    "dias_restantes": dias_restantes,
+                    "tipo_alerta": "urgente",
+                    "prioridad": "alta"
+                })
+            elif dias_restantes <= 3:
+                alertas.append({
+                    "actividad_id": act["id"],
+                    "actividad_nombre": act["nombre"],
+                    "proyecto_id": act["proyecto_id"],
+                    "etapa_id": act["etapa_id"],
+                    "fecha_fin": str(fecha_fin),
+                    "dias_restantes": dias_restantes,
+                    "tipo_alerta": "proximo",
+                    "prioridad": "media"
+                })
+            elif dias_restantes <= 7:
+                alertas.append({
+                    "actividad_id": act["id"],
+                    "actividad_nombre": act["nombre"],
+                    "proyecto_id": act["proyecto_id"],
+                    "etapa_id": act["etapa_id"],
+                    "fecha_fin": str(fecha_fin),
+                    "dias_restantes": dias_restantes,
+                    "tipo_alerta": "recordatorio",
+                    "prioridad": "baja"
+                })
+        except Exception:
+            continue
+    
+    # Ordenar por días restantes (más urgentes primero)
+    alertas.sort(key=lambda x: x["dias_restantes"])
+    
+    # Obtener nombres de proyectos
+    proyecto_ids = list(set(a["proyecto_id"] for a in alertas))
+    if proyecto_ids:
+        proyectos = await db.proyectos_actualizacion.find(
+            {"id": {"$in": proyecto_ids}},
+            {"_id": 0, "id": 1, "nombre": 1, "municipio": 1}
+        ).to_list(100)
+        proyecto_map = {p["id"]: p for p in proyectos}
+        
+        for alerta in alertas:
+            proyecto = proyecto_map.get(alerta["proyecto_id"], {})
+            alerta["proyecto_nombre"] = proyecto.get("nombre", "")
+            alerta["municipio"] = proyecto.get("municipio", "")
+    
+    return {
+        "alertas": alertas,
+        "total": len(alertas),
+        "vencidas": sum(1 for a in alertas if a["tipo_alerta"] == "vencida"),
+        "urgentes": sum(1 for a in alertas if a["tipo_alerta"] == "urgente"),
+        "proximas": sum(1 for a in alertas if a["tipo_alerta"] == "proximo")
+    }
 
 @api_router.get("/actualizacion/municipios-disponibles")
 async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_current_user)):
