@@ -249,7 +249,8 @@ export default function PermissionsManagement() {
                         const labels = {
                           'upload_gdb': 'GDB (Base Gráfica)',
                           'import_r1r2': 'R1/R2 (Excel Catastral)',
-                          'approve_changes': 'Aprobar Cambios Predios'
+                          'approve_changes': 'Aprobar Cambios Predios',
+                          'acceso_actualizacion': 'Acceso a Actualización'
                         };
                         return labels[key] || perm.description;
                       };
