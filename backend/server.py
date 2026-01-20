@@ -10311,7 +10311,13 @@ async def listar_proyectos_actualizacion(
 @api_router.get("/actualizacion/proyectos/estadisticas")
 async def estadisticas_proyectos_actualizacion(current_user: dict = Depends(get_current_user)):
     """Obtiene estadísticas generales de proyectos de actualización"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+    # Admin y Coordinador siempre tienen acceso, Gestor necesita permiso acceso_actualizacion
+    tiene_acceso = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]
+    if not tiene_acceso and current_user['role'] == UserRole.GESTOR:
+        user_permissions = current_user.get('permissions', [])
+        tiene_acceso = Permission.ACCESO_ACTUALIZACION in user_permissions
+    
+    if not tiene_acceso:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver estadísticas")
     
     pipeline = [
