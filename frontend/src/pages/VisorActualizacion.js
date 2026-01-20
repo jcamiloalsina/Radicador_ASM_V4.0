@@ -1785,9 +1785,23 @@ export default function VisorActualizacion() {
                 </Tabs>
               )}
               
-              <DialogFooter className="flex gap-2 pt-4">
+              <DialogFooter className="flex flex-wrap gap-2 pt-4">
                 {!editMode ? (
                   <>
+                    {/* Botón Generar PDF - Solo si está visitado */}
+                    {(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'actualizado') && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleGenerarPdf}
+                        disabled={generandoPdf}
+                        className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                      >
+                        {generandoPdf ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />}
+                        Generar PDF
+                      </Button>
+                    )}
+                    
+                    {/* Botón Formato de Visita - Solo si NO está visitado */}
                     {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado' && (
                       <Button 
                         variant="outline" 
@@ -1799,6 +1813,7 @@ export default function VisorActualizacion() {
                         Formato de Visita
                       </Button>
                     )}
+                    
                     <Button 
                       onClick={() => {
                         cargarDatosParaEdicion(selectedPredio);
