@@ -2109,6 +2109,138 @@ export default function VisorActualizacion() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de Propuesta de Cambio */}
+      <Dialog open={showPropuestaModal} onOpenChange={setShowPropuestaModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitCompare className="w-5 h-5 text-emerald-600" />
+              Propuesta de Cambio
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedPredio && (
+            <div className="space-y-4">
+              {/* Código predial */}
+              <div className="bg-amber-50 p-3 rounded-lg">
+                <p className="text-xs text-amber-600 uppercase font-medium">Predio</p>
+                <p className="font-mono text-sm font-bold text-amber-800">
+                  {selectedPredio.codigo_predial || selectedPredio.numero_predial}
+                </p>
+              </div>
+              
+              {/* Comparativa de datos */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-slate-700 mb-2">Datos Existentes</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-slate-500">Dirección:</span> {selectedPredio.direccion || '-'}</div>
+                    <div><span className="text-slate-500">Destino:</span> {selectedPredio.destino_economico || '-'}</div>
+                    <div><span className="text-slate-500">Área Terreno:</span> {selectedPredio.area_terreno || '-'} m²</div>
+                    <div><span className="text-slate-500">Área Construida:</span> {selectedPredio.area_construida || '-'} m²</div>
+                    <div><span className="text-slate-500">Propietarios:</span> {selectedPredio.propietarios?.length || 0}</div>
+                  </div>
+                </div>
+                
+                <div className="bg-emerald-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-emerald-700 mb-2">Propuesta de Cambio</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-slate-500">Dirección:</span> {editData.direccion || '-'}</div>
+                    <div><span className="text-slate-500">Destino:</span> {editData.destino_economico || '-'}</div>
+                    <div><span className="text-slate-500">Área Terreno:</span> {editData.area_terreno || '-'} m²</div>
+                    <div><span className="text-slate-500">Área Construida:</span> {editData.area_construida || '-'} m²</div>
+                    <div><span className="text-slate-500">Propietarios:</span> {propietarios.filter(p => p.nombre).length}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Formulario de edición rápida */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold text-slate-700 mb-3">Modificar Datos Propuestos</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Dirección</Label>
+                    <Input
+                      value={editData.direccion}
+                      onChange={(e) => setEditData(prev => ({ ...prev, direccion: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Destino Económico</Label>
+                    <Select 
+                      value={editData.destino_economico} 
+                      onValueChange={(v) => setEditData(prev => ({ ...prev, destino_economico: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A">A - Habitacional</SelectItem>
+                        <SelectItem value="B">B - Industrial</SelectItem>
+                        <SelectItem value="C">C - Comercial</SelectItem>
+                        <SelectItem value="D">D - Agropecuario</SelectItem>
+                        <SelectItem value="I">I - Institucional</SelectItem>
+                        <SelectItem value="R">R - Lote urbanizado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Área Terreno (m²)</Label>
+                    <Input
+                      type="number"
+                      value={editData.area_terreno}
+                      onChange={(e) => setEditData(prev => ({ ...prev, area_terreno: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Área Construida (m²)</Label>
+                    <Input
+                      type="number"
+                      value={editData.area_construida}
+                      onChange={(e) => setEditData(prev => ({ ...prev, area_construida: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Justificación */}
+              <div>
+                <Label>Justificación del Cambio *</Label>
+                <Textarea
+                  value={propuestaData.justificacion}
+                  onChange={(e) => setPropuestaData(prev => ({ ...prev, justificacion: e.target.value }))}
+                  placeholder="Describa por qué propone estos cambios..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Esta propuesta será enviada al coordinador para su aprobación
+              </div>
+              
+              <DialogFooter className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPropuestaModal(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleCrearPropuesta}
+                  disabled={saving || !propuestaData.justificacion.trim()}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                  Enviar Propuesta
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
