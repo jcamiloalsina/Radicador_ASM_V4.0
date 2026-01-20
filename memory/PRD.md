@@ -183,6 +183,24 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - `/app/frontend/src/App.js` (MODIFICADO - ruta)
 - `/app/frontend/src/pages/DashboardLayout.js` (MODIFICADO - menú)
 
+### Sesión 20 Enero 2026 - Fix Bug "Reaparecidos" Lista Vacía
+**Bug corregido:**
+
+El dashboard de Conservación mostraba un badge de "1 reaparecido" para San Calixto, pero al hacer clic la lista de pendientes estaba vacía.
+
+**Causa raíz:** El decorador de ruta `@api_router.get("/predios/reapariciones/pendientes")` estaba **FALTANDO** en la función `get_reapariciones_pendientes()`. El endpoint nunca se registró en FastAPI.
+
+**Solución aplicada:** Agregado el decorador faltante en `server.py` línea 5097.
+
+**Verificación:**
+- API `GET /api/predios/reapariciones/conteo-por-municipio` → `{"San Calixto": 1}`
+- API `GET /api/predios/reapariciones/pendientes?municipio=San%20Calixto` → 1 reaparición encontrada
+- Código del predio reaparecido: `546700100000000250001000000000` (eliminado vig 2024, reaparece vig 2026)
+
+**Archivo modificado:** `/app/backend/server.py` línea 5097
+
+---
+
 ### Sesión 20 Enero 2026 - Fix Bug Geometría Incorrecta en Conservación
 **Bug corregido:**
 
