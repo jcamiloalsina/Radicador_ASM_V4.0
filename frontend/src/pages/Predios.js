@@ -2609,6 +2609,20 @@ export default function Predios() {
                     )}
                   </Button>
                 )}
+                {/* Botón de Subsanaciones - Para gestores y coordinadores */}
+                {user && ['gestor', 'coordinador', 'administrador'].includes(user.role) && subsanacionesConteo > 0 && (
+                  <Button 
+                    variant="outline" 
+                    className="border-orange-400 text-orange-700 hover:bg-orange-50 relative"
+                    onClick={() => setShowSubsanacionesDialog(true)}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Subsanaciones
+                    <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {subsanacionesConteo}
+                    </span>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
