@@ -10955,6 +10955,569 @@ async def actualizar_predio_proyecto(
     }
 
 
+# ==================== PROPUESTAS DE CAMBIO ====================
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/propuesta")
+async def crear_propuesta_cambio(
+    proyecto_id: str,
+    codigo_predial: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crea una propuesta de cambio para un predio (solo si está visitado)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear propuestas")
+    
+    # Buscar el predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Verificar que el predio esté visitado
+    if predio.get('estado_visita') not in ['visitado', 'actualizado']:
+        raise HTTPException(status_code=400, detail="El predio debe estar visitado antes de proponer cambios")
+    
+    # Crear propuesta de cambio
+    propuesta = {
+        "id": str(uuid.uuid4()),
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "datos_existentes": data.get('datos_existentes', {}),
+        "datos_propuestos": data.get('datos_propuestos', {}),
+        "justificacion": data.get('justificacion', ''),
+        "estado": "pendiente",  # pendiente, aprobada, rechazada
+        "creado_por": current_user.get('email'),
+        "creado_en": datetime.now(timezone.utc).isoformat(),
+        "revisado_por": None,
+        "revisado_en": None,
+        "comentario_revision": None
+    }
+    
+    await db.propuestas_cambio_actualizacion.insert_one(propuesta)
+    
+    # Agregar al historial del predio
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$push": {
+                "historial_cambios": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "usuario": current_user.get('email'),
+                    "accion": "propuesta_creada",
+                    "propuesta_id": propuesta["id"]
+                }
+            }
+        }
+    )
+    
+    return {
+        "message": "Propuesta de cambio creada exitosamente",
+        "propuesta_id": propuesta["id"]
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/propuestas")
+async def listar_propuestas_proyecto(
+    proyecto_id: str,
+    estado: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista todas las propuestas de cambio de un proyecto"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver propuestas")
+    
+    query = {"proyecto_id": proyecto_id}
+    if estado:
+        query["estado"] = estado
+    
+    propuestas = await db.propuestas_cambio_actualizacion.find(
+        query, {"_id": 0}
+    ).sort("creado_en", -1).to_list(1000)
+    
+    return {
+        "propuestas": propuestas,
+        "total": len(propuestas)
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/propuestas")
+async def listar_propuestas_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista las propuestas de cambio de un predio específico"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver propuestas")
+    
+    propuestas = await db.propuestas_cambio_actualizacion.find(
+        {"proyecto_id": proyecto_id, "codigo_predial": codigo_predial},
+        {"_id": 0}
+    ).sort("creado_en", -1).to_list(100)
+    
+    return {
+        "propuestas": propuestas,
+        "total": len(propuestas)
+    }
+
+
+@api_router.patch("/actualizacion/propuestas/{propuesta_id}/aprobar")
+async def aprobar_propuesta(
+    propuesta_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Aprueba una propuesta de cambio (solo coordinador/admin)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar propuestas")
+    
+    propuesta = await db.propuestas_cambio_actualizacion.find_one({"id": propuesta_id})
+    if not propuesta:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
+    
+    if propuesta.get('estado') != 'pendiente':
+        raise HTTPException(status_code=400, detail="La propuesta ya fue revisada")
+    
+    # Actualizar propuesta
+    await db.propuestas_cambio_actualizacion.update_one(
+        {"id": propuesta_id},
+        {
+            "$set": {
+                "estado": "aprobada",
+                "revisado_por": current_user.get('email'),
+                "revisado_en": datetime.now(timezone.utc).isoformat(),
+                "comentario_revision": data.get('comentario', '')
+            }
+        }
+    )
+    
+    # Aplicar los cambios propuestos al predio
+    datos_propuestos = propuesta.get('datos_propuestos', {})
+    if datos_propuestos:
+        await db.predios_actualizacion.update_one(
+            {
+                "proyecto_id": propuesta['proyecto_id'],
+                "$or": [
+                    {"codigo_predial": propuesta['codigo_predial']},
+                    {"numero_predial": propuesta['codigo_predial']}
+                ]
+            },
+            {
+                "$set": {
+                    **datos_propuestos,
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                "$push": {
+                    "historial_cambios": {
+                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "usuario": current_user.get('email'),
+                        "accion": "propuesta_aprobada",
+                        "propuesta_id": propuesta_id,
+                        "cambios_aplicados": datos_propuestos
+                    }
+                }
+            }
+        )
+    
+    return {"message": "Propuesta aprobada y cambios aplicados"}
+
+
+@api_router.patch("/actualizacion/propuestas/{propuesta_id}/rechazar")
+async def rechazar_propuesta(
+    propuesta_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Rechaza una propuesta de cambio (solo coordinador/admin)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden rechazar propuestas")
+    
+    propuesta = await db.propuestas_cambio_actualizacion.find_one({"id": propuesta_id})
+    if not propuesta:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
+    
+    if propuesta.get('estado') != 'pendiente':
+        raise HTTPException(status_code=400, detail="La propuesta ya fue revisada")
+    
+    await db.propuestas_cambio_actualizacion.update_one(
+        {"id": propuesta_id},
+        {
+            "$set": {
+                "estado": "rechazada",
+                "revisado_por": current_user.get('email'),
+                "revisado_en": datetime.now(timezone.utc).isoformat(),
+                "comentario_revision": data.get('comentario', '')
+            }
+        }
+    )
+    
+    # Agregar al historial del predio
+    await db.predios_actualizacion.update_one(
+        {
+            "proyecto_id": propuesta['proyecto_id'],
+            "$or": [
+                {"codigo_predial": propuesta['codigo_predial']},
+                {"numero_predial": propuesta['codigo_predial']}
+            ]
+        },
+        {
+            "$push": {
+                "historial_cambios": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "usuario": current_user.get('email'),
+                    "accion": "propuesta_rechazada",
+                    "propuesta_id": propuesta_id,
+                    "motivo": data.get('comentario', '')
+                }
+            }
+        }
+    )
+    
+    return {"message": "Propuesta rechazada"}
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/propuestas/aprobar-masivo")
+async def aprobar_propuestas_masivo(
+    proyecto_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Aprueba múltiples propuestas de cambio (solo coordinador/admin)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar propuestas")
+    
+    propuesta_ids = data.get('propuesta_ids', [])
+    if not propuesta_ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar IDs de propuestas")
+    
+    aprobadas = 0
+    errores = []
+    
+    for propuesta_id in propuesta_ids:
+        try:
+            propuesta = await db.propuestas_cambio_actualizacion.find_one({"id": propuesta_id, "proyecto_id": proyecto_id})
+            if not propuesta:
+                errores.append(f"{propuesta_id}: No encontrada")
+                continue
+            
+            if propuesta.get('estado') != 'pendiente':
+                errores.append(f"{propuesta_id}: Ya revisada")
+                continue
+            
+            # Actualizar propuesta
+            await db.propuestas_cambio_actualizacion.update_one(
+                {"id": propuesta_id},
+                {
+                    "$set": {
+                        "estado": "aprobada",
+                        "revisado_por": current_user.get('email'),
+                        "revisado_en": datetime.now(timezone.utc).isoformat(),
+                        "comentario_revision": data.get('comentario', 'Aprobación masiva')
+                    }
+                }
+            )
+            
+            # Aplicar cambios al predio
+            datos_propuestos = propuesta.get('datos_propuestos', {})
+            if datos_propuestos:
+                await db.predios_actualizacion.update_one(
+                    {
+                        "proyecto_id": propuesta['proyecto_id'],
+                        "$or": [
+                            {"codigo_predial": propuesta['codigo_predial']},
+                            {"numero_predial": propuesta['codigo_predial']}
+                        ]
+                    },
+                    {
+                        "$set": {
+                            **datos_propuestos,
+                            "updated_at": datetime.now(timezone.utc)
+                        },
+                        "$push": {
+                            "historial_cambios": {
+                                "fecha": datetime.now(timezone.utc).isoformat(),
+                                "usuario": current_user.get('email'),
+                                "accion": "propuesta_aprobada_masivo",
+                                "propuesta_id": propuesta_id
+                            }
+                        }
+                    }
+                )
+            
+            aprobadas += 1
+        except Exception as e:
+            errores.append(f"{propuesta_id}: {str(e)}")
+    
+    return {
+        "message": f"Aprobadas {aprobadas} de {len(propuesta_ids)} propuestas",
+        "aprobadas": aprobadas,
+        "errores": errores
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/historial")
+async def obtener_historial_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene el historial de cambios de un predio"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver el historial")
+    
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    }, {"_id": 0, "historial_cambios": 1, "codigo_predial": 1})
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    return {
+        "codigo_predial": predio.get('codigo_predial'),
+        "historial": predio.get('historial_cambios', [])
+    }
+
+
+# ==================== GENERACIÓN DE PDF INFORME DE VISITA ====================
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/generar-pdf")
+async def generar_pdf_informe_visita(
+    proyecto_id: str,
+    codigo_predial: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Genera el PDF del informe de visita de un predio"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para generar PDF")
+    
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+    from reportlab.lib.units import inch, cm
+    import io
+    
+    # Obtener proyecto
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Obtener predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    }, {"_id": 0})
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Crear PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=14,
+        alignment=1,  # Center
+        spaceAfter=12
+    )
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=11,
+        textColor=colors.darkblue,
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=9
+    )
+    
+    elements = []
+    
+    # Encabezado con logo (placeholder - en producción usar logo real)
+    header_data = [
+        [
+            Paragraph("<b>ASOMUNICIPIOS G</b><br/>Gestión y Soluciones Territoriales", normal_style),
+            Paragraph(f"<b>INFORME DE VISITA</b><br/>ACTUALIZACIÓN MUNICIPIO DE {proyecto.get('municipio', '').upper()}", title_style),
+            Paragraph(f"FO-FAC-PC01-02<br/>v1", normal_style)
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[2*inch, 4*inch, 1.5*inch])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Información Básica
+    elements.append(Paragraph("1. INFORMACIÓN BÁSICA", subtitle_style))
+    
+    info_basica = [
+        ["Departamento:", proyecto.get('departamento', 'Norte de Santander'), "Municipio:", proyecto.get('municipio', '')],
+        ["Código Predial:", predio.get('codigo_predial', ''), "Matrícula:", predio.get('matricula_inmobiliaria', '')],
+        ["Dirección:", predio.get('direccion', ''), "Destino Econ.:", predio.get('destino_economico', '')],
+        ["Área Terreno:", f"{predio.get('area_terreno', '')} m²", "Área Construida:", f"{predio.get('area_construida', '')} m²"],
+    ]
+    
+    info_table = Table(info_basica, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
+    info_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Propietarios
+    elements.append(Paragraph("2. INFORMACIÓN DE PROPIETARIOS", subtitle_style))
+    
+    propietarios = predio.get('propietarios', [])
+    if propietarios:
+        prop_data = [["#", "Nombre", "Tipo Doc.", "Documento", "Estado Civil"]]
+        for i, prop in enumerate(propietarios, 1):
+            prop_data.append([
+                str(i),
+                prop.get('nombre', ''),
+                prop.get('tipo_documento', ''),
+                prop.get('documento', ''),
+                prop.get('estado_civil', '')
+            ])
+        prop_table = Table(prop_data, colWidths=[0.4*inch, 3*inch, 0.8*inch, 1.5*inch, 1*inch])
+        prop_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ]))
+        elements.append(prop_table)
+    else:
+        elements.append(Paragraph("Sin información de propietarios", normal_style))
+    
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Datos de Notificación
+    datos_notif = predio.get('datos_notificacion', {})
+    if datos_notif:
+        elements.append(Paragraph("3. DATOS DE NOTIFICACIÓN", subtitle_style))
+        notif_data = [
+            ["Teléfono:", datos_notif.get('telefono', ''), "Correo:", datos_notif.get('correo', '')],
+            ["Dirección:", datos_notif.get('direccion', ''), "Autoriza notif.:", "Sí" if datos_notif.get('autoriza_notificacion') else "No"],
+        ]
+        notif_table = Table(notif_data, colWidths=[1.2*inch, 2.5*inch, 1.2*inch, 2.5*inch])
+        notif_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
+        ]))
+        elements.append(notif_table)
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Información de la Visita
+    visita = predio.get('visita', {})
+    elements.append(Paragraph("4. INFORMACIÓN DE LA VISITA", subtitle_style))
+    
+    visita_data = [
+        ["Fecha visita:", visita.get('fecha_visita', predio.get('visitado_en', '')[:10] if predio.get('visitado_en') else ''), 
+         "Hora:", visita.get('hora_visita', '')],
+        ["Persona que atiende:", visita.get('persona_atiende', ''), "Relación:", visita.get('relacion_predio', '')],
+        ["Estado predio:", visita.get('estado_predio', ''), "Acceso:", visita.get('acceso_predio', '')],
+        ["Servicios:", ", ".join(visita.get('servicios_publicos', [])), "", ""],
+    ]
+    visita_table = Table(visita_data, colWidths=[1.5*inch, 2.5*inch, 1*inch, 2.5*inch])
+    visita_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
+    ]))
+    elements.append(visita_table)
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Observaciones
+    elements.append(Paragraph("5. OBSERVACIONES", subtitle_style))
+    obs_text = predio.get('observaciones_campo', visita.get('observaciones', 'Sin observaciones'))
+    elements.append(Paragraph(obs_text, normal_style))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Firmas
+    elements.append(Paragraph("6. FIRMAS", subtitle_style))
+    
+    firma_data = [
+        ["FUNCIONARIO", "QUIEN ATENDIÓ LA VISITA"],
+        [Paragraph(f"Nombre: {visita.get('realizada_por', current_user.get('email', ''))}", normal_style),
+         Paragraph(f"Nombre: {visita.get('persona_atiende', '')}", normal_style)],
+        ["Firma: ____________________", "Firma: ____________________"],
+    ]
+    
+    # Si hay firma digital, mostrar indicador
+    if visita.get('firma_base64'):
+        firma_data[2][1] = "Firma: [FIRMA DIGITAL CAPTURADA]"
+    
+    firma_table = Table(firma_data, colWidths=[3.75*inch, 3.75*inch])
+    firma_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+    ]))
+    elements.append(firma_table)
+    
+    # Ubicación GPS si existe
+    if predio.get('ubicacion_gps'):
+        gps = predio['ubicacion_gps']
+        elements.append(Spacer(1, 0.2*inch))
+        elements.append(Paragraph(f"<i>Ubicación GPS: {gps.get('lat', '')}, {gps.get('lng', '')} (±{gps.get('accuracy', '')}m)</i>", normal_style))
+    
+    # Generar PDF
+    doc.build(elements)
+    
+    # Guardar PDF
+    pdf_content = buffer.getvalue()
+    buffer.close()
+    
+    # Guardar en disco
+    pdf_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id / "pdfs"
+    pdf_dir.mkdir(exist_ok=True)
+    pdf_filename = f"informe_visita_{codigo_predial}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf_path = pdf_dir / pdf_filename
+    
+    with open(pdf_path, 'wb') as f:
+        f.write(pdf_content)
+    
+    # Devolver como base64 para descarga
+    import base64
+    pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+    
+    return {
+        "message": "PDF generado exitosamente",
+        "filename": pdf_filename,
+        "pdf_base64": pdf_base64
+    }
+
+
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")
 async def upload_info_alfanumerica_proyecto(
     proyecto_id: str,
