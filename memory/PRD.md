@@ -201,6 +201,70 @@ El dashboard de Conservación mostraba un badge de "1 reaparecido" para San Cali
 
 ---
 
+### Sesión 20 Enero 2026 - Sistema de Subsanación de Reapariciones
+**Nueva funcionalidad completa implementada:**
+
+El sistema ahora soporta un flujo de trabajo completo para gestionar reapariciones rechazadas:
+
+1. ✅ **Flujo de Rechazo → Subsanación:**
+   - Al rechazar una reaparición, en lugar de eliminar el predio, se crea una solicitud de subsanación
+   - Se notifica al gestor por correo con el motivo del rechazo
+   - El predio permanece en el sistema hasta que se tome una decisión final
+
+2. ✅ **Gestión de Subsanaciones (Gestores):**
+   - Los gestores pueden ver sus subsanaciones pendientes
+   - Formulario para corregir datos (dirección, avalúo, áreas)
+   - Campo de justificación obligatorio explicando las correcciones
+   - Reenvío automático al coordinador para nueva revisión
+
+3. ✅ **Revisión de Subsanaciones (Coordinadores):**
+   - Lista de reapariciones reenviadas pendientes de revisión
+   - Historial completo de todos los intentos y decisiones
+   - Opciones: Aprobar definitivamente, Rechazar (nueva subsanación), Rechazar DEFINITIVO
+
+4. ✅ **Límite de Intentos:**
+   - Máximo 3 intentos de subsanación
+   - Después del 3er rechazo, se elimina definitivamente el predio
+   - Badge visual mostrando "Intento X/3"
+
+5. ✅ **Notificaciones por Correo:**
+   - Al gestor cuando se rechaza y requiere subsanación
+   - Al coordinador cuando el gestor reenvía la subsanación
+   - Al gestor cuando se aprueba o rechaza definitivamente
+
+6. ✅ **UI Completa:**
+   - Botón "Subsanaciones" con badge de conteo (visible cuando hay pendientes)
+   - Diálogo con tabs: "Por Subsanar" y "Reenviadas"
+   - Formulario de subsanación con campos editables
+   - Vista de historial desplegable
+
+**Nuevos Endpoints:**
+- `POST /api/predios/reapariciones/rechazar` (modificado)
+- `GET /api/predios/reapariciones/subsanaciones-pendientes`
+- `POST /api/predios/reapariciones/subsanar`
+- `GET /api/predios/reapariciones/reenviadas`
+- `POST /api/predios/reapariciones/aprobar-subsanacion`
+- `POST /api/predios/reapariciones/rechazar-subsanacion`
+
+**Nueva Colección MongoDB:** `reapariciones_subsanacion`
+
+**Archivos Modificados:**
+- `/app/backend/server.py` (nuevos endpoints)
+- `/app/frontend/src/pages/Predios.js` (nuevo componente SubsanacionesPendientes, botón, diálogo)
+
+---
+
+### Sesión 20 Enero 2026 - Fix Zonas Físicas en Conservación
+**Bug corregido:**
+
+Los campos "Zona Física" y "Zona Económica" en el formulario de edición de zonas físicas (R2) aparecían como dropdowns vacíos en lugar de campos de texto editables.
+
+**Solución:** Cambiados los componentes `<Select>` por `<Input type="text">` para permitir entrada libre de datos.
+
+**Archivo modificado:** `/app/frontend/src/pages/Predios.js` líneas 2899-2912
+
+---
+
 ### Sesión 20 Enero 2026 - Fix Bug Geometría Incorrecta en Conservación
 **Bug corregido:**
 
