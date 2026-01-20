@@ -456,12 +456,14 @@ export default function VisorActualizacion() {
       click: () => {
         setSelectedGeometry(feature);
         
+        // Buscar predio en datos R1/R2
         const predio = prediosR1R2.find(p => 
           p.codigo_predial === feature.properties?.codigo_predial ||
           p.numero_predial === feature.properties?.numero_predial
         );
         
         if (predio) {
+          // Si existe en R1/R2, usar esos datos
           setSelectedPredio(predio);
           setEditData({
             direccion: predio.direccion || '',
@@ -471,8 +473,30 @@ export default function VisorActualizacion() {
             observaciones_campo: predio.observaciones_campo || '',
             estado_visita: predio.estado_visita || 'pendiente'
           });
-          setShowPredioDetail(true);
+        } else {
+          // Si no existe en R1/R2, crear objeto básico desde la geometría
+          const predioBasico = {
+            codigo_predial: feature.properties?.codigo_predial || feature.properties?.numero_predial || 'Sin código',
+            numero_predial: feature.properties?.numero_predial || feature.properties?.codigo_predial || '',
+            direccion: feature.properties?.direccion || '',
+            destino_economico: feature.properties?.destino_economico || '',
+            area_terreno: feature.properties?.area_terreno || feature.properties?.AREA || '',
+            area_construida: feature.properties?.area_construida || '',
+            estado_visita: 'pendiente',
+            propietarios: []
+          };
+          setSelectedPredio(predioBasico);
+          setEditData({
+            direccion: predioBasico.direccion,
+            destino_economico: predioBasico.destino_economico,
+            area_terreno: predioBasico.area_terreno,
+            area_construida: predioBasico.area_construida,
+            observaciones_campo: '',
+            estado_visita: 'pendiente'
+          });
         }
+        setShowPredioDetail(true);
+        setEditMode(false);
       }
     });
     
