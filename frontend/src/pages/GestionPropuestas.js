@@ -35,14 +35,125 @@ import {
   X,
   Eye,
   RefreshCw,
-  Filter,
   CheckSquare,
   Square,
-  ArrowLeft
+  ArrowLeft,
+  Edit,
+  ArrowRight,
+  User,
+  MapPin,
+  Home,
+  DollarSign,
+  Ruler,
+  AlertCircle,
+  Send
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
+
+// Componente para mostrar un campo comparativo
+function CampoComparativo({ label, valorAnterior, valorNuevo, icon: Icon, tipo = 'texto' }) {
+  const cambio = valorAnterior !== valorNuevo;
+  
+  const formatValue = (val) => {
+    if (val === null || val === undefined || val === '') return '-';
+    if (tipo === 'moneda') return `$${Number(val).toLocaleString('es-CO')}`;
+    if (tipo === 'area') return `${Number(val).toLocaleString('es-CO')} m²`;
+    if (tipo === 'array') return Array.isArray(val) ? val.length : '0';
+    return String(val);
+  };
+  
+  return (
+    <div className={`grid grid-cols-[1fr,auto,1fr] gap-2 items-center p-3 rounded-lg ${cambio ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'}`}>
+      {/* Valor anterior */}
+      <div className="text-left">
+        <p className="text-xs text-slate-500 mb-1">Anterior</p>
+        <p className={`text-sm font-medium ${cambio ? 'text-red-700' : 'text-slate-700'}`}>
+          {formatValue(valorAnterior)}
+        </p>
+      </div>
+      
+      {/* Icono central */}
+      <div className="flex flex-col items-center">
+        {Icon && <Icon className="w-4 h-4 text-slate-400 mb-1" />}
+        <p className="text-[10px] font-medium text-slate-500 text-center whitespace-nowrap">{label}</p>
+        {cambio ? (
+          <ArrowRight className="w-4 h-4 text-amber-500 mt-1" />
+        ) : (
+          <span className="text-[10px] text-emerald-600 mt-1">=</span>
+        )}
+      </div>
+      
+      {/* Valor nuevo */}
+      <div className="text-right">
+        <p className="text-xs text-slate-500 mb-1">Propuesto</p>
+        <p className={`text-sm font-medium ${cambio ? 'text-emerald-700' : 'text-slate-700'}`}>
+          {formatValue(valorNuevo)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Componente para mostrar propietarios comparativos
+function PropietariosComparativos({ anteriores = [], nuevos = [] }) {
+  const maxLength = Math.max(anteriores.length, nuevos.length);
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-2">
+        <User className="w-4 h-4 text-slate-500" />
+        <span className="text-sm font-medium text-slate-700">Propietarios</span>
+        {anteriores.length !== nuevos.length && (
+          <Badge variant="outline" className="bg-amber-100 text-amber-700 text-xs">
+            {anteriores.length} → {nuevos.length}
+          </Badge>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        {/* Anteriores */}
+        <div className="bg-slate-50 p-3 rounded-lg">
+          <p className="text-xs text-slate-500 mb-2 font-medium">Anteriores ({anteriores.length})</p>
+          {anteriores.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">Sin propietarios</p>
+          ) : (
+            <div className="space-y-2">
+              {anteriores.map((p, i) => (
+                <div key={i} className="text-sm bg-white p-2 rounded border">
+                  <p className="font-medium text-slate-700">{p.nombre_propietario || p.nombre || '-'}</p>
+                  <p className="text-xs text-slate-500">
+                    {p.tipo_documento || 'CC'}: {p.numero_documento || '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Nuevos */}
+        <div className="bg-emerald-50 p-3 rounded-lg">
+          <p className="text-xs text-emerald-600 mb-2 font-medium">Propuestos ({nuevos.length})</p>
+          {nuevos.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">Sin propietarios</p>
+          ) : (
+            <div className="space-y-2">
+              {nuevos.map((p, i) => (
+                <div key={i} className="text-sm bg-white p-2 rounded border border-emerald-200">
+                  <p className="font-medium text-emerald-700">{p.nombre_propietario || p.nombre || '-'}</p>
+                  <p className="text-xs text-emerald-600">
+                    {p.tipo_documento || 'CC'}: {p.numero_documento || '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function GestionPropuestas() {
   const navigate = useNavigate();
@@ -57,6 +168,8 @@ export default function GestionPropuestas() {
   const [comentarioRevision, setComentarioRevision] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState([]);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [datosEditados, setDatosEditados] = useState({});
   
   // Cargar proyectos
   useEffect(() => {
@@ -107,14 +220,25 @@ export default function GestionPropuestas() {
     setProcesando(true);
     try {
       const token = localStorage.getItem('token');
+      const payload = { 
+        comentario: comentario || comentarioRevision || 'Aprobado'
+      };
+      
+      // Si hay datos editados, incluirlos
+      if (modoEdicion && Object.keys(datosEditados).length > 0) {
+        payload.datos_editados = datosEditados;
+      }
+      
       await axios.patch(
         `${API}/actualizacion/propuestas/${propuestaId}/aprobar`,
-        { comentario: comentario || comentarioRevision },
+        payload,
         { headers: { Authorization: `Bearer ${token}` }}
       );
       toast.success('Propuesta aprobada exitosamente');
       setShowDetalleModal(false);
       setComentarioRevision('');
+      setModoEdicion(false);
+      setDatosEditados({});
       fetchPropuestas();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al aprobar propuesta');
@@ -123,10 +247,10 @@ export default function GestionPropuestas() {
     }
   };
   
-  // Rechazar propuesta individual
+  // Rechazar propuesta individual (envía a subsanación)
   const handleRechazar = async (propuestaId, comentario = '') => {
     if (!comentarioRevision.trim() && !comentario) {
-      toast.error('Debe incluir un comentario para rechazar');
+      toast.error('Debe incluir un motivo de rechazo');
       return;
     }
     
@@ -138,7 +262,7 @@ export default function GestionPropuestas() {
         { comentario: comentario || comentarioRevision },
         { headers: { Authorization: `Bearer ${token}` }}
       );
-      toast.success('Propuesta rechazada');
+      toast.success('Propuesta rechazada - Enviada a subsanación del gestor');
       setShowDetalleModal(false);
       setComentarioRevision('');
       fetchPropuestas();
@@ -163,11 +287,11 @@ export default function GestionPropuestas() {
         `${API}/actualizacion/proyectos/${proyectoSeleccionado}/propuestas/aprobar-masivo`,
         { 
           propuesta_ids: seleccionadas,
-          comentario: 'Aprobación masiva'
+          comentario: 'Aprobación masiva por coordinador'
         },
         { headers: { Authorization: `Bearer ${token}` }}
       );
-      toast.success(response.data.message);
+      toast.success(`${response.data.aprobadas || seleccionadas.length} propuestas aprobadas`);
       setSeleccionadas([]);
       fetchPropuestas();
     } catch (error) {
@@ -199,7 +323,16 @@ export default function GestionPropuestas() {
   const verDetalle = (propuesta) => {
     setPropuestaDetalle(propuesta);
     setComentarioRevision('');
+    setModoEdicion(false);
+    // Inicializar datos editados con los propuestos
+    setDatosEditados(propuesta.datos_propuestos || {});
     setShowDetalleModal(true);
+  };
+  
+  // Activar modo edición
+  const activarEdicion = () => {
+    setModoEdicion(true);
+    setDatosEditados(propuestaDetalle.datos_propuestos || {});
   };
   
   // Verificar permisos
@@ -216,6 +349,8 @@ export default function GestionPropuestas() {
     );
   }
   
+  const proyectoActual = proyectos.find(p => p.id === proyectoSeleccionado);
+  
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -225,39 +360,50 @@ export default function GestionPropuestas() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Gestión de Propuestas</h1>
-            <p className="text-sm text-slate-500">Aprueba o rechaza propuestas de cambio de los gestores</p>
+            <h1 className="text-2xl font-bold text-slate-800">Gestión de Propuestas de Cambio</h1>
+            <p className="text-sm text-slate-500">
+              Módulo Actualización - Aprueba, edita o rechaza propuestas de los gestores de campo
+            </p>
           </div>
         </div>
+        
+        {filtroEstado === 'pendiente' && propuestas.length > 0 && (
+          <Badge variant="outline" className="bg-amber-100 text-amber-700 text-lg px-4 py-2">
+            {propuestas.length} pendientes
+          </Badge>
+        )}
       </div>
       
       {/* Filtros */}
-      <div className="bg-white rounded-lg border p-4 mb-6">
+      <div className="bg-white rounded-lg border p-4 mb-6 shadow-sm">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <Label>Proyecto</Label>
+            <Label className="text-slate-600">Proyecto de Actualización</Label>
             <Select value={proyectoSeleccionado || ''} onValueChange={setProyectoSeleccionado}>
-              <SelectTrigger>
+              <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Seleccionar proyecto" />
               </SelectTrigger>
               <SelectContent>
                 {proyectos.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nombre} - {p.municipio}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           
           <div className="w-48">
-            <Label>Estado</Label>
+            <Label className="text-slate-600">Estado</Label>
             <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-              <SelectTrigger>
+              <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pendiente">Pendientes</SelectItem>
-                <SelectItem value="aprobada">Aprobadas</SelectItem>
-                <SelectItem value="rechazada">Rechazadas</SelectItem>
+                <SelectItem value="pendiente">⏳ Pendientes</SelectItem>
+                <SelectItem value="aprobada">✅ Aprobadas</SelectItem>
+                <SelectItem value="rechazada">❌ Rechazadas</SelectItem>
+                <SelectItem value="subsanacion">🔄 En Subsanación</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -274,31 +420,43 @@ export default function GestionPropuestas() {
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {procesando ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Aprobar Seleccionadas ({seleccionadas.length})
+              Aprobar Masivo ({seleccionadas.length})
             </Button>
           )}
         </div>
       </div>
       
       {/* Tabla de propuestas */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-8 text-center">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-400" />
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
             <p className="text-slate-500 mt-2">Cargando propuestas...</p>
           </div>
         ) : propuestas.length === 0 ? (
-          <div className="p-8 text-center">
-            <GitCompare className="w-12 h-12 mx-auto text-slate-300 mb-2" />
-            <p className="text-slate-500">No hay propuestas {filtroEstado === 'pendiente' ? 'pendientes' : filtroEstado === 'aprobada' ? 'aprobadas' : 'rechazadas'}</p>
+          <div className="p-12 text-center">
+            <GitCompare className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+            <p className="text-slate-500 text-lg">
+              No hay propuestas {
+                filtroEstado === 'pendiente' ? 'pendientes' : 
+                filtroEstado === 'aprobada' ? 'aprobadas' : 
+                filtroEstado === 'subsanacion' ? 'en subsanación' :
+                'rechazadas'
+              }
+            </p>
+            {filtroEstado === 'pendiente' && (
+              <p className="text-sm text-slate-400 mt-2">
+                Las propuestas de cambio de los gestores aparecerán aquí
+              </p>
+            )}
           </div>
         ) : (
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-slate-50">
               <TableRow>
                 {filtroEstado === 'pendiente' && (
                   <TableHead className="w-12">
-                    <button onClick={toggleSeleccionarTodas} className="p-1">
+                    <button onClick={toggleSeleccionarTodas} className="p-1 hover:bg-slate-200 rounded">
                       {seleccionadas.length === propuestas.length ? (
                         <CheckSquare className="w-5 h-5 text-emerald-600" />
                       ) : (
@@ -308,8 +466,9 @@ export default function GestionPropuestas() {
                   </TableHead>
                 )}
                 <TableHead>Código Predial</TableHead>
+                <TableHead>Municipio</TableHead>
                 <TableHead>Justificación</TableHead>
-                <TableHead>Creado Por</TableHead>
+                <TableHead>Gestor</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -317,10 +476,10 @@ export default function GestionPropuestas() {
             </TableHeader>
             <TableBody>
               {propuestas.map((propuesta) => (
-                <TableRow key={propuesta.id}>
+                <TableRow key={propuesta.id} className="hover:bg-slate-50">
                   {filtroEstado === 'pendiente' && (
                     <TableCell>
-                      <button onClick={() => toggleSeleccion(propuesta.id)} className="p-1">
+                      <button onClick={() => toggleSeleccion(propuesta.id)} className="p-1 hover:bg-slate-200 rounded">
                         {seleccionadas.includes(propuesta.id) ? (
                           <CheckSquare className="w-5 h-5 text-emerald-600" />
                         ) : (
@@ -329,22 +488,31 @@ export default function GestionPropuestas() {
                       </button>
                     </TableCell>
                   )}
-                  <TableCell className="font-mono text-sm">{propuesta.codigo_predial}</TableCell>
-                  <TableCell className="max-w-xs truncate">{propuesta.justificacion}</TableCell>
-                  <TableCell>{propuesta.creado_por}</TableCell>
-                  <TableCell>{new Date(propuesta.creado_en).toLocaleDateString('es-CO')}</TableCell>
+                  <TableCell className="font-mono text-xs">{propuesta.codigo_predial}</TableCell>
+                  <TableCell className="text-sm">{propuesta.municipio || proyectoActual?.municipio || '-'}</TableCell>
+                  <TableCell className="max-w-xs">
+                    <p className="truncate text-sm text-slate-600">{propuesta.justificacion}</p>
+                  </TableCell>
+                  <TableCell className="text-sm">{propuesta.creado_por}</TableCell>
+                  <TableCell className="text-sm text-slate-500">
+                    {new Date(propuesta.creado_en).toLocaleDateString('es-CO')}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant={
-                      propuesta.estado === 'aprobada' ? 'secondary' :
-                      propuesta.estado === 'rechazada' ? 'destructive' :
-                      'outline'
-                    }>
-                      {propuesta.estado}
+                    <Badge 
+                      variant="outline"
+                      className={
+                        propuesta.estado === 'aprobada' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                        propuesta.estado === 'rechazada' ? 'bg-red-100 text-red-700 border-red-300' :
+                        propuesta.estado === 'subsanacion' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                        'bg-amber-100 text-amber-700 border-amber-300'
+                      }
+                    >
+                      {propuesta.estado === 'subsanacion' ? 'En subsanación' : propuesta.estado}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => verDetalle(propuesta)}>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => verDetalle(propuesta)} title="Ver detalle">
                         <Eye className="w-4 h-4" />
                       </Button>
                       {propuesta.estado === 'pendiente' && (
@@ -352,16 +520,18 @@ export default function GestionPropuestas() {
                           <Button 
                             size="sm" 
                             variant="ghost" 
-                            className="text-emerald-600 hover:text-emerald-700"
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                             onClick={() => handleAprobar(propuesta.id)}
+                            title="Aprobar"
                           >
                             <Check className="w-4 h-4" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="ghost" 
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => verDetalle(propuesta)}
+                            title="Rechazar"
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -376,74 +546,210 @@ export default function GestionPropuestas() {
         )}
       </div>
       
-      {/* Modal de detalle */}
-      <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      {/* Modal de detalle con vista comparativa */}
+      <Dialog open={showDetalleModal} onOpenChange={(open) => {
+        setShowDetalleModal(open);
+        if (!open) {
+          setModoEdicion(false);
+          setDatosEditados({});
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <GitCompare className="w-5 h-5 text-emerald-600" />
-              Detalle de Propuesta
+              Propuesta de Modificación de Campo
+              {propuestaDetalle?.estado === 'pendiente' && (
+                <Badge className="ml-2 bg-amber-100 text-amber-700">Pendiente de revisión</Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           
           {propuestaDetalle && (
-            <div className="space-y-4">
-              {/* Código predial */}
-              <div className="bg-amber-50 p-3 rounded-lg">
-                <p className="text-xs text-amber-600 uppercase font-medium">Predio</p>
-                <p className="font-mono text-sm font-bold text-amber-800">
-                  {propuestaDetalle.codigo_predial}
-                </p>
+            <div className="space-y-5">
+              {/* Header del predio */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-emerald-600 uppercase font-semibold tracking-wider">Código Predial</p>
+                    <p className="font-mono text-lg font-bold text-emerald-800">
+                      {propuestaDetalle.codigo_predial}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Municipio</p>
+                    <p className="font-medium text-slate-700">{propuestaDetalle.municipio || proyectoActual?.municipio}</p>
+                  </div>
+                </div>
               </div>
               
-              {/* Comparativa */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-slate-700 mb-3">Datos Existentes</h4>
-                  <div className="space-y-2 text-sm">
-                    {Object.entries(propuestaDetalle.datos_existentes || {}).map(([key, val]) => (
-                      <div key={key}>
-                        <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}:</span>
-                        <span className="ml-2">{Array.isArray(val) ? `${val.length} registros` : val || '-'}</span>
-                      </div>
-                    ))}
+              {/* Vista comparativa de campos */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4" />
+                    Comparación de Datos
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-400 rounded-full"></span> Modificado</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 bg-slate-300 rounded-full"></span> Sin cambios</span>
                   </div>
                 </div>
                 
-                <div className="bg-emerald-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-emerald-700 mb-3">Propuesta de Cambio</h4>
-                  <div className="space-y-2 text-sm">
-                    {Object.entries(propuestaDetalle.datos_propuestos || {}).map(([key, val]) => (
-                      <div key={key}>
-                        <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}:</span>
-                        <span className="ml-2">{Array.isArray(val) ? `${val.length} registros` : val || '-'}</span>
-                      </div>
-                    ))}
+                {/* Campos principales */}
+                <div className="grid gap-2">
+                  <CampoComparativo 
+                    label="Dirección"
+                    icon={MapPin}
+                    valorAnterior={propuestaDetalle.datos_existentes?.direccion}
+                    valorNuevo={modoEdicion ? datosEditados.direccion : propuestaDetalle.datos_propuestos?.direccion}
+                  />
+                  <CampoComparativo 
+                    label="Destino Económico"
+                    icon={Home}
+                    valorAnterior={propuestaDetalle.datos_existentes?.destino_economico}
+                    valorNuevo={modoEdicion ? datosEditados.destino_economico : propuestaDetalle.datos_propuestos?.destino_economico}
+                  />
+                  <CampoComparativo 
+                    label="Área Terreno"
+                    icon={Ruler}
+                    tipo="area"
+                    valorAnterior={propuestaDetalle.datos_existentes?.area_terreno}
+                    valorNuevo={modoEdicion ? datosEditados.area_terreno : propuestaDetalle.datos_propuestos?.area_terreno}
+                  />
+                  <CampoComparativo 
+                    label="Área Construida"
+                    icon={Ruler}
+                    tipo="area"
+                    valorAnterior={propuestaDetalle.datos_existentes?.area_construida}
+                    valorNuevo={modoEdicion ? datosEditados.area_construida : propuestaDetalle.datos_propuestos?.area_construida}
+                  />
+                  <CampoComparativo 
+                    label="Avalúo"
+                    icon={DollarSign}
+                    tipo="moneda"
+                    valorAnterior={propuestaDetalle.datos_existentes?.avaluo}
+                    valorNuevo={modoEdicion ? datosEditados.avaluo : propuestaDetalle.datos_propuestos?.avaluo}
+                  />
+                  <CampoComparativo 
+                    label="Matrícula"
+                    valorAnterior={propuestaDetalle.datos_existentes?.matricula}
+                    valorNuevo={modoEdicion ? datosEditados.matricula : propuestaDetalle.datos_propuestos?.matricula}
+                  />
+                  <CampoComparativo 
+                    label="Estrato"
+                    valorAnterior={propuestaDetalle.datos_existentes?.estrato}
+                    valorNuevo={modoEdicion ? datosEditados.estrato : propuestaDetalle.datos_propuestos?.estrato}
+                  />
+                </div>
+                
+                {/* Propietarios */}
+                <PropietariosComparativos 
+                  anteriores={propuestaDetalle.datos_existentes?.propietarios || []}
+                  nuevos={modoEdicion ? (datosEditados.propietarios || []) : (propuestaDetalle.datos_propuestos?.propietarios || [])}
+                />
+              </div>
+              
+              {/* Formulario de edición (si está activo) */}
+              {modoEdicion && propuestaDetalle.estado === 'pendiente' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-700 mb-3 flex items-center gap-2">
+                    <Edit className="w-4 h-4" />
+                    Editar datos antes de aprobar
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Dirección</Label>
+                      <Input 
+                        value={datosEditados.direccion || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, direccion: e.target.value.toUpperCase()})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Destino Económico</Label>
+                      <Select 
+                        value={datosEditados.destino_economico || ''} 
+                        onValueChange={(v) => setDatosEditados({...datosEditados, destino_economico: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A">A - Habitacional</SelectItem>
+                          <SelectItem value="B">B - Industrial</SelectItem>
+                          <SelectItem value="C">C - Comercial</SelectItem>
+                          <SelectItem value="D">D - Agropecuario</SelectItem>
+                          <SelectItem value="I">I - Institucional</SelectItem>
+                          <SelectItem value="R">R - Lote urbanizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Área Terreno (m²)</Label>
+                      <Input 
+                        type="number" 
+                        value={datosEditados.area_terreno || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, area_terreno: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Área Construida (m²)</Label>
+                      <Input 
+                        type="number" 
+                        value={datosEditados.area_construida || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, area_construida: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Avalúo</Label>
+                      <Input 
+                        type="number" 
+                        value={datosEditados.avaluo || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, avaluo: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                      <Input 
+                        value={datosEditados.matricula || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, matricula: e.target.value})}
+                      />
+                    </div>
                   </div>
+                </div>
+              )}
+              
+              {/* Justificación del gestor */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <Label className="text-slate-600 text-sm">Justificación del Gestor</Label>
+                <p className="mt-2 text-sm text-slate-700 italic">"{propuestaDetalle.justificacion}"</p>
+                <div className="flex justify-between mt-3 text-xs text-slate-500">
+                  <span>Enviado por: <strong>{propuestaDetalle.creado_por}</strong></span>
+                  <span>{new Date(propuestaDetalle.creado_en).toLocaleString('es-CO')}</span>
                 </div>
               </div>
               
-              {/* Justificación */}
-              <div>
-                <Label className="text-slate-600">Justificación del Cambio</Label>
-                <p className="mt-1 p-3 bg-slate-50 rounded text-sm">{propuestaDetalle.justificacion}</p>
-              </div>
-              
-              {/* Info de creación */}
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>Creado por: {propuestaDetalle.creado_por}</span>
-                <span>{new Date(propuestaDetalle.creado_en).toLocaleString('es-CO')}</span>
-              </div>
-              
-              {/* Si está revisada, mostrar info */}
+              {/* Si ya fue revisada */}
               {propuestaDetalle.estado !== 'pendiente' && (
-                <div className={`p-3 rounded-lg ${propuestaDetalle.estado === 'aprobada' ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                  <p className="text-sm font-medium">
-                    {propuestaDetalle.estado === 'aprobada' ? '✓ Aprobada' : '✗ Rechazada'} por {propuestaDetalle.revisado_por}
+                <div className={`p-4 rounded-lg ${
+                  propuestaDetalle.estado === 'aprobada' ? 'bg-emerald-50 border border-emerald-200' : 
+                  propuestaDetalle.estado === 'subsanacion' ? 'bg-orange-50 border border-orange-200' :
+                  'bg-red-50 border border-red-200'
+                }`}>
+                  <p className="font-medium flex items-center gap-2">
+                    {propuestaDetalle.estado === 'aprobada' && <Check className="w-4 h-4 text-emerald-600" />}
+                    {propuestaDetalle.estado === 'rechazada' && <X className="w-4 h-4 text-red-600" />}
+                    {propuestaDetalle.estado === 'subsanacion' && <Send className="w-4 h-4 text-orange-600" />}
+                    {propuestaDetalle.estado === 'aprobada' ? 'Aprobada' : 
+                     propuestaDetalle.estado === 'subsanacion' ? 'Enviada a subsanación del gestor' : 'Rechazada'} 
+                    por {propuestaDetalle.revisado_por}
                   </p>
                   {propuestaDetalle.comentario_revision && (
-                    <p className="text-sm mt-1 italic">{propuestaDetalle.comentario_revision}</p>
+                    <p className="text-sm mt-2 italic">"{propuestaDetalle.comentario_revision}"</p>
                   )}
+                  <p className="text-xs text-slate-500 mt-2">
+                    {new Date(propuestaDetalle.revisado_en).toLocaleString('es-CO')}
+                  </p>
                 </div>
               )}
               
@@ -451,32 +757,53 @@ export default function GestionPropuestas() {
               {propuestaDetalle.estado === 'pendiente' && (
                 <>
                   <div>
-                    <Label>Comentario (requerido para rechazar)</Label>
+                    <Label className="text-slate-600">Comentario de Revisión {!modoEdicion && '(requerido para rechazar)'}</Label>
                     <Textarea
                       value={comentarioRevision}
                       onChange={(e) => setComentarioRevision(e.target.value)}
-                      placeholder="Escriba un comentario..."
+                      placeholder="Escriba un comentario sobre su decisión..."
                       rows={2}
+                      className="mt-1"
                     />
                   </div>
                   
-                  <DialogFooter className="flex gap-2">
+                  <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>
+                      Al <strong>rechazar</strong>, la propuesta se enviará al gestor para su subsanación.
+                      Al <strong>aprobar</strong>, los cambios se aplicarán al predio.
+                    </span>
+                  </div>
+                  
+                  <DialogFooter className="flex gap-2 pt-2">
+                    {!modoEdicion && (
+                      <Button 
+                        variant="outline" 
+                        onClick={activarEdicion}
+                        className="border-blue-400 text-blue-700 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar antes de aprobar
+                      </Button>
+                    )}
+                    
                     <Button 
                       variant="outline" 
                       onClick={() => handleRechazar(propuestaDetalle.id)}
                       disabled={procesando || !comentarioRevision.trim()}
-                      className="flex-1 border-red-500 text-red-700 hover:bg-red-50"
+                      className="flex-1 border-red-400 text-red-700 hover:bg-red-50"
                     >
                       {procesando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
                       Rechazar
                     </Button>
+                    
                     <Button 
                       onClick={() => handleAprobar(propuestaDetalle.id)}
                       disabled={procesando}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                     >
                       {procesando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                      Aprobar
+                      {modoEdicion ? 'Aprobar con cambios' : 'Aprobar'}
                     </Button>
                   </DialogFooter>
                 </>
