@@ -245,6 +245,10 @@ export default function DashboardLayout() {
     if (canAccessActualizacion) {
       actualizacionItems.push({ path: '/dashboard/proyectos-actualizacion', label: 'Proyectos', icon: FolderKanban });
     }
+    // Gestión de Propuestas solo para coordinadores/admin
+    if (isCoordAdmin) {
+      actualizacionItems.push({ path: '/dashboard/gestion-propuestas', label: 'Gestión Propuestas', icon: GitCompare });
+    }
 
     const adminItems = [];
     if (canManageUsers) {
