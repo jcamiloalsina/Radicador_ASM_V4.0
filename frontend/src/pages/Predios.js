@@ -1462,6 +1462,7 @@ export default function Predios() {
     fetchPrediosStats();
     fetchCambiosStats();
     fetchReaparicionesConteo();
+    fetchSubsanacionesConteo();
     fetchGdbStats();
     fetchGestoresDisponibles();
   }, []);
