@@ -5234,7 +5234,7 @@ async def rechazar_reaparicion(
     justificacion: str = Form(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Rechaza la reaparición de un predio eliminado - el predio será eliminado de la vigencia actual"""
+    """Rechaza la reaparición - Envía a subsanación al gestor que la solicitó"""
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
         raise HTTPException(status_code=403, detail="Solo coordinadores pueden rechazar reapariciones")
     
@@ -5247,7 +5247,7 @@ async def rechazar_reaparicion(
     if not eliminado:
         raise HTTPException(status_code=404, detail="Predio no encontrado en la lista de eliminados")
     
-    # Obtener el predio actual antes de eliminarlo
+    # Obtener el predio actual
     predio_actual = await db.predios.find_one({
         "codigo_predial_nacional": codigo_predial,
         "municipio": municipio
@@ -5256,35 +5256,484 @@ async def rechazar_reaparicion(
     if not predio_actual:
         raise HTTPException(status_code=404, detail="No se encontró el predio reaparecido")
     
-    # Registrar rechazo
-    rechazo = {
+    # Buscar si existe una solicitud previa de este predio para saber quién la hizo
+    solicitud_previa = await db.predios_reapariciones_solicitudes.find_one({
+        "codigo_predial_nacional": codigo_predial,
+        "municipio": municipio
+    }, sort=[("fecha_solicitud", -1)])
+    
+    gestor_id = solicitud_previa.get("solicitado_por") if solicitud_previa else None
+    gestor_nombre = solicitud_previa.get("solicitado_por_nombre") if solicitud_previa else "Sistema"
+    gestor_email = None
+    
+    # Obtener email del gestor si existe
+    if gestor_id:
+        gestor = await db.users.find_one({"id": gestor_id})
+        if gestor:
+            gestor_email = gestor.get("email")
+    
+    # Crear registro de subsanación pendiente
+    subsanacion_id = str(uuid.uuid4())
+    subsanacion = {
+        "id": subsanacion_id,
+        "codigo_predial_nacional": codigo_predial,
+        "municipio": municipio,
+        "vigencia_eliminacion": eliminado.get("vigencia_eliminacion"),
+        "vigencia_reaparicion": predio_actual.get("vigencia"),
+        "estado": "pendiente_subsanacion",
+        "motivo_rechazo": justificacion,
+        "rechazado_por": current_user['id'],
+        "rechazado_por_nombre": current_user['full_name'],
+        "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+        "gestor_asignado": gestor_id,
+        "gestor_nombre": gestor_nombre,
+        "intentos": 1,
+        "historial": [{
+            "accion": "rechazado",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user['full_name'],
+            "motivo": justificacion
+        }],
+        "datos_predio": {
+            "direccion": predio_actual.get("direccion", ""),
+            "propietarios": predio_actual.get("propietarios", []),
+            "avaluo": predio_actual.get("avaluo", 0),
+            "area_terreno": predio_actual.get("area_terreno", 0),
+            "area_construida": predio_actual.get("area_construida", 0)
+        }
+    }
+    
+    await db.reapariciones_subsanacion.insert_one(subsanacion)
+    
+    # Registrar también en historial de decisiones
+    decision = {
         "id": str(uuid.uuid4()),
         "codigo_predial_nacional": codigo_predial,
         "municipio": municipio,
         "vigencia_eliminacion": eliminado.get("vigencia_eliminacion"),
         "vigencia_reaparicion": predio_actual.get("vigencia"),
-        "estado": "rechazado",
+        "estado": "enviado_subsanacion",
         "justificacion": justificacion,
         "rechazado_por": current_user['id'],
         "rechazado_por_nombre": current_user['full_name'],
-        "fecha_rechazo": datetime.now(timezone.utc).isoformat()
+        "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+        "subsanacion_id": subsanacion_id
     }
+    await db.predios_reapariciones_aprobadas.insert_one(decision)
     
-    await db.predios_reapariciones_aprobadas.insert_one(rechazo)
+    # Enviar notificación por correo al gestor
+    if gestor_email:
+        try:
+            asunto = f"[Asomunicipios] Reaparición Rechazada - Requiere Subsanación"
+            cuerpo = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2 style="color: #dc2626;">Reaparición Rechazada - Requiere Subsanación</h2>
+                <p>Estimado(a) {gestor_nombre},</p>
+                <p>La solicitud de reaparición del siguiente predio ha sido rechazada y requiere subsanación:</p>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p><strong>Código Predial:</strong> {codigo_predial}</p>
+                    <p><strong>Municipio:</strong> {municipio}</p>
+                    <p><strong>Dirección:</strong> {predio_actual.get('direccion', 'N/A')}</p>
+                </div>
+                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #dc2626;">
+                    <p><strong>Motivo del Rechazo:</strong></p>
+                    <p>{justificacion}</p>
+                    <p><strong>Rechazado por:</strong> {current_user['full_name']}</p>
+                </div>
+                <p style="margin-top: 20px;">Por favor, ingrese al sistema para revisar y subsanar la información del predio.</p>
+                <p>Una vez corregida la información, podrá reenviar la solicitud para su aprobación.</p>
+                <hr style="margin: 20px 0;">
+                <p style="color: #666; font-size: 12px;">Este es un mensaje automático del Sistema de Gestión Catastral de Asomunicipios.</p>
+            </body>
+            </html>
+            """
+            await enviar_email(gestor_email, asunto, cuerpo)
+        except Exception as e:
+            print(f"Error enviando notificación de subsanación: {e}")
     
     # Remover _id antes de retornar
-    rechazo.pop("_id", None)
-    
-    # Eliminar el predio de la vigencia actual
-    await db.predios.delete_one({
-        "codigo_predial_nacional": codigo_predial,
-        "municipio": municipio,
-        "vigencia": predio_actual.get("vigencia")
-    })
+    subsanacion.pop("_id", None)
     
     return {
-        "message": f"Reaparición del predio {codigo_predial} RECHAZADA - Predio eliminado de vigencia {predio_actual.get('vigencia')}",
-        "rechazo": rechazo
+        "message": f"Reaparición del predio {codigo_predial} enviada a SUBSANACIÓN",
+        "subsanacion": subsanacion,
+        "notificacion_enviada": gestor_email is not None
+    }
+
+
+@api_router.get("/predios/reapariciones/subsanaciones-pendientes")
+async def get_subsanaciones_pendientes(
+    municipio: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las reapariciones pendientes de subsanación para el gestor actual"""
+    query = {"estado": "pendiente_subsanacion"}
+    
+    # Si es gestor, solo ver las asignadas a él
+    if current_user['role'] == UserRole.GESTOR:
+        query["gestor_asignado"] = current_user['id']
+    elif current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver subsanaciones")
+    
+    if municipio:
+        query["municipio"] = municipio
+    
+    subsanaciones = await db.reapariciones_subsanacion.find(query, {"_id": 0}).sort("fecha_rechazo", -1).to_list(500)
+    
+    return {
+        "total": len(subsanaciones),
+        "subsanaciones": subsanaciones
+    }
+
+
+@api_router.post("/predios/reapariciones/subsanar")
+async def subsanar_reaparicion(
+    subsanacion_id: str = Form(...),
+    justificacion_subsanacion: str = Form(...),
+    direccion: Optional[str] = Form(None),
+    avaluo: Optional[float] = Form(None),
+    area_terreno: Optional[float] = Form(None),
+    area_construida: Optional[float] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """El gestor subsana y reenvía la reaparición para aprobación"""
+    if current_user['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para subsanar reapariciones")
+    
+    # Buscar la subsanación
+    subsanacion = await db.reapariciones_subsanacion.find_one({"id": subsanacion_id})
+    if not subsanacion:
+        raise HTTPException(status_code=404, detail="Subsanación no encontrada")
+    
+    # Verificar que esté pendiente
+    if subsanacion.get("estado") != "pendiente_subsanacion":
+        raise HTTPException(status_code=400, detail="Esta subsanación ya fue procesada")
+    
+    # Si es gestor, verificar que esté asignada a él
+    if current_user['role'] == UserRole.GESTOR and subsanacion.get("gestor_asignado") != current_user['id']:
+        raise HTTPException(status_code=403, detail="Esta subsanación no está asignada a usted")
+    
+    codigo_predial = subsanacion["codigo_predial_nacional"]
+    municipio = subsanacion["municipio"]
+    
+    # Actualizar datos del predio si se proporcionaron
+    update_predio = {}
+    if direccion:
+        update_predio["direccion"] = direccion
+    if avaluo is not None:
+        update_predio["avaluo"] = avaluo
+    if area_terreno is not None:
+        update_predio["area_terreno"] = area_terreno
+    if area_construida is not None:
+        update_predio["area_construida"] = area_construida
+    
+    if update_predio:
+        await db.predios.update_one(
+            {"codigo_predial_nacional": codigo_predial, "municipio": municipio},
+            {"$set": update_predio}
+        )
+    
+    # Agregar al historial
+    historial_entry = {
+        "accion": "subsanado_reenviado",
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "usuario": current_user['full_name'],
+        "justificacion": justificacion_subsanacion,
+        "cambios_realizados": update_predio if update_predio else "Sin cambios en datos"
+    }
+    
+    # Actualizar subsanación a "reenviado"
+    await db.reapariciones_subsanacion.update_one(
+        {"id": subsanacion_id},
+        {
+            "$set": {
+                "estado": "reenviado",
+                "fecha_subsanacion": datetime.now(timezone.utc).isoformat(),
+                "subsanado_por": current_user['id'],
+                "subsanado_por_nombre": current_user['full_name'],
+                "justificacion_subsanacion": justificacion_subsanacion
+            },
+            "$inc": {"intentos": 1},
+            "$push": {"historial": historial_entry}
+        }
+    )
+    
+    # Notificar al coordinador que rechazó
+    coordinador = await db.users.find_one({"id": subsanacion.get("rechazado_por")})
+    if coordinador and coordinador.get("email"):
+        try:
+            asunto = f"[Asomunicipios] Reaparición Subsanada - Pendiente de Revisión"
+            cuerpo = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2 style="color: #059669;">Reaparición Subsanada - Requiere Nueva Revisión</h2>
+                <p>El gestor {current_user['full_name']} ha subsanado la siguiente reaparición:</p>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                    <p><strong>Código Predial:</strong> {codigo_predial}</p>
+                    <p><strong>Municipio:</strong> {municipio}</p>
+                    <p><strong>Intento #:</strong> {subsanacion.get('intentos', 1) + 1}</p>
+                </div>
+                <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">
+                    <p><strong>Justificación de Subsanación:</strong></p>
+                    <p>{justificacion_subsanacion}</p>
+                </div>
+                <p style="margin-top: 20px;">Por favor, ingrese al sistema para revisar y aprobar/rechazar nuevamente.</p>
+            </body>
+            </html>
+            """
+            await enviar_email(coordinador["email"], asunto, cuerpo)
+        except Exception as e:
+            print(f"Error enviando notificación al coordinador: {e}")
+    
+    return {
+        "message": f"Reaparición subsanada y reenviada para aprobación",
+        "codigo_predial": codigo_predial,
+        "intentos": subsanacion.get("intentos", 1) + 1
+    }
+
+
+@api_router.get("/predios/reapariciones/reenviadas")
+async def get_reapariciones_reenviadas(
+    municipio: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las reapariciones reenviadas pendientes de revisión (para coordinadores)"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden ver reapariciones reenviadas")
+    
+    query = {"estado": "reenviado"}
+    if municipio:
+        query["municipio"] = municipio
+    
+    reenviadas = await db.reapariciones_subsanacion.find(query, {"_id": 0}).sort("fecha_subsanacion", -1).to_list(500)
+    
+    return {
+        "total": len(reenviadas),
+        "reenviadas": reenviadas
+    }
+
+
+@api_router.post("/predios/reapariciones/aprobar-subsanacion")
+async def aprobar_subsanacion(
+    subsanacion_id: str = Form(...),
+    justificacion: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Aprueba una reaparición subsanada - El predio permanece en la vigencia actual"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar subsanaciones")
+    
+    subsanacion = await db.reapariciones_subsanacion.find_one({"id": subsanacion_id})
+    if not subsanacion:
+        raise HTTPException(status_code=404, detail="Subsanación no encontrada")
+    
+    if subsanacion.get("estado") != "reenviado":
+        raise HTTPException(status_code=400, detail="Esta subsanación no está pendiente de revisión")
+    
+    codigo_predial = subsanacion["codigo_predial_nacional"]
+    municipio = subsanacion["municipio"]
+    
+    # Actualizar subsanación a aprobada
+    historial_entry = {
+        "accion": "aprobado_final",
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "usuario": current_user['full_name'],
+        "justificacion": justificacion
+    }
+    
+    await db.reapariciones_subsanacion.update_one(
+        {"id": subsanacion_id},
+        {
+            "$set": {
+                "estado": "aprobado",
+                "fecha_aprobacion_final": datetime.now(timezone.utc).isoformat(),
+                "aprobado_por": current_user['id'],
+                "aprobado_por_nombre": current_user['full_name'],
+                "justificacion_aprobacion": justificacion
+            },
+            "$push": {"historial": historial_entry}
+        }
+    )
+    
+    # Registrar aprobación definitiva
+    aprobacion = {
+        "id": str(uuid.uuid4()),
+        "codigo_predial_nacional": codigo_predial,
+        "municipio": municipio,
+        "vigencia_eliminacion": subsanacion.get("vigencia_eliminacion"),
+        "vigencia_reaparicion": subsanacion.get("vigencia_reaparicion"),
+        "estado": "aprobado",
+        "justificacion": justificacion,
+        "aprobado_por": current_user['id'],
+        "aprobado_por_nombre": current_user['full_name'],
+        "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+        "subsanacion_id": subsanacion_id,
+        "intentos_totales": subsanacion.get("intentos", 1) + 1
+    }
+    await db.predios_reapariciones_aprobadas.insert_one(aprobacion)
+    
+    # Eliminar de predios_eliminados
+    await db.predios_eliminados.delete_one({
+        "codigo_predial_nacional": codigo_predial,
+        "municipio": municipio
+    })
+    
+    # Notificar al gestor
+    if subsanacion.get("gestor_asignado"):
+        gestor = await db.users.find_one({"id": subsanacion["gestor_asignado"]})
+        if gestor and gestor.get("email"):
+            try:
+                asunto = f"[Asomunicipios] Reaparición APROBADA"
+                cuerpo = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif;">
+                    <h2 style="color: #059669;">✓ Reaparición Aprobada</h2>
+                    <p>La reaparición del predio ha sido APROBADA:</p>
+                    <div style="background: #ecfdf5; padding: 15px; border-radius: 8px;">
+                        <p><strong>Código Predial:</strong> {codigo_predial}</p>
+                        <p><strong>Municipio:</strong> {municipio}</p>
+                        <p><strong>Aprobado por:</strong> {current_user['full_name']}</p>
+                    </div>
+                </body>
+                </html>
+                """
+                await enviar_email(gestor["email"], asunto, cuerpo)
+            except Exception as e:
+                print(f"Error enviando notificación: {e}")
+    
+    return {
+        "message": f"Reaparición del predio {codigo_predial} APROBADA definitivamente",
+        "codigo_predial": codigo_predial
+    }
+
+
+@api_router.post("/predios/reapariciones/rechazar-subsanacion")
+async def rechazar_subsanacion_nuevamente(
+    subsanacion_id: str = Form(...),
+    justificacion: str = Form(...),
+    rechazo_definitivo: bool = Form(False),
+    current_user: dict = Depends(get_current_user)
+):
+    """Rechaza nuevamente una subsanación - Puede ser definitivo o permitir otro intento"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden rechazar subsanaciones")
+    
+    subsanacion = await db.reapariciones_subsanacion.find_one({"id": subsanacion_id})
+    if not subsanacion:
+        raise HTTPException(status_code=404, detail="Subsanación no encontrada")
+    
+    if subsanacion.get("estado") != "reenviado":
+        raise HTTPException(status_code=400, detail="Esta subsanación no está pendiente de revisión")
+    
+    codigo_predial = subsanacion["codigo_predial_nacional"]
+    municipio = subsanacion["municipio"]
+    intentos = subsanacion.get("intentos", 1)
+    
+    if rechazo_definitivo or intentos >= 3:
+        # Rechazo definitivo - eliminar el predio
+        historial_entry = {
+            "accion": "rechazado_definitivo",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user['full_name'],
+            "justificacion": justificacion
+        }
+        
+        await db.reapariciones_subsanacion.update_one(
+            {"id": subsanacion_id},
+            {
+                "$set": {
+                    "estado": "rechazado_definitivo",
+                    "fecha_rechazo_final": datetime.now(timezone.utc).isoformat(),
+                    "rechazado_final_por": current_user['id'],
+                    "rechazado_final_por_nombre": current_user['full_name'],
+                    "justificacion_rechazo_final": justificacion
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        # Registrar rechazo definitivo
+        rechazo = {
+            "id": str(uuid.uuid4()),
+            "codigo_predial_nacional": codigo_predial,
+            "municipio": municipio,
+            "estado": "rechazado_definitivo",
+            "justificacion": justificacion,
+            "rechazado_por": current_user['id'],
+            "rechazado_por_nombre": current_user['full_name'],
+            "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+            "intentos_totales": intentos + 1
+        }
+        await db.predios_reapariciones_aprobadas.insert_one(rechazo)
+        
+        # Eliminar el predio de la vigencia actual
+        predio = await db.predios.find_one({
+            "codigo_predial_nacional": codigo_predial,
+            "municipio": municipio
+        })
+        if predio:
+            await db.predios.delete_one({
+                "codigo_predial_nacional": codigo_predial,
+                "municipio": municipio,
+                "vigencia": predio.get("vigencia")
+            })
+        
+        mensaje = f"Reaparición RECHAZADA DEFINITIVAMENTE - Predio eliminado"
+    else:
+        # Permitir otro intento de subsanación
+        historial_entry = {
+            "accion": "rechazado_nueva_subsanacion",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user['full_name'],
+            "justificacion": justificacion
+        }
+        
+        await db.reapariciones_subsanacion.update_one(
+            {"id": subsanacion_id},
+            {
+                "$set": {
+                    "estado": "pendiente_subsanacion",
+                    "motivo_rechazo": justificacion,
+                    "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+                    "rechazado_por": current_user['id'],
+                    "rechazado_por_nombre": current_user['full_name']
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        mensaje = f"Reaparición rechazada - Enviada nuevamente a subsanación (Intento {intentos + 1}/3)"
+    
+    # Notificar al gestor
+    if subsanacion.get("gestor_asignado"):
+        gestor = await db.users.find_one({"id": subsanacion["gestor_asignado"]})
+        if gestor and gestor.get("email"):
+            try:
+                estado_msg = "RECHAZADA DEFINITIVAMENTE" if rechazo_definitivo or intentos >= 3 else "requiere nueva subsanación"
+                asunto = f"[Asomunicipios] Reaparición {estado_msg}"
+                cuerpo = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif;">
+                    <h2 style="color: #dc2626;">Reaparición {estado_msg}</h2>
+                    <div style="background: #fef2f2; padding: 15px; border-radius: 8px;">
+                        <p><strong>Código Predial:</strong> {codigo_predial}</p>
+                        <p><strong>Municipio:</strong> {municipio}</p>
+                        <p><strong>Motivo:</strong> {justificacion}</p>
+                        <p><strong>Intento:</strong> {intentos + 1}/3</p>
+                    </div>
+                    {"<p>El predio ha sido eliminado del sistema.</p>" if rechazo_definitivo or intentos >= 3 else "<p>Por favor, revise y subsane nuevamente.</p>"}
+                </body>
+                </html>
+                """
+                await enviar_email(gestor["email"], asunto, cuerpo)
+            except Exception as e:
+                print(f"Error enviando notificación: {e}")
+    
+    return {
+        "message": mensaje,
+        "codigo_predial": codigo_predial,
+        "rechazo_definitivo": rechazo_definitivo or intentos >= 3
     }
 
 
