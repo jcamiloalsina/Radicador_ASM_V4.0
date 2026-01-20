@@ -11553,7 +11553,7 @@ async def rechazar_propuesta(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Rechaza una propuesta de cambio (solo coordinador/admin)"""
+    """Rechaza una propuesta de cambio y la envía a subsanación del gestor"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo coordinadores pueden rechazar propuestas")
     
@@ -11561,18 +11561,35 @@ async def rechazar_propuesta(
     if not propuesta:
         raise HTTPException(status_code=404, detail="Propuesta no encontrada")
     
-    if propuesta.get('estado') != 'pendiente':
+    if propuesta.get('estado') not in ['pendiente', 'reenviada']:
         raise HTTPException(status_code=400, detail="La propuesta ya fue revisada")
+    
+    intentos = propuesta.get('intentos_subsanacion', 0) + 1
+    es_rechazo_definitivo = intentos >= 3
+    
+    # Actualizar propuesta
+    update_data = {
+        "estado": "rechazada_definitiva" if es_rechazo_definitivo else "subsanacion",
+        "revisado_por": current_user.get('email'),
+        "revisado_en": datetime.now(timezone.utc).isoformat(),
+        "comentario_revision": data.get('comentario', ''),
+        "intentos_subsanacion": intentos
+    }
+    
+    # Agregar al historial de la propuesta
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "accion": "rechazado_definitivo" if es_rechazo_definitivo else "rechazado_subsanacion",
+        "usuario": current_user.get('email'),
+        "comentario": data.get('comentario', ''),
+        "intento": intentos
+    }
     
     await db.propuestas_cambio_actualizacion.update_one(
         {"id": propuesta_id},
         {
-            "$set": {
-                "estado": "rechazada",
-                "revisado_por": current_user.get('email'),
-                "revisado_en": datetime.now(timezone.utc).isoformat(),
-                "comentario_revision": data.get('comentario', '')
-            }
+            "$set": update_data,
+            "$push": {"historial_revision": historial_entry}
         }
     )
     
@@ -11590,15 +11607,141 @@ async def rechazar_propuesta(
                 "historial_cambios": {
                     "fecha": datetime.now(timezone.utc).isoformat(),
                     "usuario": current_user.get('email'),
-                    "accion": "propuesta_rechazada",
+                    "accion": "propuesta_rechazada_definitiva" if es_rechazo_definitivo else "propuesta_enviada_subsanacion",
                     "propuesta_id": propuesta_id,
-                    "motivo": data.get('comentario', '')
+                    "motivo": data.get('comentario', ''),
+                    "intento": intentos
                 }
             }
         }
     )
     
-    return {"message": "Propuesta rechazada"}
+    # Notificar al gestor por correo
+    gestor_email = propuesta.get('creado_por')
+    if gestor_email and not es_rechazo_definitivo:
+        try:
+            # Obtener datos del proyecto
+            proyecto = await db.proyectos_actualizacion.find_one({"id": propuesta['proyecto_id']})
+            municipio = proyecto.get('municipio', 'N/A') if proyecto else 'N/A'
+            
+            asunto = f"[Asomunicipios] Propuesta de Cambio Requiere Subsanación"
+            cuerpo = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2 style="color: #f59e0b;">Propuesta de Cambio Rechazada - Requiere Subsanación</h2>
+                <p>Su propuesta de cambio ha sido rechazada y requiere subsanación:</p>
+                <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f59e0b;">
+                    <p><strong>Código Predial:</strong> {propuesta['codigo_predial']}</p>
+                    <p><strong>Municipio:</strong> {municipio}</p>
+                    <p><strong>Intento:</strong> {intentos}/3</p>
+                </div>
+                <div style="background: #fef2f2; padding: 15px; border-radius: 8px; border-left: 4px solid #dc2626;">
+                    <p><strong>Motivo del Rechazo:</strong></p>
+                    <p>{data.get('comentario', 'Sin comentario')}</p>
+                    <p><strong>Rechazado por:</strong> {current_user.get('email')}</p>
+                </div>
+                <p style="margin-top: 20px;">Por favor, ingrese al Visor de Actualización para corregir y reenviar la propuesta.</p>
+                <p style="color: #666; font-size: 12px; margin-top: 20px;">
+                    Tiene <strong>{3 - intentos} intentos restantes</strong>. Después del tercer rechazo, la propuesta será descartada.
+                </p>
+            </body>
+            </html>
+            """
+            await enviar_email(gestor_email, asunto, cuerpo)
+        except Exception as e:
+            print(f"Error enviando notificación de subsanación: {e}")
+    
+    if es_rechazo_definitivo:
+        return {"message": "Propuesta RECHAZADA DEFINITIVAMENTE (3 intentos agotados)", "definitivo": True}
+    else:
+        return {"message": f"Propuesta enviada a subsanación del gestor (intento {intentos}/3)", "definitivo": False}
+
+
+@api_router.patch("/actualizacion/propuestas/{propuesta_id}/subsanar")
+async def subsanar_propuesta(
+    propuesta_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """El gestor subsana y reenvía una propuesta rechazada"""
+    propuesta = await db.propuestas_cambio_actualizacion.find_one({"id": propuesta_id})
+    if not propuesta:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada")
+    
+    if propuesta.get('estado') != 'subsanacion':
+        raise HTTPException(status_code=400, detail="Esta propuesta no está en estado de subsanación")
+    
+    # Verificar que sea el gestor que la creó
+    if current_user['role'] == UserRole.GESTOR and propuesta.get('creado_por') != current_user.get('email'):
+        raise HTTPException(status_code=403, detail="Solo puede subsanar sus propias propuestas")
+    
+    # Actualizar datos propuestos
+    nuevos_datos = data.get('datos_propuestos', propuesta.get('datos_propuestos', {}))
+    justificacion = data.get('justificacion_subsanacion', '')
+    
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "accion": "subsanado_reenviado",
+        "usuario": current_user.get('email'),
+        "justificacion": justificacion,
+        "intento": propuesta.get('intentos_subsanacion', 1)
+    }
+    
+    await db.propuestas_cambio_actualizacion.update_one(
+        {"id": propuesta_id},
+        {
+            "$set": {
+                "estado": "reenviada",
+                "datos_propuestos": nuevos_datos,
+                "justificacion_subsanacion": justificacion,
+                "fecha_subsanacion": datetime.now(timezone.utc).isoformat(),
+                "subsanado_por": current_user.get('email')
+            },
+            "$push": {"historial_revision": historial_entry}
+        }
+    )
+    
+    # Notificar al coordinador que rechazó
+    coordinador_email = propuesta.get('revisado_por')
+    if coordinador_email:
+        try:
+            asunto = f"[Asomunicipios] Propuesta Subsanada - Pendiente de Revisión"
+            cuerpo = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2 style="color: #059669;">Propuesta Subsanada - Nueva Revisión Requerida</h2>
+                <p>El gestor {current_user.get('email')} ha subsanado la propuesta:</p>
+                <div style="background: #ecfdf5; padding: 15px; border-radius: 8px;">
+                    <p><strong>Código Predial:</strong> {propuesta['codigo_predial']}</p>
+                    <p><strong>Justificación:</strong> {justificacion}</p>
+                </div>
+            </body>
+            </html>
+            """
+            await enviar_email(coordinador_email, asunto, cuerpo)
+        except Exception as e:
+            print(f"Error enviando notificación: {e}")
+    
+    return {"message": "Propuesta subsanada y reenviada para revisión"}
+
+
+@api_router.get("/actualizacion/propuestas/subsanacion-pendiente")
+async def get_propuestas_subsanacion(
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las propuestas pendientes de subsanación para el gestor actual"""
+    query = {"estado": "subsanacion"}
+    
+    # Si es gestor, solo ver las suyas
+    if current_user['role'] == UserRole.GESTOR:
+        query["creado_por"] = current_user.get('email')
+    
+    propuestas = await db.propuestas_cambio_actualizacion.find(query, {"_id": 0}).sort("revisado_en", -1).to_list(500)
+    
+    return {
+        "total": len(propuestas),
+        "propuestas": propuestas
+    }
 
 
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/propuestas/aprobar-masivo")
