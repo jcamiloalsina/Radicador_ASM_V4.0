@@ -10519,8 +10519,8 @@ async def eliminar_proyecto_actualizacion(
     current_user: dict = Depends(get_current_user)
 ):
     """Elimina un proyecto de actualización y todos sus archivos asociados"""
-    if current_user['role'] != UserRole.ADMINISTRADOR:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar proyectos")
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden eliminar proyectos")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
