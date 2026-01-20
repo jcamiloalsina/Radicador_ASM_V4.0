@@ -9,15 +9,18 @@ import 'leaflet/dist/leaflet.css';
 
 // UI Components
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '../components/ui/dialog';
 import {
   Select,
@@ -33,28 +36,30 @@ import {
   MapPin,
   Navigation,
   Search,
-  Layers,
-  ZoomIn,
-  ZoomOut,
   Locate,
   RefreshCw,
   Database,
   FileSpreadsheet,
   User,
   Home,
-  Building,
   AlertCircle,
   CheckCircle,
-  X,
   Crosshair,
   Satellite,
-  Map as MapIcon
+  Map as MapIcon,
+  Edit,
+  Save,
+  Camera,
+  Clock,
+  CheckSquare,
+  Square,
+  Eye
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Componente para manejar eventos del mapa y ubicación GPS
-function MapController({ onLocationFound, userPosition, setCurrentZoom, flyToPosition }) {
+function MapController({ onLocationFound, setCurrentZoom, flyToPosition }) {
   const map = useMap();
   
   useMapEvents({
@@ -110,7 +115,7 @@ export default function VisorActualizacion() {
   // Estados del mapa
   const [currentZoom, setCurrentZoom] = useState(14);
   const [mapType, setMapType] = useState('satellite');
-  const [mapCenter, setMapCenter] = useState([7.8, -72.9]); // Norte de Santander
+  const [mapCenter, setMapCenter] = useState([7.8, -72.9]);
   
   // Estados de GPS
   const [userPosition, setUserPosition] = useState(null);
@@ -125,8 +130,14 @@ export default function VisorActualizacion() {
   const [flyToPosition, setFlyToPosition] = useState(null);
   const [showPredioDetail, setShowPredioDetail] = useState(false);
   
+  // Estados de edición
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [saving, setSaving] = useState(false);
+  
   // Estados de filtro
   const [filterZona, setFilterZona] = useState('todos');
+  const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado
   
   // Cargar datos del proyecto
   const fetchProyecto = useCallback(async () => {
@@ -137,12 +148,10 @@ export default function VisorActualizacion() {
       });
       setProyecto(response.data);
       
-      // Si tiene GDB procesado, cargar geometrías
       if (response.data.gdb_procesado) {
         fetchGeometrias();
       }
       
-      // Si tiene R1/R2, cargar predios
       if (response.data.info_alfanumerica_archivo) {
         fetchPrediosR1R2();
       }
@@ -166,7 +175,6 @@ export default function VisorActualizacion() {
       if (response.data.geometrias?.features?.length > 0) {
         setGeometrias(response.data.geometrias);
         
-        // Centrar mapa en las geometrías
         const bounds = L.geoJSON(response.data.geometrias).getBounds();
         if (bounds.isValid()) {
           setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
@@ -255,7 +263,6 @@ export default function VisorActualizacion() {
     }
   };
   
-  // Limpiar GPS al desmontar
   useEffect(() => {
     return () => {
       if (watchIdRef.current) {
@@ -264,42 +271,114 @@ export default function VisorActualizacion() {
     };
   }, []);
   
-  // Buscar predio por código
+  // Buscar predio
   const handleSearch = async () => {
     if (!searchCode.trim()) return;
     
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Buscar en geometrías
-      if (geometrias?.features) {
-        const feature = geometrias.features.find(f => 
-          f.properties?.codigo_predial?.includes(searchCode) ||
-          f.properties?.numero_predial?.includes(searchCode)
-        );
-        
-        if (feature) {
-          setSelectedGeometry(feature);
-          const bounds = L.geoJSON(feature).getBounds();
-          setFlyToPosition([bounds.getCenter().lat, bounds.getCenter().lng]);
-          toast.success('Predio encontrado en mapa');
-        }
-      }
-      
-      // Buscar en R1/R2
-      const predio = prediosR1R2.find(p => 
-        p.codigo_predial?.includes(searchCode) ||
-        p.numero_predial?.includes(searchCode)
+    if (geometrias?.features) {
+      const feature = geometrias.features.find(f => 
+        f.properties?.codigo_predial?.includes(searchCode) ||
+        f.properties?.numero_predial?.includes(searchCode)
       );
       
-      if (predio) {
-        setSelectedPredio(predio);
-        setShowPredioDetail(true);
-      } else if (!geometrias?.features?.find(f => f.properties?.codigo_predial?.includes(searchCode))) {
-        toast.warning('Predio no encontrado');
+      if (feature) {
+        setSelectedGeometry(feature);
+        const bounds = L.geoJSON(feature).getBounds();
+        setFlyToPosition([bounds.getCenter().lat, bounds.getCenter().lng]);
+        toast.success('Predio encontrado en mapa');
       }
+    }
+    
+    const predio = prediosR1R2.find(p => 
+      p.codigo_predial?.includes(searchCode) ||
+      p.numero_predial?.includes(searchCode)
+    );
+    
+    if (predio) {
+      setSelectedPredio(predio);
+      setEditData({
+        direccion: predio.direccion || '',
+        destino_economico: predio.destino_economico || '',
+        area_terreno: predio.area_terreno || '',
+        area_construida: predio.area_construida || '',
+        observaciones_campo: predio.observaciones_campo || '',
+        estado_visita: predio.estado_visita || 'pendiente'
+      });
+      setShowPredioDetail(true);
+    } else if (!geometrias?.features?.find(f => f.properties?.codigo_predial?.includes(searchCode))) {
+      toast.warning('Predio no encontrado');
+    }
+  };
+  
+  // Guardar cambios del predio
+  const handleSaveChanges = async () => {
+    if (!selectedPredio) return;
+    
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
+        {
+          ...editData,
+          ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+          actualizado_por: user?.email,
+          actualizado_en: new Date().toISOString()
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success('Cambios guardados exitosamente');
+      setEditMode(false);
+      
+      // Actualizar predio en la lista local
+      setPrediosR1R2(prev => prev.map(p => 
+        (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+          ? { ...p, ...editData }
+          : p
+      ));
+      
+      setSelectedPredio(prev => ({ ...prev, ...editData }));
     } catch (error) {
-      toast.error('Error en la búsqueda');
+      toast.error('Error al guardar cambios');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  // Marcar como visitado
+  const handleMarcarVisitado = async () => {
+    if (!selectedPredio) return;
+    
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
+        {
+          estado_visita: 'visitado',
+          ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+          visitado_por: user?.email,
+          visitado_en: new Date().toISOString()
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success('Predio marcado como visitado');
+      
+      setPrediosR1R2(prev => prev.map(p => 
+        (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+          ? { ...p, estado_visita: 'visitado' }
+          : p
+      ));
+      
+      setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado' }));
+      setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
+    } catch (error) {
+      toast.error('Error al marcar como visitado');
+    } finally {
+      setSaving(false);
     }
   };
   
@@ -308,12 +387,30 @@ export default function VisorActualizacion() {
     const isSelected = selectedGeometry?.properties?.codigo_predial === feature.properties?.codigo_predial;
     const isUrban = feature.properties?.zona === 'urbano';
     
+    // Verificar estado de visita
+    const predio = prediosR1R2.find(p => 
+      p.codigo_predial === feature.properties?.codigo_predial ||
+      p.numero_predial === feature.properties?.numero_predial
+    );
+    
+    let fillColor = isUrban ? '#3b82f6' : '#22c55e'; // Azul urbano, verde rural
+    
+    if (predio?.estado_visita === 'visitado') {
+      fillColor = '#f59e0b'; // Naranja si visitado
+    } else if (predio?.estado_visita === 'actualizado') {
+      fillColor = '#8b5cf6'; // Púrpura si actualizado
+    }
+    
+    if (isSelected) {
+      fillColor = '#ef4444'; // Rojo si seleccionado
+    }
+    
     return {
-      fillColor: isSelected ? '#f59e0b' : (isUrban ? '#3b82f6' : '#22c55e'),
+      fillColor,
       weight: isSelected ? 3 : 1,
       opacity: 1,
-      color: isSelected ? '#f59e0b' : '#1e40af',
-      fillOpacity: isSelected ? 0.5 : 0.3
+      color: isSelected ? '#ef4444' : '#1e40af',
+      fillOpacity: isSelected ? 0.6 : 0.35
     };
   };
   
@@ -323,7 +420,6 @@ export default function VisorActualizacion() {
       click: () => {
         setSelectedGeometry(feature);
         
-        // Buscar datos R1/R2 asociados
         const predio = prediosR1R2.find(p => 
           p.codigo_predial === feature.properties?.codigo_predial ||
           p.numero_predial === feature.properties?.numero_predial
@@ -331,12 +427,19 @@ export default function VisorActualizacion() {
         
         if (predio) {
           setSelectedPredio(predio);
+          setEditData({
+            direccion: predio.direccion || '',
+            destino_economico: predio.destino_economico || '',
+            area_terreno: predio.area_terreno || '',
+            area_construida: predio.area_construida || '',
+            observaciones_campo: predio.observaciones_campo || '',
+            estado_visita: predio.estado_visita || 'pendiente'
+          });
           setShowPredioDetail(true);
         }
       }
     });
     
-    // Tooltip
     if (feature.properties?.codigo_predial || feature.properties?.numero_predial) {
       layer.bindTooltip(
         feature.properties.codigo_predial || feature.properties.numero_predial,
@@ -365,6 +468,14 @@ export default function VisorActualizacion() {
     );
   };
   
+  // Contar predios por estado
+  const contarPrediosPorEstado = () => {
+    const pendientes = prediosR1R2.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length;
+    const visitados = prediosR1R2.filter(p => p.estado_visita === 'visitado').length;
+    const actualizados = prediosR1R2.filter(p => p.estado_visita === 'actualizado').length;
+    return { pendientes, visitados, actualizados, total: prediosR1R2.length };
+  };
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -386,7 +497,6 @@ export default function VisorActualizacion() {
     );
   }
   
-  // Si no hay GDB cargado
   if (!proyecto.gdb_procesado) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
@@ -402,6 +512,8 @@ export default function VisorActualizacion() {
       </div>
     );
   }
+  
+  const estadisticas = contarPrediosPorEstado();
   
   return (
     <div className="h-screen flex flex-col bg-slate-100">
@@ -428,7 +540,7 @@ export default function VisorActualizacion() {
           {watchingPosition && gpsAccuracy && (
             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
               <Crosshair className="w-3 h-3 mr-1" />
-              GPS: {Math.round(gpsAccuracy)}m
+              {Math.round(gpsAccuracy)}m
             </Badge>
           )}
           <Button
@@ -459,6 +571,22 @@ export default function VisorActualizacion() {
         </Button>
       </div>
       
+      {/* Estadísticas rápidas */}
+      <div className="bg-white border-b px-4 py-2 flex gap-4 text-xs overflow-x-auto">
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <Square className="w-3 h-3 text-slate-400" />
+          <span>Pendientes: {estadisticas.pendientes}</span>
+        </div>
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <Eye className="w-3 h-3 text-amber-500" />
+          <span>Visitados: {estadisticas.visitados}</span>
+        </div>
+        <div className="flex items-center gap-1 whitespace-nowrap">
+          <CheckSquare className="w-3 h-3 text-purple-500" />
+          <span>Actualizados: {estadisticas.actualizados}</span>
+        </div>
+      </div>
+      
       {/* Map Container */}
       <div className="flex-1 relative">
         <MapContainer
@@ -470,24 +598,21 @@ export default function VisorActualizacion() {
         >
           <MapController
             onLocationFound={(latlng) => setUserPosition([latlng.lat, latlng.lng])}
-            userPosition={userPosition}
             setCurrentZoom={setCurrentZoom}
             flyToPosition={flyToPosition}
           />
           
           {getTileLayer()}
           
-          {/* Geometrías de predios */}
           {geometrias && (
             <GeoJSON
-              key={`geom-${filterZona}-${selectedGeometry?.properties?.codigo_predial}`}
+              key={`geom-${filterZona}-${selectedGeometry?.properties?.codigo_predial}-${JSON.stringify(estadisticas)}`}
               data={geometrias}
               style={getGeometryStyle}
               onEachFeature={onEachFeature}
             />
           )}
           
-          {/* Construcciones */}
           {construcciones && (
             <GeoJSON
               data={construcciones}
@@ -500,13 +625,10 @@ export default function VisorActualizacion() {
             />
           )}
           
-          {/* Marcador de ubicación del usuario */}
           {userPosition && (
-            <Marker position={userPosition} icon={userLocationIcon}>
-            </Marker>
+            <Marker position={userPosition} icon={userLocationIcon} />
           )}
           
-          {/* Círculo de precisión GPS */}
           {userPosition && gpsAccuracy && (
             <CircleMarker
               center={userPosition}
@@ -523,7 +645,6 @@ export default function VisorActualizacion() {
         
         {/* Controles flotantes */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-[1000]">
-          {/* Tipo de mapa */}
           <div className="bg-white rounded-lg shadow-lg p-1 flex flex-col gap-1">
             <Button
               variant={mapType === 'satellite' ? 'default' : 'ghost'}
@@ -543,7 +664,6 @@ export default function VisorActualizacion() {
             </Button>
           </div>
           
-          {/* Centrar en usuario */}
           <Button
             variant="outline"
             size="sm"
@@ -558,7 +678,7 @@ export default function VisorActualizacion() {
         {/* Filtro de zona */}
         <div className="absolute top-4 left-4 z-[1000]">
           <Select value={filterZona} onValueChange={setFilterZona}>
-            <SelectTrigger className="w-32 bg-white shadow-lg">
+            <SelectTrigger className="w-28 bg-white shadow-lg text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -569,41 +689,53 @@ export default function VisorActualizacion() {
           </Select>
         </div>
         
-        {/* Estadísticas */}
+        {/* Leyenda */}
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
           <Card className="bg-white/95 backdrop-blur shadow-lg">
             <CardContent className="p-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded bg-green-500"></div>
-                    <span className="text-xs text-slate-600">Rural</span>
+                    <span className="text-slate-600">Rural</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded bg-blue-500"></div>
-                    <span className="text-xs text-slate-600">Urbano</span>
+                    <span className="text-slate-600">Urbano</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded bg-red-500"></div>
-                    <span className="text-xs text-slate-600">Construcciones</span>
+                    <div className="w-3 h-3 rounded bg-amber-500"></div>
+                    <span className="text-slate-600">Visitado</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded bg-purple-500"></div>
+                    <span className="text-slate-600">Actualizado</span>
                   </div>
                 </div>
-                <div className="text-xs text-slate-500">
-                  Zoom: {currentZoom}
-                </div>
+                <span className="text-slate-400">Zoom: {currentZoom}</span>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
       
-      {/* Modal de detalle de predio */}
-      <Dialog open={showPredioDetail} onOpenChange={setShowPredioDetail}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      {/* Modal de detalle/edición de predio */}
+      <Dialog open={showPredioDetail} onOpenChange={(open) => {
+        setShowPredioDetail(open);
+        if (!open) setEditMode(false);
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Home className="w-5 h-5 text-amber-600" />
-              Detalle del Predio
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Home className="w-5 h-5 text-amber-600" />
+                {editMode ? 'Editar Predio' : 'Detalle del Predio'}
+              </div>
+              {selectedPredio?.estado_visita && (
+                <Badge variant={selectedPredio.estado_visita === 'visitado' ? 'warning' : selectedPredio.estado_visita === 'actualizado' ? 'secondary' : 'outline'}>
+                  {selectedPredio.estado_visita}
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           
@@ -617,98 +749,193 @@ export default function VisorActualizacion() {
                 </p>
               </div>
               
-              <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid grid-cols-3 w-full">
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
-                  <TabsTrigger value="fisico">Físico</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="general" className="space-y-3 mt-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-slate-500">Dirección</p>
-                      <p className="text-sm font-medium">{selectedPredio.direccion || '-'}</p>
+              {!editMode ? (
+                // Modo visualización
+                <Tabs defaultValue="general" className="w-full">
+                  <TabsList className="grid grid-cols-3 w-full">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
+                    <TabsTrigger value="campo">Campo</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="general" className="space-y-3 mt-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-slate-500">Dirección</p>
+                        <p className="text-sm font-medium">{selectedPredio.direccion || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Destino Económico</p>
+                        <p className="text-sm font-medium">{selectedPredio.destino_economico || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Área Terreno</p>
+                        <p className="text-sm font-medium">
+                          {selectedPredio.area_terreno ? `${Number(selectedPredio.area_terreno).toLocaleString()} m²` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Área Construida</p>
+                        <p className="text-sm font-medium">
+                          {selectedPredio.area_construida ? `${Number(selectedPredio.area_construida).toLocaleString()} m²` : '-'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Destino Económico</p>
-                      <p className="text-sm font-medium">{selectedPredio.destino_economico || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Área Terreno</p>
-                      <p className="text-sm font-medium">
-                        {selectedPredio.area_terreno ? `${selectedPredio.area_terreno.toLocaleString()} m²` : '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Área Construida</p>
-                      <p className="text-sm font-medium">
-                        {selectedPredio.area_construida ? `${selectedPredio.area_construida.toLocaleString()} m²` : '-'}
-                      </p>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="propietarios" className="mt-3">
-                  {selectedPredio.propietarios?.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedPredio.propietarios.map((prop, idx) => (
-                        <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                          <User className="w-4 h-4 text-slate-400" />
-                          <div>
-                            <p className="text-sm font-medium">{prop.nombre || 'Sin nombre'}</p>
-                            <p className="text-xs text-slate-500">{prop.documento || '-'}</p>
+                  </TabsContent>
+                  
+                  <TabsContent value="propietarios" className="mt-3">
+                    {selectedPredio.propietarios?.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedPredio.propietarios.map((prop, idx) => (
+                          <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
+                            <User className="w-4 h-4 text-slate-400" />
+                            <div>
+                              <p className="text-sm font-medium">{prop.nombre || 'Sin nombre'}</p>
+                              <p className="text-xs text-slate-500">{prop.documento || '-'}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-4">Sin información de propietarios</p>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="fisico" className="mt-3">
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500 text-center py-4">Sin información de propietarios</p>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="campo" className="mt-3 space-y-3">
+                    {selectedPredio.observaciones_campo && (
+                      <div>
+                        <p className="text-xs text-slate-500">Observaciones de Campo</p>
+                        <p className="text-sm bg-slate-50 p-2 rounded">{selectedPredio.observaciones_campo}</p>
+                      </div>
+                    )}
+                    {selectedPredio.visitado_en && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Clock className="w-3 h-3" />
+                        Visitado: {new Date(selectedPredio.visitado_en).toLocaleString('es-CO')}
+                      </div>
+                    )}
+                    {selectedPredio.ubicacion_gps && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <MapPin className="w-3 h-3" />
+                        GPS: {selectedPredio.ubicacion_gps.lat?.toFixed(6)}, {selectedPredio.ubicacion_gps.lng?.toFixed(6)}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                // Modo edición
+                <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-slate-500">Tipo Predio</p>
-                      <p className="text-sm font-medium">{selectedPredio.tipo_predio || '-'}</p>
+                    <div className="col-span-2">
+                      <Label htmlFor="direccion">Dirección</Label>
+                      <Input
+                        id="direccion"
+                        value={editData.direccion}
+                        onChange={(e) => setEditData(prev => ({ ...prev, direccion: e.target.value }))}
+                        placeholder="Dirección del predio"
+                      />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Estrato</p>
-                      <p className="text-sm font-medium">{selectedPredio.estrato || '-'}</p>
+                      <Label htmlFor="destino">Destino Económico</Label>
+                      <Select 
+                        value={editData.destino_economico} 
+                        onValueChange={(v) => setEditData(prev => ({ ...prev, destino_economico: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Habitacional">Habitacional</SelectItem>
+                          <SelectItem value="Comercial">Comercial</SelectItem>
+                          <SelectItem value="Industrial">Industrial</SelectItem>
+                          <SelectItem value="Agropecuario">Agropecuario</SelectItem>
+                          <SelectItem value="Institucional">Institucional</SelectItem>
+                          <SelectItem value="Lote">Lote</SelectItem>
+                          <SelectItem value="Otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Avalúo</p>
-                      <p className="text-sm font-medium">
-                        {selectedPredio.avaluo_catastral 
-                          ? `$${selectedPredio.avaluo_catastral.toLocaleString()}` 
-                          : '-'}
-                      </p>
+                      <Label htmlFor="area_terreno">Área Terreno (m²)</Label>
+                      <Input
+                        id="area_terreno"
+                        type="number"
+                        value={editData.area_terreno}
+                        onChange={(e) => setEditData(prev => ({ ...prev, area_terreno: e.target.value }))}
+                      />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Vigencia</p>
-                      <p className="text-sm font-medium">{selectedPredio.vigencia || '-'}</p>
+                      <Label htmlFor="area_construida">Área Construida (m²)</Label>
+                      <Input
+                        id="area_construida"
+                        type="number"
+                        value={editData.area_construida}
+                        onChange={(e) => setEditData(prev => ({ ...prev, area_construida: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="observaciones">Observaciones de Campo</Label>
+                      <Textarea
+                        id="observaciones"
+                        value={editData.observaciones_campo}
+                        onChange={(e) => setEditData(prev => ({ ...prev, observaciones_campo: e.target.value }))}
+                        placeholder="Notas de la visita en campo..."
+                        rows={3}
+                      />
                     </div>
                   </div>
-                </TabsContent>
-              </Tabs>
-              
-              {/* Coordenadas de la geometría */}
-              {selectedGeometry && (
-                <div className="border-t pt-3">
-                  <p className="text-xs text-slate-500 mb-1">Ubicación (centro del predio)</p>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <span className="text-xs font-mono">
-                      {(() => {
-                        const bounds = L.geoJSON(selectedGeometry).getBounds();
-                        const center = bounds.getCenter();
-                        return `${center.lat.toFixed(6)}, ${center.lng.toFixed(6)}`;
-                      })()}
-                    </span>
-                  </div>
+                  
+                  {userPosition && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      <MapPin className="w-3 h-3" />
+                      Ubicación GPS actual será guardada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
+                    </div>
+                  )}
                 </div>
               )}
+              
+              <DialogFooter className="flex gap-2 pt-4">
+                {!editMode ? (
+                  <>
+                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado' && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleMarcarVisitado}
+                        disabled={saving}
+                        className="flex-1"
+                      >
+                        {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+                        Marcar Visitado
+                      </Button>
+                    )}
+                    <Button 
+                      onClick={() => setEditMode(true)}
+                      className="flex-1 bg-amber-600 hover:bg-amber-700"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEditMode(false)}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      onClick={handleSaveChanges}
+                      disabled={saving}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Guardar
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
