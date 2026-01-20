@@ -780,6 +780,118 @@ export default function VisorActualizacion() {
   
   // ========== FIN FUNCIONES PROPIETARIOS Y ZONAS ==========
   
+  // ========== FUNCIONES PARA PROPUESTAS E HISTORIAL ==========
+  
+  // Cargar propuestas del predio
+  const fetchPropuestas = async (codigoPredial) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/propuestas`,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setPropuestas(response.data.propuestas || []);
+    } catch (error) {
+      console.error('Error cargando propuestas:', error);
+    }
+  };
+  
+  // Cargar historial del predio
+  const fetchHistorial = async (codigoPredial) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/historial`,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setHistorial(response.data.historial || []);
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+    }
+  };
+  
+  // Crear propuesta de cambio
+  const handleCrearPropuesta = async () => {
+    if (!selectedPredio || !propuestaData.justificacion.trim()) {
+      toast.error('Debe incluir una justificación para la propuesta');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Construir datos existentes vs propuestos
+      const datosExistentes = {
+        direccion: selectedPredio.direccion,
+        destino_economico: selectedPredio.destino_economico,
+        area_terreno: selectedPredio.area_terreno,
+        area_construida: selectedPredio.area_construida,
+        propietarios: selectedPredio.propietarios
+      };
+      
+      const datosPropuestos = {
+        direccion: editData.direccion,
+        destino_economico: editData.destino_economico,
+        area_terreno: editData.area_terreno,
+        area_construida: editData.area_construida,
+        propietarios: propietarios.filter(p => p.nombre && p.nombre.trim()),
+        zonas_fisicas: zonasFisicas
+      };
+      
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}/propuesta`,
+        {
+          datos_existentes: datosExistentes,
+          datos_propuestos: datosPropuestos,
+          justificacion: propuestaData.justificacion
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success('Propuesta de cambio creada. Pendiente de aprobación.');
+      setShowPropuestaModal(false);
+      setPropuestaData({ datos_propuestos: {}, justificacion: '' });
+      fetchPropuestas(selectedPredio.codigo_predial || selectedPredio.numero_predial);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al crear propuesta');
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  // Generar PDF del informe de visita
+  const handleGenerarPdf = async () => {
+    if (!selectedPredio) return;
+    
+    setGenerandoPdf(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}/generar-pdf`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      // Descargar el PDF
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${response.data.pdf_base64}`;
+      link.download = response.data.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('PDF generado exitosamente');
+    } catch (error) {
+      toast.error('Error al generar PDF');
+      console.error(error);
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+  
+  // ========== FIN FUNCIONES PROPUESTAS E HISTORIAL ==========
+  
   // Estilo de geometrías
   const getGeometryStyle = (feature) => {
     const isSelected = selectedGeometry?.properties?.codigo_predial === feature.properties?.codigo_predial;
