@@ -972,7 +972,7 @@ export default function ProyectosActualizacion() {
                                   ) : (
                                     <Upload className="w-4 h-4 mr-1" />
                                   )}
-                                  {proyectoSeleccionado.base_grafica_archivo ? 'Reemplazar' : 'Cargar GDB'}
+                                  {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? 'Reemplazar' : 'Cargar GDB'}
                                 </Button>
                               </>
                             )}
