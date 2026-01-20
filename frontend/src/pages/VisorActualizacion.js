@@ -1424,6 +1424,111 @@ export default function VisorActualizacion() {
                       </div>
                     )}
                   </TabsContent>
+                  
+                  {/* Tab Propuestas de Cambio */}
+                  <TabsContent value="propuestas" className="mt-3 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-semibold text-slate-700">Propuestas de Cambio</h4>
+                      {selectedPredio.estado_visita === 'visitado' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            cargarDatosParaEdicion(selectedPredio);
+                            setShowPropuestaModal(true);
+                          }}
+                          className="text-emerald-700 border-emerald-500"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Nueva Propuesta
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado' && (
+                      <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        El predio debe estar visitado para proponer cambios
+                      </div>
+                    )}
+                    
+                    {propuestas.length > 0 ? (
+                      <div className="space-y-2">
+                        {propuestas.map((prop) => (
+                          <div key={prop.id} className={`p-3 rounded-lg border ${
+                            prop.estado === 'aprobada' ? 'bg-emerald-50 border-emerald-200' :
+                            prop.estado === 'rechazada' ? 'bg-red-50 border-red-200' :
+                            'bg-amber-50 border-amber-200'
+                          }`}>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={prop.estado === 'aprobada' ? 'secondary' : prop.estado === 'rechazada' ? 'destructive' : 'outline'}>
+                                    {prop.estado === 'aprobada' && <Check className="w-3 h-3 mr-1" />}
+                                    {prop.estado === 'rechazada' && <XCircle className="w-3 h-3 mr-1" />}
+                                    {prop.estado}
+                                  </Badge>
+                                  <span className="text-xs text-slate-500">
+                                    {new Date(prop.creado_en).toLocaleDateString('es-CO')}
+                                  </span>
+                                </div>
+                                <p className="text-sm mt-1">{prop.justificacion}</p>
+                                <p className="text-xs text-slate-500 mt-1">Por: {prop.creado_por}</p>
+                                {prop.comentario_revision && (
+                                  <p className="text-xs text-slate-600 mt-1 italic">
+                                    Comentario: {prop.comentario_revision}
+                                  </p>
+                                )}
+                              </div>
+                              <GitCompare className="w-4 h-4 text-slate-400" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <GitCompare className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-500">Sin propuestas de cambio</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  {/* Tab Historial */}
+                  <TabsContent value="historial" className="mt-3 space-y-3">
+                    <h4 className="text-sm font-semibold text-slate-700">Historial de Cambios</h4>
+                    
+                    {historial.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {historial.map((entry, idx) => (
+                          <div key={idx} className="flex items-start gap-3 p-2 bg-slate-50 rounded text-sm">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                              entry.accion === 'visita' ? 'bg-blue-500' :
+                              entry.accion === 'propuesta_aprobada' ? 'bg-emerald-500' :
+                              entry.accion === 'propuesta_rechazada' ? 'bg-red-500' :
+                              'bg-amber-500'
+                            }`} />
+                            <div className="flex-1">
+                              <p className="font-medium text-slate-700">
+                                {entry.accion === 'visita' && 'Predio visitado'}
+                                {entry.accion === 'actualizacion' && 'Datos actualizados'}
+                                {entry.accion === 'propuesta_creada' && 'Propuesta creada'}
+                                {entry.accion === 'propuesta_aprobada' && 'Propuesta aprobada'}
+                                {entry.accion === 'propuesta_rechazada' && 'Propuesta rechazada'}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {entry.usuario} • {new Date(entry.fecha).toLocaleString('es-CO')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <History className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-500">Sin historial de cambios</p>
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               ) : (
                 // Modo edición - Con Tabs igual que Conservación
