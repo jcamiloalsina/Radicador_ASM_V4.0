@@ -201,6 +201,59 @@ El dashboard de Conservación mostraba un badge de "1 reaparecido" para San Cali
 
 ---
 
+### Sesión 20 Enero 2026 - Sistema de Propuestas con Vista Comparativa (Módulo Actualización)
+**Nueva funcionalidad implementada:**
+
+Sistema completo de gestión de propuestas de cambio para trabajo de campo con vista comparativa "Antes vs Después":
+
+1. ✅ **Vista Comparativa en Gestión de Propuestas:**
+   - Diseño tipo diff mostrando TODOS los campos
+   - Columna izquierda: Datos anteriores (del R1/R2)
+   - Columna derecha: Datos propuestos (del gestor)
+   - Indicador visual de campos modificados vs sin cambios
+   - Campos: Dirección, Destino económico, Áreas, Avalúo, Matrícula, Estrato, Propietarios
+
+2. ✅ **Flujo de Propuestas:**
+   - Gestor crea propuesta tras visitar el predio
+   - Se guarda snapshot completo de datos existentes
+   - Coordinador revisa con vista comparativa clara
+   - Opciones: Aprobar | Editar y aprobar | Rechazar
+
+3. ✅ **Edición por Coordinador:**
+   - Coordinador puede modificar datos antes de aprobar
+   - Formulario de edición inline activable
+   - Los cambios del coordinador se aplican al aprobar
+
+4. ✅ **Subsanación de Propuestas Rechazadas:**
+   - Al rechazar, se envía a subsanación del gestor
+   - Gestor recibe notificación por correo
+   - Máximo 3 intentos de subsanación
+   - Historial completo de revisiones
+
+5. ✅ **Aprobación Masiva:**
+   - Checkbox para selección múltiple
+   - Botón "Aprobar Masivo" con conteo
+   - Ideal para revisión rápida de muchos predios
+
+6. ✅ **Filtros de Estado:**
+   - Pendientes (incluye reenviadas)
+   - Aprobadas
+   - Rechazadas
+   - En Subsanación
+
+**Nuevos/Modificados Endpoints:**
+- `POST /api/actualizacion/proyectos/{id}/predios/{codigo}/propuesta` (mejorado)
+- `GET /api/actualizacion/proyectos/{id}/propuestas` (mejorado con filtros)
+- `PATCH /api/actualizacion/propuestas/{id}/rechazar` (envía a subsanación)
+- `PATCH /api/actualizacion/propuestas/{id}/subsanar`
+- `GET /api/actualizacion/propuestas/subsanacion-pendiente`
+
+**Archivos Modificados:**
+- `/app/frontend/src/pages/GestionPropuestas.js` (reescrito completo)
+- `/app/backend/server.py` (nuevos endpoints de subsanación)
+
+---
+
 ### Sesión 20 Enero 2026 - Sistema de Subsanación de Reapariciones
 **Nueva funcionalidad completa implementada:**
 
