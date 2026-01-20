@@ -60,7 +60,13 @@ import {
   Pen,
   Users,
   X,
-  Image
+  Image,
+  History,
+  GitCompare,
+  Check,
+  XCircle,
+  Download,
+  FileDown
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
