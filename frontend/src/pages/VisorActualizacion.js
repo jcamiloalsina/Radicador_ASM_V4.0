@@ -1249,6 +1249,16 @@ export default function VisorActualizacion() {
           
           <SmartTileLayer mapType={mapType} tileLayers={tileLayers} />
           
+          {/* Ortofoto - debajo de GDB pero encima del mapa base */}
+          {ortofotoUrl && ortofotoBounds && showOrtofoto && (
+            <ImageOverlay
+              url={ortofotoUrl}
+              bounds={ortofotoBounds}
+              opacity={ortofotoOpacity}
+              zIndex={100}
+            />
+          )}
+          
           {geometrias && (
             <GeoJSON
               key={`geom-${filterZona}-${selectedGeometry?.properties?.codigo_predial}-${JSON.stringify(estadisticas)}`}
