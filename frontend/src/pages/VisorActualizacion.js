@@ -178,6 +178,25 @@ export default function VisorActualizacion() {
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
   
+  // Estados para edición de propietarios y zonas (igual que Conservación)
+  const [propietarios, setPropietarios] = useState([{
+    nombre: '',
+    tipo_documento: 'C',
+    documento: '',
+    estado_civil: ''
+  }]);
+  const [zonasFisicas, setZonasFisicas] = useState([{
+    zona_fisica: '0',
+    zona_economica: '0',
+    area_terreno: '0',
+    habitaciones: '0',
+    banos: '0',
+    locales: '0',
+    pisos: '1',
+    puntaje: '0',
+    area_construida: '0'
+  }]);
+  
   // Estados de filtro
   const [filterZona, setFilterZona] = useState('todos');
   const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado
