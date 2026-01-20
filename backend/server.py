@@ -10536,6 +10536,11 @@ async def eliminar_proyecto_actualizacion(
     await db.actualizacion_predios.delete_many({"proyecto_id": proyecto_id})
     await db.actualizacion_r1.delete_many({"proyecto_id": proyecto_id})
     await db.actualizacion_r2.delete_many({"proyecto_id": proyecto_id})
+    await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
+    await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
+    await db.predios_actualizacion.delete_many({"proyecto_id": proyecto_id})
+    await db.etapas_proyecto.delete_many({"proyecto_id": proyecto_id})
+    await db.actividades_proyecto.delete_many({"etapa_id": {"$in": [e["id"] for e in await db.etapas_proyecto.find({"proyecto_id": proyecto_id}, {"id": 1}).to_list(100)]}})
     
     # Eliminar el proyecto
     await db.proyectos_actualizacion.delete_one({"id": proyecto_id})
