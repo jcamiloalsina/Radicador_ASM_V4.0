@@ -175,6 +175,24 @@ export default function VisorActualizacion() {
   const [filterZona, setFilterZona] = useState('todos');
   const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado
   
+  // Estados para formato de visita
+  const [showVisitaModal, setShowVisitaModal] = useState(false);
+  const [visitaData, setVisitaData] = useState({
+    fecha_visita: new Date().toISOString().split('T')[0],
+    hora_visita: new Date().toTimeString().slice(0, 5),
+    persona_atiende: '',
+    relacion_predio: '',
+    estado_predio: '',
+    acceso_predio: '',
+    servicios_publicos: [],
+    observaciones: '',
+    firma_base64: null
+  });
+  const [fotos, setFotos] = useState([]);
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const fileInputRef = useRef(null);
+  
   // Cargar datos del proyecto
   const fetchProyecto = useCallback(async () => {
     try {
