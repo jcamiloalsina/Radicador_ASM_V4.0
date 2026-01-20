@@ -375,6 +375,111 @@ export default function VisorActualizacion() {
     };
   }, []);
   
+  // ==================== ORTOFOTO ====================
+  const handleOrtofotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validar tipo de archivo
+    const validTypes = ['image/tiff', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.tif') && !file.name.endsWith('.tiff')) {
+      toast.error('Formato no válido. Use TIFF, PNG o JPG');
+      return;
+    }
+    
+    setUploadingOrtofoto(true);
+    const formData = new FormData();
+    formData.append('ortofoto', file);
+    formData.append('proyecto_id', proyectoId);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/ortofoto`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      if (response.data.url && response.data.bounds) {
+        setOrtofotoUrl(response.data.url);
+        setOrtofotoBounds([
+          [response.data.bounds.south, response.data.bounds.west],
+          [response.data.bounds.north, response.data.bounds.east]
+        ]);
+        toast.success('Ortofoto cargada exitosamente');
+        
+        // Auto-zoom a los bounds de la ortofoto
+        if (mapRef.current) {
+          mapRef.current.fitBounds([
+            [response.data.bounds.south, response.data.bounds.west],
+            [response.data.bounds.north, response.data.bounds.east]
+          ]);
+        }
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al cargar ortofoto');
+    } finally {
+      setUploadingOrtofoto(false);
+    }
+  };
+  
+  // Cargar ortofoto existente del proyecto
+  const fetchOrtofoto = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/ortofoto`,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      if (response.data.url && response.data.bounds) {
+        setOrtofotoUrl(response.data.url);
+        setOrtofotoBounds([
+          [response.data.bounds.south, response.data.bounds.west],
+          [response.data.bounds.north, response.data.bounds.east]
+        ]);
+      }
+    } catch (error) {
+      // Sin ortofoto cargada - es normal
+      console.log('Sin ortofoto cargada');
+    }
+  };
+  
+  // ==================== AUTO-ZOOM A CAPA GDB ====================
+  const zoomToGDBLayer = useCallback(() => {
+    if (!geometrias?.features?.length) {
+      toast.warning('No hay geometrías cargadas');
+      return;
+    }
+    
+    try {
+      const geoJsonLayer = L.geoJSON(geometrias);
+      const bounds = geoJsonLayer.getBounds();
+      
+      if (bounds.isValid() && mapRef.current) {
+        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+        toast.success('Vista ajustada a las geometrías');
+      }
+    } catch (error) {
+      console.error('Error al hacer zoom a GDB:', error);
+    }
+  }, [geometrias]);
+  
+  // Auto-zoom cuando se cargan las geometrías por primera vez
+  useEffect(() => {
+    if (geometrias?.features?.length > 0 && mapRef.current) {
+      // Pequeño delay para asegurar que el mapa esté listo
+      setTimeout(() => {
+        zoomToGDBLayer();
+      }, 500);
+    }
+  }, [geometrias?.features?.length]);
+  
   // Buscar predio
   const handleSearch = async () => {
     if (!searchCode.trim()) return;
