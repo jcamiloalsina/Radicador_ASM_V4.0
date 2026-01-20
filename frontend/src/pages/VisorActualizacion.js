@@ -1306,6 +1306,7 @@ export default function VisorActualizacion() {
               size="sm"
               onClick={() => setMapType('satellite')}
               className="w-9 h-9 p-0"
+              title="Satélite"
             >
               <Satellite className="w-4 h-4" />
             </Button>
@@ -1314,10 +1315,23 @@ export default function VisorActualizacion() {
               size="sm"
               onClick={() => setMapType('street')}
               className="w-9 h-9 p-0"
+              title="Mapa"
             >
               <MapIcon className="w-4 h-4" />
             </Button>
           </div>
+          
+          {/* Botón Zoom a GDB */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={zoomToGDBLayer}
+            className="w-9 h-9 p-0 bg-white shadow-lg"
+            disabled={!geometrias?.features?.length}
+            title="Ir a las geometrías GDB"
+          >
+            <Navigation className="w-4 h-4 text-emerald-600" />
+          </Button>
           
           <Button
             variant="outline"
@@ -1325,9 +1339,78 @@ export default function VisorActualizacion() {
             onClick={centerOnUser}
             className="w-9 h-9 p-0 bg-white shadow-lg"
             disabled={!userPosition}
+            title="Mi ubicación GPS"
           >
             <Locate className="w-4 h-4" />
           </Button>
+        </div>
+        
+        {/* Panel Ortofoto */}
+        <div className="absolute top-4 right-16 z-[1000]">
+          <div className="bg-white rounded-lg shadow-lg p-2 min-w-[140px]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-slate-700">Ortofoto</span>
+              {ortofotoUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setShowOrtofoto(!showOrtofoto)}
+                  title={showOrtofoto ? 'Ocultar' : 'Mostrar'}
+                >
+                  <Eye className={`w-3 h-3 ${showOrtofoto ? 'text-emerald-600' : 'text-slate-400'}`} />
+                </Button>
+              )}
+            </div>
+            
+            {ortofotoUrl ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={ortofotoOpacity * 100}
+                    onChange={(e) => setOrtofotoOpacity(e.target.value / 100)}
+                    className="w-full h-1"
+                    title="Opacidad"
+                  />
+                  <span className="text-[10px] text-slate-500 w-8">{Math.round(ortofotoOpacity * 100)}%</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-7 text-xs"
+                  onClick={() => ortofotoInputRef.current?.click()}
+                >
+                  Cambiar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-8 text-xs"
+                onClick={() => ortofotoInputRef.current?.click()}
+                disabled={uploadingOrtofoto}
+              >
+                {uploadingOrtofoto ? (
+                  <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                ) : (
+                  <Image className="w-3 h-3 mr-1" />
+                )}
+                {uploadingOrtofoto ? 'Subiendo...' : 'Subir Ortofoto'}
+              </Button>
+            )}
+            
+            <input
+              ref={ortofotoInputRef}
+              type="file"
+              accept=".tif,.tiff,.png,.jpg,.jpeg"
+              className="hidden"
+              onChange={handleOrtofotoUpload}
+            />
+          </div>
         </div>
         
         {/* Filtro de zona */}
@@ -1366,6 +1449,12 @@ export default function VisorActualizacion() {
                     <div className="w-3 h-3 rounded bg-purple-500"></div>
                     <span className="text-slate-600">Actualizado</span>
                   </div>
+                  {ortofotoUrl && (
+                    <div className="flex items-center gap-1">
+                      <Image className="w-3 h-3 text-indigo-500" />
+                      <span className="text-slate-600">Ortofoto</span>
+                    </div>
+                  )}
                 </div>
                 <span className="text-slate-400">Zoom: {currentZoom}</span>
               </div>
