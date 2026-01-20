@@ -85,6 +85,33 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Testing:** Verificado con testing_agent - 100% de bugs corregidos (iteration_10.json)
 
+### Sesión 20 Enero 2026 - Implementación Formato de Visita
+**Nuevas funcionalidades implementadas:**
+
+1. ✅ **Permiso acceso_actualizacion para Gestores:**
+   - Nuevo permiso `ACCESO_ACTUALIZACION` en backend (server.py línea 167)
+   - Visible en "Gestión de Permisos" como "Acceso a Actualización"
+   - Gestores requieren este permiso para acceder al módulo de Actualización
+   - Admin y Coordinador tienen acceso por defecto
+
+2. ✅ **Corrección vinculación R1/R2 con GDB:**
+   - Problema: El Excel tenía `CODIGO_PREDIAL_NACIONAL` pero el código buscaba `CODIGO_PREDIAL`
+   - Solución: Agregados mapeos de columnas faltantes en `procesar_r1r2_actualizacion()`
+   - Reprocesado Excel de Sardinata: **3,225 predios únicos** con propietarios agrupados
+   - Visor ahora muestra "Pendientes: 3225" correctamente
+
+3. ✅ **Formato de Visita de Campo completo:**
+   - Modal dedicado con formulario estructurado
+   - Campos: Fecha/hora, persona que atiende, relación con predio
+   - Estado del predio: Habitado, deshabitado, en construcción, abandonado, etc.
+   - Servicios públicos: Checkboxes (Agua, Alcantarillado, Energía, Gas, Internet, Teléfono)
+   - **Captura de fotos:** Input con `capture="environment"` para cámara del dispositivo
+   - **Firma digital:** Canvas HTML5 con eventos touch para dispositivos móviles
+   - GPS: Registra ubicación automáticamente si está activo
+   - Botón "Limpiar firma" para borrar y volver a firmar
+
+**Testing:** Verificado con testing_agent - 100% (8/8 features) (iteration_11.json)
+
 ### Sesión 19 Enero 2026 - Fork (Final)
 **Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
