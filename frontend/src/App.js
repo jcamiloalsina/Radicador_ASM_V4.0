@@ -21,6 +21,7 @@ import Pendientes from "./pages/Pendientes";
 import PermissionsManagement from "./pages/PermissionsManagement";
 import ProyectosActualizacion from "./pages/ProyectosActualizacion";
 import VisorActualizacion from "./pages/VisorActualizacion";
+import GestionPropuestas from "./pages/GestionPropuestas";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
