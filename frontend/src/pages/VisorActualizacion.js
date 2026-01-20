@@ -638,7 +638,7 @@ export default function VisorActualizacion() {
             flyToPosition={flyToPosition}
           />
           
-          {getTileLayer()}
+          <SmartTileLayer mapType={mapType} tileLayers={tileLayers} />
           
           {geometrias && (
             <GeoJSON
