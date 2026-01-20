@@ -5095,6 +5095,8 @@ async def get_estadisticas_gestores(
         })
     
     return {"gestores": resultado}
+
+@api_router.get("/predios/reapariciones/pendientes")
 async def get_reapariciones_pendientes(
     municipio: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
