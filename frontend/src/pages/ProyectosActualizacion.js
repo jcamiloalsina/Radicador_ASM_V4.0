@@ -917,14 +917,14 @@ export default function ProyectosActualizacion() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <Database className={`w-5 h-5 ${proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <Database className={`w-5 h-5 ${proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo ? 'text-emerald-600' : 'text-slate-400'}`} />
                             <div>
                               <p className="font-medium">Base Gráfica (GDB)</p>
-                              {proyectoSeleccionado.base_grafica_archivo ? (
+                              {proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo ? (
                                 <>
                                   <p className="text-xs text-emerald-600 flex items-center gap-1">
                                     <FileCheck className="w-3 h-3" />
-                                    Archivo cargado
+                                    Archivo cargado y procesado
                                   </p>
                                   <p className="text-xs text-slate-400">
                                     {proyectoSeleccionado.base_grafica_total_predios > 0 && 
@@ -938,7 +938,7 @@ export default function ProyectosActualizacion() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            {proyectoSeleccionado.base_grafica_archivo && (
+                            {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) && (
                               <Button 
                                 variant="outline" 
                                 size="sm"
@@ -961,9 +961,9 @@ export default function ProyectosActualizacion() {
                                   className="hidden"
                                 />
                                 <Button 
-                                  variant={proyectoSeleccionado.base_grafica_archivo ? "outline" : "default"}
+                                  variant={(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? "outline" : "default"}
                                   size="sm"
-                                  className={!proyectoSeleccionado.base_grafica_archivo ? "bg-amber-600 hover:bg-amber-700" : ""}
+                                  className={!(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? "bg-amber-600 hover:bg-amber-700" : ""}
                                   onClick={() => baseGraficaRef.current?.click()}
                                   disabled={uploading.base_grafica}
                                 >
