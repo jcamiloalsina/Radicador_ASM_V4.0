@@ -397,14 +397,24 @@ export default function VisorActualizacion() {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Filtrar propietarios y zonas válidas
+      const propietariosValidos = propietarios.filter(p => p.nombre && p.nombre.trim());
+      const zonasValidas = zonasFisicas.filter(z => z.zona_fisica || z.area_terreno);
+      
+      const dataToSave = {
+        ...editData,
+        propietarios: propietariosValidos,
+        zonas_fisicas: zonasValidas,
+        ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+        actualizado_por: user?.email,
+        actualizado_en: new Date().toISOString(),
+        estado_visita: 'actualizado'
+      };
+      
       await axios.patch(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
-        {
-          ...editData,
-          ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-          actualizado_por: user?.email,
-          actualizado_en: new Date().toISOString()
-        },
+        dataToSave,
         { headers: { Authorization: `Bearer ${token}` }}
       );
       
@@ -414,11 +424,11 @@ export default function VisorActualizacion() {
       // Actualizar predio en la lista local
       setPrediosR1R2(prev => prev.map(p => 
         (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
-          ? { ...p, ...editData }
+          ? { ...p, ...dataToSave }
           : p
       ));
       
-      setSelectedPredio(prev => ({ ...prev, ...editData }));
+      setSelectedPredio(prev => ({ ...prev, ...dataToSave }));
     } catch (error) {
       toast.error('Error al guardar cambios');
       console.error(error);
