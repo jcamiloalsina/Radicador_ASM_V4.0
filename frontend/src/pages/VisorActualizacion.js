@@ -801,14 +801,7 @@ export default function VisorActualizacion() {
         if (predio) {
           // Si existe en R1/R2, usar esos datos
           setSelectedPredio(predio);
-          setEditData({
-            direccion: predio.direccion || '',
-            destino_economico: predio.destino_economico || '',
-            area_terreno: predio.area_terreno || '',
-            area_construida: predio.area_construida || '',
-            observaciones_campo: predio.observaciones_campo || '',
-            estado_visita: predio.estado_visita || 'pendiente'
-          });
+          cargarDatosParaEdicion(predio);
         } else {
           // Si no existe en R1/R2, crear objeto básico desde la geometría
           const predioBasico = {
@@ -819,17 +812,11 @@ export default function VisorActualizacion() {
             area_terreno: feature.properties?.area_terreno || feature.properties?.AREA || '',
             area_construida: feature.properties?.area_construida || '',
             estado_visita: 'pendiente',
-            propietarios: []
+            propietarios: [],
+            zonas_fisicas: []
           };
           setSelectedPredio(predioBasico);
-          setEditData({
-            direccion: predioBasico.direccion,
-            destino_economico: predioBasico.destino_economico,
-            area_terreno: predioBasico.area_terreno,
-            area_construida: predioBasico.area_construida,
-            observaciones_campo: '',
-            estado_visita: 'pendiente'
-          });
+          cargarDatosParaEdicion(predioBasico);
         }
         setShowPredioDetail(true);
         setEditMode(false);
