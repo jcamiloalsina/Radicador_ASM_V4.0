@@ -1296,7 +1296,7 @@ export default function VisorActualizacion() {
                     <TabsTrigger value="fisico">Zonas Físicas</TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="propietarios" className="space-y-4 mt-4" forceMount={false}>
+                  <TabsContent value="propietarios" className="space-y-4 mt-4">
                     {/* Sección de Propietarios - Múltiples */}
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-slate-800">Propietarios</h4>
