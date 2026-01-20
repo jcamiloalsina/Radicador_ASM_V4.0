@@ -48,6 +48,7 @@ function App() {
             <Route path="permisos" element={<PermissionsManagement />} />
             <Route path="proyectos-actualizacion" element={<ProyectosActualizacion />} />
             <Route path="visor-actualizacion/:proyectoId" element={<VisorActualizacion />} />
+            <Route path="gestion-propuestas" element={<GestionPropuestas />} />
           </Route>
         </Routes>
       </BrowserRouter>
