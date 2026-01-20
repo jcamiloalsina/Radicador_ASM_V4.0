@@ -53,7 +53,14 @@ import {
   Clock,
   CheckSquare,
   Square,
-  Eye
+  Eye,
+  Trash2,
+  Plus,
+  FileText,
+  Pen,
+  Users,
+  X,
+  Image
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
