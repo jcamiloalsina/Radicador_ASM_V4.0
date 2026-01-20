@@ -143,6 +143,46 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Testing:** Verificado con testing_agent - 100% (6/6 features) (iteration_12.json)
 
+### Sesión 20 Enero 2026 - Sistema de Propuestas de Cambio e Historial
+**Implementación del flujo completo de trabajo de campo:**
+
+1. ✅ **Sistema de Propuestas de Cambio:**
+   - Solo disponible cuando el predio está VISITADO
+   - Vista comparativa "Datos Existentes" vs "Propuesta de Cambio"
+   - Estados: pendiente, aprobada, rechazada
+   - Requiere justificación obligatoria
+   - Endpoints: POST propuesta, GET propuestas, PATCH aprobar/rechazar
+
+2. ✅ **Aprobación por Coordinador:**
+   - Nueva página `GestionPropuestas.js` para coordinadores/admins
+   - Aprobación individual con comentario
+   - Aprobación masiva (checkbox múltiple)
+   - Rechazo requiere comentario obligatorio
+   - Al aprobar, los cambios se aplican automáticamente al predio
+
+3. ✅ **Historial de Cambios:**
+   - Registro automático de: visitas, actualizaciones, propuestas creadas/aprobadas/rechazadas
+   - Almacena: fecha, usuario, acción, campos modificados
+   - Visible en tab "Historial" del modal de predio
+
+4. ✅ **Generación de PDF:**
+   - Endpoint POST /generar-pdf
+   - Formato basado en FO-FAC-PC01-02
+   - Incluye: encabezado ASOMUNICIPIOS, información básica, propietarios, datos de visita, firmas, GPS
+   - Descarga automática al generar
+
+5. ✅ **Tabs adicionales en modal de predio:**
+   - 6 tabs totales: General, Propietarios, Físico, Campo, Propuestas, Historial
+   - Botón "Generar PDF" visible solo si está visitado
+   - Botón "Nueva Propuesta" visible solo si está visitado
+
+**Archivos creados/modificados:**
+- `/app/frontend/src/pages/GestionPropuestas.js` (NUEVO)
+- `/app/frontend/src/pages/VisorActualizacion.js` (MODIFICADO)
+- `/app/backend/server.py` (MODIFICADO - endpoints de propuestas)
+- `/app/frontend/src/App.js` (MODIFICADO - ruta)
+- `/app/frontend/src/pages/DashboardLayout.js` (MODIFICADO - menú)
+
 ### Sesión 19 Enero 2026 - Fork (Final)
 **Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
