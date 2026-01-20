@@ -436,6 +436,194 @@ export default function VisorActualizacion() {
     }
   };
   
+  // ========== FUNCIONES PARA FORMATO DE VISITA ==========
+  
+  // Abrir modal de visita
+  const abrirFormatoVisita = () => {
+    setVisitaData({
+      fecha_visita: new Date().toISOString().split('T')[0],
+      hora_visita: new Date().toTimeString().slice(0, 5),
+      persona_atiende: '',
+      relacion_predio: '',
+      estado_predio: '',
+      acceso_predio: 'si',
+      servicios_publicos: [],
+      observaciones: '',
+      firma_base64: null
+    });
+    setFotos([]);
+    setShowVisitaModal(true);
+    
+    // Limpiar canvas de firma después de que el modal se abra
+    setTimeout(() => {
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }, 100);
+  };
+  
+  // Manejar captura de fotos
+  const handleCapturarFoto = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  const handleFotoChange = async (e) => {
+    const files = Array.from(e.target.files);
+    
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('La foto no puede superar 5MB');
+        continue;
+      }
+      
+      // Convertir a base64
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFotos(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          data: reader.result,
+          nombre: file.name,
+          fecha: new Date().toISOString()
+        }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Limpiar input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  const eliminarFoto = (fotoId) => {
+    setFotos(prev => prev.filter(f => f.id !== fotoId));
+  };
+  
+  // Funciones de firma digital
+  const startDrawing = (e) => {
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+  
+  const draw = (e) => {
+    if (!isDrawing) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
+    let x, y;
+    if (e.type.includes('touch')) {
+      e.preventDefault();
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+    
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+  
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+  
+  const limpiarFirma = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+  
+  const obtenerFirmaBase64 = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      return canvas.toDataURL('image/png');
+    }
+    return null;
+  };
+  
+  // Guardar formato de visita completo
+  const handleGuardarVisita = async () => {
+    if (!selectedPredio) return;
+    
+    // Validaciones
+    if (!visitaData.persona_atiende.trim()) {
+      toast.error('Ingrese el nombre de la persona que atiende');
+      return;
+    }
+    
+    const firmaBase64 = obtenerFirmaBase64();
+    
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
+        {
+          estado_visita: 'visitado',
+          visita: {
+            ...visitaData,
+            firma_base64: firmaBase64,
+            fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
+            ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+            realizada_por: user?.email,
+            realizada_en: new Date().toISOString()
+          },
+          visitado_por: user?.email,
+          visitado_en: new Date().toISOString()
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      toast.success('Formato de visita guardado exitosamente');
+      setShowVisitaModal(false);
+      
+      // Actualizar estado local
+      setPrediosR1R2(prev => prev.map(p => 
+        (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+          ? { ...p, estado_visita: 'visitado' }
+          : p
+      ));
+      
+      setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado' }));
+      setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
+      setShowPredioDetail(false);
+    } catch (error) {
+      toast.error('Error al guardar formato de visita');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  // ========== FIN FUNCIONES FORMATO DE VISITA ==========
+  
   // Estilo de geometrías
   const getGeometryStyle = (feature) => {
     const isSelected = selectedGeometry?.properties?.codigo_predial === feature.properties?.codigo_predial;
