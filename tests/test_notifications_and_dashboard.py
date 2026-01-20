@@ -9,7 +9,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://property-sync-10.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://landmap-update.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "catastro@asomunicipios.gov.co"
