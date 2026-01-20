@@ -84,6 +84,42 @@ function MapController({ onLocationFound, setCurrentZoom, flyToPosition }) {
   return null;
 }
 
+// Componente inteligente que cambia de Esri a Google cuando el zoom es alto
+function SmartTileLayer({ mapType, tileLayers }) {
+  const map = useMap();
+  const [currentZoom, setCurrentZoom] = useState(map.getZoom());
+  
+  useMapEvents({
+    zoomend: () => {
+      setCurrentZoom(map.getZoom());
+    }
+  });
+  
+  // Si es satélite y zoom > 17, usar Google automáticamente
+  const effectiveLayer = (mapType === 'satellite' && currentZoom > 17) 
+    ? tileLayers.google_satellite 
+    : tileLayers[mapType] || tileLayers.satellite;
+  
+  const showingGoogle = mapType === 'satellite' && currentZoom > 17;
+  
+  return (
+    <>
+      <TileLayer
+        key={showingGoogle ? 'google' : mapType}
+        url={effectiveLayer.url}
+        attribution={effectiveLayer.attribution}
+        maxZoom={effectiveLayer.maxZoom}
+        maxNativeZoom={effectiveLayer.maxNativeZoom || effectiveLayer.maxZoom}
+      />
+      {showingGoogle && (
+        <div className="absolute bottom-8 left-2 z-[1000] bg-black/60 text-white text-xs px-2 py-1 rounded">
+          Zoom alto → Google Satellite
+        </div>
+      )}
+    </>
+  );
+}
+
 // Icono personalizado para la ubicación del usuario
 const userLocationIcon = L.divIcon({
   className: 'user-location-marker',
