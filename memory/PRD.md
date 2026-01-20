@@ -183,6 +183,21 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - `/app/frontend/src/App.js` (MODIFICADO - ruta)
 - `/app/frontend/src/pages/DashboardLayout.js` (MODIFICADO - menú)
 
+### Sesión 20 Enero 2026 - Fix Bug Geometría Incorrecta en Conservación
+**Bug corregido:**
+
+El visor de predios de Conservación mostraba geometrías incorrectas para predios sin base gráfica. El sistema tenía un "fallback" que buscaba geometrías por coincidencia parcial (solo segmento de terreno, ignorando zona/sector).
+
+**Ejemplo del bug:**
+- `540030002000000030253000000000` → Zona `00020000`, Terreno `00030253000000000` ✅ Tiene geometría
+- `540030004000000030253000000000` → Zona `00040000`, Terreno `00030253000000000` ❌ Sin geometría
+
+El segundo predio se mostraba en la misma ubicación que el primero porque compartían el segmento de terreno.
+
+**Solución aplicada:** Eliminado el fallback de coincidencia parcial en `get_gdb_geometry_async()`. Ahora solo retorna geometría cuando hay coincidencia exacta del código predial completo.
+
+**Archivo modificado:** `/app/backend/server.py` líneas 7412-7440
+
 ### Sesión 19 Enero 2026 - Fork (Final)
 **Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
