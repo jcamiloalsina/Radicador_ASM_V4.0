@@ -112,6 +112,37 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Testing:** Verificado con testing_agent - 100% (8/8 features) (iteration_11.json)
 
+### Sesión 20 Enero 2026 - Modal de Edición Igual que Conservación
+**Nueva funcionalidad:**
+
+1. ✅ **Modal de edición con 3 tabs (igual que Conservación):**
+   - Tab **Propietarios:** Permite agregar/eliminar múltiples propietarios con:
+     - Nombre Completo
+     - Tipo Documento (C/E/N/T/P)
+     - Número Documento
+     - Estado Civil
+   - Tab **Predio:** Información general editable:
+     - Dirección
+     - Destino Económico
+     - Matrícula Inmobiliaria
+     - Área Terreno / Área Construida
+     - Avalúo Catastral
+     - Estrato
+     - Observaciones de Campo
+   - Tab **Zonas Físicas (R2):** Permite agregar/eliminar múltiples zonas:
+     - Zona Física / Zona Económica
+     - Área Terreno / Área Construida
+     - Habitaciones / Baños / Locales
+     - Pisos / Puntaje
+
+2. ✅ **Funciones de gestión:**
+   - `cargarDatosParaEdicion()`: Carga propietarios y zonas existentes
+   - `agregarPropietario()` / `eliminarPropietario()` / `actualizarPropietario()`
+   - `agregarZonaFisica()` / `eliminarZonaFisica()` / `actualizarZonaFisica()`
+   - `handleSaveChanges()`: Guarda propietarios y zonas_fisicas al backend
+
+**Testing:** Verificado con testing_agent - 100% (6/6 features) (iteration_12.json)
+
 ### Sesión 19 Enero 2026 - Fork (Final)
 **Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
