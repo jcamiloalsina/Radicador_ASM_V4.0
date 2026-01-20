@@ -3546,7 +3546,25 @@ export default function Predios() {
           </DialogHeader>
           <ReaparicionesPendientes 
             municipio={filterMunicipio || null} 
-            onUpdate={() => { fetchReaparicionesConteo(); fetchPredios(); }}
+            onUpdate={() => { fetchReaparicionesConteo(); fetchSubsanacionesConteo(); fetchPredios(); }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Subsanaciones Pendientes Dialog */}
+      <Dialog open={showSubsanacionesDialog} onOpenChange={(open) => { 
+        setShowSubsanacionesDialog(open);
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-orange-700">
+              <RefreshCw className="w-5 h-5" />
+              Subsanaciones de Reapariciones {filterMunicipio ? `- ${filterMunicipio}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <SubsanacionesPendientes 
+            municipio={filterMunicipio || null} 
+            onUpdate={() => { fetchReaparicionesConteo(); fetchSubsanacionesConteo(); fetchPredios(); }}
           />
         </DialogContent>
       </Dialog>
