@@ -1741,6 +1741,27 @@ export default function Predios() {
     }
   };
 
+  const fetchSubsanacionesConteo = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/reapariciones/subsanaciones-pendientes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const subsanaciones = res.data.subsanaciones || [];
+      // También obtener reenviadas si es coordinador
+      let reenviadas = [];
+      if (user && ['coordinador', 'administrador'].includes(user.role)) {
+        const res2 = await axios.get(`${API}/predios/reapariciones/reenviadas`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        reenviadas = res2.data.reenviadas || [];
+      }
+      setSubsanacionesConteo(subsanaciones.length + reenviadas.length);
+    } catch (error) {
+      console.log('Conteo de subsanaciones no disponible');
+    }
+  };
+
   const fetchCambiosPendientes = async () => {
     try {
       const token = localStorage.getItem('token');
