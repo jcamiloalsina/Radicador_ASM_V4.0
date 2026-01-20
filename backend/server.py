@@ -11452,12 +11452,31 @@ async def listar_propuestas_proyecto(
         raise HTTPException(status_code=403, detail="No tiene permiso para ver propuestas")
     
     query = {"proyecto_id": proyecto_id}
+    
     if estado:
-        query["estado"] = estado
+        if estado == 'subsanacion':
+            # Incluir tanto subsanacion como reenviada
+            query["estado"] = {"$in": ["subsanacion", "reenviada"]}
+        elif estado == 'pendiente':
+            # Incluir pendiente y reenviada (ambas esperan acción del coordinador)
+            query["estado"] = {"$in": ["pendiente", "reenviada"]}
+        elif estado == 'rechazada':
+            # Solo las rechazadas definitivas
+            query["estado"] = {"$in": ["rechazada", "rechazada_definitiva"]}
+        else:
+            query["estado"] = estado
+    
+    # Obtener proyecto para agregar municipio
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0, "municipio": 1, "nombre": 1})
     
     propuestas = await db.propuestas_cambio_actualizacion.find(
         query, {"_id": 0}
     ).sort("creado_en", -1).to_list(1000)
+    
+    # Agregar municipio del proyecto a cada propuesta
+    for prop in propuestas:
+        if not prop.get('municipio') and proyecto:
+            prop['municipio'] = proyecto.get('municipio', '')
     
     return {
         "propuestas": propuestas,
