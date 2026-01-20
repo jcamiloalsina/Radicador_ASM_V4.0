@@ -10999,34 +10999,59 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
     
     registros = 0
     
-    # Mapear columnas R1 a campos estándar
+    # Mapear columnas R1 a campos estándar (incluye variantes de nombres de columnas)
     col_mapping_r1 = {
-        'NUMERO PREDIAL': 'numero_predial',
-        'NUMERO_PREDIAL': 'numero_predial',
-        'CODIGO': 'codigo_predial',
+        # Código predial
+        'CODIGO_PREDIAL_NACIONAL': 'codigo_predial',
+        'CODIGO PREDIAL NACIONAL': 'codigo_predial',
         'CODIGO_PREDIAL': 'codigo_predial',
+        'CODIGO PREDIAL': 'codigo_predial',
+        'CODIGO': 'codigo_predial',
+        # Número predial
+        'NUMERO_DEL_PREDIO': 'numero_predial',
+        'NUMERO DEL PREDIO': 'numero_predial',
+        'NUMERO_PREDIAL': 'numero_predial',
+        'NUMERO PREDIAL': 'numero_predial',
+        # Datos básicos
         'DIRECCION': 'direccion',
-        'DESTINO ECONOMICO': 'destino_economico',
         'DESTINO_ECONOMICO': 'destino_economico',
-        'AREA TERRENO': 'area_terreno',
+        'DESTINO ECONOMICO': 'destino_economico',
         'AREA_TERRENO': 'area_terreno',
-        'AREA CONSTRUIDA': 'area_construida',
+        'AREA TERRENO': 'area_terreno',
         'AREA_CONSTRUIDA': 'area_construida',
-        'AVALUO CATASTRAL': 'avaluo_catastral',
+        'AREA CONSTRUIDA': 'area_construida',
+        'AVALUO': 'avaluo_catastral',
         'AVALUO_CATASTRAL': 'avaluo_catastral',
+        'AVALUO CATASTRAL': 'avaluo_catastral',
         'VIGENCIA': 'vigencia',
         'ESTRATO': 'estrato',
+        'TIPO_PREDIO': 'tipo_predio',
         'TIPO PREDIO': 'tipo_predio',
-        'TIPO_PREDIO': 'tipo_predio'
+        'COMUNA': 'comuna',
+        # Propietario (del R1)
+        'NOMBRE': 'propietario_nombre',
+        'TIPO_DOCUMENTO': 'propietario_tipo_doc',
+        'TIPO DOCUMENTO': 'propietario_tipo_doc',
+        'NUMERO_DOCUMENTO': 'propietario_documento',
+        'NUMERO DOCUMENTO': 'propietario_documento',
+        'ESTADO_CIVIL': 'propietario_estado_civil',
+        'ESTADO CIVIL': 'propietario_estado_civil'
     }
+    
+    # Agrupar propietarios por código predial
+    predios_dict = {}
     
     # Procesar R1
     for _, row in df_r1.iterrows():
-        predio = {
+        predio_data = {
             "proyecto_id": proyecto_id,
             "municipio": municipio,
-            "created_at": datetime.now(timezone.utc)
+            "created_at": datetime.now(timezone.utc),
+            "propietarios": []
         }
+        
+        propietario = {}
+        codigo_predial = None
         
         for col, field in col_mapping_r1.items():
             if col in df_r1.columns:
@@ -11034,16 +11059,32 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
                 if pd.notna(val):
                     if field in ['area_terreno', 'area_construida', 'avaluo_catastral']:
                         try:
-                            predio[field] = float(val)
+                            predio_data[field] = float(val)
                         except:
-                            predio[field] = None
+                            predio_data[field] = None
+                    elif field.startswith('propietario_'):
+                        # Datos del propietario
+                        prop_field = field.replace('propietario_', '')
+                        propietario[prop_field] = str(val).strip()
+                    elif field == 'codigo_predial':
+                        codigo_predial = str(val).strip()
+                        predio_data[field] = codigo_predial
                     else:
-                        predio[field] = str(val).strip()
+                        predio_data[field] = str(val).strip()
         
-        # Solo guardar si tiene código o número predial
-        if predio.get('codigo_predial') or predio.get('numero_predial'):
-            await db.predios_actualizacion.insert_one(predio)
-            registros += 1
+        # Solo procesar si tiene código predial
+        if codigo_predial:
+            if codigo_predial not in predios_dict:
+                predios_dict[codigo_predial] = predio_data
+            
+            # Agregar propietario si tiene nombre
+            if propietario.get('nombre'):
+                predios_dict[codigo_predial]['propietarios'].append(propietario)
+    
+    # Guardar predios únicos con sus propietarios
+    for codigo, predio in predios_dict.items():
+        await db.predios_actualizacion.insert_one(predio)
+        registros += 1
     
     # Actualizar proyecto
     await db.proyectos_actualizacion.update_one(
