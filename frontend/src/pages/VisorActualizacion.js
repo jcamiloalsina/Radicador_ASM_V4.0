@@ -166,6 +166,14 @@ export default function VisorActualizacion() {
   const [mapType, setMapType] = useState('satellite');
   const [mapCenter, setMapCenter] = useState([7.8, -72.9]);
   
+  // Estados de Ortofoto
+  const [ortofotoUrl, setOrtofotoUrl] = useState(null);
+  const [ortofotoBounds, setOrtofotoBounds] = useState(null);
+  const [ortofotoOpacity, setOrtofotoOpacity] = useState(0.8);
+  const [showOrtofoto, setShowOrtofoto] = useState(true);
+  const [uploadingOrtofoto, setUploadingOrtofoto] = useState(false);
+  const ortofotoInputRef = useRef(null);
+  
   // Estados de GPS
   const [userPosition, setUserPosition] = useState(null);
   const [watchingPosition, setWatchingPosition] = useState(false);
