@@ -63,6 +63,28 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
+### Sesión 20 Enero 2026 - Fork
+**Corrección de 3 bugs en módulo de Actualización:**
+
+1. ✅ **Bug Fix #1 - UI de carga GDB:**
+   - Corregido: El indicador de Base Gráfica en tarjetas de proyectos ahora usa `proyecto.gdb_procesado` en lugar de `proyecto.base_grafica_archivo`
+   - Archivo: ProyectosActualizacion.js línea 657
+   - Resultado: El indicador se muestra verde cuando el GDB está procesado
+
+2. ✅ **Bug Fix #2 - Zoom del mapa no cambiaba a Google:**
+   - Implementado componente `SmartTileLayer` en VisorActualizacion.js
+   - El mapa cambia automáticamente de Esri a Google Satellite cuando zoom > 17
+   - Muestra indicador "Zoom alto → Google Satellite" cuando está activo
+   - Archivo: VisorActualizacion.js líneas 85-120
+
+3. ✅ **Bug Fix #3 - Edición de predios no aparecía:**
+   - Modificada función `onEachFeature` para abrir modal incluso sin datos R1/R2
+   - Crea objeto `predioBasico` desde propiedades de la geometría cuando no hay datos R1/R2
+   - Archivo: VisorActualizacion.js líneas 454-500
+   - El modal de detalle/edición ahora se abre siempre al hacer clic en un predio
+
+**Testing:** Verificado con testing_agent - 100% de bugs corregidos (iteration_10.json)
+
 ### Sesión 19 Enero 2026 - Fork (Final)
 **Visor de Actualización para Trabajo de Campo - COMPLETADO**
 
