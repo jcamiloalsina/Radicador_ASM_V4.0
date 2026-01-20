@@ -448,24 +448,24 @@ export default function VisorActualizacion() {
     }
   };
   
-  // Tiles del mapa
-  const getTileLayer = () => {
-    if (mapType === 'satellite') {
-      return (
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          attribution="Esri"
-          maxZoom={19}
-        />
-      );
+  // Configuración de capas de tiles
+  const tileLayers = {
+    satellite: {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution: "Esri",
+      maxZoom: 19
+    },
+    google_satellite: {
+      url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+      attribution: "Google",
+      maxZoom: 22,
+      maxNativeZoom: 22
+    },
+    street: {
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: "OpenStreetMap",
+      maxZoom: 19
     }
-    return (
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="OpenStreetMap"
-        maxZoom={19}
-      />
-    );
   };
   
   // Contar predios por estado

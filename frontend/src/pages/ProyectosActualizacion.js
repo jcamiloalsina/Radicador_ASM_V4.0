@@ -654,7 +654,7 @@ export default function ProyectosActualizacion() {
                     {/* Indicadores de archivos */}
                     <div className="flex gap-2 flex-shrink-0">
                       <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                        proyecto.base_grafica_archivo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                        proyecto.gdb_procesado ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
                       }`}>
                         <Database className="w-3 h-3" />
                         Base Gráfica
