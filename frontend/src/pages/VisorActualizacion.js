@@ -321,34 +321,85 @@ export default function VisorActualizacion() {
     }
   }, [filterZona]);
   
-  // Funciones GPS
-  const startWatchingPosition = () => {
+  // Funciones GPS - Mejorado para tablets
+  const startWatchingPosition = async () => {
     if (!navigator.geolocation) {
-      toast.error('Tu navegador no soporta geolocalización');
+      toast.error('Tu dispositivo no soporta geolocalización');
       return;
     }
     
-    setWatchingPosition(true);
-    toast.info('Activando GPS...');
+    // Primero verificar permisos en dispositivos modernos
+    if (navigator.permissions) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        if (permissionStatus.state === 'denied') {
+          toast.error('Permiso de ubicación denegado. Active la ubicación en la configuración del navegador.');
+          return;
+        }
+      } catch (e) {
+        // Algunos navegadores no soportan permissions API - continuar de todas formas
+        console.log('Permissions API no soportada');
+      }
+    }
     
+    setWatchingPosition(true);
+    toast.info('Activando GPS... Por favor espere');
+    
+    // Primero intentar obtener una posición rápida (menos precisa)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUserPosition([latitude, longitude]);
+        setGpsAccuracy(accuracy);
+        toast.success(`GPS conectado - Precisión inicial: ${Math.round(accuracy)}m`);
+      },
+      (error) => {
+        console.log('Error en posición inicial:', error.message);
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 5000,
+        maximumAge: 60000 // Aceptar posición de hasta 1 minuto
+      }
+    );
+    
+    // Luego iniciar el watch con alta precisión
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
         setUserPosition([latitude, longitude]);
         setGpsAccuracy(accuracy);
         
-        if (!userPosition) {
-          toast.success(`GPS activo - Precisión: ${Math.round(accuracy)}m`);
+        // Solo mostrar mensaje si mejora significativamente la precisión
+        if (accuracy < 50) {
+          console.log(`GPS activo - Precisión: ${Math.round(accuracy)}m`);
         }
       },
       (error) => {
-        toast.error('Error de GPS: ' + error.message);
-        setWatchingPosition(false);
+        let errorMsg = 'Error de GPS: ';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMsg += 'Permiso denegado. Active la ubicación en configuración.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMsg += 'Ubicación no disponible. Verifique que el GPS esté activado.';
+            break;
+          case error.TIMEOUT:
+            errorMsg += 'Tiempo de espera agotado. Intente en un área abierta.';
+            break;
+          default:
+            errorMsg += error.message;
+        }
+        toast.error(errorMsg);
+        // No desactivar inmediatamente - puede ser un error temporal
+        if (error.code === error.PERMISSION_DENIED) {
+          setWatchingPosition(false);
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 30000, // 30 segundos - más tiempo para tablets
+        maximumAge: 5000 // Aceptar posición de hasta 5 segundos
       }
     );
   };
