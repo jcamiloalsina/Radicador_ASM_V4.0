@@ -958,6 +958,14 @@ export default function VisorActualizacion() {
         }
         setShowPredioDetail(true);
         setEditMode(false);
+        
+        // Cargar propuestas e historial del predio
+        const codigo = predio?.codigo_predial || predio?.numero_predial || 
+                       feature.properties?.codigo_predial || feature.properties?.numero_predial;
+        if (codigo) {
+          fetchPropuestas(codigo);
+          fetchHistorial(codigo);
+        }
       }
     });
     
