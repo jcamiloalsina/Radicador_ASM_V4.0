@@ -1299,7 +1299,7 @@ export default function VisorActualizacion() {
                   <TabsContent value="propietarios" className="space-y-4 mt-4">
                     {/* Sección de Propietarios - Múltiples */}
                     <div className="flex justify-between items-center">
-                      <h4 className="font-semibold text-slate-800">Propietarios</h4>
+                      <h4 className="font-semibold text-slate-800">Propietarios ({propietarios.length})</h4>
                       <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
                         <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
                       </Button>
