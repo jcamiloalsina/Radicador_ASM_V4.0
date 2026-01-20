@@ -1557,7 +1557,10 @@ export default function VisorActualizacion() {
                       </Button>
                     )}
                     <Button 
-                      onClick={() => setEditMode(true)}
+                      onClick={() => {
+                        cargarDatosParaEdicion(selectedPredio);
+                        setEditMode(true);
+                      }}
                       className="flex-1 bg-amber-600 hover:bg-amber-700"
                     >
                       <Edit className="w-4 h-4 mr-2" />
