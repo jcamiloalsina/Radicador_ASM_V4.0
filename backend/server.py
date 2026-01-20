@@ -11402,20 +11402,41 @@ async def crear_propuesta_cambio(
     if predio.get('estado_visita') not in ['visitado', 'actualizado']:
         raise HTTPException(status_code=400, detail="El predio debe estar visitado antes de proponer cambios")
     
+    # Obtener proyecto para el municipio
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    municipio = proyecto.get('municipio', '') if proyecto else ''
+    
+    # Guardar snapshot completo de los datos existentes
+    datos_existentes = {
+        "direccion": predio.get('direccion', ''),
+        "destino_economico": predio.get('destino_economico', ''),
+        "area_terreno": predio.get('area_terreno', 0),
+        "area_construida": predio.get('area_construida', 0),
+        "avaluo": predio.get('avaluo', 0),
+        "matricula": predio.get('matricula', ''),
+        "estrato": predio.get('estrato', ''),
+        "propietarios": predio.get('propietarios', []),
+        "zonas_fisicas": predio.get('zonas_fisicas', [])
+    }
+    
     # Crear propuesta de cambio
     propuesta = {
         "id": str(uuid.uuid4()),
         "proyecto_id": proyecto_id,
         "codigo_predial": codigo_predial,
-        "datos_existentes": data.get('datos_existentes', {}),
+        "municipio": municipio,
+        "datos_existentes": datos_existentes,
         "datos_propuestos": data.get('datos_propuestos', {}),
         "justificacion": data.get('justificacion', ''),
-        "estado": "pendiente",  # pendiente, aprobada, rechazada
+        "estado": "pendiente",  # pendiente, aprobada, rechazada, subsanacion, reenviada, rechazada_definitiva
         "creado_por": current_user.get('email'),
+        "creado_por_nombre": current_user.get('full_name', current_user.get('email')),
         "creado_en": datetime.now(timezone.utc).isoformat(),
         "revisado_por": None,
         "revisado_en": None,
-        "comentario_revision": None
+        "comentario_revision": None,
+        "intentos_subsanacion": 0,
+        "historial_revision": []
     }
     
     await db.propuestas_cambio_actualizacion.insert_one(propuesta)
