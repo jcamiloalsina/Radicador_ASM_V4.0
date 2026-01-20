@@ -1107,7 +1107,7 @@ export default function VisorActualizacion() {
         setShowPredioDetail(open);
         if (!open) setEditMode(false);
       }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1133,23 +1133,30 @@ export default function VisorActualizacion() {
               </div>
               
               {!editMode ? (
-                // Modo visualización
+                // Modo visualización (igual que antes pero con tabs de zonas)
                 <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid grid-cols-3 w-full">
+                  <TabsList className="grid grid-cols-4 w-full">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
+                    <TabsTrigger value="fisico">Físico</TabsTrigger>
                     <TabsTrigger value="campo">Campo</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="general" className="space-y-3 mt-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
+                      <div className="col-span-2">
                         <p className="text-xs text-slate-500">Dirección</p>
                         <p className="text-sm font-medium">{selectedPredio.direccion || '-'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Destino Económico</p>
                         <p className="text-sm font-medium">{selectedPredio.destino_economico || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Avalúo Catastral</p>
+                        <p className="text-sm font-medium">
+                          {selectedPredio.avaluo_catastral ? `$${Number(selectedPredio.avaluo_catastral).toLocaleString()}` : '-'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Área Terreno</p>
@@ -1163,6 +1170,14 @@ export default function VisorActualizacion() {
                           {selectedPredio.area_construida ? `${Number(selectedPredio.area_construida).toLocaleString()} m²` : '-'}
                         </p>
                       </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Matrícula Inmobiliaria</p>
+                        <p className="text-sm font-medium">{selectedPredio.matricula_inmobiliaria || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Estrato</p>
+                        <p className="text-sm font-medium">{selectedPredio.estrato || '-'}</p>
+                      </div>
                     </div>
                   </TabsContent>
                   
@@ -1170,17 +1185,68 @@ export default function VisorActualizacion() {
                     {selectedPredio.propietarios?.length > 0 ? (
                       <div className="space-y-2">
                         {selectedPredio.propietarios.map((prop, idx) => (
-                          <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                            <User className="w-4 h-4 text-slate-400" />
-                            <div>
-                              <p className="text-sm font-medium">{prop.nombre || 'Sin nombre'}</p>
-                              <p className="text-xs text-slate-500">{prop.documento || '-'}</p>
+                          <div key={idx} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border">
+                            <User className="w-5 h-5 text-slate-400 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-slate-800">{prop.nombre || 'Sin nombre'}</p>
+                              <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-slate-500">
+                                <span>Doc: {prop.tipo_documento || prop.tipo_doc || ''} {prop.documento || prop.numero_documento || '-'}</span>
+                                {prop.estado_civil && <span>Estado civil: {prop.estado_civil}</span>}
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500 text-center py-4">Sin información de propietarios</p>
+                      <div className="text-center py-6">
+                        <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-500">Sin información de propietarios</p>
+                        <p className="text-xs text-slate-400">Use "Editar" para agregar propietarios</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="fisico" className="mt-3">
+                    {selectedPredio.zonas_fisicas?.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedPredio.zonas_fisicas.map((zona, idx) => (
+                          <div key={idx} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-xs font-semibold text-blue-700 mb-2">Zona Física {idx + 1}</p>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-500">Zona Física:</span>
+                                <span className="ml-1 font-medium">{zona.zona_fisica}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Zona Económica:</span>
+                                <span className="ml-1 font-medium">{zona.zona_economica}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Área:</span>
+                                <span className="ml-1 font-medium">{zona.area_terreno} m²</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Habitaciones:</span>
+                                <span className="ml-1 font-medium">{zona.habitaciones}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Baños:</span>
+                                <span className="ml-1 font-medium">{zona.banos}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Pisos:</span>
+                                <span className="ml-1 font-medium">{zona.pisos}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <Database className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-500">Sin información de zonas físicas</p>
+                        <p className="text-xs text-slate-400">Use "Editar" para agregar zonas</p>
+                      </div>
                     )}
                   </TabsContent>
                   
@@ -1203,78 +1269,267 @@ export default function VisorActualizacion() {
                         GPS: {selectedPredio.ubicacion_gps.lat?.toFixed(6)}, {selectedPredio.ubicacion_gps.lng?.toFixed(6)}
                       </div>
                     )}
+                    {selectedPredio.visita?.firma_base64 && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Firma de la visita</p>
+                        <img src={selectedPredio.visita.firma_base64} alt="Firma" className="border rounded h-16" />
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               ) : (
-                // Modo edición
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <Label htmlFor="direccion">Dirección</Label>
-                      <Input
-                        id="direccion"
-                        value={editData.direccion}
-                        onChange={(e) => setEditData(prev => ({ ...prev, direccion: e.target.value }))}
-                        placeholder="Dirección del predio"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="destino">Destino Económico</Label>
-                      <Select 
-                        value={editData.destino_economico} 
-                        onValueChange={(v) => setEditData(prev => ({ ...prev, destino_economico: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Habitacional">Habitacional</SelectItem>
-                          <SelectItem value="Comercial">Comercial</SelectItem>
-                          <SelectItem value="Industrial">Industrial</SelectItem>
-                          <SelectItem value="Agropecuario">Agropecuario</SelectItem>
-                          <SelectItem value="Institucional">Institucional</SelectItem>
-                          <SelectItem value="Lote">Lote</SelectItem>
-                          <SelectItem value="Otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="area_terreno">Área Terreno (m²)</Label>
-                      <Input
-                        id="area_terreno"
-                        type="number"
-                        value={editData.area_terreno}
-                        onChange={(e) => setEditData(prev => ({ ...prev, area_terreno: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="area_construida">Área Construida (m²)</Label>
-                      <Input
-                        id="area_construida"
-                        type="number"
-                        value={editData.area_construida}
-                        onChange={(e) => setEditData(prev => ({ ...prev, area_construida: e.target.value }))}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label htmlFor="observaciones">Observaciones de Campo</Label>
-                      <Textarea
-                        id="observaciones"
-                        value={editData.observaciones_campo}
-                        onChange={(e) => setEditData(prev => ({ ...prev, observaciones_campo: e.target.value }))}
-                        placeholder="Notas de la visita en campo..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
+                // Modo edición - Con Tabs igual que Conservación
+                <Tabs defaultValue="propietarios" className="w-full">
+                  <TabsList className="grid grid-cols-3 w-full">
+                    <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
+                    <TabsTrigger value="predio">Predio</TabsTrigger>
+                    <TabsTrigger value="fisico">Zonas Físicas</TabsTrigger>
+                  </TabsList>
                   
-                  {userPosition && (
-                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                      <MapPin className="w-3 h-3" />
-                      Ubicación GPS actual será guardada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
+                  <TabsContent value="propietarios" className="space-y-4 mt-4">
+                    {/* Sección de Propietarios - Múltiples */}
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold text-slate-800">Propietarios</h4>
+                      <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
+                      </Button>
                     </div>
-                  )}
-                </div>
+                    
+                    {propietarios.map((prop, index) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                          {propietarios.length > 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietario(index)} className="text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="col-span-2">
+                            <Label className="text-xs">Nombre Completo *</Label>
+                            <Input 
+                              value={prop.nombre} 
+                              onChange={(e) => actualizarPropietario(index, 'nombre', e.target.value.toUpperCase())}
+                              placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Tipo Documento</Label>
+                            <Select value={prop.tipo_documento} onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="C">C - Cédula</SelectItem>
+                                <SelectItem value="E">E - Cédula Extranjería</SelectItem>
+                                <SelectItem value="N">N - NIT</SelectItem>
+                                <SelectItem value="T">T - Tarjeta Identidad</SelectItem>
+                                <SelectItem value="P">P - Pasaporte</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Número Documento</Label>
+                            <Input 
+                              value={prop.documento} 
+                              onChange={(e) => actualizarPropietario(index, 'documento', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Estado Civil</Label>
+                            <Select value={prop.estado_civil || "none"} onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v === "none" ? "" : v)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Sin especificar</SelectItem>
+                                <SelectItem value="S">Soltero(a)</SelectItem>
+                                <SelectItem value="C">Casado(a)</SelectItem>
+                                <SelectItem value="U">Unión libre</SelectItem>
+                                <SelectItem value="V">Viudo(a)</SelectItem>
+                                <SelectItem value="D">Divorciado(a)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+                  
+                  <TabsContent value="predio" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <Label>Dirección</Label>
+                        <Input
+                          value={editData.direccion}
+                          onChange={(e) => setEditData(prev => ({ ...prev, direccion: e.target.value.toUpperCase() }))}
+                          placeholder="Dirección del predio"
+                        />
+                      </div>
+                      <div>
+                        <Label>Destino Económico</Label>
+                        <Select 
+                          value={editData.destino_economico} 
+                          onValueChange={(v) => setEditData(prev => ({ ...prev, destino_economico: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="A">A - Habitacional</SelectItem>
+                            <SelectItem value="B">B - Industrial</SelectItem>
+                            <SelectItem value="C">C - Comercial</SelectItem>
+                            <SelectItem value="D">D - Agropecuario</SelectItem>
+                            <SelectItem value="E">E - Minero</SelectItem>
+                            <SelectItem value="F">F - Cultural</SelectItem>
+                            <SelectItem value="G">G - Recreacional</SelectItem>
+                            <SelectItem value="H">H - Salubridad</SelectItem>
+                            <SelectItem value="I">I - Institucional</SelectItem>
+                            <SelectItem value="J">J - Educativo</SelectItem>
+                            <SelectItem value="K">K - Religioso</SelectItem>
+                            <SelectItem value="L">L - Agrícola</SelectItem>
+                            <SelectItem value="M">M - Pecuario</SelectItem>
+                            <SelectItem value="N">N - Agroindustrial</SelectItem>
+                            <SelectItem value="O">O - Forestal</SelectItem>
+                            <SelectItem value="P">P - Uso público</SelectItem>
+                            <SelectItem value="Q">Q - Servicios</SelectItem>
+                            <SelectItem value="R">R - Lote urbanizado</SelectItem>
+                            <SelectItem value="S">S - Lote no urbanizable</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Matrícula Inmobiliaria</Label>
+                        <Input
+                          value={editData.matricula_inmobiliaria || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, matricula_inmobiliaria: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Área Terreno (m²)</Label>
+                        <Input
+                          type="number"
+                          value={editData.area_terreno}
+                          onChange={(e) => setEditData(prev => ({ ...prev, area_terreno: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Área Construida (m²)</Label>
+                        <Input
+                          type="number"
+                          value={editData.area_construida}
+                          onChange={(e) => setEditData(prev => ({ ...prev, area_construida: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Avalúo Catastral (COP)</Label>
+                        <Input
+                          type="number"
+                          value={editData.avaluo_catastral || ''}
+                          onChange={(e) => setEditData(prev => ({ ...prev, avaluo_catastral: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Estrato</Label>
+                        <Select 
+                          value={editData.estrato || 'none'} 
+                          onValueChange={(v) => setEditData(prev => ({ ...prev, estrato: v === 'none' ? '' : v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sin estrato</SelectItem>
+                            <SelectItem value="1">1</SelectItem>
+                            <SelectItem value="2">2</SelectItem>
+                            <SelectItem value="3">3</SelectItem>
+                            <SelectItem value="4">4</SelectItem>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="6">6</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Observaciones de Campo</Label>
+                        <Textarea
+                          value={editData.observaciones_campo}
+                          onChange={(e) => setEditData(prev => ({ ...prev, observaciones_campo: e.target.value }))}
+                          placeholder="Notas de la visita en campo..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                    
+                    {userPosition && (
+                      <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                        <MapPin className="w-3 h-3" />
+                        Ubicación GPS actual será guardada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="fisico" className="space-y-4 mt-4">
+                    {/* Sección de Zonas Físicas - Múltiples */}
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold text-slate-800">Zonas Físicas (R2)</h4>
+                      <Button type="button" variant="outline" size="sm" onClick={agregarZonaFisica} className="text-emerald-700">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                      </Button>
+                    </div>
+                    
+                    {zonasFisicas.map((zona, index) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm font-medium text-slate-700">Zona Física {index + 1}</span>
+                          {zonasFisicas.length > 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaFisica(index)} className="text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs">Zona Física</Label>
+                            <Input type="number" value={zona.zona_fisica} onChange={(e) => actualizarZonaFisica(index, 'zona_fisica', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Zona Económica</Label>
+                            <Input type="number" value={zona.zona_economica} onChange={(e) => actualizarZonaFisica(index, 'zona_economica', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Área Terreno (m²)</Label>
+                            <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaFisica(index, 'area_terreno', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Habitaciones</Label>
+                            <Input type="number" value={zona.habitaciones} onChange={(e) => actualizarZonaFisica(index, 'habitaciones', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Baños</Label>
+                            <Input type="number" value={zona.banos} onChange={(e) => actualizarZonaFisica(index, 'banos', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Locales</Label>
+                            <Input type="number" value={zona.locales} onChange={(e) => actualizarZonaFisica(index, 'locales', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Pisos</Label>
+                            <Input type="number" value={zona.pisos} onChange={(e) => actualizarZonaFisica(index, 'pisos', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Puntaje</Label>
+                            <Input type="number" value={zona.puntaje} onChange={(e) => actualizarZonaFisica(index, 'puntaje', e.target.value)} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Área Construida (m²)</Label>
+                            <Input type="number" value={zona.area_construida} onChange={(e) => actualizarZonaFisica(index, 'area_construida', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+                </Tabs>
               )}
               
               <DialogFooter className="flex gap-2 pt-4">
