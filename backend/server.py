@@ -164,17 +164,19 @@ class Permission:
     UPLOAD_GDB = "upload_gdb"           # Subir archivos GDB
     IMPORT_R1R2 = "import_r1r2"         # Importar archivos R1/R2
     APPROVE_CHANGES = "approve_changes"  # Aprobar cambios de predios
+    ACCESO_ACTUALIZACION = "acceso_actualizacion"  # Acceso al módulo de Actualización
     
     @classmethod
     def all_permissions(cls):
-        return [cls.UPLOAD_GDB, cls.IMPORT_R1R2, cls.APPROVE_CHANGES]
+        return [cls.UPLOAD_GDB, cls.IMPORT_R1R2, cls.APPROVE_CHANGES, cls.ACCESO_ACTUALIZACION]
     
     @classmethod
     def get_description(cls, perm):
         descriptions = {
             cls.UPLOAD_GDB: "Subir archivos GDB (Base Gráfica)",
             cls.IMPORT_R1R2: "Importar archivos R1/R2 (Excel)",
-            cls.APPROVE_CHANGES: "Aprobar/Rechazar cambios de predios"
+            cls.APPROVE_CHANGES: "Aprobar/Rechazar cambios de predios",
+            cls.ACCESO_ACTUALIZACION: "Acceso al módulo de Actualización (trabajo de campo)"
         }
         return descriptions.get(perm, perm)
 
