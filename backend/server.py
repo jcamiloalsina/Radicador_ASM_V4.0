@@ -10909,15 +10909,32 @@ async def actualizar_predio_proyecto(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    # Campos permitidos para actualización
+    # Campos permitidos para actualización (ampliados para formulario de visita completo)
     campos_permitidos = [
+        # Datos básicos
         'direccion', 'destino_economico', 'area_terreno', 'area_construida',
-        'observaciones_campo', 'estado_visita', 'ubicacion_gps',
-        'actualizado_por', 'actualizado_en', 'visitado_por', 'visitado_en'
+        'matricula_inmobiliaria', 'avaluo_catastral', 'estrato', 'comuna',
+        # Propietarios y zonas
+        'propietarios', 'zonas_fisicas',
+        # Estado y tracking
+        'estado_visita', 'observaciones_campo', 'ubicacion_gps',
+        'actualizado_por', 'actualizado_en', 'visitado_por', 'visitado_en',
+        # Datos de visita completa (formulario IGAC)
+        'visita', 'datos_notificacion', 'informacion_construcciones',
+        'calificacion_construccion', 'resumen_areas', 'es_ph', 'datos_ph',
+        'datos_condominio', 'fotos'
     ]
     
     update_data = {k: v for k, v in data.items() if k in campos_permitidos}
     update_data['updated_at'] = datetime.now(timezone.utc)
+    
+    # Agregar al historial de cambios
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "usuario": current_user.get('email'),
+        "accion": "actualizacion" if data.get('estado_visita') == 'actualizado' else "visita",
+        "campos_modificados": list(update_data.keys())
+    }
     
     # Si se marca como actualizado, guardar info adicional
     if update_data.get('estado_visita') == 'actualizado' or (update_data.get('direccion') or update_data.get('destino_economico')):
@@ -10926,7 +10943,10 @@ async def actualizar_predio_proyecto(
     
     await db.predios_actualizacion.update_one(
         {"_id": predio["_id"]},
-        {"$set": update_data}
+        {
+            "$set": update_data,
+            "$push": {"historial_cambios": historial_entry}
+        }
     )
     
     return {
