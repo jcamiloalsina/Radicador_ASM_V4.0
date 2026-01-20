@@ -201,6 +201,39 @@ El dashboard de Conservación mostraba un badge de "1 reaparecido" para San Cali
 
 ---
 
+### Sesión 20 Enero 2026 - Ortofoto, Auto-Zoom y GPS Mejorado (Módulo Actualización)
+**Nuevas funcionalidades implementadas:**
+
+1. ✅ **Carga de Ortofoto:**
+   - Endpoint para subir ortofotos (TIFF, PNG, JPG)
+   - Extracción automática de bounds de archivos GeoTIFF
+   - Panel de control con slider de opacidad
+   - Botón para mostrar/ocultar ortofoto
+   - Se muestra debajo de la GDB pero encima del mapa base
+
+2. ✅ **Auto-Zoom a Capa GDB:**
+   - Al cargar las geometrías, el mapa navega automáticamente a los bounds
+   - Botón de navegación (icono brújula verde) para volver a centrar
+   - Toast de confirmación "Vista ajustada a las geometrías"
+
+3. ✅ **GPS Mejorado para Tablets:**
+   - Verificación de permisos antes de activar
+   - Posición inicial rápida (menos precisa) mientras se obtiene la precisa
+   - Timeout aumentado a 30 segundos
+   - Mensajes de error específicos por tipo de problema
+   - Tolerancia para conexiones intermitentes
+
+**Nuevos Endpoints:**
+- `POST /api/actualizacion/proyectos/{id}/ortofoto` - Subir ortofoto
+- `GET /api/actualizacion/proyectos/{id}/ortofoto` - Info de ortofoto
+- `GET /api/actualizacion/proyectos/{id}/ortofoto/file` - Servir archivo
+
+**Archivos Modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js`
+- `/app/backend/server.py`
+
+---
+
 ### Sesión 20 Enero 2026 - Sistema de Propuestas con Vista Comparativa (Módulo Actualización)
 **Nueva funcionalidad implementada:**
 
