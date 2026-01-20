@@ -1289,14 +1289,14 @@ export default function VisorActualizacion() {
                 </Tabs>
               ) : (
                 // Modo edición - Con Tabs igual que Conservación
-                <Tabs defaultValue="propietarios" className="w-full">
+                <Tabs defaultValue="propietarios" className="w-full min-h-[300px]">
                   <TabsList className="grid grid-cols-3 w-full">
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
                     <TabsTrigger value="predio">Predio</TabsTrigger>
                     <TabsTrigger value="fisico">Zonas Físicas</TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="propietarios" className="space-y-4 mt-4">
+                  <TabsContent value="propietarios" className="space-y-4 mt-4" forceMount={false}>
                     {/* Sección de Propietarios - Múltiples */}
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-slate-800">Propietarios</h4>
