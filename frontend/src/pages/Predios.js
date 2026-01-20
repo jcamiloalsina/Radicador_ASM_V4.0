@@ -2899,29 +2899,11 @@ export default function Predios() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <Label className="text-xs">Zona Física</Label>
-                      <Select value={zona.zona_fisica} onValueChange={(v) => actualizarZonaFisica(index, 'zona_fisica', v)}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {catalogos?.zona_fisica && Object.entries(catalogos.zona_fisica).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input type="text" className="h-8 text-xs" value={zona.zona_fisica} onChange={(e) => actualizarZonaFisica(index, 'zona_fisica', e.target.value)} placeholder="Ej: 01, 02..." />
                     </div>
                     <div>
                       <Label className="text-xs">Zona Económica</Label>
-                      <Select value={zona.zona_economica} onValueChange={(v) => actualizarZonaFisica(index, 'zona_economica', v)}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {catalogos?.zona_economica && Object.entries(catalogos.zona_economica).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input type="text" className="h-8 text-xs" value={zona.zona_economica} onChange={(e) => actualizarZonaFisica(index, 'zona_economica', e.target.value)} placeholder="Ej: A, B, C..." />
                     </div>
                     <div>
                       <Label className="text-xs">Área Terreno</Label>
