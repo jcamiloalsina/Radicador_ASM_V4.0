@@ -10862,6 +10862,60 @@ async def get_predios_proyecto(
         "total": len(predios)
     }
 
+
+@api_router.patch("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}")
+async def actualizar_predio_proyecto(
+    proyecto_id: str,
+    codigo_predial: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza un predio del proyecto (trabajo de campo)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para actualizar predios")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Buscar el predio por codigo_predial o numero_predial
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Campos permitidos para actualización
+    campos_permitidos = [
+        'direccion', 'destino_economico', 'area_terreno', 'area_construida',
+        'observaciones_campo', 'estado_visita', 'ubicacion_gps',
+        'actualizado_por', 'actualizado_en', 'visitado_por', 'visitado_en'
+    ]
+    
+    update_data = {k: v for k, v in data.items() if k in campos_permitidos}
+    update_data['updated_at'] = datetime.now(timezone.utc)
+    
+    # Si se marca como actualizado, guardar info adicional
+    if update_data.get('estado_visita') == 'actualizado' or (update_data.get('direccion') or update_data.get('destino_economico')):
+        if 'estado_visita' not in update_data or update_data['estado_visita'] == 'pendiente':
+            update_data['estado_visita'] = 'actualizado'
+    
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {"$set": update_data}
+    )
+    
+    return {
+        "message": "Predio actualizado exitosamente",
+        "codigo_predial": codigo_predial
+    }
+
+
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")
 async def upload_info_alfanumerica_proyecto(
     proyecto_id: str,
