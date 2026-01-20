@@ -11078,6 +11078,164 @@ async def upload_base_grafica_proyecto(
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
 
 
+# ==================== ORTOFOTO ====================
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/ortofoto")
+async def upload_ortofoto(
+    proyecto_id: str,
+    ortofoto: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Sube una ortofoto para el proyecto de actualización"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden subir ortofotos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Validar tipo de archivo
+    allowed_extensions = ['.tif', '.tiff', '.png', '.jpg', '.jpeg']
+    filename = ortofoto.filename.lower()
+    if not any(filename.endswith(ext) for ext in allowed_extensions):
+        raise HTTPException(status_code=400, detail="Formato no válido. Use TIFF, PNG o JPG")
+    
+    proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
+    proyecto_dir.mkdir(exist_ok=True)
+    
+    # Guardar ortofoto
+    extension = Path(ortofoto.filename).suffix.lower()
+    ortofoto_path = proyecto_dir / f"ortofoto{extension}"
+    
+    try:
+        content = await ortofoto.read()
+        with open(ortofoto_path, "wb") as buffer:
+            buffer.write(content)
+        
+        # Para archivos TIFF con georeferencia, extraer bounds
+        bounds = None
+        
+        if extension in ['.tif', '.tiff']:
+            try:
+                import rasterio
+                with rasterio.open(str(ortofoto_path)) as src:
+                    # Obtener bounds del raster
+                    bounds_raw = src.bounds
+                    # Convertir a lat/lng si es necesario
+                    if src.crs:
+                        from pyproj import Transformer
+                        transformer = Transformer.from_crs(src.crs, "EPSG:4326", always_xy=True)
+                        
+                        west, south = transformer.transform(bounds_raw.left, bounds_raw.bottom)
+                        east, north = transformer.transform(bounds_raw.right, bounds_raw.top)
+                        
+                        bounds = {
+                            "north": north,
+                            "south": south,
+                            "east": east,
+                            "west": west
+                        }
+            except Exception as e:
+                print(f"Error leyendo bounds de TIFF: {e}")
+                # Si no se puede leer, usar bounds del GDB si existe
+                if proyecto.get('gdb_bounds'):
+                    bounds = proyecto['gdb_bounds']
+        
+        # Si no hay bounds, intentar usar los del GDB o valores por defecto del municipio
+        if not bounds:
+            if proyecto.get('gdb_bounds'):
+                bounds = proyecto['gdb_bounds']
+            else:
+                # Intentar obtener bounds de las geometrías guardadas
+                geometrias = await db.geometrias_actualizacion.find_one({"proyecto_id": proyecto_id})
+                if geometrias and geometrias.get('bounds'):
+                    bounds = geometrias['bounds']
+                else:
+                    # Valores aproximados de Norte de Santander
+                    bounds = {
+                        "north": 8.5,
+                        "south": 7.0,
+                        "east": -72.0,
+                        "west": -73.5
+                    }
+        
+        # Actualizar proyecto con info de ortofoto
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {
+                "$set": {
+                    "ortofoto_archivo": str(ortofoto_path),
+                    "ortofoto_nombre": ortofoto.filename,
+                    "ortofoto_bounds": bounds,
+                    "ortofoto_fecha": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Generar URL para el frontend
+        ortofoto_url = f"/api/actualizacion/proyectos/{proyecto_id}/ortofoto/file"
+        
+        return {
+            "message": "Ortofoto cargada exitosamente",
+            "url": ortofoto_url,
+            "bounds": bounds,
+            "filename": ortofoto.filename
+        }
+        
+    except Exception as e:
+        if ortofoto_path.exists():
+            ortofoto_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Error al cargar la ortofoto: {str(e)}")
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/ortofoto")
+async def get_ortofoto_info(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene información de la ortofoto del proyecto"""
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if not proyecto.get('ortofoto_archivo'):
+        raise HTTPException(status_code=404, detail="No hay ortofoto cargada")
+    
+    return {
+        "url": f"/api/actualizacion/proyectos/{proyecto_id}/ortofoto/file",
+        "bounds": proyecto.get('ortofoto_bounds'),
+        "filename": proyecto.get('ortofoto_nombre'),
+        "fecha": proyecto.get('ortofoto_fecha')
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/ortofoto/file")
+async def get_ortofoto_file(proyecto_id: str):
+    """Sirve el archivo de ortofoto"""
+    from fastapi.responses import FileResponse
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    if not proyecto or not proyecto.get('ortofoto_archivo'):
+        raise HTTPException(status_code=404, detail="Ortofoto no encontrada")
+    
+    ortofoto_path = Path(proyecto['ortofoto_archivo'])
+    if not ortofoto_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo de ortofoto no encontrado")
+    
+    # Determinar tipo MIME
+    extension = ortofoto_path.suffix.lower()
+    media_types = {
+        '.tif': 'image/tiff',
+        '.tiff': 'image/tiff',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg'
+    }
+    media_type = media_types.get(extension, 'application/octet-stream')
+    
+    return FileResponse(str(ortofoto_path), media_type=media_type)
+
+
 async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio: str):
     """Procesa el GDB de un proyecto de actualización y guarda las geometrías"""
     import zipfile
