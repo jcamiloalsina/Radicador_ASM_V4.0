@@ -225,6 +225,16 @@ export default function VisorActualizacion() {
   const [isDrawing, setIsDrawing] = useState(false);
   const fileInputRef = useRef(null);
   
+  // Estados para propuestas de cambio e historial
+  const [showPropuestaModal, setShowPropuestaModal] = useState(false);
+  const [propuestas, setPropuestas] = useState([]);
+  const [historial, setHistorial] = useState([]);
+  const [propuestaData, setPropuestaData] = useState({
+    datos_propuestos: {},
+    justificacion: ''
+  });
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  
   // Cargar datos del proyecto
   const fetchProyecto = useCallback(async () => {
     try {
