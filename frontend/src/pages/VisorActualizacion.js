@@ -650,6 +650,110 @@ export default function VisorActualizacion() {
   
   // ========== FIN FUNCIONES FORMATO DE VISITA ==========
   
+  // ========== FUNCIONES PARA PROPIETARIOS Y ZONAS (igual que Conservación) ==========
+  
+  // Funciones para manejar múltiples propietarios
+  const agregarPropietario = () => {
+    setPropietarios([...propietarios, {
+      nombre: '',
+      tipo_documento: 'C',
+      documento: '',
+      estado_civil: ''
+    }]);
+  };
+  
+  const eliminarPropietario = (index) => {
+    if (propietarios.length > 1) {
+      setPropietarios(propietarios.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarPropietario = (index, campo, valor) => {
+    const nuevos = [...propietarios];
+    nuevos[index][campo] = valor;
+    setPropietarios(nuevos);
+  };
+  
+  // Funciones para manejar múltiples zonas físicas
+  const agregarZonaFisica = () => {
+    setZonasFisicas([...zonasFisicas, {
+      zona_fisica: '0',
+      zona_economica: '0',
+      area_terreno: '0',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      pisos: '1',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
+  };
+  
+  const eliminarZonaFisica = (index) => {
+    if (zonasFisicas.length > 1) {
+      setZonasFisicas(zonasFisicas.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaFisica = (index, campo, valor) => {
+    const nuevas = [...zonasFisicas];
+    nuevas[index][campo] = valor;
+    setZonasFisicas(nuevas);
+  };
+  
+  // Cargar datos del predio seleccionado en los estados de edición
+  const cargarDatosParaEdicion = (predio) => {
+    // Cargar propietarios
+    if (predio.propietarios && predio.propietarios.length > 0) {
+      setPropietarios(predio.propietarios.map(p => ({
+        nombre: p.nombre || '',
+        tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
+        documento: p.documento || p.numero_documento || '',
+        estado_civil: p.estado_civil || ''
+      })));
+    } else {
+      setPropietarios([{
+        nombre: '',
+        tipo_documento: 'C',
+        documento: '',
+        estado_civil: ''
+      }]);
+    }
+    
+    // Cargar zonas físicas
+    if (predio.zonas_fisicas && predio.zonas_fisicas.length > 0) {
+      setZonasFisicas(predio.zonas_fisicas);
+    } else {
+      setZonasFisicas([{
+        zona_fisica: '0',
+        zona_economica: '0',
+        area_terreno: predio.area_terreno || '0',
+        habitaciones: '0',
+        banos: '0',
+        locales: '0',
+        pisos: '1',
+        puntaje: '0',
+        area_construida: predio.area_construida || '0'
+      }]);
+    }
+    
+    // Cargar datos generales
+    setEditData({
+      direccion: predio.direccion || '',
+      destino_economico: predio.destino_economico || '',
+      area_terreno: predio.area_terreno || '',
+      area_construida: predio.area_construida || '',
+      observaciones_campo: predio.observaciones_campo || '',
+      estado_visita: predio.estado_visita || 'pendiente',
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      avaluo_catastral: predio.avaluo_catastral || '',
+      comuna: predio.comuna || '',
+      estrato: predio.estrato || ''
+    });
+  };
+  
+  // ========== FIN FUNCIONES PROPIETARIOS Y ZONAS ==========
+  
   // Estilo de geometrías
   const getGeometryStyle = (feature) => {
     const isSelected = selectedGeometry?.properties?.codigo_predial === feature.properties?.codigo_predial;
