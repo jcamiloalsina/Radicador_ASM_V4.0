@@ -259,6 +259,9 @@ export default function VisorActualizacion() {
       if (response.data.info_alfanumerica_archivo) {
         fetchPrediosR1R2();
       }
+      
+      // Cargar ortofoto si existe
+      fetchOrtofoto();
     } catch (error) {
       toast.error('Error al cargar el proyecto');
       console.error(error);
