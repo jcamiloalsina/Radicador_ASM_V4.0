@@ -1303,6 +1303,8 @@ export default function Predios() {
   const [showDeletedDialog, setShowDeletedDialog] = useState(false);
   const [showPendientesDialog, setShowPendientesDialog] = useState(false);
   const [showReaparicionesDialog, setShowReaparicionesDialog] = useState(false);
+  const [showSubsanacionesDialog, setShowSubsanacionesDialog] = useState(false);
+  const [subsanacionesConteo, setSubsanacionesConteo] = useState(0);
   const [reaparicionesConteo, setReaparicionesConteo] = useState({});
   const [gdbStats, setGdbStats] = useState(null); // Estadísticas de geometrías GDB
   const [revinculandoGdb, setRevinculandoGdb] = useState(false); // Estado de revinculación GDB
