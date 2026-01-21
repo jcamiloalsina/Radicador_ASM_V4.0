@@ -758,3 +758,39 @@ La aplicación ahora se estructura en dos flujos principales:
 - POST /api/actualizacion/actividades/{id}/asignar - Asignar responsable
 - DELETE /api/actualizacion/actividades/{id}/asignar/{user_id} - Desasignar
 - GET /api/actualizacion/alertas-proximas - Obtener alertas de vencimiento
+
+---
+
+### Sesión 21 Enero 2026 - Flujo de Predios Sin Cambios
+
+**Cambios solicitados por el usuario:**
+
+1. ✅ **Eliminación de Justificación Obligatoria:**
+   - Removido el `prompt()` que pedía justificación al proponer cambios
+   - La aprobación del coordinador es suficiente validación
+   - Archivo: `/app/frontend/src/pages/VisorActualizacion.js` línea 668
+
+2. ✅ **Nueva Opción "Visitado Sin Cambios":**
+   - Checkbox en el Formulario de Visita para marcar predios verificados sin modificaciones
+   - Texto explicativo: "Marque esta opción si el predio fue visitado y verificado, pero los datos catastrales no requieren modificación"
+   - Se envía al coordinador para aprobación final
+   - Archivo: `/app/frontend/src/pages/VisorActualizacion.js` líneas 2390-2407
+
+3. ✅ **Filtro "Predios Sin Cambios" para Coordinador:**
+   - Nueva pestaña en `GestionPropuestas.js`: "Predios Sin Cambios"
+   - Dropdown para separar "Propuestas de Cambio" vs "Predios Sin Cambios"
+   - Lista de predios visitados sin modificaciones pendientes de aprobación
+   - Aprobación individual y masiva
+   - Al aprobar, el predio se marca como "actualizado"
+
+**Nuevos Endpoints Backend:**
+- `GET /api/actualizacion/proyectos/{id}/predios-sin-cambios` - Lista predios sin cambios pendientes
+- `POST /api/actualizacion/proyectos/{id}/predios/{codigo}/aprobar-sin-cambios` - Aprobar individual
+- `POST /api/actualizacion/proyectos/{id}/predios-sin-cambios/aprobar-masivo` - Aprobación masiva
+
+**Archivos Modificados:**
+- `/app/frontend/src/pages/GestionPropuestas.js` - Tabs y filtros
+- `/app/frontend/src/pages/VisorActualizacion.js` - Checkbox sin_cambios
+- `/app/backend/server.py` - Nuevos endpoints y campo sin_cambios en PATCH
+
+**Testing:** Verificado con testing_agent - 100% (8/8 tests passed) - iteration_13.json
