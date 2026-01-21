@@ -6850,12 +6850,45 @@ async def export_predios_excel(
     )
 
 
-# ===== CERTIFICADO CATASTRAL =====
+# ===== CERTIFICADO CATASTRAL CON VERIFICACIÓN =====
 
-def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, numero_certificado: str = None, radicado: str = None) -> bytes:
+def generar_codigo_verificacion():
+    """Genera un código único de verificación para el certificado"""
+    año = datetime.now().year
+    aleatorio = uuid.uuid4().hex[:8].upper()
+    return f"ASM-{año}-CC-{aleatorio}"
+
+def generar_hash_documento(contenido: str) -> str:
+    """Genera hash SHA256 del contenido para verificar integridad"""
+    return hashlib.sha256(contenido.encode()).hexdigest()[:16].upper()
+
+def generar_qr_verificacion(codigo_verificacion: str) -> bytes:
+    """Genera código QR para verificación"""
+    url = f"{VERIFICACION_BASE_URL}/verificar/{codigo_verificacion}"
+    
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="#047857", back_color="white")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return buffer.getvalue()
+
+def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, codigo_verificacion: str, estilo_verificacion: str = "B") -> bytes:
     """
     Genera un certificado catastral especial en PDF siguiendo el diseño institucional de Asomunicipios.
     Soporta múltiples páginas si el contenido es extenso.
+    Incluye firma digital visual, QR de verificación y código de seguridad.
+    
+    estilo_verificacion: "A" (minimalista) o "B" (con marco)
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
