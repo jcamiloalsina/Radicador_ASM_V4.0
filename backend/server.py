@@ -7099,7 +7099,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_bold, 12)
     c.drawString(left_margin + 5, y - 8, "INFORMACIÓN FÍSICA")
     y -= 18
     
@@ -7146,7 +7146,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_bold, 12)
     c.drawString(left_margin + 5, y - 8, "INFORMACIÓN ECONÓMICA")
     y -= 18
     
