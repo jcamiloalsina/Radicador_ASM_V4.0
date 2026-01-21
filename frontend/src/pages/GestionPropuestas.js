@@ -214,9 +214,33 @@ export default function GestionPropuestas() {
     }
   }, [proyectoSeleccionado, filtroEstado]);
   
+  // Cargar predios sin cambios del proyecto
+  const fetchPrediosSinCambios = useCallback(async () => {
+    if (!proyectoSeleccionado) return;
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado}/predios-sin-cambios`,
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setPrediosSinCambios(response.data.predios || []);
+      setSeleccionadasSinCambios([]);
+    } catch (error) {
+      console.error('Error cargando predios sin cambios:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [proyectoSeleccionado]);
+  
   useEffect(() => {
-    fetchPropuestas();
-  }, [fetchPropuestas]);
+    if (filtroTipo === 'propuestas') {
+      fetchPropuestas();
+    } else {
+      fetchPrediosSinCambios();
+    }
+  }, [fetchPropuestas, fetchPrediosSinCambios, filtroTipo]);
   
   // Aprobar propuesta individual
   const handleAprobar = async (propuestaId, comentario = '') => {
