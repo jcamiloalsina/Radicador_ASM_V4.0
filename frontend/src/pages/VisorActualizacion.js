@@ -577,6 +577,8 @@ export default function VisorActualizacion() {
   const handleSaveChanges = async () => {
     if (!selectedPredio) return;
     
+    const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
+    
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
@@ -589,31 +591,74 @@ export default function VisorActualizacion() {
         ...editData,
         propietarios: propietariosValidos,
         zonas_fisicas: zonasValidas,
-        ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-        actualizado_por: user?.email,
-        actualizado_en: new Date().toISOString(),
-        estado_visita: 'actualizado'
+        ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null
       };
       
-      await axios.patch(
-        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
-        dataToSave,
-        { headers: { Authorization: `Bearer ${token}` }}
-      );
+      if (esCoordinador) {
+        // Coordinador/Admin: Aplicar cambios directamente
+        await axios.patch(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
+          {
+            ...dataToSave,
+            actualizado_por: user?.email,
+            actualizado_en: new Date().toISOString(),
+            estado_visita: 'actualizado'
+          },
+          { headers: { Authorization: `Bearer ${token}` }}
+        );
+        
+        toast.success('Cambios aplicados directamente');
+        
+        // Actualizar predio en la lista local
+        setPrediosR1R2(prev => prev.map(p => 
+          (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+            ? { ...p, ...dataToSave, estado_visita: 'actualizado' }
+            : p
+        ));
+        
+        setSelectedPredio(prev => ({ ...prev, ...dataToSave, estado_visita: 'actualizado' }));
+      } else {
+        // Gestor: Crear propuesta de cambio para aprobación del coordinador
+        const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+        
+        // Verificar que el predio esté visitado
+        if (selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado') {
+          toast.error('Debe marcar el predio como visitado antes de proponer cambios');
+          setSaving(false);
+          return;
+        }
+        
+        // Crear propuesta con justificación
+        const justificacion = prompt('Ingrese una justificación para los cambios propuestos:');
+        if (!justificacion || !justificacion.trim()) {
+          toast.warning('Debe ingresar una justificación para crear la propuesta');
+          setSaving(false);
+          return;
+        }
+        
+        await axios.post(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/propuesta`,
+          {
+            datos_propuestos: dataToSave,
+            justificacion: justificacion.trim()
+          },
+          { headers: { Authorization: `Bearer ${token}` }}
+        );
+        
+        toast.success('Propuesta de cambio enviada al coordinador para aprobación');
+        
+        // Actualizar estado local para indicar que hay propuesta pendiente
+        setPrediosR1R2(prev => prev.map(p => 
+          (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+            ? { ...p, tiene_propuesta_pendiente: true }
+            : p
+        ));
+      }
       
-      toast.success('Cambios guardados exitosamente');
       setEditMode(false);
-      
-      // Actualizar predio en la lista local
-      setPrediosR1R2(prev => prev.map(p => 
-        (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
-          ? { ...p, ...dataToSave }
-          : p
-      ));
-      
-      setSelectedPredio(prev => ({ ...prev, ...dataToSave }));
     } catch (error) {
-      toast.error('Error al guardar cambios');
+      const errorMsg = error.response?.data?.detail || 'Error al procesar cambios';
+      toast.error(errorMsg);
       console.error(error);
     } finally {
       setSaving(false);
