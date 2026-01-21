@@ -11566,6 +11566,205 @@ async def actualizar_predio_proyecto(
     }
 
 
+# ==================== EXPORTACIÓN EXCEL R1/R2 - ACTUALIZACIÓN ====================
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/exportar-excel")
+async def exportar_actualizacion_excel(
+    proyecto_id: str,
+    solo_actualizados: bool = False,
+    current_user: dict = Depends(get_current_user)
+):
+    """Exporta los predios del proyecto de actualización a Excel en formato R1/R2"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from io import BytesIO
+    from fastapi.responses import StreamingResponse
+    
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden exportar")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Query de predios
+    query = {"proyecto_id": proyecto_id}
+    if solo_actualizados:
+        query["estado_visita"] = "actualizado"
+    
+    predios = await db.predios_actualizacion.find(query, {"_id": 0}).to_list(50000)
+    
+    if not predios:
+        raise HTTPException(status_code=404, detail="No hay predios para exportar")
+    
+    # Crear workbook
+    wb = Workbook()
+    
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="047857", end_color="047857", fill_type="solid")
+    actualizado_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # === HOJA REGISTRO_R1 (Propietarios) ===
+    ws_r1 = wb.active
+    ws_r1.title = "REGISTRO_R1"
+    
+    # Headers R1
+    headers_r1 = [
+        "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL", 
+        "CODIGO_HOMOLOGADO", "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS",
+        "NOMBRE", "ESTADO_CIVIL", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
+        "COMUNA", "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", "AVALUO",
+        "VIGENCIA", "ESTADO_VISITA", "ACTUALIZADO_POR", "FECHA_ACTUALIZACION"
+    ]
+    
+    for col, header in enumerate(headers_r1, 1):
+        cell = ws_r1.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Escribir datos R1
+    row = 2
+    for predio in predios:
+        propietarios = predio.get('propietarios', [])
+        if not propietarios:
+            propietarios = [{
+                'nombre_propietario': predio.get('nombre_propietario', predio.get('nombre', '')),
+                'tipo_documento': predio.get('tipo_documento', ''),
+                'numero_documento': predio.get('numero_documento', ''),
+                'estado_civil': predio.get('estado_civil', '')
+            }]
+        
+        total_props = len(propietarios) if propietarios else 1
+        es_actualizado = predio.get('estado_visita') == 'actualizado'
+        
+        for idx, prop in enumerate(propietarios, 1):
+            ws_r1.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
+            ws_r1.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
+            ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
+            ws_r1.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('numero_predial', ''))))
+            ws_r1.cell(row=row, column=5, value=predio.get('codigo_homologado', ''))
+            ws_r1.cell(row=row, column=6, value='1')
+            ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))
+            ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))
+            ws_r1.cell(row=row, column=9, value=prop.get('nombre_propietario', prop.get('nombre', '')))
+            ws_r1.cell(row=row, column=10, value=prop.get('estado_civil', ''))
+            ws_r1.cell(row=row, column=11, value=prop.get('tipo_documento', ''))
+            ws_r1.cell(row=row, column=12, value=prop.get('numero_documento', ''))
+            ws_r1.cell(row=row, column=13, value=predio.get('direccion', ''))
+            ws_r1.cell(row=row, column=14, value=predio.get('comuna', ''))
+            ws_r1.cell(row=row, column=15, value=predio.get('destino_economico', ''))
+            ws_r1.cell(row=row, column=16, value=predio.get('area_terreno', 0))
+            ws_r1.cell(row=row, column=17, value=predio.get('area_construida', 0))
+            ws_r1.cell(row=row, column=18, value=predio.get('avaluo', predio.get('avaluo_catastral', 0)))
+            ws_r1.cell(row=row, column=19, value=predio.get('vigencia', datetime.now().year))
+            ws_r1.cell(row=row, column=20, value=predio.get('estado_visita', 'pendiente'))
+            ws_r1.cell(row=row, column=21, value=predio.get('actualizado_por', ''))
+            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_en', ''))
+            
+            # Resaltar filas actualizadas
+            if es_actualizado:
+                for c in range(1, 23):
+                    ws_r1.cell(row=row, column=c).fill = actualizado_fill
+            
+            row += 1
+    
+    # === HOJA REGISTRO_R2 (Físico) ===
+    ws_r2 = wb.create_sheet(title="REGISTRO_R2")
+    
+    headers_r2 = [
+        "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL",
+        "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS", "MATRICULA_INMOBILIARIA",
+        "ZONA_FISICA_1", "ZONA_ECONOMICA_1", "AREA_TERRENO_1",
+        "ZONA_FISICA_2", "ZONA_ECONOMICA_2", "AREA_TERRENO_2",
+        "ZONA_FISICA_3", "ZONA_ECONOMICA_3", "AREA_TERRENO_3",
+        "HABITACIONES", "BANOS", "LOCALES", "PISOS", "USO", "AREA_CONSTRUIDA",
+        "VIGENCIA", "ESTADO_VISITA"
+    ]
+    
+    for col, header in enumerate(headers_r2, 1):
+        cell = ws_r2.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Escribir datos R2
+    row = 2
+    for predio in predios:
+        zonas = predio.get('zonas_fisicas', predio.get('r2_registros', []))
+        es_actualizado = predio.get('estado_visita') == 'actualizado'
+        
+        ws_r2.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
+        ws_r2.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
+        ws_r2.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
+        ws_r2.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('numero_predial', ''))))
+        ws_r2.cell(row=row, column=5, value='2')
+        ws_r2.cell(row=row, column=6, value='01')
+        ws_r2.cell(row=row, column=7, value='01')
+        ws_r2.cell(row=row, column=8, value=predio.get('matricula_inmobiliaria', predio.get('matricula', '')))
+        
+        # Zonas físicas (hasta 3)
+        for i in range(3):
+            if i < len(zonas):
+                zona = zonas[i]
+                ws_r2.cell(row=row, column=9 + i*3, value=zona.get('zona_fisica', ''))
+                ws_r2.cell(row=row, column=10 + i*3, value=zona.get('zona_economica', ''))
+                ws_r2.cell(row=row, column=11 + i*3, value=zona.get('area_terreno', 0))
+        
+        # Datos de construcción
+        ws_r2.cell(row=row, column=18, value=predio.get('habitaciones', ''))
+        ws_r2.cell(row=row, column=19, value=predio.get('banos', ''))
+        ws_r2.cell(row=row, column=20, value=predio.get('locales', ''))
+        ws_r2.cell(row=row, column=21, value=predio.get('pisos', ''))
+        ws_r2.cell(row=row, column=22, value=predio.get('uso', predio.get('destino_economico', '')))
+        ws_r2.cell(row=row, column=23, value=predio.get('area_construida', 0))
+        ws_r2.cell(row=row, column=24, value=predio.get('vigencia', datetime.now().year))
+        ws_r2.cell(row=row, column=25, value=predio.get('estado_visita', 'pendiente'))
+        
+        # Resaltar filas actualizadas
+        if es_actualizado:
+            for c in range(1, 26):
+                ws_r2.cell(row=row, column=c).fill = actualizado_fill
+        
+        row += 1
+    
+    # Ajustar anchos de columna
+    for ws in [ws_r1, ws_r2]:
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 40)
+            ws.column_dimensions[column].width = adjusted_width
+    
+    # Guardar en memoria
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"Actualizacion_{proyecto.get('municipio', 'Proyecto')}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 # ==================== PROPUESTAS DE CAMBIO ====================
 
 @api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/propuesta")
