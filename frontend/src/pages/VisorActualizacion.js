@@ -739,16 +739,16 @@ export default function VisorActualizacion() {
   const abrirDetallePredio = (predio, tipo = null) => {
     setSelectedPredio(predio);
     setTipoRevision(tipo);
-    setEditData({
-      direccion: predio.direccion || '',
-      destino_economico: predio.destino_economico || '',
-      area_terreno: predio.area_terreno || '',
-      area_construida: predio.area_construida || '',
-      observaciones_campo: predio.observaciones_campo || '',
-      estado_visita: predio.estado_visita || 'pendiente',
-      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
-    });
+    cargarDatosParaEdicion(predio);
     setShowPredioDetail(true);
+    setEditMode(false);
+    
+    // Cargar propuestas e historial
+    const codigo = predio?.codigo_predial || predio?.numero_predial;
+    if (codigo) {
+      fetchPropuestas(codigo);
+      fetchHistorial(codigo);
+    }
   };
   
   // Confirmar tipo de revisión y abrir predio
