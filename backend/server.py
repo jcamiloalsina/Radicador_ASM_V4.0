@@ -7446,11 +7446,18 @@ async def generar_certificado_desde_peticion(
             detail="No se encontró el predio asociado a esta petición. La petición debe incluir un código predial nacional o matrícula inmobiliaria válidos. Si la petición es antigua, solicite al peticionario radicar una nueva con los datos correctos."
         )
     
+    # Verificar que el predio tenga información de propietarios (R1/R2)
+    propietarios = predio.get('propietarios', [])
+    if not propietarios or len(propietarios) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Certificado no disponible. El predio no tiene información de propietarios (R1/R2) registrada en la base de datos catastral."
+        )
+    
     # Generar código de verificación
     codigo_verificacion = generar_codigo_verificacion()
     
     # Registrar en la base de datos de certificados verificables
-    propietarios = predio.get('propietarios', [])
     propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios] if propietarios else ['N/A']
     
     certificado_record = {
