@@ -204,6 +204,16 @@ export default function DashboardLayout() {
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
+  // Agregar/quitar atributo al body cuando el sidebar está abierto (para CSS)
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.setAttribute('data-sidebar-open', 'true');
+    } else {
+      document.body.removeAttribute('data-sidebar-open');
+    }
+    return () => document.body.removeAttribute('data-sidebar-open');
+  }, [sidebarOpen]);
+
   // Memoized role names
   const getRoleName = useCallback((role) => {
     const roles = {
