@@ -7408,6 +7408,289 @@ async def generar_certificado_catastral_endpoint(
     )
 
 
+# === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
+
+@api_router.get("/verificar/{codigo_verificacion}", response_class=HTMLResponse)
+async def verificar_certificado_publico(codigo_verificacion: str):
+    """
+    Endpoint PÚBLICO para verificar un certificado catastral.
+    Devuelve una página HTML con la información del certificado.
+    No requiere autenticación.
+    """
+    # Buscar certificado
+    certificado = await db.certificados_verificables.find_one(
+        {"codigo_verificacion": codigo_verificacion},
+        {"_id": 0}
+    )
+    
+    if not certificado:
+        # Certificado no encontrado
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Verificación - ASOMUNICIPIOS</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .header {{ background: #dc2626; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 30px; text-align: center; }}
+                .icon {{ font-size: 48px; margin-bottom: 20px; }}
+                .code {{ background: #fee2e2; padding: 10px; border-radius: 5px; font-family: monospace; color: #dc2626; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>⚠️ Certificado NO Encontrado</h1>
+                </div>
+                <div class="content">
+                    <div class="icon">❌</div>
+                    <p>El código de verificación no corresponde a ningún certificado emitido por ASOMUNICIPIOS.</p>
+                    <p class="code">{codigo_verificacion}</p>
+                    <p style="margin-top: 20px; color: #666;">
+                        Si cree que esto es un error, contacte a:<br>
+                        <strong>comunicaciones@asomunicipios.gov.co</strong>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content, status_code=404)
+    
+    # Verificar estado
+    estado = certificado.get('estado', 'activo')
+    es_valido = estado == 'activo'
+    
+    # Formatear fecha
+    fecha_gen = certificado.get('fecha_generacion', '')
+    if fecha_gen:
+        try:
+            dt = datetime.fromisoformat(fecha_gen.replace('Z', '+00:00'))
+            fecha_formateada = dt.strftime("%d/%m/%Y a las %H:%M")
+        except:
+            fecha_formateada = fecha_gen
+    else:
+        fecha_formateada = "No disponible"
+    
+    # Propietarios
+    propietarios = certificado.get('propietarios', [])
+    propietarios_html = "<br>".join([f"• {p}" for p in propietarios]) if propietarios else "No disponible"
+    
+    if es_valido:
+        # Certificado VÁLIDO
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>✅ Certificado Válido - ASOMUNICIPIOS</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .header {{ background: #047857; color: white; padding: 20px; text-align: center; }}
+                .header h1 {{ margin: 0; }}
+                .badge {{ display: inline-block; background: #10b981; padding: 5px 15px; border-radius: 20px; margin-top: 10px; font-size: 14px; }}
+                .content {{ padding: 30px; }}
+                .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
+                .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
+                .info-value {{ color: #6b7280; }}
+                .code {{ background: #f0fdf4; padding: 10px; border-radius: 5px; font-family: monospace; color: #047857; text-align: center; margin: 20px 0; border: 1px solid #047857; }}
+                .footer {{ background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }}
+                .logo {{ max-width: 200px; margin-bottom: 10px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✅ CERTIFICADO VÁLIDO</h1>
+                    <span class="badge">Verificado por ASOMUNICIPIOS</span>
+                </div>
+                <div class="content">
+                    <div class="code">
+                        <strong>Código de Verificación:</strong><br>
+                        {codigo_verificacion}
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📋 Código Predial:</span>
+                        <span class="info-value">{certificado.get('codigo_predial', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">🏛️ Municipio:</span>
+                        <span class="info-value">{certificado.get('municipio', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📍 Dirección:</span>
+                        <span class="info-value">{certificado.get('direccion', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">👥 Propietarios:</span>
+                        <span class="info-value">{propietarios_html}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📅 Generado:</span>
+                        <span class="info-value">{fecha_formateada}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">👤 Elaborado por:</span>
+                        <span class="info-value">{certificado.get('generado_por_nombre', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">🔐 Hash:</span>
+                        <span class="info-value" style="font-family: monospace; font-size: 12px;">SHA256:{certificado.get('hash_documento', 'N/A')}</span>
+                    </div>
+                </div>
+                <div class="footer">
+                    <strong>ASOMUNICIPIOS - Gestor Catastral</strong><br>
+                    Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar<br>
+                    comunicaciones@asomunicipios.gov.co | +57 3102327647
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        # Certificado ANULADO
+        fecha_anulacion = certificado.get('fecha_anulacion', '')
+        motivo = certificado.get('motivo_anulacion', 'No especificado')
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>⚠️ Certificado Anulado - ASOMUNICIPIOS</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #fef2f2; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .header {{ background: #dc2626; color: white; padding: 20px; text-align: center; }}
+                .content {{ padding: 30px; }}
+                .warning {{ background: #fee2e2; border: 1px solid #dc2626; border-radius: 5px; padding: 15px; margin-bottom: 20px; }}
+                .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
+                .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
+                .info-value {{ color: #6b7280; }}
+                .footer {{ background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>⚠️ CERTIFICADO ANULADO</h1>
+                </div>
+                <div class="content">
+                    <div class="warning">
+                        <strong>⚠️ Este certificado ha sido ANULADO</strong><br>
+                        Este documento ya no tiene validez legal.<br><br>
+                        <strong>Motivo:</strong> {motivo}
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Código:</span>
+                        <span class="info-value">{codigo_verificacion}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Código Predial:</span>
+                        <span class="info-value">{certificado.get('codigo_predial', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Fecha Anulación:</span>
+                        <span class="info-value">{fecha_anulacion}</span>
+                    </div>
+                </div>
+                <div class="footer">
+                    <strong>ASOMUNICIPIOS - Gestor Catastral</strong><br>
+                    comunicaciones@asomunicipios.gov.co
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    
+    return HTMLResponse(content=html_content)
+
+
+@api_router.post("/certificados/{codigo_verificacion}/anular")
+async def anular_certificado(
+    codigo_verificacion: str,
+    motivo: str = Form(..., description="Motivo de la anulación"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Anula un certificado existente.
+    Solo coordinadores y administradores pueden anular certificados.
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden anular certificados")
+    
+    # Buscar certificado
+    certificado = await db.certificados_verificables.find_one({"codigo_verificacion": codigo_verificacion})
+    if not certificado:
+        raise HTTPException(status_code=404, detail="Certificado no encontrado")
+    
+    if certificado.get('estado') == 'anulado':
+        raise HTTPException(status_code=400, detail="El certificado ya está anulado")
+    
+    # Anular certificado
+    await db.certificados_verificables.update_one(
+        {"codigo_verificacion": codigo_verificacion},
+        {
+            "$set": {
+                "estado": "anulado",
+                "motivo_anulacion": motivo,
+                "fecha_anulacion": datetime.now(timezone.utc).isoformat(),
+                "anulado_por": current_user['id'],
+                "anulado_por_nombre": current_user['full_name']
+            }
+        }
+    )
+    
+    return {
+        "success": True,
+        "message": f"Certificado {codigo_verificacion} anulado exitosamente",
+        "codigo_verificacion": codigo_verificacion
+    }
+
+
+@api_router.get("/certificados/verificables")
+async def listar_certificados_verificables(
+    skip: int = 0,
+    limit: int = 50,
+    estado: str = Query(None, description="Filtrar por estado: activo, anulado"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista todos los certificados verificables generados"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    query = {}
+    if estado:
+        query["estado"] = estado
+    
+    certificados = await db.certificados_verificables.find(query, {"_id": 0}).sort("fecha_generacion", -1).skip(skip).limit(limit).to_list(length=limit)
+    total = await db.certificados_verificables.count_documents(query)
+    
+    return {
+        "certificados": certificados,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
 @api_router.get("/certificados/historial")
 async def get_certificados_historial(
     skip: int = 0,
