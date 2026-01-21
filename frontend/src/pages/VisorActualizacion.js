@@ -1751,14 +1751,21 @@ export default function VisorActualizacion() {
           </Button>
           
           <Button
-            variant="outline"
+            variant={watchingPosition ? "default" : "outline"}
             size="sm"
-            onClick={centerOnUser}
-            className="w-9 h-9 p-0 bg-white shadow-lg"
-            disabled={!userPosition}
-            title="Mi ubicación GPS"
+            onClick={() => {
+              if (!watchingPosition) {
+                // Si GPS no está activo, activarlo
+                startWatchingPosition();
+              } else if (userPosition) {
+                // Si GPS activo y hay posición, centrar mapa
+                centerOnUser();
+              }
+            }}
+            className={`w-9 h-9 p-0 shadow-lg ${watchingPosition ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white'}`}
+            title={watchingPosition ? (userPosition ? "Centrar en mi ubicación" : "Obteniendo ubicación...") : "Activar GPS y centrar"}
           >
-            <Locate className="w-4 h-4" />
+            <Locate className={`w-4 h-4 ${watchingPosition ? 'text-white animate-pulse' : ''}`} />
           </Button>
         </div>
         
