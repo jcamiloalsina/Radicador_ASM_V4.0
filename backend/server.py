@@ -7249,8 +7249,8 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.drawString(left_margin, y, texto_exp)
     y -= 20
     
-    # === SECCIÓN DE FIRMA Y VERIFICACIÓN (lado a lado) ===
-    y = check_page_break(y, 130)
+    # === SECCIÓN DE FIRMA Y VERIFICACIÓN (lado a lado, centrados) ===
+    y = check_page_break(y, 110)
     
     # Generar QR de verificación
     from reportlab.lib.utils import ImageReader
@@ -7264,39 +7264,47 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # Hash del documento (simplificado)
     hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{fecha_hora_gen}")
     
-    # === LADO IZQUIERDO: FIRMA ===
+    # Calcular posiciones centradas para ambos bloques
+    # Ancho total disponible
+    total_width = content_width
+    firma_block_width = 180  # Ancho del bloque de firma
+    verif_block_width = 185  # Ancho del bloque de verificación
+    gap_between = 30  # Espacio entre ambos bloques
+    
+    # Calcular inicio para centrar ambos bloques
+    total_blocks_width = firma_block_width + gap_between + verif_block_width
+    start_x = left_margin + (total_width - total_blocks_width) / 2
+    
+    # === BLOQUE IZQUIERDO: FIRMA ===
     firma_path = Path("/app/backend/logos/firma_dalgie_blanco.png")
-    firma_y = y - 70  # Posición Y para la firma
+    firma_block_y = y - 65
     
     if firma_path.exists():
-        # Dibujar la firma con fondo blanco
-        firma_width = 100
-        firma_height = 60
-        firma_x = left_margin + 10
+        # Dibujar la firma
+        firma_width = 90
+        firma_height = 54
+        firma_x = start_x + (firma_block_width - firma_width) / 2
+        firma_y = firma_block_y
         
-        # Dibujar un rectángulo blanco de fondo para la firma
-        c.setFillColor(blanco)
-        c.rect(firma_x - 3, firma_y - 3, firma_width + 6, firma_height + 6, fill=1, stroke=0)
-        
-        # Dibujar la imagen de la firma
+        # Dibujar la imagen de la firma (ya tiene fondo blanco)
         c.drawImage(str(firma_path), firma_x, firma_y, width=firma_width, height=firma_height, 
                     preserveAspectRatio=True, mask='auto')
     
-    # Nombre y cargo debajo de la firma (en una sola línea el cargo)
-    nombre_y = firma_y - 12
+    # Nombre y cargo debajo de la firma (centrados en el bloque)
+    nombre_y = firma_block_y - 10
     c.setFillColor(negro)
     c.setFont(fuente_bold, 9)
-    c.drawString(left_margin, nombre_y, firmante.get('full_name', 'DALGIE ESPERANZA TORRADO RIZO'))
+    c.drawString(start_x, nombre_y, firmante.get('full_name', 'DALGIE ESPERANZA TORRADO RIZO'))
     
-    cargo_y = nombre_y - 11
+    cargo_y = nombre_y - 10
     c.setFont(fuente_normal, 8)
-    c.drawString(left_margin, cargo_y, firmante.get('cargo', 'Subdirectora Financiera y Administrativa'))
+    c.drawString(start_x, cargo_y, firmante.get('cargo', 'Subdirectora Financiera y Administrativa'))
     
-    # === LADO DERECHO: CUADRO DE VERIFICACIÓN ===
-    marco_width = 200
-    marco_height = 62
-    marco_x = right_margin - marco_width
-    marco_y = y - 72
+    # === BLOQUE DERECHO: CUADRO DE VERIFICACIÓN ===
+    marco_width = verif_block_width
+    marco_height = 58
+    marco_x = start_x + firma_block_width + gap_between
+    marco_y = y - 68
     
     # Fondo del marco
     c.setFillColor(colors.HexColor('#f0fdf4'))  # Verde muy claro
@@ -7308,35 +7316,35 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=0, stroke=1)
     
     # QR dentro del marco (izquierda del bloque)
-    qr_size = 48
-    c.drawImage(qr_image, marco_x + 6, marco_y + 7, width=qr_size, height=qr_size, mask='auto')
+    qr_size = 46
+    c.drawImage(qr_image, marco_x + 5, marco_y + 6, width=qr_size, height=qr_size, mask='auto')
     
     # Información de verificación (derecha del QR)
-    info_x = marco_x + 58
+    info_x = marco_x + 55
     
     # Título
     c.setFillColor(verde_institucional)
     c.setFont(fuente_bold, 8)
-    c.drawString(info_x, marco_y + marco_height - 12, "CERTIFICADO VERIFICABLE")
+    c.drawString(info_x, marco_y + marco_height - 11, "CERTIFICADO VERIFICABLE")
     
     # Código
     c.setFillColor(negro)
     c.setFont(fuente_bold, 7)
-    c.drawString(info_x, marco_y + 38, f"Código: {codigo_verificacion}")
+    c.drawString(info_x, marco_y + 36, f"Código: {codigo_verificacion}")
     
     # Detalles
     c.setFont(fuente_normal, 6)
     c.setFillColor(gris_claro)
-    c.drawString(info_x, marco_y + 28, f"Generado: {fecha_hora_gen}")
-    c.drawString(info_x, marco_y + 19, f"Hash: SHA256:{hash_doc[:12]}...")
+    c.drawString(info_x, marco_y + 26, f"Generado: {fecha_hora_gen}")
+    c.drawString(info_x, marco_y + 17, f"Hash: SHA256:{hash_doc[:12]}...")
     
-    # URL de verificación (solo dominio corto)
+    # URL de verificación
     c.setFillColor(verde_institucional)
     c.setFont(fuente_normal, 6)
-    c.drawString(info_x, marco_y + 10, "Escanear QR para verificar")
+    c.drawString(info_x, marco_y + 8, "Escanear QR para verificar")
     
     # Calcular posición Y para "Elaboró" (debajo de ambos bloques)
-    y = min(cargo_y - 18, marco_y - 12)
+    y = min(cargo_y - 15, marco_y - 10)
     
     # === ELABORÓ ===
     c.setFont(fuente_normal, 8)
