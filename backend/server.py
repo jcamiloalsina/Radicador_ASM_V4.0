@@ -6986,13 +6986,13 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     cuadro_x = left_margin
     cuadro_width = content_width
     
-    # Función para dibujar encabezado de sección (barra verde)
+    # Función para dibujar encabezado de sección (barra verde) - CENTRADO
     def draw_section_header(title, y_pos):
         c.setFillColor(verde_institucional)
         c.rect(cuadro_x, y_pos - 14, cuadro_width, 16, fill=1, stroke=0)
         c.setFillColor(blanco)
         c.setFont(fuente_bold, 11)
-        c.drawString(cuadro_x + 5, y_pos - 10, title)
+        c.drawCentredString(cuadro_x + cuadro_width/2, y_pos - 10, title)
         return y_pos - 18
     
     # Función para dibujar fila de campo
