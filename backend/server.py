@@ -7154,20 +7154,20 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # === PIE DE PÁGINA - IMAGEN (ancho completo de la hoja) ===
     pie_pagina_path = Path("/app/backend/logos/pie_pagina_certificado.png")
     if pie_pagina_path.exists():
-        footer_height = 1.2 * cm
-        footer_y = 0.3 * cm  # Pegado al borde inferior
+        footer_height = 1.8 * cm  # Más alto para simetría
+        footer_y = 0  # Pegado al borde inferior (0)
         # Ancho completo de la hoja (sin márgenes)
         c.drawImage(str(pie_pagina_path), 0, footer_y, 
                     width=width, height=footer_height, 
                     preserveAspectRatio=False, mask='auto')
     else:
         # Fallback: barra verde si no existe la imagen
-        footer_y = 0.5 * cm
+        footer_y = 0.3 * cm
         c.setFillColor(verde_institucional)
-        c.rect(0, footer_y - 5, width, 22, fill=1, stroke=0)
+        c.rect(0, footer_y - 5, width, 28, fill=1, stroke=0)
         c.setFillColor(blanco)
         c.setFont(fuente_normal, 8)
-        c.drawCentredString(width/2, footer_y + 5, "comunicaciones@asomunicipios.gov.co")
+        c.drawCentredString(width/2, footer_y + 8, "comunicaciones@asomunicipios.gov.co")
     
     c.save()
     return buffer.getvalue()
