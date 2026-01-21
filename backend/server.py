@@ -706,8 +706,8 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
     
     # Colores según tipo de notificación
     colores = {
-        "info": {"bg": "#047857", "accent": "#10b981", "badge": "#0ea5e9"},
-        "success": {"bg": "#047857", "accent": "#10b981", "badge": "#22c55e"},
+        "info": {"bg": "#009846", "accent": "#10b981", "badge": "#0ea5e9"},
+        "success": {"bg": "#009846", "accent": "#10b981", "badge": "#22c55e"},
         "warning": {"bg": "#d97706", "accent": "#f59e0b", "badge": "#f59e0b"},
         "error": {"bg": "#dc2626", "accent": "#ef4444", "badge": "#ef4444"}
     }
@@ -1031,8 +1031,8 @@ async def send_test_email(request: TestEmailRequest, current_user: dict = Depend
     <p>Si estás recibiendo este mensaje, significa que la configuración de correo electrónico 
     con <strong>Office 365</strong> está funcionando correctamente.</p>
     
-    <div style="background: #ecfdf5; border-left: 4px solid #047857; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-        <p style="color: #047857; margin: 0; font-weight: bold;">✅ Configuración SMTP verificada:</p>
+    <div style="background: #ecfdf5; border-left: 4px solid #009846; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="color: #009846; margin: 0; font-weight: bold;">✅ Configuración SMTP verificada:</p>
         <p style="color: #065f46; margin: 8px 0 0 0; font-size: 14px;">
             Servidor: smtp.office365.com<br>
             Remitente: catastro@asomunicipios.gov.co
@@ -1071,9 +1071,9 @@ async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict
     
     styles = getSampleStyleSheet()
     
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=24, spaceAfter=20, alignment=TA_CENTER, textColor=colors.HexColor('#047857'))
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=24, spaceAfter=20, alignment=TA_CENTER, textColor=colors.HexColor('#009846'))
     subtitle_style = ParagraphStyle('CustomSubtitle', parent=styles['Heading2'], fontSize=14, spaceAfter=10, alignment=TA_CENTER, textColor=colors.HexColor('#065f46'))
-    section_style = ParagraphStyle('SectionTitle', parent=styles['Heading2'], fontSize=14, spaceBefore=20, spaceAfter=10, textColor=colors.HexColor('#047857'))
+    section_style = ParagraphStyle('SectionTitle', parent=styles['Heading2'], fontSize=14, spaceBefore=20, spaceAfter=10, textColor=colors.HexColor('#009846'))
     body_style = ParagraphStyle('CustomBody', parent=styles['Normal'], fontSize=11, spaceAfter=8, leading=14)
     bullet_style = ParagraphStyle('BulletStyle', parent=styles['Normal'], fontSize=10, leftIndent=20, spaceAfter=5, leading=13)
     
@@ -1084,7 +1084,7 @@ async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict
     elements.append(Paragraph("Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar", 
                              ParagraphStyle('Small', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER, textColor=colors.gray)))
     elements.append(Spacer(1, 20))
-    elements.append(Table([['']], colWidths=[6.5*inch], rowHeights=[2], style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#047857'))])))
+    elements.append(Table([['']], colWidths=[6.5*inch], rowHeights=[2], style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#009846'))])))
     elements.append(Spacer(1, 20))
     
     elements.append(Paragraph("1. DESCRIPCIÓN GENERAL", section_style))
@@ -1110,7 +1110,7 @@ async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict
     stats_data = [["Métrica", "Valor"], ["Total Predios", "174,419"], ["Con Geometría", "143,354 (82%)"], ["Municipios", "25+"]]
     stats_table = Table(stats_data, colWidths=[3*inch, 3*inch])
     stats_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
@@ -1143,8 +1143,8 @@ async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict
         <li>Stack tecnológico utilizado</li>
         <li>Roadmap de mejoras futuras</li>
     </ul>
-    <div style="background: #ecfdf5; border-left: 4px solid #047857; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-        <p style="color: #047857; margin: 0;">
+    <div style="background: #ecfdf5; border-left: 4px solid #009846; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="color: #009846; margin: 0;">
             <strong>📎 Archivo adjunto:</strong> {pdf_filename}
         </p>
     </div>
@@ -1185,7 +1185,7 @@ async def generate_ficha_tecnica():
         fontSize=24,
         spaceAfter=20,
         alignment=TA_CENTER,
-        textColor=colors.HexColor('#047857')
+        textColor=colors.HexColor('#009846')
     )
     
     subtitle_style = ParagraphStyle(
@@ -1203,7 +1203,7 @@ async def generate_ficha_tecnica():
         fontSize=14,
         spaceBefore=20,
         spaceAfter=10,
-        textColor=colors.HexColor('#047857'),
+        textColor=colors.HexColor('#009846'),
         borderPadding=(0, 0, 5, 0)
     )
     
@@ -1235,7 +1235,7 @@ async def generate_ficha_tecnica():
     
     # Horizontal line
     elements.append(Table([['']], colWidths=[6.5*inch], rowHeights=[2], 
-                         style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#047857'))])))
+                         style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#009846'))])))
     elements.append(Spacer(1, 20))
     
     # DESCRIPCIÓN GENERAL
@@ -1287,7 +1287,7 @@ async def generate_ficha_tecnica():
     
     beneficios_table = Table(beneficios_data, colWidths=[2*inch, 4.5*inch])
     beneficios_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
@@ -1314,7 +1314,7 @@ async def generate_ficha_tecnica():
     
     stats_table = Table(stats_data, colWidths=[3*inch, 3.5*inch])
     stats_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
@@ -1360,7 +1360,7 @@ async def generate_ficha_tecnica():
     
     mejoras_table = Table(mejoras, colWidths=[1.2*inch, 2.5*inch, 2.8*inch])
     mejoras_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -1378,7 +1378,7 @@ async def generate_ficha_tecnica():
     
     # FOOTER
     elements.append(Table([['']], colWidths=[6.5*inch], rowHeights=[2], 
-                         style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#047857'))])))
+                         style=TableStyle([('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#009846'))])))
     elements.append(Spacer(1, 10))
     
     footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, alignment=TA_CENTER, textColor=colors.gray)
@@ -2868,7 +2868,7 @@ def generate_petition_pdf(petition_data: dict, user_data: dict, signed_by: str =
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=18,
-        textColor=colors.HexColor('#047857'),
+        textColor=colors.HexColor('#009846'),
         spaceAfter=30,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
@@ -2926,7 +2926,7 @@ def generate_petition_pdf(petition_data: dict, user_data: dict, signed_by: str =
     
     table = Table(data, colWidths=[2*inch, 4*inch])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -3052,7 +3052,7 @@ async def export_multiple_petitions(
                 'Title',
                 parent=styles['Heading1'],
                 fontSize=16,
-                textColor=colors.HexColor('#047857'),
+                textColor=colors.HexColor('#009846'),
                 spaceAfter=20,
                 alignment=TA_CENTER
             )
@@ -3242,7 +3242,7 @@ async def export_gestor_productivity_pdf(current_user: dict = Depends(get_curren
         'Title',
         parent=styles['Heading1'],
         fontSize=18,
-        textColor=colors.HexColor('#047857'),
+        textColor=colors.HexColor('#009846'),
         spaceAfter=30,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
@@ -3273,7 +3273,7 @@ async def export_gestor_productivity_pdf(current_user: dict = Depends(get_curren
     col_widths = [1.8*inch, 1*inch, 0.6*inch, 0.8*inch, 0.8*inch, 0.8*inch, 0.7*inch]
     table = Table(table_data, colWidths=col_widths)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#047857')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#009846')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -3405,7 +3405,7 @@ async def export_listado_tramites_pdf(
     styles = getSampleStyleSheet()
     
     # Define colors
-    primary_color = HexColor('#047857')
+    primary_color = HexColor('#009846')
     secondary_color = HexColor('#064e3b')
     light_bg = HexColor('#f0fdf4')
     gray_text = HexColor('#64748b')
@@ -3435,7 +3435,7 @@ async def export_listado_tramites_pdf(
         header_content.append([logo_img, '', ''])
     
     header_title = Paragraph(
-        '<font size="18" color="#047857"><b>INFORME DE GESTIÓN</b></font><br/>'
+        '<font size="18" color="#009846"><b>INFORME DE GESTIÓN</b></font><br/>'
         '<font size="10" color="#64748b">Trámites Catastrales</font>',
         ParagraphStyle('Title', alignment=TA_CENTER, leading=22)
     )
@@ -3469,7 +3469,7 @@ async def export_listado_tramites_pdf(
     
     # ===================== RESUMEN EJECUTIVO =====================
     resumen_title = Paragraph(
-        '<font size="11" color="#047857"><b>RESUMEN EJECUTIVO</b></font>',
+        '<font size="11" color="#009846"><b>RESUMEN EJECUTIVO</b></font>',
         ParagraphStyle('Section', spaceAfter=8)
     )
     story.append(resumen_title)
@@ -3521,7 +3521,7 @@ async def export_listado_tramites_pdf(
     
     # ===================== CHARTS SECTION =====================
     charts_title = Paragraph(
-        '<font size="11" color="#047857"><b>DISTRIBUCIÓN DE TRÁMITES</b></font>',
+        '<font size="11" color="#009846"><b>DISTRIBUCIÓN DE TRÁMITES</b></font>',
         ParagraphStyle('Section', spaceAfter=10)
     )
     story.append(charts_title)
@@ -3624,7 +3624,7 @@ async def export_listado_tramites_pdf(
     story.append(Spacer(1, 0.1*inch))
     
     table_title = Paragraph(
-        '<font size="12" color="#047857"><b>LISTADO DETALLADO DE TRÁMITES</b></font>',
+        '<font size="12" color="#009846"><b>LISTADO DETALLADO DE TRÁMITES</b></font>',
         ParagraphStyle('TableTitle', spaceAfter=5)
     )
     story.append(table_title)
@@ -6928,7 +6928,7 @@ def generar_qr_verificacion(codigo_verificacion: str) -> bytes:
     qr.add_data(url)
     qr.make(fit=True)
     
-    img = qr.make_image(fill_color="#047857", back_color="white")
+    img = qr.make_image(fill_color="#009846", back_color="white")
     
     buffer = io.BytesIO()
     img.save(buffer, format='PNG')
@@ -6965,8 +6965,8 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Colores - Verde emerald del login (#047857)
-    verde_institucional = colors.HexColor('#047857')
+    # Colores - Verde emerald del login (#009846)
+    verde_institucional = colors.HexColor('#009846')
     negro = colors.HexColor('#000000')
     gris_texto = colors.HexColor('#333333')
     gris_claro = colors.HexColor('#666666')
@@ -7599,7 +7599,7 @@ async def generar_certificado_desde_peticion(
             email_html = f"""
             <html>
             <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #047857, #059669); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <div style="background: linear-gradient(135deg, #009846, #059669); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                     <h1 style="color: white; margin: 0; font-size: 24px;">✅ Certificado Catastral Listo</h1>
                 </div>
                 <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px;">
@@ -7607,11 +7607,11 @@ async def generar_certificado_desde_peticion(
                     
                     <p style="color: #334155;">Su trámite de <strong>Certificado Catastral Sencillo</strong> ha sido aprobado y el certificado está listo.</p>
                     
-                    <div style="background: white; border: 2px solid #047857; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <div style="background: white; border: 2px solid #009846; border-radius: 8px; padding: 20px; margin: 20px 0;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="padding: 8px 0; color: #64748b;">Radicado:</td>
-                                <td style="padding: 8px 0; font-weight: bold; color: #047857;">{radicado_pet}</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #009846;">{radicado_pet}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0; color: #64748b;">Código de Verificación:</td>
@@ -7629,7 +7629,7 @@ async def generar_certificado_desde_peticion(
                     <p style="color: #334155;">También puede descargarlo ingresando a su cuenta en la plataforma de Asomunicipios.</p>
                     
                     <div style="text-align: center; margin: 25px 0;">
-                        <a href="{verificacion_url}" style="background: #047857; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        <a href="{verificacion_url}" style="background: #009846; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                             🔗 Verificar Certificado en Línea
                         </a>
                     </div>
@@ -7817,7 +7817,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
                 .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
-                .header {{ background: #047857; color: white; padding: 25px; text-align: center; }}
+                .header {{ background: #009846; color: white; padding: 25px; text-align: center; }}
                 .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
                 .header h1 {{ margin: 10px 0 0 0; font-size: 22px; }}
                 .badge {{ display: inline-block; background: #10b981; padding: 5px 15px; border-radius: 20px; margin-top: 10px; font-size: 14px; }}
@@ -7825,8 +7825,8 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                 .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
                 .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
                 .info-value {{ color: #6b7280; }}
-                .code {{ background: #f0fdf4; padding: 15px; border-radius: 8px; font-family: monospace; color: #047857; text-align: center; margin: 20px 0; border: 2px solid #047857; font-size: 16px; }}
-                .footer {{ background: #047857; padding: 20px; text-align: center; font-size: 12px; color: white; }}
+                .code {{ background: #f0fdf4; padding: 15px; border-radius: 8px; font-family: monospace; color: #009846; text-align: center; margin: 20px 0; border: 2px solid #009846; font-size: 16px; }}
+                .footer {{ background: #009846; padding: 20px; text-align: center; font-size: 12px; color: white; }}
                 .footer a {{ color: #a7f3d0; }}
             </style>
         </head>
@@ -7918,7 +7918,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                 .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
                 .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
                 .info-value {{ color: #6b7280; }}
-                .footer {{ background: #047857; padding: 20px; text-align: center; font-size: 12px; color: white; }}
+                .footer {{ background: #009846; padding: 20px; text-align: center; font-size: 12px; color: white; }}
                 .footer a {{ color: #a7f3d0; }}
             </style>
         </head>
@@ -9367,7 +9367,7 @@ async def send_notification_email(to_email: str, to_name: str, subject: str, mes
         
         contenido = f'''
         <p>Hola <strong>{to_name}</strong>,</p>
-        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #047857;">
+        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #009846;">
             <p style="margin: 0;">{message}</p>
         </div>
         '''
