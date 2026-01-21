@@ -1571,9 +1571,11 @@ export default function VisorActualizacion() {
             variant={watchingPosition ? "default" : "outline"}
             size="sm"
             onClick={watchingPosition ? stopWatchingPosition : startWatchingPosition}
-            className={watchingPosition ? "bg-blue-600 hover:bg-blue-700" : ""}
+            className={watchingPosition ? "bg-blue-600 hover:bg-blue-700" : "bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50"}
+            title={watchingPosition ? "Desactivar GPS" : "Activar GPS"}
           >
             <Navigation className={`w-4 h-4 ${watchingPosition ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline ml-1 text-xs">{watchingPosition ? 'GPS On' : 'GPS'}</span>
           </Button>
         </div>
       </div>
