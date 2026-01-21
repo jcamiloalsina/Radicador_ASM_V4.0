@@ -7067,23 +7067,31 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.drawCentredString(width/2, y, "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3.")
     y -= 14
     
-    # Radicado
+    # Radicado - Si viene de petición, mostrar fijo; si no, campo editable
     c.setFillColor(negro)
     c.setFont(fuente_normal, 11)
     c.drawRightString(right_margin - 100, y, "Radicado No:")
-    c.acroForm.textfield(
-        name='radicado',
-        x=right_margin - 95,
-        y=y - 4,
-        width=95,
-        height=16,
-        fontSize=11,
-        fontName='Helvetica',
-        borderWidth=0,
-        fillColor=colors.white,
-        textColor=negro,
-        value=''
-    )
+    
+    if radicado:
+        # Radicado fijo (viene de una petición)
+        c.setFont(fuente_bold, 11)
+        c.setFillColor(verde_institucional)
+        c.drawString(right_margin - 95, y, radicado)
+    else:
+        # Campo editable (certificado manual)
+        c.acroForm.textfield(
+            name='radicado',
+            x=right_margin - 95,
+            y=y - 4,
+            width=95,
+            height=16,
+            fontSize=11,
+            fontName='Helvetica',
+            borderWidth=0,
+            fillColor=colors.white,
+            textColor=negro,
+            value=''
+        )
     y -= 18
     
     # Texto certificador
