@@ -7397,11 +7397,13 @@ async def generar_certificado_catastral_endpoint(
 @api_router.get("/petitions/{petition_id}/certificado")
 async def generar_certificado_desde_peticion(
     petition_id: str,
+    enviar_correo: bool = Query(False, description="Si es True, envía el certificado por correo y finaliza el trámite"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Genera un certificado catastral PDF desde una petición.
     El radicado de la petición se usa automáticamente en el PDF.
+    Si enviar_correo=True, envía al peticionario y finaliza el trámite.
     """
     # Solo coordinador, administrador y atencion_usuario pueden generar certificados
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
