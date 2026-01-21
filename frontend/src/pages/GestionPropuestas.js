@@ -630,7 +630,7 @@ export default function GestionPropuestas() {
                     <TableCell className="max-w-xs">
                       <p className="truncate text-sm text-slate-600">{propuesta.justificacion}</p>
                     </TableCell>
-                    <TableCell className="text-sm">{propuesta.creado_por}</TableCell>
+                    <TableCell className="text-sm">{propuesta.creado_por_nombre || propuesta.creado_por}</TableCell>
                     <TableCell className="text-sm text-slate-500">
                       {new Date(propuesta.creado_en).toLocaleDateString('es-CO')}
                     </TableCell>
