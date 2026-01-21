@@ -7675,6 +7675,45 @@ async def generar_certificado_desde_peticion(
 
 # === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
 
+@api_router.get("/petitions/{petition_id}/descargar-certificado")
+async def descargar_certificado_peticion(
+    petition_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Permite al usuario (peticionario) o staff descargar el certificado de su petición.
+    """
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    # Verificar permisos: el peticionario o staff pueden descargar
+    is_owner = petition.get('user_id') == current_user['id']
+    is_staff = current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]
+    
+    if not is_owner and not is_staff:
+        raise HTTPException(status_code=403, detail="No tiene permiso para descargar este certificado")
+    
+    # Verificar que el certificado existe
+    if not petition.get('certificado_generado'):
+        raise HTTPException(status_code=400, detail="El certificado aún no ha sido generado")
+    
+    cert_path = petition.get('certificado_archivo')
+    if not cert_path or not os.path.exists(cert_path):
+        raise HTTPException(status_code=404, detail="El archivo del certificado no se encuentra")
+    
+    radicado = petition.get('radicado', petition_id)
+    filename = f"Certificado_Catastral_{radicado}.pdf"
+    
+    return FileResponse(
+        path=cert_path,
+        filename=filename,
+        media_type='application/pdf'
+    )
+
+
+# === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
+
 @api_router.get("/verificar/{codigo_verificacion}", response_class=HTMLResponse)
 async def verificar_certificado_publico(codigo_verificacion: str):
     """
