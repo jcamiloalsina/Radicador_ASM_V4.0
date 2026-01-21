@@ -234,6 +234,73 @@ export default function CreatePetition() {
               </div>
             )}
 
+            {/* Campos para identificar el predio (solo para certificados) */}
+            {esCertificado && (
+              <div className="space-y-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div className="flex items-center gap-2 text-emerald-800">
+                  <FileText className="w-5 h-5" />
+                  <span className="font-semibold">Identificación del Predio</span>
+                </div>
+                <p className="text-sm text-slate-600">
+                  Para generar el certificado, ingrese el Código Predial Nacional o la Matrícula Inmobiliaria del predio.
+                </p>
+                
+                <div className="flex gap-4 mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="busqueda_tipo"
+                      value="codigo"
+                      checked={formData.busqueda_tipo === 'codigo'}
+                      onChange={(e) => setFormData({ ...formData, busqueda_tipo: e.target.value, matricula_inmobiliaria: '' })}
+                      className="text-emerald-700 focus:ring-emerald-600"
+                    />
+                    <span className="text-sm">Por Código Predial Nacional</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="busqueda_tipo"
+                      value="matricula"
+                      checked={formData.busqueda_tipo === 'matricula'}
+                      onChange={(e) => setFormData({ ...formData, busqueda_tipo: e.target.value, codigo_predial: '' })}
+                      className="text-emerald-700 focus:ring-emerald-600"
+                    />
+                    <span className="text-sm">Por Matrícula Inmobiliaria</span>
+                  </label>
+                </div>
+                
+                {formData.busqueda_tipo === 'codigo' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="codigo_predial" className="text-slate-700">Código Predial Nacional (30 dígitos) *</Label>
+                    <Input
+                      id="codigo_predial"
+                      value={formData.codigo_predial}
+                      onChange={(e) => setFormData({ ...formData, codigo_predial: e.target.value })}
+                      placeholder="Ej: 546780100010000000100000000001"
+                      maxLength={30}
+                      className="focus-visible:ring-emerald-600 font-mono"
+                      data-testid="input-codigo-predial"
+                    />
+                    <p className="text-xs text-slate-500">Ingrese los 30 dígitos del código predial nacional</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="matricula" className="text-slate-700">Matrícula Inmobiliaria *</Label>
+                    <Input
+                      id="matricula"
+                      value={formData.matricula_inmobiliaria}
+                      onChange={(e) => setFormData({ ...formData, matricula_inmobiliaria: e.target.value })}
+                      placeholder="Ej: 270-12345"
+                      className="focus-visible:ring-emerald-600"
+                      data-testid="input-matricula"
+                    />
+                    <p className="text-xs text-slate-500">Formato: Círculo registral - Número (Ej: 270-12345)</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Campo de descripción de la petición */}
             <div className="space-y-2">
               <Label htmlFor="descripcion" className="text-slate-700">Descripción de la Petición *</Label>
