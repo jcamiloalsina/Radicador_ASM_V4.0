@@ -7869,6 +7869,14 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     propietarios = certificado.get('propietarios', [])
     propietarios_html = "<br>".join([f"• {p}" for p in propietarios]) if propietarios else "No disponible"
     
+    # Obtener datos críticos para mostrar
+    datos_criticos = certificado.get('datos_criticos', {})
+    area_terreno = datos_criticos.get('area_terreno', certificado.get('area_terreno', 'N/A'))
+    avaluo = datos_criticos.get('avaluo_catastral', 'N/A')
+    
+    # Verificar si tiene hash de PDF (sistema nuevo)
+    tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
+    
     if es_valido:
         # Certificado VÁLIDO
         html_content = f"""
@@ -7880,7 +7888,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <title>✅ Certificado Válido - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
-                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .container {{ max-width: 650px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
                 .header {{ background: #009846; color: white; padding: 25px; text-align: center; }}
                 .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
                 .header h1 {{ margin: 10px 0 0 0; font-size: 22px; }}
@@ -7892,6 +7900,17 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                 .code {{ background: #f0fdf4; padding: 15px; border-radius: 8px; font-family: monospace; color: #009846; text-align: center; margin: 20px 0; border: 2px solid #009846; font-size: 16px; }}
                 .footer {{ background: #009846; padding: 20px; text-align: center; font-size: 12px; color: white; }}
                 .footer a {{ color: #a7f3d0; }}
+                .verify-section {{ background: #fffbeb; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin-top: 25px; }}
+                .verify-section h3 {{ margin-top: 0; color: #d97706; }}
+                .upload-form {{ margin-top: 15px; }}
+                .upload-form input[type="file"] {{ margin-bottom: 10px; }}
+                .upload-form button {{ background: #009846; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }}
+                .upload-form button:hover {{ background: #007a38; }}
+                #resultado {{ margin-top: 15px; padding: 15px; border-radius: 8px; display: none; }}
+                .resultado-ok {{ background: #d1fae5; border: 2px solid #10b981; color: #065f46; }}
+                .resultado-error {{ background: #fee2e2; border: 2px solid #dc2626; color: #991b1b; }}
+                .datos-originales {{ background: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 20px; }}
+                .datos-originales h4 {{ margin-top: 0; color: #374151; }}
             </style>
         </head>
         <body>
@@ -7907,9 +7926,12 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         {codigo_verificacion}
                     </div>
                     
+                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos Originales del Certificado</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Compare estos datos con su documento físico o digital</p>
+                    
                     <div class="info-row">
                         <span class="info-label">📋 Código Predial:</span>
-                        <span class="info-value">{certificado.get('codigo_predial', 'N/A')}</span>
+                        <span class="info-value"><strong>{certificado.get('codigo_predial', 'N/A')}</strong></span>
                     </div>
                     
                     <div class="info-row">
@@ -7924,7 +7946,17 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">👥 Propietarios:</span>
-                        <span class="info-value">{propietarios_html}</span>
+                        <span class="info-value"><strong>{propietarios_html}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📐 Área Terreno:</span>
+                        <span class="info-value"><strong>{area_terreno}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">💰 Avalúo:</span>
+                        <span class="info-value"><strong>{avaluo}</strong></span>
                     </div>
                     
                     <div class="info-row">
@@ -7937,7 +7969,74 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         <span class="info-value">{certificado.get('generado_por_nombre', 'N/A')}</span>
                     </div>
                     
-                    <div class="info-row">
+                    <div class="verify-section">
+                        <h3>🔍 Verificar Integridad del Documento</h3>
+                        <p style="font-size: 14px; color: #666;">
+                            ¿Desea verificar si su PDF ha sido modificado? Suba el archivo para compararlo con el original.
+                        </p>
+                        <form class="upload-form" id="verifyForm" enctype="multipart/form-data">
+                            <input type="file" id="pdfFile" accept=".pdf" required>
+                            <input type="hidden" id="codigoVerif" value="{codigo_verificacion}">
+                            <br>
+                            <button type="submit">🔐 Verificar Integridad</button>
+                        </form>
+                        <div id="resultado"></div>
+                    </div>
+                </div>
+                <div class="footer">
+                    <strong>Asomunicipios - Gestor Catastral</strong><br>
+                    Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar<br>
+                    <a href="mailto:comunicaciones@asomunicipios.gov.co">comunicaciones@asomunicipios.gov.co</a> | +57 3102327647
+                </div>
+            </div>
+            
+            <script>
+                document.getElementById('verifyForm').addEventListener('submit', async function(e) {{
+                    e.preventDefault();
+                    const fileInput = document.getElementById('pdfFile');
+                    const codigo = document.getElementById('codigoVerif').value;
+                    const resultado = document.getElementById('resultado');
+                    
+                    if (!fileInput.files[0]) {{
+                        alert('Por favor seleccione un archivo PDF');
+                        return;
+                    }}
+                    
+                    resultado.style.display = 'block';
+                    resultado.className = '';
+                    resultado.innerHTML = '⏳ Verificando integridad del documento...';
+                    
+                    const formData = new FormData();
+                    formData.append('pdf_file', fileInput.files[0]);
+                    formData.append('codigo_verificacion', codigo);
+                    
+                    try {{
+                        const response = await fetch('/api/certificados/verificar-integridad', {{
+                            method: 'POST',
+                            body: formData
+                        }});
+                        
+                        const data = await response.json();
+                        
+                        if (data.pdf_integro === true) {{
+                            resultado.className = 'resultado-ok';
+                            resultado.innerHTML = '<strong>✅ DOCUMENTO ÍNTEGRO</strong><br><br>El PDF no ha sido modificado desde su generación. Este es el documento original emitido por Asomunicipios.';
+                        }} else if (data.pdf_integro === false) {{
+                            resultado.className = 'resultado-error';
+                            resultado.innerHTML = '<strong>🚨 ¡ALERTA! DOCUMENTO ALTERADO</strong><br><br>El PDF ha sido modificado después de su generación.<br><br><strong>IMPORTANTE:</strong> Los datos mostrados arriba son los ORIGINALES del sistema. Si el documento que tiene muestra datos diferentes, ha sido manipulado.';
+                        }} else {{
+                            resultado.className = 'resultado-ok';
+                            resultado.innerHTML = '<strong>ℹ️ Verificación Parcial</strong><br><br>Este certificado fue generado antes del sistema de verificación de integridad. Compare manualmente los datos mostrados arriba con su documento.';
+                        }}
+                    }} catch (error) {{
+                        resultado.className = 'resultado-error';
+                        resultado.innerHTML = '<strong>❌ Error</strong><br>No se pudo verificar el documento. Intente nuevamente.';
+                    }}
+                }});
+            </script>
+        </body>
+        </html>
+        """
                         <span class="info-label">🔐 Hash:</span>
                         <span class="info-value" style="font-family: monospace; font-size: 12px;">SHA256:{certificado.get('hash_documento', 'N/A')}</span>
                     </div>
