@@ -2059,9 +2059,9 @@ export default function VisorPredios() {
         </div>
 
         {/* Panel Derecho - Mapa */}
-        <div className="col-span-8">
+        <div className="lg:col-span-8 relative z-10">
           <Card className="overflow-hidden">
-            <div className="h-[calc(100vh-220px)] min-h-[500px]">
+            <div className="h-[50vh] lg:h-[calc(100vh-220px)] min-h-[300px] lg:min-h-[500px]">
               <MapContainer
                 center={defaultCenter}
                 zoom={defaultZoom}
