@@ -7024,50 +7024,50 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     )
     y -= 16
     
-    # === TEXTO CERTIFICADOR ===
+    # === TEXTO CERTIFICADOR === - Tamaño 12
     c.setFillColor(negro)
-    c.setFont("Helvetica", 8)
+    c.setFont(fuente_normal, 12)
     intro = "LA ASOCIACIÓN DE MUNICIPIOS DEL CATATUMBO PROVINCIA DE OCAÑA Y SUR DEL CESAR – ASOMUNICIPIOS"
     c.drawCentredString(width/2, y, intro)
-    y -= 10
+    y -= 14
     intro2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
     c.drawCentredString(width/2, y, intro2)
-    y -= 16
+    y -= 18
     
     # === BARRA VERDE: INFORMACIÓN CATASTRAL DEL PREDIO ===
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_bold, 12)
     c.drawCentredString(width/2, y - 8, "INFORMACION CATASTRAL DEL PREDIO")
     y -= 18
     
     # Predio No. (alineado a la derecha)
     c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_normal, 12)
     c.drawRightString(right_margin - 5, y, "Predio No. 01")
-    y -= 12
+    y -= 14
     
-    # Función para dibujar fila de campo con líneas de tabla
-    def draw_field(label, value, y_pos, label_width=140):
+    # Función para dibujar fila de campo con líneas de tabla - Tamaño 12
+    def draw_field(label, value, y_pos, label_width=160):
         # Línea superior
         c.setStrokeColor(linea_gris)
         c.setLineWidth(0.5)
         c.line(left_margin, y_pos + 3, right_margin, y_pos + 3)
         # Texto
         c.setFillColor(negro)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(left_margin + 3, y_pos - 6, label)
-        c.setFont("Helvetica", 8)
+        c.setFont(fuente_bold, 12)
+        c.drawString(left_margin + 3, y_pos - 8, label)
+        c.setFont(fuente_normal, 12)
         value_str = str(value) if value else ""
-        c.drawString(left_margin + label_width, y_pos - 6, value_str)
-        return y_pos - 14
+        c.drawString(left_margin + label_width, y_pos - 8, value_str)
+        return y_pos - 16
     
     # === BARRA VERDE: INFORMACIÓN JURÍDICA ===
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_bold, 12)
     c.drawString(left_margin + 5, y - 8, "INFORMACIÓN JURÍDICA")
     y -= 18
     
