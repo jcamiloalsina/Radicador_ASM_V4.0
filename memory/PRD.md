@@ -997,3 +997,35 @@ El GPS requiere:
 Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del navegador (Safari > Desarrollar > consola) y compartir los logs que inician con "GPS:".
 
 ---
+
+---
+
+### Sesión 21 Enero 2026 - Color Institucional y Mejoras PDF Certificado
+
+**Cambios implementados:**
+
+1. ✅ **Color Institucional #009846:**
+   - Actualizado en `tailwind.config.js`: primary, accent, emerald shades
+   - Actualizado en `index.css`: CSS variables --primary, --accent, --ring  
+   - Actualizado en `server.py`: Todos los colores en generación de PDFs y emails
+   - El color anterior era #047857, ahora es #009846 (verde más brillante)
+
+2. ✅ **Nuevo Formato del Certificado PDF:**
+   - "Certificado N°:" (antes era "CERTIFICADO:") con campo editable
+   - "Radicado N°:" ahora aparece inmediatamente debajo de "Certificado N°:"
+   - Ambos campos son editables para generación manual (sin petición)
+   - Cuando viene de una petición, el radicado se muestra fijo con color verde
+
+3. ✅ **Verificación del Flujo de Certificados:**
+   - Generación de PDF funciona correctamente
+   - Envío de email con adjunto funciona (verificado en logs)
+   - Endpoint de descarga `/api/petitions/{id}/descargar-certificado` funciona
+   - Estado de petición se actualiza a "finalizado" automáticamente
+
+**Archivos Modificados:**
+- `/app/frontend/tailwind.config.js` - Colores primarios actualizados
+- `/app/frontend/src/index.css` - Variables CSS actualizadas
+- `/app/backend/server.py` - Colores en PDFs y emails, estructura del certificado
+
+**Testing:** Verificado con curl y capturas de pantalla - Flujo completo de generación de certificado funciona sin errores.
+
