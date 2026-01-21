@@ -1863,7 +1863,7 @@ export default function VisorActualizacion() {
                                   </span>
                                 </div>
                                 <p className="text-sm mt-1">{prop.justificacion}</p>
-                                <p className="text-xs text-slate-500 mt-1">Por: {prop.creado_por}</p>
+                                <p className="text-xs text-slate-500 mt-1">Por: {prop.creado_por_nombre || prop.creado_por}</p>
                                 {prop.comentario_revision && (
                                   <p className="text-xs text-slate-600 mt-1 italic">
                                     Comentario: {prop.comentario_revision}
