@@ -159,6 +159,17 @@ export default function VisorActualizacion() {
   const { user } = useAuth();
   const mapRef = useRef(null);
   
+  // Hook de sincronización offline
+  const { 
+    isOnline, 
+    isSyncing, 
+    offlineStats, 
+    downloadForOffline, 
+    saveOfflineChange,
+    getOfflineData,
+    forceSync
+  } = useOfflineSync(proyectoId, 'actualizacion');
+  
   // Estados del proyecto
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
