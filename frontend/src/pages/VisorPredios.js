@@ -1347,9 +1347,9 @@ export default function VisorPredios() {
         )}
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* Panel Izquierdo - Búsqueda y Detalle con scroll */}
-        <div className="col-span-4 space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
+        <div className="lg:col-span-4 space-y-4 lg:max-h-[calc(100vh-180px)] overflow-y-auto lg:pr-2 relative z-20">
           {/* Filtros de Municipio y Zona */}
           <Card className="border-emerald-200">
             <CardHeader className="py-3">
