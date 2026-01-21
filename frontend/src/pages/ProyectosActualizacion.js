@@ -1202,41 +1202,6 @@ export default function ProyectosActualizacion() {
                 </TabsContent>
                 )}
               </Tabs>
-                                              </Button>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))
-                                    )}
-                                  </div>
-                                  
-                                  {/* Botón agregar actividad */}
-                                  {canCreate && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="mt-3 w-full border-dashed"
-                                      onClick={() => {
-                                        setEtapaSeleccionada(etapa);
-                                        setNuevaActividad({ nombre: '', descripcion: '', fase: '', fecha_inicio: '', fecha_fin_planificada: '', prioridad: 'media', actividad_padre_id: '' });
-                                        setShowActividadModal(true);
-                                      }}
-                                    >
-                                      <Plus className="w-4 h-4 mr-2" />
-                                      Agregar Actividad
-                                    </Button>
-                                  )}
-                                </CardContent>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </TabsContent>
-                )}
-              </Tabs>
               
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDetalleModal(false)}>
