@@ -6881,55 +6881,67 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
-    # === ENCABEZADO - Protagonismo a ASOMUNICIPIOS ===
+    # === ENCABEZADO - Imagen completa de ASOMUNICIPIOS Gestor Catastral ===
     y = height - 1.2 * cm
     
-    # Logo de Asomunicipios (izquierda)
-    logo_path = Path("/app/backend/logo_asomunicipios.jpeg")
-    if not logo_path.exists():
-        logo_path = Path("/app/backend/logo_asomunicipios.png")
-    if logo_path.exists():
-        logo_width = 4 * cm
-        logo_height = 2.2 * cm
-        c.drawImage(str(logo_path), left_margin, height - 3.2 * cm, width=logo_width, height=logo_height, preserveAspectRatio=True, mask='auto')
+    # Usar el encabezado completo proporcionado por el usuario
+    encabezado_path = Path("/app/backend/logos/encabezado_gestor_catastral.png")
+    if encabezado_path.exists():
+        # Encabezado centrado, ocupando todo el ancho disponible
+        encabezado_width = content_width
+        encabezado_height = 2.5 * cm  # Altura proporcional
+        encabezado_x = left_margin
+        encabezado_y = height - 3.5 * cm
+        c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
+                    width=encabezado_width, height=encabezado_height, 
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        # Fallback: Logo antiguo si no existe el nuevo encabezado
+        logo_path = Path("/app/backend/logo_asomunicipios.jpeg")
+        if not logo_path.exists():
+            logo_path = Path("/app/backend/logo_asomunicipios.png")
+        if logo_path.exists():
+            logo_width = 4 * cm
+            logo_height = 2.2 * cm
+            c.drawImage(str(logo_path), left_margin, height - 3.2 * cm, width=logo_width, height=logo_height, preserveAspectRatio=True, mask='auto')
+        
+        # Texto del encabezado a la derecha del logo (fallback)
+        header_x = left_margin + 4.5 * cm
+        
+        # Barra vertical verde separadora
+        c.setStrokeColor(verde_gestor)
+        c.setLineWidth(2)
+        c.line(header_x - 0.3*cm, height - 1.3*cm, header_x - 0.3*cm, height - 3*cm)
+        
+        # ASOMUNICIPIOS - Título principal grande
+        c.setFillColor(negro)
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(header_x, height - 1.6*cm, "ASOMUNICIPIOS")
+        
+        # Nombre completo de la institución (más pequeño, debajo)
+        c.setFont("Helvetica", 7)
+        c.setFillColor(gris_claro)
+        c.drawString(header_x, height - 2.1*cm, "Asociación de Municipios del Catatumbo")
+        c.drawString(header_x, height - 2.45*cm, "Provincia de Ocaña y Sur del Cesar")
+        
+        # "Gestor Catastral" en verde
+        c.setFillColor(verde_gestor)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(header_x, height - 2.9*cm, "Gestor Catastral")
     
-    # Texto del encabezado a la derecha del logo
-    header_x = left_margin + 4.5 * cm
-    
-    # Barra vertical verde separadora
-    c.setStrokeColor(verde_gestor)
-    c.setLineWidth(2)
-    c.line(header_x - 0.3*cm, height - 1.3*cm, header_x - 0.3*cm, height - 3*cm)
-    
-    # ASOMUNICIPIOS - Título principal grande
-    c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(header_x, height - 1.6*cm, "ASOMUNICIPIOS")
-    
-    # Nombre completo de la institución (más pequeño, debajo)
-    c.setFont("Helvetica", 7)
-    c.setFillColor(gris_claro)
-    c.drawString(header_x, height - 2.1*cm, "Asociación de Municipios del Catatumbo")
-    c.drawString(header_x, height - 2.45*cm, "Provincia de Ocaña y Sur del Cesar")
-    
-    # "Gestor Catastral" en verde
-    c.setFillColor(verde_gestor)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(header_x, height - 2.9*cm, "Gestor Catastral")
-    
-    # Fecha (izquierda, debajo del logo)
+    # Fecha (izquierda, debajo del encabezado)
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     c.setFont("Helvetica", 9)
     c.setFillColor(negro)
-    c.drawString(left_margin, height - 3.6*cm, fecha_str)
+    c.drawString(left_margin, height - 3.9*cm, fecha_str)
     
     # Número de certificado (derecha superior) - COM-F03-XXXX-GC-XXXX (EDITABLE)
     cert_numero = numero_certificado or "COM-F03-____-GC-____"
     c.setFont("Helvetica-Bold", 10)
     c.setFillColor(negro)
-    c.drawRightString(right_margin, height - 1.5*cm, f"CERTIFICADO: {cert_numero}")
+    c.drawRightString(right_margin, height - 3.9*cm, f"CERTIFICADO: {cert_numero}")
     
-    y = height - 4.2 * cm
+    y = height - 4.5 * cm
     
     # === TÍTULO PRINCIPAL ===
     c.setFillColor(negro)
