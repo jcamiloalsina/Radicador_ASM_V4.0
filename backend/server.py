@@ -6857,6 +6857,18 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     from reportlab.lib.units import cm, mm
     from reportlab.pdfgen import canvas
     from reportlab.lib.utils import simpleSplit
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    
+    # Registrar fuente Liberation Sans (similar a Calibri)
+    try:
+        pdfmetrics.registerFont(TTFont('LiberationSans', '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'))
+        pdfmetrics.registerFont(TTFont('LiberationSans-Bold', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'))
+        fuente_normal = 'LiberationSans'
+        fuente_bold = 'LiberationSans-Bold'
+    except:
+        fuente_normal = 'Helvetica'
+        fuente_bold = 'Helvetica-Bold'
     
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
