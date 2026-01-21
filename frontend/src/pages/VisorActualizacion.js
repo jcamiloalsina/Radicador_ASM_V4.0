@@ -2878,6 +2878,88 @@ export default function VisorActualizacion() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de Selección de Tipo de Revisión */}
+      <Dialog open={showTipoRevisionModal} onOpenChange={setShowTipoRevisionModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-600" />
+              ¿Qué tipo de revisión realizarás?
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-slate-600 mb-4">
+              Selecciona el tipo de revisión que vas a realizar en este predio. 
+              Esta información quedará registrada en el historial.
+            </p>
+            
+            {/* Opción: Gestor de Campo */}
+            <button
+              onClick={() => confirmarTipoRevision('campo')}
+              className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 group-hover:bg-emerald-200">
+                  <MapPin className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-800">Gestor de Campo</h4>
+                  <p className="text-sm text-slate-500">
+                    Visita física, datos de terreno, área construida, fotos, ubicación GPS
+                  </p>
+                </div>
+              </div>
+            </button>
+            
+            {/* Opción: Gestor Jurídico */}
+            <button
+              onClick={() => confirmarTipoRevision('juridico')}
+              className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-800">Gestor Jurídico</h4>
+                  <p className="text-sm text-slate-500">
+                    Verificación de propietarios, matrícula inmobiliaria, linderos, documentación legal
+                  </p>
+                </div>
+              </div>
+            </button>
+            
+            {/* Opción: Gestor de Calidad */}
+            <button
+              onClick={() => confirmarTipoRevision('calidad')}
+              className="w-full p-4 rounded-lg border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0 group-hover:bg-amber-200">
+                  <CheckCircle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-800">Gestor de Calidad</h4>
+                  <p className="text-sm text-slate-500">
+                    Control de calidad, verificación de datos, observaciones, validación final
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => {
+              setShowTipoRevisionModal(false);
+              setPredioParaAbrir(null);
+            }}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
