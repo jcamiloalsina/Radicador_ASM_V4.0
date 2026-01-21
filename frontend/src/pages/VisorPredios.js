@@ -2195,7 +2195,7 @@ export default function VisorPredios() {
                           </p>
                           <p className="text-xs text-slate-500">Matrícula:</p>
                           <p className="text-xs font-medium mb-2">
-                            {selectedPredio?.matricula || 'Sin matrícula'}
+                            {selectedPredio?.r2_registros?.[0]?.matricula_inmobiliaria || selectedPredio?.matricula_inmobiliaria || 'Sin matrícula'}
                           </p>
                           <p className="text-xs text-slate-600">
                             {selectedPredio?.municipio} - {getZonaFromCodigo(selectedPredio?.codigo_predial_nacional || selectedPredio?.codigo_homologado).texto}
