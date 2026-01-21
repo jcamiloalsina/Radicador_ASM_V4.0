@@ -791,18 +791,42 @@ export default function PetitionDetail() {
                     
                     {/* Estado del certificado */}
                     {petition.certificado_generado ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-3">
                           <Badge className="bg-emerald-600">
-                            <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado y Enviado
+                            <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
                           </Badge>
                           <span className="text-xs text-slate-500">
                             Código: {petition.certificado_codigo}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          El certificado fue enviado al correo del peticionario y está disponible en su plataforma.
-                        </p>
+                        <Button
+                          variant="outline"
+                          className="border-emerald-700 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const response = await fetch(`${API}/petitions/${petition.id}/descargar-certificado`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              if (!response.ok) throw new Error('Error al descargar');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Certificado_${petition.radicado}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              toast.error('Error al descargar el certificado');
+                            }
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Descargar Certificado PDF
+                        </Button>
                       </div>
                     ) : petition.predio_relacionado ? (
                       /* Botón para generar certificado - Solo staff y solo si hay predio */
