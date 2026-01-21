@@ -885,7 +885,7 @@ export default function VisorActualizacion() {
         firma_base64: firmaBase64,
         fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
         ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-        realizada_por: user?.email,
+        realizada_por: user?.full_name || user?.email,
         realizada_en: new Date().toISOString()
       };
       
