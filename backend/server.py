@@ -7572,6 +7572,14 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     else:
         # Certificado ANULADO
         fecha_anulacion = certificado.get('fecha_anulacion', '')
+        if fecha_anulacion:
+            try:
+                dt = datetime.fromisoformat(fecha_anulacion.replace('Z', '+00:00'))
+                fecha_anulacion_fmt = dt.strftime("%d/%m/%Y a las %H:%M")
+            except:
+                fecha_anulacion_fmt = fecha_anulacion
+        else:
+            fecha_anulacion_fmt = "No disponible"
         motivo = certificado.get('motivo_anulacion', 'No especificado')
         
         html_content = f"""
@@ -7580,49 +7588,58 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>⚠️ Certificado Anulado - ASOMUNICIPIOS</title>
+            <title>⚠️ Certificado Anulado - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #fef2f2; }}
                 .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
-                .header {{ background: #dc2626; color: white; padding: 20px; text-align: center; }}
+                .header {{ background: #dc2626; color: white; padding: 25px; text-align: center; }}
+                .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
+                .header h1 {{ margin: 10px 0 0 0; font-size: 22px; }}
                 .content {{ padding: 30px; }}
-                .warning {{ background: #fee2e2; border: 1px solid #dc2626; border-radius: 5px; padding: 15px; margin-bottom: 20px; }}
+                .warning {{ background: #fee2e2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center; }}
                 .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
                 .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
                 .info-value {{ color: #6b7280; }}
-                .footer {{ background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }}
+                .footer {{ background: #047857; padding: 20px; text-align: center; font-size: 12px; color: white; }}
+                .footer a {{ color: #a7f3d0; }}
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
+                    <img src="{logo_url}" alt="Asomunicipios">
                     <h1>⚠️ CERTIFICADO ANULADO</h1>
                 </div>
                 <div class="content">
                     <div class="warning">
-                        <strong>⚠️ Este certificado ha sido ANULADO</strong><br>
+                        <strong style="font-size: 16px;">⚠️ Este certificado ha sido ANULADO</strong><br><br>
                         Este documento ya no tiene validez legal.<br><br>
                         <strong>Motivo:</strong> {motivo}
                     </div>
                     
                     <div class="info-row">
-                        <span class="info-label">Código:</span>
-                        <span class="info-value">{codigo_verificacion}</span>
+                        <span class="info-label">🔑 Código:</span>
+                        <span class="info-value" style="font-family: monospace;">{codigo_verificacion}</span>
                     </div>
                     
                     <div class="info-row">
-                        <span class="info-label">Código Predial:</span>
+                        <span class="info-label">📋 Código Predial:</span>
                         <span class="info-value">{certificado.get('codigo_predial', 'N/A')}</span>
                     </div>
                     
                     <div class="info-row">
-                        <span class="info-label">Fecha Anulación:</span>
-                        <span class="info-value">{fecha_anulacion}</span>
+                        <span class="info-label">📅 Fecha Anulación:</span>
+                        <span class="info-value">{fecha_anulacion_fmt}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">👤 Anulado por:</span>
+                        <span class="info-value">{certificado.get('anulado_por_nombre', 'N/A')}</span>
                     </div>
                 </div>
                 <div class="footer">
-                    <strong>ASOMUNICIPIOS - Gestor Catastral</strong><br>
-                    comunicaciones@asomunicipios.gov.co
+                    <strong>Asomunicipios - Gestor Catastral</strong><br>
+                    <a href="mailto:comunicaciones@asomunicipios.gov.co">comunicaciones@asomunicipios.gov.co</a>
                 </div>
             </div>
         </body>
