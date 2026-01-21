@@ -929,40 +929,56 @@ export default function VisorActualizacion() {
     const firmaBase64 = obtenerFirmaBase64();
     
     setSaving(true);
+    
+    const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+    
+    // Datos de la visita
+    const visitaCompleta = {
+      ...visitaData,
+      firma_base64: firmaBase64,
+      fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
+      ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+      realizada_por: user?.full_name || user?.email,
+      realizada_en: new Date().toISOString()
+    };
+    
+    const datosActualizacion = {
+      estado_visita: 'visitado',
+      sin_cambios: visitaData.sin_cambios,
+      visita: visitaCompleta,
+      visitado_por: user?.full_name || user?.email,
+      visitado_en: new Date().toISOString()
+    };
+    
     try {
-      const token = localStorage.getItem('token');
+      if (isOnline) {
+        // Modo online: guardar directamente
+        const token = localStorage.getItem('token');
+        await axios.patch(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}`,
+          datosActualizacion,
+          { headers: { Authorization: `Bearer ${token}` }}
+        );
+        
+        toast.success(visitaData.sin_cambios 
+          ? 'Visita guardada - Predio marcado como visitado sin cambios' 
+          : 'Formato de visita guardado exitosamente'
+        );
+      } else {
+        // Modo offline: guardar para sincronizar después
+        await saveOfflineChange('visita', {
+          codigo_predial: codigoPredial,
+          ...datosActualizacion
+        });
+        
+        toast.info('Visita guardada localmente - Se sincronizará al recuperar conexión');
+      }
       
-      // Datos de la visita
-      const visitaCompleta = {
-        ...visitaData,
-        firma_base64: firmaBase64,
-        fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
-        ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-        realizada_por: user?.full_name || user?.email,
-        realizada_en: new Date().toISOString()
-      };
-      
-      await axios.patch(
-        `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
-        {
-          estado_visita: 'visitado',
-          sin_cambios: visitaData.sin_cambios,  // Marcar si es visitado sin cambios
-          visita: visitaCompleta,
-          visitado_por: user?.full_name || user?.email,
-          visitado_en: new Date().toISOString()
-        },
-        { headers: { Authorization: `Bearer ${token}` }}
-      );
-      
-      toast.success(visitaData.sin_cambios 
-        ? 'Visita guardada - Predio marcado como visitado sin cambios' 
-        : 'Formato de visita guardado exitosamente'
-      );
       setShowVisitaModal(false);
       
       // Actualizar estado local
       setPrediosR1R2(prev => prev.map(p => 
-        (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
+        (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
           ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
           : p
       ));
@@ -971,8 +987,22 @@ export default function VisorActualizacion() {
       setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
       setShowPredioDetail(false);
     } catch (error) {
-      toast.error('Error al guardar formato de visita');
-      console.error(error);
+      // Intentar guardar offline si falla la conexión
+      if (!isOnline || error.code === 'ERR_NETWORK') {
+        try {
+          await saveOfflineChange('visita', {
+            codigo_predial: codigoPredial,
+            ...datosActualizacion
+          });
+          toast.info('Visita guardada offline - Se sincronizará al recuperar conexión');
+          setShowVisitaModal(false);
+        } catch (offlineError) {
+          toast.error('Error al guardar visita');
+        }
+      } else {
+        toast.error('Error al guardar formato de visita');
+        console.error(error);
+      }
     } finally {
       setSaving(false);
     }
