@@ -7104,7 +7104,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
     c.drawString(left_margin, y, texto_exp)
-    y -= 32
+    y -= 28
     
     # === FIRMA CENTRAL ===
     firma_x = width/2
@@ -7115,21 +7115,26 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setFont(fuente_bold, 11)
     c.setFillColor(negro)
     c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
-    y -= 14
-    c.setFont(fuente_normal, 11)
+    y -= 12
+    c.setFont(fuente_normal, 10)
     c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
-    y -= 20
+    y -= 8
     
-    # === ELABORÓ / REVISÓ ===
-    c.setFont(fuente_normal, 12)
+    # === ESPACIO PARA FIRMA DIGITAL (3-4 líneas) ===
+    c.setFont(fuente_normal, 8)
+    c.setFillColor(gris_claro)
+    c.drawCentredString(firma_x, y, "_______________________________________________")
+    y -= 8
+    c.drawCentredString(firma_x, y, "Firma Digital Verificada")
+    y -= 8
+    c.drawCentredString(firma_x, y, "_______________________________________________")
+    y -= 16
+    
+    # === ELABORÓ (tamaño 8, sin Revisó) ===
+    c.setFont(fuente_normal, 8)
     c.setFillColor(negro)
-    
-    # Elaboró con iniciales
     c.drawString(left_margin, y, f"Elaboró: {proyectado_por}")
-    
-    c.setFont(fuente_normal, 12)
-    c.drawString(left_margin + 250, y, "Revisó: Juan C. Alsina")
-    y -= 18
+    y -= 14
     
     # === NOTAS === - Tamaño 8 para las notas
     c.setFillColor(negro)
@@ -7153,30 +7158,22 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         c.drawString(left_margin, y, nota)
         y -= 8
     
-    # === PIE DE PÁGINA - BARRA VERDE ===
-    footer_y = 1.2 * cm
-    c.setFillColor(verde_institucional)
-    c.rect(left_margin, footer_y - 5, content_width, 22, fill=1, stroke=0)
-    
-    c.setFillColor(blanco)
-    c.setFont(fuente_bold, 8)
-    
-    # Redes sociales (izquierda)
-    social_y = footer_y + 5
-    c.setFont(fuente_normal, 8)
-    c.drawString(left_margin + 5, social_y, "f  IG  X")
-    c.setFont(fuente_bold, 8)
-    c.drawString(left_margin + 40, social_y, "Asomunicipios")
-    
-    # Email y dirección (centro)
-    c.setFont(fuente_normal, 8)
-    c.drawCentredString(width/2, social_y, "comunicaciones@asomunicipios.gov.co")
-    c.setFont(fuente_normal, 7)
-    c.drawCentredString(width/2, social_y - 9, "Calle 12 # 11-76 Ocaña, Norte de Santander")
-    
-    # Teléfono (derecha)
-    c.setFont(fuente_normal, 8)
-    c.drawRightString(right_margin - 5, social_y, "+57 3102327647")
+    # === PIE DE PÁGINA - IMAGEN ===
+    pie_pagina_path = Path("/app/backend/logos/pie_pagina_certificado.png")
+    if pie_pagina_path.exists():
+        footer_height = 1.5 * cm
+        footer_y = 0.8 * cm
+        c.drawImage(str(pie_pagina_path), left_margin, footer_y, 
+                    width=content_width, height=footer_height, 
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        # Fallback: barra verde si no existe la imagen
+        footer_y = 1.2 * cm
+        c.setFillColor(verde_institucional)
+        c.rect(left_margin, footer_y - 5, content_width, 22, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont(fuente_normal, 8)
+        c.drawCentredString(width/2, footer_y + 5, "comunicaciones@asomunicipios.gov.co")
     
     c.save()
     return buffer.getvalue()
