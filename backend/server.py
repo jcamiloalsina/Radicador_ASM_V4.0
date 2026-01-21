@@ -11357,7 +11357,23 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 except Exception as e:
                     print(f"Error procesando capa {layer_name}: {e}")
         
-        # Actualizar proyecto
+        # Actualizar proyecto con información detallada de capas procesadas
+        capas_info = {
+            "rural_encontradas": [],
+            "urbano_encontradas": [],
+            "construccion_encontradas": []
+        }
+        
+        for layer_name in rural_layers:
+            if layer_name in layer_names:
+                capas_info["rural_encontradas"].append(layer_name)
+        for layer_name in urban_layers:
+            if layer_name in layer_names:
+                capas_info["urbano_encontradas"].append(layer_name)
+        for layer_name in construccion_layers:
+            if layer_name in layer_names:
+                capas_info["construccion_encontradas"].append(layer_name)
+        
         await db.proyectos_actualizacion.update_one(
             {"id": proyecto_id},
             {"$set": {
@@ -11365,11 +11381,15 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 "base_grafica_total_predios": geometrias_guardadas,
                 "total_construcciones": construcciones_guardadas,
                 "gdb_procesado_en": datetime.now(timezone.utc),
+                "capas_procesadas": capas_info,
+                "tiene_zona_rural": len(capas_info["rural_encontradas"]) > 0,
+                "tiene_zona_urbana": len(capas_info["urbano_encontradas"]) > 0,
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
         
         print(f"GDB procesado: {geometrias_guardadas} geometrías, {construcciones_guardadas} construcciones")
+        print(f"Capas encontradas - Rural: {capas_info['rural_encontradas']}, Urbano: {capas_info['urbano_encontradas']}")
         
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
