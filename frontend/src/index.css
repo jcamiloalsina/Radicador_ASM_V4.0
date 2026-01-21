@@ -152,3 +152,46 @@ code {
 [data-radix-select-content] {
   z-index: 9999 !important;
 }
+
+/* Leaflet container - asegurar que no tape los modales */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 500 !important;
+}
+
+/* Controles custom sobre el mapa pero bajo modales */
+.leaflet-control-container .leaflet-control {
+  z-index: 500 !important;
+}
+
+/* Asegurar que los modales estén sobre todo */
+[data-radix-portal],
+.fixed[role="dialog"],
+[data-state="open"][role="dialog"] {
+  z-index: 99999 !important;
+}
+
+/* Overlay/backdrop de modales */
+[data-radix-dialog-overlay],
+[data-radix-alert-dialog-overlay] {
+  z-index: 99998 !important;
+}
+
+/* Mobile specific - forzar z-index */
+@media (max-width: 1024px) {
+  .leaflet-container {
+    z-index: 0 !important;
+  }
+  
+  [data-radix-portal] {
+    z-index: 999999 !important;
+  }
+}
