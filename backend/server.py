@@ -6979,53 +6979,23 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y -= 14
     texto_cert2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
     c.drawCentredString(width/2, y, texto_cert2)
-    y -= 16
-    c.setFont(fuente_normal, 12)
-    radicado_x = right_margin - 150
-    c.drawString(radicado_x, y, "Radicado No.:")
-    
-    # Campo editable para radicado
-    c.acroForm.textfield(
-        name='radicado',
-        x=radicado_x + 85,
-        y=y - 3,
-        width=70,
-        height=14,
-        fontSize=12,
-        fontName='Helvetica',
-        borderWidth=1,
-        borderColor=colors.HexColor('#cccccc'),
-        fillColor=colors.white,
-        textColor=negro,
-        value=''
-    )
-    y -= 20
-    
-    # === TEXTO CERTIFICADOR ===
-    c.setFillColor(negro)
-    c.setFont(fuente_normal, 12)
-    texto_cert1 = "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar - Asomunicipios,"
-    c.drawCentredString(width/2, y, texto_cert1)
-    y -= 14
-    texto_cert2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
-    c.drawCentredString(width/2, y, texto_cert2)
-    y -= 16
+    y -= 18
     
     # === BARRA VERDE: INFORMACIÓN CATASTRAL DEL PREDIO ===
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont(fuente_bold, 12)
+    c.setFont(fuente_bold, 11)
     c.drawCentredString(width/2, y - 8, "INFORMACION CATASTRAL DEL PREDIO")
     y -= 18
     
     # Predio No. (alineado a la derecha)
     c.setFillColor(negro)
-    c.setFont(fuente_normal, 12)
+    c.setFont(fuente_normal, 11)
     c.drawRightString(right_margin - 5, y, "Predio No. 01")
     y -= 14
     
-    # Función para dibujar fila de campo con líneas de tabla - Tamaño 12
+    # Función para dibujar fila de campo con líneas de tabla
     def draw_field(label, value, y_pos, label_width=160):
         # Línea superior
         c.setStrokeColor(linea_gris)
@@ -7033,9 +7003,9 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         c.line(left_margin, y_pos + 3, right_margin, y_pos + 3)
         # Texto
         c.setFillColor(negro)
-        c.setFont(fuente_bold, 12)
+        c.setFont(fuente_bold, 11)
         c.drawString(left_margin + 3, y_pos - 8, label)
-        c.setFont(fuente_normal, 12)
+        c.setFont(fuente_normal, 11)
         value_str = str(value) if value else ""
         c.drawString(left_margin + label_width, y_pos - 8, value_str)
         return y_pos - 16
