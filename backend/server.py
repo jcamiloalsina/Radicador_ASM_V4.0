@@ -6929,42 +6929,44 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         c.setFont("Helvetica-Bold", 12)
         c.drawString(header_x, height - 2.9*cm, "Gestor Catastral")
     
-    # Fecha (izquierda, debajo del encabezado)
+    # === LÍNEA 1: Fecha (izquierda) y Número de certificado (derecha) ===
+    y_linea1 = height - 4.0 * cm
+    
+    # Fecha (izquierda)
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
-    c.setFont("Helvetica", 9)
+    c.setFont("Helvetica-Bold", 11)
     c.setFillColor(negro)
-    c.drawString(left_margin, height - 3.9*cm, fecha_str)
+    c.drawString(left_margin, y_linea1, fecha_str)
     
-    # Número de certificado (derecha superior) - COM-F03-XXXX-GC-XXXX (EDITABLE)
-    cert_numero = numero_certificado or "COM-F03-____-GC-____"
-    c.setFont("Helvetica-Bold", 10)
+    # Número de certificado (derecha) - COM-F03-XXXX-GC-XXXX (EDITABLE)
+    cert_numero = numero_certificado or "COM-F03-XXXX-GC-XXXX"
+    c.setFont("Helvetica-Bold", 11)
+    c.drawRightString(right_margin, y_linea1, f"CERTIFICADO: {cert_numero}")
+    
+    # === SALTO DE LÍNEA Y TÍTULO PRINCIPAL ===
+    y = y_linea1 - 1.8 * cm
+    
     c.setFillColor(negro)
-    c.drawRightString(right_margin, height - 3.9*cm, f"CERTIFICADO: {cert_numero}")
+    c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL")
+    y -= 18
     
-    y = height - 4.5 * cm
-    
-    # === TÍTULO PRINCIPAL ===
-    c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL ESPECIAL")
-    y -= 12
-    
-    # Base legal (texto pequeño centrado)
+    # Base legal (texto pequeño centrado, una sola línea o dos)
     c.setFillColor(gris_claro)
-    c.setFont("Helvetica", 6)
+    c.setFont("Helvetica", 7)
     texto_legal = "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO"
     c.drawCentredString(width/2, y, texto_legal)
-    y -= 8
-    texto_legal2 = "18) Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Antitrámites), Articulo 6, Parágrafo 3."
-    c.drawCentredString(width/2, y, texto_legal2)
-    y -= 14
-    
-    # RADICADO No (derecha)
-    radicado_num = radicado or "ASM 0001173"
-    c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawRightString(right_margin, y, f"RADICADO No: {radicado_num}")
     y -= 10
+    texto_legal2 = "18) Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3."
+    c.drawCentredString(width/2, y, texto_legal2)
+    y -= 20
+    
+    # RADICADO No° (derecha)
+    radicado_num = radicado or "ASM N° XXXXXX"
+    c.setFillColor(negro)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawRightString(right_margin, y, f"RADICADO No°: {radicado_num}")
+    y -= 16
     
     # === TEXTO CERTIFICADOR ===
     c.setFillColor(negro)
