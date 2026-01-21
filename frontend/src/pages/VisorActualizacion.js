@@ -304,6 +304,9 @@ export default function VisorActualizacion() {
         if (bounds.isValid()) {
           setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
         }
+        
+        // Guardar geometrías para modo offline
+        downloadForOffline(null, response.data.geometrias.features, proyecto?.municipio);
       }
       
       if (response.data.construcciones?.features?.length > 0) {
@@ -311,6 +314,23 @@ export default function VisorActualizacion() {
       }
     } catch (error) {
       console.error('Error cargando geometrías:', error);
+      
+      // Si está offline, intentar cargar desde IndexedDB
+      if (!navigator.onLine) {
+        try {
+          const { geometrias: offlineGeom } = await getOfflineData();
+          if (offlineGeom.length > 0) {
+            const geojson = {
+              type: 'FeatureCollection',
+              features: offlineGeom
+            };
+            setGeometrias(geojson);
+            toast.info('Geometrías cargadas desde caché offline');
+          }
+        } catch (offlineError) {
+          console.error('Error cargando geometrías offline:', offlineError);
+        }
+      }
     }
   };
   
