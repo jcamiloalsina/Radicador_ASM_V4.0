@@ -58,9 +58,8 @@ export const TIPOS_TRAMITE = [
   {
     id: 'certificado_catastral',
     nombre: 'Certificado catastral sencillo',
-    descripcion: 'Certificado de información catastral ($45.000 COP)',
-    subOpciones: null,
-    costo: 45000
+    descripcion: 'Certificado de información catastral',
+    subOpciones: null
   },
   {
     id: 'certificado_catastral_especial',
