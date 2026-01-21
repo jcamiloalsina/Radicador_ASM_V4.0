@@ -224,8 +224,20 @@ export default function Login() {
       {/* Right Panel - Form */}
       <div className="flex items-center justify-center p-8 bg-slate-50">
         <div className="w-full max-w-md space-y-8">
+          {/* Logo para móvil - solo visible en pantallas pequeñas */}
+          <div className="lg:hidden text-center">
+            <img 
+              src="/logo-asomunicipios.png" 
+              alt="Asomunicipios Logo" 
+              className="w-28 mx-auto mb-3 rounded-lg shadow-md"
+              data-testid="login-logo-mobile"
+            />
+            <h2 className="text-lg font-bold text-emerald-800 font-outfit">Asomunicipios</h2>
+            <p className="text-xs text-slate-500">Sistema de Gestión Catastral</p>
+          </div>
+          
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 font-outfit" data-testid="login-title">
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 font-outfit" data-testid="login-title">
               Iniciar Sesión
             </h1>
             <p className="mt-2 text-sm text-slate-600">
