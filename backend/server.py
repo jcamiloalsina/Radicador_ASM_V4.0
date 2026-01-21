@@ -7103,8 +7103,8 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
             value=''
         )
     
-    # Título
-    y -= 0.7 * cm
+    # Título (con espacio adicional después del Radicado)
+    y -= 1.2 * cm
     c.setFillColor(negro)
     c.setFont(fuente_bold, 14)
     c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
