@@ -11981,6 +11981,15 @@ async def crear_propuesta_cambio(
     }
     
     # Crear propuesta de cambio
+    tipo_revision = data.get('tipo_revision', 'campo')  # campo, juridico, calidad
+    
+    # Nombres legibles para el tipo de revisión
+    tipos_revision_nombres = {
+        'campo': 'Revisión de Campo',
+        'juridico': 'Revisión Jurídica',
+        'calidad': 'Control de Calidad'
+    }
+    
     propuesta = {
         "id": str(uuid.uuid4()),
         "proyecto_id": proyecto_id,
@@ -11988,6 +11997,8 @@ async def crear_propuesta_cambio(
         "municipio": municipio,
         "datos_existentes": datos_existentes,
         "datos_propuestos": data.get('datos_propuestos', {}),
+        "tipo_revision": tipo_revision,
+        "tipo_revision_nombre": tipos_revision_nombres.get(tipo_revision, 'Revisión de Campo'),
         "justificacion": data.get('justificacion', ''),
         "estado": "pendiente",  # pendiente, aprobada, rechazada, subsanacion, reenviada, rechazada_definitiva
         "creado_por": current_user.get('email'),
