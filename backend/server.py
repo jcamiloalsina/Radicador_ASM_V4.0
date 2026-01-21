@@ -651,6 +651,10 @@ async def generate_radicado() -> str:
     sequence = str(result["sequence"]).zfill(4)
     return f"RASMGC-{sequence}-{date_str}"
 
+async def enviar_correo_con_adjunto(destinatario: str, asunto: str, contenido_html: str, adjunto_path: str = None, adjunto_nombre: str = None):
+    """Wrapper async para enviar correo con adjunto."""
+    await send_email(destinatario, asunto, contenido_html, adjunto_path, adjunto_nombre)
+
 async def send_email(to_email: str, subject: str, body: str, attachment_path: str = None, attachment_name: str = None):
     if not SMTP_USER or not SMTP_PASSWORD:
         logging.warning("SMTP credentials not configured, skipping email")
