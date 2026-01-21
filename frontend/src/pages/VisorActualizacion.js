@@ -1347,20 +1347,56 @@ export default function VisorActualizacion() {
         </Button>
       </div>
       
-      {/* Estadísticas rápidas */}
+      {/* Estadísticas rápidas - clickeables para filtrar */}
       <div className="bg-white border-b px-4 py-2 flex gap-4 text-xs overflow-x-auto">
-        <div className="flex items-center gap-1 whitespace-nowrap">
+        <button 
+          onClick={() => setFilterEstado('todos')}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            filterEstado === 'todos' ? 'bg-slate-200 font-medium' : 'hover:bg-slate-100'
+          }`}
+        >
+          <ListTodo className="w-3 h-3 text-slate-500" />
+          <span>Total: {estadisticas.pendientes + estadisticas.visitados + estadisticas.actualizados}</span>
+        </button>
+        <button 
+          onClick={() => setFilterEstado('pendiente')}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            filterEstado === 'pendiente' ? 'bg-slate-200 font-medium' : 'hover:bg-slate-100'
+          }`}
+        >
           <Square className="w-3 h-3 text-slate-400" />
           <span>Pendientes: {estadisticas.pendientes}</span>
-        </div>
-        <div className="flex items-center gap-1 whitespace-nowrap">
+        </button>
+        <button 
+          onClick={() => setFilterEstado('visitado')}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            filterEstado === 'visitado' ? 'bg-amber-200 font-medium' : 'hover:bg-amber-50'
+          }`}
+        >
           <Eye className="w-3 h-3 text-amber-500" />
           <span>Visitados: {estadisticas.visitados}</span>
-        </div>
-        <div className="flex items-center gap-1 whitespace-nowrap">
+        </button>
+        <button 
+          onClick={() => setFilterEstado('actualizado')}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            filterEstado === 'actualizado' ? 'bg-purple-200 font-medium' : 'hover:bg-purple-50'
+          }`}
+        >
           <CheckSquare className="w-3 h-3 text-purple-500" />
           <span>Actualizados: {estadisticas.actualizados}</span>
-        </div>
+        </button>
+        {filterEstado !== 'todos' && (
+          <span className="text-slate-400 ml-auto flex items-center gap-1">
+            <span>Mostrando: {geometriasFiltradas?.features?.length || 0} polígonos</span>
+            <button 
+              onClick={() => setFilterEstado('todos')}
+              className="text-red-500 hover:text-red-700 ml-1"
+              title="Quitar filtro"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        )}
       </div>
       
       {/* Map Container */}
