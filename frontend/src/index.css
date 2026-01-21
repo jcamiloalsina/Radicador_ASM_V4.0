@@ -194,6 +194,12 @@ code {
   [data-radix-portal] {
     z-index: 999999 !important;
   }
+  
+  /* Ocultar controles del mapa cuando hay overlay activo */
+  body:has([data-sidebar-open="true"]) .map-controls,
+  body:has(.fixed.inset-0) .absolute.z-\[400\] {
+    display: none !important;
+  }
 }
 
 /* ===========================================
