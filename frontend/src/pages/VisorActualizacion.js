@@ -323,6 +323,39 @@ export default function VisorActualizacion() {
     }
   }, [filterZona]);
   
+  // Filtrar geometrías por estado
+  useEffect(() => {
+    if (!geometrias?.features) {
+      setGeometriasFiltradas(null);
+      return;
+    }
+    
+    if (filterEstado === 'todos') {
+      setGeometriasFiltradas(geometrias);
+      return;
+    }
+    
+    // Obtener los códigos de predios según el estado
+    const codigosPorEstado = new Set();
+    prediosR1R2.forEach(predio => {
+      const estado = predio.estado_visita || 'pendiente';
+      if (estado === filterEstado) {
+        codigosPorEstado.add(predio.codigo_predial || predio.numero_predial);
+      }
+    });
+    
+    // Filtrar las geometrías
+    const featuresFiltradas = geometrias.features.filter(feature => {
+      const codigo = feature.properties?.codigo_predial || feature.properties?.numero_predial;
+      return codigosPorEstado.has(codigo);
+    });
+    
+    setGeometriasFiltradas({
+      type: 'FeatureCollection',
+      features: featuresFiltradas
+    });
+  }, [geometrias, filterEstado, prediosR1R2]);
+  
   // Funciones GPS - Mejorado para tablets
   const startWatchingPosition = async () => {
     if (!navigator.geolocation) {
