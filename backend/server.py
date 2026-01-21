@@ -7085,53 +7085,22 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     
     # === SECCIÓN 4: INFORMACIÓN ECONÓMICA ===
     y = draw_section_header("INFORMACIÓN ECONÓMICA", y)
-    c.setFillColor(blanco)
-    c.setFont(fuente_bold, 12)
-    c.drawString(left_margin + 5, y - 8, "INFORMACIÓN ECONÓMICA")
-    y -= 18
     
     avaluo = predio.get('avaluo', 0)
-    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.')
+    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
     y = draw_field("Avalúo catastral", avaluo_str, y)
     
-    # Línea inferior
-    c.setStrokeColor(linea_gris)
-    c.line(left_margin, y + 3, right_margin, y + 3)
-    y -= 6
+    # === DIBUJAR BORDE EXTERIOR DEL CUADRO ===
+    cuadro_bottom = y
+    c.setStrokeColor(verde_institucional)
+    c.setLineWidth(1)
+    c.rect(cuadro_x, cuadro_bottom, cuadro_width, cuadro_top - cuadro_bottom, fill=0, stroke=1)
     
-    # === BARRA VERDE: PREDIOS COLINDANTES ===
-    c.setFillColor(verde_seccion)
-    c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
-    c.setFont(fuente_bold, 12)
-    c.drawString(left_margin + 5, y - 8, "PREDIOS COLINDANTES")
-    y -= 18
-    
-    # Obtener predios colindantes si existen
-    colindantes = predio.get('colindantes', {})
-    c.setFillColor(negro)
-    c.setFont(fuente_normal, 12)
-    
-    direcciones = ['Norte', 'Sur', 'Este', 'Oeste']
-    for direccion in direcciones:
-        col_text = colindantes.get(f'al_{direccion.lower()}', colindantes.get(direccion.lower(), f'Con ZONA {direccion.upper()}'))
-        if not col_text:
-            col_text = f"Con predio colindante al {direccion}"
-        
-        text_lines = simpleSplit(f"Al {direccion}: {col_text}", fuente_normal, 12, content_width - 10)
-        for line in text_lines:
-            c.drawString(left_margin + 3, y, line)
-            y -= 14
-        y -= 2
-    
-    # Línea inferior
-    c.setStrokeColor(linea_gris)
-    c.line(left_margin, y + 3, right_margin, y + 3)
-    y -= 14
+    y -= 20
     
     # === TEXTO DE EXPEDICIÓN ===
     c.setFillColor(negro)
-    c.setFont(fuente_normal, 12)
+    c.setFont(fuente_normal, 11)
     fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
     c.drawString(left_margin, y, texto_exp)
@@ -7143,11 +7112,11 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setLineWidth(0.5)
     c.line(firma_x - 100, y + 12, firma_x + 100, y + 12)
     
-    c.setFont(fuente_bold, 12)
+    c.setFont(fuente_bold, 11)
     c.setFillColor(negro)
     c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
     y -= 14
-    c.setFont(fuente_normal, 12)
+    c.setFont(fuente_normal, 11)
     c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
     y -= 20
     
