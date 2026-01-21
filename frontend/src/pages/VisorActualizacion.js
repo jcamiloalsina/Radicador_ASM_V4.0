@@ -1510,16 +1510,48 @@ export default function VisorActualizacion() {
           </div>
         </div>
         
-        {/* Filtro de zona */}
-        <div className="absolute top-4 left-4 z-[1000]">
+        {/* Filtros: Zona y Estado */}
+        <div className="absolute top-4 left-4 z-[1000] flex gap-2">
           <Select value={filterZona} onValueChange={setFilterZona}>
             <SelectTrigger className="w-28 bg-white shadow-lg text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todas</SelectItem>
+              <SelectItem value="todos">Todas zonas</SelectItem>
               <SelectItem value="urbano">Urbano</SelectItem>
               <SelectItem value="rural">Rural</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={filterEstado} onValueChange={setFilterEstado}>
+            <SelectTrigger className="w-32 bg-white shadow-lg text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  Todos estados
+                </span>
+              </SelectItem>
+              <SelectItem value="pendiente">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                  Pendientes
+                </span>
+              </SelectItem>
+              <SelectItem value="visitado">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  Visitados
+                </span>
+              </SelectItem>
+              <SelectItem value="actualizado">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                  Actualizados
+                </span>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
