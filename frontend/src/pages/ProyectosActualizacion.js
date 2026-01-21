@@ -1152,10 +1152,6 @@ export default function ProyectosActualizacion() {
                 {/* Tab Cronograma - Solo para admin/coordinador */}
                 {canCreate && (
                 <TabsContent value="cronograma" className="space-y-4 mt-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-slate-900">Cronograma de Actividades</h4>
-                  </div>
-                  
                   {etapas.length === 0 ? (
                     <Card className="bg-amber-50 border-amber-200">
                       <CardContent className="p-6 text-center">
@@ -1168,56 +1164,43 @@ export default function ProyectosActualizacion() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="space-y-4">
-                      {etapas.map((etapa) => {
-                        const actividadesOrganizadas = organizarActividadesJerarquicamente(etapa.actividades || []);
-                        
-                        return (
-                          <Card key={etapa.id} className="border-l-4 border-l-amber-500">
-                            <Collapsible 
-                              open={etapasAbiertas[etapa.id]} 
-                              onOpenChange={(open) => setEtapasAbiertas(prev => ({ ...prev, [etapa.id]: open }))}
-                            >
-                              <CardHeader className="pb-2">
-                                <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
-                                  <div className="flex items-center gap-3">
-                                    {etapasAbiertas[etapa.id] ? (
-                                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                                    ) : (
-                                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                                    )}
-                                    <div>
-                                      <CardTitle className="text-base">{etapa.nombre}</CardTitle>
-                                      <p className="text-xs text-slate-500">{etapa.descripcion}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-4">
-                                    <div className="text-right">
-                                      <p className="text-xs text-slate-500">Progreso</p>
-                                      <p className="font-semibold text-amber-600">{etapa.progreso || 0}%</p>
-                                    </div>
-                                    <Progress value={etapa.progreso || 0} className="w-24 h-2" />
-                                  </div>
-                                </CollapsibleTrigger>
-                              </CardHeader>
-                              
-                              <CollapsibleContent>
-                                <CardContent className="pt-0">
-                                  {/* Actividades */}
-                                  <div className="space-y-2 mt-2">
-                                    {actividadesOrganizadas.length === 0 ? (
-                                      <p className="text-sm text-slate-400 text-center py-4">
-                                        No hay actividades en esta etapa
-                                      </p>
-                                    ) : (
-                                      actividadesOrganizadas.map((actividad) => (
-                                        <div 
-                                          key={actividad.id}
-                                          className={`flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 ${actividad.nivel > 0 ? 'ml-' + (actividad.nivel * 6) : ''}`}
-                                          style={{ marginLeft: actividad.nivel * 24 }}
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            {actividad.nivel > 0 && (
+                    <>
+                      {/* Botón para agregar actividad */}
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Nueva Actividad
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {etapas.map((etapa) => (
+                              <DropdownMenuItem 
+                                key={etapa.id}
+                                onClick={() => {
+                                  setEtapaSeleccionada(etapa);
+                                  setShowActividadModal(true);
+                                }}
+                              >
+                                {etapa.nombre}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      
+                      {/* Componente Gantt */}
+                      <CronogramaGantt 
+                        etapas={etapas} 
+                        proyectoId={proyectoSeleccionado?.id}
+                        onUpdate={() => fetchEtapas(proyectoSeleccionado?.id)}
+                        gestoresDisponibles={[]}
+                      />
+                    </>
+                  )}
+                </TabsContent>
+                )}
                                               <CornerDownRight className="w-4 h-4 text-slate-300" />
                                             )}
                                             <ListTodo className={`w-4 h-4 ${prioridadConfig[actividad.prioridad]?.color || 'text-slate-400'}`} />
