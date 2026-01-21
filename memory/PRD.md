@@ -794,3 +794,68 @@ La aplicación ahora se estructura en dos flujos principales:
 - `/app/backend/server.py` - Nuevos endpoints y campo sin_cambios en PATCH
 
 **Testing:** Verificado con testing_agent - 100% (8/8 tests passed) - iteration_13.json
+
+---
+
+### Sesión 21 Enero 2026 (Parte 2) - Mejoras Múltiples
+
+**1. ✅ Matrícula Inmobiliaria en R1/R2:**
+- Agregado mapeo de columna `MATRICULA_INMOBILIARIA` en procesamiento R1/R2
+- El campo ahora se importa correctamente desde archivos Excel
+
+**2. ✅ Nombre del Gestor en lugar de Email:**
+- `visitado_por` ahora muestra `full_name` en lugar de `email`
+- `realizada_por` también usa nombre completo
+- `creado_por_nombre` utilizado en vista de propuestas
+
+**3. ✅ Flexibilidad de Capas GDB:**
+- El sistema ahora procesa archivos GDB con solo capas urbanas O solo rurales
+- Información detallada de capas encontradas guardada en proyecto
+- Campos: `tiene_zona_rural`, `tiene_zona_urbana`, `capas_procesadas`
+
+**4. ✅ Vista Cronograma Gantt:**
+- Nuevo componente `/app/frontend/src/components/CronogramaGantt.jsx`
+- Vista de barras temporales por etapa y actividad
+- Panel de estadísticas: progreso, completadas, en progreso, atrasadas
+- Panel de alertas de vencimiento
+- Filtros por estado y responsable
+- Modal de edición con fechas inicio/fin, prioridad y estado
+- Colores: Verde (completada), Azul (en progreso), Rojo (atrasada), Gris (pendiente)
+- Leyenda visual
+
+**5. ✅ Modo Offline (PWA) - Actualización y Conservación:**
+- Service Worker mejorado: `/app/frontend/public/sw-offline.js`
+- IndexedDB para almacenamiento local: `/app/frontend/src/utils/offlineDB.js`
+- Hook de sincronización: `/app/frontend/src/hooks/useOfflineSync.js`
+- **Descarga automática** al cargar visor (sin preguntar)
+- Almacena: predios, geometrías GDB, tiles de mapa
+- Indicador de estado offline en UI
+- Cambios se guardan localmente y sincronizan al recuperar conexión
+- Badge "X pendientes" con opción de forzar sincronización
+
+**Archivos Creados:**
+- `/app/frontend/src/components/CronogramaGantt.jsx`
+- `/app/frontend/src/utils/offlineDB.js`
+- `/app/frontend/src/hooks/useOfflineSync.js`
+- `/app/frontend/public/sw-offline.js`
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - Mapeo matrícula, info capas GDB
+- `/app/frontend/src/pages/VisorActualizacion.js` - Modo offline, nombre gestor
+- `/app/frontend/src/pages/GestionPropuestas.js` - Nombre gestor
+- `/app/frontend/src/pages/ProyectosActualizacion.js` - Integración Gantt
+
+---
+
+## Backlog Pendiente (P1-P2)
+
+### P1 - Próximas Tareas
+- **Mejorar Formato de Visita:** Sesión dedicada para expandir campos (fichas económicas)
+- **PDF Certificado Catastral:** Rediseño del formato para módulo Conservación
+- **Generador XTF:** Archivos XTF para IGAC
+
+### P2 - Futuro
+- Modo offline para módulo Conservación (similar a Actualización)
+- Historial de cambios de permisos
+- Integración con logos de usuario en PDFs
+- GPS tablet - pendiente verificación usuario
