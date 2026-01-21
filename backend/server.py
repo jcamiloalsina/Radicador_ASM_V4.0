@@ -7460,7 +7460,11 @@ async def generar_certificado_desde_peticion(
         if codigo_buscado:
             predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
         elif matricula_buscada:
-            predio = await db.predios.find_one({"matricula_inmobiliaria": matricula_buscada}, {"_id": 0})
+            # Buscar matrícula en r2_registros.matricula_inmobiliaria (fuente R1/R2)
+            predio = await db.predios.find_one(
+                {"r2_registros.matricula_inmobiliaria": matricula_buscada}, 
+                {"_id": 0}
+            )
     
     if not predio:
         raise HTTPException(
