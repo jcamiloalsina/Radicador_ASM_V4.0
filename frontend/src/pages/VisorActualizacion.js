@@ -1709,33 +1709,6 @@ export default function VisorActualizacion() {
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="campo" className="mt-3 space-y-3">
-                    {selectedPredio.observaciones_campo && (
-                      <div>
-                        <p className="text-xs text-slate-500">Observaciones de Campo</p>
-                        <p className="text-sm bg-slate-50 p-2 rounded">{selectedPredio.observaciones_campo}</p>
-                      </div>
-                    )}
-                    {selectedPredio.visitado_en && (
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        Visitado: {new Date(selectedPredio.visitado_en).toLocaleString('es-CO')}
-                      </div>
-                    )}
-                    {selectedPredio.ubicacion_gps && (
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <MapPin className="w-3 h-3" />
-                        GPS: {selectedPredio.ubicacion_gps.lat?.toFixed(6)}, {selectedPredio.ubicacion_gps.lng?.toFixed(6)}
-                      </div>
-                    )}
-                    {selectedPredio.visita?.firma_base64 && (
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Firma de la visita</p>
-                        <img src={selectedPredio.visita.firma_base64} alt="Firma" className="border rounded h-16" />
-                      </div>
-                    )}
-                  </TabsContent>
-                  
                   {/* Tab Propuestas de Cambio */}
                   <TabsContent value="propuestas" className="mt-3 space-y-3">
                     <div className="flex justify-between items-center">
