@@ -958,3 +958,42 @@ Predio X - Historial:
 ├── 14:00 - Pedro (Calidad): Verificación completada
 └── Coordinador: Aprueba propuestas consolidadas → Actualizado
 ```
+
+---
+
+### Sesión 21 Enero 2026 (Parte 6) - Fix Z-index Móvil y GPS Mejorado
+
+**1. ✅ Fix Z-index del Sidebar Móvil:**
+- **Problema:** Los controles flotantes del mapa (filtros, botones, leyenda) aparecían por encima del sidebar móvil
+- **Causa raíz:** El sidebar tenía `z-50` (z-index: 50) pero los controles del mapa tenían `z-[1000]`
+- **Solución:**
+  - Aumentado z-index del sidebar móvil a `z-[9999]` en `DashboardLayout.js`
+  - Reducido z-index de controles del mapa a `z-[400]`
+  - Agregada clase `map-controls` a todos los controles flotantes del visor
+  - CSS que oculta controles del mapa cuando el sidebar está abierto
+  - Atributo `data-sidebar-open` en body para controlar visibilidad
+
+**2. ✅ GPS con Logging Detallado para iOS:**
+- **Mejoras implementadas:**
+  - Logging extensivo en consola del navegador para debugging
+  - Detección de plataforma: iOS, Android, Safari, móvil
+  - Uso de Permissions API cuando está disponible
+  - Verificación previa del estado del permiso (prompt/granted/denied)
+  - Mensajes de error específicos para iOS con instrucciones paso a paso
+  - Opciones de geolocalización optimizadas por plataforma
+  - Timeouts diferenciados: iOS (20s), otros (30s)
+  
+**Archivos Modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js` - GPS mejorado, clase map-controls
+- `/app/frontend/src/pages/DashboardLayout.js` - z-index sidebar, atributo data-sidebar-open
+- `/app/frontend/src/index.css` - Reglas CSS para ocultar controles cuando sidebar abierto
+
+**Nota sobre GPS en iOS:**
+El GPS requiere:
+1. HTTPS obligatorio (✓ ya verificado en código)
+2. Permiso de ubicación habilitado en iOS: Configuración > Privacidad > Servicios de ubicación > Safari
+3. El usuario debe interactuar con un botón (gesto directo) para solicitar el permiso
+
+Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del navegador (Safari > Desarrollar > consola) y compartir los logs que inician con "GPS:".
+
+---
