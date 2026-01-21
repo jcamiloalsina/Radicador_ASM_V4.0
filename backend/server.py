@@ -2693,19 +2693,24 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                     )
                     
                     # Si se deben enviar archivos, prepararlos
-                    attachments = []
+                    attachment_path = None
+                    attachment_name = None
                     if enviar_archivos:
                         uploads_dir = Path("uploads") / petition_id
                         for archivo in archivos_staff:
                             archivo_path = uploads_dir / archivo.get('filename', '')
                             if archivo_path.exists():
-                                attachments.append(str(archivo_path))
+                                # Solo adjuntar el primer archivo (limitación de send_email)
+                                attachment_path = str(archivo_path)
+                                attachment_name = archivo.get('filename', 'archivo_adjunto')
+                                break
                     
                     await send_email(
                         citizen_email,
                         f"¡Trámite Finalizado! - {petition['radicado']}",
                         email_body,
-                        attachments=attachments if attachments else None
+                        attachment_path,
+                        attachment_name
                     )
                     
                     # Notificar a TODOS los gestores asignados que el trámite fue finalizado
