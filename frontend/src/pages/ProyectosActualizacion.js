@@ -43,7 +43,8 @@ import {
   X,
   FileCheck,
   CornerDownRight,
-  Download
+  Download,
+  BarChart3
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import CronogramaGantt from '../components/CronogramaGantt';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
