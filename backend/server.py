@@ -6938,46 +6938,90 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         
         # "Gestor Catastral" en verde
         c.setFillColor(verde_gestor)
-        c.setFont("Helvetica-Bold", 12)
+        c.setFont(fuente_bold, 12)
         c.drawString(header_x, height - 2.9*cm, "Gestor Catastral")
     
     # === LÍNEA 1: Fecha (izquierda) y Número de certificado (derecha) ===
     y_linea1 = height - 4.0 * cm
     
-    # Fecha (izquierda)
+    # Fecha (izquierda) - Tamaño 12
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont(fuente_normal, 12)
     c.setFillColor(negro)
     c.drawString(left_margin, y_linea1, fecha_str)
     
-    # Número de certificado (derecha) - COM-F03-XXXX-GC-XXXX (EDITABLE)
-    cert_numero = numero_certificado or "COM-F03-XXXX-GC-XXXX"
-    c.setFont("Helvetica-Bold", 11)
-    c.drawRightString(right_margin, y_linea1, f"CERTIFICADO: {cert_numero}")
+    # Número de certificado (derecha) - CAMPO EDITABLE
+    c.setFont(fuente_normal, 12)
+    c.drawString(right_margin - 200, y_linea1, "CERTIFICADO: COM-F03-")
+    
+    # Campo editable para primera parte XXXX
+    c.acroForm.textfield(
+        name='cert_num1',
+        x=right_margin - 95,
+        y=y_linea1 - 4,
+        width=35,
+        height=14,
+        fontSize=12,
+        fontName=fuente_normal,
+        borderWidth=0,
+        fillColor=colors.white,
+        textColor=negro,
+        value=''
+    )
+    c.drawString(right_margin - 58, y_linea1, "-GC-")
+    
+    # Campo editable para segunda parte XXXX
+    c.acroForm.textfield(
+        name='cert_num2',
+        x=right_margin - 40,
+        y=y_linea1 - 4,
+        width=35,
+        height=14,
+        fontSize=12,
+        fontName=fuente_normal,
+        borderWidth=0,
+        fillColor=colors.white,
+        textColor=negro,
+        value=''
+    )
     
     # === SALTO DE LÍNEA Y TÍTULO PRINCIPAL ===
     y = y_linea1 - 1.8 * cm
     
     c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont(fuente_bold, 12)
     c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL")
-    y -= 18
+    y -= 14
     
-    # Base legal (texto pequeño centrado, una sola línea o dos)
+    # Base legal (texto pequeño centrado) - Tamaño 8
     c.setFillColor(gris_claro)
-    c.setFont("Helvetica", 7)
-    texto_legal = "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO"
+    c.setFont(fuente_normal, 8)
+    texto_legal = "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)"
     c.drawCentredString(width/2, y, texto_legal)
     y -= 10
-    texto_legal2 = "18) Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3."
+    texto_legal2 = "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3."
     c.drawCentredString(width/2, y, texto_legal2)
-    y -= 20
+    y -= 18
     
-    # RADICADO No° (derecha)
-    radicado_num = radicado or "ASM N° XXXXXX"
+    # RADICADO No° (derecha) - CAMPO EDITABLE - Tamaño 12
     c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawRightString(right_margin, y, f"RADICADO No°: {radicado_num}")
+    c.setFont(fuente_normal, 12)
+    c.drawString(right_margin - 150, y, "RADICADO No°: ")
+    
+    # Campo editable para radicado
+    c.acroForm.textfield(
+        name='radicado',
+        x=right_margin - 70,
+        y=y - 4,
+        width=70,
+        height=14,
+        fontSize=12,
+        fontName=fuente_normal,
+        borderWidth=0,
+        fillColor=colors.white,
+        textColor=negro,
+        value=''
+    )
     y -= 16
     
     # === TEXTO CERTIFICADOR ===
