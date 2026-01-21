@@ -767,15 +767,24 @@ export default function PetitionDetail() {
                         )}
                       </div>
                     ) : (
-                      <div className="mb-4 text-sm">
-                        {petition.codigo_predial_buscado && (
-                          <p><span className="text-slate-500">Código buscado:</span> <span className="font-mono">{petition.codigo_predial_buscado}</span></p>
-                        )}
-                        {petition.matricula_buscada && (
-                          <p><span className="text-slate-500">Matrícula buscada:</span> <span className="font-medium">{petition.matricula_buscada}</span></p>
-                        )}
-                        {!petition.codigo_predial_buscado && !petition.matricula_buscada && (
-                          <p className="text-amber-600">⚠️ No se especificó código predial ni matrícula</p>
+                      <div className="mb-4">
+                        {(petition.codigo_predial_buscado || petition.matricula_buscada) ? (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-700 font-medium">❌ Certificado no disponible</p>
+                            <p className="text-sm text-red-600 mt-1">
+                              No se encontró un predio con {petition.codigo_predial_buscado ? `código predial: ${petition.codigo_predial_buscado}` : `matrícula: ${petition.matricula_buscada}`}
+                            </p>
+                            <p className="text-xs text-red-500 mt-2">
+                              Verifique que el código o matrícula sea correcto y que el predio exista en la base de datos catastral.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p className="text-sm text-amber-700">⚠️ No se especificó código predial ni matrícula en esta petición.</p>
+                            <p className="text-xs text-amber-600 mt-1">
+                              Esta petición fue creada sin identificación del predio. Solicite al peticionario radicar una nueva petición con los datos correctos.
+                            </p>
+                          </div>
                         )}
                       </div>
                     )}
