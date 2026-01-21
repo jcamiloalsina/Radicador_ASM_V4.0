@@ -4,8 +4,8 @@
   "description": "Sistema de Gestión Catastral - Asociación de Municipios del Catatumbo",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#047857",
-  "theme_color": "#047857",
+  "background_color": "#009846",
+  "theme_color": "#009846",
   "orientation": "portrait-primary",
   "icons": [
     {
