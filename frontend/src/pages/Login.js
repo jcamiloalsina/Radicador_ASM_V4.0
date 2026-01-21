@@ -222,26 +222,36 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex items-center justify-center p-6 md:p-8 bg-slate-50 relative min-h-screen lg:min-h-0">
+        {/* Imagen de fondo para móvil */}
+        <div className="lg:hidden absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1662140246046-fc44f41e4362?q=85&w=1920"
+            alt="Mapa Catastral"
+            className="w-full h-full object-cover opacity-10"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-50/80 to-slate-50/95"></div>
+        </div>
+        
+        <div className="w-full max-w-md space-y-6 relative z-10">
           {/* Logo para móvil - solo visible en pantallas pequeñas */}
           <div className="lg:hidden text-center">
             <img 
               src="/logo-asomunicipios.png" 
               alt="Asomunicipios Logo" 
-              className="w-28 mx-auto mb-3 rounded-lg shadow-md"
+              className="w-24 mx-auto mb-2 rounded-lg shadow-md"
               data-testid="login-logo-mobile"
             />
-            <h2 className="text-lg font-bold text-emerald-800 font-outfit">Asomunicipios</h2>
+            <h2 className="text-base font-bold text-emerald-800 font-outfit">Asomunicipios</h2>
             <p className="text-xs text-slate-500">Sistema de Gestión Catastral</p>
           </div>
           
           <div className="text-center">
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 font-outfit" data-testid="login-title">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 font-outfit" data-testid="login-title">
               Iniciar Sesión
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Ingresa tus credenciales para acceder al sistema
+            <p className="mt-1 text-sm text-slate-600">
+              Ingresa tus credenciales para acceder
             </p>
           </div>
 
