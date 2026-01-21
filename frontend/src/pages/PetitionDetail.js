@@ -804,8 +804,8 @@ export default function PetitionDetail() {
                           El certificado fue enviado al correo del peticionario y está disponible en su plataforma.
                         </p>
                       </div>
-                    ) : (
-                      /* Botón para generar certificado - Solo staff */
+                    ) : petition.predio_relacionado ? (
+                      /* Botón para generar certificado - Solo staff y solo si hay predio */
                       ['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
                         <Dialog>
                           <DialogTrigger asChild>
@@ -887,7 +887,7 @@ export default function PetitionDetail() {
                           </DialogContent>
                         </Dialog>
                       )
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
