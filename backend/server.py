@@ -7495,27 +7495,29 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>✅ Certificado Válido - ASOMUNICIPIOS</title>
+            <title>✅ Certificado Válido - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
                 .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
-                .header {{ background: #047857; color: white; padding: 20px; text-align: center; }}
-                .header h1 {{ margin: 0; }}
+                .header {{ background: #047857; color: white; padding: 25px; text-align: center; }}
+                .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
+                .header h1 {{ margin: 10px 0 0 0; font-size: 22px; }}
                 .badge {{ display: inline-block; background: #10b981; padding: 5px 15px; border-radius: 20px; margin-top: 10px; font-size: 14px; }}
                 .content {{ padding: 30px; }}
                 .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
                 .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
                 .info-value {{ color: #6b7280; }}
-                .code {{ background: #f0fdf4; padding: 10px; border-radius: 5px; font-family: monospace; color: #047857; text-align: center; margin: 20px 0; border: 1px solid #047857; }}
-                .footer {{ background: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }}
-                .logo {{ max-width: 200px; margin-bottom: 10px; }}
+                .code {{ background: #f0fdf4; padding: 15px; border-radius: 8px; font-family: monospace; color: #047857; text-align: center; margin: 20px 0; border: 2px solid #047857; font-size: 16px; }}
+                .footer {{ background: #047857; padding: 20px; text-align: center; font-size: 12px; color: white; }}
+                .footer a {{ color: #a7f3d0; }}
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
+                    <img src="{logo_url}" alt="Asomunicipios">
                     <h1>✅ CERTIFICADO VÁLIDO</h1>
-                    <span class="badge">Verificado por ASOMUNICIPIOS</span>
+                    <span class="badge">Verificado por Asomunicipios</span>
                 </div>
                 <div class="content">
                     <div class="code">
@@ -7559,9 +7561,9 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     </div>
                 </div>
                 <div class="footer">
-                    <strong>ASOMUNICIPIOS - Gestor Catastral</strong><br>
+                    <strong>Asomunicipios - Gestor Catastral</strong><br>
                     Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar<br>
-                    comunicaciones@asomunicipios.gov.co | +57 3102327647
+                    <a href="mailto:comunicaciones@asomunicipios.gov.co">comunicaciones@asomunicipios.gov.co</a> | +57 3102327647
                 </div>
             </div>
         </body>
