@@ -820,23 +820,15 @@ export default function PetitionDetail() {
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                <p className="text-sm text-amber-800 font-medium mb-2">⚠️ Verificación Requerida</p>
-                                <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
-                                  <li>¿Se verificaron los documentos adjuntos?</li>
-                                  <li>¿Se confirmó el pago de $45.000 COP?</li>
-                                  <li>¿La información del predio es correcta?</li>
-                                </ul>
-                              </div>
-                              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                                <p className="text-sm text-emerald-800">
-                                  <strong>Al confirmar:</strong>
+                                <p className="text-sm text-amber-800 font-medium">⚠️ ¿Se verificó el pago?</p>
+                                <p className="text-sm text-amber-700 mt-1">
+                                  Confirme que el peticionario realizó el pago correspondiente antes de generar el certificado.
                                 </p>
-                                <ul className="text-sm text-emerald-700 mt-1 space-y-1 list-disc list-inside">
-                                  <li>Se generará el certificado PDF</li>
-                                  <li>Se enviará al correo: <strong>{petition.correo}</strong></li>
-                                  <li>Se notificará al peticionario en la plataforma</li>
-                                  <li>El trámite se marcará como <strong>Finalizado</strong></li>
-                                </ul>
+                              </div>
+                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                <p className="text-sm text-slate-700">
+                                  <strong>Al confirmar:</strong> El certificado se generará, se enviará al correo <strong>{petition.correo}</strong> y el trámite quedará <strong>Finalizado</strong>.
+                                </p>
                               </div>
                             </div>
                             <DialogFooter className="gap-2">
@@ -853,8 +845,15 @@ export default function PetitionDetail() {
                                       headers: { 'Authorization': `Bearer ${token}` }
                                     });
                                     if (!response.ok) {
-                                      const error = await response.json();
-                                      throw new Error(error.detail || 'Error al generar');
+                                      const errorText = await response.text();
+                                      let errorMsg = 'Error al generar';
+                                      try {
+                                        const errorJson = JSON.parse(errorText);
+                                        errorMsg = errorJson.detail || errorMsg;
+                                      } catch {
+                                        errorMsg = errorText || errorMsg;
+                                      }
+                                      throw new Error(errorMsg);
                                     }
                                     const blob = await response.blob();
                                     const url = window.URL.createObjectURL(blob);
