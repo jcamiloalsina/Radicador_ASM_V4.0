@@ -815,12 +815,20 @@ export default function VisorActualizacion() {
           return;
         }
         
-        // Crear propuesta sin requerir justificación (la aprobación del coordinador es suficiente)
+        // Determinar la justificación según el tipo de revisión
+        const tiposRevision = {
+          'campo': 'Revisión de campo - Datos físicos',
+          'juridico': 'Revisión jurídica - Documentación y propietarios',
+          'calidad': 'Control de calidad - Verificación de datos'
+        };
+        
+        // Crear propuesta con tipo de revisión
         await axios.post(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/propuesta`,
           {
             datos_propuestos: dataToSave,
-            justificacion: 'Propuesta de cambio desde trabajo de campo'  // Justificación genérica
+            tipo_revision: tipoRevision || 'campo',
+            justificacion: tiposRevision[tipoRevision] || 'Propuesta de cambio'
           },
           { headers: { Authorization: `Bearer ${token}` }}
         );
