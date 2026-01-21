@@ -641,28 +641,6 @@ export default function GestionPropuestas() {
       {/* Tabla de propuestas - Solo mostrar si estamos en ese filtro */}
       {filtroTipo === 'propuestas' && (
         <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
-          </div>
-          
-          <Button onClick={fetchPropuestas} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-          
-          {filtroEstado === 'pendiente' && seleccionadas.length > 0 && (
-            <Button 
-              onClick={handleAprobarMasivo}
-              disabled={procesando}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {procesando ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-              Aprobar Masivo ({seleccionadas.length})
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      {/* Tabla de propuestas */}
-      <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-8 text-center">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
