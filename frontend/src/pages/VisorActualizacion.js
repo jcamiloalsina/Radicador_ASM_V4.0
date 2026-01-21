@@ -229,7 +229,8 @@ export default function VisorActualizacion() {
     acceso_predio: '',
     servicios_publicos: [],
     observaciones: '',
-    firma_base64: null
+    firma_base64: null,
+    sin_cambios: false  // Visitado pero sin modificaciones en los datos
   });
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
