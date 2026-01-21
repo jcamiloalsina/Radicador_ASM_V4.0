@@ -7332,8 +7332,17 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
 
 
 @api_router.get("/predios/{predio_id}/certificado")
-async def generar_certificado_catastral_endpoint(predio_id: str, current_user: dict = Depends(get_current_user)):
-    """Genera un certificado catastral PDF para un predio específico con consecutivo en blanco para llenado manual"""
+async def generar_certificado_catastral_endpoint(
+    predio_id: str, 
+    estilo: str = Query("B", description="Estilo de verificación: A (minimalista) o B (con marco)"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera un certificado catastral PDF para un predio específico.
+    Incluye firma digital visual, QR de verificación y código de seguridad.
+    
+    - estilo: "A" para minimalista, "B" para marco verde (default)
+    """
     # Solo coordinador, administrador y atencion_usuario pueden generar certificados
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso para generar certificados")
@@ -7343,18 +7352,33 @@ async def generar_certificado_catastral_endpoint(predio_id: str, current_user: d
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    # Registrar certificado en la base de datos (sin número, se llena manualmente)
+    # Generar código de verificación único
+    codigo_verificacion = generar_codigo_verificacion()
+    
+    # Generar hash del documento
+    contenido_hash = f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now().isoformat()}"
+    hash_documento = generar_hash_documento(contenido_hash)
+    
+    # Registrar certificado en la base de datos
     certificado_record = {
         "id": str(uuid.uuid4()),
-        "numero": "(Por asignar)",
+        "codigo_verificacion": codigo_verificacion,
+        "hash_documento": hash_documento,
         "predio_id": predio_id,
         "codigo_predial": predio.get('codigo_predial_nacional', ''),
+        "municipio": predio.get('municipio', ''),
+        "direccion": predio.get('direccion', ''),
+        "propietarios": [p.get('nombre_propietario', '') for p in predio.get('propietarios', [])],
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
-        "generado_por_rol": current_user['role'],
-        "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        "generado_por_email": current_user['email'],
+        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+        "estado": "activo",  # activo, anulado
+        "motivo_anulacion": None,
+        "fecha_anulacion": None,
+        "anulado_por": None
     }
-    await db.certificados.insert_one(certificado_record)
+    await db.certificados_verificables.insert_one(certificado_record)
     
     # Firmante siempre es Dalgie Esperanza Torrado Rizo
     firmante = {
@@ -7365,8 +7389,8 @@ async def generar_certificado_catastral_endpoint(predio_id: str, current_user: d
     # Quien proyecta es el usuario actual
     proyectado_por = current_user['full_name']
     
-    # Generar PDF con campo editable para número
-    pdf_bytes = generate_certificado_catastral(predio, firmante, proyectado_por)
+    # Generar PDF con verificación
+    pdf_bytes = generate_certificado_catastral(predio, firmante, proyectado_por, codigo_verificacion, estilo)
     
     # Guardar temporalmente
     temp_path = UPLOAD_DIR / f"certificado_{predio_id}_{uuid.uuid4()}.pdf"
