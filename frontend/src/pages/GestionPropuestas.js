@@ -328,6 +328,71 @@ export default function GestionPropuestas() {
     }
   };
   
+  // Aprobar predio sin cambios
+  const handleAprobarSinCambios = async (codigoPredial) => {
+    setProcesando(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado}/predios/${codigoPredial}/aprobar-sin-cambios`,
+        { comentario: comentarioRevision || 'Aprobado sin cambios' },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success('Predio aprobado - Marcado como actualizado');
+      fetchPrediosSinCambios();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al aprobar');
+    } finally {
+      setProcesando(false);
+    }
+  };
+  
+  // Aprobación masiva de predios sin cambios
+  const handleAprobarMasivoSinCambios = async () => {
+    if (seleccionadasSinCambios.length === 0) {
+      toast.error('Seleccione al menos un predio');
+      return;
+    }
+    
+    setProcesando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado}/predios-sin-cambios/aprobar-masivo`,
+        { 
+          codigos_prediales: seleccionadasSinCambios,
+          comentario: 'Aprobación masiva sin cambios'
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success(`${response.data.aprobados || seleccionadasSinCambios.length} predios aprobados`);
+      setSeleccionadasSinCambios([]);
+      fetchPrediosSinCambios();
+    } catch (error) {
+      toast.error('Error en aprobación masiva');
+    } finally {
+      setProcesando(false);
+    }
+  };
+  
+  // Toggle selección sin cambios
+  const toggleSeleccionSinCambios = (codigo) => {
+    setSeleccionadasSinCambios(prev => 
+      prev.includes(codigo)
+        ? prev.filter(c => c !== codigo)
+        : [...prev, codigo]
+    );
+  };
+  
+  // Seleccionar todas sin cambios
+  const toggleSeleccionarTodasSinCambios = () => {
+    if (seleccionadasSinCambios.length === prediosSinCambios.length) {
+      setSeleccionadasSinCambios([]);
+    } else {
+      setSeleccionadasSinCambios(prediosSinCambios.map(p => p.codigo_predial || p.numero_predial));
+    }
+  };
+  
   // Toggle selección
   const toggleSeleccion = (propuestaId) => {
     setSeleccionadas(prev => 
