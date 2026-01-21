@@ -3768,35 +3768,77 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
-              {/* Botón Generar Certificado */}
+              {/* Botón Generar Certificado con opciones de estilo */}
               {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
-                <div className="flex justify-end">
-                  <Button
-                    variant="default"
-                    className="bg-emerald-700 hover:bg-emerald-800"
-                    onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token');
-                        const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado`, {
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (!response.ok) throw new Error('Error generando certificado');
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `Certificado_Catastral_${selectedPredio.codigo_predial_nacional}.pdf`;
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        toast.success('Certificado generado correctamente');
-                      } catch (error) {
-                        toast.error('Error al generar el certificado');
-                      }
-                    }}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Generar Certificado Catastral
-                  </Button>
+                <div className="flex justify-end gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="default"
+                        className="bg-emerald-700 hover:bg-emerald-800"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Generar Certificado Catastral
+                        <ChevronDown className="w-4 h-4 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado?estilo=A`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (!response.ok) throw new Error('Error generando certificado');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `Certificado_Catastral_${selectedPredio.codigo_predial_nacional}_EstiloA.pdf`;
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            toast.success('Certificado Estilo A generado');
+                          } catch (error) {
+                            toast.error('Error al generar el certificado');
+                          }
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">Estilo A - Minimalista</span>
+                          <span className="text-xs text-slate-500">QR discreto al lado de la firma</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado?estilo=B`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (!response.ok) throw new Error('Error generando certificado');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `Certificado_Catastral_${selectedPredio.codigo_predial_nacional}_EstiloB.pdf`;
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            toast.success('Certificado Estilo B generado');
+                          } catch (error) {
+                            toast.error('Error al generar el certificado');
+                          }
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">Estilo B - Marco Institucional</span>
+                          <span className="text-xs text-slate-500">QR en recuadro verde con hash</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
               
