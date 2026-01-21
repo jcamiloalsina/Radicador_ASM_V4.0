@@ -195,3 +195,30 @@ code {
     z-index: 999999 !important;
   }
 }
+
+/* ===========================================
+   Sheet/Sidebar - MÁXIMA prioridad sobre mapas
+   Específico para el problema de Leaflet en móvil
+   =========================================== */
+
+/* Sheet overlay y contenido con máxima prioridad */
+[data-radix-portal] [role="dialog"],
+[data-radix-portal] [data-state="open"] {
+  z-index: 999999 !important;
+}
+
+/* El contenedor de controles del mapa debe estar bajo los sheets */
+.map-controls-container {
+  z-index: 400 !important;
+}
+
+/* Forzar que todos los controles dentro de mapas estén bajo los portales */
+.leaflet-container ~ div[class*="absolute"] {
+  z-index: 400 !important;
+}
+
+/* Backdrop del sheet */
+[data-radix-dialog-overlay][data-state="open"],
+[data-vaul-overlay] {
+  z-index: 999998 !important;
+}
