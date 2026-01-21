@@ -4116,16 +4116,26 @@ async def get_predios(
     # Filtro de búsqueda
     search_filter = None
     if search:
-        search_filter = {
-            "$or": [
-                {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
-                {"codigo_homologado": {"$regex": search, "$options": "i"}},
-                {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
-                {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
-                {"direccion": {"$regex": search, "$options": "i"}},
-                {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}  # Búsqueda por matrícula inmobiliaria
-            ]
-        }
+        # Detectar si es una búsqueda de matrícula (formato XXX-XXXXX)
+        is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
+        
+        if is_matricula_search:
+            # Búsqueda EXACTA para matrículas
+            search_filter = {
+                "r2_registros.matricula_inmobiliaria": search.strip()
+            }
+        else:
+            # Búsqueda parcial para otros campos
+            search_filter = {
+                "$or": [
+                    {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
+                    {"codigo_homologado": {"$regex": search, "$options": "i"}},
+                    {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
+                    {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
+                    {"direccion": {"$regex": search, "$options": "i"}},
+                    {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
+                ]
+            }
     
     # Combinar filtros usando $and si ambos existen
     if geometria_filter and search_filter:
