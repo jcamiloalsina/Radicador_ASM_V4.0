@@ -12225,29 +12225,33 @@ async def aprobar_propuestas_masivo(
             
             # Aplicar cambios al predio
             datos_propuestos = propuesta.get('datos_propuestos', {})
-            if datos_propuestos:
-                await db.predios_actualizacion.update_one(
-                    {
-                        "proyecto_id": propuesta['proyecto_id'],
-                        "$or": [
-                            {"codigo_predial": propuesta['codigo_predial']},
-                            {"numero_predial": propuesta['codigo_predial']}
-                        ]
-                    },
-                    {
-                        "$set": {
-                            **datos_propuestos,
-                            "updated_at": datetime.now(timezone.utc)
-                        },
-                        "$push": {
-                            "historial_cambios": {
-                                "fecha": datetime.now(timezone.utc).isoformat(),
-                                "usuario": current_user.get('email'),
-                                "accion": "propuesta_aprobada_masivo",
-                                "propuesta_id": propuesta_id
-                            }
+            update_data = {
+                **datos_propuestos,
+                "estado_visita": "actualizado",
+                "actualizado_por": current_user.get('email'),
+                "actualizado_en": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            await db.predios_actualizacion.update_one(
+                {
+                    "proyecto_id": propuesta['proyecto_id'],
+                    "$or": [
+                        {"codigo_predial": propuesta['codigo_predial']},
+                        {"numero_predial": propuesta['codigo_predial']}
+                    ]
+                },
+                {
+                    "$set": update_data,
+                    "$push": {
+                        "historial_cambios": {
+                            "fecha": datetime.now(timezone.utc).isoformat(),
+                            "usuario": current_user.get('email'),
+                            "accion": "propuesta_aprobada_masivo_actualizado",
+                            "propuesta_id": propuesta_id
                         }
                     }
+                }
                 )
             
             aprobadas += 1
