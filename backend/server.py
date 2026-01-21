@@ -6894,16 +6894,14 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
     # === ENCABEZADO - Imagen completa de ASOMUNICIPIOS Gestor Catastral ===
-    y = height - 1.2 * cm
-    
-    # Usar el encabezado completo proporcionado por el usuario
+    # Usar el encabezado completo proporcionado por el usuario - SUBIDO más arriba
     encabezado_path = Path("/app/backend/logos/encabezado_gestor_catastral.png")
     if encabezado_path.exists():
-        # Encabezado centrado, ocupando todo el ancho disponible
+        # Encabezado centrado, ocupando todo el ancho disponible - más arriba
         encabezado_width = content_width
-        encabezado_height = 2.5 * cm  # Altura proporcional
+        encabezado_height = 2.0 * cm  # Altura proporcional
         encabezado_x = left_margin
-        encabezado_y = height - 3.5 * cm
+        encabezado_y = height - 2.8 * cm  # Subido más arriba
         c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
                     width=encabezado_width, height=encabezado_height, 
                     preserveAspectRatio=True, mask='auto')
@@ -6942,7 +6940,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         c.drawString(header_x, height - 2.9*cm, "Gestor Catastral")
     
     # === LÍNEA 1: Fecha (izquierda) y Número de certificado (derecha) ===
-    y_linea1 = height - 4.0 * cm
+    y_linea1 = height - 3.3 * cm  # Subido
     
     # Fecha (izquierda) - Tamaño 12
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
@@ -6950,89 +6948,96 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setFillColor(negro)
     c.drawString(left_margin, y_linea1, fecha_str)
     
-    # Número de certificado (derecha) - CAMPO EDITABLE
+    # Número de certificado (derecha) - Texto fijo + campos editables
+    # "CERTIFICADO: COM-F03-[campo1]-GC-[campo2]"
+    cert_text_x = right_margin - 220
     c.setFont(fuente_normal, 12)
-    c.drawString(right_margin - 200, y_linea1, "CERTIFICADO: COM-F03-")
+    c.drawString(cert_text_x, y_linea1, "CERTIFICADO: COM-F03-")
     
-    # Campo editable para primera parte XXXX
+    # Campo editable para primera parte XXXX (después de COM-F03-)
     c.acroForm.textfield(
         name='cert_num1',
-        x=right_margin - 95,
-        y=y_linea1 - 4,
-        width=35,
+        x=cert_text_x + 145,
+        y=y_linea1 - 3,
+        width=40,
         height=14,
         fontSize=12,
         fontName='Helvetica',
-        borderWidth=0,
+        borderWidth=1,
+        borderColor=colors.HexColor('#cccccc'),
         fillColor=colors.white,
         textColor=negro,
         value=''
     )
-    c.drawString(right_margin - 58, y_linea1, "-GC-")
     
-    # Campo editable para segunda parte XXXX
+    c.drawString(cert_text_x + 188, y_linea1, "-GC-")
+    
+    # Campo editable para segunda parte XXXX (después de -GC-)
     c.acroForm.textfield(
         name='cert_num2',
-        x=right_margin - 40,
-        y=y_linea1 - 4,
-        width=35,
+        x=cert_text_x + 215,
+        y=y_linea1 - 3,
+        width=40,
         height=14,
         fontSize=12,
         fontName='Helvetica',
-        borderWidth=0,
+        borderWidth=1,
+        borderColor=colors.HexColor('#cccccc'),
         fillColor=colors.white,
         textColor=negro,
         value=''
     )
     
-    # === SALTO DE LÍNEA Y TÍTULO PRINCIPAL ===
-    y = y_linea1 - 1.8 * cm
+    # === TÍTULO: CERTIFICADO CATASTRAL (centrado, subido) ===
+    y = y_linea1 - 1.0 * cm
     
     c.setFillColor(negro)
     c.setFont(fuente_bold, 12)
     c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL")
-    y -= 14
+    y -= 12
     
     # Base legal (texto pequeño centrado) - Tamaño 8
     c.setFillColor(gris_claro)
     c.setFont(fuente_normal, 8)
     texto_legal = "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)"
     c.drawCentredString(width/2, y, texto_legal)
-    y -= 10
+    y -= 9
     texto_legal2 = "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3."
     c.drawCentredString(width/2, y, texto_legal2)
-    y -= 18
+    y -= 16
     
-    # RADICADO No° (derecha) - CAMPO EDITABLE - Tamaño 12
+    # Radicado No. (derecha, minúscula) - CAMPO EDITABLE
     c.setFillColor(negro)
     c.setFont(fuente_normal, 12)
-    c.drawString(right_margin - 150, y, "RADICADO No°: ")
+    radicado_x = right_margin - 150
+    c.drawString(radicado_x, y, "Radicado No.:")
     
     # Campo editable para radicado
     c.acroForm.textfield(
         name='radicado',
-        x=right_margin - 70,
-        y=y - 4,
+        x=radicado_x + 85,
+        y=y - 3,
         width=70,
         height=14,
         fontSize=12,
         fontName='Helvetica',
-        borderWidth=0,
+        borderWidth=1,
+        borderColor=colors.HexColor('#cccccc'),
         fillColor=colors.white,
         textColor=negro,
         value=''
     )
-    y -= 16
+    y -= 20
     
-    # === TEXTO CERTIFICADOR === - Tamaño 12
+    # === TEXTO CERTIFICADOR ===
     c.setFillColor(negro)
     c.setFont(fuente_normal, 12)
-    intro = "LA ASOCIACIÓN DE MUNICIPIOS DEL CATATUMBO PROVINCIA DE OCAÑA Y SUR DEL CESAR – ASOMUNICIPIOS"
-    c.drawCentredString(width/2, y, intro)
+    texto_cert1 = "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar - Asomunicipios,"
+    c.drawCentredString(width/2, y, texto_cert1)
     y -= 14
-    intro2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
-    c.drawCentredString(width/2, y, intro2)
-    y -= 18
+    texto_cert2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
+    c.drawCentredString(width/2, y, texto_cert2)
+    y -= 16
     
     # === BARRA VERDE: INFORMACIÓN CATASTRAL DEL PREDIO ===
     c.setFillColor(verde_seccion)
