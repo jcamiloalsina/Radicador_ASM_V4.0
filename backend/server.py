@@ -7342,6 +7342,14 @@ async def generar_certificado_catastral_endpoint(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
+    # Verificar que el predio tenga información de propietarios (R1/R2)
+    propietarios = predio.get('propietarios', [])
+    if not propietarios or len(propietarios) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Certificado no disponible. El predio no tiene información de propietarios (R1/R2) registrada en la base de datos catastral."
+        )
+    
     # Generar código de verificación único
     codigo_verificacion = generar_codigo_verificacion()
     
@@ -7358,7 +7366,7 @@ async def generar_certificado_catastral_endpoint(
         "codigo_predial": predio.get('codigo_predial_nacional', ''),
         "municipio": predio.get('municipio', ''),
         "direccion": predio.get('direccion', ''),
-        "propietarios": [p.get('nombre_propietario', '') for p in predio.get('propietarios', [])],
+        "propietarios": [p.get('nombre_propietario', '') for p in propietarios],
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "generado_por_email": current_user['email'],
