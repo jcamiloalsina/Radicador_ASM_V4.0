@@ -758,9 +758,8 @@ export default function PetitionDetail() {
                     {/* Si el certificado ya fue generado, mostrar descarga */}
                     {petition.certificado_generado ? (
                       <div className="space-y-3">
-                        {/* Info del predio si existe */}
                         {petition.predio_relacionado && (
-                          <div className="space-y-1 text-sm border-b border-emerald-200 pb-3 mb-3">
+                          <div className="space-y-1 text-sm border-b border-emerald-200 pb-3">
                             <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
                             {petition.predio_relacionado.matricula && (
                               <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
@@ -770,91 +769,11 @@ export default function PetitionDetail() {
                             )}
                           </div>
                         )}
-                        
                         <div className="flex items-center gap-3 flex-wrap">
                           <Badge className="bg-emerald-600">
                             <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
                           </Badge>
-                          <span className="text-xs text-slate-500">
-                            Código: {petition.certificado_codigo}
-                          </span>
-                        </div>
-                        
-                        <Button
-                          variant="outline"
-                          className="border-emerald-700 text-emerald-700 hover:bg-emerald-50"
-                          onClick={async () => {
-                            try {
-                              const token = localStorage.getItem('token');
-                              const response = await fetch(`${API}/petitions/${petition.id}/descargar-certificado`, {
-                                headers: { 'Authorization': `Bearer ${token}` }
-                              });
-                              if (!response.ok) throw new Error('Error al descargar');
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `Certificado_${petition.radicado}.pdf`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              window.URL.revokeObjectURL(url);
-                            } catch (error) {
-                              toast.error('Error al descargar el certificado');
-                            }
-                          }}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Descargar Certificado PDF
-                        </Button>
-                      </div>
-                    ) : (
-                      /* Certificado no generado aún */
-                      <>
-                        {/* Información del predio relacionado */}
-                        {petition.predio_relacionado ? (
-                          <div className="mb-4 space-y-2 text-sm">
-                            <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
-                            {petition.predio_relacionado.matricula && (
-                              <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
-                            )}
-                            {petition.predio_relacionado.direccion && (
-                              <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="mb-4">
-                            {(petition.codigo_predial_buscado || petition.matricula_buscada) ? (
-                              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <p className="text-sm text-red-700 font-medium">❌ Certificado no disponible</p>
-                                <p className="text-sm text-red-600 mt-1">
-                                  No se encontró un predio con {petition.codigo_predial_buscado ? `código predial: ${petition.codigo_predial_buscado}` : `matrícula: ${petition.matricula_buscada}`}
-                                </p>
-                                <p className="text-xs text-red-500 mt-2">
-                                  Verifique que el código o matrícula sea correcto y que el predio exista en la base de datos catastral.
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                <p className="text-sm text-amber-700">⚠️ No se especificó código predial ni matrícula en esta petición.</p>
-                                <p className="text-xs text-amber-600 mt-1">
-                                  Esta petición fue creada sin identificación del predio. Solicite al peticionario radicar una nueva petición con los datos correctos.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                    
-                    {/* Estado del certificado */}
-                    {petition.certificado_generado ? (
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-emerald-600">
-                            <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
-                          </Badge>
-                          <span className="text-xs text-slate-500">
-                            Código: {petition.certificado_codigo}
-                          </span>
+                          <span className="text-xs text-slate-500">Código: {petition.certificado_codigo}</span>
                         </div>
                         <Button
                           variant="outline"
@@ -885,89 +804,109 @@ export default function PetitionDetail() {
                         </Button>
                       </div>
                     ) : petition.predio_relacionado ? (
-                      /* Botón para generar certificado - Solo staff y solo si hay predio */
-                      ['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              className="bg-emerald-700 hover:bg-emerald-800"
-                              data-testid="generar-certificado-btn"
-                            >
-                              <FileText className="w-4 h-4 mr-2" />
-                              Generar Certificado (Radicado: {petition.radicado})
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-md">
-                            <DialogHeader>
-                              <DialogTitle className="flex items-center gap-2 text-emerald-800">
-                                <FileText className="w-5 h-5" />
-                                Confirmar Generación de Certificado
-                              </DialogTitle>
-                              <DialogDescription>
-                                Por favor confirme antes de generar el certificado catastral.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                <p className="text-sm text-amber-800 font-medium">⚠️ ¿Se verificó el pago?</p>
-                                <p className="text-sm text-amber-700 mt-1">
-                                  Confirme que el peticionario realizó el pago correspondiente antes de generar el certificado.
-                                </p>
-                              </div>
-                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                                <p className="text-sm text-slate-700">
-                                  <strong>Al confirmar:</strong> El certificado se generará, se enviará al correo <strong>{petition.correo}</strong> y el trámite quedará <strong>Finalizado</strong>.
-                                </p>
-                              </div>
-                            </div>
-                            <DialogFooter className="gap-2">
-                              <Button variant="outline" onClick={() => {}}>
-                                Cancelar
+                      <div className="space-y-3">
+                        <div className="space-y-1 text-sm">
+                          <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
+                          {petition.predio_relacionado.matricula && (
+                            <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                          )}
+                          {petition.predio_relacionado.direccion && (
+                            <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
+                          )}
+                        </div>
+                        {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button className="bg-emerald-700 hover:bg-emerald-800" data-testid="generar-certificado-btn">
+                                <FileText className="w-4 h-4 mr-2" />
+                                Generar Certificado (Radicado: {petition.radicado})
                               </Button>
-                              <Button
-                                className="bg-emerald-700 hover:bg-emerald-800"
-                                onClick={async () => {
-                                  try {
-                                    toast.info('Generando y enviando certificado...');
-                                    const token = localStorage.getItem('token');
-                                    const response = await fetch(`${API}/petitions/${petition.id}/certificado?enviar_correo=true`, {
-                                      headers: { 'Authorization': `Bearer ${token}` }
-                                    });
-                                    if (!response.ok) {
-                                      const errorText = await response.text();
-                                      let errorMsg = 'Error al generar';
-                                      try {
-                                        const errorJson = JSON.parse(errorText);
-                                        errorMsg = errorJson.detail || errorMsg;
-                                      } catch {
-                                        errorMsg = errorText || errorMsg;
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-emerald-800">
+                                  <FileText className="w-5 h-5" />
+                                  Confirmar Generación de Certificado
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Por favor confirme antes de generar el certificado catastral.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <p className="text-sm text-amber-800 font-medium">⚠️ ¿Se verificó el pago?</p>
+                                  <p className="text-sm text-amber-700 mt-1">
+                                    Confirme que el peticionario realizó el pago correspondiente antes de generar el certificado.
+                                  </p>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                  <p className="text-sm text-slate-700">
+                                    <strong>Al confirmar:</strong> El certificado se generará, se enviará al correo <strong>{petition.correo}</strong> y el trámite quedará <strong>Finalizado</strong>.
+                                  </p>
+                                </div>
+                              </div>
+                              <DialogFooter className="gap-2">
+                                <Button variant="outline">Cancelar</Button>
+                                <Button
+                                  className="bg-emerald-700 hover:bg-emerald-800"
+                                  onClick={async () => {
+                                    try {
+                                      toast.info('Generando y enviando certificado...');
+                                      const token = localStorage.getItem('token');
+                                      const response = await fetch(`${API}/petitions/${petition.id}/certificado?enviar_correo=true`, {
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                      });
+                                      if (!response.ok) {
+                                        const errorText = await response.text();
+                                        let errorMsg = 'Error al generar';
+                                        try {
+                                          const errorJson = JSON.parse(errorText);
+                                          errorMsg = errorJson.detail || errorMsg;
+                                        } catch {
+                                          errorMsg = errorText || errorMsg;
+                                        }
+                                        throw new Error(errorMsg);
                                       }
-                                      throw new Error(errorMsg);
+                                      const blob = await response.blob();
+                                      const url = window.URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `Certificado_${petition.radicado}.pdf`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                      window.URL.revokeObjectURL(url);
+                                      toast.success('Certificado generado, enviado al peticionario y trámite finalizado');
+                                      fetchPetition();
+                                    } catch (error) {
+                                      toast.error(error.message || 'Error al generar el certificado');
                                     }
-                                    const blob = await response.blob();
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `Certificado_${petition.radicado}.pdf`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    window.URL.revokeObjectURL(url);
-                                    toast.success('Certificado generado, enviado al peticionario y trámite finalizado');
-                                    fetchPetition();
-                                  } catch (error) {
-                                    toast.error(error.message || 'Error al generar el certificado');
-                                  }
-                                }}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Confirmar y Enviar
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      )
-                    ) : null}
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Confirmar y Enviar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        {(petition.codigo_predial_buscado || petition.matricula_buscada) ? (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-700 font-medium">❌ Certificado no disponible</p>
+                            <p className="text-sm text-red-600 mt-1">
+                              No se encontró un predio con {petition.codigo_predial_buscado ? `código predial: ${petition.codigo_predial_buscado}` : `matrícula: ${petition.matricula_buscada}`}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p className="text-sm text-amber-700">⚠️ No se especificó código predial ni matrícula en esta petición.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
