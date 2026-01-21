@@ -1284,6 +1284,16 @@ function SubsanacionesPendientes({ municipio = null, onUpdate }) {
 export default function Predios() {
   const { user } = useAuth();
   
+  // Hook de sincronización offline para Conservación
+  const { 
+    isOnline, 
+    isSyncing, 
+    offlineStats, 
+    downloadForOffline, 
+    saveOfflineChange,
+    forceSync
+  } = useOfflineSync(null, 'conservacion');
+  
   // Comunicaciones solo puede ver, no puede crear/editar/eliminar predios
   const canModifyPredios = user && !['usuario', 'comunicaciones'].includes(user.role);
   
