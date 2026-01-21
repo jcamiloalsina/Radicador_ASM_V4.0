@@ -753,6 +753,15 @@ export default function ProyectosActualizacion() {
                             {canCreate && proyecto.estado !== 'archivado' && (
                               <>
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleExportarExcel(proyecto.id, false)}>
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Exportar Excel R1/R2
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExportarExcel(proyecto.id, true)}>
+                                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                                  Exportar Solo Actualizados
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleArchivar(proyecto.id)}>
                                   <Archive className="w-4 h-4 mr-2" />
                                   Archivar
