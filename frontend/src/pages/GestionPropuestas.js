@@ -938,7 +938,7 @@ export default function GestionPropuestas() {
                 <Label className="text-slate-600 text-sm">Justificación del Gestor</Label>
                 <p className="mt-2 text-sm text-slate-700 italic">"{propuestaDetalle.justificacion}"</p>
                 <div className="flex justify-between mt-3 text-xs text-slate-500">
-                  <span>Enviado por: <strong>{propuestaDetalle.creado_por}</strong></span>
+                  <span>Enviado por: <strong>{propuestaDetalle.creado_por_nombre || propuestaDetalle.creado_por}</strong></span>
                   <span>{new Date(propuestaDetalle.creado_en).toLocaleString('es-CO')}</span>
                 </div>
               </div>
