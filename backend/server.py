@@ -7059,45 +7059,82 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     
     # === SECCIÓN 2: INFORMACIÓN JURÍDICA ===
     y = draw_section_header("INFORMACIÓN JURÍDICA", y)
-    if encabezado_path.exists():
-        encabezado_width = content_width + 1 * cm  # Un poco más ancho
-        encabezado_height = 2.0 * cm
-        encabezado_x = left_margin - 0.5 * cm  # Centrado
-        encabezado_y = height - 2.2 * cm  # Más arriba, casi pegado al borde
-        c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
-                    width=encabezado_width, height=encabezado_height, 
-                    preserveAspectRatio=True, mask='auto')
     
-    # === LÍNEA 1: Fecha (izquierda) y Certificado N° (derecha) ===
-    y_linea1 = height - 2.8 * cm  # Ajustado para el nuevo encabezado
+    # Obtener propietarios del R1/R2
+    propietarios = predio.get('propietarios', [])
+    r2_registros = predio.get('r2_registros', [])
     
-    # Fecha (izquierda)
-    fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
-    c.setFont(fuente_normal, 11)
-    c.setFillColor(negro)
-    c.drawString(left_margin, y_linea1, fecha_str)
+    # Mostrar TODOS los propietarios (con salto de página si es necesario)
+    if propietarios:
+        for i, prop in enumerate(propietarios, 1):
+            nombre = prop.get('nombre_propietario', '')
+            tipo_doc = prop.get('tipo_documento', 'N')
+            num_doc = prop.get('numero_documento', '')
+            derecho = prop.get('tipo_derecho', '')
+            
+            y = draw_field(f"Propietario {i}", nombre, y)
+            y = draw_field("Tipo documento", tipo_doc, y)
+            y = draw_field("Número documento", num_doc, y)
+            if derecho:
+                y = draw_field("Tipo derecho", derecho, y)
+    else:
+        y = draw_field("Propietario", predio.get('nombre_propietario', 'N/A'), y)
+        y = draw_field("Tipo documento", predio.get('tipo_documento', 'N'), y)
+        y = draw_field("Número documento", predio.get('numero_documento', ''), y)
     
-    # CERTIFICADO: [campo editable completo]
-    c.setFont(fuente_normal, 11)
-    c.drawRightString(right_margin - 140, y_linea1, "CERTIFICADO:")
+    # Matrícula inmobiliaria del R2
+    matricula = ''
+    if r2_registros:
+        matricula = r2_registros[0].get('matricula_inmobiliaria', '')
+    y = draw_field("Matrícula inmobiliaria", matricula or 'Sin matrícula', y)
     
-    # Campo editable completo para el consecutivo (ej: COM-F03-624-GC-634)
-    c.acroForm.textfield(
-        name='certificado_numero',
-        x=right_margin - 135,
-        y=y_linea1 - 4,
-        width=135,
-        height=16,
-        fontSize=11,
-        fontName='Helvetica',
-        borderWidth=0,
-        fillColor=colors.white,
-        textColor=negro,
-        value=''
-    )
+    # === SECCIÓN 3: INFORMACIÓN FÍSICA ===
+    y = draw_section_header("INFORMACIÓN FÍSICA", y)
     
-    # === TÍTULO: CERTIFICADO CATASTRAL SENCILLO ===
-    y = y_linea1 - 0.9 * cm
+    municipio = predio.get('municipio', '')
+    if municipio in ['Río de Oro', 'Rio de Oro']:
+        depto_cod = "20 - CESAR"
+        muni_cod = "614 - RIO DE ORO"
+    else:
+        depto_cod = "54 - NORTE DE SANTANDER"
+        muni_mapping = {
+            'Ábrego': '003 - ÁBREGO', 'Bucarasica': '109 - BUCARASICA',
+            'Convención': '206 - CONVENCIÓN', 'Cáchira': '128 - CÁCHIRA',
+            'El Carmen': '245 - EL CARMEN', 'El Tarra': '250 - EL TARRA',
+            'Hacarí': '344 - HACARÍ', 'La Playa': '398 - LA PLAYA',
+            'San Calixto': '670 - SAN CALIXTO', 'Sardinata': '720 - SARDINATA',
+            'Teorama': '800 - TEORAMA'
+        }
+        muni_cod = muni_mapping.get(municipio, municipio)
+    
+    y = draw_field("Departamento", depto_cod, y)
+    y = draw_field("Municipio", muni_cod, y)
+    y = draw_field("Número predial", predio.get('codigo_predial_nacional', ''), y)
+    y = draw_field("Código homologado", predio.get('codigo_homologado', ''), y)
+    y = draw_field("Dirección", predio.get('direccion', ''), y)
+    
+    # Área terreno - Formato: "39 ha 3750 m²"
+    area_terreno = predio.get('area_terreno', 0)
+    if area_terreno and area_terreno >= 10000:
+        ha = int(area_terreno // 10000)
+        m2_restantes = int(area_terreno % 10000)
+        area_str = f"{ha} ha {m2_restantes} m²"
+    elif area_terreno:
+        area_str = f"{int(area_terreno)} m²"
+    else:
+        area_str = "N/A"
+    y = draw_field("Área terreno", area_str, y)
+    
+    area_construida = predio.get('area_construida', 0)
+    area_const_str = f"{int(area_construida)} m²" if area_construida else "0 m²"
+    y = draw_field("Área construida", area_const_str, y)
+    
+    # === SECCIÓN 4: INFORMACIÓN ECONÓMICA ===
+    y = draw_section_header("INFORMACIÓN ECONÓMICA", y)
+    
+    avaluo = predio.get('avaluo', 0)
+    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
+    y = draw_field("Avalúo catastral", avaluo_str, y)
     
     c.setFillColor(negro)
     c.setFont(fuente_bold, 14)
