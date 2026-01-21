@@ -1377,8 +1377,17 @@ export default function VisorActualizacion() {
         
         if (predio) {
           // Si existe en R1/R2, usar esos datos
-          setSelectedPredio(predio);
-          cargarDatosParaEdicion(predio);
+          // Si es gestor, mostrar modal de tipo de revisión primero
+          const esGestor = user?.role === 'gestor';
+          if (esGestor) {
+            setPredioParaAbrir(predio);
+            setShowTipoRevisionModal(true);
+          } else {
+            setSelectedPredio(predio);
+            cargarDatosParaEdicion(predio);
+            setShowPredioDetail(true);
+            setEditMode(false);
+          }
         } else {
           // Si no existe en R1/R2, crear objeto básico desde la geometría
           const predioBasico = {
@@ -1392,11 +1401,18 @@ export default function VisorActualizacion() {
             propietarios: [],
             zonas_fisicas: []
           };
-          setSelectedPredio(predioBasico);
-          cargarDatosParaEdicion(predioBasico);
+          
+          const esGestor = user?.role === 'gestor';
+          if (esGestor) {
+            setPredioParaAbrir(predioBasico);
+            setShowTipoRevisionModal(true);
+          } else {
+            setSelectedPredio(predioBasico);
+            cargarDatosParaEdicion(predioBasico);
+            setShowPredioDetail(true);
+            setEditMode(false);
+          }
         }
-        setShowPredioDetail(true);
-        setEditMode(false);
         
         // Cargar propuestas e historial del predio
         const codigo = predio?.codigo_predial || predio?.numero_predial || 
