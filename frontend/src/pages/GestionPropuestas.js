@@ -608,6 +608,7 @@ export default function GestionPropuestas() {
                   <TableHead>Gestor</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Tipo Revisión</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -645,6 +646,19 @@ export default function GestionPropuestas() {
                         }
                       >
                         {propuesta.estado === 'subsanacion' ? 'En subsanación' : propuesta.estado}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline"
+                        className={
+                          propuesta.tipo_revision === 'campo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          propuesta.tipo_revision === 'juridico' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          propuesta.tipo_revision === 'calidad' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          'bg-slate-50 text-slate-600 border-slate-200'
+                        }
+                      >
+                        {propuesta.tipo_revision_nombre || propuesta.tipo_revision || 'Campo'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
