@@ -8037,19 +8037,6 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         </body>
         </html>
         """
-                        <span class="info-label">🔐 Hash:</span>
-                        <span class="info-value" style="font-family: monospace; font-size: 12px;">SHA256:{certificado.get('hash_documento', 'N/A')}</span>
-                    </div>
-                </div>
-                <div class="footer">
-                    <strong>Asomunicipios - Gestor Catastral</strong><br>
-                    Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar<br>
-                    <a href="mailto:comunicaciones@asomunicipios.gov.co">comunicaciones@asomunicipios.gov.co</a> | +57 3102327647
-                </div>
-            </div>
-        </body>
-        </html>
-        """
     else:
         # Certificado ANULADO
         fecha_anulacion = certificado.get('fecha_anulacion', '')
