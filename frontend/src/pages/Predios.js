@@ -1684,8 +1684,20 @@ export default function Predios() {
       });
       setPredios(res.data.predios);
       setTotal(res.data.total);
+      
+      // Guardar automáticamente para modo offline si hay municipio filtrado
+      if (filterMunicipio && res.data.predios.length > 0) {
+        downloadForOffline(res.data.predios, null, filterMunicipio);
+      }
     } catch (error) {
-      toast.error('Error al cargar predios');
+      console.error('Error cargando predios:', error);
+      
+      // Si está offline, mostrar mensaje informativo
+      if (!navigator.onLine) {
+        toast.info('Trabajando en modo offline', { description: 'Algunos datos pueden no estar disponibles' });
+      } else {
+        toast.error('Error al cargar predios');
+      }
     } finally {
       setLoading(false);
     }
