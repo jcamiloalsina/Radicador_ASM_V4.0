@@ -11465,7 +11465,14 @@ async def actualizar_predio_proyecto(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Actualiza un predio del proyecto (trabajo de campo)"""
+    """Actualiza un predio del proyecto (trabajo de campo)
+    
+    IMPORTANTE: 
+    - Gestores solo pueden marcar visita y agregar datos de visita
+    - Cambios a datos prediales (dirección, áreas, propietarios, etc.) 
+      requieren crear una PROPUESTA que el coordinador debe aprobar
+    - Coordinadores/Admins pueden aplicar cambios directamente
+    """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para actualizar predios")
     
@@ -11485,37 +11492,65 @@ async def actualizar_predio_proyecto(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    # Campos permitidos para actualización (ampliados para formulario de visita completo)
-    campos_permitidos = [
-        # Datos básicos
-        'direccion', 'destino_economico', 'area_terreno', 'area_construida',
-        'matricula_inmobiliaria', 'avaluo_catastral', 'estrato', 'comuna',
-        # Propietarios y zonas
-        'propietarios', 'zonas_fisicas',
-        # Estado y tracking
+    es_coordinador = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]
+    
+    # Campos que SOLO gestores pueden modificar (datos de visita)
+    campos_visita = [
         'estado_visita', 'observaciones_campo', 'ubicacion_gps',
-        'actualizado_por', 'actualizado_en', 'visitado_por', 'visitado_en',
-        # Datos de visita completa (formulario IGAC)
-        'visita', 'datos_notificacion', 'informacion_construcciones',
-        'calificacion_construccion', 'resumen_areas', 'es_ph', 'datos_ph',
-        'datos_condominio', 'fotos'
+        'visitado_por', 'visitado_en',
+        'visita', 'datos_notificacion', 'fotos'
     ]
     
-    update_data = {k: v for k, v in data.items() if k in campos_permitidos}
+    # Campos que requieren aprobación del coordinador (datos prediales)
+    campos_prediales = [
+        'direccion', 'destino_economico', 'area_terreno', 'area_construida',
+        'matricula_inmobiliaria', 'avaluo_catastral', 'estrato', 'comuna',
+        'propietarios', 'zonas_fisicas',
+        'actualizado_por', 'actualizado_en',
+        'informacion_construcciones', 'calificacion_construccion', 
+        'resumen_areas', 'es_ph', 'datos_ph', 'datos_condominio'
+    ]
+    
+    # Verificar si el gestor está intentando modificar datos prediales
+    if not es_coordinador:
+        campos_prediales_modificados = [k for k in data.keys() if k in campos_prediales]
+        
+        # Si intenta marcar como 'actualizado' sin ser coordinador
+        if data.get('estado_visita') == 'actualizado':
+            raise HTTPException(
+                status_code=403, 
+                detail="Los gestores no pueden marcar como 'actualizado' directamente. Debe crear una propuesta de cambio que será revisada por el coordinador."
+            )
+        
+        # Si intenta modificar campos prediales
+        if campos_prediales_modificados:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Los cambios a datos prediales ({', '.join(campos_prediales_modificados)}) requieren crear una propuesta de cambio. Use el botón 'Proponer Cambios' para enviar una solicitud al coordinador."
+            )
+        
+        # Solo permitir campos de visita para gestores
+        update_data = {k: v for k, v in data.items() if k in campos_visita}
+        accion = "visita_registrada"
+    else:
+        # Coordinadores pueden modificar todo
+        campos_permitidos = campos_visita + campos_prediales
+        update_data = {k: v for k, v in data.items() if k in campos_permitidos}
+        accion = "actualizacion_directa" if data.get('estado_visita') == 'actualizado' else "visita"
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
+    
     update_data['updated_at'] = datetime.now(timezone.utc)
     
     # Agregar al historial de cambios
     historial_entry = {
         "fecha": datetime.now(timezone.utc).isoformat(),
         "usuario": current_user.get('email'),
-        "accion": "actualizacion" if data.get('estado_visita') == 'actualizado' else "visita",
+        "rol": current_user['role'],
+        "accion": accion,
         "campos_modificados": list(update_data.keys())
     }
-    
-    # Si se marca como actualizado, guardar info adicional
-    if update_data.get('estado_visita') == 'actualizado' or (update_data.get('direccion') or update_data.get('destino_economico')):
-        if 'estado_visita' not in update_data or update_data['estado_visita'] == 'pendiente':
-            update_data['estado_visita'] = 'actualizado'
     
     await db.predios_actualizacion.update_one(
         {"_id": predio["_id"]},
