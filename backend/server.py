@@ -7068,19 +7068,20 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y = draw_field("Código homologado", predio.get('codigo_homologado', ''), y)
     y = draw_field("Dirección", predio.get('direccion', ''), y)
     
-    # Área terreno
+    # Área terreno - Formato: "39 ha 3750 m²" (sin decimales ni paréntesis)
     area_terreno = predio.get('area_terreno', 0)
     if area_terreno and area_terreno >= 10000:
-        ha = area_terreno / 10000
-        area_str = f"{ha:.4f} ha ({int(area_terreno):,} m²)".replace(',', '.')
+        ha = int(area_terreno // 10000)
+        m2_restantes = int(area_terreno % 10000)
+        area_str = f"{ha} ha {m2_restantes} m²"
     elif area_terreno:
-        area_str = f"{int(area_terreno):,} m²".replace(',', '.')
+        area_str = f"{int(area_terreno)} m²"
     else:
         area_str = "N/A"
     y = draw_field("Área terreno", area_str, y)
     
     area_construida = predio.get('area_construida', 0)
-    area_const_str = f"{int(area_construida):,} m²".replace(',', '.') if area_construida else "0 m²"
+    area_const_str = f"{int(area_construida)} m²" if area_construida else "0 m²"
     y = draw_field("Área construida", area_const_str, y)
     
     # === SECCIÓN 4: INFORMACIÓN ECONÓMICA ===
