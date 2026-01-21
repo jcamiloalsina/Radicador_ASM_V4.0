@@ -12013,7 +12013,7 @@ async def crear_propuesta_cambio(
     
     await db.propuestas_cambio_actualizacion.insert_one(propuesta)
     
-    # Agregar al historial del predio
+    # Agregar al historial del predio con tipo de revisión
     await db.predios_actualizacion.update_one(
         {"_id": predio["_id"]},
         {
@@ -12021,8 +12021,12 @@ async def crear_propuesta_cambio(
                 "historial_cambios": {
                     "fecha": datetime.now(timezone.utc).isoformat(),
                     "usuario": current_user.get('email'),
+                    "usuario_nombre": current_user.get('full_name', current_user.get('email')),
+                    "tipo_revision": tipo_revision,
+                    "tipo_revision_nombre": tipos_revision_nombres.get(tipo_revision, 'Revisión de Campo'),
                     "accion": "propuesta_creada",
-                    "propuesta_id": propuesta["id"]
+                    "propuesta_id": propuesta["id"],
+                    "campos_modificados": list(data.get('datos_propuestos', {}).keys())
                 }
             }
         }
@@ -12030,7 +12034,8 @@ async def crear_propuesta_cambio(
     
     return {
         "message": "Propuesta de cambio creada exitosamente",
-        "propuesta_id": propuesta["id"]
+        "propuesta_id": propuesta["id"],
+        "tipo_revision": tipo_revision
     }
 
 
