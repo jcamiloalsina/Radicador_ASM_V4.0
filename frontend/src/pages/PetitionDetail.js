@@ -755,39 +755,95 @@ export default function PetitionDetail() {
                       <span className="font-semibold text-emerald-800">Certificado Catastral</span>
                     </div>
                     
-                    {/* Información del predio relacionado */}
-                    {petition.predio_relacionado ? (
-                      <div className="mb-4 space-y-2 text-sm">
-                        <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
-                        {petition.predio_relacionado.matricula && (
-                          <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                    {/* Si el certificado ya fue generado, mostrar descarga */}
+                    {petition.certificado_generado ? (
+                      <div className="space-y-3">
+                        {/* Info del predio si existe */}
+                        {petition.predio_relacionado && (
+                          <div className="space-y-1 text-sm border-b border-emerald-200 pb-3 mb-3">
+                            <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
+                            {petition.predio_relacionado.matricula && (
+                              <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                            )}
+                            {petition.predio_relacionado.direccion && (
+                              <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
+                            )}
+                          </div>
                         )}
-                        {petition.predio_relacionado.direccion && (
-                          <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
-                        )}
+                        
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <Badge className="bg-emerald-600">
+                            <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
+                          </Badge>
+                          <span className="text-xs text-slate-500">
+                            Código: {petition.certificado_codigo}
+                          </span>
+                        </div>
+                        
+                        <Button
+                          variant="outline"
+                          className="border-emerald-700 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const response = await fetch(`${API}/petitions/${petition.id}/descargar-certificado`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              if (!response.ok) throw new Error('Error al descargar');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Certificado_${petition.radicado}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              toast.error('Error al descargar el certificado');
+                            }
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Descargar Certificado PDF
+                        </Button>
                       </div>
                     ) : (
-                      <div className="mb-4">
-                        {(petition.codigo_predial_buscado || petition.matricula_buscada) ? (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p className="text-sm text-red-700 font-medium">❌ Certificado no disponible</p>
-                            <p className="text-sm text-red-600 mt-1">
-                              No se encontró un predio con {petition.codigo_predial_buscado ? `código predial: ${petition.codigo_predial_buscado}` : `matrícula: ${petition.matricula_buscada}`}
-                            </p>
-                            <p className="text-xs text-red-500 mt-2">
-                              Verifique que el código o matrícula sea correcto y que el predio exista en la base de datos catastral.
-                            </p>
+                      /* Certificado no generado aún */
+                      <>
+                        {/* Información del predio relacionado */}
+                        {petition.predio_relacionado ? (
+                          <div className="mb-4 space-y-2 text-sm">
+                            <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
+                            {petition.predio_relacionado.matricula && (
+                              <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                            )}
+                            {petition.predio_relacionado.direccion && (
+                              <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
+                            )}
                           </div>
                         ) : (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                            <p className="text-sm text-amber-700">⚠️ No se especificó código predial ni matrícula en esta petición.</p>
-                            <p className="text-xs text-amber-600 mt-1">
-                              Esta petición fue creada sin identificación del predio. Solicite al peticionario radicar una nueva petición con los datos correctos.
-                            </p>
+                          <div className="mb-4">
+                            {(petition.codigo_predial_buscado || petition.matricula_buscada) ? (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                <p className="text-sm text-red-700 font-medium">❌ Certificado no disponible</p>
+                                <p className="text-sm text-red-600 mt-1">
+                                  No se encontró un predio con {petition.codigo_predial_buscado ? `código predial: ${petition.codigo_predial_buscado}` : `matrícula: ${petition.matricula_buscada}`}
+                                </p>
+                                <p className="text-xs text-red-500 mt-2">
+                                  Verifique que el código o matrícula sea correcto y que el predio exista en la base de datos catastral.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <p className="text-sm text-amber-700">⚠️ No se especificó código predial ni matrícula en esta petición.</p>
+                                <p className="text-xs text-amber-600 mt-1">
+                                  Esta petición fue creada sin identificación del predio. Solicite al peticionario radicar una nueva petición con los datos correctos.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
                     
                     {/* Estado del certificado */}
                     {petition.certificado_generado ? (
