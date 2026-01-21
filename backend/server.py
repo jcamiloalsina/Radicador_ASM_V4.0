@@ -8073,7 +8073,91 @@ async def anular_certificado(
     }
 
 
-@api_router.get("/certificados/verificables")
+@api_router.post("/certificados/verificar-integridad")
+async def verificar_integridad_pdf(
+    pdf_file: UploadFile = File(..., description="PDF del certificado a verificar"),
+    codigo_verificacion: str = Form(..., description="Código de verificación del certificado")
+):
+    """
+    Verifica la integridad de un PDF comparando su hash con el original.
+    Devuelve si el documento ha sido alterado o no.
+    """
+    # Buscar certificado en la base de datos
+    certificado = await db.certificados_verificables.find_one(
+        {"codigo_verificacion": codigo_verificacion},
+        {"_id": 0}
+    )
+    
+    if not certificado:
+        return {
+            "verificado": False,
+            "estado": "no_encontrado",
+            "mensaje": "Código de verificación no encontrado en el sistema",
+            "detalles": None
+        }
+    
+    # Leer el PDF subido
+    pdf_content = await pdf_file.read()
+    
+    # Calcular hash del PDF subido
+    hash_pdf_subido = hashlib.sha256(pdf_content).hexdigest()
+    
+    # Obtener hash original
+    hash_pdf_original = certificado.get('hash_pdf', '')
+    
+    # Comparar hashes
+    pdf_integro = hash_pdf_subido == hash_pdf_original if hash_pdf_original else None
+    
+    # Preparar respuesta con datos originales
+    datos_originales = certificado.get('datos_criticos', {})
+    
+    if certificado.get('estado') == 'anulado':
+        return {
+            "verificado": True,
+            "estado": "anulado",
+            "mensaje": "⚠️ CERTIFICADO ANULADO - Este documento ya no tiene validez legal",
+            "motivo_anulacion": certificado.get('motivo_anulacion'),
+            "fecha_anulacion": certificado.get('fecha_anulacion'),
+            "pdf_integro": pdf_integro,
+            "datos_originales": datos_originales
+        }
+    
+    if pdf_integro is None:
+        return {
+            "verificado": True,
+            "estado": "activo_sin_hash",
+            "mensaje": "✅ Certificado válido (generado antes del sistema de integridad)",
+            "pdf_integro": None,
+            "advertencia": "Este certificado fue generado antes de implementar la verificación de integridad. Compare manualmente los datos.",
+            "datos_originales": datos_originales,
+            "fecha_generacion": certificado.get('fecha_generacion'),
+            "generado_por": certificado.get('generado_por_nombre')
+        }
+    
+    if pdf_integro:
+        return {
+            "verificado": True,
+            "estado": "activo_integro",
+            "mensaje": "✅ CERTIFICADO VÁLIDO - El documento NO ha sido modificado",
+            "pdf_integro": True,
+            "datos_originales": datos_originales,
+            "fecha_generacion": certificado.get('fecha_generacion'),
+            "generado_por": certificado.get('generado_por_nombre'),
+            "hash_verificado": hash_pdf_original[:16].upper()
+        }
+    else:
+        return {
+            "verificado": True,
+            "estado": "activo_alterado",
+            "mensaje": "🚨 DOCUMENTO ALTERADO - El PDF ha sido modificado después de su generación",
+            "pdf_integro": False,
+            "advertencia": "Los datos del documento pueden haber sido manipulados. Use los datos originales mostrados abajo.",
+            "datos_originales": datos_originales,
+            "fecha_generacion": certificado.get('fecha_generacion'),
+            "generado_por": certificado.get('generado_por_nombre'),
+            "hash_original": hash_pdf_original[:16].upper(),
+            "hash_subido": hash_pdf_subido[:16].upper()
+        }
 async def listar_certificados_verificables(
     skip: int = 0,
     limit: int = 50,
