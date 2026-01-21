@@ -6882,13 +6882,10 @@ def generar_qr_verificacion(codigo_verificacion: str) -> bytes:
     buffer.seek(0)
     return buffer.getvalue()
 
-def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, codigo_verificacion: str, estilo_verificacion: str = "B") -> bytes:
+def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, codigo_verificacion: str) -> bytes:
     """
-    Genera un certificado catastral especial en PDF siguiendo el diseño institucional de Asomunicipios.
-    Soporta múltiples páginas si el contenido es extenso.
-    Incluye firma digital visual, QR de verificación y código de seguridad.
-    
-    estilo_verificacion: "A" (minimalista) o "B" (con marco)
+    Genera un certificado catastral en PDF con soporte multi-página.
+    Incluye QR de verificación y código de seguridad.
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
