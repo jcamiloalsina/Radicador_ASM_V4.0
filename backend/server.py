@@ -7191,8 +7191,10 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y = check_page_break(y, 100)
     
     # Generar QR de verificación
+    from reportlab.lib.utils import ImageReader
     qr_bytes = generar_qr_verificacion(codigo_verificacion)
-    qr_image = io.BytesIO(qr_bytes)
+    qr_buffer = io.BytesIO(qr_bytes)
+    qr_image = ImageReader(qr_buffer)
     
     # Calcular fecha/hora de generación
     fecha_hora_gen = fecha_actual.strftime("%d/%m/%Y %H:%M")
