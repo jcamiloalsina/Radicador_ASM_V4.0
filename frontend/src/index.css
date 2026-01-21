@@ -196,7 +196,7 @@ code {
   }
   
   /* Ocultar controles del mapa cuando el sidebar está abierto */
-  body[data-sidebar-open="true"] .absolute.z-\[400\],
+  body[data-sidebar-open="true"] .map-controls,
   body[data-sidebar-open="true"] .leaflet-control-container {
     opacity: 0 !important;
     pointer-events: none !important;
