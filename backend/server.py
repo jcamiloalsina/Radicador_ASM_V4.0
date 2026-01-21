@@ -12777,6 +12777,10 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
         'TIPO_PREDIO': 'tipo_predio',
         'TIPO PREDIO': 'tipo_predio',
         'COMUNA': 'comuna',
+        # Matrícula inmobiliaria
+        'MATRICULA_INMOBILIARIA': 'matricula_inmobiliaria',
+        'MATRICULA INMOBILIARIA': 'matricula_inmobiliaria',
+        'MATRICULA': 'matricula_inmobiliaria',
         # Propietario (del R1)
         'NOMBRE': 'propietario_nombre',
         'TIPO_DOCUMENTO': 'propietario_tipo_doc',
