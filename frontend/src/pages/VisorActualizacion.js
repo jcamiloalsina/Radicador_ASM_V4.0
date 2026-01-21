@@ -707,7 +707,7 @@ export default function VisorActualizacion() {
         {
           estado_visita: 'visitado',
           ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-          visitado_por: user?.email,
+          visitado_por: user?.full_name || user?.email,
           visitado_en: new Date().toISOString()
         },
         { headers: { Authorization: `Bearer ${token}` }}
@@ -895,7 +895,7 @@ export default function VisorActualizacion() {
           estado_visita: 'visitado',
           sin_cambios: visitaData.sin_cambios,  // Marcar si es visitado sin cambios
           visita: visitaCompleta,
-          visitado_por: user?.email,
+          visitado_por: user?.full_name || user?.email,
           visitado_en: new Date().toISOString()
         },
         { headers: { Authorization: `Bearer ${token}` }}
