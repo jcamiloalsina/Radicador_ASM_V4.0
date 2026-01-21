@@ -11567,6 +11567,154 @@ async def actualizar_predio_proyecto(
     }
 
 
+# ==================== PREDIOS SIN CAMBIOS - ACTUALIZACIÓN ====================
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios-sin-cambios")
+async def get_predios_sin_cambios(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene los predios visitados marcados como 'sin cambios' que esperan aprobación del coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden ver esta lista")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Obtener predios visitados marcados como sin_cambios que NO están actualizados
+    predios = await db.predios_actualizacion.find(
+        {
+            "proyecto_id": proyecto_id,
+            "sin_cambios": True,
+            "estado_visita": {"$in": ["visitado", "pendiente"]},  # No incluir los ya actualizados
+        },
+        {"_id": 0}
+    ).sort("visitado_en", -1).to_list(10000)
+    
+    return {
+        "predios": predios,
+        "total": len(predios)
+    }
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/aprobar-sin-cambios")
+async def aprobar_predio_sin_cambios(
+    proyecto_id: str,
+    codigo_predial: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Aprueba un predio visitado sin cambios, marcándolo como actualizado"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Buscar el predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Agregar al historial
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "usuario": current_user.get('email'),
+        "rol": current_user['role'],
+        "accion": "aprobado_sin_cambios",
+        "comentario": data.get('comentario', 'Aprobado sin cambios')
+    }
+    
+    # Actualizar el predio a estado 'actualizado'
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": {
+                "estado_visita": "actualizado",
+                "aprobado_sin_cambios": True,
+                "aprobado_por": current_user.get('email'),
+                "aprobado_en": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc)
+            },
+            "$push": {"historial_cambios": historial_entry}
+        }
+    )
+    
+    return {
+        "message": "Predio aprobado como actualizado (sin cambios)",
+        "codigo_predial": codigo_predial
+    }
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios-sin-cambios/aprobar-masivo")
+async def aprobar_masivo_sin_cambios(
+    proyecto_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Aprueba masivamente predios visitados sin cambios"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar")
+    
+    codigos = data.get('codigos_prediales', [])
+    if not codigos:
+        raise HTTPException(status_code=400, detail="Debe proporcionar una lista de códigos prediales")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    comentario = data.get('comentario', 'Aprobación masiva sin cambios')
+    aprobados = 0
+    
+    for codigo in codigos:
+        predio = await db.predios_actualizacion.find_one({
+            "proyecto_id": proyecto_id,
+            "$or": [
+                {"codigo_predial": codigo},
+                {"numero_predial": codigo}
+            ]
+        })
+        
+        if predio:
+            historial_entry = {
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "usuario": current_user.get('email'),
+                "rol": current_user['role'],
+                "accion": "aprobado_sin_cambios_masivo",
+                "comentario": comentario
+            }
+            
+            await db.predios_actualizacion.update_one(
+                {"_id": predio["_id"]},
+                {
+                    "$set": {
+                        "estado_visita": "actualizado",
+                        "aprobado_sin_cambios": True,
+                        "aprobado_por": current_user.get('email'),
+                        "aprobado_en": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc)
+                    },
+                    "$push": {"historial_cambios": historial_entry}
+                }
+            )
+            aprobados += 1
+    
+    return {
+        "message": f"{aprobados} predios aprobados como actualizados (sin cambios)",
+        "aprobados": aprobados
+    }
+
+
 # ==================== EXPORTACIÓN EXCEL R1/R2 - ACTUALIZACIÓN ====================
 
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/exportar-excel")
