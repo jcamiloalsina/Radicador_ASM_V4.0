@@ -1738,18 +1738,6 @@ export default function VisorActualizacion() {
             </Button>
           </div>
           
-          {/* Botón Zoom a GDB */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={zoomToGDBLayer}
-            className="w-9 h-9 p-0 bg-white shadow-lg"
-            disabled={!geometrias?.features?.length}
-            title="Ir a las geometrías GDB"
-          >
-            <Navigation className="w-4 h-4 text-emerald-600" />
-          </Button>
-          
           <Button
             variant={watchingPosition ? "default" : "outline"}
             size="sm"
