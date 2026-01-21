@@ -271,6 +271,45 @@ export default function ProyectosActualizacion() {
     }
   };
 
+  // Exportar Excel R1/R2
+  const handleExportarExcel = async (proyectoId, soloActualizados = false) => {
+    try {
+      const token = localStorage.getItem('token');
+      toast.info('Generando Excel R1/R2...');
+      
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/exportar-excel?solo_actualizados=${soloActualizados}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+      
+      // Crear URL para descarga
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Obtener nombre del archivo del header o usar uno genérico
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Actualizacion_R1R2_${new Date().toISOString().split('T')[0]}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename=(.+)/);
+        if (match) filename = match[1];
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Excel exportado exitosamente');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al exportar Excel');
+    }
+  };
+
   const handleUploadBaseGrafica = async (event) => {
     const file = event.target.files?.[0];
     if (!file || !proyectoSeleccionado) return;
