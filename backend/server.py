@@ -11498,7 +11498,8 @@ async def actualizar_predio_proyecto(
     campos_visita = [
         'estado_visita', 'observaciones_campo', 'ubicacion_gps',
         'visitado_por', 'visitado_en',
-        'visita', 'datos_notificacion', 'fotos'
+        'visita', 'datos_notificacion', 'fotos',
+        'sin_cambios'  # Marcar si el predio fue visitado sin modificaciones
     ]
     
     # Campos que requieren aprobación del coordinador (datos prediales)
