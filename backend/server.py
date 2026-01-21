@@ -7155,7 +7155,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     
     # === PIE DE PÁGINA - BARRA VERDE ===
     footer_y = 1.2 * cm
-    c.setFillColor(verde_footer)
+    c.setFillColor(verde_institucional)
     c.rect(left_margin, footer_y - 5, content_width, 22, fill=1, stroke=0)
     
     c.setFillColor(blanco)
