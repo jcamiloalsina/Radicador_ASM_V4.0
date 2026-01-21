@@ -6965,7 +6965,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Colores - Verde emerald del login (#009846)
+    # Colores - Verde institucional (#009846)
     verde_institucional = colors.HexColor('#009846')
     negro = colors.HexColor('#000000')
     gris_texto = colors.HexColor('#333333')
