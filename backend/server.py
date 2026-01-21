@@ -7540,12 +7540,28 @@ async def generar_certificado_desde_peticion(
     with open(cert_path, 'wb') as f:
         f.write(pdf_bytes)
     
+    # Extraer matrícula del R2 si existe
+    matricula_r2 = None
+    r2_registros = predio.get("r2_registros", [])
+    if r2_registros:
+        matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
+    
+    # Preparar información del predio relacionado
+    predio_relacionado_info = {
+        "predio_id": predio.get("id"),
+        "codigo_predial": predio.get("codigo_predial_nacional"),
+        "matricula": matricula_r2,
+        "direccion": predio.get("direccion"),
+        "municipio": predio.get("municipio")
+    }
+    
     # Actualizar la petición para indicar que se generó el certificado
     update_data = {
         "certificado_generado": True,
         "certificado_codigo": codigo_verificacion,
         "certificado_fecha": datetime.now(timezone.utc).isoformat(),
         "certificado_archivo": str(cert_path),
+        "predio_relacionado": predio_relacionado_info,  # Guardar la info del predio
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
