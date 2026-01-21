@@ -6849,8 +6849,7 @@ async def export_predios_excel(
 def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, numero_certificado: str = None, radicado: str = None) -> bytes:
     """
     Genera un certificado catastral especial en PDF siguiendo el diseño institucional de Asomunicipios.
-    Formato de número: COM-F03-XXXX-GC-XXXX (editable)
-    Basado en el diseño proporcionado por el usuario con barras verdes
+    Soporta múltiples páginas si el contenido es extenso.
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
@@ -6875,7 +6874,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     width, height = letter
     
     # Colores - Verde emerald del login (#047857)
-    verde_institucional = colors.HexColor('#047857')  # emerald-700
+    verde_institucional = colors.HexColor('#047857')
     negro = colors.HexColor('#000000')
     gris_texto = colors.HexColor('#333333')
     gris_claro = colors.HexColor('#666666')
@@ -6887,12 +6886,179 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     right_margin = width - 2.0 * cm
     content_width = right_margin - left_margin
     
+    # Límite inferior para contenido (antes del pie de página)
+    footer_limit = 2.5 * cm
+    
     fecha_actual = datetime.now()
     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
-    # === ENCABEZADO - Imagen completa de ASOMUNICIPIOS Gestor Catastral ===
+    # Paths de imágenes
     encabezado_path = Path("/app/backend/logos/encabezado_gestor_catastral.png")
+    pie_pagina_path = Path("/app/backend/logos/pie_pagina_certificado.png")
+    
+    # Variables para manejo de páginas
+    current_page = 1
+    total_pages = 1  # Se calculará después
+    
+    def draw_header(is_first_page=True):
+        """Dibuja el encabezado en cada página"""
+        if encabezado_path.exists():
+            encabezado_width = content_width + 1 * cm
+            encabezado_height = 2.0 * cm
+            encabezado_x = left_margin - 0.5 * cm
+            encabezado_y = height - 2.2 * cm
+            c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
+                        width=encabezado_width, height=encabezado_height, 
+                        preserveAspectRatio=True, mask='auto')
+        return height - 2.8 * cm
+    
+    def draw_footer():
+        """Dibuja el pie de página en cada página"""
+        if pie_pagina_path.exists():
+            footer_height = 2.0 * cm
+            c.drawImage(str(pie_pagina_path), 0, 0, 
+                        width=width, height=footer_height, 
+                        preserveAspectRatio=False, mask='auto')
+        else:
+            c.setFillColor(verde_institucional)
+            c.rect(0, 0, width, 28, fill=1, stroke=0)
+            c.setFillColor(blanco)
+            c.setFont(fuente_normal, 8)
+            c.drawCentredString(width/2, 10, "comunicaciones@asomunicipios.gov.co")
+    
+    def new_page():
+        """Crea una nueva página con encabezado y pie de página"""
+        nonlocal current_page
+        draw_footer()
+        c.showPage()
+        current_page += 1
+        y = draw_header(is_first_page=False)
+        
+        # Título de continuación
+        c.setFillColor(negro)
+        c.setFont(fuente_bold, 12)
+        c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO (Continuación)")
+        y -= 14
+        
+        # Número de certificado y predio para referencia
+        c.setFont(fuente_normal, 9)
+        c.setFillColor(gris_claro)
+        codigo_predial = predio.get('codigo_predial_nacional', '')
+        c.drawCentredString(width/2, y, f"Predio: {codigo_predial}")
+        y -= 20
+        
+        return y
+    
+    def check_page_break(y, needed_space=20):
+        """Verifica si hay espacio suficiente, si no, crea nueva página"""
+        if y < footer_limit + needed_space:
+            return new_page()
+        return y
+    
+    # ===============================================
+    # === PÁGINA 1: CONTENIDO PRINCIPAL ===
+    # ===============================================
+    
+    y = draw_header(is_first_page=True)
+    
+    # Fecha y Certificado N°
+    fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
+    c.setFont(fuente_normal, 11)
+    c.setFillColor(negro)
+    c.drawString(left_margin, y, fecha_str)
+    
+    c.drawRightString(right_margin - 140, y, "CERTIFICADO:")
+    c.acroForm.textfield(
+        name='certificado_numero',
+        x=right_margin - 135,
+        y=y - 4,
+        width=135,
+        height=16,
+        fontSize=11,
+        fontName='Helvetica',
+        borderWidth=0,
+        fillColor=colors.white,
+        textColor=negro,
+        value=''
+    )
+    
+    # Título
+    y -= 0.9 * cm
+    c.setFillColor(negro)
+    c.setFont(fuente_bold, 14)
+    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
+    y -= 14
+    
+    # Base legal
+    c.setFillColor(gris_claro)
+    c.setFont(fuente_normal, 8)
+    c.drawCentredString(width/2, y, "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)")
+    y -= 10
+    c.drawCentredString(width/2, y, "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3.")
+    y -= 14
+    
+    # Radicado
+    c.setFillColor(negro)
+    c.setFont(fuente_normal, 11)
+    c.drawRightString(right_margin - 100, y, "Radicado No:")
+    c.acroForm.textfield(
+        name='radicado',
+        x=right_margin - 95,
+        y=y - 4,
+        width=95,
+        height=16,
+        fontSize=11,
+        fontName='Helvetica',
+        borderWidth=0,
+        fillColor=colors.white,
+        textColor=negro,
+        value=''
+    )
+    y -= 18
+    
+    # Texto certificador
+    c.setFillColor(negro)
+    c.setFont(fuente_normal, 11)
+    c.drawCentredString(width/2, y, "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar - Asomunicipios,")
+    y -= 14
+    c.drawCentredString(width/2, y, "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:")
+    y -= 18
+    
+    # Variables para el cuadro
+    cuadro_x = left_margin
+    cuadro_width = content_width
+    cuadro_start_y = y
+    
+    def draw_section_header(title, y_pos):
+        """Dibuja encabezado de sección (barra verde) - CENTRADO"""
+        y_pos = check_page_break(y_pos, 30)
+        c.setFillColor(verde_institucional)
+        c.rect(cuadro_x, y_pos - 14, cuadro_width, 16, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont(fuente_bold, 11)
+        c.drawCentredString(cuadro_x + cuadro_width/2, y_pos - 10, title)
+        return y_pos - 18
+    
+    def draw_field(label, value, y_pos, label_width=180):
+        """Dibuja una fila de campo"""
+        y_pos = check_page_break(y_pos, 18)
+        c.setFillColor(negro)
+        c.setFont(fuente_bold, 10)
+        c.drawString(cuadro_x + 5, y_pos - 10, label)
+        c.setFont(fuente_normal, 10)
+        value_str = str(value) if value else ""
+        c.drawString(cuadro_x + label_width, y_pos - 10, value_str)
+        c.setStrokeColor(linea_gris)
+        c.setLineWidth(0.5)
+        c.line(cuadro_x, y_pos - 14, cuadro_x + cuadro_width, y_pos - 14)
+        return y_pos - 16
+    
+    # === SECCIÓN 1: INFORMACIÓN CATASTRAL DEL PREDIO ===
+    y = draw_section_header("INFORMACIÓN CATASTRAL DEL PREDIO", y)
+    
+    # === SECCIÓN 2: INFORMACIÓN JURÍDICA ===
+    y = draw_section_header("INFORMACIÓN JURÍDICA", y)
     if encabezado_path.exists():
         encabezado_width = content_width + 1 * cm  # Un poco más ancho
         encabezado_height = 2.0 * cm
