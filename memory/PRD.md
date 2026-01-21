@@ -917,3 +917,44 @@ Si el GPS sigue sin funcionar en iPhone:
 1. Verificar URL sea HTTPS
 2. Ir a Configuración > Privacidad > Servicios de ubicación > Safari > "Mientras se usa"
 3. Recargar la página después de cambiar permisos
+
+---
+
+### Sesión 21 Enero 2026 (Parte 5) - Múltiples Gestores y Correcciones Finales
+
+**1. ✅ Sistema de Múltiples Gestores por Predio:**
+- Modal de selección de tipo de revisión al abrir un predio (solo para gestores):
+  - 🏠 Gestor de Campo: datos físicos, visita, área terreno/construida
+  - ⚖️ Gestor Jurídico: propietarios, matrícula, linderos
+  - ✅ Gestor de Calidad: control calidad, verificación, validación final
+- Historial detallado: quién, cuándo, qué tipo de revisión, qué campos modificó
+- Propuestas consolidadas: coordinador ve todas las propuestas del predio juntas
+- Nuevo campo `tipo_revision` en propuestas
+- Columna "Tipo Revisión" en tabla de Gestión de Propuestas
+
+**2. ✅ Z-index Móvil - Visores:**
+- CSS global para Leaflet: `z-index: 1` para contenedor del mapa
+- Modales con `z-index: 99999` para siempre estar sobre el mapa
+- Estilos específicos para móvil (@media max-width: 1024px)
+- Archivo: `/app/frontend/src/index.css`
+
+**3. ✅ GPS Simplificado:**
+- Código más limpio y mensajes más claros
+- Verificación HTTPS obligatoria
+- Instrucciones específicas por plataforma (iOS, Android)
+- Timeout más cortos para iOS (20s) vs otros (30s)
+
+**Archivos Modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js` - Modal tipo revisión, GPS
+- `/app/frontend/src/pages/GestionPropuestas.js` - Columna tipo revisión
+- `/app/backend/server.py` - Campo tipo_revision en propuestas
+- `/app/frontend/src/index.css` - Z-index Leaflet
+
+**Flujo de Múltiples Gestores:**
+```
+Predio X - Historial:
+├── 10:00 - Juan (Campo): Modificó área_terreno, área_construida
+├── 11:30 - María (Jurídico): Modificó propietarios, matrícula
+├── 14:00 - Pedro (Calidad): Verificación completada
+└── Coordinador: Aprueba propuestas consolidadas → Actualizado
+```
