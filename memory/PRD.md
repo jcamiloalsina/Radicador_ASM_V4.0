@@ -859,3 +859,26 @@ La aplicación ahora se estructura en dos flujos principales:
 - Historial de cambios de permisos
 - Integración con logos de usuario en PDFs
 - GPS tablet - pendiente verificación usuario
+
+---
+
+### Sesión 21 Enero 2026 (Parte 3) - Correcciones Finales
+
+**1. ✅ Logo en Login Móvil:**
+- Agregado logo de Asomunicipios visible en pantallas pequeñas (móvil/tablet)
+- Texto "Asomunicipios" y "Sistema de Gestión Catastral"
+- Archivo: `/app/frontend/src/pages/Login.js`
+
+**2. ✅ GPS Universal Mejorado:**
+- Nueva implementación más robusta para todos los dispositivos
+- Estrategia de fallback: intento rápido → intento preciso → seguimiento continuo
+- Timeout aumentado a 60 segundos para tablets lentos
+- Mensajes de error más claros con sugerencias de solución
+- Verificación de HTTPS (requerido en móviles)
+- Archivo: `/app/frontend/src/pages/VisorActualizacion.js`
+
+**3. ✅ Modo Offline para Conservación:**
+- Hook `useOfflineSync` integrado en `/app/frontend/src/pages/Predios.js`
+- Descarga automática de predios por municipio para offline
+- Indicador visual de estado offline y cambios pendientes
+- Sincronización al recuperar conexión
