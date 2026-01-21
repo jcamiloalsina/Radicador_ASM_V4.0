@@ -782,51 +782,102 @@ export default function PetitionDetail() {
                     
                     {/* Estado del certificado */}
                     {petition.certificado_generado ? (
-                      <div className="flex items-center gap-3">
-                        <Badge className="bg-emerald-600">
-                          <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
-                        </Badge>
-                        <span className="text-xs text-slate-500">
-                          Código: {petition.certificado_codigo}
-                        </span>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-emerald-600">
+                            <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado y Enviado
+                          </Badge>
+                          <span className="text-xs text-slate-500">
+                            Código: {petition.certificado_codigo}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          El certificado fue enviado al correo del peticionario y está disponible en su plataforma.
+                        </p>
                       </div>
                     ) : (
                       /* Botón para generar certificado - Solo staff */
                       ['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
-                        <Button
-                          className="bg-emerald-700 hover:bg-emerald-800"
-                          onClick={async () => {
-                            try {
-                              toast.info('Generando certificado catastral...');
-                              const token = localStorage.getItem('token');
-                              const response = await fetch(`${API}/petitions/${petition.id}/certificado`, {
-                                headers: { 'Authorization': `Bearer ${token}` }
-                              });
-                              if (!response.ok) {
-                                const error = await response.json();
-                                throw new Error(error.detail || 'Error al generar');
-                              }
-                              const blob = await response.blob();
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `Certificado_${petition.radicado}.pdf`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              window.URL.revokeObjectURL(url);
-                              toast.success('Certificado generado y descargado');
-                              // Recargar petición para mostrar el estado actualizado
-                              fetchPetition();
-                            } catch (error) {
-                              toast.error(error.message || 'Error al generar el certificado');
-                            }
-                          }}
-                          data-testid="generar-certificado-btn"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Generar Certificado (Radicado: {petition.radicado})
-                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              className="bg-emerald-700 hover:bg-emerald-800"
+                              data-testid="generar-certificado-btn"
+                            >
+                              <FileText className="w-4 h-4 mr-2" />
+                              Generar Certificado (Radicado: {petition.radicado})
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2 text-emerald-800">
+                                <FileText className="w-5 h-5" />
+                                Confirmar Generación de Certificado
+                              </DialogTitle>
+                              <DialogDescription>
+                                Por favor confirme antes de generar el certificado catastral.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                <p className="text-sm text-amber-800 font-medium mb-2">⚠️ Verificación Requerida</p>
+                                <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                                  <li>¿Se verificaron los documentos adjuntos?</li>
+                                  <li>¿Se confirmó el pago de $45.000 COP?</li>
+                                  <li>¿La información del predio es correcta?</li>
+                                </ul>
+                              </div>
+                              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                                <p className="text-sm text-emerald-800">
+                                  <strong>Al confirmar:</strong>
+                                </p>
+                                <ul className="text-sm text-emerald-700 mt-1 space-y-1 list-disc list-inside">
+                                  <li>Se generará el certificado PDF</li>
+                                  <li>Se enviará al correo: <strong>{petition.correo}</strong></li>
+                                  <li>Se notificará al peticionario en la plataforma</li>
+                                  <li>El trámite se marcará como <strong>Finalizado</strong></li>
+                                </ul>
+                              </div>
+                            </div>
+                            <DialogFooter className="gap-2">
+                              <Button variant="outline" onClick={() => {}}>
+                                Cancelar
+                              </Button>
+                              <Button
+                                className="bg-emerald-700 hover:bg-emerald-800"
+                                onClick={async () => {
+                                  try {
+                                    toast.info('Generando y enviando certificado...');
+                                    const token = localStorage.getItem('token');
+                                    const response = await fetch(`${API}/petitions/${petition.id}/certificado?enviar_correo=true`, {
+                                      headers: { 'Authorization': `Bearer ${token}` }
+                                    });
+                                    if (!response.ok) {
+                                      const error = await response.json();
+                                      throw new Error(error.detail || 'Error al generar');
+                                    }
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `Certificado_${petition.radicado}.pdf`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(url);
+                                    toast.success('Certificado generado, enviado al peticionario y trámite finalizado');
+                                    fetchPetition();
+                                  } catch (error) {
+                                    toast.error(error.message || 'Error al generar el certificado');
+                                  }
+                                }}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Confirmar y Enviar
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       )
                     )}
                   </div>
