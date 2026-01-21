@@ -882,3 +882,38 @@ La aplicación ahora se estructura en dos flujos principales:
 - Descarga automática de predios por municipio para offline
 - Indicador visual de estado offline y cambios pendientes
 - Sincronización al recuperar conexión
+- Archivo: `/app/frontend/src/pages/Predios.js`
+
+---
+
+### Sesión 21 Enero 2026 (Parte 4) - Correcciones Móvil y GPS
+
+**1. ✅ Login Móvil - Imagen de Fondo:**
+- Agregada imagen de fondo con vías/mapa (como en desktop)
+- Gradiente suave para legibilidad
+- Logo y formulario sobre fondo visible
+- Archivo: `/app/frontend/src/pages/Login.js`
+
+**2. ✅ Visor Predios - Z-index Móvil:**
+- Grid responsive: `grid-cols-1 lg:grid-cols-12`
+- Panel de opciones con `z-index: 20` (sobre el mapa)
+- Mapa con altura `50vh` en móvil, `calc(100vh-220px)` en desktop
+- Mapa ahora aparece DEBAJO de las opciones en móvil
+- Archivo: `/app/frontend/src/pages/VisorPredios.js`
+
+**3. ✅ GPS Mejorado para iOS/iPhone:**
+- Detección específica de iOS/iPad
+- Mensajes de error adaptados a iOS con instrucciones claras
+- Verificación obligatoria de HTTPS (bloquea si no es seguro)
+- Flujo de permisos optimizado: getCurrentPosition primero, luego watchPosition
+- Timeouts diferenciados para iOS (30s) vs Android/Desktop (60s)
+- Instrucciones específicas: "Configuración > Safari > Ubicación" para iOS
+- Archivo: `/app/frontend/src/pages/VisorActualizacion.js`
+
+**Nota importante sobre GPS:**
+El GPS **REQUIERE HTTPS** para funcionar en móviles. En localhost funciona para desarrollo, pero en producción debe estar desplegado con certificado SSL.
+
+Si el GPS sigue sin funcionar en iPhone:
+1. Verificar URL sea HTTPS
+2. Ir a Configuración > Privacidad > Servicios de ubicación > Safari > "Mientras se usa"
+3. Recargar la página después de cambiar permisos
