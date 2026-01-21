@@ -204,6 +204,11 @@ export default function VisorActualizacion() {
   const [flyToPosition, setFlyToPosition] = useState(null);
   const [showPredioDetail, setShowPredioDetail] = useState(false);
   
+  // Estados de tipo de revisión
+  const [showTipoRevisionModal, setShowTipoRevisionModal] = useState(false);
+  const [tipoRevision, setTipoRevision] = useState(null); // 'campo', 'juridico', 'calidad'
+  const [predioParaAbrir, setPredioParaAbrir] = useState(null);
+  
   // Estados de edición
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
