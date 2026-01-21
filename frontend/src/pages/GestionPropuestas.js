@@ -459,11 +459,42 @@ export default function GestionPropuestas() {
           </div>
         </div>
         
-        {filtroEstado === 'pendiente' && propuestas.length > 0 && (
+        {filtroTipo === 'propuestas' && filtroEstado === 'pendiente' && propuestas.length > 0 && (
           <Badge variant="outline" className="bg-amber-100 text-amber-700 text-lg px-4 py-2">
             {propuestas.length} pendientes
           </Badge>
         )}
+        {filtroTipo === 'sin_cambios' && prediosSinCambios.length > 0 && (
+          <Badge variant="outline" className="bg-blue-100 text-blue-700 text-lg px-4 py-2">
+            {prediosSinCambios.length} sin cambios
+          </Badge>
+        )}
+      </div>
+      
+      {/* Tabs para tipo de vista */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={filtroTipo === 'propuestas' ? 'default' : 'outline'}
+          onClick={() => setFiltroTipo('propuestas')}
+          className={filtroTipo === 'propuestas' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+        >
+          <GitCompare className="w-4 h-4 mr-2" />
+          Propuestas de Cambio
+          {propuestas.length > 0 && filtroEstado === 'pendiente' && (
+            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">{propuestas.length}</span>
+          )}
+        </Button>
+        <Button
+          variant={filtroTipo === 'sin_cambios' ? 'default' : 'outline'}
+          onClick={() => setFiltroTipo('sin_cambios')}
+          className={filtroTipo === 'sin_cambios' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+        >
+          <CheckSquare className="w-4 h-4 mr-2" />
+          Predios Sin Cambios
+          {prediosSinCambios.length > 0 && (
+            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">{prediosSinCambios.length}</span>
+          )}
+        </Button>
       </div>
       
       {/* Filtros */}
@@ -485,19 +516,131 @@ export default function GestionPropuestas() {
             </Select>
           </div>
           
-          <div className="w-48">
-            <Label className="text-slate-600">Estado</Label>
-            <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendiente">⏳ Pendientes</SelectItem>
-                <SelectItem value="aprobada">✅ Aprobadas</SelectItem>
-                <SelectItem value="rechazada">❌ Rechazadas</SelectItem>
-                <SelectItem value="subsanacion">🔄 En Subsanación</SelectItem>
-              </SelectContent>
-            </Select>
+          {filtroTipo === 'propuestas' && (
+            <div className="w-48">
+              <Label className="text-slate-600">Estado</Label>
+              <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendiente">⏳ Pendientes</SelectItem>
+                  <SelectItem value="aprobada">✅ Aprobadas</SelectItem>
+                  <SelectItem value="rechazada">❌ Rechazadas</SelectItem>
+                  <SelectItem value="subsanacion">🔄 En Subsanación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          <Button onClick={filtroTipo === 'propuestas' ? fetchPropuestas : fetchPrediosSinCambios} variant="outline">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+          
+          {filtroTipo === 'propuestas' && filtroEstado === 'pendiente' && seleccionadas.length > 0 && (
+            <Button 
+              onClick={handleAprobarMasivo}
+              disabled={procesando}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {procesando ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              Aprobar Masivo ({seleccionadas.length})
+            </Button>
+          )}
+          
+          {filtroTipo === 'sin_cambios' && seleccionadasSinCambios.length > 0 && (
+            <Button 
+              onClick={handleAprobarMasivoSinCambios}
+              disabled={procesando}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {procesando ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              Aprobar Masivo ({seleccionadasSinCambios.length})
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {/* Vista de Predios Sin Cambios */}
+      {filtroTipo === 'sin_cambios' && (
+        <div className="bg-white rounded-lg border overflow-hidden shadow-sm mb-6">
+          {loading ? (
+            <div className="p-8 text-center">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-600" />
+              <p className="text-slate-500 mt-2">Cargando predios sin cambios...</p>
+            </div>
+          ) : prediosSinCambios.length === 0 ? (
+            <div className="p-12 text-center">
+              <CheckSquare className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+              <p className="text-slate-500 text-lg">No hay predios sin cambios pendientes</p>
+              <p className="text-sm text-slate-400 mt-2">
+                Los predios visitados sin modificaciones aparecerán aquí para su aprobación
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-blue-50">
+                <TableRow>
+                  <TableHead className="w-12">
+                    <button onClick={toggleSeleccionarTodasSinCambios} className="p-1 hover:bg-blue-200 rounded">
+                      {seleccionadasSinCambios.length === prediosSinCambios.length ? (
+                        <CheckSquare className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                  </TableHead>
+                  <TableHead>Código Predial</TableHead>
+                  <TableHead>Dirección</TableHead>
+                  <TableHead>Visitado Por</TableHead>
+                  <TableHead>Fecha Visita</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {prediosSinCambios.map((predio) => (
+                  <TableRow key={predio.codigo_predial || predio.numero_predial} className="hover:bg-blue-50">
+                    <TableCell>
+                      <button 
+                        onClick={() => toggleSeleccionSinCambios(predio.codigo_predial || predio.numero_predial)} 
+                        className="p-1 hover:bg-blue-200 rounded"
+                      >
+                        {seleccionadasSinCambios.includes(predio.codigo_predial || predio.numero_predial) ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-slate-400" />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{predio.codigo_predial || predio.numero_predial}</TableCell>
+                    <TableCell className="text-sm">{predio.direccion || '-'}</TableCell>
+                    <TableCell className="text-sm">{predio.visitado_por || '-'}</TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {predio.visitado_en ? new Date(predio.visitado_en).toLocaleDateString('es-CO') : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => handleAprobarSinCambios(predio.codigo_predial || predio.numero_predial)}
+                        disabled={procesando}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Aprobar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      )}
+      
+      {/* Tabla de propuestas - Solo mostrar si estamos en ese filtro */}
+      {filtroTipo === 'propuestas' && (
+        <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
           </div>
           
           <Button onClick={fetchPropuestas} variant="outline">
