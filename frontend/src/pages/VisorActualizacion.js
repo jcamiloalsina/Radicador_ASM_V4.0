@@ -750,7 +750,8 @@ export default function VisorActualizacion() {
       acceso_predio: 'si',
       servicios_publicos: [],
       observaciones: '',
-      firma_base64: null
+      firma_base64: null,
+      sin_cambios: false
     });
     setFotos([]);
     setShowVisitaModal(true);
