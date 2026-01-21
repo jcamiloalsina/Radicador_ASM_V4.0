@@ -1390,10 +1390,10 @@ export default function VisorActualizacion() {
             />
           )}
           
-          {geometrias && (
+          {geometriasFiltradas && (
             <GeoJSON
-              key={`geom-${filterZona}-${selectedGeometry?.properties?.codigo_predial}-${JSON.stringify(estadisticas)}`}
-              data={geometrias}
+              key={`geom-${filterZona}-${filterEstado}-${selectedGeometry?.properties?.codigo_predial}-${JSON.stringify(estadisticas)}`}
+              data={geometriasFiltradas}
               style={getGeometryStyle}
               onEachFeature={onEachFeature}
             />
