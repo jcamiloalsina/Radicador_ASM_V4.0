@@ -6912,10 +6912,13 @@ def generar_qr_verificacion(codigo_verificacion: str) -> bytes:
     buffer.seek(0)
     return buffer.getvalue()
 
-def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, codigo_verificacion: str) -> bytes:
+def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por: str, codigo_verificacion: str, radicado: str = None) -> bytes:
     """
     Genera un certificado catastral en PDF con soporte multi-página.
     Incluye QR de verificación y código de seguridad.
+    
+    Si se proporciona radicado, se usa en el campo correspondiente (viene de una petición).
+    Si no hay radicado, el campo queda editable.
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
