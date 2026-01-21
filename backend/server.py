@@ -7285,14 +7285,11 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
 @api_router.get("/predios/{predio_id}/certificado")
 async def generar_certificado_catastral_endpoint(
     predio_id: str, 
-    estilo: str = Query("B", description="Estilo de verificación: A (minimalista) o B (con marco)"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Genera un certificado catastral PDF para un predio específico.
-    Incluye firma digital visual, QR de verificación y código de seguridad.
-    
-    - estilo: "A" para minimalista, "B" para marco verde (default)
+    Incluye QR de verificación y código de seguridad verificable en línea.
     """
     # Solo coordinador, administrador y atencion_usuario pueden generar certificados
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
