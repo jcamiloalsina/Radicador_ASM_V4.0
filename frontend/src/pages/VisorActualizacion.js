@@ -1593,11 +1593,10 @@ export default function VisorActualizacion() {
               {!editMode ? (
                 // Modo visualización (igual que antes pero con tabs de zonas)
                 <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid grid-cols-6 w-full">
+                  <TabsList className="grid grid-cols-5 w-full">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
                     <TabsTrigger value="fisico">Físico</TabsTrigger>
-                    <TabsTrigger value="campo">Campo</TabsTrigger>
                     <TabsTrigger value="propuestas">Propuestas</TabsTrigger>
                     <TabsTrigger value="historial">Historial</TabsTrigger>
                   </TabsList>
