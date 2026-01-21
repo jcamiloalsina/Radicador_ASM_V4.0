@@ -6930,12 +6930,12 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         value=''
     )
     
-    # === TÍTULO: CERTIFICADO CATASTRAL ===
+    # === TÍTULO: CERTIFICADO CATASTRAL SENCILLO ===
     y = y_linea1 - 0.9 * cm
     
     c.setFillColor(negro)
     c.setFont(fuente_bold, 14)
-    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL")
+    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
     y -= 14
     
     # Base legal (tamaño 8)
@@ -6977,12 +6977,40 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y -= 14
     texto_cert2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
     c.drawCentredString(width/2, y, texto_cert2)
-    y -= 18
+    y -= 16
     
-    # === BARRA VERDE: INFORMACIÓN CATASTRAL DEL PREDIO ===
-    c.setFillColor(verde_seccion)
-    c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
+    # ===============================================
+    # === CUADRO PRINCIPAL CON BORDES ===
+    # ===============================================
+    cuadro_top = y
+    cuadro_x = left_margin
+    cuadro_width = content_width
+    
+    # Función para dibujar encabezado de sección (barra verde)
+    def draw_section_header(title, y_pos):
+        c.setFillColor(verde_institucional)
+        c.rect(cuadro_x, y_pos - 14, cuadro_width, 16, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont(fuente_bold, 11)
+        c.drawString(cuadro_x + 5, y_pos - 10, title)
+        return y_pos - 18
+    
+    # Función para dibujar fila de campo
+    def draw_field(label, value, y_pos, label_width=180):
+        c.setFillColor(negro)
+        c.setFont(fuente_bold, 10)
+        c.drawString(cuadro_x + 5, y_pos - 10, label)
+        c.setFont(fuente_normal, 10)
+        value_str = str(value) if value else ""
+        c.drawString(cuadro_x + label_width, y_pos - 10, value_str)
+        # Línea horizontal
+        c.setStrokeColor(linea_gris)
+        c.setLineWidth(0.5)
+        c.line(cuadro_x, y_pos - 14, cuadro_x + cuadro_width, y_pos - 14)
+        return y_pos - 16
+    
+    # === SECCIÓN 1: INFORMACIÓN CATASTRAL DEL PREDIO ===
+    y = draw_section_header("INFORMACIÓN CATASTRAL DEL PREDIO", y)
     c.setFont(fuente_bold, 11)
     c.drawCentredString(width/2, y - 8, "INFORMACION CATASTRAL DEL PREDIO")
     y -= 18
