@@ -2065,10 +2065,30 @@ async def create_petition(
     tipo_tramite: str = Form(...),
     municipio: str = Form(...),
     descripcion: str = Form(default=""),
+    codigo_predial: str = Form(default=""),
+    matricula_inmobiliaria: str = Form(default=""),
     files: List[UploadFile] = File(default=[]),
     current_user: dict = Depends(get_current_user)
 ):
     radicado = await generate_radicado()
+    
+    # Si es un certificado catastral, buscar el predio relacionado
+    predio_relacionado = None
+    if codigo_predial or matricula_inmobiliaria:
+        query = {}
+        if codigo_predial:
+            query["codigo_predial_nacional"] = codigo_predial.strip()
+        elif matricula_inmobiliaria:
+            query["matricula_inmobiliaria"] = matricula_inmobiliaria.strip()
+        
+        predio = await db.predios.find_one(query, {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "matricula_inmobiliaria": 1, "direccion": 1})
+        if predio:
+            predio_relacionado = {
+                "predio_id": predio.get("id"),
+                "codigo_predial": predio.get("codigo_predial_nacional"),
+                "matricula": predio.get("matricula_inmobiliaria"),
+                "direccion": predio.get("direccion")
+            }
     
     # Save files
     saved_files = []
@@ -2114,6 +2134,16 @@ async def create_petition(
     doc = petition.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    # Agregar información del predio relacionado si existe
+    if predio_relacionado:
+        doc['predio_relacionado'] = predio_relacionado
+    
+    # Agregar campos de búsqueda para certificados
+    if codigo_predial:
+        doc['codigo_predial_buscado'] = codigo_predial.strip()
+    if matricula_inmobiliaria:
+        doc['matricula_buscada'] = matricula_inmobiliaria.strip()
     
     await db.petitions.insert_one(doc)
     
