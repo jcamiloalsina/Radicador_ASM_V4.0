@@ -6860,12 +6860,12 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     
-    # Registrar fuente Liberation Sans (similar a Calibri)
+    # Registrar fuente Carlito (reemplazo métrico de Calibri Light)
     try:
-        pdfmetrics.registerFont(TTFont('LiberationSans', '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'))
-        pdfmetrics.registerFont(TTFont('LiberationSans-Bold', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'))
-        fuente_normal = 'LiberationSans'
-        fuente_bold = 'LiberationSans-Bold'
+        pdfmetrics.registerFont(TTFont('Carlito', '/usr/share/fonts/truetype/crosextra/Carlito-Regular.ttf'))
+        pdfmetrics.registerFont(TTFont('Carlito-Bold', '/usr/share/fonts/truetype/crosextra/Carlito-Bold.ttf'))
+        fuente_normal = 'Carlito'
+        fuente_bold = 'Carlito-Bold'
     except:
         fuente_normal = 'Helvetica'
         fuente_bold = 'Helvetica-Bold'
@@ -6874,19 +6874,19 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Colores EXACTOS según el PDF de referencia con BARRAS VERDES
-    verde_seccion = colors.HexColor('#4CAF50')  # Verde brillante para barras de sección
-    verde_footer = colors.HexColor('#4CAF50')   # Verde para footer
-    verde_gestor = colors.HexColor('#4CAF50')   # Verde para "Gestor Catastral"
+    # Colores
+    verde_seccion = colors.HexColor('#4CAF50')
+    verde_footer = colors.HexColor('#4CAF50')
+    verde_gestor = colors.HexColor('#4CAF50')
     negro = colors.HexColor('#000000')
     gris_texto = colors.HexColor('#333333')
     gris_claro = colors.HexColor('#666666')
     linea_gris = colors.HexColor('#cccccc')
     blanco = colors.HexColor('#FFFFFF')
     
-    # Márgenes
-    left_margin = 1.5 * cm
-    right_margin = width - 1.5 * cm
+    # Márgenes hoja carta estándar
+    left_margin = 2.5 * cm
+    right_margin = width - 2.5 * cm
     content_width = right_margin - left_margin
     
     fecha_actual = datetime.now()
