@@ -8244,6 +8244,9 @@ async def verificar_integridad_pdf(
             "hash_original": hash_pdf_original[:16].upper(),
             "hash_subido": hash_pdf_subido[:16].upper()
         }
+
+
+@api_router.get("/certificados/verificables")
 async def listar_certificados_verificables(
     skip: int = 0,
     limit: int = 50,
