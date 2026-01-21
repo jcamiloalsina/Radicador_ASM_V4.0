@@ -2079,19 +2079,33 @@ async def create_petition(
     # Si es un certificado catastral, buscar el predio relacionado
     predio_relacionado = None
     if codigo_predial or matricula_inmobiliaria:
-        query = {}
+        predio = None
         if codigo_predial:
-            query["codigo_predial_nacional"] = codigo_predial.strip()
+            predio = await db.predios.find_one(
+                {"codigo_predial_nacional": codigo_predial.strip()}, 
+                {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
+            )
         elif matricula_inmobiliaria:
-            query["matricula_inmobiliaria"] = matricula_inmobiliaria.strip()
+            # Buscar la matrícula en r2_registros.matricula_inmobiliaria (fuente R1/R2)
+            matricula_limpia = matricula_inmobiliaria.strip()
+            predio = await db.predios.find_one(
+                {"r2_registros.matricula_inmobiliaria": matricula_limpia}, 
+                {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
+            )
         
-        predio = await db.predios.find_one(query, {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "matricula_inmobiliaria": 1, "direccion": 1})
         if predio:
+            # Extraer la matrícula del R2 si existe
+            matricula_r2 = None
+            r2_registros = predio.get("r2_registros", [])
+            if r2_registros:
+                matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
+            
             predio_relacionado = {
                 "predio_id": predio.get("id"),
                 "codigo_predial": predio.get("codigo_predial_nacional"),
-                "matricula": predio.get("matricula_inmobiliaria"),
-                "direccion": predio.get("direccion")
+                "matricula": matricula_r2 or matricula_inmobiliaria,
+                "direccion": predio.get("direccion"),
+                "municipio": predio.get("municipio")
             }
     
     # Save files
