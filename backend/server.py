@@ -7338,7 +7338,7 @@ async def generar_certificado_catastral_endpoint(
     proyectado_por = current_user['full_name']
     
     # Generar PDF con verificación
-    pdf_bytes = generate_certificado_catastral(predio, firmante, proyectado_por, codigo_verificacion, estilo)
+    pdf_bytes = generate_certificado_catastral(predio, firmante, proyectado_por, codigo_verificacion)
     
     # Guardar temporalmente
     temp_path = UPLOAD_DIR / f"certificado_{predio_id}_{uuid.uuid4()}.pdf"
