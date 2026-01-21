@@ -7054,13 +7054,14 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     
     y = draw_header(is_first_page=True)
     
-    # Fecha y Certificado N°
+    # Fecha (izquierda) y Certificado N° + Radicado N° (derecha)
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     c.setFont(fuente_normal, 11)
     c.setFillColor(negro)
     c.drawString(left_margin, y, fecha_str)
     
-    c.drawRightString(right_margin - 140, y, "CERTIFICADO:")
+    # Certificado N°: (campo editable)
+    c.drawRightString(right_margin - 140, y, "Certificado N°:")
     c.acroForm.textfield(
         name='certificado_numero',
         x=right_margin - 135,
@@ -7075,25 +7076,11 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         value=''
     )
     
-    # Título
-    y -= 0.9 * cm
-    c.setFillColor(negro)
-    c.setFont(fuente_bold, 14)
-    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
-    y -= 14
-    
-    # Base legal
-    c.setFillColor(gris_claro)
-    c.setFont(fuente_normal, 8)
-    c.drawCentredString(width/2, y, "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)")
-    y -= 10
-    c.drawCentredString(width/2, y, "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3.")
-    y -= 14
-    
-    # Radicado - Si viene de petición, mostrar fijo; si no, campo editable
+    # Radicado N°: debajo de Certificado N°:
+    y -= 18
     c.setFillColor(negro)
     c.setFont(fuente_normal, 11)
-    c.drawRightString(right_margin - 100, y, "Radicado No:")
+    c.drawRightString(right_margin - 100, y, "Radicado N°:")
     
     if radicado:
         # Radicado fijo (viene de una petición)
@@ -7115,7 +7102,21 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
             textColor=negro,
             value=''
         )
-    y -= 18
+    
+    # Título
+    y -= 0.7 * cm
+    c.setFillColor(negro)
+    c.setFont(fuente_bold, 14)
+    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
+    y -= 14
+    
+    # Base legal
+    c.setFillColor(gris_claro)
+    c.setFont(fuente_normal, 8)
+    c.drawCentredString(width/2, y, "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)")
+    y -= 10
+    c.drawCentredString(width/2, y, "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3.")
+    y -= 14
     
     # Texto certificador
     c.setFillColor(negro)
