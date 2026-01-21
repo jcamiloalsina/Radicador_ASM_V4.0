@@ -7408,20 +7408,39 @@ async def generar_certificado_catastral_endpoint(
     # Generar código de verificación único
     codigo_verificacion = generar_codigo_verificacion()
     
-    # Generar hash del documento
-    contenido_hash = f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now().isoformat()}"
-    hash_documento = generar_hash_documento(contenido_hash)
+    # Extraer datos críticos del predio para verificación
+    datos_criticos = {
+        "codigo_predial": predio.get('codigo_predial_nacional', ''),
+        "propietarios": [p.get('nombre_propietario', '') for p in propietarios],
+        "area_terreno": predio.get('area_terreno', ''),
+        "area_construida": predio.get('area_construida', ''),
+        "avaluo_catastral": predio.get('avaluo_catastral', ''),
+        "direccion": predio.get('direccion', ''),
+        "municipio": predio.get('municipio', ''),
+        "matricula_inmobiliaria": next((r.get('matricula_inmobiliaria', '') for r in predio.get('r2_registros', [])), '')
+    }
+    
+    # Generar hash de datos críticos (para comparación rápida)
+    datos_string = "|".join([
+        str(datos_criticos['codigo_predial']),
+        ",".join(datos_criticos['propietarios']),
+        str(datos_criticos['area_terreno']),
+        str(datos_criticos['avaluo_catastral'])
+    ])
+    hash_datos = hashlib.sha256(datos_string.encode()).hexdigest()
     
     # Registrar certificado en la base de datos
     certificado_record = {
         "id": str(uuid.uuid4()),
         "codigo_verificacion": codigo_verificacion,
-        "hash_documento": hash_documento,
+        "hash_datos": hash_datos,  # Hash de datos críticos
+        "hash_pdf": "",  # Se actualizará después de generar el PDF
         "predio_id": predio_id,
         "codigo_predial": predio.get('codigo_predial_nacional', ''),
         "municipio": predio.get('municipio', ''),
         "direccion": predio.get('direccion', ''),
         "propietarios": [p.get('nombre_propietario', '') for p in propietarios],
+        "datos_criticos": datos_criticos,  # Guardar datos originales
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "generado_por_email": current_user['email'],
