@@ -2148,10 +2148,25 @@ export default function VisorActualizacion() {
                     <Button 
                       onClick={handleSaveChanges}
                       disabled={saving}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      className={`flex-1 ${
+                        user?.role === 'coordinador' || user?.role === 'administrador'
+                          ? 'bg-emerald-600 hover:bg-emerald-700'
+                          : 'bg-amber-600 hover:bg-amber-700'
+                      }`}
                     >
-                      {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Guardar
+                      {saving ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : user?.role === 'coordinador' || user?.role === 'administrador' ? (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Guardar Cambios
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Enviar Propuesta
+                        </>
+                      )}
                     </Button>
                   </>
                 )}
