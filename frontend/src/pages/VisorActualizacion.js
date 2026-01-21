@@ -417,36 +417,40 @@ export default function VisorActualizacion() {
   }, [geometrias, filterEstado, prediosR1R2]);
   
   // Funciones GPS - Compatibilidad universal (iOS Safari, iOS Chrome/Firefox, Android, Desktop)
-  const startWatchingPosition = () => {
-    console.log('GPS: Intentando iniciar geolocalización...');
+  const startWatchingPosition = async () => {
+    console.log('GPS: ========== INICIANDO GEOLOCALIZACIÓN ==========');
+    console.log('GPS: UserAgent:', navigator.userAgent);
+    console.log('GPS: Timestamp:', new Date().toISOString());
     
     // Verificar soporte de geolocalización
     if (!navigator.geolocation) {
-      console.error('GPS: navigator.geolocation no existe');
+      console.error('GPS: navigator.geolocation NO existe');
       toast.error('GPS no soportado', {
         description: 'Tu navegador no soporta geolocalización'
       });
       return;
     }
     
-    console.log('GPS: navigator.geolocation existe');
+    console.log('GPS: navigator.geolocation existe ✓');
     
     // Detectar plataforma
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/i.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
     const isMobile = isIOS || isAndroid;
     
-    console.log(`GPS: Plataforma - iOS: ${isIOS}, Android: ${isAndroid}, Mobile: ${isMobile}`);
+    console.log(`GPS: Plataforma detectada:`, { isIOS, isAndroid, isSafari, isMobile });
     
     // En móviles, HTTPS es obligatorio
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const isSecure = protocol === 'https:' || hostname === 'localhost' || hostname === '127.0.0.1';
     
-    console.log(`GPS: Protocolo: ${protocol}, Host: ${hostname}, Seguro: ${isSecure}`);
+    console.log(`GPS: Seguridad:`, { protocol, hostname, isSecure });
     
     if (isMobile && !isSecure) {
+      console.error('GPS: HTTPS requerido pero no disponible');
       toast.error('GPS requiere HTTPS', {
         description: 'En dispositivos móviles, el GPS solo funciona con conexión segura (HTTPS)',
         duration: 8000
@@ -454,26 +458,57 @@ export default function VisorActualizacion() {
       return;
     }
     
+    // Verificar permisos usando Permissions API (si está disponible)
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('GPS: Estado de permiso (Permissions API):', permissionStatus.state);
+        
+        if (permissionStatus.state === 'denied') {
+          console.warn('GPS: Permiso DENEGADO previamente');
+          toast.error('Permiso de ubicación denegado', {
+            description: isIOS 
+              ? 'Ve a Configuración > Privacidad > Servicios de ubicación > Safari (o tu navegador) y permite el acceso'
+              : 'Haz clic en el icono de ubicación/candado en la barra de direcciones y permite el acceso',
+            duration: 10000
+          });
+          return;
+        }
+      } catch (permErr) {
+        console.log('GPS: Permissions API no disponible o error:', permErr.message);
+        // Continuar de todos modos - iOS Safari no siempre soporta Permissions API
+      }
+    } else {
+      console.log('GPS: Permissions API no disponible en este navegador');
+    }
+    
     // Activar estado de GPS
     setWatchingPosition(true);
     
     toast.info('Activando GPS...', { 
       description: isIOS 
-        ? 'Permite el acceso cuando aparezca el mensaje. Si no aparece, verifica: Configuración > Privacidad > Servicios de ubicación'
+        ? 'Permite el acceso cuando aparezca el mensaje. Si no aparece, verifica en Configuración > Safari > Ubicación'
         : 'Permite el acceso a la ubicación cuando el navegador lo solicite',
-      duration: 6000 
+      duration: 8000 
     });
     
-    // Opciones de geolocalización
+    // Opciones de geolocalización - más tolerantes para iOS
     const options = {
       enableHighAccuracy: true,
-      timeout: 30000,
-      maximumAge: 30000
+      timeout: isIOS ? 20000 : 30000, // iOS suele ser más rápido o falla antes
+      maximumAge: isIOS ? 60000 : 30000 // iOS: aceptar posiciones más antiguas
     };
+    
+    console.log('GPS: Opciones configuradas:', options);
     
     // Callbacks
     const onSuccess = (position) => {
-      console.log('GPS: Éxito!', position.coords);
+      console.log('GPS: ✓ ÉXITO! Posición obtenida:', {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: new Date(position.timestamp).toISOString()
+      });
       const { latitude, longitude, accuracy } = position.coords;
       setUserPosition([latitude, longitude]);
       setGpsAccuracy(accuracy);
@@ -484,7 +519,13 @@ export default function VisorActualizacion() {
     };
     
     const onError = (error) => {
-      console.error('GPS Error:', error.code, error.message);
+      console.error('GPS: ✗ ERROR:', {
+        code: error.code,
+        message: error.message,
+        PERMISSION_DENIED: error.code === 1,
+        POSITION_UNAVAILABLE: error.code === 2,
+        TIMEOUT: error.code === 3
+      });
       setWatchingPosition(false);
       
       let msg = '';
@@ -492,49 +533,58 @@ export default function VisorActualizacion() {
       
       switch (error.code) {
         case 1: // PERMISSION_DENIED
-          msg = 'Permiso denegado';
-          desc = isIOS 
-            ? 'Ve a Configuración del iPhone > Privacidad > Servicios de ubicación y activa el permiso para tu navegador'
-            : 'Haz clic en el icono de ubicación/candado en la barra de direcciones y permite el acceso';
+          msg = 'Permiso de ubicación denegado';
+          if (isIOS) {
+            desc = 'En tu iPhone/iPad: Ve a Configuración > Privacidad y Seguridad > Servicios de ubicación > Safari (o tu navegador) y selecciona "Mientras se usa la app"';
+          } else {
+            desc = 'Haz clic en el icono de ubicación/candado en la barra de direcciones y permite el acceso';
+          }
           break;
         case 2: // POSITION_UNAVAILABLE
           msg = 'Ubicación no disponible';
-          desc = 'Verifica que el GPS esté activado en tu dispositivo y que tengas señal';
+          desc = 'Verifica que el GPS esté activado en tu dispositivo. En iOS: Configuración > Privacidad > Servicios de ubicación (activado)';
           break;
         case 3: // TIMEOUT
           msg = 'Tiempo agotado';
-          desc = 'No se pudo obtener la ubicación. Intenta en un lugar con mejor señal GPS';
+          desc = 'No se pudo obtener la ubicación a tiempo. Verifica que tengas señal GPS (exterior) e intenta de nuevo';
           break;
         default:
           msg = 'Error de GPS';
           desc = error.message || 'Error desconocido';
       }
       
-      toast.error(msg, { description: desc, duration: 8000 });
+      toast.error(msg, { description: desc, duration: 12000 });
     };
     
-    // Llamar getCurrentPosition
-    console.log('GPS: Llamando getCurrentPosition...');
+    // Llamar getCurrentPosition con manejo mejorado
+    console.log('GPS: Llamando navigator.geolocation.getCurrentPosition()...');
+    console.log('GPS: Esperando respuesta del sistema operativo...');
+    
     try {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           onSuccess(pos);
-          // Iniciar seguimiento continuo
-          console.log('GPS: Iniciando watchPosition...');
+          // Iniciar seguimiento continuo solo si la primera llamada tuvo éxito
+          console.log('GPS: Primera posición obtenida, iniciando seguimiento continuo...');
           watchIdRef.current = navigator.geolocation.watchPosition(
             (p) => {
+              console.log('GPS: Actualización de posición:', p.coords.latitude, p.coords.longitude);
               setUserPosition([p.coords.latitude, p.coords.longitude]);
               setGpsAccuracy(p.coords.accuracy);
             },
-            (e) => { if (e.code === 1) onError(e); },
-            options
+            (e) => { 
+              console.warn('GPS: Error en watchPosition:', e.code, e.message);
+              if (e.code === 1) onError(e); 
+            },
+            { ...options, maximumAge: 5000 } // Para watch, queremos posiciones más frescas
           );
         },
         onError,
         options
       );
+      console.log('GPS: getCurrentPosition llamado - esperando callback del navegador...');
     } catch (e) {
-      console.error('GPS: Excepción capturada:', e);
+      console.error('GPS: ✗ Excepción capturada:', e);
       toast.error('Error al iniciar GPS', { description: e.message });
       setWatchingPosition(false);
     }
