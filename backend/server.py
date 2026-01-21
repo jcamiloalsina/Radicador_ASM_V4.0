@@ -7163,14 +7163,14 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.setFillColor(verde_seccion)
     c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(fuente_bold, 12)
     c.drawString(left_margin + 5, y - 8, "PREDIOS COLINDANTES")
     y -= 18
     
     # Obtener predios colindantes si existen
     colindantes = predio.get('colindantes', {})
     c.setFillColor(negro)
-    c.setFont("Helvetica", 7)
+    c.setFont(fuente_normal, 12)
     
     direcciones = ['Norte', 'Sur', 'Este', 'Oeste']
     for direccion in direcciones:
@@ -7178,55 +7178,49 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         if not col_text:
             col_text = f"Con predio colindante al {direccion}"
         
-        text_lines = simpleSplit(f"Al {direccion}: {col_text}", "Helvetica", 7, content_width - 10)
+        text_lines = simpleSplit(f"Al {direccion}: {col_text}", fuente_normal, 12, content_width - 10)
         for line in text_lines:
             c.drawString(left_margin + 3, y, line)
-            y -= 9
+            y -= 14
         y -= 2
     
     # Línea inferior
     c.setStrokeColor(linea_gris)
     c.line(left_margin, y + 3, right_margin, y + 3)
-    y -= 12
+    y -= 14
     
     # === TEXTO DE EXPEDICIÓN ===
     c.setFillColor(negro)
-    c.setFont("Helvetica", 9)
+    c.setFont(fuente_normal, 12)
     fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
     c.drawString(left_margin, y, texto_exp)
-    y -= 30
+    y -= 32
     
     # === FIRMA CENTRAL ===
     firma_x = width/2
     c.setStrokeColor(negro)
     c.setLineWidth(0.5)
-    c.line(firma_x - 90, y + 12, firma_x + 90, y + 12)
+    c.line(firma_x - 100, y + 12, firma_x + 100, y + 12)
     
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(fuente_bold, 12)
     c.setFillColor(negro)
     c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
-    y -= 11
-    c.setFont("Helvetica", 8)
+    y -= 14
+    c.setFont(fuente_normal, 12)
     c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
-    y -= 18
+    y -= 20
     
     # === ELABORÓ / REVISÓ ===
-    c.setFont("Helvetica", 8)
+    c.setFont(fuente_normal, 12)
     c.setFillColor(negro)
     
-    # Elaboró con iniciales MR
+    # Elaboró con iniciales
     c.drawString(left_margin, y, f"Elaboró: {proyectado_por}")
-    # Añadir iniciales si el nombre tiene dos partes
-    nombre_parts = proyectado_por.split()
-    if len(nombre_parts) >= 2:
-        iniciales = f"{nombre_parts[0][0]}{nombre_parts[-1][0]}".upper()
-        c.setFont("Helvetica", 6)
-        c.drawString(left_margin + 50 + len(proyectado_por)*4, y + 3, iniciales)
     
-    c.setFont("Helvetica", 8)
-    c.drawString(left_margin + 200, y, "Revisó: Juan C. Alsina")
-    y -= 16
+    c.setFont(fuente_normal, 12)
+    c.drawString(left_margin + 250, y, "Revisó: Juan C. Alsina")
+    y -= 18
     
     # === NOTAS ===
     c.setFillColor(negro)
