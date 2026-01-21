@@ -7492,31 +7492,140 @@ async def generar_certificado_desde_peticion(
         radicado=petition.get('radicado')  # Pasar el radicado de la petición
     )
     
-    # Actualizar la petición para indicar que se generó el certificado
-    await db.petitions.update_one(
-        {"id": petition_id},
-        {
-            "$set": {
-                "certificado_generado": True,
-                "certificado_codigo": codigo_verificacion,
-                "certificado_fecha": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-        }
-    )
-    
-    # Guardar temporalmente
-    temp_path = UPLOAD_DIR / f"certificado_{petition_id}_{uuid.uuid4()}.pdf"
-    with open(temp_path, 'wb') as f:
+    # Guardar PDF permanentemente para que el usuario pueda descargarlo después
+    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}.pdf"
+    cert_path = UPLOAD_DIR / cert_filename
+    with open(cert_path, 'wb') as f:
         f.write(pdf_bytes)
     
-    # Nombre del archivo
-    radicado = petition.get('radicado', petition_id)
-    codigo = predio.get('codigo_predial_nacional', '')
-    filename = f"Certificado_Catastral_{radicado}_{codigo}.pdf"
+    # Actualizar la petición para indicar que se generó el certificado
+    update_data = {
+        "certificado_generado": True,
+        "certificado_codigo": codigo_verificacion,
+        "certificado_fecha": datetime.now(timezone.utc).isoformat(),
+        "certificado_archivo": str(cert_path),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Si enviar_correo es True, también finalizar el trámite
+    if enviar_correo:
+        update_data["estado"] = PetitionStatus.FINALIZADO
+        
+        # Agregar entrada al historial
+        historial_entry = {
+            "accion": "Certificado generado y enviado",
+            "usuario": current_user['full_name'],
+            "usuario_rol": current_user['role'],
+            "estado_anterior": petition.get('estado'),
+            "estado_nuevo": PetitionStatus.FINALIZADO,
+            "notas": f"Certificado catastral generado con código {codigo_verificacion}. Enviado al correo del peticionario.",
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$set": update_data,
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        # Enviar correo al peticionario con el certificado adjunto
+        try:
+            radicado_pet = petition.get('radicado', petition_id)
+            correo_destino = petition.get('correo')
+            nombre_peticionario = petition.get('nombre_completo', 'Estimado usuario')
+            codigo_predial = predio.get('codigo_predial_nacional', 'N/A')
+            verificacion_url = f"{VERIFICACION_BASE_URL}/verificar/{codigo_verificacion}"
+            
+            email_html = f"""
+            <html>
+            <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #047857, #059669); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">✅ Certificado Catastral Listo</h1>
+                </div>
+                <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px;">
+                    <p style="color: #334155; font-size: 16px;">Estimado/a <strong>{nombre_peticionario}</strong>,</p>
+                    
+                    <p style="color: #334155;">Su trámite de <strong>Certificado Catastral Sencillo</strong> ha sido aprobado y el certificado está listo.</p>
+                    
+                    <div style="background: white; border: 2px solid #047857; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Radicado:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #047857;">{radicado_pet}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Código de Verificación:</td>
+                                <td style="padding: 8px 0; font-family: monospace; font-weight: bold;">{codigo_verificacion}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Código Predial:</td>
+                                <td style="padding: 8px 0; font-family: monospace;">{codigo_predial}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="color: #334155;"><strong>📎 El certificado está adjunto a este correo.</strong></p>
+                    
+                    <p style="color: #334155;">También puede descargarlo ingresando a su cuenta en la plataforma de Asomunicipios.</p>
+                    
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="{verificacion_url}" style="background: #047857; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                            🔗 Verificar Certificado en Línea
+                        </a>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;">
+                    
+                    <p style="color: #64748b; font-size: 12px; text-align: center;">
+                        Asomunicipios - Gestor Catastral<br>
+                        Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar<br>
+                        comunicaciones@asomunicipios.gov.co | +57 3102327647
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Enviar correo con adjunto
+            await enviar_correo_con_adjunto(
+                destinatario=correo_destino,
+                asunto=f"✅ Certificado Catastral Listo - {radicado_pet}",
+                contenido_html=email_html,
+                adjunto_path=str(cert_path),
+                adjunto_nombre=f"Certificado_Catastral_{radicado_pet}.pdf"
+            )
+            
+        except Exception as e:
+            print(f"Error enviando correo: {e}")
+            # No fallar si el correo no se envía
+        
+        # Crear notificación en plataforma para el peticionario
+        try:
+            await crear_notificacion(
+                usuario_id=petition.get('user_id'),
+                tipo="success",
+                titulo="✅ Certificado Catastral Listo",
+                mensaje=f"Su certificado catastral ({radicado_pet}) ha sido generado y enviado a su correo. También puede descargarlo desde la plataforma.",
+                enlace=f"/dashboard/peticiones/{petition_id}"
+            )
+        except Exception as e:
+            print(f"Error creando notificación: {e}")
+    else:
+        # Solo actualizar sin finalizar
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {"$set": update_data}
+        )
+    
+    # Nombre del archivo para descarga
+    radicado_file = petition.get('radicado', petition_id)
+    codigo_file = predio.get('codigo_predial_nacional', '')
+    filename = f"Certificado_Catastral_{radicado_file}_{codigo_file}.pdf"
     
     return FileResponse(
-        path=temp_path,
+        path=cert_path,
         filename=filename,
         media_type='application/pdf'
     )
