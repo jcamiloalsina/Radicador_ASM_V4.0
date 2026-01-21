@@ -3768,47 +3768,17 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
-              {/* Botones Generar Certificado con opciones de estilo */}
+              {/* Botón Generar Certificado Catastral */}
               {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
-                <div className="flex justify-end gap-2 flex-wrap">
-                  <Button
-                    variant="outline"
-                    className="border-emerald-700 text-emerald-700 hover:bg-emerald-50"
-                    onClick={async () => {
-                      try {
-                        toast.info('Generando certificado Estilo A...');
-                        const token = localStorage.getItem('token');
-                        const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado?estilo=A`, {
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        if (!response.ok) throw new Error('Error generando certificado');
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `Certificado_${selectedPredio.codigo_predial_nacional}_EstiloA.pdf`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                        toast.success('Certificado Estilo A descargado');
-                      } catch (error) {
-                        console.error('Error:', error);
-                        toast.error('Error al generar el certificado');
-                      }
-                    }}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Estilo A (Minimalista)
-                  </Button>
+                <div className="flex justify-end">
                   <Button
                     variant="default"
                     className="bg-emerald-700 hover:bg-emerald-800"
                     onClick={async () => {
                       try {
-                        toast.info('Generando certificado Estilo B...');
+                        toast.info('Generando certificado catastral...');
                         const token = localStorage.getItem('token');
-                        const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado?estilo=B`, {
+                        const response = await fetch(`${API}/predios/${selectedPredio.id}/certificado`, {
                           headers: { 'Authorization': `Bearer ${token}` }
                         });
                         if (!response.ok) throw new Error('Error generando certificado');
@@ -3816,12 +3786,12 @@ export default function Predios() {
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `Certificado_${selectedPredio.codigo_predial_nacional}_EstiloB.pdf`;
+                        a.download = `Certificado_Catastral_${selectedPredio.codigo_predial_nacional}.pdf`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         window.URL.revokeObjectURL(url);
-                        toast.success('Certificado Estilo B descargado');
+                        toast.success('Certificado descargado correctamente');
                       } catch (error) {
                         console.error('Error:', error);
                         toast.error('Error al generar el certificado');
@@ -3829,7 +3799,7 @@ export default function Predios() {
                     }}
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    Estilo B (Institucional)
+                    Generar Certificado Catastral
                   </Button>
                 </div>
               )}
