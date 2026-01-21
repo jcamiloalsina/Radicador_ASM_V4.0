@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { ArrowLeft, Send, Upload, X } from 'lucide-react';
+import { ArrowLeft, Send, Upload, X, FileText } from 'lucide-react';
 import { TIPOS_TRAMITE, MUNICIPIOS, getTramiteCompleto } from '../data/catalogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -23,13 +23,20 @@ export default function CreatePetition() {
     tipo_tramite: '',
     sub_tipo_tramite: '',
     municipio: '',
-    descripcion: ''
+    descripcion: '',
+    // Campos para certificado catastral
+    codigo_predial: '',
+    matricula_inmobiliaria: '',
+    busqueda_tipo: 'codigo' // 'codigo' o 'matricula'
   });
   const [files, setFiles] = useState([]);
 
   // Obtener el tipo de trámite seleccionado
   const selectedTipoTramite = TIPOS_TRAMITE.find(t => t.id === formData.tipo_tramite);
   const hasSubOpciones = selectedTipoTramite?.subOpciones?.length > 0;
+  
+  // Verificar si es un trámite de certificado
+  const esCertificado = ['certificado_catastral', 'certificado_catastral_especial', 'certificado_plano'].includes(formData.tipo_tramite);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -44,7 +51,9 @@ export default function CreatePetition() {
     setFormData({ 
       ...formData, 
       tipo_tramite: value,
-      sub_tipo_tramite: '' // Reset sub-opción cuando cambia el tipo
+      sub_tipo_tramite: '', // Reset sub-opción cuando cambia el tipo
+      codigo_predial: '',
+      matricula_inmobiliaria: ''
     });
   };
 
@@ -55,6 +64,18 @@ export default function CreatePetition() {
     if (hasSubOpciones && !formData.sub_tipo_tramite) {
       toast.error('Por favor seleccione la sub-opción del trámite');
       return;
+    }
+    
+    // Validar campos de certificado
+    if (esCertificado) {
+      if (formData.busqueda_tipo === 'codigo' && !formData.codigo_predial.trim()) {
+        toast.error('Debe ingresar el Código Predial Nacional');
+        return;
+      }
+      if (formData.busqueda_tipo === 'matricula' && !formData.matricula_inmobiliaria.trim()) {
+        toast.error('Debe ingresar la Matrícula Inmobiliaria');
+        return;
+      }
     }
     
     setLoading(true);
@@ -69,6 +90,15 @@ export default function CreatePetition() {
       formDataToSend.append('tipo_tramite', tipoTramiteCompleto);
       formDataToSend.append('municipio', formData.municipio);
       formDataToSend.append('descripcion', formData.descripcion);
+      
+      // Agregar campos de certificado si aplica
+      if (esCertificado) {
+        if (formData.busqueda_tipo === 'codigo') {
+          formDataToSend.append('codigo_predial', formData.codigo_predial.trim());
+        } else {
+          formDataToSend.append('matricula_inmobiliaria', formData.matricula_inmobiliaria.trim());
+        }
+      }
       
       files.forEach((file) => {
         formDataToSend.append('files', file);
