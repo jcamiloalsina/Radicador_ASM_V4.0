@@ -722,18 +722,41 @@ export default function VisorActualizacion() {
     );
     
     if (predio) {
-      setSelectedPredio(predio);
-      setEditData({
-        direccion: predio.direccion || '',
-        destino_economico: predio.destino_economico || '',
-        area_terreno: predio.area_terreno || '',
-        area_construida: predio.area_construida || '',
-        observaciones_campo: predio.observaciones_campo || '',
-        estado_visita: predio.estado_visita || 'pendiente'
-      });
-      setShowPredioDetail(true);
+      // Si es gestor, mostrar modal de tipo de revisión primero
+      const esGestor = user?.role === 'gestor';
+      if (esGestor) {
+        setPredioParaAbrir(predio);
+        setShowTipoRevisionModal(true);
+      } else {
+        abrirDetallePredio(predio);
+      }
     } else if (!geometrias?.features?.find(f => f.properties?.codigo_predial?.includes(searchCode))) {
       toast.warning('Predio no encontrado');
+    }
+  };
+  
+  // Función para abrir el detalle del predio (después de seleccionar tipo de revisión)
+  const abrirDetallePredio = (predio, tipo = null) => {
+    setSelectedPredio(predio);
+    setTipoRevision(tipo);
+    setEditData({
+      direccion: predio.direccion || '',
+      destino_economico: predio.destino_economico || '',
+      area_terreno: predio.area_terreno || '',
+      area_construida: predio.area_construida || '',
+      observaciones_campo: predio.observaciones_campo || '',
+      estado_visita: predio.estado_visita || 'pendiente',
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
+    });
+    setShowPredioDetail(true);
+  };
+  
+  // Confirmar tipo de revisión y abrir predio
+  const confirmarTipoRevision = (tipo) => {
+    if (predioParaAbrir) {
+      abrirDetallePredio(predioParaAbrir, tipo);
+      setShowTipoRevisionModal(false);
+      setPredioParaAbrir(null);
     }
   };
   
