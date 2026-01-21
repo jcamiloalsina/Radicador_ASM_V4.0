@@ -6874,10 +6874,8 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     
-    # Colores
-    verde_seccion = colors.HexColor('#4CAF50')
-    verde_footer = colors.HexColor('#4CAF50')
-    verde_gestor = colors.HexColor('#4CAF50')
+    # Colores - Verde emerald del login (#047857)
+    verde_institucional = colors.HexColor('#047857')  # emerald-700
     negro = colors.HexColor('#000000')
     gris_texto = colors.HexColor('#333333')
     gris_claro = colors.HexColor('#666666')
@@ -6885,8 +6883,8 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     blanco = colors.HexColor('#FFFFFF')
     
     # Márgenes hoja carta estándar
-    left_margin = 2.5 * cm
-    right_margin = width - 2.5 * cm
+    left_margin = 2.0 * cm
+    right_margin = width - 2.0 * cm
     content_width = right_margin - left_margin
     
     fecha_actual = datetime.now()
