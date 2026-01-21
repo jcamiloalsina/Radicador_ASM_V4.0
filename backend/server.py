@@ -7136,118 +7136,63 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
     y = draw_field("Avalúo catastral", avaluo_str, y)
     
-    c.setFillColor(negro)
-    c.setFont(fuente_bold, 14)
-    c.drawCentredString(width/2, y, "CERTIFICADO CATASTRAL SENCILLO")
-    y -= 14
+    # Verificar espacio para el texto de expedición y firma
+    y = check_page_break(y, 120)
     
-    # Base legal (tamaño 8)
-    c.setFillColor(gris_claro)
-    c.setFont(fuente_normal, 8)
-    texto_legal = "ESTE CERTIFICADO TIENE VALIDEZ DE ACUERDO CON LA LEY 527 DE 1999 (AGOSTO 18)"
-    c.drawCentredString(width/2, y, texto_legal)
+    # === TEXTO DE EXPEDICIÓN ===
     y -= 10
-    texto_legal2 = "Directiva Presidencial No. 02 del 2000, Ley 962 de 2005 (Anti trámites), Artículo 6, Parágrafo 3."
-    c.drawCentredString(width/2, y, texto_legal2)
-    y -= 14
-    
-    # Radicado No: [campo editable] (derecha)
     c.setFillColor(negro)
     c.setFont(fuente_normal, 11)
-    c.drawRightString(right_margin - 100, y, "Radicado No:")
+    fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
+    texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
+    c.drawString(left_margin, y, texto_exp)
+    y -= 50  # Espacio para la firma
     
-    # Campo editable para radicado
-    c.acroForm.textfield(
-        name='radicado',
-        x=right_margin - 95,
-        y=y - 4,
-        width=95,
-        height=16,
-        fontSize=11,
-        fontName='Helvetica',
-        borderWidth=0,
-        fillColor=colors.white,
-        textColor=negro,
-        value=''
-    )
-    y -= 18
+    # === FIRMA CENTRAL ===
+    firma_x = width/2
+    c.setStrokeColor(negro)
+    c.setLineWidth(0.5)
+    c.line(firma_x - 100, y + 12, firma_x + 100, y + 12)
     
-    # === TEXTO CERTIFICADOR ===
+    c.setFont(fuente_bold, 11)
     c.setFillColor(negro)
-    c.setFont(fuente_normal, 11)
-    texto_cert1 = "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar - Asomunicipios,"
-    c.drawCentredString(width/2, y, texto_cert1)
-    y -= 14
-    texto_cert2 = "certifica que el siguiente predio se encuentra inscrito en la base de datos catastral con la siguiente información:"
-    c.drawCentredString(width/2, y, texto_cert2)
+    c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
+    y -= 12
+    c.setFont(fuente_normal, 10)
+    c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
     y -= 16
     
-    # ===============================================
-    # === CUADRO PRINCIPAL CON BORDES ===
-    # ===============================================
-    cuadro_top = y
-    cuadro_x = left_margin
-    cuadro_width = content_width
+    # === ELABORÓ ===
+    c.setFont(fuente_normal, 8)
+    c.setFillColor(negro)
+    c.drawString(left_margin, y, f"Elaboró: {proyectado_por}")
+    y -= 14
     
-    # Función para dibujar encabezado de sección (barra verde) - CENTRADO
-    def draw_section_header(title, y_pos):
-        c.setFillColor(verde_institucional)
-        c.rect(cuadro_x, y_pos - 14, cuadro_width, 16, fill=1, stroke=0)
-        c.setFillColor(blanco)
-        c.setFont(fuente_bold, 11)
-        c.drawCentredString(cuadro_x + cuadro_width/2, y_pos - 10, title)
-        return y_pos - 18
+    # === NOTAS ===
+    c.setFillColor(negro)
+    c.setFont(fuente_bold, 8)
+    c.drawString(left_margin, y, "NOTA:")
+    y -= 10
     
-    # Función para dibujar fila de campo
-    def draw_field(label, value, y_pos, label_width=180):
-        c.setFillColor(negro)
-        c.setFont(fuente_bold, 10)
-        c.drawString(cuadro_x + 5, y_pos - 10, label)
-        c.setFont(fuente_normal, 10)
-        value_str = str(value) if value else ""
-        c.drawString(cuadro_x + label_width, y_pos - 10, value_str)
-        # Línea horizontal
-        c.setStrokeColor(linea_gris)
-        c.setLineWidth(0.5)
-        c.line(cuadro_x, y_pos - 14, cuadro_x + cuadro_width, y_pos - 14)
-        return y_pos - 16
+    c.setFont(fuente_normal, 7)
+    notas = [
+        "• La presente información no sirve como prueba para establecer actos constitutivos de posesión.",
+        "• De conformidad con el artículo 2.2.2.2.8 del Decreto 148 de 2020, Inscripción o incorporación catastral.",
+        "• Adicionalmente de conformidad con el artículo 29 de la resolución No. 1149 de 2021 del IGAC.",
+        "• La base catastral de Asomunicipios sólo incluye información de los municipios habilitados.",
+        "• Ante cualquier inquietud: comunicaciones@asomunicipios.gov.co",
+    ]
     
-    # === SECCIÓN 1: INFORMACIÓN CATASTRAL DEL PREDIO ===
-    y = draw_section_header("INFORMACIÓN CATASTRAL DEL PREDIO", y)
+    for nota in notas:
+        y = check_page_break(y, 10)
+        c.drawString(left_margin, y, nota)
+        y -= 8
     
-    # === SECCIÓN 2: INFORMACIÓN JURÍDICA ===
-    y = draw_section_header("INFORMACIÓN JURÍDICA", y)
+    # === PIE DE PÁGINA FINAL ===
+    draw_footer()
     
-    # Obtener propietarios del R1/R2
-    propietarios = predio.get('propietarios', [])
-    r2_registros = predio.get('r2_registros', [])
-    
-    # Si hay múltiples propietarios, mostrarlos todos
-    if propietarios:
-        for i, prop in enumerate(propietarios, 1):
-            nombre = prop.get('nombre_propietario', '')
-            tipo_doc = prop.get('tipo_documento', 'N')
-            num_doc = prop.get('numero_documento', '')
-            derecho = prop.get('tipo_derecho', '')
-            
-            y = draw_field(f"Propietario {i}", nombre, y)
-            y = draw_field("Tipo documento", tipo_doc, y)
-            y = draw_field("Número documento", num_doc, y)
-            if derecho:
-                y = draw_field("Tipo derecho", derecho, y)
-    else:
-        y = draw_field("Propietario", predio.get('nombre_propietario', 'N/A'), y)
-        y = draw_field("Tipo documento", predio.get('tipo_documento', 'N'), y)
-        y = draw_field("Número documento", predio.get('numero_documento', ''), y)
-    
-    # Matrícula inmobiliaria del R2
-    matricula = ''
-    if r2_registros:
-        matricula = r2_registros[0].get('matricula_inmobiliaria', '')
-    y = draw_field("Matrícula inmobiliaria", matricula or 'Sin matrícula', y)
-    
-    # === SECCIÓN 3: INFORMACIÓN FÍSICA ===
-    y = draw_section_header("INFORMACIÓN FÍSICA", y)
+    c.save()
+    return buffer.getvalue()
     
     municipio = predio.get('municipio', '')
     if municipio in ['Río de Oro', 'Rio de Oro']:
