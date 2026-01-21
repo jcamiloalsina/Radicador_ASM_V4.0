@@ -124,8 +124,12 @@ export default function AllPetitions() {
   const fetchPetitions = async () => {
     try {
       const response = await axios.get(`${API}/petitions`);
-      setPetitions(response.data);
-      setFilteredPetitions(response.data);
+      // Ordenar por fecha descendente (más recientes primero)
+      const sortedPetitions = [...response.data].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setPetitions(sortedPetitions);
+      setFilteredPetitions(sortedPetitions);
     } catch (error) {
       toast.error('Error al cargar peticiones');
     } finally {
