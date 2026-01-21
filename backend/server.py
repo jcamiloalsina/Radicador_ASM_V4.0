@@ -7065,7 +7065,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y = draw_field("Departamento", depto_cod, y)
     y = draw_field("Municipio", muni_cod, y)
     y = draw_field("Número predial", predio.get('codigo_predial_nacional', ''), y)
-    y = draw_field("Número predial anterior", predio.get('codigo_homologado', ''), y)
+    y = draw_field("Código homologado", predio.get('codigo_homologado', ''), y)
     y = draw_field("Dirección", predio.get('direccion', ''), y)
     
     # Área terreno
