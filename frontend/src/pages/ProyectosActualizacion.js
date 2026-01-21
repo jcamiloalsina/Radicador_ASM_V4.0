@@ -1201,62 +1201,7 @@ export default function ProyectosActualizacion() {
                   )}
                 </TabsContent>
                 )}
-                                              <CornerDownRight className="w-4 h-4 text-slate-300" />
-                                            )}
-                                            <ListTodo className={`w-4 h-4 ${prioridadConfig[actividad.prioridad]?.color || 'text-slate-400'}`} />
-                                            <div>
-                                              <div className="flex items-center gap-2">
-                                                <p className="font-medium text-sm">{actividad.nombre}</p>
-                                                {actividad.fase && (
-                                                  <Badge variant="outline" className="text-xs">{actividad.fase}</Badge>
-                                                )}
-                                              </div>
-                                              <div className="flex gap-3 text-xs text-slate-500">
-                                                {actividad.fecha_inicio && (
-                                                  <span className="flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    Inicio: {formatDate(actividad.fecha_inicio)}
-                                                  </span>
-                                                )}
-                                                {actividad.fecha_fin_planificada && (
-                                                  <span className="flex items-center gap-1">
-                                                    <Clock className="w-3 h-3" />
-                                                    Vence: {formatDate(actividad.fecha_fin_planificada)}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            {actividad.responsables?.length > 0 && (
-                                              <div className="flex items-center gap-1 text-xs text-slate-500">
-                                                <Users className="w-3 h-3" />
-                                                {actividad.responsables.length}
-                                              </div>
-                                            )}
-                                            <Select
-                                              value={actividad.estado}
-                                              onValueChange={(val) => handleActualizarActividad(actividad.id, { estado: val })}
-                                              disabled={!canCreate}
-                                            >
-                                              <SelectTrigger className="w-32 h-7 text-xs">
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="pendiente">Pendiente</SelectItem>
-                                                <SelectItem value="en_progreso">En Progreso</SelectItem>
-                                                <SelectItem value="completada">Completada</SelectItem>
-                                                <SelectItem value="bloqueada">Bloqueada</SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                                            {canCreate && (
-                                              <Button 
-                                                variant="ghost" 
-                                                size="sm"
-                                                onClick={() => handleEliminarActividad(actividad.id)}
-                                                className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
-                                              >
-                                                <X className="w-4 h-4" />
+              </Tabs>
                                               </Button>
                                             )}
                                           </div>
