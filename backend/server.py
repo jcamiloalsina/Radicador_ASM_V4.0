@@ -7104,30 +7104,23 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
     c.drawString(left_margin, y, texto_exp)
-    y -= 28
+    y -= 50  # Espacio para la firma (arriba del nombre)
     
     # === FIRMA CENTRAL ===
     firma_x = width/2
+    
+    # Línea para la firma (arriba del nombre)
     c.setStrokeColor(negro)
     c.setLineWidth(0.5)
     c.line(firma_x - 100, y + 12, firma_x + 100, y + 12)
     
+    # Nombre de la firmante
     c.setFont(fuente_bold, 11)
     c.setFillColor(negro)
     c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
     y -= 12
     c.setFont(fuente_normal, 10)
     c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
-    y -= 8
-    
-    # === ESPACIO PARA FIRMA DIGITAL (3-4 líneas) ===
-    c.setFont(fuente_normal, 8)
-    c.setFillColor(gris_claro)
-    c.drawCentredString(firma_x, y, "_______________________________________________")
-    y -= 8
-    c.drawCentredString(firma_x, y, "Firma Digital Verificada")
-    y -= 8
-    c.drawCentredString(firma_x, y, "_______________________________________________")
     y -= 16
     
     # === ELABORÓ (tamaño 8, sin Revisó) ===
