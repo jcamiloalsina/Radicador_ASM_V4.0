@@ -1368,8 +1368,26 @@ export default function VisorActualizacion() {
           </div>
         </div>
         
-        {/* GPS Status */}
+        {/* GPS Status + Offline Status */}
         <div className="flex items-center gap-2">
+          {/* Indicador Offline */}
+          {!isOnline && (
+            <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
+              <AlertCircle className="w-3 h-3 mr-1" />
+              Offline
+            </Badge>
+          )}
+          {offlineStats.cambiosPendientes > 0 && (
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer"
+              onClick={forceSync}
+              title="Click para sincronizar"
+            >
+              <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+              {offlineStats.cambiosPendientes} pendientes
+            </Badge>
+          )}
           {watchingPosition && gpsAccuracy && (
             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
               <Crosshair className="w-3 h-3 mr-1" />
