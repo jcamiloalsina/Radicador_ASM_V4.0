@@ -1987,15 +1987,6 @@ export default function VisorActualizacion() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-2">
-                        <Label>Observaciones de Campo</Label>
-                        <Textarea
-                          value={editData.observaciones_campo}
-                          onChange={(e) => setEditData(prev => ({ ...prev, observaciones_campo: e.target.value }))}
-                          placeholder="Notas de la visita en campo..."
-                          rows={3}
-                        />
-                      </div>
                     </div>
                     
                     {userPosition && (
