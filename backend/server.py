@@ -7419,6 +7419,9 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del certificado.
     No requiere autenticación.
     """
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://geo-cert-verify.preview.emergentagent.com')
+    logo_url = f"{frontend_url}/logo-asomunicipios.png"
+    
     # Buscar certificado
     certificado = await db.certificados_verificables.find_one(
         {"codigo_verificacion": codigo_verificacion},
@@ -7433,11 +7436,12 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Verificación - ASOMUNICIPIOS</title>
+            <title>Verificación - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
                 .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
                 .header {{ background: #dc2626; color: white; padding: 20px; text-align: center; }}
+                .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
                 .content {{ padding: 30px; text-align: center; }}
                 .icon {{ font-size: 48px; margin-bottom: 20px; }}
                 .code {{ background: #fee2e2; padding: 10px; border-radius: 5px; font-family: monospace; color: #dc2626; }}
@@ -7446,11 +7450,12 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         <body>
             <div class="container">
                 <div class="header">
+                    <img src="{logo_url}" alt="Asomunicipios">
                     <h1>⚠️ Certificado NO Encontrado</h1>
                 </div>
                 <div class="content">
                     <div class="icon">❌</div>
-                    <p>El código de verificación no corresponde a ningún certificado emitido por ASOMUNICIPIOS.</p>
+                    <p>El código de verificación no corresponde a ningún certificado emitido por Asomunicipios.</p>
                     <p class="code">{codigo_verificacion}</p>
                     <p style="margin-top: 20px; color: #666;">
                         Si cree que esto es un error, contacte a:<br>
