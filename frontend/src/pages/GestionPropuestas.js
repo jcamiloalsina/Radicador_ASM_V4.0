@@ -161,13 +161,16 @@ export default function GestionPropuestas() {
   const [proyectos, setProyectos] = useState([]);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [propuestas, setPropuestas] = useState([]);
+  const [prediosSinCambios, setPrediosSinCambios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState('pendiente');
+  const [filtroTipo, setFiltroTipo] = useState('propuestas'); // 'propuestas' o 'sin_cambios'
   const [propuestaDetalle, setPropuestaDetalle] = useState(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [comentarioRevision, setComentarioRevision] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState([]);
+  const [seleccionadasSinCambios, setSeleccionadasSinCambios] = useState([]);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [datosEditados, setDatosEditados] = useState({});
   
