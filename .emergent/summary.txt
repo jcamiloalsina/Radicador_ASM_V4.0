@@ -1,168 +1,369 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios, with Conservación (Conservation) and Actualización (Update) modules.
-
-The current focus has shifted intensely to the Conservación module, specifically the generation of a highly detailed and legally verifiable Certificado Catastral PDF.
+The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios, with a focus on the Conservación (Conservation) module. The main task is to implement a complete workflow for generating, verifying, and managing a Certificado Catastral Sencillo (Simple Cadastral Certificate).
 
 **PRODUCT REQUIREMENTS (LATEST):**
-1.  **Finalize Certificado Catastral Sencillo PDF:** The PDF layout must precisely match a user-provided visual template, including specific fonts (Calibri Light), margins, colors, and dynamic data placement.
-2.  **Multi-Page Support:** The PDF must automatically handle content overflow by creating additional pages, each with the correct header and footer, for properties with extensive data (e.g., many owners).
-3.  **Implement Digital Verification System:** To add legal validity, the PDF must include a security and verification system. This involves:
-    *   A visual scanned signature of the Subdirector.
-    *   A unique QR code and verification code on each certificate.
-    *   A backend database to log every generated certificate.
-    *   A public-facing endpoint for anyone to verify the authenticity of a certificate by its code.
-    *   The ability for administrators to annul a previously generated certificate.
-    *   The user wants to see and compare two different visual layouts (Option A: Minimalist, Option B: Security Box) for the verification block.
-4.  **Future DNS Configuration:** The verification URL should use the app's preview URL for now but be easily configurable to a production DNS () in the future.
+1.  **PDF Generation:** Generate a Certificado Catastral Sencillo PDF. The final visual style (Style B - Institutional) has been chosen, and it replaces the director's signature with a digital verification block.
+2.  **Digital Verification System:** The PDF must have a verifiable QR code and unique ID. The backend system for generating, publicly verifying, and annulling certificates must be fully functional.
+3.  **Petition-Linked Workflow:**
+    *   Users must be able to request a certificate via a Petición (Request), identifying the property by Código Predial Nacional (CPN) or Matrícula Inmobiliaria.
+    *   The system must correctly find the property by searching for the Matrícula in the nested R1/R2 records.
+    *   Staff must see a Generate Certificate button within the petition detail view.
+    *   Generating a certificate from a petition must pre-fill the Radicado number on the PDF.
+    *   Manual generation from the property viewer (with editable fields) must still be possible.
+4.  **Workflow Automation:**
+    *   Before staff generates a certificate, a confirmation modal must appear to verify that required documents and payment have been checked.
+    *   Upon successful generation, the system must send the PDF certificate via email to the petitioner.
+    *   The generated PDF must be attached to the petition, allowing the user to download it directly from the platform.
+    *   The petition's status must be automatically set to Finalizado.
+5.  **User Roles & Access:** A simplified view and workflow must exist for external users ( role), who can only create and view their own petitions.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is in an advanced state. The Actualización module's complex workflows are complete. The two most critical and recurring bugs from the previous session (mobile z-index issue and iOS GPS failure) have been successfully resolved and user-verified.
-
-The current work is focused on the Certificado Catastral Sencillo PDF in the Conservación module. A significant amount of work has been done:
-- The PDF layout has been iteratively refined to match the user's specifications, including fonts, margins, and content.
-- Multi-page support for long content has been successfully implemented.
-- The foundation for a digital verification system has been laid: a new database collection () has been added, and the logic to generate QR codes and unique verification IDs is in progress.
+The application has a FastAPI backend and a React frontend. The Certificado Catastral Sencillo workflow is nearly complete. The backend handles PDF generation, digital verification (generation, public verification, annulment), and property lookup (including nested searches in R1/R2 records). The frontend includes a petition creation form that conditionally asks for property identifiers, a petition detail page that shows certificate status and allows generation/download, and a separate management page for staff to view and annul all generated certificates. A test  account has been created and verified. The system has been updated to email the certificate and attach it to the petition for download, but this final part contains a bug.
 
 **Last working item**:
--   **Last item agent was working:** The agent was actively implementing the Digital Verification System for the PDF certificate. This involved processing the Subdirector's signature, adding a new  collection to the database, and creating the backend logic to generate unique verification codes, QR codes, and log each certificate upon creation. The agent was in the process of adding the API endpoints for verification and annulment.
+-   **Last item agent was working:** The agent was fixing the certificate finalization workflow. The user reported seeing an error message when finalizing a petition, although the petition status was correctly updated. The agent identified a  in the backend  function call and a separate issue where the generated PDF was not yet downloadable by the user from the petition detail page. The agent implemented fixes for both issues by correcting the function call and adding a file download endpoint and a corresponding button in the frontend.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. The next agent should use curl to: 1. Generate a certificate for a specific property. 2. Query the  collection to confirm a record was created. 3. Test the new public verification endpoint using the generated code. 4. Test the certificate annulment endpoint.
+-   **Which testing method agent to use?** both. First, use  to test the backend: call  for a valid petition, check logs to confirm the email is sent without errors, and then test the new  endpoint. Second, use the screenshot tool to log in as an administrator, navigate to the  page for a finalized petition, and verify the Descargar Certificado button appears and functions correctly.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: The MongoDB database is still named  (P2)**
-    -   **Description:** This is a carry-over issue from previous sessions. The database name in  should be changed to something more appropriate like .
+-   **Issue 1: Certificate Finalization Workflow Error (P0)**
+    -   **Description:** When an admin finalizes a certificate request, the user sees an error toast, even though the backend process (generation, DB update) completes. The agent identified and fixed a bug in the email function call that was causing a backend crash post-generation. The agent also implemented the user's request to make the PDF downloadable from the petition page. This entire corrected flow needs verification.
+    -   **Attempted fixes:** The agent corrected the  function call in  and modified  to handle the download. A JSX syntax error was also introduced and fixed.
+    -   **Next debug checklist:**
+        1.  Verify the backend starts without errors.
+        2.  Using an admin account, navigate to a Certificado catastral sencillo petition that has a valid, linked property but has not yet been finalized.
+        3.  Click the Generar Certificado button and confirm in the modal.
+        4.  Observe the frontend for any error toasts. Check the browser's developer console for network errors.
+        5.  Check the backend logs (==> /var/log/supervisor/backend.err.log <==
+  File "/root/.venv/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/middleware/cors.py", line 148, in simple_response
+    await self.app(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/root/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/root/.venv/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/root/.venv/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.venv/lib/python3.11/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/server.py", line 2690, in update_petition
+    await send_email(
+          ^^^^^^^^^^^
+TypeError: send_email() got an unexpected keyword argument 'attachments'
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8283]
+INFO:     Started server process [8613]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8613]
+INFO:     Started server process [8686]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-01-21 07:51:32,263 - root - INFO - Email sent to Camilo.alsina1@hotmail.com
+2026-01-21 07:56:08,188 - root - INFO - Email sent to ciudadano.prueba@gmail.com
+2026-01-21 07:58:04,319 - root - INFO - Email sent to Camilo.alsina1@hotmail.com
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8686]
+INFO:     Started server process [9532]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [9532]
+INFO:     Started server process [9669]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-01-21 07:59:26,637 - root - INFO - Email sent to Camilo.alsina1@hotmail.com
+2026-01-21 07:59:40,525 - root - INFO - Email sent to Camilo.alsina1@hotmail.com
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [9669]
+INFO:     Started server process [10024]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [93]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [72]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [48] using WatchFiles
+INFO:     Started server process [78]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+
+==> /var/log/supervisor/backend.out.log <==
+INFO:     10.64.136.245:40342 - "GET /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.126:39316 - "OPTIONS /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.13:38664 - "OPTIONS /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.7:57464 - "OPTIONS /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.9:49128 - "OPTIONS /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.9:49128 - "GET /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.94:43992 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.10:50140 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.10:50156 - "GET /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.131.203:59964 - "GET /api/petitions/mis-peticiones HTTP/1.1" 200 OK
+INFO:     10.64.131.203:59964 - "GET /api/petitions/mis-peticiones HTTP/1.1" 200 OK
+INFO:     10.64.131.203:46740 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     10.64.131.205:46664 - "GET /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.136.226:52262 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.129.10:34862 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.136.245:34038 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37026 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.129.9:36656 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.126:39300 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.9:36654 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.136.245:34038 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.126:39300 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.10:34862 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.136.226:52262 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.94:54306 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.126:39300 - "GET /api/petitions/mis-peticiones HTTP/1.1" 200 OK
+INFO:     10.64.129.9:36654 - "GET /api/petitions/mis-peticiones HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37026 - "GET /api/petitions/54e5adca-6549-4fd4-9bec-aed54858c459 HTTP/1.1" 200 OK
+INFO:     10.64.136.245:34038 - "GET /api/petitions/54e5adca-6549-4fd4-9bec-aed54858c459 HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37026 - "GET /api/petitions/54e5adca-6549-4fd4-9bec-aed54858c459/descargar-certificado HTTP/1.1" 200 OK
+INFO:     10.64.136.226:48802 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     10.64.136.245:38002 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.136.245:38002 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.126:56424 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.129.126:56422 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.7:35304 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.7:35314 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.129.7:35314 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.136.226:48802 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.9:59164 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.10:52676 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.13:36080 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.129.13:36080 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.136.226:48802 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.9:59164 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.9:59164 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.136.226:48802 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49082 - "GET /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.136.245:38002 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     10.64.129.126:56422 - "GET /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49736 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49736 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     10.64.136.226:56718 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "OPTIONS /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39290 - "OPTIONS /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49736 - "OPTIONS /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "OPTIONS /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.129.126:52314 - "OPTIONS /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39290 - "OPTIONS /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.136.245:41748 - "OPTIONS /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.13:40560 - "OPTIONS /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54372 - "OPTIONS /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60366 - "OPTIONS /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54372 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49736 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.13:40560 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54384 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.13:40564 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49746 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.136.226:56718 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.126:52314 - "GET /api/gdb/verificar-alerta-mensual HTTP/1.1" 200 OK
+INFO:     10.64.129.126:52326 - "GET /api/notificaciones HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "GET /api/predios/cambios/stats HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54372 - "GET /api/actualizacion/alertas-proximas HTTP/1.1" 200 OK
+INFO:     10.64.136.245:41748 - "GET /api/petitions/stats/dashboard HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "OPTIONS /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54372 - "OPTIONS /api/users HTTP/1.1" 200 OK
+INFO:     10.64.129.10:54384 - "OPTIONS /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.126:52326 - "OPTIONS /api/users HTTP/1.1" 200 OK
+INFO:     10.64.136.226:56718 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "GET /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49746 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "GET /api/petitions HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "GET /api/petitions/54e5adca-6549-4fd4-9bec-aed54858c459 HTTP/1.1" 200 OK
+INFO:     10.64.129.7:60360 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.10:40390 - "GET /api/petitions/54e5adca-6549-4fd4-9bec-aed54858c459 HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39302 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.9:39318 - "OPTIONS /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.7:44168 - "OPTIONS /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.9:34988 - "OPTIONS /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.94:49850 - "OPTIONS /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37510 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.136.226:37080 - "GET /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.136.245:37402 - "GET /api/gestores HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37510 - "GET /api/petitions/b3c982f3-86fe-406e-8e57-ab35fec0f653 HTTP/1.1" 200 OK
+INFO:     10.64.129.13:37510 - "GET /api/certificados/verificables?limit=100 HTTP/1.1" 200 OK
+INFO:     10.64.129.126:53568 - "GET /api/certificados/verificables?limit=100 HTTP/1.1" 200 OK) for any exceptions, especially related to SMTP or file handling.
+        6.  Verify that the petition status changes to Finalizado and a Descargar Certificado button appears. Test the download.
+    -   **Why fix this issue and what will be achieved with the fix?** This is the final step of the core workflow. Fixing it will provide a seamless, error-free experience for staff and deliver the certificate to the end-user.
+    -   **Status:** TESTING PENDING
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on other issue:** None
+
+-   **Issue 2: MongoDB database name is  (P2)**
+    -   **Description:** This is a low-priority carry-over issue. The database name specified in  should be updated from  to a production-relevant name like .
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Backend
 
 **In progress Task List**:
--   **Task 1: Complete PDF Digital Verification System (P0)**
-    -   **Description:** The user wants a robust verification system for the PDF. The backend foundation is partially built but needs completion.
-    -   **Where to resume:**
-        1.  Finalize the new API endpoints in :
-            *   : Public endpoint to check a certificate's validity.
-            *   : Private endpoint for admins to list all generated certificates.
-            *   : Private endpoint for admins to annul a certificate.
-        2.  Integrate the visual components into the PDF generation logic in . The user wants to compare two options (A and B). The agent should add a parameter or logic to generate both versions for comparison.
-        3.  Ensure the verification URL is easily configurable (currently hardcoded to the preview URL).
-    -   **What will be achieved with this?** A legally verifiable PDF certificate with a scannable QR code, enhancing the document's authenticity.
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Backend
+-   None.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
-*   **P1: Implement Certificado Catastral Especial**: Once the Sencillo version is approved, the agent needs to create a second, more detailed Especial version, likely with additional data sections.
-*   **P1: Configure Production DNS for Verification URL**: After user approval, the hardcoded preview URL for verification must be replaced with a variable from the  file to support the future production domain.
+*   **P1: Implement Payment Verification Workflow**: The user asked how to handle the payment of 45 mil pesos for the certificate. The current solution is a simple, un-enforced checkbox. A discussion is needed to define if this should be an integration with a payment provider or a more formal manual status update in the petition lifecycle.
+*   **P1: Implement Certificado Catastral Especial**: Once the Sencillo certificate workflow is fully approved, begin work on the more detailed Especial version.
+*   **P1: Configure Production DNS for Verification URL**: The hardcoded preview URL used in the QR code generation must be moved to an environment variable in  to allow for easy configuration in production.
 
 **Future Tasks:**
-*   **P2: PDF Report Generation (Actualización):** Implement the logic to generate a PDF report for a *visit* in the Actualización module.
+*   **P2: PDF Report Generation (Actualización):** Implement logic to generate a PDF report for a *visit* in the Actualización module.
 *   **P2: General Backlog:**
     *   Generate XTF files.
     *   Implement a history log for permission changes.
 
 **Completed work in this session**
--   **Bug Fix (Critical): Mobile Z-index Issue Resolved.** Fixed the issue where map controls appeared over the mobile sidebar in  by increasing the sidebar's z-index and hiding map controls when the menu is active. **(User Verified)**
--   **Bug Fix (Critical): iOS GPS Functionality Fixed.** Resolved user confusion by making the map's Locate button also activate the GPS if it was off, providing a much more intuitive user experience. **(User Verified)**
--   **Bug Fix (Backend): Exact Match Search for .** Changed the search logic in  from a partial () to an exact match.
--   **Bug Fix (Frontend): Corrected  Display in  Popup.**
--   **Feature (PDF): Multi-Page Support.** The  function in  was completely refactored to support content that spans multiple pages, correctly rendering headers and footers on each page.
--   **Feature (PDF): Precise Layout and Font Implementation.** Iteratively adjusted the PDF layout, margins, font sizes, and installed the Carlito font (a metric-compatible replacement for Calibri Light) to exactly match the user's visual requirements.
--   **Feature (PDF): Editable PDF Fields.** The certificate number and radicado number were implemented as editable form fields within the generated PDF.
--   **Feature (PDF): Dynamic Content and Formatting.** Updated the PDF to use the institutional green color, correct date formats, and display area values as requested (39 ha 3750 m²).
--   **Refinement (UI):** Removed a redundant Go to GDB button from the  map controls.
+-   **Feature: Petition-Linked Certificate Workflow:** Implemented the full flow for requesting a certificate via a petition, searching for the property (including in nested R1/R2 records), and linking it.
+-   **Feature: Workflow Automation:** Added logic to show a confirmation modal, generate the certificate with a pre-filled radicado, send it via email, attach it for download, and finalize the petition.
+-   **Feature: Certificate Management UI:** Created a new page () for staff to view, filter, and annul all generated certificates.
+-   **Bug Fix:** Corrected the logic to find properties by  by searching within the  array.
+-   **Bug Fix:** Fixed the sorting on the  page to correctly display the most recent petitions first.
+-   **UX Improvement:** The UI now clearly displays Certificado no disponible when a petition's associated property cannot be found, preventing user confusion.
+-   **Decision/Refinement:** Finalized the PDF design to use only Style B (institutional block) and removed the director's signature image from the layout.
+-   **User Management:** Created and verified a test user with the  role ().
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1: MongoDB database name.** The database is still named . This should be updated in .
 
 **Known issue recurrence from previous fork**
--   None. The two major recurring issues (GPS on iOS and Z-index) were definitively fixed and verified in this session.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Advanced PDF Generation ():** Deep refactoring to support multi-page documents, custom font registration (), drawing images, using page templates, and creating editable PDF forms ().
--   **PDF Security & Verification:** Implementation of a verification workflow using  for QR generation,  and  for unique codes, and a new MongoDB collection () to persist certificate data for external validation.
--   **Frontend Debugging (Z-Index):** Diagnosed and fixed a stacking context issue by identifying that a  element's z-index was lower than controls inside a  container. The solution involved both increasing the sidebar's z-index and conditionally hiding the interfering controls with CSS.
--   **Frontend Debugging (UX):** Resolved a critical usability issue not by fixing a code bug, but by understanding the user's mental model and adapting the UI to be more intuitive (consolidating GPS activation and centering into one button).
--   **System Administration:** Installed fonts (, a Calibri replacement) into the Debian container environment and rebuilt the font cache ().
+-   **File Serving (FastAPI):** Using  to create a download endpoint () for generated PDFs stored on the server.
+-   **Email with Attachments:** Using an SMTP library ( function) to send emails with the generated PDF as an attachment.
+-   **Conditional Rendering (React):** Heavily used in  to display different UI elements based on petition type, status, and whether a certificate has been generated.
+-   **Advanced MongoDB Queries:** Implementing queries that search for a value within an array of nested documents (e.g., ).
+-   **Data Consistency:** Adding logic to update the  document with  data *during* the certificate generation step, ensuring data integrity for petitions created before search logic was improved.
 
 **key DB schema**
--   ** (New):**
-    -   : (String, unique) - The human-readable code for verification.
-    -   : (String) - SHA256 hash of the generated PDF to ensure integrity.
-    -   : (String) - Reference to the property.
-    -   : (DateTime)
-    -   : (String) - User who created it.
-    -   : (String) - 'activo' or 'anulado'.
-    -   : (String) - The URL the QR code points to.
+-   ** (Modified):**
+    -   : (Object) - Caches key property data when found.
+    -   : (Boolean)
+    -   : (String)
+    -   : (String) - Path to the saved PDF file in .
 
 **All files of reference**
--    (Main file for current task)
--    (Location of fixed GPS bug)
--    (Location of fixed z-index bug)
--    (Contains all user-provided images for the PDF)
+-   
+-   
+-   
+-   
+-   
+-   
 
 **Areas that need refactoring**:
--   The  function in  has grown very large. It should be broken down into smaller, single-responsibility helper functions (e.g., for drawing the header, the footer, each data section, and the verification block).
+-   The  logic within  is becoming large. It handles database lookups, PDF generation, file saving, email sending, and notification creation. This could be broken down into smaller, single-responsibility services.
+-    is now over 1000 lines and contains complex conditional rendering. The Certificado Catastral section should be extracted into its own dedicated component to improve readability and maintainability.
 
 **key api endpoints**
--   **Modified Endpoint:**
-    -   : Now generates a multi-page, verifiable PDF and creates a record in the  collection.
--   **New Endpoints (In Progress):**
-    -   : A public endpoint to check a certificate's validity.
-    -   : An admin endpoint to list generated certificates.
-    -   : An admin endpoint to annul a certificate.
+-   ** (New):** The core endpoint for the staff workflow. Triggers certificate generation, email sending, notification, and finalizes the petition.
+-   ** (New):** Allows an authenticated user to download the generated PDF associated with a petition.
+-   ** (Modified):** Now accepts  or  and attempts to find and link the corresponding property upon creation.
 
 **Critical Info for New Agent**
--   **Priority 1 is completing the PDF verification system.** The user wants to see and compare two visual options (A and B) for the verification block in the PDF. You must implement the logic to generate both versions.
--   **The PDF layout is paramount.** The user is highly detail-oriented. Pay close attention to visual alignment, spacing, and font usage to match the user's reference images.
--   **Use the  font.** It has been installed as a metric-compatible replacement for . Use  and . Do not try to install Calibri again.
--   **The verification URL is configurable.** For now, continue using the preview URL for the QR code, but ensure the code is structured to easily accept a production URL from an environment variable later.
+-   The highest priority is to test and confirm the fix for the certificate finalization workflow. The user should be able to click Generate Certificate, confirm the action, and see a success message without any errors, and the petitioner should receive an email.
+-   The property search logic is crucial. The system MUST find properties by  by searching inside the  array. This is a non-obvious requirement that underpins the entire workflow.
+-   The user's last message was an out-of-scope request for an electronic invoicing app. The previous agent correctly handled this by explaining the complexities and redirecting back to the current project. Be prepared to gently refocus the user on the Asomunicipios project if they bring it up again.
 
 **documents and test reports created in this job**
--    (Updated with latest requirements)
+-   None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for multi-page support for the PDF. **(Implemented)**
-2.  **User:** Asks if a digital signature with a security seal is possible. **(Agent proposed options)**
-3.  **User:** Likes the QR code verification idea (Option 2) and wants to see two visual variations (A and B). Also confirms they have a signature image and that the verification URL can be a preview URL for now. Asks for annulment capability. **(Agent started implementation)**
-4.  **User:** Provides the signature image. **(Agent processed it)**
-5.  **User:** Gives feedback on the certificate layout. **(Agent implemented fixes)**
-6.  **User:** Asks how to keep the same agent for future sessions. **(Agent provided instructions)**
-7.  **User:** Provides feedback on the PDF layout: remove Firma Digital Verificada, add space *above* Dalgie's name for a signature, and stretch the footer image. Asks for the hex code of a green color in an image. **(Agent implemented layout changes and analyzed image)**
-8.  **User:** Provides a new footer image. **(Agent implemented)**
-9.  **User:** Asks to move the header/footer closer to the page edges and to add multi-page support. **(Agent implemented header/footer move, planned multi-page support)**
-10. **User (LATEST):** Provides an image of a property with many owners that breaks the single-page layout, reinforcing the need for multi-page support. **(Agent implemented multi-page support)**
+1.  **User (resolved):** Requested UI tweaks (name, color, logo) and asked how to download/annul certificates.
+2.  **User (resolved):** Reported being unable to download the two different certificate styles.
+3.  **User (resolved):** Chose the final PDF style (Style B), requested removing the signature, and asked how to link the certificate to a petition.
+4.  **User (resolved):** Clarified the two required workflows: automatic generation from a petition and manual generation from the property viewer.
+5.  **User (resolved):** Requested multiple changes: rename certificate type, create a test user, add a confirmation modal, send certificate via email, and fix petition sorting.
+6.  **User (resolved):** Reported an error on confirm/send and that sorting was still broken.
+7.  **User (resolved):** Reported that petitions with a  were not working and requested a Certificado no disponible message for properties without R1/R2 data.
+8.  **User (resolved):** Confirmed that the  is stored in the R1/R2 data.
+9.  **User (Pending Fix Verification):** Reported an error during the finalization of petition 5519 (though it still finalizes). Also requested that the certificate be downloadable from the user's platform view.
+10. **User (Out of Scope):** Asked for a new application for electronic invoicing in Colombia. The agent correctly deflected and refocused on the current project.
 
 **Project Health Check:**
--   **Broken:** None.
+-   **Broken:** The final step of the certificate generation workflow shows an error to the user due to a now-fixed bug in the backend email-sending logic. The fix needs to be verified.
 -   **Mocked:**
-    -   The certificate verification URL in  is temporarily using the preview app URL. This needs to be made configurable via an environment variable for production.
+    -   The QR code's verification URL points to a preview environment.
+    -   Payment verification for the certificate is a simple, non-enforced checkbox.
 
 **3rd Party Integrations**
 -   **reportlab:** Backend PDF generation.
--   **qrcode:** NEW. Used for generating QR codes for the PDF verification system.
+-   **qrcode:** Used for generating QR codes for the PDF verification system.
 -   **pyogrio, shapely, pyproj, geopandas:** Backend GDB/GIS data processing.
 -   **react-leaflet:** Frontend map rendering.
 
 **Testing status**
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None in this session.
+-   **Test files created:** None.
 -   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Administrator:**
     -   **Email:** 
     -   **Password:** 
--   **Gestor:**
+-   **External User:**
     -   **Email:** 
+    -   **Password:** 
 
 **What agent forgot to execute**
--   The agent did not address the long-standing issue of the MongoDB database being named .
--   The agent started implementing the verification system but did not complete the endpoints for listing and annulling certificates, nor the logic to generate the two visual options (A and B) requested by the user.</analysis>
+-   The agent did not address the long-standing, low-priority issue of the MongoDB database being named .</analysis>
