@@ -746,6 +746,93 @@ export default function PetitionDetail() {
                 </div>
               </div>
 
+              {/* Sección de Certificado Catastral - Solo para trámites de certificado */}
+              {petition.tipo_tramite?.toLowerCase().includes('certificado') && (
+                <div className="border-t border-slate-200 pt-6">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-5 h-5 text-emerald-700" />
+                      <span className="font-semibold text-emerald-800">Certificado Catastral</span>
+                    </div>
+                    
+                    {/* Información del predio relacionado */}
+                    {petition.predio_relacionado ? (
+                      <div className="mb-4 space-y-2 text-sm">
+                        <p><span className="text-slate-500">Código Predial:</span> <span className="font-mono font-medium">{petition.predio_relacionado.codigo_predial || 'N/A'}</span></p>
+                        {petition.predio_relacionado.matricula && (
+                          <p><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{petition.predio_relacionado.matricula}</span></p>
+                        )}
+                        {petition.predio_relacionado.direccion && (
+                          <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mb-4 text-sm">
+                        {petition.codigo_predial_buscado && (
+                          <p><span className="text-slate-500">Código buscado:</span> <span className="font-mono">{petition.codigo_predial_buscado}</span></p>
+                        )}
+                        {petition.matricula_buscada && (
+                          <p><span className="text-slate-500">Matrícula buscada:</span> <span className="font-medium">{petition.matricula_buscada}</span></p>
+                        )}
+                        {!petition.codigo_predial_buscado && !petition.matricula_buscada && (
+                          <p className="text-amber-600">⚠️ No se especificó código predial ni matrícula</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Estado del certificado */}
+                    {petition.certificado_generado ? (
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-emerald-600">
+                          <CheckCircle className="w-3 h-3 mr-1" /> Certificado Generado
+                        </Badge>
+                        <span className="text-xs text-slate-500">
+                          Código: {petition.certificado_codigo}
+                        </span>
+                      </div>
+                    ) : (
+                      /* Botón para generar certificado - Solo staff */
+                      ['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
+                        <Button
+                          className="bg-emerald-700 hover:bg-emerald-800"
+                          onClick={async () => {
+                            try {
+                              toast.info('Generando certificado catastral...');
+                              const token = localStorage.getItem('token');
+                              const response = await fetch(`${API}/petitions/${petition.id}/certificado`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.detail || 'Error al generar');
+                              }
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Certificado_${petition.radicado}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              window.URL.revokeObjectURL(url);
+                              toast.success('Certificado generado y descargado');
+                              // Recargar petición para mostrar el estado actualizado
+                              fetchPetition();
+                            } catch (error) {
+                              toast.error(error.message || 'Error al generar el certificado');
+                            }
+                          }}
+                          data-testid="generar-certificado-btn"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          Generar Certificado (Radicado: {petition.radicado})
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
               {petition.notas && (
                 <div className="border-t border-slate-200 pt-6">
                   <p className="text-sm text-slate-500 mb-2">Notas</p>
