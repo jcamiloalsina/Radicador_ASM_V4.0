@@ -260,3 +260,7 @@ ortoimagenes/originales/orto_9ee7edef.tif
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
