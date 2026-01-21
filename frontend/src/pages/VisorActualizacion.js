@@ -885,35 +885,43 @@ export default function VisorActualizacion() {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Datos de la visita
+      const visitaCompleta = {
+        ...visitaData,
+        firma_base64: firmaBase64,
+        fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
+        ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
+        realizada_por: user?.email,
+        realizada_en: new Date().toISOString()
+      };
+      
       await axios.patch(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
         {
           estado_visita: 'visitado',
-          visita: {
-            ...visitaData,
-            firma_base64: firmaBase64,
-            fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
-            ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
-            realizada_por: user?.email,
-            realizada_en: new Date().toISOString()
-          },
+          sin_cambios: visitaData.sin_cambios,  // Marcar si es visitado sin cambios
+          visita: visitaCompleta,
           visitado_por: user?.email,
           visitado_en: new Date().toISOString()
         },
         { headers: { Authorization: `Bearer ${token}` }}
       );
       
-      toast.success('Formato de visita guardado exitosamente');
+      toast.success(visitaData.sin_cambios 
+        ? 'Visita guardada - Predio marcado como visitado sin cambios' 
+        : 'Formato de visita guardado exitosamente'
+      );
       setShowVisitaModal(false);
       
       // Actualizar estado local
       setPrediosR1R2(prev => prev.map(p => 
         (p.codigo_predial === selectedPredio.codigo_predial || p.numero_predial === selectedPredio.numero_predial)
-          ? { ...p, estado_visita: 'visitado' }
+          ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
           : p
       ));
       
-      setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado' }));
+      setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }));
       setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
       setShowPredioDetail(false);
     } catch (error) {
