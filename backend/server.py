@@ -7016,7 +7016,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         width=70,
         height=14,
         fontSize=12,
-        fontName=fuente_normal,
+        fontName='Helvetica',
         borderWidth=0,
         fillColor=colors.white,
         textColor=negro,
