@@ -7011,84 +7011,54 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     
     # === SECCIÓN 1: INFORMACIÓN CATASTRAL DEL PREDIO ===
     y = draw_section_header("INFORMACIÓN CATASTRAL DEL PREDIO", y)
-    c.setFont(fuente_bold, 11)
-    c.drawCentredString(width/2, y - 8, "INFORMACION CATASTRAL DEL PREDIO")
-    y -= 18
     
-    # Predio No. (alineado a la derecha)
-    c.setFillColor(negro)
-    c.setFont(fuente_normal, 11)
-    c.drawRightString(right_margin - 5, y, "Predio No. 01")
-    y -= 14
+    # === SECCIÓN 2: INFORMACIÓN JURÍDICA ===
+    y = draw_section_header("INFORMACIÓN JURÍDICA", y)
     
-    # Función para dibujar fila de campo con líneas de tabla
-    def draw_field(label, value, y_pos, label_width=160):
-        # Línea superior
-        c.setStrokeColor(linea_gris)
-        c.setLineWidth(0.5)
-        c.line(left_margin, y_pos + 3, right_margin, y_pos + 3)
-        # Texto
-        c.setFillColor(negro)
-        c.setFont(fuente_bold, 11)
-        c.drawString(left_margin + 3, y_pos - 8, label)
-        c.setFont(fuente_normal, 11)
-        value_str = str(value) if value else ""
-        c.drawString(left_margin + label_width, y_pos - 8, value_str)
-        return y_pos - 16
-    
-    # === BARRA VERDE: INFORMACIÓN JURÍDICA ===
-    c.setFillColor(verde_seccion)
-    c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
-    c.setFont(fuente_bold, 12)
-    c.drawString(left_margin + 5, y - 8, "INFORMACIÓN JURÍDICA")
-    y -= 18
-    
+    # Obtener propietarios del R1/R2
     propietarios = predio.get('propietarios', [])
-    if propietarios:
-        prop = propietarios[0]
-        y = draw_field("Nombre de los propietarios", prop.get('nombre_propietario', ''), y)
-        y = draw_field("Número de propietario", "01", y)
-        y = draw_field("Tipo de documento", prop.get('tipo_documento', 'N'), y)
-        y = draw_field("Número de documento", prop.get('numero_documento', ''), y)
-    else:
-        y = draw_field("Nombre de los propietarios", predio.get('nombre_propietario', 'N/A'), y)
-        y = draw_field("Número de propietario", "01", y)
-        y = draw_field("Tipo de documento", predio.get('tipo_documento', 'N'), y)
-        y = draw_field("Número de documento", predio.get('numero_documento', ''), y)
-    
-    matricula = ''
     r2_registros = predio.get('r2_registros', [])
+    
+    # Si hay múltiples propietarios, mostrarlos todos
+    if propietarios:
+        for i, prop in enumerate(propietarios, 1):
+            nombre = prop.get('nombre_propietario', '')
+            tipo_doc = prop.get('tipo_documento', 'N')
+            num_doc = prop.get('numero_documento', '')
+            derecho = prop.get('tipo_derecho', '')
+            
+            y = draw_field(f"Propietario {i}", nombre, y)
+            y = draw_field("Tipo documento", tipo_doc, y)
+            y = draw_field("Número documento", num_doc, y)
+            if derecho:
+                y = draw_field("Tipo derecho", derecho, y)
+    else:
+        y = draw_field("Propietario", predio.get('nombre_propietario', 'N/A'), y)
+        y = draw_field("Tipo documento", predio.get('tipo_documento', 'N'), y)
+        y = draw_field("Número documento", predio.get('numero_documento', ''), y)
+    
+    # Matrícula inmobiliaria del R2
+    matricula = ''
     if r2_registros:
         matricula = r2_registros[0].get('matricula_inmobiliaria', '')
-    y = draw_field("Matrícula", matricula or 'N/A', y)
+    y = draw_field("Matrícula inmobiliaria", matricula or 'Sin matrícula', y)
     
-    # Línea inferior de la sección
-    c.setStrokeColor(linea_gris)
-    c.line(left_margin, y + 3, right_margin, y + 3)
-    y -= 6
-    
-    # === BARRA VERDE: INFORMACIÓN FÍSICA ===
-    c.setFillColor(verde_seccion)
-    c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
-    c.setFillColor(blanco)
-    c.setFont(fuente_bold, 12)
-    c.drawString(left_margin + 5, y - 8, "INFORMACIÓN FÍSICA")
-    y -= 18
+    # === SECCIÓN 3: INFORMACIÓN FÍSICA ===
+    y = draw_section_header("INFORMACIÓN FÍSICA", y)
     
     municipio = predio.get('municipio', '')
     if municipio in ['Río de Oro', 'Rio de Oro']:
-        depto_cod = "20-CESAR"
-        muni_cod = "614- RIO DE ORO"
+        depto_cod = "20 - CESAR"
+        muni_cod = "614 - RIO DE ORO"
     else:
-        depto_cod = "54-NORTE DE SANTANDER"
+        depto_cod = "54 - NORTE DE SANTANDER"
         muni_mapping = {
-            'Ábrego': '003- ÁBREGO', 'Bucarasica': '109- BUCARASICA',
-            'Convención': '206- CONVENCIÓN', 'Cáchira': '128- CÁCHIRA',
-            'El Carmen': '245- EL CARMEN', 'El Tarra': '250- EL TARRA',
-            'Hacarí': '344- HACARÍ', 'La Playa': '398- LA PLAYA',
-            'San Calixto': '670- SAN CALIXTO', 'Sardinata': '720- SARDINATA',
-            'Teorama': '800- TEORAMA'
+            'Ábrego': '003 - ÁBREGO', 'Bucarasica': '109 - BUCARASICA',
+            'Convención': '206 - CONVENCIÓN', 'Cáchira': '128 - CÁCHIRA',
+            'El Carmen': '245 - EL CARMEN', 'El Tarra': '250 - EL TARRA',
+            'Hacarí': '344 - HACARÍ', 'La Playa': '398 - LA PLAYA',
+            'San Calixto': '670 - SAN CALIXTO', 'Sardinata': '720 - SARDINATA',
+            'Teorama': '800 - TEORAMA'
         }
         muni_cod = muni_mapping.get(municipio, municipio)
     
@@ -7098,26 +7068,23 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     y = draw_field("Número predial anterior", predio.get('codigo_homologado', ''), y)
     y = draw_field("Dirección", predio.get('direccion', ''), y)
     
-    # Área terreno con formato ha y m²
+    # Área terreno
     area_terreno = predio.get('area_terreno', 0)
-    if area_terreno >= 10000:
+    if area_terreno and area_terreno >= 10000:
         ha = area_terreno / 10000
-        area_str = f"{ha:.3f} ha {int(area_terreno):,} m²".replace(',', '.')
-    else:
+        area_str = f"{ha:.4f} ha ({int(area_terreno):,} m²)".replace(',', '.')
+    elif area_terreno:
         area_str = f"{int(area_terreno):,} m²".replace(',', '.')
-    y = draw_field("Área terrena", area_str, y)
+    else:
+        area_str = "N/A"
+    y = draw_field("Área terreno", area_str, y)
     
     area_construida = predio.get('area_construida', 0)
-    y = draw_field("Área construida", f"{int(area_construida):,} m²".replace(',', '.'), y)
+    area_const_str = f"{int(area_construida):,} m²".replace(',', '.') if area_construida else "0 m²"
+    y = draw_field("Área construida", area_const_str, y)
     
-    # Línea inferior
-    c.setStrokeColor(linea_gris)
-    c.line(left_margin, y + 3, right_margin, y + 3)
-    y -= 6
-    
-    # === BARRA VERDE: INFORMACIÓN ECONÓMICA ===
-    c.setFillColor(verde_seccion)
-    c.rect(left_margin, y - 12, content_width, 15, fill=1, stroke=0)
+    # === SECCIÓN 4: INFORMACIÓN ECONÓMICA ===
+    y = draw_section_header("INFORMACIÓN ECONÓMICA", y)
     c.setFillColor(blanco)
     c.setFont(fuente_bold, 12)
     c.drawString(left_margin + 5, y - 8, "INFORMACIÓN ECONÓMICA")
