@@ -2387,6 +2387,25 @@ export default function VisorActualizacion() {
                 </div>
               </div>
               
+              {/* Opción: Visitado sin cambios */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visitaData.sin_cambios}
+                    onChange={(e) => setVisitaData(prev => ({ ...prev, sin_cambios: e.target.checked }))}
+                    className="rounded border-blue-300 text-blue-600 mt-1"
+                  />
+                  <div>
+                    <span className="font-medium text-blue-800">Visitado sin cambios</span>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Marque esta opción si el predio fue visitado y verificado, pero los datos catastrales 
+                      no requieren modificación. El predio será enviado al coordinador para su aprobación final.
+                    </p>
+                  </div>
+                </label>
+              </div>
+              
               {/* Observaciones */}
               <div>
                 <Label>Observaciones de la Visita</Label>
