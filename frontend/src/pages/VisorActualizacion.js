@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Offline sync
+import useOfflineSync from '../hooks/useOfflineSync';
+
 // UI Components
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
