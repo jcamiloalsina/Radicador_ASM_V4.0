@@ -6894,16 +6894,16 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # === ENCABEZADO - Imagen completa de ASOMUNICIPIOS Gestor Catastral ===
     encabezado_path = Path("/app/backend/logos/encabezado_gestor_catastral.png")
     if encabezado_path.exists():
-        encabezado_width = content_width
-        encabezado_height = 1.8 * cm
-        encabezado_x = left_margin
-        encabezado_y = height - 2.5 * cm
+        encabezado_width = content_width + 1 * cm  # Un poco más ancho
+        encabezado_height = 2.0 * cm
+        encabezado_x = left_margin - 0.5 * cm  # Centrado
+        encabezado_y = height - 2.2 * cm  # Más arriba, casi pegado al borde
         c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
                     width=encabezado_width, height=encabezado_height, 
                     preserveAspectRatio=True, mask='auto')
     
     # === LÍNEA 1: Fecha (izquierda) y Certificado N° (derecha) ===
-    y_linea1 = height - 3.0 * cm
+    y_linea1 = height - 2.8 * cm  # Ajustado para el nuevo encabezado
     
     # Fecha (izquierda)
     fecha_str = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
