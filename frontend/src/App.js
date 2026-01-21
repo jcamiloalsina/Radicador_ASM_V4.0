@@ -22,6 +22,7 @@ import PermissionsManagement from "./pages/PermissionsManagement";
 import ProyectosActualizacion from "./pages/ProyectosActualizacion";
 import VisorActualizacion from "./pages/VisorActualizacion";
 import GestionPropuestas from "./pages/GestionPropuestas";
+import CertificadosGestion from "./pages/CertificadosGestion";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
             <Route path="proyectos-actualizacion" element={<ProyectosActualizacion />} />
             <Route path="visor-actualizacion/:proyectoId" element={<VisorActualizacion />} />
             <Route path="gestion-propuestas" element={<GestionPropuestas />} />
+            <Route path="certificados" element={<CertificadosGestion />} />
           </Route>
         </Routes>
       </BrowserRouter>
