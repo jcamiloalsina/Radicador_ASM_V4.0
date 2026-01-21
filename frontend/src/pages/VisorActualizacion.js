@@ -321,9 +321,28 @@ export default function VisorActualizacion() {
       const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPrediosR1R2(response.data.predios || []);
+      const predios = response.data.predios || [];
+      setPrediosR1R2(predios);
+      
+      // Guardar automáticamente para modo offline
+      if (predios.length > 0 && proyecto) {
+        downloadForOffline(predios, null, proyecto.municipio);
+      }
     } catch (error) {
       console.error('Error cargando predios R1/R2:', error);
+      
+      // Si está offline, intentar cargar desde IndexedDB
+      if (!navigator.onLine) {
+        try {
+          const { predios } = await getOfflineData();
+          if (predios.length > 0) {
+            setPrediosR1R2(predios);
+            toast.info('Datos cargados desde caché offline');
+          }
+        } catch (offlineError) {
+          console.error('Error cargando datos offline:', offlineError);
+        }
+      }
     }
   };
   
