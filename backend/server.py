@@ -7383,6 +7383,132 @@ async def generar_certificado_catastral_endpoint(
     )
 
 
+@api_router.get("/petitions/{petition_id}/certificado")
+async def generar_certificado_desde_peticion(
+    petition_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera un certificado catastral PDF desde una petición.
+    El radicado de la petición se usa automáticamente en el PDF.
+    """
+    # Solo coordinador, administrador y atencion_usuario pueden generar certificados
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para generar certificados")
+    
+    # Buscar la petición
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    # Verificar que sea un tipo de certificado
+    tipo = petition.get('tipo_tramite', '').lower()
+    if 'certificado' not in tipo:
+        raise HTTPException(status_code=400, detail="Esta petición no es de tipo certificado catastral")
+    
+    # Buscar el predio relacionado
+    predio = None
+    predio_relacionado = petition.get('predio_relacionado')
+    
+    if predio_relacionado and predio_relacionado.get('predio_id'):
+        predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
+    
+    # Si no hay predio relacionado, buscar por código o matrícula guardada
+    if not predio:
+        codigo_buscado = petition.get('codigo_predial_buscado')
+        matricula_buscada = petition.get('matricula_buscada')
+        
+        if codigo_buscado:
+            predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
+        elif matricula_buscada:
+            predio = await db.predios.find_one({"matricula_inmobiliaria": matricula_buscada}, {"_id": 0})
+    
+    if not predio:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontró el predio asociado a esta petición. Verifique el código predial o matrícula ingresados."
+        )
+    
+    # Generar código de verificación
+    codigo_verificacion = generar_codigo_verificacion()
+    
+    # Registrar en la base de datos de certificados verificables
+    propietarios = predio.get('propietarios', [])
+    propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios] if propietarios else ['N/A']
+    
+    certificado_record = {
+        "id": str(uuid.uuid4()),
+        "codigo_verificacion": codigo_verificacion,
+        "predio_id": predio.get('id'),
+        "codigo_predial": predio.get('codigo_predial_nacional'),
+        "municipio": predio.get('municipio'),
+        "direccion": predio.get('direccion'),
+        "propietarios": propietarios_nombres,
+        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+        "generado_por": current_user['id'],
+        "generado_por_nombre": current_user['full_name'],
+        "estado": "activo",
+        "hash_documento": "",
+        # Vinculación con la petición
+        "petition_id": petition_id,
+        "radicado": petition.get('radicado'),
+        "generado_desde_peticion": True
+    }
+    
+    # Calcular hash después de generar el PDF
+    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(timezone.utc).isoformat()}")
+    certificado_record["hash_documento"] = hash_doc
+    
+    await db.certificados_verificables.insert_one(certificado_record)
+    
+    # Firmante siempre es Dalgie Esperanza Torrado Rizo
+    firmante = {
+        "full_name": "DALGIE ESPERANZA TORRADO RIZO",
+        "cargo": "Subdirectora Financiera y Administrativa"
+    }
+    
+    # Quien proyecta es el usuario actual
+    proyectado_por = current_user['full_name']
+    
+    # Generar PDF con verificación y radicado de la petición
+    pdf_bytes = generate_certificado_catastral(
+        predio, 
+        firmante, 
+        proyectado_por, 
+        codigo_verificacion,
+        radicado=petition.get('radicado')  # Pasar el radicado de la petición
+    )
+    
+    # Actualizar la petición para indicar que se generó el certificado
+    await db.petitions.update_one(
+        {"id": petition_id},
+        {
+            "$set": {
+                "certificado_generado": True,
+                "certificado_codigo": codigo_verificacion,
+                "certificado_fecha": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Guardar temporalmente
+    temp_path = UPLOAD_DIR / f"certificado_{petition_id}_{uuid.uuid4()}.pdf"
+    with open(temp_path, 'wb') as f:
+        f.write(pdf_bytes)
+    
+    # Nombre del archivo
+    radicado = petition.get('radicado', petition_id)
+    codigo = predio.get('codigo_predial_nacional', '')
+    filename = f"Certificado_Catastral_{radicado}_{codigo}.pdf"
+    
+    return FileResponse(
+        path=temp_path,
+        filename=filename,
+        media_type='application/pdf'
+    )
+
+
 # === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
 
 @api_router.get("/verificar/{codigo_verificacion}", response_class=HTMLResponse)
