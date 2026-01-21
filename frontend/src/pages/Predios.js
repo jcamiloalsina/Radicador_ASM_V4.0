@@ -2308,7 +2308,26 @@ export default function Predios() {
           <h1 className="text-2xl font-bold text-slate-900 font-outfit">Gestión de Predios</h1>
           <p className="text-sm text-slate-500">Sistema de información catastral - Código Nacional Catastral</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Indicador Offline */}
+          {!isOnline && (
+            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
+              <WifiOff className="w-3 h-3 mr-1" />
+              Sin conexión
+            </Badge>
+          )}
+          {offlineStats.cambiosPendientes > 0 && (
+            <Badge 
+              variant="outline" 
+              className="bg-blue-100 text-blue-700 border-blue-300 cursor-pointer"
+              onClick={forceSync}
+              title="Click para sincronizar"
+            >
+              <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+              {offlineStats.cambiosPendientes} pendientes
+            </Badge>
+          )}
+          
           {/* Botón Exportar Excel - solo cuando está dentro de un municipio */}
           {!showDashboard && (
             <Button variant="outline" onClick={handleExportExcel}>
