@@ -246,6 +246,7 @@ export default function DashboardLayout() {
       conservacionItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
       conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
       conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+      conservacionItems.push({ path: '/dashboard/certificados', label: 'Certificados', icon: ShieldCheck });
     }
     if (isCoordAdmin) {
       conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
