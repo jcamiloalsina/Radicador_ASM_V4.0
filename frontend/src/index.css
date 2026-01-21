@@ -195,10 +195,11 @@ code {
     z-index: 999999 !important;
   }
   
-  /* Ocultar controles del mapa cuando hay overlay activo */
-  body:has([data-sidebar-open="true"]) .map-controls,
-  body:has(.fixed.inset-0) .absolute.z-\[400\] {
-    display: none !important;
+  /* Ocultar controles del mapa cuando el sidebar está abierto */
+  body[data-sidebar-open="true"] .absolute.z-\[400\],
+  body[data-sidebar-open="true"] .leaflet-control-container {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 }
 
