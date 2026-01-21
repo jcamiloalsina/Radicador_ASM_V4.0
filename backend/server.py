@@ -7464,6 +7464,15 @@ async def generar_certificado_catastral_endpoint(
     # Generar PDF con verificación
     pdf_bytes = generate_certificado_catastral(predio, firmante, proyectado_por, codigo_verificacion)
     
+    # Calcular hash del PDF generado
+    hash_pdf = hashlib.sha256(pdf_bytes).hexdigest()
+    
+    # Actualizar el certificado con el hash del PDF
+    await db.certificados_verificables.update_one(
+        {"codigo_verificacion": codigo_verificacion},
+        {"$set": {"hash_pdf": hash_pdf}}
+    )
+    
     # Guardar temporalmente
     temp_path = UPLOAD_DIR / f"certificado_{predio_id}_{uuid.uuid4()}.pdf"
     with open(temp_path, 'wb') as f:
