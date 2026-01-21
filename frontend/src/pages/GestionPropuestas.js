@@ -758,6 +758,7 @@ export default function GestionPropuestas() {
           </Table>
         )}
       </div>
+      )}
       
       {/* Modal de detalle con vista comparativa */}
       <Dialog open={showDetalleModal} onOpenChange={(open) => {
