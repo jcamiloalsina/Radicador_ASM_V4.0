@@ -7222,28 +7222,27 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.drawString(left_margin + 250, y, "Revisó: Juan C. Alsina")
     y -= 18
     
-    # === NOTAS ===
+    # === NOTAS === - Tamaño 8 para las notas
     c.setFillColor(negro)
-    c.setFont("Helvetica-Bold", 7)
+    c.setFont(fuente_bold, 8)
     c.drawString(left_margin, y, "NOTA:")
-    y -= 9
+    y -= 10
     
-    c.setFont("Helvetica", 5.5)
+    c.setFont(fuente_normal, 7)
     notas = [
         "• La presente información no sirve como prueba para establecer actos constitutivos de posesión.",
-        "• De conformidad con el artículo 2.2.2.2.8 del Decreto 148 de 2020, Inscripción o incorporación catastral. La información catastral resultado de los procesos de formación, actualización o conservación se",
-        "  inscribirá o incorporará en la base catastral con la fecha del acto administrativo que lo ordena.",
-        "• Adicionalmente de conformidad con el artículo 29 de la resolución No. 1149 de 2021 emanada del Instituto Geográfico Agustín Codazzi, \"Efecto jurídico de la inscripción catastral. La inscripción en el catastro no",
-        "  constituye título de dominio, ni sanea los vicios de que adolezca la titulación presentada o la posesión del interesado, y no puede alegarse como excepción contra el que pretenda tener mejor derecho a la propiedad",
-        "  o posesión del predio.\"",
-        "• La base catastral de Asomunicipios sólo incluye información de los municipios habilitados dentro del esquema asociativo (Ábrego, Bucarasica, Convención, Cáchira, El Carmen, El Tarra, Hacarí, La Playa de Belén, San",
-        "  Calixto, Sardinata y Teorama en Norte de Santander, y Río de Oro, en el Cesar)",
+        "• De conformidad con el artículo 2.2.2.2.8 del Decreto 148 de 2020, Inscripción o incorporación catastral. La información catastral resultado de los",
+        "  procesos de formación, actualización o conservación se inscribirá o incorporará en la base catastral con la fecha del acto administrativo que lo ordena.",
+        "• Adicionalmente de conformidad con el artículo 29 de la resolución No. 1149 de 2021 emanada del Instituto Geográfico Agustín Codazzi, \"Efecto jurídico",
+        "  de la inscripción catastral. La inscripción en el catastro no constituye título de dominio, ni sanea los vicios de que adolezca la titulación presentada o la",
+        "  posesión del interesado, y no puede alegarse como excepción contra el que pretenda tener mejor derecho a la propiedad o posesión del predio.\"",
+        "• La base catastral de Asomunicipios sólo incluye información de los municipios habilitados dentro del esquema asociativo.",
         "• Ante cualquier inquietud, puede escribir al correo electrónico: comunicaciones@asomunicipios.gov.co",
     ]
     
     for nota in notas:
         c.drawString(left_margin, y, nota)
-        y -= 7
+        y -= 8
     
     # === PIE DE PÁGINA - BARRA VERDE ===
     footer_y = 1.2 * cm
@@ -7251,25 +7250,23 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     c.rect(left_margin, footer_y - 5, content_width, 22, fill=1, stroke=0)
     
     c.setFillColor(blanco)
-    c.setFont("Helvetica-Bold", 7)
+    c.setFont(fuente_bold, 8)
     
-    # Iconos de redes sociales (simulados con texto)
+    # Redes sociales (izquierda)
     social_y = footer_y + 5
-    c.setFont("Helvetica", 8)
-    c.drawString(left_margin + 5, social_y, "f")
-    c.drawString(left_margin + 15, social_y, "IG")
-    c.drawString(left_margin + 30, social_y, "X")
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(left_margin + 45, social_y, "Asomunicipios")
+    c.setFont(fuente_normal, 8)
+    c.drawString(left_margin + 5, social_y, "f  IG  X")
+    c.setFont(fuente_bold, 8)
+    c.drawString(left_margin + 40, social_y, "Asomunicipios")
     
     # Email y dirección (centro)
-    c.setFont("Helvetica", 7)
+    c.setFont(fuente_normal, 8)
     c.drawCentredString(width/2, social_y, "comunicaciones@asomunicipios.gov.co")
-    c.setFont("Helvetica", 6)
+    c.setFont(fuente_normal, 7)
     c.drawCentredString(width/2, social_y - 9, "Calle 12 # 11-76 Ocaña, Norte de Santander")
     
     # Teléfono (derecha)
-    c.setFont("Helvetica", 7)
+    c.setFont(fuente_normal, 8)
     c.drawRightString(right_margin - 5, social_y, "+57 3102327647")
     
     c.save()
