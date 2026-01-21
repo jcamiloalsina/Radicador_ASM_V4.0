@@ -11950,33 +11950,39 @@ async def aprobar_propuesta(
     
     # Aplicar los cambios propuestos al predio
     datos_propuestos = propuesta.get('datos_propuestos', {})
-    if datos_propuestos:
-        await db.predios_actualizacion.update_one(
-            {
-                "proyecto_id": propuesta['proyecto_id'],
-                "$or": [
-                    {"codigo_predial": propuesta['codigo_predial']},
-                    {"numero_predial": propuesta['codigo_predial']}
-                ]
-            },
-            {
-                "$set": {
-                    **datos_propuestos,
-                    "updated_at": datetime.now(timezone.utc)
-                },
-                "$push": {
-                    "historial_cambios": {
-                        "fecha": datetime.now(timezone.utc).isoformat(),
-                        "usuario": current_user.get('email'),
-                        "accion": "propuesta_aprobada",
-                        "propuesta_id": propuesta_id,
-                        "cambios_aplicados": datos_propuestos
-                    }
+    
+    # Preparar los datos a actualizar
+    update_data = {
+        **datos_propuestos,
+        "estado_visita": "actualizado",  # Cambiar estado a actualizado
+        "actualizado_por": current_user.get('email'),
+        "actualizado_en": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    await db.predios_actualizacion.update_one(
+        {
+            "proyecto_id": propuesta['proyecto_id'],
+            "$or": [
+                {"codigo_predial": propuesta['codigo_predial']},
+                {"numero_predial": propuesta['codigo_predial']}
+            ]
+        },
+        {
+            "$set": update_data,
+            "$push": {
+                "historial_cambios": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "usuario": current_user.get('email'),
+                    "accion": "propuesta_aprobada_actualizado",
+                    "propuesta_id": propuesta_id,
+                    "cambios_aplicados": datos_propuestos
                 }
             }
-        )
+        }
+    )
     
-    return {"message": "Propuesta aprobada y cambios aplicados"}
+    return {"message": "Propuesta aprobada y cambios aplicados. Predio marcado como ACTUALIZADO"}
 
 
 @api_router.patch("/actualizacion/propuestas/{propuesta_id}/rechazar")
