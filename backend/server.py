@@ -7443,7 +7443,7 @@ async def generar_certificado_desde_peticion(
     if not predio:
         raise HTTPException(
             status_code=404, 
-            detail="No se encontró el predio asociado a esta petición. Verifique el código predial o matrícula ingresados."
+            detail="No se encontró el predio asociado a esta petición. La petición debe incluir un código predial nacional o matrícula inmobiliaria válidos. Si la petición es antigua, solicite al peticionario radicar una nueva con los datos correctos."
         )
     
     # Generar código de verificación
