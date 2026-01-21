@@ -7154,7 +7154,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # === PIE DE PÁGINA - IMAGEN (ancho completo de la hoja) ===
     pie_pagina_path = Path("/app/backend/logos/pie_pagina_certificado.png")
     if pie_pagina_path.exists():
-        footer_height = 1.8 * cm  # Más alto para simetría
+        footer_height = 2.0 * cm  # Un poco más alto
         footer_y = 0  # Pegado al borde inferior (0)
         # Ancho completo de la hoja (sin márgenes)
         c.drawImage(str(pie_pagina_path), 0, footer_y, 
