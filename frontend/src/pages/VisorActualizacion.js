@@ -1664,7 +1664,7 @@ export default function VisorActualizacion() {
         </MapContainer>
         
         {/* Controles flotantes */}
-        <div className="absolute top-4 right-4 flex flex-col gap-2 z-[400]">
+        <div className="map-controls absolute top-4 right-4 flex flex-col gap-2 z-[400]">
           <div className="bg-white rounded-lg shadow-lg p-1 flex flex-col gap-1">
             <Button
               variant={mapType === 'satellite' ? 'default' : 'ghost'}
@@ -1711,7 +1711,7 @@ export default function VisorActualizacion() {
         </div>
         
         {/* Panel Ortofoto */}
-        <div className="absolute top-4 right-16 z-[400]">
+        <div className="map-controls absolute top-4 right-16 z-[400]">
           <div className="bg-white rounded-lg shadow-lg p-2 min-w-[140px]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-700">Ortofoto</span>
@@ -1779,7 +1779,7 @@ export default function VisorActualizacion() {
         </div>
         
         {/* Filtros: Zona y Estado */}
-        <div className="absolute top-4 left-4 z-[400] flex gap-2">
+        <div className="map-controls absolute top-4 left-4 z-[400] flex gap-2">
           <Select value={filterZona} onValueChange={setFilterZona}>
             <SelectTrigger className="w-28 bg-white shadow-lg text-xs">
               <SelectValue />
@@ -1825,7 +1825,7 @@ export default function VisorActualizacion() {
         </div>
         
         {/* Leyenda */}
-        <div className="absolute bottom-4 left-4 right-4 z-[400]">
+        <div className="map-controls absolute bottom-4 left-4 right-4 z-[400]">
           <Card className="bg-white/95 backdrop-blur shadow-lg">
             <CardContent className="p-3">
               <div className="flex items-center justify-between text-xs flex-wrap gap-2">
