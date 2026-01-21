@@ -665,19 +665,12 @@ export default function VisorActualizacion() {
           return;
         }
         
-        // Crear propuesta con justificación
-        const justificacion = prompt('Ingrese una justificación para los cambios propuestos:');
-        if (!justificacion || !justificacion.trim()) {
-          toast.warning('Debe ingresar una justificación para crear la propuesta');
-          setSaving(false);
-          return;
-        }
-        
+        // Crear propuesta sin requerir justificación (la aprobación del coordinador es suficiente)
         await axios.post(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/propuesta`,
           {
             datos_propuestos: dataToSave,
-            justificacion: justificacion.trim()
+            justificacion: 'Propuesta de cambio desde trabajo de campo'  // Justificación genérica
           },
           { headers: { Authorization: `Bearer ${token}` }}
         );
