@@ -7185,21 +7185,118 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     fecha_exp = f"{fecha_actual.day} de {meses[fecha_actual.month-1]} del {fecha_actual.year}"
     texto_exp = f"El presente certificado se expide a favor del interesado el {fecha_exp}."
     c.drawString(left_margin, y, texto_exp)
-    y -= 50  # Espacio para la firma
+    y -= 20
     
-    # === FIRMA CENTRAL ===
-    firma_x = width/2
-    c.setStrokeColor(negro)
-    c.setLineWidth(0.5)
-    c.line(firma_x - 100, y + 12, firma_x + 100, y + 12)
+    # === FIRMA CON IMAGEN + QR DE VERIFICACIÓN ===
+    y = check_page_break(y, 100)
     
-    c.setFont(fuente_bold, 11)
-    c.setFillColor(negro)
-    c.drawCentredString(firma_x, y, "DALGIE ESPERANZA TORRADO RIZO")
-    y -= 12
-    c.setFont(fuente_normal, 10)
-    c.drawCentredString(firma_x, y, "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA")
-    y -= 16
+    # Generar QR de verificación
+    qr_bytes = generar_qr_verificacion(codigo_verificacion)
+    qr_image = io.BytesIO(qr_bytes)
+    
+    # Calcular fecha/hora de generación
+    fecha_hora_gen = fecha_actual.strftime("%d/%m/%Y %H:%M")
+    
+    # Hash del documento (simplificado)
+    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{fecha_hora_gen}")
+    
+    if estilo_verificacion == "A":
+        # === ESTILO A: MINIMALISTA ===
+        firma_x = width/2 - 50
+        qr_x = width/2 + 60
+        
+        # Imagen de firma (si existe)
+        firma_path = Path("/app/backend/logos/firma_subdirectora.png")
+        if firma_path.exists():
+            c.drawImage(str(firma_path), firma_x - 60, y - 25, width=120, height=50, preserveAspectRatio=True, mask='auto')
+        
+        # Línea y nombre
+        c.setStrokeColor(negro)
+        c.setLineWidth(0.5)
+        c.line(firma_x - 80, y - 30, firma_x + 80, y - 30)
+        
+        c.setFont(fuente_bold, 10)
+        c.setFillColor(negro)
+        c.drawCentredString(firma_x, y - 42, "DALGIE ESPERANZA TORRADO RIZO")
+        c.setFont(fuente_normal, 8)
+        c.drawCentredString(firma_x, y - 52, "Subdirectora Financiera y Administrativa")
+        
+        # QR a la derecha
+        c.drawImage(qr_image, qr_x, y - 55, width=55, height=55, mask='auto')
+        
+        # Código de verificación debajo del QR
+        c.setFont(fuente_normal, 7)
+        c.setFillColor(gris_claro)
+        c.drawCentredString(qr_x + 27, y - 62, codigo_verificacion)
+        c.drawCentredString(qr_x + 27, y - 70, "Escanea para verificar")
+        
+        y -= 80
+        
+    else:
+        # === ESTILO B: CON MARCO DE SEGURIDAD ===
+        
+        # Firma centrada arriba
+        firma_x = width/2
+        
+        # Imagen de firma (si existe)
+        firma_path = Path("/app/backend/logos/firma_subdirectora.png")
+        if firma_path.exists():
+            c.drawImage(str(firma_path), firma_x - 60, y - 20, width=120, height=45, preserveAspectRatio=True, mask='auto')
+        
+        # Línea y nombre de la firmante
+        c.setStrokeColor(negro)
+        c.setLineWidth(0.5)
+        c.line(firma_x - 100, y - 28, firma_x + 100, y - 28)
+        
+        c.setFont(fuente_bold, 10)
+        c.setFillColor(negro)
+        c.drawCentredString(firma_x, y - 40, "DALGIE ESPERANZA TORRADO RIZO")
+        c.setFont(fuente_normal, 8)
+        c.drawCentredString(firma_x, y - 50, "Subdirectora Financiera y Administrativa")
+        
+        y -= 65
+        
+        # Marco verde de verificación
+        marco_width = 280
+        marco_height = 55
+        marco_x = (width - marco_width) / 2
+        marco_y = y - marco_height
+        
+        # Fondo del marco
+        c.setFillColor(colors.HexColor('#f0fdf4'))  # Verde muy claro
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=1, stroke=0)
+        
+        # Borde verde
+        c.setStrokeColor(verde_institucional)
+        c.setLineWidth(1.5)
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=0, stroke=1)
+        
+        # Icono de candado (texto simulado)
+        c.setFillColor(verde_institucional)
+        c.setFont(fuente_bold, 9)
+        c.drawString(marco_x + 8, marco_y + marco_height - 14, "🔒 CERTIFICADO VERIFICABLE")
+        
+        # QR dentro del marco (izquierda)
+        qr_size = 42
+        c.drawImage(qr_image, marco_x + 8, marco_y + 5, width=qr_size, height=qr_size, mask='auto')
+        
+        # Información de verificación (derecha del QR)
+        info_x = marco_x + 58
+        c.setFillColor(negro)
+        c.setFont(fuente_bold, 8)
+        c.drawString(info_x, marco_y + 35, f"Código: {codigo_verificacion}")
+        
+        c.setFont(fuente_normal, 7)
+        c.setFillColor(gris_claro)
+        c.drawString(info_x, marco_y + 24, f"Generado: {fecha_hora_gen}")
+        c.drawString(info_x, marco_y + 14, f"Hash: SHA256:{hash_doc}")
+        
+        c.setFillColor(verde_institucional)
+        c.setFont(fuente_normal, 7)
+        verificar_url = VERIFICACION_BASE_URL.replace("https://", "").replace("http://", "")
+        c.drawString(info_x, marco_y + 4, f"Verificar: {verificar_url}/verificar")
+        
+        y = marco_y - 10
     
     # === ELABORÓ ===
     c.setFont(fuente_normal, 8)
