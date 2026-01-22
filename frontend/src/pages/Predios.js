@@ -1364,6 +1364,15 @@ export default function Predios() {
     area_construida: '0'
   }]);
   
+  // Estados para el nuevo flujo "Crear Predio" con workflow
+  const [radicadoNumero, setRadicadoNumero] = useState(''); // Solo los 4 dígitos (XXXX)
+  const [radicadoInfo, setRadicadoInfo] = useState(null); // Info del radicado buscado
+  const [buscandoRadicado, setBuscandoRadicado] = useState(false);
+  const [peticionesRelacionadas, setPeticionesRelacionadas] = useState([]); // IDs de peticiones
+  const [peticionesDisponibles, setPeticionesDisponibles] = useState([]); // Lista de peticiones para seleccionar
+  const [observacionesCreacion, setObservacionesCreacion] = useState('');
+  const [usarNuevoFlujo, setUsarNuevoFlujo] = useState(false); // Toggle para usar el nuevo flujo
+  
   const [formData, setFormData] = useState({
     municipio: '',
     zona: '00',
