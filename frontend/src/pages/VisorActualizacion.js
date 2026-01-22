@@ -1243,9 +1243,10 @@ export default function VisorActualizacion() {
     
     const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
     
-    // Datos de la visita
+    // Datos de la visita incluyendo construcciones y calificaciones
     const visitaCompleta = {
       ...visitaData,
+      construcciones: visitaConstrucciones.filter(c => c.codigo_uso || c.area), // Solo guardar construcciones con datos
       firma_base64: firmaBase64,
       fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
       ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
