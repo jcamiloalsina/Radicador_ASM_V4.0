@@ -141,6 +141,24 @@ export default function AllPetitions() {
 
   const fetchPetitions = async () => {
     try {
+      if (!isOnline) {
+        // Try to load from offline storage
+        const offlinePetitions = await getPetitionsOffline();
+        if (offlinePetitions.length > 0) {
+          setPetitions(offlinePetitions);
+          setFilteredPetitions(offlinePetitions);
+          setOfflineMode(true);
+          toast.info('Mostrando peticiones guardadas offline', {
+            description: `${offlinePetitions.length} peticiones disponibles`,
+            icon: '📴'
+          });
+        } else {
+          toast.error('No hay peticiones guardadas para modo offline');
+        }
+        setLoading(false);
+        return;
+      }
+      
       const response = await axios.get(`${API}/petitions`);
       // Ordenar por fecha descendente (más recientes primero)
       const sortedPetitions = [...response.data].sort((a, b) => 
@@ -148,8 +166,21 @@ export default function AllPetitions() {
       );
       setPetitions(sortedPetitions);
       setFilteredPetitions(sortedPetitions);
+      setOfflineMode(false);
     } catch (error) {
-      toast.error('Error al cargar peticiones');
+      // Try offline as fallback
+      const offlinePetitions = await getPetitionsOffline();
+      if (offlinePetitions.length > 0) {
+        setPetitions(offlinePetitions);
+        setFilteredPetitions(offlinePetitions);
+        setOfflineMode(true);
+        toast.info('Sin conexión - Mostrando datos guardados', {
+          description: `${offlinePetitions.length} peticiones disponibles offline`,
+          icon: '📴'
+        });
+      } else {
+        toast.error('Error al cargar peticiones');
+      }
     } finally {
       setLoading(false);
     }
