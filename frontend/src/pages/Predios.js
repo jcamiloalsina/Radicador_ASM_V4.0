@@ -2002,9 +2002,71 @@ export default function Predios() {
       return;
     }
 
+    // Si se usa el nuevo flujo, validar gestor de apoyo
+    if (usarNuevoFlujo && !gestorAsignado) {
+      toast.error('Debe seleccionar un Gestor de Apoyo para el flujo de trabajo');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       
+      // === NUEVO FLUJO CON WORKFLOW ===
+      if (usarNuevoFlujo) {
+        const predioNuevoData = {
+          r1: {
+            municipio: formData.municipio || filterMunicipio,
+            zona: codigoManual.zona,
+            sector: codigoManual.sector,
+            manzana_vereda: codigoManual.manzana_vereda,
+            terreno: codigoManual.terreno,
+            condicion_predio: `${codigoManual.condicion}${codigoManual.edificio}${codigoManual.piso}${codigoManual.unidad}`.padEnd(9, '0').substring(0, 9),
+            predio_horizontal: '0000',
+            nombre_propietario: propietarios[0].nombre_propietario,
+            tipo_documento: propietarios[0].tipo_documento,
+            numero_documento: propietarios[0].numero_documento,
+            estado_civil: propietarios[0].estado_civil || null,
+            direccion: formData.direccion,
+            comuna: codigoManual.comuna,
+            destino_economico: formData.destino_economico,
+            area_terreno: parseFloat(formData.area_terreno) || 0,
+            area_construida: parseFloat(formData.area_construida) || 0,
+            avaluo: parseFloat(formData.avaluo) || 0,
+          },
+          r2: {
+            matricula_inmobiliaria: formData.matricula_inmobiliaria || null,
+            zona_fisica_1: parseFloat(zonasFisicas[0]?.zona_fisica) || 0,
+            zona_economica_1: parseFloat(zonasFisicas[0]?.zona_economica) || 0,
+            area_terreno_1: parseFloat(zonasFisicas[0]?.area_terreno) || 0,
+            habitaciones_1: parseInt(zonasFisicas[0]?.habitaciones) || 0,
+            banos_1: parseInt(zonasFisicas[0]?.banos) || 0,
+            locales_1: parseInt(zonasFisicas[0]?.locales) || 0,
+            pisos_1: parseInt(zonasFisicas[0]?.pisos) || 1,
+            puntaje_1: parseFloat(zonasFisicas[0]?.puntaje) || 0,
+            area_construida_1: parseFloat(zonasFisicas[0]?.area_construida) || 0,
+          },
+          gestor_apoyo_id: gestorAsignado,
+          radicado_numero: radicadoNumero || null,
+          peticiones_ids: peticionesRelacionadas,
+          observaciones: observacionesCreacion || null,
+        };
+        
+        const res = await axios.post(`${API}/predios-nuevos`, predioNuevoData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        toast.success('Predio creado y asignado al Gestor de Apoyo para digitalización');
+        const gestorNombre = gestoresDisponibles.find(g => g.id === gestorAsignado)?.full_name;
+        toast.info(`Asignado a ${gestorNombre}. El predio aparecerá en "Predios en Proceso".`, { duration: 5000 });
+        
+        setShowCreateDialog(false);
+        resetForm();
+        fetchPredios();
+        fetchCambiosStats();
+        return;
+      }
+      
+      // === FLUJO ORIGINAL ===
       const predioData = {
         codigo_predial_nacional: codigoCompleto,
         municipio: formData.municipio || filterMunicipio,
