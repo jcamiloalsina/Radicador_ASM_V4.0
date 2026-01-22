@@ -2503,260 +2503,439 @@ export default function VisorActualizacion() {
       
       {/* Modal de Formato de Visita */}
       <Dialog open={showVisitaModal} onOpenChange={setShowVisitaModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-emerald-600" />
-              Formato de Visita de Campo
+              Formato de Visita de Campo - Actualización Catastral
             </DialogTitle>
           </DialogHeader>
           
           {selectedPredio && (
             <div className="space-y-6">
-              {/* Código predial */}
-              <div className="bg-amber-50 p-3 rounded-lg">
-                <p className="text-xs text-amber-600 uppercase font-medium">Predio</p>
-                <p className="font-mono text-sm font-bold text-amber-800">
-                  {selectedPredio.codigo_predial || selectedPredio.numero_predial}
-                </p>
-                <p className="text-xs text-slate-600 mt-1">{selectedPredio.direccion || 'Sin dirección'}</p>
-              </div>
               
-              {/* Fecha y hora */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Fecha de Visita</Label>
-                  <Input
-                    type="date"
-                    value={visitaData.fecha_visita}
-                    onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))}
-                  />
+              {/* ========== SECCIÓN 2: INFORMACIÓN BÁSICA DEL PREDIO ========== */}
+              <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
+                  <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
+                    <Building className="w-4 h-4" />
+                    2. INFORMACIÓN BÁSICA DEL PREDIO
+                  </h3>
                 </div>
-                <div>
-                  <Label>Hora</Label>
-                  <Input
-                    type="time"
-                    value={visitaData.hora_visita}
-                    onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))}
-                  />
+                <div className="p-4 space-y-4">
+                  {/* Fila 1: Departamento - Municipio */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Departamento</Label>
+                      <Input 
+                        value="Norte de Santander" 
+                        disabled 
+                        className="bg-slate-100 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Municipio</Label>
+                      <Input 
+                        value={proyecto?.municipio || selectedPredio.municipio || ''} 
+                        disabled 
+                        className="bg-slate-100 font-medium"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Fila 2: Número Predial */}
+                  <div>
+                    <Label className="text-xs text-slate-500">Número Predial (30 dígitos)</Label>
+                    <Input 
+                      value={selectedPredio.codigo_predial || selectedPredio.numero_predial || ''} 
+                      disabled 
+                      className="bg-slate-100 font-mono font-bold text-emerald-800 tracking-wider"
+                    />
+                  </div>
+                  
+                  {/* Fila 3: Código Homologado - PH/NPH - Ubicación */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">NUPRE / Código Homologado</Label>
+                      <Input 
+                        value={selectedPredio.codigo_homologado || selectedPredio.nupre || 'Sin código'} 
+                        disabled 
+                        className="bg-slate-100 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Tipo</Label>
+                      <div className="flex items-center gap-4 h-10">
+                        <label className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            checked={selectedPredio.es_ph || (selectedPredio.condicion_predio && selectedPredio.condicion_predio !== '000000000')}
+                            disabled 
+                            className="text-emerald-600"
+                          />
+                          <span className="text-sm">PH</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            checked={!selectedPredio.es_ph && (!selectedPredio.condicion_predio || selectedPredio.condicion_predio === '000000000')}
+                            disabled 
+                            className="text-emerald-600"
+                          />
+                          <span className="text-sm">NPH</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Ubicación</Label>
+                      <div className="flex items-center gap-4 h-10">
+                        <label className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            checked={selectedPredio.zona === 'urbano' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial[5] !== '0')}
+                            disabled 
+                            className="text-emerald-600"
+                          />
+                          <span className="text-sm">Urbano</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input 
+                            type="radio" 
+                            checked={selectedPredio.zona === 'rural' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial[5] === '0')}
+                            disabled 
+                            className="text-emerald-600"
+                          />
+                          <span className="text-sm">Rural</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Fila 4: Dirección (editable) */}
+                  <div>
+                    <Label className="text-xs text-slate-500">Dirección <span className="text-emerald-600">(verificar en campo)</span></Label>
+                    <Input 
+                      value={visitaData.direccion_visita}
+                      onChange={(e) => setVisitaData(prev => ({ ...prev, direccion_visita: e.target.value.toUpperCase() }))}
+                      placeholder="Ingrese o verifique la dirección"
+                      className="uppercase"
+                    />
+                  </div>
+                  
+                  {/* Fila 5: Destino Económico - Área Terreno - Área Construida */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Destino Económico <span className="text-emerald-600">(verificar)</span></Label>
+                      <Select 
+                        value={visitaData.destino_economico_visita}
+                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, destino_economico_visita: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A">A - Habitacional</SelectItem>
+                          <SelectItem value="B">B - Industrial</SelectItem>
+                          <SelectItem value="C">C - Comercial</SelectItem>
+                          <SelectItem value="D">D - Agropecuario</SelectItem>
+                          <SelectItem value="E">E - Minero</SelectItem>
+                          <SelectItem value="F">F - Cultural</SelectItem>
+                          <SelectItem value="G">G - Recreacional</SelectItem>
+                          <SelectItem value="H">H - Salubridad</SelectItem>
+                          <SelectItem value="I">I - Institucional</SelectItem>
+                          <SelectItem value="J">J - Educativo</SelectItem>
+                          <SelectItem value="K">K - Religioso</SelectItem>
+                          <SelectItem value="L">L - Agrícola</SelectItem>
+                          <SelectItem value="M">M - Forestal</SelectItem>
+                          <SelectItem value="N">N - Pecuario</SelectItem>
+                          <SelectItem value="O">O - Uso Público</SelectItem>
+                          <SelectItem value="P">P - Lote</SelectItem>
+                          <SelectItem value="Q">Q - Mixto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Área Terreno (m²) <span className="text-emerald-600">(verificar)</span></Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.area_terreno_visita}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, area_terreno_visita: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Área Construida (m²) <span className="text-emerald-600">(verificar)</span></Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.area_construida_visita}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, area_construida_visita: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              {/* Persona que atiende */}
-              <div>
-                <Label>Persona que Atiende la Visita *</Label>
-                <Input
-                  placeholder="Nombre completo de quien atiende"
-                  value={visitaData.persona_atiende}
-                  onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value }))}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Relación con el Predio</Label>
-                  <Select 
-                    value={visitaData.relacion_predio}
-                    onValueChange={(v) => setVisitaData(prev => ({ ...prev, relacion_predio: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="propietario">Propietario</SelectItem>
-                      <SelectItem value="poseedor">Poseedor</SelectItem>
-                      <SelectItem value="arrendatario">Arrendatario</SelectItem>
-                      <SelectItem value="familiar">Familiar</SelectItem>
-                      <SelectItem value="encargado">Encargado</SelectItem>
-                      <SelectItem value="otro">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* ========== SECCIÓN 3: INFORMACIÓN DE LA VISITA ========== */}
+              <div className="border border-blue-200 rounded-lg overflow-hidden">
+                <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
+                  <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    3. INFORMACIÓN DE LA VISITA
+                  </h3>
                 </div>
-                <div>
-                  <Label>¿Se pudo acceder al predio?</Label>
-                  <Select 
-                    value={visitaData.acceso_predio}
-                    onValueChange={(v) => setVisitaData(prev => ({ ...prev, acceso_predio: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="si">Sí, acceso total</SelectItem>
-                      <SelectItem value="parcial">Acceso parcial</SelectItem>
-                      <SelectItem value="no">No se pudo acceder</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="p-4 space-y-4">
+                  {/* Fecha y hora */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Fecha de Visita *</Label>
+                      <Input
+                        type="date"
+                        value={visitaData.fecha_visita}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Hora *</Label>
+                      <Input
+                        type="time"
+                        value={visitaData.hora_visita}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Persona que atiende */}
+                  <div>
+                    <Label className="text-xs text-slate-500">Persona que Atiende la Visita *</Label>
+                    <Input
+                      placeholder="Nombre completo de quien atiende"
+                      value={visitaData.persona_atiende}
+                      onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))}
+                      className="uppercase"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Relación con el Predio</Label>
+                      <Select 
+                        value={visitaData.relacion_predio}
+                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, relacion_predio: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="propietario">Propietario</SelectItem>
+                          <SelectItem value="poseedor">Poseedor</SelectItem>
+                          <SelectItem value="arrendatario">Arrendatario</SelectItem>
+                          <SelectItem value="familiar">Familiar</SelectItem>
+                          <SelectItem value="encargado">Encargado</SelectItem>
+                          <SelectItem value="otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">¿Se pudo acceder al predio?</Label>
+                      <Select 
+                        value={visitaData.acceso_predio}
+                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, acceso_predio: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="si">Sí, acceso total</SelectItem>
+                          <SelectItem value="parcial">Acceso parcial</SelectItem>
+                          <SelectItem value="no">No se pudo acceder</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Estado del predio */}
+                  <div>
+                    <Label className="text-xs text-slate-500">Estado del Predio</Label>
+                    <Select 
+                      value={visitaData.estado_predio}
+                      onValueChange={(v) => setVisitaData(prev => ({ ...prev, estado_predio: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="habitado">Habitado</SelectItem>
+                        <SelectItem value="deshabitado">Deshabitado</SelectItem>
+                        <SelectItem value="en_construccion">En construcción</SelectItem>
+                        <SelectItem value="abandonado">Abandonado</SelectItem>
+                        <SelectItem value="lote_vacio">Lote vacío</SelectItem>
+                        <SelectItem value="uso_comercial">Uso comercial</SelectItem>
+                        <SelectItem value="uso_mixto">Uso mixto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Servicios públicos */}
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-2 block">Servicios Públicos</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Agua', 'Alcantarillado', 'Energía', 'Gas', 'Internet', 'Teléfono'].map((servicio) => (
+                        <label key={servicio} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={visitaData.servicios_publicos.includes(servicio)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setVisitaData(prev => ({ 
+                                  ...prev, 
+                                  servicios_publicos: [...prev.servicios_publicos, servicio] 
+                                }));
+                              } else {
+                                setVisitaData(prev => ({ 
+                                  ...prev, 
+                                  servicios_publicos: prev.servicios_publicos.filter(s => s !== servicio) 
+                                }));
+                              }
+                            }}
+                            className="rounded border-slate-300"
+                          />
+                          <span className="text-sm">{servicio}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              {/* Estado del predio */}
-              <div>
-                <Label>Estado del Predio</Label>
-                <Select 
-                  value={visitaData.estado_predio}
-                  onValueChange={(v) => setVisitaData(prev => ({ ...prev, estado_predio: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="habitado">Habitado</SelectItem>
-                    <SelectItem value="deshabitado">Deshabitado</SelectItem>
-                    <SelectItem value="en_construccion">En construcción</SelectItem>
-                    <SelectItem value="abandonado">Abandonado</SelectItem>
-                    <SelectItem value="lote_vacio">Lote vacío</SelectItem>
-                    <SelectItem value="uso_comercial">Uso comercial</SelectItem>
-                    <SelectItem value="uso_mixto">Uso mixto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Servicios públicos */}
-              <div>
-                <Label className="mb-2 block">Servicios Públicos</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Agua', 'Alcantarillado', 'Energía', 'Gas', 'Internet', 'Teléfono'].map((servicio) => (
-                    <label key={servicio} className="flex items-center gap-2 cursor-pointer">
+              {/* ========== SECCIÓN 4: RESULTADO DE LA VISITA ========== */}
+              <div className="border border-amber-200 rounded-lg overflow-hidden">
+                <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
+                  <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    4. RESULTADO Y OBSERVACIONES
+                  </h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Opción: Visitado sin cambios */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={visitaData.servicios_publicos.includes(servicio)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setVisitaData(prev => ({ 
-                              ...prev, 
-                              servicios_publicos: [...prev.servicios_publicos, servicio] 
-                            }));
-                          } else {
-                            setVisitaData(prev => ({ 
-                              ...prev, 
-                              servicios_publicos: prev.servicios_publicos.filter(s => s !== servicio) 
-                            }));
-                          }
-                        }}
-                        className="rounded border-slate-300"
+                        checked={visitaData.sin_cambios}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, sin_cambios: e.target.checked }))}
+                        className="rounded border-blue-300 text-blue-600 mt-1"
                       />
-                      <span className="text-sm">{servicio}</span>
+                      <div>
+                        <span className="font-medium text-blue-800">Visitado sin cambios</span>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Marque esta opción si el predio fue visitado y verificado, pero los datos catastrales 
+                          no requieren modificación. El predio será enviado al coordinador para su aprobación final.
+                        </p>
+                      </div>
                     </label>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Opción: Visitado sin cambios */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={visitaData.sin_cambios}
-                    onChange={(e) => setVisitaData(prev => ({ ...prev, sin_cambios: e.target.checked }))}
-                    className="rounded border-blue-300 text-blue-600 mt-1"
-                  />
-                  <div>
-                    <span className="font-medium text-blue-800">Visitado sin cambios</span>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Marque esta opción si el predio fue visitado y verificado, pero los datos catastrales 
-                      no requieren modificación. El predio será enviado al coordinador para su aprobación final.
-                    </p>
                   </div>
-                </label>
-              </div>
-              
-              {/* Observaciones */}
-              <div>
-                <Label>Observaciones de la Visita</Label>
-                <Textarea
-                  value={visitaData.observaciones}
-                  onChange={(e) => setVisitaData(prev => ({ ...prev, observaciones: e.target.value }))}
-                  placeholder="Escriba las observaciones de la visita..."
-                  rows={3}
-                />
-              </div>
-              
-              {/* Fotos */}
-              <div>
-                <Label className="flex items-center gap-2 mb-2">
-                  <Camera className="w-4 h-4" />
-                  Fotografías del Predio
-                </Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  multiple
-                  onChange={handleFotoChange}
-                  className="hidden"
-                />
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {fotos.map((foto) => (
-                    <div key={foto.id} className="relative">
-                      <img 
-                        src={foto.data} 
-                        alt={foto.nombre}
-                        className="w-20 h-20 object-cover rounded border"
-                      />
-                      <button
-                        onClick={() => eliminarFoto(foto.id)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                  
+                  {/* Observaciones */}
+                  <div>
+                    <Label className="text-xs text-slate-500">Observaciones de la Visita</Label>
+                    <Textarea
+                      value={visitaData.observaciones}
+                      onChange={(e) => setVisitaData(prev => ({ ...prev, observaciones: e.target.value }))}
+                      placeholder="Escriba las observaciones de la visita..."
+                      rows={3}
+                    />
+                  </div>
+                  
+                  {/* Fotos */}
+                  <div>
+                    <Label className="flex items-center gap-2 mb-2 text-xs text-slate-500">
+                      <Camera className="w-4 h-4" />
+                      Fotografías del Predio
+                    </Label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFotoChange}
+                      className="hidden"
+                    />
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      {fotos.map((foto, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                          <img 
+                            src={foto.preview || foto} 
+                            alt={`Foto ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFotos(prev => prev.filter((_, i) => i !== index))}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={handleCapturarFoto}
+                      className="w-full border-dashed"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      {fotos.length > 0 ? 'Agregar más fotos' : 'Tomar / Seleccionar Fotos'}
+                    </Button>
+                  </div>
+                  
+                  {/* Firma Digital */}
+                  <div>
+                    <Label className="flex items-center gap-2 mb-2 text-xs text-slate-500">
+                      <Pen className="w-4 h-4" />
+                      Firma de la Persona que Atiende *
+                    </Label>
+                    <div className="border-2 border-slate-300 rounded-lg bg-white">
+                      <canvas
+                        ref={canvasRef}
+                        width={500}
+                        height={150}
+                        className="w-full touch-none cursor-crosshair"
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={stopDrawing}
+                        onMouseLeave={stopDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={stopDrawing}
+                        style={{ backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={limpiarFirma}
+                      className="mt-1 text-slate-500"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Limpiar firma
+                    </Button>
+                  </div>
+                  
+                  {/* GPS */}
+                  {userPosition && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      <MapPin className="w-3 h-3" />
+                      Ubicación GPS registrada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
+                      {gpsAccuracy && ` (±${Math.round(gpsAccuracy)}m)`}
+                    </div>
+                  )}
                 </div>
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={handleCapturarFoto}
-                  className="w-full border-dashed"
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  {fotos.length > 0 ? 'Agregar más fotos' : 'Tomar / Seleccionar Fotos'}
-                </Button>
               </div>
-              
-              {/* Firma Digital */}
-              <div>
-                <Label className="flex items-center gap-2 mb-2">
-                  <Pen className="w-4 h-4" />
-                  Firma de la Persona que Atiende *
-                </Label>
-                <div className="border-2 border-slate-300 rounded-lg bg-white">
-                  <canvas
-                    ref={canvasRef}
-                    width={500}
-                    height={150}
-                    className="w-full touch-none cursor-crosshair"
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                    style={{ backgroundColor: '#ffffff' }}
-                  />
-                </div>
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={limpiarFirma}
-                  className="mt-1 text-slate-500"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Limpiar firma
-                </Button>
-              </div>
-              
-              {/* GPS */}
-              {userPosition && (
-                <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  <MapPin className="w-3 h-3" />
-                  Ubicación GPS registrada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
-                  {gpsAccuracy && ` (±${Math.round(gpsAccuracy)}m)`}
-                </div>
-              )}
               
               <DialogFooter className="flex gap-2 pt-4">
                 <Button 
