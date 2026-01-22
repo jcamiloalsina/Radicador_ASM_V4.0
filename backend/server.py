@@ -8624,6 +8624,536 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
     return {"message": "Predio eliminado exitosamente"}
 
 
+# ===== FLUJO DE TRABAJO PARA PREDIOS NUEVOS (CONSERVACIÓN) =====
+
+@api_router.post("/predios-nuevos")
+async def crear_predio_nuevo(
+    predio_data: PredioNuevoCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un nuevo predio con flujo de trabajo de digitalización.
+    El predio queda en estado 'creado' y se asigna a un gestor de apoyo.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
+    
+    r1 = predio_data.r1
+    r2 = predio_data.r2
+    
+    # Verificar que el gestor de apoyo existe y es gestor
+    gestor_apoyo = await db.users.find_one({"id": predio_data.gestor_apoyo_id}, {"_id": 0})
+    if not gestor_apoyo:
+        raise HTTPException(status_code=400, detail="El gestor de apoyo no existe")
+    if gestor_apoyo.get('role') not in ['gestor', 'coordinador', 'administrador']:
+        raise HTTPException(status_code=400, detail="El usuario asignado no tiene rol de gestor")
+    
+    # Obtener siguiente número de terreno
+    terreno, terreno_num = await get_next_terreno_number(
+        r1.municipio, r1.zona, r1.sector, r1.manzana_vereda
+    )
+    
+    # Generar código predial nacional
+    codigo_predial = await generate_codigo_predial(
+        r1.municipio, r1.zona, r1.sector, r1.manzana_vereda,
+        terreno, r1.condicion_predio, r1.predio_horizontal
+    )
+    
+    # Verificar que no exista
+    existing = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
+    
+    # Verificar que no sea un código eliminado sin aprobación
+    eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo_predial})
+    if eliminado:
+        aprobacion = await db.predios_reapariciones_aprobadas.find_one({
+            "codigo_predial_nacional": codigo_predial,
+            "estado": "aprobado"
+        })
+        if not aprobacion:
+            raise HTTPException(status_code=400, detail={
+                "error": "PREDIO_ELIMINADO",
+                "mensaje": f"Este código predial fue ELIMINADO. Debe solicitar reaparición."
+            })
+    
+    # Generar código homologado
+    codigo_homologado, numero_predio = await generate_codigo_homologado(r1.municipio)
+    
+    # Obtener código Divipola
+    divipola = MUNICIPIOS_DIVIPOLA[r1.municipio]
+    
+    # Construir radicado completo si se proporcionó número
+    radicado_completo = None
+    radicado_fecha = None
+    if predio_data.radicado_numero:
+        # Buscar la petición con este radicado para obtener la fecha
+        peticion = await db.petitions.find_one({
+            "radicado": {"$regex": f"-{predio_data.radicado_numero}-", "$options": "i"}
+        }, {"_id": 0})
+        if peticion:
+            fecha_rad = peticion.get('created_at') or peticion.get('fecha_radicacion')
+            if fecha_rad:
+                if isinstance(fecha_rad, str):
+                    fecha_obj = datetime.fromisoformat(fecha_rad.replace('Z', '+00:00'))
+                else:
+                    fecha_obj = fecha_rad
+                radicado_fecha = fecha_obj.strftime("%d-%m-%Y")
+        radicado_completo = f"RASMGC-{predio_data.radicado_numero}-{radicado_fecha or datetime.now().strftime('%d-%m-%Y')}"
+    
+    # Crear el predio nuevo
+    predio_nuevo = {
+        "id": str(uuid.uuid4()),
+        "departamento": divipola["departamento"],
+        "municipio": r1.municipio,
+        "municipio_codigo": divipola["municipio"],
+        "numero_predio": numero_predio,
+        "codigo_predial_nacional": codigo_predial,
+        "codigo_homologado": codigo_homologado,
+        "zona": r1.zona,
+        "sector": r1.sector,
+        "manzana_vereda": r1.manzana_vereda,
+        "terreno": terreno,
+        "terreno_num": terreno_num,
+        "condicion_predio": r1.condicion_predio,
+        "predio_horizontal": r1.predio_horizontal,
+        
+        # R1 - Información jurídica
+        "tipo_registro": 1,
+        "nombre_propietario": r1.nombre_propietario,
+        "tipo_documento": r1.tipo_documento,
+        "numero_documento": r1.numero_documento,
+        "estado_civil": r1.estado_civil,
+        "direccion": r1.direccion,
+        "comuna": r1.comuna,
+        "destino_economico": r1.destino_economico,
+        "area_terreno": r1.area_terreno,
+        "area_construida": r1.area_construida,
+        "avaluo": r1.avaluo,
+        "tipo_mutacion": r1.tipo_mutacion,
+        "numero_resolucion": r1.numero_resolucion,
+        "fecha_resolucion": r1.fecha_resolucion,
+        
+        # R2 - Información física
+        "r2": r2.model_dump() if r2 else None,
+        
+        # === FLUJO DE TRABAJO ===
+        "es_predio_nuevo": True,
+        "estado_flujo": PredioNuevoEstado.CREADO,
+        
+        # Gestor creador
+        "gestor_creador_id": current_user['id'],
+        "gestor_creador_nombre": current_user['full_name'],
+        "gestor_creador_email": current_user.get('email'),
+        
+        # Gestor de apoyo (digitalización)
+        "gestor_apoyo_id": predio_data.gestor_apoyo_id,
+        "gestor_apoyo_nombre": gestor_apoyo['full_name'],
+        "gestor_apoyo_email": gestor_apoyo.get('email'),
+        
+        # Relaciones
+        "radicado_relacionado": radicado_completo,
+        "radicado_numero": predio_data.radicado_numero,
+        "peticiones_relacionadas": predio_data.peticiones_ids or [],
+        
+        # Observaciones
+        "observaciones": predio_data.observaciones,
+        
+        # Metadata
+        "vigencia": datetime.now().strftime("%m%d%Y"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "deleted": False,
+        
+        # Historial de trazabilidad
+        "historial_flujo": [{
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "accion": "Predio creado",
+            "estado_anterior": None,
+            "estado_nuevo": PredioNuevoEstado.CREADO,
+            "usuario_id": current_user['id'],
+            "usuario_nombre": current_user['full_name'],
+            "observaciones": f"Predio creado y asignado a {gestor_apoyo['full_name']} para digitalización"
+        }]
+    }
+    
+    # Guardar en colección de predios en proceso
+    await db.predios_nuevos.insert_one(predio_nuevo)
+    
+    # Crear notificación para el gestor de apoyo
+    notificacion = {
+        "id": str(uuid.uuid4()),
+        "user_id": predio_data.gestor_apoyo_id,
+        "tipo": "predio_asignado",
+        "titulo": "Nuevo predio asignado para digitalización",
+        "mensaje": f"Se te ha asignado el predio {codigo_predial} para digitalización de base gráfica.",
+        "predio_id": predio_nuevo['id'],
+        "codigo_predial": codigo_predial,
+        "leida": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notificacion)
+    
+    predio_nuevo.pop("_id", None)
+    return predio_nuevo
+
+
+@api_router.get("/predios-nuevos")
+async def listar_predios_nuevos(
+    estado: Optional[str] = None,
+    municipio: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista predios nuevos en proceso según el rol del usuario.
+    - Gestores: ven predios que crearon o que les asignaron
+    - Coordinadores: ven todos los predios en revisión
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    query = {}
+    
+    # Filtrar por estado
+    if estado:
+        query["estado_flujo"] = estado
+    
+    # Filtrar por municipio
+    if municipio:
+        query["municipio"] = municipio
+    
+    # Filtrar según rol
+    if current_user['role'] == UserRole.GESTOR:
+        # Gestores ven predios que crearon, que les asignaron, o devueltos a ellos
+        query["$or"] = [
+            {"gestor_creador_id": current_user['id']},
+            {"gestor_apoyo_id": current_user['id']}
+        ]
+    elif current_user['role'] == UserRole.COORDINADOR:
+        # Verificar si tiene permiso de aprobar cambios
+        user_permisos = await db.user_permissions.find_one({"user_id": current_user['id']})
+        puede_aprobar = user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios')
+        
+        if not puede_aprobar:
+            # Solo ve predios donde está involucrado
+            query["$or"] = [
+                {"gestor_creador_id": current_user['id']},
+                {"gestor_apoyo_id": current_user['id']}
+            ]
+    # Administradores ven todo
+    
+    # Obtener predios
+    cursor = db.predios_nuevos.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit)
+    predios = await cursor.to_list(length=limit)
+    
+    # Contar total
+    total = await db.predios_nuevos.count_documents(query)
+    
+    return {
+        "predios": predios,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+
+@api_router.get("/predios-nuevos/pendientes")
+async def predios_nuevos_pendientes(current_user: dict = Depends(get_current_user)):
+    """
+    Lista predios pendientes de acción para el usuario actual.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    pendientes = {
+        "digitalizacion": [],  # Pendientes para gestor de apoyo
+        "revision": [],        # Pendientes para coordinador
+        "devueltos": []        # Devueltos al gestor/apoyo
+    }
+    
+    user_id = current_user['id']
+    
+    # Predios en digitalización asignados a este usuario
+    cursor = db.predios_nuevos.find({
+        "gestor_apoyo_id": user_id,
+        "estado_flujo": {"$in": [PredioNuevoEstado.CREADO, PredioNuevoEstado.DIGITALIZACION]}
+    }, {"_id": 0})
+    pendientes["digitalizacion"] = await cursor.to_list(length=100)
+    
+    # Predios en revisión (para coordinadores con permiso)
+    user_permisos = await db.user_permissions.find_one({"user_id": user_id})
+    puede_aprobar = (
+        current_user['role'] == UserRole.ADMINISTRADOR or
+        (user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios'))
+    )
+    
+    if puede_aprobar:
+        cursor = db.predios_nuevos.find({
+            "estado_flujo": PredioNuevoEstado.REVISION
+        }, {"_id": 0})
+        pendientes["revision"] = await cursor.to_list(length=100)
+    
+    # Predios devueltos a este usuario
+    cursor = db.predios_nuevos.find({
+        "estado_flujo": PredioNuevoEstado.DEVUELTO,
+        "$or": [
+            {"gestor_creador_id": user_id},
+            {"gestor_apoyo_id": user_id}
+        ]
+    }, {"_id": 0})
+    pendientes["devueltos"] = await cursor.to_list(length=100)
+    
+    return pendientes
+
+
+@api_router.get("/predios-nuevos/{predio_id}")
+async def obtener_predio_nuevo(predio_id: str, current_user: dict = Depends(get_current_user)):
+    """Obtiene un predio nuevo por ID"""
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    predio = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    return predio
+
+
+@api_router.post("/predios-nuevos/{predio_id}/accion")
+async def ejecutar_accion_predio_nuevo(
+    predio_id: str,
+    accion_data: PredioNuevoAccion,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Ejecuta una acción en el flujo de trabajo del predio.
+    Acciones: enviar_revision, aprobar, devolver, rechazar
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    predio = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    estado_actual = predio['estado_flujo']
+    accion = accion_data.accion
+    user_id = current_user['id']
+    
+    # Validar permisos según acción
+    if accion == "enviar_revision":
+        # Solo el gestor de apoyo puede enviar a revisión
+        if predio['gestor_apoyo_id'] != user_id and current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+            raise HTTPException(status_code=403, detail="Solo el gestor de apoyo asignado puede enviar a revisión")
+        
+        if estado_actual not in [PredioNuevoEstado.CREADO, PredioNuevoEstado.DIGITALIZACION, PredioNuevoEstado.DEVUELTO]:
+            raise HTTPException(status_code=400, detail=f"No se puede enviar a revisión desde estado '{estado_actual}'")
+        
+        nuevo_estado = PredioNuevoEstado.REVISION
+        mensaje_notif = f"El predio {predio['codigo_predial_nacional']} ha sido enviado para revisión"
+        
+    elif accion in ["aprobar", "devolver", "rechazar"]:
+        # Verificar permiso de aprobar cambios
+        user_permisos = await db.user_permissions.find_one({"user_id": user_id})
+        puede_aprobar = (
+            current_user['role'] == UserRole.ADMINISTRADOR or
+            (user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios'))
+        )
+        
+        if not puede_aprobar:
+            raise HTTPException(status_code=403, detail="No tiene permiso para aprobar/devolver/rechazar predios")
+        
+        if estado_actual != PredioNuevoEstado.REVISION:
+            raise HTTPException(status_code=400, detail="El predio debe estar en revisión para esta acción")
+        
+        if accion == "aprobar":
+            nuevo_estado = PredioNuevoEstado.APROBADO
+            mensaje_notif = f"El predio {predio['codigo_predial_nacional']} ha sido APROBADO"
+        elif accion == "devolver":
+            nuevo_estado = PredioNuevoEstado.DEVUELTO
+            mensaje_notif = f"El predio {predio['codigo_predial_nacional']} ha sido DEVUELTO para corrección"
+        else:  # rechazar
+            nuevo_estado = PredioNuevoEstado.RECHAZADO
+            mensaje_notif = f"El predio {predio['codigo_predial_nacional']} ha sido RECHAZADO"
+    else:
+        raise HTTPException(status_code=400, detail=f"Acción no válida: {accion}")
+    
+    # Crear entrada de historial
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "accion": accion,
+        "estado_anterior": estado_actual,
+        "estado_nuevo": nuevo_estado,
+        "usuario_id": user_id,
+        "usuario_nombre": current_user['full_name'],
+        "observaciones": accion_data.observaciones
+    }
+    
+    # Actualizar predio
+    update_data = {
+        "estado_flujo": nuevo_estado,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Si se aprueba, agregar datos de aprobación
+    if accion == "aprobar":
+        update_data["aprobado_por_id"] = user_id
+        update_data["aprobado_por_nombre"] = current_user['full_name']
+        update_data["fecha_aprobacion"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.predios_nuevos.update_one(
+        {"id": predio_id},
+        {
+            "$set": update_data,
+            "$push": {"historial_flujo": historial_entry}
+        }
+    )
+    
+    # Si se aprueba, mover a la colección principal de predios
+    if accion == "aprobar":
+        predio_actualizado = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+        
+        # Preparar datos para colección principal
+        predio_aprobado = {**predio_actualizado}
+        predio_aprobado["historial"] = predio_aprobado.pop("historial_flujo", [])
+        predio_aprobado["historial"].append({
+            "accion": "Predio aprobado e integrado",
+            "usuario": current_user['full_name'],
+            "usuario_id": user_id,
+            "fecha": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Insertar en colección principal
+        await db.predios.insert_one(predio_aprobado)
+        
+        # Eliminar de predios_nuevos
+        await db.predios_nuevos.delete_one({"id": predio_id})
+    
+    # Crear notificaciones
+    destinatarios = set()
+    if predio['gestor_creador_id'] != user_id:
+        destinatarios.add(predio['gestor_creador_id'])
+    if predio['gestor_apoyo_id'] != user_id:
+        destinatarios.add(predio['gestor_apoyo_id'])
+    
+    for dest_id in destinatarios:
+        notif = {
+            "id": str(uuid.uuid4()),
+            "user_id": dest_id,
+            "tipo": f"predio_{accion}",
+            "titulo": mensaje_notif,
+            "mensaje": accion_data.observaciones or mensaje_notif,
+            "predio_id": predio_id,
+            "codigo_predial": predio['codigo_predial_nacional'],
+            "leida": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.notifications.insert_one(notif)
+    
+    # Retornar predio actualizado
+    if accion == "aprobar":
+        predio_final = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+    else:
+        predio_final = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    
+    return {
+        "success": True,
+        "mensaje": mensaje_notif,
+        "predio": predio_final
+    }
+
+
+@api_router.get("/predios-nuevos/buscar-radicado/{numero}")
+async def buscar_radicado(numero: str, current_user: dict = Depends(get_current_user)):
+    """
+    Busca un radicado por su número y retorna la fecha.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    # Buscar petición con este número de radicado
+    peticion = await db.petitions.find_one({
+        "radicado": {"$regex": f"-{numero}-", "$options": "i"}
+    }, {"_id": 0, "radicado": 1, "created_at": 1, "fecha_radicacion": 1, "solicitante": 1, "tipo_tramite": 1})
+    
+    if not peticion:
+        return {
+            "encontrado": False,
+            "mensaje": "No se encontró petición con este número de radicado"
+        }
+    
+    fecha_rad = peticion.get('created_at') or peticion.get('fecha_radicacion')
+    if isinstance(fecha_rad, str):
+        fecha_obj = datetime.fromisoformat(fecha_rad.replace('Z', '+00:00'))
+    else:
+        fecha_obj = fecha_rad
+    
+    return {
+        "encontrado": True,
+        "radicado_completo": peticion.get('radicado'),
+        "fecha": fecha_obj.strftime("%d-%m-%Y") if fecha_obj else None,
+        "solicitante": peticion.get('solicitante'),
+        "tipo_tramite": peticion.get('tipo_tramite')
+    }
+
+
+@api_router.patch("/predios-nuevos/{predio_id}")
+async def actualizar_predio_nuevo(
+    predio_id: str,
+    update_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Actualiza un predio nuevo (solo en estados editables).
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    predio = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Solo se puede editar en estados: creado, digitalizacion, devuelto
+    if predio['estado_flujo'] not in [PredioNuevoEstado.CREADO, PredioNuevoEstado.DIGITALIZACION, PredioNuevoEstado.DEVUELTO]:
+        raise HTTPException(status_code=400, detail="No se puede editar el predio en este estado")
+    
+    # Verificar que sea el gestor creador o de apoyo
+    if predio['gestor_creador_id'] != current_user['id'] and predio['gestor_apoyo_id'] != current_user['id']:
+        if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+            raise HTTPException(status_code=403, detail="Solo el gestor creador o de apoyo puede editar")
+    
+    # Campos protegidos que no se pueden cambiar
+    campos_protegidos = ['id', 'codigo_predial_nacional', 'gestor_creador_id', 'created_at', 'historial_flujo']
+    for campo in campos_protegidos:
+        update_data.pop(campo, None)
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Agregar entrada al historial
+    historial_entry = {
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "accion": "Predio actualizado",
+        "estado_anterior": predio['estado_flujo'],
+        "estado_nuevo": predio['estado_flujo'],
+        "usuario_id": current_user['id'],
+        "usuario_nombre": current_user['full_name'],
+        "observaciones": f"Campos modificados: {', '.join(update_data.keys())}"
+    }
+    
+    await db.predios_nuevos.update_one(
+        {"id": predio_id},
+        {
+            "$set": update_data,
+            "$push": {"historial_flujo": historial_entry}
+        }
+    )
+    
+    predio_actualizado = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    return predio_actualizado
+
+
 # ===== SISTEMA DE APROBACIÓN DE PREDIOS =====
 
 @api_router.post("/predios/cambios/proponer")
