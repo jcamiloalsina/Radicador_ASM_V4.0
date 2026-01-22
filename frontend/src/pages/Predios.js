@@ -3424,18 +3424,20 @@ export default function Predios() {
                   <Label>Dirección *</Label>
                   <Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})} />
                 </div>
-                <div>
-                  <Label>Destino Económico *</Label>
-                  <Select value={formData.destino_economico} onValueChange={(v) => setFormData({...formData, destino_economico: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="col-span-2">
+                  <Label className="mb-2 block">Destino Económico *</Label>
+                  <RadioGroup 
+                    value={formData.destino_economico} 
+                    onValueChange={(v) => setFormData({...formData, destino_economico: v})}
+                    className="flex flex-wrap gap-3"
+                  >
+                    {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
+                      <div key={k} className="flex items-center space-x-1">
+                        <RadioGroupItem value={k} id={`destino_edit_${k}`} />
+                        <Label htmlFor={`destino_edit_${k}`} className="text-xs cursor-pointer">{k} - {v}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
                 <div>
                   <Label>Avalúo (COP) *</Label>
