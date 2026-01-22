@@ -997,7 +997,25 @@ export default function VisorActualizacion() {
       cond_predio_asociado: selectedPredio?.cond_predio_asociado || '',
       cond_unidad: selectedPredio?.unidad || '',
       cond_casa: selectedPredio?.casa || '',
-      // Sección 5: Información de la Visita
+      // Sección 5: Información Jurídica
+      jur_matricula: selectedPredio?.matricula_inmobiliaria || '',
+      jur_tipo_doc: '',
+      jur_numero_doc: '',
+      jur_notaria: '',
+      jur_fecha: '',
+      jur_ciudad: '',
+      jur_razon_social: '',
+      // Sección 6: Datos de Notificación
+      not_telefono: '',
+      not_direccion: selectedPredio?.direccion || '',
+      not_correo: '',
+      not_autoriza_correo: '',
+      not_departamento: 'Norte de Santander',
+      not_municipio: proyecto?.municipio || selectedPredio?.municipio || '',
+      not_vereda: '',
+      not_corregimiento: '',
+      not_datos_adicionales: '',
+      // Sección 7: Información de la Visita
       fecha_visita: new Date().toISOString().split('T')[0],
       hora_visita: new Date().toTimeString().slice(0, 5),
       persona_atiende: '',
@@ -1009,7 +1027,46 @@ export default function VisorActualizacion() {
       firma_base64: null,
       sin_cambios: false
     });
+    
+    // Pre-llenar propietarios si existen
+    if (selectedPredio?.propietarios && selectedPredio.propietarios.length > 0) {
+      setVisitaPropietarios(selectedPredio.propietarios.map(p => ({
+        tipo_documento: p.tipo_documento || '',
+        numero_documento: p.numero_documento || '',
+        nombre: p.nombre_propietario?.split(' ')[0] || p.nombre || '',
+        primer_apellido: p.nombre_propietario?.split(' ')[1] || p.primer_apellido || '',
+        segundo_apellido: p.nombre_propietario?.split(' ')[2] || p.segundo_apellido || '',
+        genero: '',
+        genero_otro: '',
+        grupo_etnico: ''
+      })));
+    } else if (selectedPredio?.nombre_propietario) {
+      const partes = selectedPredio.nombre_propietario.split(' ');
+      setVisitaPropietarios([{
+        tipo_documento: selectedPredio.tipo_documento || '',
+        numero_documento: selectedPredio.numero_documento || '',
+        nombre: partes[0] || '',
+        primer_apellido: partes[1] || '',
+        segundo_apellido: partes.slice(2).join(' ') || '',
+        genero: '',
+        genero_otro: '',
+        grupo_etnico: ''
+      }]);
+    } else {
+      setVisitaPropietarios([{
+        tipo_documento: '',
+        numero_documento: '',
+        nombre: '',
+        primer_apellido: '',
+        segundo_apellido: '',
+        genero: '',
+        genero_otro: '',
+        grupo_etnico: ''
+      }]);
+    }
+    
     setFotos([]);
+    setVisitaPagina(1); // Iniciar en página 1
     setShowVisitaModal(true);
     
     // Limpiar canvas de firma después de que el modal se abra
@@ -1020,6 +1077,32 @@ export default function VisorActualizacion() {
         ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       }
     }, 100);
+  };
+  
+  // Funciones para manejar propietarios en el formulario de visita
+  const agregarPropietarioVisita = () => {
+    setVisitaPropietarios(prev => [...prev, {
+      tipo_documento: '',
+      numero_documento: '',
+      nombre: '',
+      primer_apellido: '',
+      segundo_apellido: '',
+      genero: '',
+      genero_otro: '',
+      grupo_etnico: ''
+    }]);
+  };
+  
+  const eliminarPropietarioVisita = (index) => {
+    if (visitaPropietarios.length > 1) {
+      setVisitaPropietarios(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarPropietarioVisita = (index, campo, valor) => {
+    setVisitaPropietarios(prev => prev.map((p, i) => 
+      i === index ? { ...p, [campo]: valor } : p
+    ));
   };
   
   // Manejar captura de fotos
