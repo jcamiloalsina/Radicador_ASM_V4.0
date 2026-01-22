@@ -2655,49 +2655,569 @@ export default function VisorActualizacion() {
       
       {/* Modal de Formato de Visita */}
       <Dialog open={showVisitaModal} onOpenChange={setShowVisitaModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-emerald-600" />
-              Formato de Visita de Campo - Actualización Catastral
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-600" />
+                Formato de Visita - Actualización Catastral
+              </div>
+              <div className="flex items-center gap-2 text-sm font-normal">
+                <span className="text-slate-500">Página</span>
+                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold">{visitaPagina}/3</span>
+              </div>
             </DialogTitle>
           </DialogHeader>
           
           {selectedPredio && (
-            <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               
-              {/* ========== SECCIÓN 2: INFORMACIÓN BÁSICA DEL PREDIO ========== */}
-              <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
-                  <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
-                    <Building className="w-4 h-4" />
-                    2. INFORMACIÓN BÁSICA DEL PREDIO
-                  </h3>
-                </div>
-                <div className="p-4 space-y-4">
-                  {/* Fila 1: Departamento - Municipio */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs text-slate-500">Departamento</Label>
-                      <Input 
-                        value="Norte de Santander" 
-                        disabled 
-                        className="bg-slate-100 font-medium"
-                      />
+              {/* ========== PÁGINA 1: Información del Predio ========== */}
+              {visitaPagina === 1 && (
+                <>
+                  {/* Sección 2: Información Básica */}
+                  <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                    <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
+                      <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
+                        <Building className="w-4 h-4" />
+                        2. INFORMACIÓN BÁSICA DEL PREDIO
+                      </h3>
                     </div>
-                    <div>
-                      <Label className="text-xs text-slate-500">Municipio</Label>
-                      <Input 
-                        value={proyecto?.municipio || selectedPredio.municipio || ''} 
-                        disabled 
-                        className="bg-slate-100 font-medium"
-                      />
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Departamento</Label>
+                          <Input value="Norte de Santander" disabled className="bg-slate-100 font-medium" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Municipio</Label>
+                          <Input value={proyecto?.municipio || selectedPredio.municipio || ''} disabled className="bg-slate-100 font-medium" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Número Predial (30 dígitos)</Label>
+                        <Input value={selectedPredio.codigo_predial || selectedPredio.numero_predial || ''} disabled className="bg-slate-100 font-mono font-bold text-emerald-800 tracking-wider" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Código Homologado</Label>
+                          <Input value={selectedPredio.codigo_homologado || 'Sin código'} disabled className="bg-slate-100 font-mono" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Tipo <span className="text-emerald-600">(verificar)</span></Label>
+                          <div className="flex items-center gap-4 h-10">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="tipo_predio" checked={visitaData.tipo_predio === 'PH'} onChange={() => setVisitaData(prev => ({ ...prev, tipo_predio: 'PH' }))} className="text-emerald-600" />
+                              <span className="text-sm">PH</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="tipo_predio" checked={visitaData.tipo_predio === 'NPH'} onChange={() => setVisitaData(prev => ({ ...prev, tipo_predio: 'NPH' }))} className="text-emerald-600" />
+                              <span className="text-sm">NPH</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Ubicación</Label>
+                          <div className="flex items-center gap-4 h-10">
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={selectedPredio.zona === 'urbano' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial.substring(5, 7) === '01')} disabled className="text-emerald-600" />
+                              <span className="text-sm">Urbano</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={selectedPredio.zona === 'rural' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial.substring(5, 7) === '00')} disabled className="text-emerald-600" />
+                              <span className="text-sm">Rural</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Dirección <span className="text-emerald-600">(verificar)</span></Label>
+                        <Input value={visitaData.direccion_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, direccion_visita: e.target.value.toUpperCase() }))} placeholder="Dirección" className="uppercase" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Destino Económico <span className="text-emerald-600">(verificar)</span></Label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[{v:'A',l:'A - Habitacional'},{v:'B',l:'B - Industrial'},{v:'C',l:'C - Comercial'},{v:'D',l:'D - Agropecuario'},{v:'E',l:'E - Minero'},{v:'F',l:'F - Cultural'},{v:'G',l:'G - Recreacional'},{v:'H',l:'H - Salubridad'},{v:'I',l:'I - Institucional'},{v:'J',l:'J - Educativo'},{v:'K',l:'K - Religioso'},{v:'L',l:'L - Agrícola'},{v:'M',l:'M - Forestal'},{v:'N',l:'N - Pecuario'},{v:'O',l:'O - Uso Público'},{v:'P',l:'P - Lote'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="destino" checked={visitaData.destino_economico_visita === i.v} onChange={() => setVisitaData(prev => ({ ...prev, destino_economico_visita: i.v }))} className="text-emerald-600" />
+                              <span className="text-xs">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Área Terreno (m²)</Label>
+                          <Input type="number" step="0.01" value={visitaData.area_terreno_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, area_terreno_visita: e.target.value }))} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Área Construida (m²)</Label>
+                          <Input type="number" step="0.01" value={visitaData.area_construida_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, area_construida_visita: e.target.value }))} placeholder="0.00" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Fila 2: Número Predial */}
-                  <div>
-                    <Label className="text-xs text-slate-500">Número Predial (30 dígitos)</Label>
+
+                  {/* Sección 3: PH */}
+                  {visitaData.tipo_predio === 'PH' && (
+                    <div className="border border-purple-200 rounded-lg overflow-hidden">
+                      <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
+                        <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+                          <Building className="w-4 h-4" />
+                          3. PH (Propiedad Horizontal)
+                        </h3>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label className="text-xs text-slate-500">Área por Coeficiente</Label>
+                            <Input type="number" step="0.01" value={visitaData.ph_area_coeficiente} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_coeficiente: e.target.value }))} placeholder="0.00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500">Área Construida Privada</Label>
+                            <Input type="number" step="0.01" value={visitaData.ph_area_construida_privada} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_construida_privada: e.target.value }))} placeholder="0.00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500">Área Construida Común</Label>
+                            <Input type="number" step="0.01" value={visitaData.ph_area_construida_comun} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_construida_comun: e.target.value }))} placeholder="0.00" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs text-slate-500">Copropiedad</Label>
+                            <Input value={visitaData.ph_copropiedad} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_copropiedad: e.target.value.toUpperCase() }))} className="uppercase" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500">Predio Asociado</Label>
+                            <Input value={visitaData.ph_predio_asociado} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_predio_asociado: e.target.value }))} className="font-mono" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-xs text-slate-500">Torre</Label>
+                            <Input value={visitaData.ph_torre} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_torre: e.target.value.toUpperCase() }))} />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-500">Apartamento</Label>
+                            <Input value={visitaData.ph_apartamento} onChange={(e) => setVisitaData(prev => ({ ...prev, ph_apartamento: e.target.value.toUpperCase() }))} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sección 4: Condominio */}
+                  <div className="border border-orange-200 rounded-lg overflow-hidden">
+                    <div className="bg-orange-50 px-4 py-2 border-b border-orange-200">
+                      <h3 className="font-semibold text-orange-800 flex items-center gap-2">
+                        <Home className="w-4 h-4" />
+                        4. Condominio
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Área Terreno Común</Label>
+                          <Input type="number" step="0.01" value={visitaData.cond_area_terreno_comun} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_terreno_comun: e.target.value }))} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Área de Terreno Privada</Label>
+                          <Input type="number" step="0.01" value={visitaData.cond_area_terreno_privada} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_terreno_privada: e.target.value }))} placeholder="0.00" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Área Construida Privada</Label>
+                          <Input type="number" step="0.01" value={visitaData.cond_area_construida_privada} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_construida_privada: e.target.value }))} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Área Construida Común</Label>
+                          <Input type="number" step="0.01" value={visitaData.cond_area_construida_comun} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_construida_comun: e.target.value }))} placeholder="0.00" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Condominio</Label>
+                          <Input value={visitaData.cond_condominio} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_condominio: e.target.value.toUpperCase() }))} className="uppercase" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Predio Asociado</Label>
+                          <Input value={visitaData.cond_predio_asociado} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_predio_asociado: e.target.value }))} className="font-mono" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Unidad</Label>
+                          <Input value={visitaData.cond_unidad} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_unidad: e.target.value.toUpperCase() }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Casa</Label>
+                          <Input value={visitaData.cond_casa} onChange={(e) => setVisitaData(prev => ({ ...prev, cond_casa: e.target.value.toUpperCase() }))} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ========== PÁGINA 2: Información Jurídica y Propietarios ========== */}
+              {visitaPagina === 2 && (
+                <>
+                  {/* Sección 5: Información Jurídica */}
+                  <div className="border border-indigo-200 rounded-lg overflow-hidden">
+                    <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-200">
+                      <h3 className="font-semibold text-indigo-800 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        5. INFORMACIÓN JURÍDICA Y PROPIETARIOS
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {/* Datos del documento */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Matrícula Inmobiliaria</Label>
+                          <Input value={visitaData.jur_matricula} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_matricula: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Tipo Doc.</Label>
+                          <div className="flex gap-2 flex-wrap">
+                            {['Escritura','Sentencia','Resolución'].map(t => (
+                              <label key={t} className="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="jur_tipo_doc" checked={visitaData.jur_tipo_doc === t} onChange={() => setVisitaData(prev => ({ ...prev, jur_tipo_doc: t }))} className="text-indigo-600" />
+                                <span className="text-xs">{t}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">No. Documento</Label>
+                          <Input value={visitaData.jur_numero_doc} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_numero_doc: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Notaría</Label>
+                          <Input value={visitaData.jur_notaria} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_notaria: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Fecha</Label>
+                          <Input type="date" value={visitaData.jur_fecha} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_fecha: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Ciudad</Label>
+                          <Input value={visitaData.jur_ciudad} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_ciudad: e.target.value.toUpperCase() }))} className="uppercase" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Razón Social (si aplica)</Label>
+                        <Input value={visitaData.jur_razon_social} onChange={(e) => setVisitaData(prev => ({ ...prev, jur_razon_social: e.target.value.toUpperCase() }))} className="uppercase" />
+                      </div>
+
+                      {/* Lista de Propietarios */}
+                      <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-sm font-medium text-indigo-800">Propietarios / Poseedores</Label>
+                          <Button type="button" variant="outline" size="sm" onClick={agregarPropietarioVisita} className="text-indigo-600 border-indigo-300">
+                            <Plus className="w-4 h-4 mr-1" /> Agregar
+                          </Button>
+                        </div>
+                        
+                        {visitaPropietarios.map((prop, idx) => (
+                          <div key={idx} className="border border-slate-200 rounded-lg p-3 mb-3 bg-slate-50">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-medium text-slate-600">Propietario {idx + 1}</span>
+                              {visitaPropietarios.length > 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietarioVisita(idx)} className="text-red-500 h-6 px-2">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mb-2">
+                              <div>
+                                <Label className="text-xs text-slate-500">Tipo Doc.</Label>
+                                <div className="flex gap-2">
+                                  {['C','E','T','N'].map(t => (
+                                    <label key={t} className="flex items-center gap-1 cursor-pointer">
+                                      <input type="radio" name={`tipo_doc_${idx}`} checked={prop.tipo_documento === t} onChange={() => actualizarPropietarioVisita(idx, 'tipo_documento', t)} className="text-indigo-600" />
+                                      <span className="text-xs">{t}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Número</Label>
+                                <Input value={prop.numero_documento} onChange={(e) => actualizarPropietarioVisita(idx, 'numero_documento', e.target.value)} className="h-8 text-sm" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3 mb-2">
+                              <div>
+                                <Label className="text-xs text-slate-500">Nombre</Label>
+                                <Input value={prop.nombre} onChange={(e) => actualizarPropietarioVisita(idx, 'nombre', e.target.value.toUpperCase())} className="h-8 text-sm uppercase" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Primer Apellido</Label>
+                                <Input value={prop.primer_apellido} onChange={(e) => actualizarPropietarioVisita(idx, 'primer_apellido', e.target.value.toUpperCase())} className="h-8 text-sm uppercase" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Segundo Apellido</Label>
+                                <Input value={prop.segundo_apellido} onChange={(e) => actualizarPropietarioVisita(idx, 'segundo_apellido', e.target.value.toUpperCase())} className="h-8 text-sm uppercase" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs text-slate-500">Género</Label>
+                                <div className="flex flex-wrap gap-2">
+                                  {[{v:'masculino',l:'Masculino'},{v:'femenino',l:'Femenino'},{v:'lgbtq',l:'LGBTQ+'},{v:'otro',l:'Otro'}].map(g => (
+                                    <label key={g.v} className="flex items-center gap-1 cursor-pointer">
+                                      <input type="radio" name={`genero_${idx}`} checked={prop.genero === g.v} onChange={() => actualizarPropietarioVisita(idx, 'genero', g.v)} className="text-indigo-600" />
+                                      <span className="text-xs">{g.l}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                {prop.genero === 'otro' && (
+                                  <Input value={prop.genero_otro} onChange={(e) => actualizarPropietarioVisita(idx, 'genero_otro', e.target.value)} placeholder="¿Cuál?" className="h-7 text-xs mt-1" />
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Grupo Étnico</Label>
+                                <div className="flex flex-wrap gap-2">
+                                  {['Ninguno','Indígena','Afro','ROM','Otro'].map(g => (
+                                    <label key={g} className="flex items-center gap-1 cursor-pointer">
+                                      <input type="radio" name={`etnico_${idx}`} checked={prop.grupo_etnico === g} onChange={() => actualizarPropietarioVisita(idx, 'grupo_etnico', g)} className="text-indigo-600" />
+                                      <span className="text-xs">{g}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección 6: Datos de Notificación */}
+                  <div className="border border-teal-200 rounded-lg overflow-hidden">
+                    <div className="bg-teal-50 px-4 py-2 border-b border-teal-200">
+                      <h3 className="font-semibold text-teal-800 flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        6. DATOS DE NOTIFICACIÓN
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Teléfono</Label>
+                          <Input value={visitaData.not_telefono} onChange={(e) => setVisitaData(prev => ({ ...prev, not_telefono: e.target.value }))} placeholder="3001234567" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Correo Electrónico</Label>
+                          <Input type="email" value={visitaData.not_correo} onChange={(e) => setVisitaData(prev => ({ ...prev, not_correo: e.target.value.toLowerCase() }))} placeholder="correo@ejemplo.com" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">¿Autoriza notificación por correo?</Label>
+                          <div className="flex gap-4 h-10 items-center">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="autoriza_correo" checked={visitaData.not_autoriza_correo === 'si'} onChange={() => setVisitaData(prev => ({ ...prev, not_autoriza_correo: 'si' }))} className="text-teal-600" />
+                              <span className="text-sm">Sí</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="autoriza_correo" checked={visitaData.not_autoriza_correo === 'no'} onChange={() => setVisitaData(prev => ({ ...prev, not_autoriza_correo: 'no' }))} className="text-teal-600" />
+                              <span className="text-sm">No</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Dirección de Notificación</Label>
+                        <Input value={visitaData.not_direccion} onChange={(e) => setVisitaData(prev => ({ ...prev, not_direccion: e.target.value.toUpperCase() }))} className="uppercase" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Departamento</Label>
+                          <Input value={visitaData.not_departamento} disabled className="bg-slate-100" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Municipio</Label>
+                          <Input value={visitaData.not_municipio} onChange={(e) => setVisitaData(prev => ({ ...prev, not_municipio: e.target.value.toUpperCase() }))} className="uppercase" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Vereda</Label>
+                          <Input value={visitaData.not_vereda} onChange={(e) => setVisitaData(prev => ({ ...prev, not_vereda: e.target.value.toUpperCase() }))} className="uppercase" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Corregimiento</Label>
+                          <Input value={visitaData.not_corregimiento} onChange={(e) => setVisitaData(prev => ({ ...prev, not_corregimiento: e.target.value.toUpperCase() }))} className="uppercase" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Datos Adicionales</Label>
+                        <Textarea value={visitaData.not_datos_adicionales} onChange={(e) => setVisitaData(prev => ({ ...prev, not_datos_adicionales: e.target.value }))} rows={2} />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ========== PÁGINA 3: Visita y Resultado ========== */}
+              {visitaPagina === 3 && (
+                <>
+                  {/* Sección 7: Información de la Visita */}
+                  <div className="border border-blue-200 rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
+                      <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        7. INFORMACIÓN DE LA VISITA
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Fecha de Visita *</Label>
+                          <Input type="date" value={visitaData.fecha_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Hora *</Label>
+                          <Input type="time" value={visitaData.hora_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Persona que Atiende *</Label>
+                        <Input value={visitaData.persona_atiende} onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO" className="uppercase" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Relación con el Predio</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[{v:'propietario',l:'Propietario'},{v:'poseedor',l:'Poseedor'},{v:'arrendatario',l:'Arrendatario'},{v:'familiar',l:'Familiar'},{v:'encargado',l:'Encargado'},{v:'otro',l:'Otro'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="relacion" checked={visitaData.relacion_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, relacion_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">¿Se pudo acceder al predio?</Label>
+                        <div className="flex gap-4">
+                          {[{v:'si',l:'Sí, acceso total'},{v:'parcial',l:'Acceso parcial'},{v:'no',l:'No se pudo'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="acceso" checked={visitaData.acceso_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, acceso_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Estado del Predio</Label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[{v:'habitado',l:'Habitado'},{v:'deshabitado',l:'Deshabitado'},{v:'en_construccion',l:'En construcción'},{v:'abandonado',l:'Abandonado'},{v:'lote_vacio',l:'Lote vacío'},{v:'uso_comercial',l:'Comercial'},{v:'uso_mixto',l:'Mixto'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="estado" checked={visitaData.estado_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, estado_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Servicios Públicos</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Agua','Alcantarillado','Energía','Gas','Internet','Teléfono'].map(s => (
+                            <label key={s} className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={visitaData.servicios_publicos.includes(s)} onChange={(e) => { if(e.target.checked) setVisitaData(prev => ({ ...prev, servicios_publicos: [...prev.servicios_publicos, s] })); else setVisitaData(prev => ({ ...prev, servicios_publicos: prev.servicios_publicos.filter(x => x !== s) })); }} className="rounded" />
+                              <span className="text-sm">{s}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección 8: Resultado */}
+                  <div className="border border-amber-200 rounded-lg overflow-hidden">
+                    <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
+                      <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4" />
+                        8. RESULTADO Y OBSERVACIONES
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input type="checkbox" checked={visitaData.sin_cambios} onChange={(e) => setVisitaData(prev => ({ ...prev, sin_cambios: e.target.checked }))} className="rounded mt-1" />
+                          <div>
+                            <span className="font-medium text-blue-800">Visitado sin cambios</span>
+                            <p className="text-xs text-blue-600 mt-1">Marque si el predio no requiere modificación en los datos catastrales.</p>
+                          </div>
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Observaciones</Label>
+                        <Textarea value={visitaData.observaciones} onChange={(e) => setVisitaData(prev => ({ ...prev, observaciones: e.target.value }))} rows={3} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Camera className="w-4 h-4" />Fotografías</Label>
+                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFotoChange} className="hidden" />
+                        <div className="grid grid-cols-4 gap-2 mb-2">
+                          {fotos.map((f, i) => (
+                            <div key={i} className="relative aspect-square rounded overflow-hidden border">
+                              <img src={f.preview || f} alt={`Foto ${i+1}`} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"><X className="w-3 h-3" /></button>
+                            </div>
+                          ))}
+                        </div>
+                        <Button type="button" variant="outline" onClick={handleCapturarFoto} className="w-full border-dashed"><Camera className="w-4 h-4 mr-2" />Tomar / Seleccionar Fotos</Button>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Pen className="w-4 h-4" />Firma de quien atiende *</Label>
+                        <div className="border-2 border-slate-300 rounded-lg bg-white">
+                          <canvas ref={canvasRef} width={500} height={120} className="w-full touch-none cursor-crosshair" onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{ backgroundColor: '#ffffff' }} />
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirma} className="mt-1 text-slate-500"><Trash2 className="w-3 h-3 mr-1" />Limpiar</Button>
+                      </div>
+                      {userPosition && (
+                        <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                          <MapPin className="w-3 h-3" />GPS: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)} {gpsAccuracy && `(±${Math.round(gpsAccuracy)}m)`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* Navegación de páginas */}
+          <DialogFooter className="flex justify-between items-center pt-4 border-t">
+            <div className="flex gap-2">
+              {[1,2,3].map(p => (
+                <button key={p} onClick={() => setVisitaPagina(p)} className={`w-8 h-8 rounded-full text-sm font-medium ${visitaPagina === p ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{p}</button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              {visitaPagina > 1 && (
+                <Button variant="outline" onClick={() => setVisitaPagina(p => p - 1)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                </Button>
+              )}
+              {visitaPagina < 3 ? (
+                <Button onClick={() => setVisitaPagina(p => p + 1)} className="bg-emerald-600 hover:bg-emerald-700">
+                  Siguiente <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : (
+                <Button onClick={handleGuardarVisita} disabled={saving || !visitaData.persona_atiende.trim()} className="bg-emerald-600 hover:bg-emerald-700">
+                  {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Guardar Visita
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de Propuesta de Cambio */}
+      <Dialog open={showPropuestaModal} onOpenChange={setShowPropuestaModal}>
                     <Input 
                       value={selectedPredio.codigo_predial || selectedPredio.numero_predial || ''} 
                       disabled 
