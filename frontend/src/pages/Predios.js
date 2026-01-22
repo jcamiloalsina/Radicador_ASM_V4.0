@@ -3362,48 +3362,190 @@ export default function Predios() {
             </TabsContent>
           </Tabs>
           
-          {/* Opción para asignar a otro gestor */}
+          {/* Toggle para usar el nuevo flujo de trabajo */}
           <div className="border-t border-slate-200 pt-4 mt-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <input 
                 type="checkbox" 
-                id="asignar-gestor" 
-                checked={!!gestorAsignado}
-                onChange={(e) => !e.target.checked && setGestorAsignado('')}
-                className="rounded border-slate-300"
+                id="usar-nuevo-flujo" 
+                checked={usarNuevoFlujo}
+                onChange={(e) => setUsarNuevoFlujo(e.target.checked)}
+                className="rounded border-emerald-300 text-emerald-600"
               />
-              <Label htmlFor="asignar-gestor" className="text-sm text-slate-700 cursor-pointer">
-                Asignar a otro gestor para que continúe/termine el diligenciamiento
+              <Label htmlFor="usar-nuevo-flujo" className="text-sm font-medium text-emerald-700 cursor-pointer">
+                📋 Usar flujo de trabajo con Gestor de Apoyo (Conservación)
               </Label>
             </div>
             
-            {gestoresDisponibles.length > 0 && (
-              <Select value={gestorAsignado || "sin_asignar"} onValueChange={(v) => setGestorAsignado(v === "sin_asignar" ? "" : v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccione un gestor para asignar..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sin_asignar">Sin asignar (yo lo completo)</SelectItem>
-                  {gestoresDisponibles.map(g => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'gestor_auxiliar' ? 'Gestor Auxiliar' : g.role === 'coordinador' ? 'Coordinador' : 'Atención al Usuario'})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {gestorAsignado && (
-              <p className="text-xs text-amber-600 mt-2">
-                ⚠️ El gestor asignado recibirá una notificación y podrá continuar con el diligenciamiento.
-              </p>
+            {usarNuevoFlujo ? (
+              <div className="space-y-4 bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <div className="text-sm text-emerald-800 mb-3">
+                  <p className="font-medium mb-1">Flujo de Trabajo:</p>
+                  <p className="text-xs text-emerald-600">
+                    Creado → Digitalización (Gestor Apoyo) → Revisión → Aprobado/Devuelto/Rechazado
+                  </p>
+                </div>
+                
+                {/* Gestor de Apoyo (Obligatorio) */}
+                <div>
+                  <Label className="text-sm font-medium">Gestor de Apoyo *</Label>
+                  <p className="text-xs text-slate-500 mb-1">Responsable de completar la digitalización del predio</p>
+                  <Select 
+                    value={gestorAsignado || "seleccionar"} 
+                    onValueChange={(v) => setGestorAsignado(v === "seleccionar" ? "" : v)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccione un gestor de apoyo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="seleccionar" disabled>Seleccione un gestor...</SelectItem>
+                      {gestoresDisponibles.map(g => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : 'Atención'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Radicado relacionado */}
+                <div>
+                  <Label className="text-sm font-medium">Radicado Relacionado (Opcional)</Label>
+                  <p className="text-xs text-slate-500 mb-1">Formato: RASMGC-XXXX-DD-MM-AAAA (solo ingrese XXXX)</p>
+                  <div className="flex gap-2">
+                    <div className="flex items-center bg-slate-100 px-3 py-2 rounded-l border border-r-0 text-sm text-slate-600">
+                      RASMGC-
+                    </div>
+                    <Input 
+                      type="text"
+                      value={radicadoNumero}
+                      onChange={(e) => {
+                        const valor = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+                        setRadicadoNumero(valor);
+                      }}
+                      placeholder="5511"
+                      maxLength={4}
+                      className="w-24 text-center font-mono"
+                    />
+                    <div className="flex items-center bg-slate-100 px-3 py-2 border text-sm text-slate-600">
+                      -{radicadoInfo?.encontrado ? radicadoInfo.fecha : 'DD-MM-AAAA'}
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => buscarRadicado(radicadoNumero)}
+                      disabled={buscandoRadicado || !radicadoNumero}
+                    >
+                      {buscandoRadicado ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {radicadoInfo && (
+                    <div className={`mt-2 p-2 rounded text-xs ${radicadoInfo.encontrado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {radicadoInfo.encontrado ? (
+                        <>
+                          <p><strong>Radicado:</strong> {radicadoInfo.radicado_completo}</p>
+                          {radicadoInfo.solicitante && <p><strong>Solicitante:</strong> {radicadoInfo.solicitante}</p>}
+                          {radicadoInfo.tipo_tramite && <p><strong>Tipo:</strong> {radicadoInfo.tipo_tramite}</p>}
+                        </>
+                      ) : (
+                        <p>{radicadoInfo.mensaje}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Peticiones relacionadas (Multi-select) */}
+                <div>
+                  <Label className="text-sm font-medium">Peticiones Relacionadas (Opcional)</Label>
+                  <p className="text-xs text-slate-500 mb-1">Vincule trámites existentes a este predio</p>
+                  {peticionesDisponibles.length > 0 ? (
+                    <div className="max-h-32 overflow-y-auto border rounded p-2 bg-white">
+                      {peticionesDisponibles.slice(0, 10).map(p => (
+                        <div key={p.id} className="flex items-center gap-2 py-1">
+                          <input
+                            type="checkbox"
+                            id={`peticion-${p.id}`}
+                            checked={peticionesRelacionadas.includes(p.id)}
+                            onChange={() => togglePeticionRelacionada(p.id)}
+                            className="rounded border-slate-300"
+                          />
+                          <label htmlFor={`peticion-${p.id}`} className="text-xs cursor-pointer flex-1">
+                            <span className="font-mono text-emerald-700">{p.radicado}</span>
+                            <span className="text-slate-500 ml-2">{p.nombre_completo}</span>
+                          </label>
+                        </div>
+                      ))}
+                      {peticionesDisponibles.length > 10 && (
+                        <p className="text-xs text-slate-400 mt-1">+{peticionesDisponibles.length - 10} más...</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No hay peticiones activas disponibles</p>
+                  )}
+                  {peticionesRelacionadas.length > 0 && (
+                    <p className="text-xs text-emerald-600 mt-1">
+                      ✓ {peticionesRelacionadas.length} petición(es) seleccionada(s)
+                    </p>
+                  )}
+                </div>
+                
+                {/* Observaciones */}
+                <div>
+                  <Label className="text-sm font-medium">Observaciones (Opcional)</Label>
+                  <textarea
+                    value={observacionesCreacion}
+                    onChange={(e) => setObservacionesCreacion(e.target.value)}
+                    placeholder="Instrucciones especiales para el Gestor de Apoyo..."
+                    className="w-full mt-1 p-2 border rounded text-sm min-h-[60px]"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Opción original para asignar a otro gestor */}
+                <div className="flex items-center gap-2 mb-3">
+                  <input 
+                    type="checkbox" 
+                    id="asignar-gestor" 
+                    checked={!!gestorAsignado}
+                    onChange={(e) => !e.target.checked && setGestorAsignado('')}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="asignar-gestor" className="text-sm text-slate-700 cursor-pointer">
+                    Asignar a otro gestor para que continúe/termine el diligenciamiento
+                  </Label>
+                </div>
+                
+                {gestorAsignado && gestoresDisponibles.length > 0 && (
+                  <Select value={gestorAsignado || "sin_asignar"} onValueChange={(v) => setGestorAsignado(v === "sin_asignar" ? "" : v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccione un gestor para asignar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sin_asignar">Sin asignar (yo lo completo)</SelectItem>
+                      {gestoresDisponibles.map(g => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'gestor_auxiliar' ? 'Gestor Auxiliar' : g.role === 'coordinador' ? 'Coordinador' : 'Atención al Usuario'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {gestorAsignado && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    ⚠️ El gestor asignado recibirá una notificación y podrá continuar con el diligenciamiento.
+                  </p>
+                )}
+              </>
             )}
           </div>
           
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => handleCloseDialog(false)}>Cancelar</Button>
             <Button onClick={handleCreate} className="bg-emerald-700 hover:bg-emerald-800">
-              {gestorAsignado ? 'Guardar y Asignar' : 'Crear Predio'}
+              {usarNuevoFlujo ? 'Crear y Asignar a Flujo' : (gestorAsignado ? 'Guardar y Asignar' : 'Crear Predio')}
             </Button>
           </div>
         </DialogContent>
