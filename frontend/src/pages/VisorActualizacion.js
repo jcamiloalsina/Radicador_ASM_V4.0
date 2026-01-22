@@ -293,7 +293,32 @@ export default function VisorActualizacion() {
     calif_cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
     calif_industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
     calif_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' },
-    // Sección 9: Información de la Visita
+    // Sección 9: Resumen áreas de terreno
+    area_titulo_m2: '',
+    area_titulo_ha: '',
+    area_titulo_desc: '',
+    area_base_catastral_m2: '', // se pre-llena del R1
+    area_base_catastral_ha: '',
+    area_base_catastral_desc: '',
+    area_geografica_m2: '', // se pre-llena del GDB
+    area_geografica_ha: '',
+    area_geografica_desc: '',
+    area_levantamiento_m2: '',
+    area_levantamiento_ha: '',
+    area_levantamiento_desc: '',
+    area_identificacion_m2: '',
+    area_identificacion_ha: '',
+    area_identificacion_desc: '',
+    // Sección 10: Información de Localización (fotos del croquis)
+    fotos_croquis: [],
+    // Sección 11: Observaciones generales (500 caracteres max)
+    observaciones_generales: '',
+    // Sección 12: Firmas
+    firma_visitado_base64: null,
+    firma_reconocedor_base64: null,
+    nombre_visitado: '',
+    nombre_reconocedor: '',
+    // Datos de la visita
     fecha_visita: new Date().toISOString().split('T')[0],
     hora_visita: new Date().toTimeString().slice(0, 5),
     persona_atiende: '',
@@ -305,6 +330,11 @@ export default function VisorActualizacion() {
     firma_base64: null,
     sin_cambios: false
   });
+  // Canvas refs para las firmas
+  const canvasVisitadoRef = useRef(null);
+  const canvasReconocedorRef = useRef(null);
+  const [isDrawingVisitado, setIsDrawingVisitado] = useState(false);
+  const [isDrawingReconocedor, setIsDrawingReconocedor] = useState(false);
   // Lista de propietarios para el formulario de visita
   const [visitaPropietarios, setVisitaPropietarios] = useState([{
     tipo_documento: '',
