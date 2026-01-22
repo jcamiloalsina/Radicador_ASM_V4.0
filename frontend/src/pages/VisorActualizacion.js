@@ -1092,6 +1092,14 @@ export default function VisorActualizacion() {
     
     setFotos([]);
     setVisitaPagina(1); // Iniciar en página 1
+    // Reset construcciones a valores iniciales
+    setVisitaConstrucciones([
+      { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+      { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+      { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+      { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+      { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
+    ]);
     setShowVisitaModal(true);
     
     // Limpiar canvas de firma después de que el modal se abra
