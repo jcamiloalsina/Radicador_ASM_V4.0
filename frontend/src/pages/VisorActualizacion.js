@@ -2731,64 +2731,80 @@ export default function VisorActualizacion() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs text-slate-500">Relación con el Predio</Label>
-                      <Select 
-                        value={visitaData.relacion_predio}
-                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, relacion_predio: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="propietario">Propietario</SelectItem>
-                          <SelectItem value="poseedor">Poseedor</SelectItem>
-                          <SelectItem value="arrendatario">Arrendatario</SelectItem>
-                          <SelectItem value="familiar">Familiar</SelectItem>
-                          <SelectItem value="encargado">Encargado</SelectItem>
-                          <SelectItem value="otro">Otro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-slate-500">¿Se pudo acceder al predio?</Label>
-                      <Select 
-                        value={visitaData.acceso_predio}
-                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, acceso_predio: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="si">Sí, acceso total</SelectItem>
-                          <SelectItem value="parcial">Acceso parcial</SelectItem>
-                          <SelectItem value="no">No se pudo acceder</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* Relación con el predio - radio buttons */}
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-2 block">Relación con el Predio</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'propietario', label: 'Propietario' },
+                        { value: 'poseedor', label: 'Poseedor' },
+                        { value: 'arrendatario', label: 'Arrendatario' },
+                        { value: 'familiar', label: 'Familiar' },
+                        { value: 'encargado', label: 'Encargado' },
+                        { value: 'otro', label: 'Otro' },
+                      ].map(item => (
+                        <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="relacion_predio"
+                            checked={visitaData.relacion_predio === item.value}
+                            onChange={() => setVisitaData(prev => ({ ...prev, relacion_predio: item.value }))}
+                            className="text-blue-600"
+                          />
+                          <span className="text-sm">{item.label}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
                   
-                  {/* Estado del predio */}
+                  {/* Acceso al predio - radio buttons */}
                   <div>
-                    <Label className="text-xs text-slate-500">Estado del Predio</Label>
-                    <Select 
-                      value={visitaData.estado_predio}
-                      onValueChange={(v) => setVisitaData(prev => ({ ...prev, estado_predio: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="habitado">Habitado</SelectItem>
-                        <SelectItem value="deshabitado">Deshabitado</SelectItem>
-                        <SelectItem value="en_construccion">En construcción</SelectItem>
-                        <SelectItem value="abandonado">Abandonado</SelectItem>
-                        <SelectItem value="lote_vacio">Lote vacío</SelectItem>
-                        <SelectItem value="uso_comercial">Uso comercial</SelectItem>
-                        <SelectItem value="uso_mixto">Uso mixto</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs text-slate-500 mb-2 block">¿Se pudo acceder al predio?</Label>
+                    <div className="flex gap-4">
+                      {[
+                        { value: 'si', label: 'Sí, acceso total' },
+                        { value: 'parcial', label: 'Acceso parcial' },
+                        { value: 'no', label: 'No se pudo acceder' },
+                      ].map(item => (
+                        <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="acceso_predio"
+                            checked={visitaData.acceso_predio === item.value}
+                            onChange={() => setVisitaData(prev => ({ ...prev, acceso_predio: item.value }))}
+                            className="text-blue-600"
+                          />
+                          <span className="text-sm">{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Estado del predio - radio buttons */}
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-2 block">Estado del Predio</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: 'habitado', label: 'Habitado' },
+                        { value: 'deshabitado', label: 'Deshabitado' },
+                        { value: 'en_construccion', label: 'En construcción' },
+                        { value: 'abandonado', label: 'Abandonado' },
+                        { value: 'lote_vacio', label: 'Lote vacío' },
+                        { value: 'uso_comercial', label: 'Uso comercial' },
+                        { value: 'uso_mixto', label: 'Uso mixto' },
+                      ].map(item => (
+                        <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="estado_predio"
+                            checked={visitaData.estado_predio === item.value}
+                            onChange={() => setVisitaData(prev => ({ ...prev, estado_predio: item.value }))}
+                            className="text-blue-600"
+                          />
+                          <span className="text-sm">{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   
                   {/* Servicios públicos */}
