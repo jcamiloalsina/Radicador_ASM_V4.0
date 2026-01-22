@@ -471,7 +471,7 @@ export default function PrediosEnProceso() {
                             Por {h.usuario_nombre} - {formatDate(h.fecha)}
                           </p>
                           {h.observaciones && (
-                            <p className="text-sm text-slate-600 mt-1 italic">"{h.observaciones}"</p>
+                            <p className="text-sm text-slate-600 mt-1 italic">&ldquo;{h.observaciones}&rdquo;</p>
                           )}
                           {h.estado_anterior && h.estado_nuevo && h.estado_anterior !== h.estado_nuevo && (
                             <p className="text-xs text-slate-400 mt-1">
