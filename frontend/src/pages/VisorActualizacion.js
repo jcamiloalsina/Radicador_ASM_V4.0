@@ -3063,12 +3063,12 @@ export default function VisorActualizacion() {
                 </div>
               </div>
               
-              {/* ========== SECCIÓN 4: RESULTADO DE LA VISITA ========== */}
+              {/* ========== SECCIÓN 6: RESULTADO DE LA VISITA ========== */}
               <div className="border border-amber-200 rounded-lg overflow-hidden">
                 <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
                   <h3 className="font-semibold text-amber-800 flex items-center gap-2">
                     <CheckSquare className="w-4 h-4" />
-                    4. RESULTADO Y OBSERVACIONES
+                    6. RESULTADO Y OBSERVACIONES
                   </h3>
                 </div>
                 <div className="p-4 space-y-4">
