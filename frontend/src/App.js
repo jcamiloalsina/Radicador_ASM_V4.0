@@ -52,6 +52,7 @@ function App() {
             <Route path="visor-actualizacion/:proyectoId" element={<VisorActualizacion />} />
             <Route path="gestion-propuestas" element={<GestionPropuestas />} />
             <Route path="certificados" element={<CertificadosGestion />} />
+            <Route path="predios-en-proceso" element={<PrediosEnProceso />} />
           </Route>
         </Routes>
       </BrowserRouter>
