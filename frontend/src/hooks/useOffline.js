@@ -308,6 +308,8 @@ export function useOffline() {
   const savePetitionsOffline = useCallback(async (petitions) => {
     try {
       const db = await openDB();
+      
+      // Save petitions
       const tx = db.transaction('petitions', 'readwrite');
       const store = tx.objectStore('petitions');
       
@@ -315,11 +317,23 @@ export function useOffline() {
         store.put(petition);
       }
       
+      // Wait for transaction to complete
+      await new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      
       // Save last sync time for petitions
       const prefTx = db.transaction('preferences', 'readwrite');
       const prefStore = prefTx.objectStore('preferences');
       prefStore.put({ key: 'lastPetitionsSync', value: new Date().toISOString() });
       
+      await new Promise((resolve, reject) => {
+        prefTx.oncomplete = resolve;
+        prefTx.onerror = () => reject(prefTx.error);
+      });
+      
+      // Refresh stats after saving
       await loadOfflineStats();
       console.log(`[Offline] Guardadas ${petitions.length} peticiones para uso offline`);
       return true;
