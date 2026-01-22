@@ -243,7 +243,7 @@ export default function VisorActualizacion() {
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
-  const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-3)
+  const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-4)
   const [visitaData, setVisitaData] = useState({
     // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
@@ -286,7 +286,14 @@ export default function VisorActualizacion() {
     not_vereda: '',
     not_corregimiento: '',
     not_datos_adicionales: '',
-    // Sección 7: Información de la Visita
+    // Sección 8: Calificación
+    calif_estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+    calif_acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+    calif_bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+    calif_cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+    calif_industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+    calif_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' },
+    // Sección 9: Información de la Visita
     fecha_visita: new Date().toISOString().split('T')[0],
     hora_visita: new Date().toTimeString().slice(0, 5),
     persona_atiende: '',
@@ -309,6 +316,14 @@ export default function VisorActualizacion() {
     genero_otro: '',
     grupo_etnico: ''
   }]);
+  // Sección 7: Unidades de Construcción (dinámico, permite agregar más de 5)
+  const [visitaConstrucciones, setVisitaConstrucciones] = useState([
+    { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+    { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+    { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+    { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+    { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
+  ]);
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
