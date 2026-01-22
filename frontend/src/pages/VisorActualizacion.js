@@ -243,7 +243,7 @@ export default function VisorActualizacion() {
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
-  const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-4)
+  const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-5)
   const [visitaData, setVisitaData] = useState({
     // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
@@ -2909,7 +2909,7 @@ export default function VisorActualizacion() {
               </div>
               <div className="flex items-center gap-2 text-sm font-normal">
                 <span className="text-slate-500">Página</span>
-                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold">{visitaPagina}/4</span>
+                <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold">{visitaPagina}/5</span>
               </div>
             </DialogTitle>
           </DialogHeader>
