@@ -960,8 +960,8 @@ export default function GestionPropuestas() {
                 </div>
               </div>
               
-              {/* Si ya fue revisada */}
-              {propuestaDetalle.estado !== 'pendiente' && (
+              {/* Si ya fue revisada (excluir pendiente y reenviada que aún pueden ser accionadas) */}
+              {propuestaDetalle.estado !== 'pendiente' && propuestaDetalle.estado !== 'reenviada' && (
                 <div className={`p-4 rounded-lg ${
                   propuestaDetalle.estado === 'aprobada' ? 'bg-emerald-50 border border-emerald-200' : 
                   propuestaDetalle.estado === 'subsanacion' ? 'bg-orange-50 border border-orange-200' :
