@@ -63,6 +63,48 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
+### Sesión 22 Enero 2026 - Flujo "Crear Predio" Completo
+**Implementación del flujo de trabajo multi-etapa para creación de nuevos predios:**
+
+#### Roles del Flujo:
+- **Gestor (Creador):** Inicia el proceso de creación del predio
+- **Gestor de Apoyo:** Responsable de completar la digitalización
+- **Coordinador/Admin:** Revisa y aprueba/devuelve/rechaza
+
+#### Estados del Flujo:
+`creado` → `digitalizacion` → `revision` → `aprobado`/`devuelto`/`rechazado`
+
+#### Funcionalidades Implementadas:
+
+1. ✅ **Backend - Endpoints del Flujo:**
+   - `POST /api/predios-nuevos` - Crea nuevo predio e inicia flujo
+   - `GET /api/predios-nuevos` - Lista predios en proceso con filtros
+   - `POST /api/predios-nuevos/{id}/accion` - Ejecuta acciones (enviar_revision, aprobar, devolver, rechazar)
+   - `GET /api/predios-nuevos/buscar-radicado/{numero}` - Busca radicado por número
+   - `GET /api/predios-nuevos/pendientes` - Predios pendientes por rol
+
+2. ✅ **Frontend - Formulario "Crear Predio" Mejorado:**
+   - Toggle "Usar flujo de trabajo con Gestor de Apoyo"
+   - Dropdown de Gestor de Apoyo (obligatorio)
+   - Input de Radicado: formato RASMGC-XXXX-DD-MM-AAAA (solo se ingresa XXXX)
+   - Multi-select para vincular Peticiones relacionadas
+   - Observaciones para el Gestor de Apoyo
+
+3. ✅ **Nueva Página "Predios en Proceso" (/dashboard/predios-en-proceso):**
+   - Cards con estadísticas por estado
+   - Filtro por estado del flujo
+   - Lista de predios con acciones según rol y estado
+   - Vista de detalle con tabs (General, Propietario, Historial)
+   - Diálogos para confirmar acciones
+
+4. ✅ **Integración y Trazabilidad:**
+   - Historial completo de acciones
+   - Notificaciones a participantes del flujo
+   - Predios aprobados se mueven a colección principal automáticamente
+
+**Bug Fix:** Corregido TypeError en `generate_codigo_homologado()` - numero_predio almacenado como string
+**Testing:** 18/18 tests passed (iteration_14.json)
+
 ### Sesión 20 Enero 2026 - Fork
 **Corrección de 3 bugs en módulo de Actualización:**
 
