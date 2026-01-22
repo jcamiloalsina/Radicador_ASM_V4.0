@@ -301,6 +301,19 @@ export default function AllPetitions() {
 
   return (
     <div className="space-y-6" data-testid="all-petitions-page">
+      {/* Offline Mode Banner */}
+      {offlineMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
+          <WifiOff className="w-5 h-5 text-amber-600" />
+          <div className="flex-1">
+            <span className="text-amber-800 font-medium">Modo Offline</span>
+            <span className="text-amber-600 text-sm ml-2">
+              Mostrando {petitions.length} peticiones guardadas localmente
+            </span>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -314,8 +327,11 @@ export default function AllPetitions() {
           </p>
         </div>
         
-        {/* Export Buttons */}
-        <div className="flex gap-2">
+        {/* Actions: Sync + Export Buttons */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Sync for Offline Button */}
+          <SyncPetitionsButton onFetchPetitions={fetchAllPetitionsForOffline} />
+          
           {isCoordinatorOrAdmin && (
             <Button
               variant="outline"
