@@ -981,8 +981,8 @@ export default function GestionPropuestas() {
                 </div>
               )}
               
-              {/* Acciones si está pendiente */}
-              {propuestaDetalle.estado === 'pendiente' && (
+              {/* Acciones si está pendiente o reenviada */}
+              {(propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
                 <>
                   <div>
                     <Label className="text-slate-600">Comentario de Revisión {!modoEdicion && '(requerido para rechazar)'}</Label>
