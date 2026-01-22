@@ -950,7 +950,24 @@ export default function VisorActualizacion() {
       destino_economico_visita: selectedPredio?.destino_economico || '',
       area_terreno_visita: selectedPredio?.area_terreno?.toString() || '',
       area_construida_visita: selectedPredio?.area_construida?.toString() || '',
-      // Sección 3: Información de la Visita
+      // Sección 3: PH (Propiedad Horizontal) - valores del predio si existen
+      ph_area_coeficiente: selectedPredio?.area_coeficiente?.toString() || '',
+      ph_area_construida_privada: selectedPredio?.area_construida_privada?.toString() || '',
+      ph_area_construida_comun: selectedPredio?.area_construida_comun?.toString() || '',
+      ph_copropiedad: selectedPredio?.copropiedad || '',
+      ph_predio_asociado: selectedPredio?.predio_asociado || '',
+      ph_torre: selectedPredio?.torre || '',
+      ph_apartamento: selectedPredio?.apartamento || '',
+      // Sección 4: Condominio
+      cond_area_terreno_comun: selectedPredio?.area_terreno_comun?.toString() || '',
+      cond_area_terreno_privada: selectedPredio?.area_terreno_privada?.toString() || '',
+      cond_area_construida_privada: selectedPredio?.cond_area_construida_privada?.toString() || '',
+      cond_area_construida_comun: selectedPredio?.cond_area_construida_comun?.toString() || '',
+      cond_condominio: selectedPredio?.condominio || '',
+      cond_predio_asociado: selectedPredio?.cond_predio_asociado || '',
+      cond_unidad: selectedPredio?.unidad || '',
+      cond_casa: selectedPredio?.casa || '',
+      // Sección 5: Información de la Visita
       fecha_visita: new Date().toISOString().split('T')[0],
       hora_visita: new Date().toTimeString().slice(0, 5),
       persona_atiende: '',
