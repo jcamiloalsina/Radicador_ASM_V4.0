@@ -134,21 +134,43 @@ export function useOffline() {
   const loadOfflineStats = async () => {
     try {
       const db = await openDB();
-      const tx = db.transaction('predios', 'readonly');
-      const store = tx.objectStore('predios');
-      const count = await new Promise((resolve) => {
-        const request = store.count();
+      
+      // Count predios
+      const prediosTx = db.transaction('predios', 'readonly');
+      const prediosStore = prediosTx.objectStore('predios');
+      const prediosCount = await new Promise((resolve) => {
+        const request = prediosStore.count();
         request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(0);
       });
       
+      // Count petitions
+      let petitionsCount = 0;
+      if (db.objectStoreNames.contains('petitions')) {
+        const petitionsTx = db.transaction('petitions', 'readonly');
+        const petitionsStore = petitionsTx.objectStore('petitions');
+        petitionsCount = await new Promise((resolve) => {
+          const request = petitionsStore.count();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => resolve(0);
+        });
+      }
+      
+      // Get preferences
       const prefTx = db.transaction('preferences', 'readonly');
       const prefStore = prefTx.objectStore('preferences');
       const lastSync = await new Promise((resolve) => {
         const request = prefStore.get('lastSync');
         request.onsuccess = () => resolve(request.result?.value);
+        request.onerror = () => resolve(null);
+      });
+      const lastPetitionsSync = await new Promise((resolve) => {
+        const request = prefStore.get('lastPetitionsSync');
+        request.onsuccess = () => resolve(request.result?.value);
+        request.onerror = () => resolve(null);
       });
       
-      setOfflineData({ prediosCount: count, lastSync });
+      setOfflineData({ prediosCount, petitionsCount, lastSync, lastPetitionsSync });
     } catch (error) {
       console.error('Error loading offline stats:', error);
     }
