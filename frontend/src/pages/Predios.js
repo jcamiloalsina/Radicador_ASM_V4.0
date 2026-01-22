@@ -1640,6 +1640,67 @@ export default function Predios() {
     toast.info('Por favor seleccione un gestor para continuar con el diligenciamiento', { duration: 4000 });
   };
 
+  // === FUNCIONES PARA EL NUEVO FLUJO "CREAR PREDIO" ===
+  
+  // Buscar radicado por número (solo los 4 dígitos)
+  const buscarRadicado = async (numero) => {
+    if (!numero || numero.length < 1) {
+      setRadicadoInfo(null);
+      return;
+    }
+    
+    setBuscandoRadicado(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios-nuevos/buscar-radicado/${numero}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRadicadoInfo(res.data);
+      if (res.data.encontrado) {
+        toast.success('Radicado encontrado');
+      }
+    } catch (error) {
+      setRadicadoInfo({ encontrado: false, mensaje: 'Error al buscar radicado' });
+    } finally {
+      setBuscandoRadicado(false);
+    }
+  };
+  
+  // Cargar peticiones disponibles para vincular
+  const fetchPeticionesDisponibles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/petitions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filtrar solo peticiones activas (no finalizadas)
+      const peticionesActivas = (res.data || []).filter(p => 
+        p.estado !== 'finalizado' && p.estado !== 'rechazado'
+      );
+      setPeticionesDisponibles(peticionesActivas);
+    } catch (error) {
+      console.log('Error cargando peticiones');
+    }
+  };
+  
+  // Efecto para cargar peticiones cuando se abre el diálogo de crear
+  useEffect(() => {
+    if (showCreateDialog && usarNuevoFlujo) {
+      fetchPeticionesDisponibles();
+    }
+  }, [showCreateDialog, usarNuevoFlujo]);
+  
+  // Toggle petición relacionada
+  const togglePeticionRelacionada = (peticionId) => {
+    setPeticionesRelacionadas(prev => {
+      if (prev.includes(peticionId)) {
+        return prev.filter(id => id !== peticionId);
+      } else {
+        return [...prev, peticionId];
+      }
+    });
+  };
+
   const fetchCatalogos = async () => {
     try {
       const token = localStorage.getItem('token');
