@@ -2865,9 +2865,9 @@ export default function VisorActualizacion() {
                     />
                     <div className="grid grid-cols-4 gap-2 mb-2">
                       {fotos.map((foto, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                        <div key={foto.id || index} className="relative aspect-square rounded-lg overflow-hidden border">
                           <img 
-                            src={foto.preview || foto} 
+                            src={foto.data || foto} 
                             alt={`Foto ${index + 1}`} 
                             className="w-full h-full object-cover"
                           />
