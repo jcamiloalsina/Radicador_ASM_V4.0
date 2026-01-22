@@ -2065,7 +2065,7 @@ export default function VisorActualizacion() {
                       <div className="text-center py-6">
                         <Database className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                         <p className="text-sm text-slate-500">Sin información de zonas físicas</p>
-                        <p className="text-xs text-slate-400">Use "Editar" para agregar zonas</p>
+                        <p className="text-xs text-slate-400">Use &quot;Editar&quot; para agregar zonas</p>
                       </div>
                     )}
                   </TabsContent>
