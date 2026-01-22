@@ -3075,17 +3075,19 @@ export default function Predios() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Tipo Documento *</Label>
-                      <Select value={prop.tipo_documento} onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs mb-2 block">Tipo Documento *</Label>
+                      <RadioGroup 
+                        value={prop.tipo_documento} 
+                        onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`tipo_doc_${index}_${k}`} />
+                            <Label htmlFor={`tipo_doc_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                     <div>
                       <Label className="text-xs">Número Documento *</Label>
@@ -3362,17 +3364,19 @@ export default function Predios() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Tipo Documento *</Label>
-                      <Select value={prop.tipo_documento} onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs mb-2 block">Tipo Documento *</Label>
+                      <RadioGroup 
+                        value={prop.tipo_documento} 
+                        onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`tipo_doc_${index}_${k}`} />
+                            <Label htmlFor={`tipo_doc_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                     <div>
                       <Label className="text-xs">Número Documento *</Label>
