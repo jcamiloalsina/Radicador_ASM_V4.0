@@ -1459,17 +1459,22 @@ export default function VisorActualizacion() {
     }
     
     const firmaBase64 = obtenerFirmaBase64();
+    const firmaVisitadoB64 = obtenerFirmaVisitadoBase64();
+    const firmaReconocedorB64 = obtenerFirmaReconocedorBase64();
     
     setSaving(true);
     
     const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
     
-    // Datos de la visita incluyendo construcciones y calificaciones
+    // Datos de la visita incluyendo construcciones, calificaciones y nuevas secciones
     const visitaCompleta = {
       ...visitaData,
       construcciones: visitaConstrucciones.filter(c => c.codigo_uso || c.area), // Solo guardar construcciones con datos
       firma_base64: firmaBase64,
+      firma_visitado_base64: firmaVisitadoB64,
+      firma_reconocedor_base64: firmaReconocedorB64,
       fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
+      fotos_croquis: visitaData.fotos_croquis.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
       ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
       realizada_por: user?.full_name || user?.email,
       realizada_en: new Date().toISOString()
