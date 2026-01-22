@@ -71,7 +71,8 @@ import {
   Download,
   FileDown,
   Send,
-  ListTodo
+  ListTodo,
+  Building
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
