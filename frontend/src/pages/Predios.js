@@ -3821,8 +3821,8 @@ export default function Predios() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Matrícula Inmobiliaria</p>
-                      <p className="font-medium text-slate-700">{selectedPredio.r2_registros?.[0]?.matricula_inmobiliaria || selectedPredio.matricula_inmobiliaria || 'Sin matrícula'}</p>
+                      <p className="text-xs text-slate-500">Código Homologado</p>
+                      <p className="font-medium text-slate-700">{selectedPredio.codigo_homologado || selectedPredio.codigo_anterior || 'Sin código homologado'}</p>
                     </div>
                   </div>
                 </div>
