@@ -77,7 +77,7 @@ export function OnlineIndicator() {
 
 // Offline Ready Status Badge (shows cache status)
 export function OfflineReadyBadge() {
-  const { isOnline, cacheStatus, offlineData, forceCacheResources } = useOffline();
+  const { isOnline, cacheStatus, offlineData, forceCacheResources, refreshStats } = useOffline();
   const [expanded, setExpanded] = useState(false);
   const [caching, setCaching] = useState(false);
   
@@ -87,13 +87,21 @@ export function OfflineReadyBadge() {
     setCaching(false);
   };
   
+  // Refresh stats when expanding
+  const handleExpand = async () => {
+    if (!expanded) {
+      await refreshStats();
+    }
+    setExpanded(!expanded);
+  };
+  
   // Don't show when offline (OfflineIndicator handles that)
   if (!isOnline) return null;
   
   return (
     <div className="relative">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleExpand}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
           cacheStatus.ready 
             ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
