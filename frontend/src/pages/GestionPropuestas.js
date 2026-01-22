@@ -953,7 +953,7 @@ export default function GestionPropuestas() {
               {/* Justificación del gestor */}
               <div className="bg-slate-50 rounded-lg p-4">
                 <Label className="text-slate-600 text-sm">Justificación del Gestor</Label>
-                <p className="mt-2 text-sm text-slate-700 italic">"{propuestaDetalle.justificacion}"</p>
+                <p className="mt-2 text-sm text-slate-700 italic">&ldquo;{propuestaDetalle.justificacion}&rdquo;</p>
                 <div className="flex justify-between mt-3 text-xs text-slate-500">
                   <span>Enviado por: <strong>{propuestaDetalle.creado_por_nombre || propuestaDetalle.creado_por}</strong></span>
                   <span>{new Date(propuestaDetalle.creado_en).toLocaleString('es-CO')}</span>
@@ -976,7 +976,7 @@ export default function GestionPropuestas() {
                     por {propuestaDetalle.revisado_por}
                   </p>
                   {propuestaDetalle.comentario_revision && (
-                    <p className="text-sm mt-2 italic">"{propuestaDetalle.comentario_revision}"</p>
+                    <p className="text-sm mt-2 italic">&ldquo;{propuestaDetalle.comentario_revision}&rdquo;</p>
                   )}
                   <p className="text-xs text-slate-500 mt-2">
                     {new Date(propuestaDetalle.revisado_en).toLocaleString('es-CO')}
