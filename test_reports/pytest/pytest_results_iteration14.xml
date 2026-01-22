@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="0" tests="18" time="6.879" timestamp="2026-01-22T17:17:07.457619+00:00" hostname="agent-env-4b4fcee3-5101-43df-977b-caa32330495e"><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_01_login_success" time="0.339" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_02_list_predios_nuevos_empty_or_existing" time="0.285" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_03_list_predios_nuevos_with_estado_filter" time="0.369" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_04_get_pendientes" time="0.271" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_05_buscar_radicado_not_found" time="0.277" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_06_buscar_radicado_existing" time="0.734"><failure message="AttributeError: 'list' object has no attribute 'get'">backend/tests/test_predios_nuevos.py:143: in test_06_buscar_radicado_existing
+    petitions = data.get("petitions", [])
+                ^^^^^^^^
+E   AttributeError: 'list' object has no attribute 'get'</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_07_create_predio_nuevo_validation" time="0.271" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_08_create_predio_nuevo_invalid_gestor" time="0.275" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_09_create_predio_nuevo_success" time="0.470"><failure message="AssertionError: Failed to create predio: Internal Server Error&#10;assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:262: in test_09_create_predio_nuevo_success
+    assert response.status_code == 200, f"Failed to create predio: {response.text}"
+E   AssertionError: Failed to create predio: Internal Server Error
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_10_get_predio_nuevo_by_id" time="0.471"><failure message="AssertionError: Failed to create predio: Internal Server Error&#10;assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:286: in test_10_get_predio_nuevo_by_id
+    predio_id = self.test_09_create_predio_nuevo_success()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_predios_nuevos.py:262: in test_09_create_predio_nuevo_success
+    assert response.status_code == 200, f"Failed to create predio: {response.text}"
+E   AssertionError: Failed to create predio: Internal Server Error
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_11_get_predio_nuevo_not_found" time="0.282" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_12_accion_enviar_revision" time="0.486"><failure message="AssertionError: Failed to create predio: Internal Server Error&#10;assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:313: in test_12_accion_enviar_revision
+    predio_id = self.test_09_create_predio_nuevo_success()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_predios_nuevos.py:262: in test_09_create_predio_nuevo_success
+    assert response.status_code == 200, f"Failed to create predio: {response.text}"
+E   AssertionError: Failed to create predio: Internal Server Error
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_13_accion_devolver" time="0.483"><failure message="AssertionError: Failed to create predio: Internal Server Error&#10;assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:336: in test_13_accion_devolver
+    predio_id = self.test_12_accion_enviar_revision()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_predios_nuevos.py:313: in test_12_accion_enviar_revision
+    predio_id = self.test_09_create_predio_nuevo_success()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_predios_nuevos.py:262: in test_09_create_predio_nuevo_success
+    assert response.status_code == 200, f"Failed to create predio: {response.text}"
+E   AssertionError: Failed to create predio: Internal Server Error
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_14_accion_aprobar" time="0.507"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:383: in test_14_accion_aprobar
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_15_accion_rechazar" time="0.498"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:438: in test_15_accion_rechazar
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_16_accion_invalid_state_transition" time="0.548"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">backend/tests/test_predios_nuevos.py:490: in test_16_accion_invalid_state_transition
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_predios_nuevos.TestPrediosNuevosWorkflow" name="test_17_unauthorized_access" time="0.044" /><testcase classname="backend.tests.test_predios_nuevos.TestPrediosEnProcesoPage" name="test_frontend_page_loads" time="0.038" /></testsuite></testsuites>
