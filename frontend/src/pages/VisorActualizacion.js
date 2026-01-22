@@ -2725,12 +2725,202 @@ export default function VisorActualizacion() {
                 </div>
               </div>
               
-              {/* ========== SECCIÓN 3: INFORMACIÓN DE LA VISITA ========== */}
+              {/* ========== SECCIÓN 3: PH (PROPIEDAD HORIZONTAL) ========== */}
+              {visitaData.tipo_predio === 'PH' && (
+                <div className="border border-purple-200 rounded-lg overflow-hidden">
+                  <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
+                    <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+                      <Building className="w-4 h-4" />
+                      3. PH (Propiedad Horizontal)
+                    </h3>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    {/* Fila 1: Áreas */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-500">Área por Coeficiente</Label>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={visitaData.ph_area_coeficiente}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_coeficiente: e.target.value }))}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Área Construida Privada</Label>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={visitaData.ph_area_construida_privada}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_construida_privada: e.target.value }))}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Área Construida Común</Label>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          value={visitaData.ph_area_construida_comun}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_area_construida_comun: e.target.value }))}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Fila 2: Copropiedad y Predio Asociado */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-500">Copropiedad</Label>
+                        <Input 
+                          value={visitaData.ph_copropiedad}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_copropiedad: e.target.value.toUpperCase() }))}
+                          placeholder="Nombre de la copropiedad"
+                          className="uppercase"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Predio Asociado</Label>
+                        <Input 
+                          value={visitaData.ph_predio_asociado}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_predio_asociado: e.target.value }))}
+                          placeholder="Código del predio asociado"
+                          className="font-mono"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Fila 3: Torre y Apartamento */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-500">Torre</Label>
+                        <Input 
+                          value={visitaData.ph_torre}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_torre: e.target.value.toUpperCase() }))}
+                          placeholder="Número o nombre de torre"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Apartamento</Label>
+                        <Input 
+                          value={visitaData.ph_apartamento}
+                          onChange={(e) => setVisitaData(prev => ({ ...prev, ph_apartamento: e.target.value.toUpperCase() }))}
+                          placeholder="Número de apartamento"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* ========== SECCIÓN 4: CONDOMINIO ========== */}
+              <div className="border border-orange-200 rounded-lg overflow-hidden">
+                <div className="bg-orange-50 px-4 py-2 border-b border-orange-200">
+                  <h3 className="font-semibold text-orange-800 flex items-center gap-2">
+                    <Home className="w-4 h-4" />
+                    4. Condominio
+                  </h3>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Fila 1: Áreas de Terreno */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Área Terreno Común</Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.cond_area_terreno_comun}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_terreno_comun: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Área de Terreno Privada</Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.cond_area_terreno_privada}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_terreno_privada: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Fila 2: Áreas Construidas */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Área Construida Privada</Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.cond_area_construida_privada}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_construida_privada: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Área Construida Común</Label>
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={visitaData.cond_area_construida_comun}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_area_construida_comun: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Fila 3: Condominio y Predio Asociado */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Condominio</Label>
+                      <Input 
+                        value={visitaData.cond_condominio}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_condominio: e.target.value.toUpperCase() }))}
+                        placeholder="Nombre del condominio"
+                        className="uppercase"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Predio Asociado</Label>
+                      <Input 
+                        value={visitaData.cond_predio_asociado}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_predio_asociado: e.target.value }))}
+                        placeholder="Código del predio asociado"
+                        className="font-mono"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Fila 4: Unidad y Casa */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500">Unidad</Label>
+                      <Input 
+                        value={visitaData.cond_unidad}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_unidad: e.target.value.toUpperCase() }))}
+                        placeholder="Número de unidad"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500">Casa</Label>
+                      <Input 
+                        value={visitaData.cond_casa}
+                        onChange={(e) => setVisitaData(prev => ({ ...prev, cond_casa: e.target.value.toUpperCase() }))}
+                        placeholder="Número de casa"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* ========== SECCIÓN 5: INFORMACIÓN DE LA VISITA ========== */}
               <div className="border border-blue-200 rounded-lg overflow-hidden">
                 <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
                   <h3 className="font-semibold text-blue-800 flex items-center gap-2">
                     <User className="w-4 h-4" />
-                    3. INFORMACIÓN DE LA VISITA
+                    5. INFORMACIÓN DE LA VISITA
                   </h3>
                 </div>
                 <div className="p-4 space-y-4">
