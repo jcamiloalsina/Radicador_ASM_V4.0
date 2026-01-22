@@ -3858,7 +3858,7 @@ export default function VisorActualizacion() {
                   <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
               )}
-              {visitaPagina < 4 ? (
+              {visitaPagina < 5 ? (
                 <Button onClick={() => setVisitaPagina(p => p + 1)} className="bg-emerald-600 hover:bg-emerald-700">
                   Siguiente <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
