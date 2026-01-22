@@ -84,7 +84,9 @@ export function useOffline() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineData, setOfflineData] = useState({
     prediosCount: 0,
-    lastSync: null
+    petitionsCount: 0,
+    lastSync: null,
+    lastPetitionsSync: null
   });
   const [cacheStatus, setCacheStatus] = useState({
     ready: false,
