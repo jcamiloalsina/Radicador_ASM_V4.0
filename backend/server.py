@@ -4106,7 +4106,14 @@ async def generate_codigo_homologado(municipio: str) -> str:
     )
     
     if last_predio:
-        next_num = last_predio.get("numero_predio", 0) + 1
+        # Handle both string and int numero_predio values
+        num_predio = last_predio.get("numero_predio", 0)
+        if isinstance(num_predio, str):
+            try:
+                num_predio = int(num_predio)
+            except (ValueError, TypeError):
+                num_predio = 0
+        next_num = num_predio + 1
     else:
         next_num = 1
     
