@@ -3555,78 +3555,196 @@ export default function VisorActualizacion() {
                 </>
               )}
 
-              {/* ========== PÁGINA 4: Visita y Resultado ========== */}
+              {/* ========== PÁGINA 4: Áreas de Terreno y Localización ========== */}
               {visitaPagina === 4 && (
                 <>
-                  {/* Sección 9: Información de la Visita */}
+                  {/* Sección 9: Resumen áreas de terreno */}
+                  <div className="border border-teal-200 rounded-lg overflow-hidden">
+                    <div className="bg-teal-50 px-4 py-2 border-b border-teal-200">
+                      <h3 className="font-semibold text-teal-800 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        9. RESUMEN ÁREAS DE TERRENO
+                      </h3>
+                    </div>
+                    <div className="p-4">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-teal-50">
+                              <th className="px-3 py-2 text-left font-medium text-teal-700 border border-teal-200">Área de terreno según:</th>
+                              <th className="px-3 py-2 text-center font-medium text-teal-700 border border-teal-200 w-24">m²</th>
+                              <th className="px-3 py-2 text-center font-medium text-teal-700 border border-teal-200 w-24">Ha</th>
+                              <th className="px-3 py-2 text-left font-medium text-teal-700 border border-teal-200">Descripción</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área de título</td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_titulo_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_titulo_m2: e.target.value, area_titulo_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_titulo_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_titulo_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_titulo_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
+                            </tr>
+                            <tr className="bg-emerald-50">
+                              <td className="px-3 py-2 border border-teal-200 font-medium text-emerald-700">Área base catastral (R1)</td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_base_catastral_m2} readOnly className="h-8 text-sm text-center bg-emerald-100 font-medium" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_base_catastral_ha} readOnly className="h-8 text-sm text-center bg-emerald-100" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_base_catastral_desc} readOnly className="h-8 text-sm bg-emerald-100 text-emerald-700" /></td>
+                            </tr>
+                            <tr className="bg-blue-50">
+                              <td className="px-3 py-2 border border-teal-200 font-medium text-blue-700">Área geográfica (GDB)</td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_geografica_m2} readOnly className="h-8 text-sm text-center bg-blue-100 font-medium" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_geografica_ha} readOnly className="h-8 text-sm text-center bg-blue-100" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_geografica_desc} readOnly className="h-8 text-sm bg-blue-100 text-blue-700" /></td>
+                            </tr>
+                            <tr>
+                              <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área levantamiento topográfico</td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_levantamiento_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_levantamiento_m2: e.target.value, area_levantamiento_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_levantamiento_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_levantamiento_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_levantamiento_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
+                            </tr>
+                            <tr>
+                              <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área de la identificación predial</td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_identificacion_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_identificacion_m2: e.target.value, area_identificacion_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_identificacion_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_identificacion_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_identificacion_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">* Los campos de Área base catastral (R1) y Área geográfica (GDB) se pre-llenan automáticamente del sistema.</p>
+                    </div>
+                  </div>
+
+                  {/* Sección 10: Información de Localización (Croquis/Fotos) */}
+                  <div className="border border-indigo-200 rounded-lg overflow-hidden">
+                    <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-200">
+                      <h3 className="font-semibold text-indigo-800 flex items-center gap-2">
+                        <Camera className="w-4 h-4" />
+                        10. INFORMACIÓN DE LOCALIZACIÓN (Croquis del terreno y construcciones)
+                      </h3>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm text-slate-600 mb-3">Cargue fotos del croquis del terreno y las construcciones. Incluya información de colindantes y cotas cuando aplique.</p>
+                      
+                      {/* Input para fotos */}
+                      <input type="file" accept="image/*" multiple onChange={handleFotoCroquisChange} className="hidden" id="input-fotos-croquis" />
+                      
+                      {/* Grid de fotos cargadas */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        {visitaData.fotos_croquis.map((foto, idx) => (
+                          <div key={idx} className="relative aspect-square border rounded-lg overflow-hidden bg-white shadow-sm">
+                            <img src={foto.preview || foto.data} alt={`Croquis ${idx + 1}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => eliminarFotoCroquis(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow hover:bg-red-600">
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                              {foto.nombre || `Foto ${idx + 1}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Botón para agregar fotos */}
+                      <Button type="button" variant="outline" onClick={() => document.getElementById('input-fotos-croquis').click()} className="w-full border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50">
+                        <Camera className="w-4 h-4 mr-2" />
+                        Agregar Fotos del Croquis / Localización
+                      </Button>
+                      
+                      {/* Indicador de orientación Norte */}
+                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                        <div className="w-6 h-6 border border-slate-300 rounded flex items-center justify-center font-bold text-slate-600">N</div>
+                        <span>Asegúrese de que las fotos incluyan la orientación norte cuando sea relevante.</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ========== PÁGINA 5: Observaciones, Firmas e Información de la Visita ========== */}
+              {visitaPagina === 5 && (
+                <>
+                  {/* Sección 11: Observaciones */}
+                  <div className="border border-amber-200 rounded-lg overflow-hidden">
+                    <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
+                      <h3 className="font-semibold text-amber-800 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        11. OBSERVACIONES
+                      </h3>
+                    </div>
+                    <div className="p-4">
+                      <Textarea
+                        value={visitaData.observaciones_generales}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 500) {
+                            setVisitaData(prev => ({ ...prev, observaciones_generales: e.target.value }));
+                          }
+                        }}
+                        rows={6}
+                        placeholder="Ingrese las observaciones generales de la visita..."
+                        className="resize-none"
+                      />
+                      <div className="flex justify-between items-center mt-2">
+                        <p className="text-xs text-slate-500">Máximo 500 caracteres</p>
+                        <span className={`text-xs ${visitaData.observaciones_generales.length > 450 ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+                          {visitaData.observaciones_generales.length}/500
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección 12: Firmas */}
+                  <div className="border border-purple-200 rounded-lg overflow-hidden">
+                    <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
+                      <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+                        <Pen className="w-4 h-4" />
+                        12. FIRMAS
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-6">
+                      {/* Firma del Visitado */}
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700 mb-2 block">Firma del Visitado (Propietario/Atendiente)</Label>
+                        <div>
+                          <Label className="text-xs text-slate-500 mb-1 block">Nombre</Label>
+                          <Input value={visitaData.nombre_visitado} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_visitado: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO DEL VISITADO" className="uppercase mb-2" />
+                        </div>
+                        <div className="border-2 border-slate-300 rounded-lg bg-white">
+                          <canvas ref={canvasVisitadoRef} width={500} height={100} className="w-full touch-none cursor-crosshair" style={{ backgroundColor: '#ffffff' }}
+                            onMouseDown={startDrawingVisitado} onMouseMove={drawVisitado} onMouseUp={stopDrawingVisitado} onMouseLeave={stopDrawingVisitado}
+                            onTouchStart={startDrawingVisitado} onTouchMove={drawVisitado} onTouchEnd={stopDrawingVisitado}
+                          />
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaVisitado} className="mt-1 text-slate-500">
+                          <Trash2 className="w-3 h-3 mr-1" />Limpiar
+                        </Button>
+                      </div>
+
+                      {/* Firma del Reconocedor */}
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700 mb-2 block">Firma del Reconocedor Predial</Label>
+                        <div>
+                          <Label className="text-xs text-slate-500 mb-1 block">Nombre</Label>
+                          <Input value={visitaData.nombre_reconocedor} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_reconocedor: e.target.value.toUpperCase() }))} placeholder="NOMBRE DEL RECONOCEDOR" className="uppercase mb-2" />
+                        </div>
+                        <div className="border-2 border-slate-300 rounded-lg bg-white">
+                          <canvas ref={canvasReconocedorRef} width={500} height={100} className="w-full touch-none cursor-crosshair" style={{ backgroundColor: '#ffffff' }}
+                            onMouseDown={startDrawingReconocedor} onMouseMove={drawReconocedor} onMouseUp={stopDrawingReconocedor} onMouseLeave={stopDrawingReconocedor}
+                            onTouchStart={startDrawingReconocedor} onTouchMove={drawReconocedor} onTouchEnd={stopDrawingReconocedor}
+                          />
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaReconocedor} className="mt-1 text-slate-500">
+                          <Trash2 className="w-3 h-3 mr-1" />Limpiar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Datos de la Visita */}
                   <div className="border border-blue-200 rounded-lg overflow-hidden">
                     <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
                       <h3 className="font-semibold text-blue-800 flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        9. INFORMACIÓN DE LA VISITA
-                      </h3>
-                    </div>
-                    <div className="p-4 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs text-slate-500">Fecha de Visita *</Label>
-                          <Input type="date" value={visitaData.fecha_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-slate-500">Hora *</Label>
-                          <Input type="time" value={visitaData.hora_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))} />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500">Persona que Atiende *</Label>
-                        <Input value={visitaData.persona_atiende} onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO" className="uppercase" />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 mb-2 block">Relación con el Predio</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[{v:'propietario',l:'Propietario'},{v:'poseedor',l:'Poseedor'},{v:'arrendatario',l:'Arrendatario'},{v:'familiar',l:'Familiar'},{v:'encargado',l:'Encargado'},{v:'otro',l:'Otro'}].map(i => (
-                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="relacion" checked={visitaData.relacion_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, relacion_predio: i.v }))} className="text-blue-600" />
-                              <span className="text-sm">{i.l}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 mb-2 block">¿Se pudo acceder al predio?</Label>
-                        <div className="flex gap-4">
-                          {[{v:'si',l:'Sí, acceso total'},{v:'parcial',l:'Acceso parcial'},{v:'no',l:'No se pudo'}].map(i => (
-                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="acceso" checked={visitaData.acceso_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, acceso_predio: i.v }))} className="text-blue-600" />
-                              <span className="text-sm">{i.l}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 mb-2 block">Estado del Predio</Label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {[{v:'habitado',l:'Habitado'},{v:'deshabitado',l:'Deshabitado'},{v:'en_construccion',l:'En construcción'},{v:'abandonado',l:'Abandonado'},{v:'lote_vacio',l:'Lote vacío'},{v:'uso_comercial',l:'Comercial'},{v:'uso_mixto',l:'Mixto'}].map(i => (
-                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="estado" checked={visitaData.estado_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, estado_predio: i.v }))} className="text-blue-600" />
-                              <span className="text-sm">{i.l}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 mb-2 block">Servicios Públicos</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {['Agua','Alcantarillado','Energía','Gas','Internet','Teléfono'].map(s => (
-                            <label key={s} className="flex items-center gap-2 cursor-pointer">
-                              <input type="checkbox" checked={visitaData.servicios_publicos.includes(s)} onChange={(e) => { if(e.target.checked) setVisitaData(prev => ({ ...prev, servicios_publicos: [...prev.servicios_publicos, s] })); else setVisitaData(prev => ({ ...prev, servicios_publicos: prev.servicios_publicos.filter(x => x !== s) })); }} className="rounded" />
-                              <span className="text-sm">{s}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                        DATOS DE LA VISITA
 
                   {/* Sección 10: Resultado */}
                   <div className="border border-amber-200 rounded-lg overflow-hidden">
