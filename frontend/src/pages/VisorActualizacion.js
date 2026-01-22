@@ -3745,16 +3745,69 @@ export default function VisorActualizacion() {
                       <h3 className="font-semibold text-blue-800 flex items-center gap-2">
                         <User className="w-4 h-4" />
                         DATOS DE LA VISITA
-
-                  {/* Sección 10: Resultado */}
-                  <div className="border border-amber-200 rounded-lg overflow-hidden">
-                    <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
-                      <h3 className="font-semibold text-amber-800 flex items-center gap-2">
-                        <CheckSquare className="w-4 h-4" />
-                        10. RESULTADO Y OBSERVACIONES
                       </h3>
                     </div>
                     <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Fecha de Visita *</Label>
+                          <Input type="date" value={visitaData.fecha_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Hora *</Label>
+                          <Input type="time" value={visitaData.hora_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Persona que Atiende *</Label>
+                        <Input value={visitaData.persona_atiende} onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO" className="uppercase" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Relación con el Predio</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[{v:'propietario',l:'Propietario'},{v:'poseedor',l:'Poseedor'},{v:'arrendatario',l:'Arrendatario'},{v:'familiar',l:'Familiar'},{v:'encargado',l:'Encargado'},{v:'otro',l:'Otro'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="relacion" checked={visitaData.relacion_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, relacion_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">¿Se pudo acceder al predio?</Label>
+                        <div className="flex gap-4">
+                          {[{v:'si',l:'Sí, acceso total'},{v:'parcial',l:'Acceso parcial'},{v:'no',l:'No se pudo'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="acceso" checked={visitaData.acceso_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, acceso_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Estado del Predio</Label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[{v:'habitado',l:'Habitado'},{v:'deshabitado',l:'Deshabitado'},{v:'en_construccion',l:'En construcción'},{v:'abandonado',l:'Abandonado'},{v:'lote_vacio',l:'Lote vacío'},{v:'uso_comercial',l:'Comercial'},{v:'uso_mixto',l:'Mixto'}].map(i => (
+                            <label key={i.v} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="estado" checked={visitaData.estado_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, estado_predio: i.v }))} className="text-blue-600" />
+                              <span className="text-sm">{i.l}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-2 block">Servicios Públicos</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Agua','Alcantarillado','Energía','Gas','Internet','Teléfono'].map(s => (
+                            <label key={s} className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={visitaData.servicios_publicos.includes(s)} onChange={(e) => { if(e.target.checked) setVisitaData(prev => ({ ...prev, servicios_publicos: [...prev.servicios_publicos, s] })); else setVisitaData(prev => ({ ...prev, servicios_publicos: prev.servicios_publicos.filter(x => x !== s) })); }} className="rounded" />
+                              <span className="text-sm">{s}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Resultado */}
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input type="checkbox" checked={visitaData.sin_cambios} onChange={(e) => setVisitaData(prev => ({ ...prev, sin_cambios: e.target.checked }))} className="rounded mt-1" />
@@ -3764,12 +3817,10 @@ export default function VisorActualizacion() {
                           </div>
                         </label>
                       </div>
+                      
+                      {/* Fotografías adicionales */}
                       <div>
-                        <Label className="text-xs text-slate-500">Observaciones</Label>
-                        <Textarea value={visitaData.observaciones} onChange={(e) => setVisitaData(prev => ({ ...prev, observaciones: e.target.value }))} rows={3} />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Camera className="w-4 h-4" />Fotografías</Label>
+                        <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Camera className="w-4 h-4" />Fotografías Adicionales</Label>
                         <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFotoChange} className="hidden" />
                         <div className="grid grid-cols-4 gap-2 mb-2">
                           {fotos.map((f, i) => (
@@ -3781,13 +3832,7 @@ export default function VisorActualizacion() {
                         </div>
                         <Button type="button" variant="outline" onClick={handleCapturarFoto} className="w-full border-dashed"><Camera className="w-4 h-4 mr-2" />Tomar / Seleccionar Fotos</Button>
                       </div>
-                      <div>
-                        <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Pen className="w-4 h-4" />Firma de quien atiende *</Label>
-                        <div className="border-2 border-slate-300 rounded-lg bg-white">
-                          <canvas ref={canvasRef} width={500} height={120} className="w-full touch-none cursor-crosshair" onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{ backgroundColor: '#ffffff' }} />
-                        </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirma} className="mt-1 text-slate-500"><Trash2 className="w-3 h-3 mr-1" />Limpiar</Button>
-                      </div>
+                      
                       {userPosition && (
                         <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
                           <MapPin className="w-3 h-3" />GPS: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)} {gpsAccuracy && `(±${Math.round(gpsAccuracy)}m)`}
@@ -3803,7 +3848,7 @@ export default function VisorActualizacion() {
           {/* Navegación de páginas */}
           <DialogFooter className="flex justify-between items-center pt-4 border-t">
             <div className="flex gap-2">
-              {[1,2,3,4].map(p => (
+              {[1,2,3,4,5].map(p => (
                 <button key={p} onClick={() => setVisitaPagina(p)} className={`w-8 h-8 rounded-full text-sm font-medium ${visitaPagina === p ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{p}</button>
               ))}
             </div>
