@@ -923,8 +923,12 @@ export default function VisorActualizacion() {
   // Abrir modal de visita
   const abrirFormatoVisita = () => {
     // Pre-llenar datos del predio seleccionado
+    // Determinar tipo de predio (PH/NPH) basado en condicion_predio
+    const esPH = selectedPredio?.es_ph || (selectedPredio?.condicion_predio && selectedPredio?.condicion_predio !== '000000000');
+    
     setVisitaData({
       // Sección 2: Información Básica (pre-llenada del predio)
+      tipo_predio: esPH ? 'PH' : 'NPH',
       direccion_visita: selectedPredio?.direccion || '',
       destino_economico_visita: selectedPredio?.destino_economico || '',
       area_terreno_visita: selectedPredio?.area_terreno?.toString() || '',
