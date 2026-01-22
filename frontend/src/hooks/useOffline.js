@@ -286,6 +286,13 @@ export function useOffline() {
       const store = tx.objectStore('predios');
       store.clear();
       
+      // Also clear petitions
+      if (db.objectStoreNames.contains('petitions')) {
+        const petitionsTx = db.transaction('petitions', 'readwrite');
+        const petitionsStore = petitionsTx.objectStore('petitions');
+        petitionsStore.clear();
+      }
+      
       await loadOfflineStats();
       console.log('[Offline] Datos offline eliminados');
       return true;
@@ -295,14 +302,143 @@ export function useOffline() {
     }
   }, []);
 
+  // ============ PETITIONS OFFLINE FUNCTIONS ============
+  
+  // Save petitions for offline use
+  const savePetitionsOffline = useCallback(async (petitions) => {
+    try {
+      const db = await openDB();
+      const tx = db.transaction('petitions', 'readwrite');
+      const store = tx.objectStore('petitions');
+      
+      for (const petition of petitions) {
+        store.put(petition);
+      }
+      
+      // Save last sync time for petitions
+      const prefTx = db.transaction('preferences', 'readwrite');
+      const prefStore = prefTx.objectStore('preferences');
+      prefStore.put({ key: 'lastPetitionsSync', value: new Date().toISOString() });
+      
+      await loadOfflineStats();
+      console.log(`[Offline] Guardadas ${petitions.length} peticiones para uso offline`);
+      return true;
+    } catch (error) {
+      console.error('Error saving petitions offline:', error);
+      return false;
+    }
+  }, []);
+
+  // Get all petitions from offline storage
+  const getPetitionsOffline = useCallback(async (filters = {}) => {
+    try {
+      const db = await openDB();
+      
+      if (!db.objectStoreNames.contains('petitions')) {
+        return [];
+      }
+      
+      const tx = db.transaction('petitions', 'readonly');
+      const store = tx.objectStore('petitions');
+      
+      let results = await new Promise((resolve) => {
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => resolve([]);
+      });
+      
+      // Apply filters
+      if (filters.estado) {
+        results = results.filter(p => p.estado === filters.estado);
+      }
+      if (filters.tipo_tramite) {
+        results = results.filter(p => p.tipo_tramite === filters.tipo_tramite);
+      }
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        results = results.filter(p => 
+          p.radicado?.toLowerCase().includes(searchLower) ||
+          p.solicitante?.toLowerCase().includes(searchLower) ||
+          p.descripcion?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort by date (most recent first)
+      results.sort((a, b) => new Date(b.fecha_radicacion) - new Date(a.fecha_radicacion));
+      
+      return results;
+    } catch (error) {
+      console.error('Error getting offline petitions:', error);
+      return [];
+    }
+  }, []);
+
+  // Get single petition by ID
+  const getPetitionOffline = useCallback(async (id) => {
+    try {
+      const db = await openDB();
+      
+      if (!db.objectStoreNames.contains('petitions')) {
+        return null;
+      }
+      
+      const tx = db.transaction('petitions', 'readonly');
+      const store = tx.objectStore('petitions');
+      
+      return new Promise((resolve) => {
+        const request = store.get(id);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+      });
+    } catch (error) {
+      console.error('Error getting offline petition:', error);
+      return null;
+    }
+  }, []);
+
+  // Sync all data (predios + petitions)
+  const syncAllData = useCallback(async (fetchPredios, fetchPetitions) => {
+    const results = { predios: false, petitions: false };
+    
+    try {
+      // Sync predios
+      if (fetchPredios) {
+        const prediosData = await fetchPredios();
+        if (prediosData && prediosData.length > 0) {
+          results.predios = await savePrediosOffline(prediosData);
+        }
+      }
+      
+      // Sync petitions
+      if (fetchPetitions) {
+        const petitionsData = await fetchPetitions();
+        if (petitionsData && petitionsData.length > 0) {
+          results.petitions = await savePetitionsOffline(petitionsData);
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      console.error('Error syncing all data:', error);
+      return results;
+    }
+  }, [savePrediosOffline, savePetitionsOffline]);
+
   return {
     isOnline,
     offlineData,
     cacheStatus,
     swRegistered,
+    // Predios
     savePrediosOffline,
     getPrediosOffline,
     getPredioOffline,
+    // Petitions
+    savePetitionsOffline,
+    getPetitionsOffline,
+    getPetitionOffline,
+    // General
+    syncAllData,
     clearOfflineData,
     refreshStats: loadOfflineStats,
     checkCacheReady,
