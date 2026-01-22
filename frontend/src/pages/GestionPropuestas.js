@@ -666,7 +666,7 @@ export default function GestionPropuestas() {
                         <Button size="sm" variant="ghost" onClick={() => verDetalle(propuesta)} title="Ver detalle">
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {propuesta.estado === 'pendiente' && (
+                        {(propuesta.estado === 'pendiente' || propuesta.estado === 'reenviada') && (
                           <>
                             <Button 
                               size="sm" 
