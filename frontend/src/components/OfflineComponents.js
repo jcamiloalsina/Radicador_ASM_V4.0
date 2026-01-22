@@ -368,4 +368,156 @@ export function SyncButton({ onSync, municipio }) {
   );
 }
 
+// Sync Button specifically for Petitions
+export function SyncPetitionsButton({ onFetchPetitions }) {
+  const { isOnline, savePetitionsOffline, offlineData } = useOffline();
+  const [syncing, setSyncing] = useState(false);
+  const [result, setResult] = useState(null);
+  
+  const handleSync = async () => {
+    if (!isOnline || syncing) return;
+    
+    setSyncing(true);
+    setResult(null);
+    try {
+      const petitions = await onFetchPetitions();
+      if (petitions && petitions.length > 0) {
+        await savePetitionsOffline(petitions);
+        setResult({ success: true, count: petitions.length });
+        setTimeout(() => setResult(null), 3000);
+      } else {
+        setResult({ success: false, message: 'No hay peticiones para sincronizar' });
+        setTimeout(() => setResult(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error syncing petitions:', error);
+      setResult({ success: false, message: 'Error al sincronizar' });
+      setTimeout(() => setResult(null), 3000);
+    } finally {
+      setSyncing(false);
+    }
+  };
+  
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSync}
+        disabled={!isOnline || syncing}
+        className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+        title={offlineData.lastPetitionsSync 
+          ? `Última sincronización: ${new Date(offlineData.lastPetitionsSync).toLocaleString()}` 
+          : 'Guardar peticiones para uso offline'}
+      >
+        <Download className={`w-4 h-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+        {syncing ? 'Sincronizando...' : 'Guardar offline'}
+      </Button>
+      
+      {result && (
+        <span className={`text-xs ${result.success ? 'text-emerald-600' : 'text-amber-600'}`}>
+          {result.success ? `✓ ${result.count} guardadas` : result.message}
+        </span>
+      )}
+      
+      {offlineData.petitionsCount > 0 && !result && (
+        <span className="text-xs text-slate-500">
+          ({offlineData.petitionsCount} en caché)
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Full Data Sync Component (for dashboard)
+export function FullDataSync({ onFetchPredios, onFetchPetitions }) {
+  const { isOnline, syncAllData, offlineData, refreshStats } = useOffline();
+  const [syncing, setSyncing] = useState(false);
+  const [progress, setProgress] = useState('');
+  
+  const handleFullSync = async () => {
+    if (!isOnline || syncing) return;
+    
+    setSyncing(true);
+    setProgress('Sincronizando predios...');
+    
+    try {
+      const results = await syncAllData(onFetchPredios, onFetchPetitions);
+      
+      setProgress('');
+      await refreshStats();
+      
+      const messages = [];
+      if (results.predios) messages.push('Predios sincronizados');
+      if (results.petitions) messages.push('Peticiones sincronizadas');
+      
+      if (messages.length > 0) {
+        setProgress(`✓ ${messages.join(', ')}`);
+      } else {
+        setProgress('No hay datos para sincronizar');
+      }
+      
+      setTimeout(() => setProgress(''), 3000);
+    } catch (error) {
+      console.error('Error in full sync:', error);
+      setProgress('Error al sincronizar');
+      setTimeout(() => setProgress(''), 3000);
+    } finally {
+      setSyncing(false);
+    }
+  };
+  
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h4 className="font-medium text-slate-800">Sincronización Offline</h4>
+          <p className="text-xs text-slate-500">Guarda datos para consultar sin conexión</p>
+        </div>
+        <Button
+          onClick={handleFullSync}
+          disabled={!isOnline || syncing}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          {syncing ? (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              Sincronizando...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 mr-2" />
+              Sincronizar Todo
+            </>
+          )}
+        </Button>
+      </div>
+      
+      {progress && (
+        <div className="text-sm text-emerald-600 mb-2">{progress}</div>
+      )}
+      
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-slate-400" />
+          <span className="text-slate-600">Predios:</span>
+          <span className="font-medium">{offlineData.prediosCount}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-slate-400" />
+          <span className="text-slate-600">Peticiones:</span>
+          <span className="font-medium">{offlineData.petitionsCount || 0}</span>
+        </div>
+      </div>
+      
+      {!isOnline && (
+        <div className="mt-3 text-xs text-amber-600 flex items-center gap-1">
+          <WifiOff className="w-3 h-3" />
+          Sin conexión - No es posible sincronizar
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default OfflineIndicator;
