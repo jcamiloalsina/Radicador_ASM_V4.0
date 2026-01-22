@@ -241,13 +241,30 @@ export default function VisorActualizacion() {
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
   const [visitaData, setVisitaData] = useState({
-    // Sección 2: Información Básica (algunos campos se pre-llenan del predio)
+    // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
     direccion_visita: '',
     destino_economico_visita: '',
     area_terreno_visita: '',
     area_construida_visita: '',
-    // Sección 3: Información de la Visita
+    // Sección 3: PH (Propiedad Horizontal)
+    ph_area_coeficiente: '',
+    ph_area_construida_privada: '',
+    ph_area_construida_comun: '',
+    ph_copropiedad: '',
+    ph_predio_asociado: '',
+    ph_torre: '',
+    ph_apartamento: '',
+    // Sección 4: Condominio
+    cond_area_terreno_comun: '',
+    cond_area_terreno_privada: '',
+    cond_area_construida_privada: '',
+    cond_area_construida_comun: '',
+    cond_condominio: '',
+    cond_predio_asociado: '',
+    cond_unidad: '',
+    cond_casa: '',
+    // Sección 5: Información de la Visita (antes Sección 3)
     fecha_visita: new Date().toISOString().split('T')[0],
     hora_visita: new Date().toTimeString().slice(0, 5),
     persona_atiende: '',
