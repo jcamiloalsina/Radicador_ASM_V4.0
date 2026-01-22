@@ -1,25 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Wifi, Download, X, RefreshCw } from 'lucide-react';
+import { WifiOff, Wifi, Download, X, RefreshCw, CheckCircle, AlertTriangle, CloudOff, Database } from 'lucide-react';
 import { Button } from './ui/button';
 import { useOffline } from '../hooks/useOffline';
 
-// Offline Status Indicator
+// Offline Status Indicator (shows when offline)
 export function OfflineIndicator() {
-  const { isOnline, offlineData } = useOffline();
+  const { isOnline, offlineData, cacheStatus } = useOffline();
   
   if (isOnline) return null;
   
   return (
-    <div className="fixed bottom-4 left-4 z-50 bg-amber-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
-      <WifiOff className="w-4 h-4" />
-      <span className="text-sm font-medium">
-        Sin conexión - Modo offline
-        {offlineData.prediosCount > 0 && (
-          <span className="text-amber-100 ml-1">
-            ({offlineData.prediosCount} predios disponibles)
-          </span>
+    <div className="fixed bottom-4 left-4 z-50 max-w-sm">
+      <div className={`${cacheStatus.ready ? 'bg-amber-500' : 'bg-red-500'} text-white px-4 py-3 rounded-lg shadow-lg`}>
+        <div className="flex items-center gap-2 mb-2">
+          <WifiOff className="w-5 h-5" />
+          <span className="font-semibold">Sin conexión a Internet</span>
+        </div>
+        
+        {cacheStatus.ready ? (
+          <div className="text-sm text-amber-100">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="w-4 h-4" />
+              <span>Modo offline disponible</span>
+            </div>
+            {offlineData.prediosCount > 0 && (
+              <div className="flex items-center gap-1 mt-1">
+                <Database className="w-4 h-4" />
+                <span>{offlineData.prediosCount} predios guardados</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-sm text-red-100">
+            <div className="flex items-center gap-1">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Archivos no cacheados</span>
+            </div>
+            <p className="mt-1 text-xs">
+              Necesita conectarse a internet primero para cachear los archivos de la aplicación.
+            </p>
+          </div>
         )}
-      </span>
+      </div>
     </div>
   );
 }
@@ -49,6 +71,146 @@ export function OnlineIndicator() {
     <div className="fixed bottom-4 left-4 z-50 bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
       <Wifi className="w-4 h-4" />
       <span className="text-sm font-medium">Conexión restaurada</span>
+    </div>
+  );
+}
+
+// Offline Ready Status Badge (shows cache status)
+export function OfflineReadyBadge() {
+  const { isOnline, cacheStatus, offlineData, forceCacheResources } = useOffline();
+  const [expanded, setExpanded] = useState(false);
+  const [caching, setCaching] = useState(false);
+  
+  const handleForceCache = async () => {
+    setCaching(true);
+    await forceCacheResources();
+    setCaching(false);
+  };
+  
+  // Don't show when offline (OfflineIndicator handles that)
+  if (!isOnline) return null;
+  
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+          cacheStatus.ready 
+            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+            : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+        }`}
+        title={cacheStatus.ready ? 'Listo para uso offline' : 'Modo offline no disponible'}
+      >
+        {cacheStatus.checking ? (
+          <>
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            <span>Verificando...</span>
+          </>
+        ) : cacheStatus.ready ? (
+          <>
+            <CheckCircle className="w-3 h-3" />
+            <span>Offline listo</span>
+          </>
+        ) : (
+          <>
+            <CloudOff className="w-3 h-3" />
+            <span>Offline no disponible</span>
+          </>
+        )}
+      </button>
+      
+      {expanded && (
+        <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-xl p-4 z-50">
+          <div className="flex justify-between items-start mb-3">
+            <h4 className="font-semibold text-slate-800">Estado Offline</h4>
+            <button onClick={() => setExpanded(false)} className="text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {/* Cache Status */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Archivos cacheados:</span>
+              <span className={`text-sm font-medium ${cacheStatus.staticCached ? 'text-emerald-600' : 'text-red-600'}`}>
+                {cacheStatus.staticCached ? '✓ Sí' : '✗ No'}
+              </span>
+            </div>
+            
+            {/* Data Cache */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Datos cacheados:</span>
+              <span className={`text-sm font-medium ${cacheStatus.dataCached ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {cacheStatus.dataCached ? '✓ Sí' : '○ No'}
+              </span>
+            </div>
+            
+            {/* Predios Count */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Predios guardados:</span>
+              <span className="text-sm font-medium text-slate-800">
+                {offlineData.prediosCount}
+              </span>
+            </div>
+            
+            {/* Last Sync */}
+            {offlineData.lastSync && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Última sincronización:</span>
+                <span className="text-xs text-slate-500">
+                  {new Date(offlineData.lastSync).toLocaleString('es-CO', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            )}
+            
+            {/* Status Message */}
+            <div className={`p-2 rounded text-xs ${
+              cacheStatus.ready 
+                ? 'bg-emerald-50 text-emerald-700' 
+                : 'bg-amber-50 text-amber-700'
+            }`}>
+              {cacheStatus.ready ? (
+                <>
+                  <CheckCircle className="w-3 h-3 inline mr-1" />
+                  La aplicación está lista para funcionar sin conexión.
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-3 h-3 inline mr-1" />
+                  {cacheStatus.reason}
+                </>
+              )}
+            </div>
+            
+            {/* Force Cache Button */}
+            {!cacheStatus.ready && (
+              <Button
+                size="sm"
+                onClick={handleForceCache}
+                disabled={caching}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {caching ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Cacheando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Preparar modo offline
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
