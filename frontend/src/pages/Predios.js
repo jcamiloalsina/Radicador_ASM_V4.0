@@ -2396,6 +2396,12 @@ export default function Predios() {
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
     setGestorAsignado('');
+    // Limpiar estados del nuevo flujo
+    setRadicadoNumero('');
+    setRadicadoInfo(null);
+    setPeticionesRelacionadas([]);
+    setObservacionesCreacion('');
+    setUsarNuevoFlujo(false);
   };
 
   const formatCurrency = (value) => {
