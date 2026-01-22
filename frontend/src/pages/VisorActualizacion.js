@@ -1296,6 +1296,157 @@ export default function VisorActualizacion() {
     }
     return null;
   };
+
+  // Funciones para firma del visitado (Sección 12)
+  const startDrawingVisitado = (e) => {
+    setIsDrawingVisitado(true);
+    const canvas = canvasVisitadoRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const drawVisitado = (e) => {
+    if (!isDrawingVisitado) return;
+    const canvas = canvasVisitadoRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      e.preventDefault();
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+
+  const stopDrawingVisitado = () => setIsDrawingVisitado(false);
+
+  const limpiarFirmaVisitado = () => {
+    const canvas = canvasVisitadoRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const obtenerFirmaVisitadoBase64 = () => {
+    const canvas = canvasVisitadoRef.current;
+    if (canvas) return canvas.toDataURL('image/png');
+    return null;
+  };
+
+  // Funciones para firma del reconocedor (Sección 12)
+  const startDrawingReconocedor = (e) => {
+    setIsDrawingReconocedor(true);
+    const canvas = canvasReconocedorRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const drawReconocedor = (e) => {
+    if (!isDrawingReconocedor) return;
+    const canvas = canvasReconocedorRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      e.preventDefault();
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+
+  const stopDrawingReconocedor = () => setIsDrawingReconocedor(false);
+
+  const limpiarFirmaReconocedor = () => {
+    const canvas = canvasReconocedorRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const obtenerFirmaReconocedorBase64 = () => {
+    const canvas = canvasReconocedorRef.current;
+    if (canvas) return canvas.toDataURL('image/png');
+    return null;
+  };
+
+  // Manejo de fotos de croquis (Sección 10)
+  const handleFotoCroquisChange = async (e) => {
+    const files = Array.from(e.target.files);
+    const nuevasFotos = [];
+    for (const file of files) {
+      const reader = new FileReader();
+      const fotoData = await new Promise((resolve) => {
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.readAsDataURL(file);
+      });
+      nuevasFotos.push({
+        id: Date.now() + Math.random(),
+        data: fotoData,
+        nombre: file.name,
+        fecha: new Date().toISOString(),
+        preview: fotoData
+      });
+    }
+    setVisitaData(prev => ({
+      ...prev,
+      fotos_croquis: [...prev.fotos_croquis, ...nuevasFotos]
+    }));
+  };
+
+  const eliminarFotoCroquis = (idx) => {
+    setVisitaData(prev => ({
+      ...prev,
+      fotos_croquis: prev.fotos_croquis.filter((_, i) => i !== idx)
+    }));
+  };
   
   // Guardar formato de visita completo
   const handleGuardarVisita = async () => {
