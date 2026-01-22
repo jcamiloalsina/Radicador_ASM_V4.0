@@ -3097,18 +3097,23 @@ export default function Predios() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Estado Civil</Label>
-                      <Select value={prop.estado_civil || "none"} onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v === "none" ? "" : v)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin especificar</SelectItem>
-                          {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs mb-2 block">Estado Civil</Label>
+                      <RadioGroup 
+                        value={prop.estado_civil || ""} 
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="" id={`estado_civil_${index}_none`} />
+                          <Label htmlFor={`estado_civil_${index}_none`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
+                        </div>
+                        {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`estado_civil_${index}_${k}`} />
+                            <Label htmlFor={`estado_civil_${index}_${k}`} className="text-xs cursor-pointer">{v}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                   </div>
                 </div>
@@ -3386,18 +3391,23 @@ export default function Predios() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Estado Civil</Label>
-                      <Select value={prop.estado_civil || "none"} onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v === "none" ? "" : v)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin especificar</SelectItem>
-                          {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{k} - {v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs mb-2 block">Estado Civil</Label>
+                      <RadioGroup 
+                        value={prop.estado_civil || ""} 
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="" id={`estado_civil_${index}_none`} />
+                          <Label htmlFor={`estado_civil_${index}_none`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
+                        </div>
+                        {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`estado_civil_${index}_${k}`} />
+                            <Label htmlFor={`estado_civil_${index}_${k}`} className="text-xs cursor-pointer">{v}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                   </div>
                 </div>
