@@ -140,7 +140,8 @@ class TestPrediosNuevosWorkflow:
         
         if response.status_code == 200:
             data = response.json()
-            petitions = data.get("petitions", [])
+            # Handle both list and dict response formats
+            petitions = data if isinstance(data, list) else data.get("petitions", [])
             
             if petitions:
                 radicado = petitions[0].get("radicado", "")
