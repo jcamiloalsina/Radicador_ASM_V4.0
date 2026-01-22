@@ -790,6 +790,9 @@ export default function GestionPropuestas() {
               {propuestaDetalle?.estado === 'pendiente' && (
                 <Badge className="ml-2 bg-amber-100 text-amber-700">Pendiente de revisión</Badge>
               )}
+              {propuestaDetalle?.estado === 'reenviada' && (
+                <Badge className="ml-2 bg-blue-100 text-blue-700">Reenviada (subsanada)</Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           
