@@ -920,7 +920,14 @@ export default function VisorActualizacion() {
   
   // Abrir modal de visita
   const abrirFormatoVisita = () => {
+    // Pre-llenar datos del predio seleccionado
     setVisitaData({
+      // Sección 2: Información Básica (pre-llenada del predio)
+      direccion_visita: selectedPredio?.direccion || '',
+      destino_economico_visita: selectedPredio?.destino_economico || '',
+      area_terreno_visita: selectedPredio?.area_terreno?.toString() || '',
+      area_construida_visita: selectedPredio?.area_construida?.toString() || '',
+      // Sección 3: Información de la Visita
       fecha_visita: new Date().toISOString().split('T')[0],
       hora_visita: new Date().toTimeString().slice(0, 5),
       persona_atiende: '',
