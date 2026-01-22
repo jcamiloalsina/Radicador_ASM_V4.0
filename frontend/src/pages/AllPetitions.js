@@ -20,6 +20,7 @@ export default function AllPetitions() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { isOnline, getPetitionsOffline } = useOffline();
   const [petitions, setPetitions] = useState([]);
   const [filteredPetitions, setFilteredPetitions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +33,24 @@ export default function AllPetitions() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [gestores, setGestores] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(false);
 
   // Check if user is coordinator or admin (can see advanced filters)
   const isCoordinatorOrAdmin = ['coordinador', 'administrador'].includes(user?.role);
+
+  // Function to fetch all petitions for offline storage
+  const fetchAllPetitionsForOffline = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/petitions?limit=1000`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching petitions for offline:', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     if (user?.role === 'usuario') {
