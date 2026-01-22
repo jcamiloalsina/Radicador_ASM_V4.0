@@ -2561,30 +2561,32 @@ export default function VisorActualizacion() {
                   {/* Fila 3: Código Homologado - PH/NPH - Ubicación */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label className="text-xs text-slate-500">NUPRE / Código Homologado</Label>
+                      <Label className="text-xs text-slate-500">Código Homologado</Label>
                       <Input 
-                        value={selectedPredio.codigo_homologado || selectedPredio.nupre || 'Sin código'} 
+                        value={selectedPredio.codigo_homologado || 'Sin código'} 
                         disabled 
                         className="bg-slate-100 font-mono"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-500">Tipo</Label>
+                      <Label className="text-xs text-slate-500">Tipo <span className="text-emerald-600">(verificar)</span></Label>
                       <div className="flex items-center gap-4 h-10">
-                        <label className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
                           <input 
                             type="radio" 
-                            checked={selectedPredio.es_ph || (selectedPredio.condicion_predio && selectedPredio.condicion_predio !== '000000000')}
-                            disabled 
+                            name="tipo_predio"
+                            checked={visitaData.tipo_predio === 'PH'}
+                            onChange={() => setVisitaData(prev => ({ ...prev, tipo_predio: 'PH' }))}
                             className="text-emerald-600"
                           />
                           <span className="text-sm">PH</span>
                         </label>
-                        <label className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
                           <input 
                             type="radio" 
-                            checked={!selectedPredio.es_ph && (!selectedPredio.condicion_predio || selectedPredio.condicion_predio === '000000000')}
-                            disabled 
+                            name="tipo_predio"
+                            checked={visitaData.tipo_predio === 'NPH'}
+                            onChange={() => setVisitaData(prev => ({ ...prev, tipo_predio: 'NPH' }))}
                             className="text-emerald-600"
                           />
                           <span className="text-sm">NPH</span>
@@ -2597,7 +2599,7 @@ export default function VisorActualizacion() {
                         <label className="flex items-center gap-2">
                           <input 
                             type="radio" 
-                            checked={selectedPredio.zona === 'urbano' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial[5] !== '0')}
+                            checked={selectedPredio.zona === 'urbano' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial.substring(5, 7) === '01')}
                             disabled 
                             className="text-emerald-600"
                           />
@@ -2606,7 +2608,7 @@ export default function VisorActualizacion() {
                         <label className="flex items-center gap-2">
                           <input 
                             type="radio" 
-                            checked={selectedPredio.zona === 'rural' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial[5] === '0')}
+                            checked={selectedPredio.zona === 'rural' || (selectedPredio.codigo_predial && selectedPredio.codigo_predial.substring(5, 7) === '00')}
                             disabled 
                             className="text-emerald-600"
                           />
@@ -2627,38 +2629,44 @@ export default function VisorActualizacion() {
                     />
                   </div>
                   
-                  {/* Fila 5: Destino Económico - Área Terreno - Área Construida */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-xs text-slate-500">Destino Económico <span className="text-emerald-600">(verificar)</span></Label>
-                      <Select 
-                        value={visitaData.destino_economico_visita}
-                        onValueChange={(v) => setVisitaData(prev => ({ ...prev, destino_economico_visita: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="A">A - Habitacional</SelectItem>
-                          <SelectItem value="B">B - Industrial</SelectItem>
-                          <SelectItem value="C">C - Comercial</SelectItem>
-                          <SelectItem value="D">D - Agropecuario</SelectItem>
-                          <SelectItem value="E">E - Minero</SelectItem>
-                          <SelectItem value="F">F - Cultural</SelectItem>
-                          <SelectItem value="G">G - Recreacional</SelectItem>
-                          <SelectItem value="H">H - Salubridad</SelectItem>
-                          <SelectItem value="I">I - Institucional</SelectItem>
-                          <SelectItem value="J">J - Educativo</SelectItem>
-                          <SelectItem value="K">K - Religioso</SelectItem>
-                          <SelectItem value="L">L - Agrícola</SelectItem>
-                          <SelectItem value="M">M - Forestal</SelectItem>
-                          <SelectItem value="N">N - Pecuario</SelectItem>
-                          <SelectItem value="O">O - Uso Público</SelectItem>
-                          <SelectItem value="P">P - Lote</SelectItem>
-                          <SelectItem value="Q">Q - Mixto</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* Fila 5: Destino Económico con radio buttons */}
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-2 block">Destino Económico <span className="text-emerald-600">(verificar)</span></Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { value: 'A', label: 'A - Habitacional' },
+                        { value: 'B', label: 'B - Industrial' },
+                        { value: 'C', label: 'C - Comercial' },
+                        { value: 'D', label: 'D - Agropecuario' },
+                        { value: 'E', label: 'E - Minero' },
+                        { value: 'F', label: 'F - Cultural' },
+                        { value: 'G', label: 'G - Recreacional' },
+                        { value: 'H', label: 'H - Salubridad' },
+                        { value: 'I', label: 'I - Institucional' },
+                        { value: 'J', label: 'J - Educativo' },
+                        { value: 'K', label: 'K - Religioso' },
+                        { value: 'L', label: 'L - Agrícola' },
+                        { value: 'M', label: 'M - Forestal' },
+                        { value: 'N', label: 'N - Pecuario' },
+                        { value: 'O', label: 'O - Uso Público' },
+                        { value: 'P', label: 'P - Lote' },
+                      ].map(item => (
+                        <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="radio" 
+                            name="destino_economico"
+                            checked={visitaData.destino_economico_visita === item.value}
+                            onChange={() => setVisitaData(prev => ({ ...prev, destino_economico_visita: item.value }))}
+                            className="text-emerald-600"
+                          />
+                          <span className="text-xs">{item.label}</span>
+                        </label>
+                      ))}
                     </div>
+                  </div>
+                  
+                  {/* Fila 6: Áreas */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-xs text-slate-500">Área Terreno (m²) <span className="text-emerald-600">(verificar)</span></Label>
                       <Input 
