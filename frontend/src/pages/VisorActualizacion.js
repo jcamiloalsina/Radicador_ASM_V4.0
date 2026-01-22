@@ -240,6 +240,7 @@ export default function VisorActualizacion() {
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
+  const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-3)
   const [visitaData, setVisitaData] = useState({
     // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
@@ -264,7 +265,25 @@ export default function VisorActualizacion() {
     cond_predio_asociado: '',
     cond_unidad: '',
     cond_casa: '',
-    // Sección 5: Información de la Visita (antes Sección 3)
+    // Sección 5: Información Jurídica
+    jur_matricula: '',
+    jur_tipo_doc: '',
+    jur_numero_doc: '',
+    jur_notaria: '',
+    jur_fecha: '',
+    jur_ciudad: '',
+    jur_razon_social: '',
+    // Sección 6: Datos de Notificación
+    not_telefono: '',
+    not_direccion: '',
+    not_correo: '',
+    not_autoriza_correo: '',
+    not_departamento: 'Norte de Santander',
+    not_municipio: '',
+    not_vereda: '',
+    not_corregimiento: '',
+    not_datos_adicionales: '',
+    // Sección 7: Información de la Visita
     fecha_visita: new Date().toISOString().split('T')[0],
     hora_visita: new Date().toTimeString().slice(0, 5),
     persona_atiende: '',
@@ -274,8 +293,19 @@ export default function VisorActualizacion() {
     servicios_publicos: [],
     observaciones: '',
     firma_base64: null,
-    sin_cambios: false  // Visitado pero sin modificaciones en los datos
+    sin_cambios: false
   });
+  // Lista de propietarios para el formulario de visita
+  const [visitaPropietarios, setVisitaPropietarios] = useState([{
+    tipo_documento: '',
+    numero_documento: '',
+    nombre: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    genero: '', // masculino, femenino, lgbtq, otro
+    genero_otro: '',
+    grupo_etnico: ''
+  }]);
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
