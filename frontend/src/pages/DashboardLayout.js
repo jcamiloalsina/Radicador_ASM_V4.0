@@ -601,8 +601,13 @@ export default function DashboardLayout() {
             </h1>
           </div>
           
-          {/* Notificaciones */}
-          <div className="relative">
+          {/* Offline Status + Notificaciones */}
+          <div className="flex items-center gap-3">
+            {/* Badge de estado offline */}
+            <OfflineReadyBadge />
+            
+            {/* Notificaciones */}
+            <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full transition-colors"
