@@ -72,7 +72,10 @@ import {
   FileDown,
   Send,
   ListTodo,
-  Building
+  Building,
+  Mail,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
