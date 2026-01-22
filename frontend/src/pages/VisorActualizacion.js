@@ -1033,7 +1033,14 @@ export default function VisorActualizacion() {
       not_vereda: '',
       not_corregimiento: '',
       not_datos_adicionales: '',
-      // Sección 7: Información de la Visita
+      // Sección 8: Calificación
+      calif_estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+      calif_acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+      calif_bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      calif_cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      calif_industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+      calif_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' },
+      // Sección 9: Información de la Visita
       fecha_visita: new Date().toISOString().split('T')[0],
       hora_visita: new Date().toTimeString().slice(0, 5),
       persona_atiende: '',
