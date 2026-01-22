@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 // IndexedDB for offline data storage
 const DB_NAME = 'asomunicipios-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increased version for petitions store
 
 const openDB = () => {
   return new Promise((resolve, reject) => {
@@ -19,6 +19,15 @@ const openDB = () => {
         const prediosStore = db.createObjectStore('predios', { keyPath: 'id' });
         prediosStore.createIndex('municipio', 'municipio', { unique: false });
         prediosStore.createIndex('codigo_predial_nacional', 'codigo_predial_nacional', { unique: false });
+      }
+      
+      // Store for cached petitions
+      if (!db.objectStoreNames.contains('petitions')) {
+        const petitionsStore = db.createObjectStore('petitions', { keyPath: 'id' });
+        petitionsStore.createIndex('estado', 'estado', { unique: false });
+        petitionsStore.createIndex('tipo_tramite', 'tipo_tramite', { unique: false });
+        petitionsStore.createIndex('radicado', 'radicado', { unique: false });
+        petitionsStore.createIndex('fecha_radicacion', 'fecha_radicacion', { unique: false });
       }
       
       // Store for cached map tiles
