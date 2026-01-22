@@ -63,14 +63,58 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
-### Sesión 22 Enero 2026 (Fork 2) - Formulario de Visita 4 Páginas
-**Implementación completa del formulario de visita con 4 páginas:**
+### Sesión 22 Enero 2026 (Fork 3) - Formulario de Visita 5 Páginas (Completo)
+**Implementación completa del formulario de visita con 5 páginas según documento oficial:**
 
-#### Estructura del Formulario:
+#### Estructura del Formulario (5 páginas):
 - **Página 1:** Secciones 2-4 (Información Básica, PH, Condominio)
 - **Página 2:** Secciones 5-6 (Información Jurídica/Propietarios, Datos de Notificación)
-- **Página 3 (NUEVA):** Secciones 7-8 (Construcciones, Calificación)
-- **Página 4:** Secciones 9-10 (Información de la Visita, Resultado y Observaciones)
+- **Página 3:** Secciones 7-8 (Construcciones, Calificación)
+- **Página 4 (NUEVA):** Secciones 9-10 (Resumen Áreas de Terreno, Información de Localización)
+- **Página 5 (NUEVA):** Secciones 11-12 (Observaciones, Firmas) + Datos de la Visita
+
+#### Funcionalidades Implementadas (Páginas 4-5):
+
+1. ✅ **Sección 9 - Resumen Áreas de Terreno:**
+   - Tabla con 5 tipos de área (m², Ha, Descripción):
+     - Área de título (editable)
+     - **Área base catastral (R1)** - se pre-llena del Excel R1 cargado
+     - **Área geográfica (GDB)** - se pre-llena de la geometría GDB
+     - Área de levantamiento topográfico (editable)
+     - Área de la identificación predial (editable)
+   - Cálculo automático de Ha desde m²
+
+2. ✅ **Sección 10 - Información de Localización:**
+   - Espacio para cargar fotos del croquis del terreno y construcciones
+   - Botón "Agregar Fotos del Croquis / Localización"
+   - Indicador de orientación Norte
+   - Soporte para múltiples fotos con eliminación individual
+
+3. ✅ **Sección 11 - Observaciones:**
+   - Textarea con límite de 500 caracteres
+   - Contador de caracteres en tiempo real (X/500)
+   - Indicador visual cuando se acerca al límite
+
+4. ✅ **Sección 12 - Firmas:**
+   - **Firma del Visitado (Propietario/Atendiente):**
+     - Campo para nombre
+     - Canvas para firma a mano (mouse y touch)
+     - Botón "Limpiar" para borrar firma
+   - **Firma del Reconocedor Predial:**
+     - Campo para nombre
+     - Canvas para firma a mano (mouse y touch)
+     - Botón "Limpiar" para borrar firma
+
+#### Navegación:
+- Botones circulares 1-2-3-4-5 para navegación directa
+- Botones "Anterior" y "Siguiente" para navegación secuencial
+- Indicador de página "Página X/5"
+- Botón "Guardar Visita" solo visible en página 5
+
+**Testing:** 100% de éxito (9/9 características verificadas) - iteration_16.json
+
+### Sesión 22 Enero 2026 (Fork 2) - Formulario de Visita 4 Páginas
+**Implementación inicial del formulario con secciones 7-8:**
 
 #### Funcionalidades Implementadas (Página 3):
 
@@ -87,18 +131,6 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
    - 8.4 Cocina (Tamaño, Enchape, Mobiliario, Conservación)
    - 8.5 Complemento Industria (Cerchas, Altura)
    - 8.6 Datos Generales de Construcción (Total Pisos, Habitaciones, Baños, Locales, Área Total)
-
-#### Navegación:
-- Botones circulares 1-2-3-4 para navegación directa
-- Botones "Anterior" y "Siguiente" para navegación secuencial
-- Indicador de página "Página X/4"
-- Botón "Guardar Visita" solo visible en página 4
-
-#### Correcciones Técnicas:
-- Corregido bug de `undefined` en campos de calificación al navegar a página 3
-- Añadido reset de estado de construcciones al abrir formulario
-- Incluidos campos `calif_*` en reset de `setVisitaData`
-- Datos de construcciones se guardan correctamente con la visita
 
 **Testing:** 100% de éxito (7/7 características verificadas) - iteration_15.json
 
