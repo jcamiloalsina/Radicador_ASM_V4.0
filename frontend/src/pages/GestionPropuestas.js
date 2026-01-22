@@ -882,7 +882,7 @@ export default function GestionPropuestas() {
               </div>
               
               {/* Formulario de edición (si está activo) */}
-              {modoEdicion && propuestaDetalle.estado === 'pendiente' && (
+              {modoEdicion && (propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-700 mb-3 flex items-center gap-2">
                     <Edit className="w-4 h-4" />
