@@ -34,12 +34,57 @@ const openDB = () => {
   });
 };
 
+// Check if Service Worker cache is ready
+const checkCacheStatus = async () => {
+  if (!('caches' in window)) {
+    return { ready: false, reason: 'Cache API no soportado' };
+  }
+  
+  try {
+    const cacheNames = await caches.keys();
+    const hasStaticCache = cacheNames.some(name => name.includes('asomunicipios-static'));
+    const hasDataCache = cacheNames.some(name => name.includes('asomunicipios-data'));
+    
+    if (!hasStaticCache) {
+      return { 
+        ready: false, 
+        reason: 'Archivos de la aplicación no cacheados',
+        staticCached: false,
+        dataCached: hasDataCache
+      };
+    }
+    
+    // Check if critical files are cached
+    const staticCache = await caches.open(cacheNames.find(name => name.includes('asomunicipios-static')));
+    const indexCached = await staticCache.match('/index.html');
+    
+    return {
+      ready: !!indexCached,
+      reason: indexCached ? 'Listo para uso offline' : 'Página principal no cacheada',
+      staticCached: hasStaticCache,
+      dataCached: hasDataCache,
+      cacheNames: cacheNames
+    };
+  } catch (error) {
+    console.error('Error checking cache status:', error);
+    return { ready: false, reason: 'Error verificando caché' };
+  }
+};
+
 export function useOffline() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineData, setOfflineData] = useState({
     prediosCount: 0,
     lastSync: null
   });
+  const [cacheStatus, setCacheStatus] = useState({
+    ready: false,
+    checking: true,
+    reason: 'Verificando...',
+    staticCached: false,
+    dataCached: false
+  });
+  const [swRegistered, setSwRegistered] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -50,12 +95,30 @@ export function useOffline() {
 
     // Load offline data stats
     loadOfflineStats();
+    
+    // Check cache status
+    checkCacheReady();
+    
+    // Check if Service Worker is registered
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(() => {
+        setSwRegistered(true);
+        // Re-check cache after SW is ready
+        setTimeout(checkCacheReady, 1000);
+      });
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const checkCacheReady = async () => {
+    setCacheStatus(prev => ({ ...prev, checking: true }));
+    const status = await checkCacheStatus();
+    setCacheStatus({ ...status, checking: false });
+  };
 
   const loadOfflineStats = async () => {
     try {
@@ -79,6 +142,41 @@ export function useOffline() {
       console.error('Error loading offline stats:', error);
     }
   };
+
+  // Force cache critical resources
+  const forceCacheResources = useCallback(async () => {
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      return false;
+    }
+    
+    try {
+      // Trigger SW to cache resources
+      const cache = await caches.open('asomunicipios-static-v2');
+      const criticalResources = [
+        '/',
+        '/index.html',
+        '/manifest.json',
+        '/logo-asomunicipios.png'
+      ];
+      
+      await Promise.allSettled(
+        criticalResources.map(url => 
+          fetch(url).then(response => {
+            if (response.ok) {
+              return cache.put(url, response);
+            }
+          })
+        )
+      );
+      
+      // Re-check status
+      await checkCacheReady();
+      return true;
+    } catch (error) {
+      console.error('Error forcing cache:', error);
+      return false;
+    }
+  }, []);
 
   // Save predios for offline use
   const savePrediosOffline = useCallback(async (predios) => {
@@ -167,11 +265,15 @@ export function useOffline() {
   return {
     isOnline,
     offlineData,
+    cacheStatus,
+    swRegistered,
     savePrediosOffline,
     getPrediosOffline,
     getPredioOffline,
     clearOfflineData,
-    refreshStats: loadOfflineStats
+    refreshStats: loadOfflineStats,
+    checkCacheReady,
+    forceCacheResources
   };
 }
 
