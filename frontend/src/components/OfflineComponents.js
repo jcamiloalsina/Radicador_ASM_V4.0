@@ -153,18 +153,27 @@ export function OfflineReadyBadge() {
               </span>
             </div>
             
+            {/* Petitions Count */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Peticiones guardadas:</span>
+              <span className="text-sm font-medium text-slate-800">
+                {offlineData.petitionsCount || 0}
+              </span>
+            </div>
+            
             {/* Last Sync */}
-            {offlineData.lastSync && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Última sincronización:</span>
-                <span className="text-xs text-slate-500">
-                  {new Date(offlineData.lastSync).toLocaleString('es-CO', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
+            {(offlineData.lastSync || offlineData.lastPetitionsSync) && (
+              <div className="text-xs text-slate-500 border-t pt-2 mt-2">
+                {offlineData.lastSync && (
+                  <div>Predios: {new Date(offlineData.lastSync).toLocaleString('es-CO', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                  })}</div>
+                )}
+                {offlineData.lastPetitionsSync && (
+                  <div>Peticiones: {new Date(offlineData.lastPetitionsSync).toLocaleString('es-CO', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                  })}</div>
+                )}
               </div>
             )}
             
