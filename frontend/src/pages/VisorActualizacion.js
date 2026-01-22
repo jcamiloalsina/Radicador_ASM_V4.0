@@ -242,6 +242,7 @@ export default function VisorActualizacion() {
   const [showVisitaModal, setShowVisitaModal] = useState(false);
   const [visitaData, setVisitaData] = useState({
     // Sección 2: Información Básica (algunos campos se pre-llenan del predio)
+    tipo_predio: '', // PH o NPH (editable)
     direccion_visita: '',
     destino_economico_visita: '',
     area_terreno_visita: '',
