@@ -428,7 +428,35 @@ class CambioAprobacionRequest(BaseModel):
     comentario: Optional[str] = None
 
 
-# ===== MODELOS PARA MÓDULO DE ACTUALIZACIÓN =====
+# ===== FLUJO DE TRABAJO PARA PREDIOS NUEVOS (CONSERVACIÓN) =====
+
+class PredioNuevoEstado:
+    """Estados del flujo de trabajo para predios nuevos"""
+    CREADO = "creado"                    # Recién creado por gestor
+    DIGITALIZACION = "digitalizacion"    # Asignado a gestor de apoyo
+    REVISION = "revision"                # Enviado para revisión
+    APROBADO = "aprobado"                # Aprobado e integrado
+    DEVUELTO = "devuelto"                # Devuelto para corrección
+    RECHAZADO = "rechazado"              # Rechazado definitivamente
+
+class PredioNuevoCreate(BaseModel):
+    """Modelo para crear un predio nuevo con flujo de trabajo"""
+    r1: PredioR1Create
+    r2: Optional[PredioR2Create] = None
+    # Flujo de trabajo
+    gestor_apoyo_id: str                 # ID del gestor de apoyo asignado
+    # Relaciones
+    radicado_numero: Optional[str] = None  # Solo el número (ej: "5511")
+    peticiones_ids: Optional[List[str]] = []  # IDs de peticiones relacionadas
+    # Observaciones
+    observaciones: Optional[str] = None
+
+class PredioNuevoAccion(BaseModel):
+    """Modelo para acciones en el flujo de trabajo"""
+    accion: str  # enviar_revision, aprobar, devolver, rechazar
+    observaciones: Optional[str] = None
+
+
 
 class ProyectoActualizacionEstado:
     """Estados de un proyecto de actualización"""
