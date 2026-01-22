@@ -240,12 +240,18 @@ export default function VisorActualizacion() {
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
   const [visitaData, setVisitaData] = useState({
+    // Sección 2: Información Básica (algunos campos se pre-llenan del predio)
+    direccion_visita: '',
+    destino_economico_visita: '',
+    area_terreno_visita: '',
+    area_construida_visita: '',
+    // Sección 3: Información de la Visita
     fecha_visita: new Date().toISOString().split('T')[0],
     hora_visita: new Date().toTimeString().slice(0, 5),
     persona_atiende: '',
     relacion_predio: '',
     estado_predio: '',
-    acceso_predio: '',
+    acceso_predio: 'si',
     servicios_publicos: [],
     observaciones: '',
     firma_base64: null,
