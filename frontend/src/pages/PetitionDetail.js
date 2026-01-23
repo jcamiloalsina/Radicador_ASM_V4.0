@@ -826,22 +826,28 @@ export default function PetitionDetail() {
                               <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2 text-emerald-800">
                                   <FileText className="w-5 h-5" />
-                                  Confirmar Generación de Certificado
+                                  Generar Certificado Catastral
                                 </DialogTitle>
                                 <DialogDescription>
-                                  Por favor confirme antes de generar el certificado catastral.
+                                  El certificado incluye la firma digital de Dalgie Esperanza Torrado Rizo y el código QR de verificación.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4 py-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                  <p className="text-sm text-blue-800 font-medium">📋 Radicado automático</p>
+                                  <p className="text-sm text-blue-700 mt-1">
+                                    El certificado se generará con el radicado <strong>{petition.radicado}</strong> de esta petición.
+                                  </p>
+                                </div>
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                  <p className="text-sm text-amber-800 font-medium">⚠️ ¿Se verificó el pago?</p>
+                                  <p className="text-sm text-amber-800 font-medium">⚠️ Importante</p>
                                   <p className="text-sm text-amber-700 mt-1">
-                                    Confirme que el peticionario realizó el pago correspondiente antes de generar el certificado.
+                                    El PDF se <strong>descargará</strong> para que pueda agregar el certificado/sello manual antes de entregarlo al peticionario. <strong>No se enviará automáticamente.</strong>
                                   </p>
                                 </div>
                                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                                   <p className="text-sm text-slate-700">
-                                    <strong>Al confirmar:</strong> El certificado se generará, se enviará al correo <strong>{petition.correo}</strong> y el trámite quedará <strong>Finalizado</strong>.
+                                    <strong>El trámite NO se finalizará</strong> - deberá finalizarlo manualmente después de entregar el certificado.
                                   </p>
                                 </div>
                               </div>
@@ -851,9 +857,10 @@ export default function PetitionDetail() {
                                   className="bg-emerald-700 hover:bg-emerald-800"
                                   onClick={async () => {
                                     try {
-                                      toast.info('Generando y enviando certificado...');
+                                      toast.info('Generando certificado...');
                                       const token = localStorage.getItem('token');
-                                      const response = await fetch(`${API}/petitions/${petition.id}/certificado?enviar_correo=true`, {
+                                      // NO enviar correo, solo descargar
+                                      const response = await fetch(`${API}/petitions/${petition.id}/certificado?enviar_correo=false`, {
                                         headers: { 'Authorization': `Bearer ${token}` }
                                       });
                                       if (!response.ok) {
@@ -876,15 +883,15 @@ export default function PetitionDetail() {
                                       a.click();
                                       document.body.removeChild(a);
                                       window.URL.revokeObjectURL(url);
-                                      toast.success('Certificado generado, enviado al peticionario y trámite finalizado');
+                                      toast.success('Certificado descargado. Recuerde agregar el sello/certificado manual y finalizar el trámite.');
                                       fetchPetition();
                                     } catch (error) {
                                       toast.error(error.message || 'Error al generar el certificado');
                                     }
                                   }}
                                 >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Confirmar y Enviar
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Descargar PDF
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
