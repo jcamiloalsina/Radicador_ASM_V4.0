@@ -1488,6 +1488,109 @@ export default function VisorActualizacion() {
     return null;
   };
 
+  // ========== MODAL DE FIRMA GRANDE ==========
+  const abrirModalFirma = (tipo) => {
+    setFirmaModalTipo(tipo);
+    setShowFirmaModal(true);
+    // Inicializar canvas después de que se abra el modal
+    setTimeout(() => {
+      if (canvasFirmaModalRef.current) {
+        const ctx = canvasFirmaModalRef.current.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasFirmaModalRef.current.width, canvasFirmaModalRef.current.height);
+      }
+    }, 100);
+  };
+
+  const startDrawingModal = (e) => {
+    setIsDrawingModal(true);
+    const canvas = canvasFirmaModalRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const drawModal = (e) => {
+    if (!isDrawingModal) return;
+    const canvas = canvasFirmaModalRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      e.preventDefault();
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+
+  const stopDrawingModal = () => setIsDrawingModal(false);
+
+  const limpiarFirmaModal = () => {
+    const canvas = canvasFirmaModalRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const confirmarFirmaModal = () => {
+    const canvas = canvasFirmaModalRef.current;
+    if (canvas) {
+      const firmaBase64 = canvas.toDataURL('image/png');
+      if (firmaModalTipo === 'visitado') {
+        setVisitaData(prev => ({ ...prev, firma_visitado_base64: firmaBase64 }));
+        // Copiar al canvas pequeño
+        if (canvasVisitadoRef.current) {
+          const img = new Image();
+          img.onload = () => {
+            const ctx = canvasVisitadoRef.current.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasVisitadoRef.current.width, canvasVisitadoRef.current.height);
+            ctx.drawImage(img, 0, 0, canvasVisitadoRef.current.width, canvasVisitadoRef.current.height);
+          };
+          img.src = firmaBase64;
+        }
+      } else {
+        setVisitaData(prev => ({ ...prev, firma_reconocedor_base64: firmaBase64 }));
+        // Copiar al canvas pequeño
+        if (canvasReconocedorRef.current) {
+          const img = new Image();
+          img.onload = () => {
+            const ctx = canvasReconocedorRef.current.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasReconocedorRef.current.width, canvasReconocedorRef.current.height);
+            ctx.drawImage(img, 0, 0, canvasReconocedorRef.current.width, canvasReconocedorRef.current.height);
+          };
+          img.src = firmaBase64;
+        }
+      }
+    }
+    setShowFirmaModal(false);
+    toast.success('Firma guardada');
+  };
+
   // Manejo de fotos de croquis (Sección 10)
   const handleFotoCroquisChange = async (e) => {
     const files = Array.from(e.target.files);
