@@ -302,7 +302,13 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
+      {/* Banner de modo offline */}
+      {!isOnline && (
+        <OfflineBanner onViewData={() => setShowOfflinePanel(true)} />
+      )}
+      
+      <div className="flex flex-1 overflow-hidden">
       {/* Sidebar - Desktop */}
       <div className="hidden md:flex w-64 flex-col bg-emerald-900 text-white border-r border-emerald-800 overflow-y-auto">
         {/* Header con logo */}
