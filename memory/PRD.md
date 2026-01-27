@@ -63,6 +63,26 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
+### Sesión 27 Enero 2026 (Fork 4) - Mostrar Última Manzana por Sector
+**Nueva funcionalidad para guiar a usuarios al crear nuevos predios:**
+
+#### Funcionalidad Implementada:
+1. ✅ **Endpoint GET /api/predios/ultima-manzana/{municipio}:**
+   - Parámetros: `zona` y `sector`
+   - Retorna: `ultima_manzana`, `total_manzanas`, `total_predios_sector`
+   - Maneja sectores vacíos (retorna null)
+   - Valida municipios contra catálogo DIVIPOLA
+
+2. ✅ **UI en formulario "Nuevo Predio":**
+   - Al cambiar zona/sector → se consulta automáticamente la última manzana
+   - Muestra mensaje informativo debajo del campo Sector
+   - Ejemplo: "Última manzana: 3026" (en recuadro amarillo)
+   - Si no hay datos: "Sin manzanas registradas"
+
+**Testing:** 100% de éxito (9/9 tests) - iteration_17.json
+
+---
+
 ### Sesión 27 Enero 2026 - Integración Formato de Visita con Cambios Sugeridos
 **Nuevo flujo que integra el formato de visita con la detección automática de cambios:**
 
