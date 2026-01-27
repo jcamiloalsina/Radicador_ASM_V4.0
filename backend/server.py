@@ -4746,6 +4746,85 @@ async def get_estructura_codigo_predial(
     }
 
 
+@api_router.get("/predios/ultima-manzana/{municipio}")
+async def get_ultima_manzana_sector(
+    municipio: str,
+    zona: str = "00",
+    sector: str = "00",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene la última manzana (número más alto) registrada para un sector específico.
+    Útil para guiar al usuario al crear nuevos predios.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
+    if not divipola:
+        raise HTTPException(status_code=404, detail=f"Municipio {municipio} no encontrado")
+    
+    # Construir prefijo para buscar: departamento + municipio + zona + sector
+    prefijo_sector = f"{divipola['departamento']}{divipola['municipio']}{zona}{sector}"
+    
+    # Buscar todos los predios en este sector
+    regex_pattern = f"^{prefijo_sector}"
+    predios_en_sector = await db.predios.find(
+        {"codigo_predial_nacional": {"$regex": regex_pattern}},
+        {"_id": 0, "codigo_predial_nacional": 1}
+    ).to_list(50000)
+    
+    if not predios_en_sector:
+        return {
+            "municipio": municipio,
+            "zona": zona,
+            "sector": sector,
+            "ultima_manzana": None,
+            "total_predios_sector": 0,
+            "mensaje": f"No hay predios registrados en la zona {zona}, sector {sector}"
+        }
+    
+    # Extraer las manzanas (posiciones 14-17, es decir índices 13:17)
+    manzanas = set()
+    for p in predios_en_sector:
+        codigo = p["codigo_predial_nacional"]
+        if len(codigo) >= 17:
+            # Las posiciones van: 
+            # 0-1: depto, 2-4: mpio, 5-6: zona, 7-8: sector, 9-10: comuna, 11-12: barrio, 13-16: manzana
+            manzana = codigo[13:17]
+            manzanas.add(manzana)
+    
+    # Encontrar la manzana más alta (máximo numérico)
+    manzanas_numericas = []
+    for m in manzanas:
+        try:
+            manzanas_numericas.append(int(m))
+        except ValueError:
+            continue
+    
+    if not manzanas_numericas:
+        return {
+            "municipio": municipio,
+            "zona": zona,
+            "sector": sector,
+            "ultima_manzana": None,
+            "total_predios_sector": len(predios_en_sector),
+            "mensaje": "No se encontraron manzanas válidas"
+        }
+    
+    ultima_manzana = str(max(manzanas_numericas)).zfill(4)
+    
+    return {
+        "municipio": municipio,
+        "zona": zona,
+        "sector": sector,
+        "ultima_manzana": ultima_manzana,
+        "total_manzanas": len(manzanas_numericas),
+        "total_predios_sector": len(predios_en_sector),
+        "mensaje": f"Última manzana registrada: {ultima_manzana}"
+    }
+
+
 @api_router.get("/predios/sugerir-codigo/{municipio}")
 async def sugerir_codigo_disponible(
     municipio: str,
