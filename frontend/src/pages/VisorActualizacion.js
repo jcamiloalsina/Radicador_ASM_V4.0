@@ -1015,19 +1015,70 @@ export default function VisorActualizacion() {
   
   // ========== FUNCIONES PARA FORMATO DE VISITA ==========
   
-  // Abrir modal de visita
+  // Abrir modal de visita - PERMITE REABRIR si ya tiene visita guardada
   const abrirFormatoVisita = () => {
-    // Pre-llenar datos del predio seleccionado
-    // Determinar tipo de predio (PH/NPH) basado en condicion_predio
+    // Verificar si el predio ya tiene una visita guardada
+    const visitaExistente = selectedPredio?.visita;
+    const estadoActual = selectedPredio?.estado_visita;
+    
+    // Si está "actualizado" (aprobado), NO permitir editar
+    if (estadoActual === 'actualizado') {
+      toast.error('Este predio ya fue actualizado y aprobado. No se puede modificar el formato de visita.');
+      return;
+    }
+    
+    // Determinar tipo de predio (PH/NPH)
     const esPH = selectedPredio?.es_ph || (selectedPredio?.condicion_predio && selectedPredio?.condicion_predio !== '000000000');
     
-    setVisitaData({
-      // Sección 2: Información Básica (pre-llenada del predio)
-      tipo_predio: esPH ? 'PH' : 'NPH',
-      direccion_visita: selectedPredio?.direccion || '',
-      destino_economico_visita: selectedPredio?.destino_economico || '',
-      area_terreno_visita: selectedPredio?.area_terreno?.toString() || '',
-      area_construida_visita: selectedPredio?.area_construida?.toString() || '',
+    // Si hay visita existente, cargar esos datos (permitir continuar editando)
+    if (visitaExistente && estadoActual === 'visitado') {
+      toast.info('Cargando formato de visita existente para continuar editando...', { duration: 2000 });
+      
+      // Cargar datos de la visita guardada
+      setVisitaData({
+        ...visitaExistente,
+        // Asegurar que los campos de calificación existan
+        calif_estructura: visitaExistente.calif_estructura || { armazon: '', muros: '', cubierta: '', conservacion: '' },
+        calif_acabados: visitaExistente.calif_acabados || { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+        calif_bano: visitaExistente.calif_bano || { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+        calif_cocina: visitaExistente.calif_cocina || { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+        calif_industria: visitaExistente.calif_industria || { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+        calif_generales: visitaExistente.calif_generales || { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' },
+        fotos_croquis: visitaExistente.fotos_croquis || []
+      });
+      
+      // Cargar propietarios de la visita
+      if (visitaExistente.propietarios_visita && visitaExistente.propietarios_visita.length > 0) {
+        setVisitaPropietarios(visitaExistente.propietarios_visita);
+      } else {
+        setVisitaPropietarios([{ tipo_documento: '', numero_documento: '', nombre: '', primer_apellido: '', segundo_apellido: '', genero: '', genero_otro: '', grupo_etnico: '' }]);
+      }
+      
+      // Cargar construcciones
+      if (visitaExistente.construcciones && visitaExistente.construcciones.length > 0) {
+        setVisitaConstrucciones(visitaExistente.construcciones);
+      } else {
+        setVisitaConstrucciones([
+          { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+          { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+          { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+          { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+          { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
+        ]);
+      }
+      
+      // Cargar fotos
+      setFotos(visitaExistente.fotos || []);
+      
+    } else {
+      // Primera visita - pre-llenar con datos del R1/R2
+      setVisitaData({
+        // Sección 2: Información Básica (pre-llenada del predio)
+        tipo_predio: esPH ? 'PH' : 'NPH',
+        direccion_visita: selectedPredio?.direccion || '',
+        destino_economico_visita: selectedPredio?.destino_economico || '',
+        area_terreno_visita: selectedPredio?.area_terreno?.toString() || '',
+        area_construida_visita: selectedPredio?.area_construida?.toString() || '',
       // Sección 3: PH (Propiedad Horizontal) - valores del predio si existen
       ph_area_coeficiente: selectedPredio?.area_coeficiente?.toString() || '',
       ph_area_construida_privada: selectedPredio?.area_construida_privada?.toString() || '',
