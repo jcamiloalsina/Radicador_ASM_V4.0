@@ -94,6 +94,30 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 27 Enero 2026 (Fork 4) - Mejoras de Modo Offline
+**Implementación completa de funcionalidades offline:**
+
+#### UI de Estado Offline:
+1. ✅ **Banner de modo offline** - Barra amarilla fija cuando no hay conexión
+2. ✅ **Badge de estado offline** en header - Muestra "Sin datos offline" o "Offline (X predios)"
+3. ✅ **Panel desplegable** - Detalles de datos guardados y última sincronización
+4. ✅ **Panel completo de estado** - Modal con todos los módulos y su estado offline
+5. ✅ **Barra de progreso de descarga** - Muestra progreso al guardar datos para offline
+6. ✅ **Toast de confirmación** - "✅ Municipio: X predios disponibles offline"
+
+#### Funcionalidad Offline:
+- Gestión de Predios carga desde IndexedDB cuando está offline
+- Descarga automática al visitar un municipio
+- Filtrado local por vigencia y búsqueda
+
+### Sesión 27 Enero 2026 (Fork 4) - Otras Mejoras
+- ✅ **Ver/ocultar contraseña** en login
+- ✅ **Alerta de spam** en verificación de correo
+- ✅ **Fix envío de código de verificación** - Corregido error `send_email_notification`
+- ✅ **Consolidación de Pendientes** - "Predios en Proceso" integrado en "Pendientes" con pestañas
+- ✅ **Fix propietarios múltiples** en modal de cambios
+- ✅ **Fix "Base Gráfica"** - Verifica código específico, no solo manzana
+
 ### Sesión 27 Enero 2026 (Fork 4) - Mostrar Última Manzana por Sector
 **Nueva funcionalidad para guiar a usuarios al crear nuevos predios:**
 
