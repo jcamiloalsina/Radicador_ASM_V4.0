@@ -1824,10 +1824,38 @@ export default function Predios() {
       
       // Guardar automáticamente para modo offline si hay municipio filtrado
       if (filterMunicipio && res.data.predios.length > 0) {
-        downloadForOffline(res.data.predios, null, filterMunicipio);
+        // Mostrar barra de progreso de descarga
+        const totalPredios = res.data.predios.length;
+        setDownloadProgress({
+          isDownloading: true,
+          current: 0,
+          total: totalPredios,
+          label: `Guardando ${filterMunicipio} para uso offline...`
+        });
+        
+        // Simular progreso mientras se guarda
+        const progressInterval = setInterval(() => {
+          setDownloadProgress(prev => ({
+            ...prev,
+            current: Math.min(prev.current + Math.ceil(totalPredios / 10), totalPredios)
+          }));
+        }, 100);
+        
+        await downloadForOffline(res.data.predios, null, filterMunicipio);
+        
+        clearInterval(progressInterval);
+        setDownloadProgress({
+          isDownloading: false,
+          current: totalPredios,
+          total: totalPredios,
+          label: ''
+        });
+        
+        toast.success(`✅ ${filterMunicipio}: ${totalPredios} predios disponibles offline`, { duration: 3000 });
       }
     } catch (error) {
       console.error('Error cargando predios:', error);
+      setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' });
       
       // Si hay error y está offline, intentar cargar desde IndexedDB
       if (!navigator.onLine) {
