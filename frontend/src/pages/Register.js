@@ -124,6 +124,11 @@ export default function Register() {
                 Hemos enviado un código de 6 dígitos a
               </p>
               <p className="font-semibold text-emerald-700">{formData.email}</p>
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700">
+                  <strong>¿No lo encuentras?</strong> Revisa tu carpeta de <strong>Spam</strong> o <strong>Correo no deseado</strong>
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleVerifyCode} className="mt-8 space-y-6">
