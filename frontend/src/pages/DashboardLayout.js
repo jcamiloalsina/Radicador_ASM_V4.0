@@ -687,6 +687,27 @@ export default function DashboardLayout() {
           <Outlet />
         </div>
       </div>
+      </div>
+      
+      {/* Panel de estado offline */}
+      <OfflineStatusPanel 
+        isOpen={showOfflinePanel} 
+        onClose={() => setShowOfflinePanel(false)}
+        offlineModules={[
+          {
+            name: 'Gestión de Predios',
+            description: 'Predios descargados para consulta',
+            status: offlineData.prediosCount > 0 ? 'ready' : 'none',
+            count: offlineData.prediosCount || 0
+          },
+          {
+            name: 'Peticiones',
+            description: 'Peticiones de certificados',
+            status: offlineData.petitionsCount > 0 ? 'ready' : 'none',
+            count: offlineData.petitionsCount || 0
+          }
+        ]}
+      />
     </div>
   );
 }
