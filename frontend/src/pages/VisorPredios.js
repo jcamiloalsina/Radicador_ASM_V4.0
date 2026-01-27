@@ -538,6 +538,14 @@ export default function VisorPredios() {
   const fetchAllGeometries = async () => {
     setLoadingGeometries(true);
     try {
+      // Si está offline, intentar cargar desde cache
+      if (!navigator.onLine) {
+        toast.info('Modo offline: Cargando geometrías desde caché local');
+        // Por ahora, si no hay conexión, mostrar mensaje
+        setLoadingGeometries(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', filterMunicipio);
@@ -552,7 +560,11 @@ export default function VisorPredios() {
       toast.success(`${response.data.total} predios de Base Gráfica (${zonaText}) cargados`);
     } catch (error) {
       console.error('Error loading geometries:', error);
-      toast.error(error.response?.data?.detail || 'Error al cargar Base Gráfica');
+      if (!navigator.onLine) {
+        toast.warning('Sin conexión: Las geometrías no están disponibles offline');
+      } else {
+        toast.error(error.response?.data?.detail || 'Error al cargar Base Gráfica');
+      }
       setAllGeometries(null);
     } finally {
       setLoadingGeometries(false);
