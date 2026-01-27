@@ -1196,24 +1196,37 @@ export default function VisorActualizacion() {
       }]);
     }
     
-    setFotos([]);
+      setFotos([]);
+      // Reset construcciones a valores iniciales (para primera visita)
+      setVisitaConstrucciones([
+        { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+        { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+        { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+        { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+        { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
+      ]);
+    } // Cierre del else de "primera visita"
+    
     setVisitaPagina(1); // Iniciar en página 1
-    // Reset construcciones a valores iniciales
-    setVisitaConstrucciones([
-      { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
-      { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
-      { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
-      { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
-      { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
-    ]);
     setShowVisitaModal(true);
     
-    // Limpiar canvas de firma después de que el modal se abra
+    // Limpiar canvas de firma después de que el modal se abra (solo si no hay firma previa)
     setTimeout(() => {
       if (canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+      // También limpiar canvas de visitado y reconocedor
+      if (canvasVisitadoRef.current) {
+        const ctx = canvasVisitadoRef.current.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasVisitadoRef.current.width, canvasVisitadoRef.current.height);
+      }
+      if (canvasReconocedorRef.current) {
+        const ctx = canvasReconocedorRef.current.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvasReconocedorRef.current.width, canvasReconocedorRef.current.height);
       }
     }, 100);
   };
