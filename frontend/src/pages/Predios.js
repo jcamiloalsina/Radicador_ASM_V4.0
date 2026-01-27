@@ -1292,7 +1292,8 @@ export default function Predios() {
     offlineStats, 
     downloadForOffline, 
     saveOfflineChange,
-    forceSync
+    forceSync,
+    getPrediosOffline
   } = useOfflineSync(null, 'conservacion');
   
   // Comunicaciones solo puede ver, no puede crear/editar/eliminar predios
