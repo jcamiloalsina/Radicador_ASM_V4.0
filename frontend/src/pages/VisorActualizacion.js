@@ -1124,20 +1124,20 @@ export default function VisorActualizacion() {
       calif_industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
       calif_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' },
       // Sección 9: Resumen áreas de terreno (área base catastral viene del R1, área geográfica del GDB)
-      area_titulo_m2: '',
       area_titulo_ha: '',
+      area_titulo_m2: '',
       area_titulo_desc: '',
-      area_base_catastral_m2: selectedPredio?.area_terreno?.toString() || '', // del R1
       area_base_catastral_ha: selectedPredio?.area_terreno ? (parseFloat(selectedPredio.area_terreno) / 10000).toFixed(4) : '',
+      area_base_catastral_m2: selectedPredio?.area_terreno?.toString() || '', // del R1
       area_base_catastral_desc: 'Área del R1 (Excel cargado)',
-      area_geografica_m2: selectedPredio?.area_geografica?.toString() || '', // del GDB
-      area_geografica_ha: selectedPredio?.area_geografica ? (parseFloat(selectedPredio.area_geografica) / 10000).toFixed(4) : '',
+      area_geografica_ha: selectedPredio?.area_gdb ? (parseFloat(selectedPredio.area_gdb) / 10000).toFixed(4) : '',
+      area_geografica_m2: selectedPredio?.area_gdb?.toString() || '', // del GDB (corregido: era area_geografica)
       area_geografica_desc: 'Área del GDB (geometría)',
-      area_levantamiento_m2: '',
       area_levantamiento_ha: '',
+      area_levantamiento_m2: '',
       area_levantamiento_desc: '',
-      area_identificacion_m2: '',
       area_identificacion_ha: '',
+      area_identificacion_m2: '',
       area_identificacion_desc: '',
       // Sección 10: Fotos croquis
       fotos_croquis: [],
