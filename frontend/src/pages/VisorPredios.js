@@ -1549,10 +1549,14 @@ export default function VisorPredios() {
                   </div>
                 </div>
 
-                {/* Propietario */}
+                {/* Propietario - Priorizar R1/R2 sobre propietarios legacy */}
                 <div className="border-t pt-2">
                   <p className="text-xs text-slate-500 flex items-center gap-1"><User className="w-3 h-3" /> Propietario</p>
-                  {selectedPredio.propietarios?.length > 0 ? (
+                  {selectedPredio.r1_registros?.length > 0 ? (
+                    selectedPredio.r1_registros.map((r, idx) => (
+                      <p key={idx} className="font-medium">{r.nombre_propietario}</p>
+                    ))
+                  ) : selectedPredio.propietarios?.length > 0 ? (
                     selectedPredio.propietarios.map((p, idx) => (
                       <p key={idx} className="font-medium">{p.nombre_propietario}</p>
                     ))
