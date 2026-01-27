@@ -3215,6 +3215,56 @@ export default function VisorActualizacion() {
               {/* ========== PÁGINA 1: Información del Predio ========== */}
               {visitaPagina === 1 && (
                 <>
+                  {/* DATOS DE LA VISITA - Ahora al inicio */}
+                  <div className="border-2 border-blue-300 rounded-lg overflow-hidden bg-blue-50/50">
+                    <div className="bg-blue-100 px-4 py-2 border-b border-blue-300">
+                      <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        1. DATOS DE LA VISITA
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Fecha de Visita *</Label>
+                          <Input type="date" value={visitaData.fecha_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, fecha_visita: e.target.value }))} className="bg-white" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Hora *</Label>
+                          <Input type="time" value={visitaData.hora_visita} onChange={(e) => setVisitaData(prev => ({ ...prev, hora_visita: e.target.value }))} className="bg-white" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Persona que Atiende *</Label>
+                          <Input value={visitaData.persona_atiende} onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO" className="uppercase bg-white" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500 mb-1 block">Relación con el Predio</Label>
+                          <div className="flex flex-wrap gap-3">
+                            {[{v:'propietario',l:'Propietario'},{v:'poseedor',l:'Poseedor'},{v:'arrendatario',l:'Arrendatario'},{v:'familiar',l:'Familiar'},{v:'encargado',l:'Encargado'},{v:'otro',l:'Otro'}].map(i => (
+                              <label key={i.v} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                                <input type="radio" name="relacion_p1" checked={visitaData.relacion_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, relacion_predio: i.v }))} className="text-blue-600" />
+                                {i.l}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500 mb-1 block">¿Se pudo acceder al predio?</Label>
+                          <div className="flex gap-4">
+                            {[{v:'si',l:'Sí'},{v:'parcial',l:'Parcial'},{v:'no',l:'No'}].map(i => (
+                              <label key={i.v} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                                <input type="radio" name="acceso_p1" checked={visitaData.acceso_predio === i.v} onChange={() => setVisitaData(prev => ({ ...prev, acceso_predio: i.v }))} className="text-blue-600" />
+                                {i.l}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Sección 2: Información Básica */}
                   <div className="border border-emerald-200 rounded-lg overflow-hidden">
                     <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
