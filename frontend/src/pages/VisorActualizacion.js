@@ -4003,15 +4003,17 @@ export default function VisorActualizacion() {
                           <Label className="text-xs text-slate-500 mb-1 block">Nombre</Label>
                           <Input value={visitaData.nombre_visitado} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_visitado: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO DEL VISITADO" className="uppercase mb-2" />
                         </div>
-                        <div className="border-2 border-slate-300 rounded-lg bg-white">
-                          <canvas ref={canvasVisitadoRef} width={500} height={100} className="w-full touch-none cursor-crosshair" style={{ backgroundColor: '#ffffff' }}
-                            onMouseDown={startDrawingVisitado} onMouseMove={drawVisitado} onMouseUp={stopDrawingVisitado} onMouseLeave={stopDrawingVisitado}
-                            onTouchStart={startDrawingVisitado} onTouchMove={drawVisitado} onTouchEnd={stopDrawingVisitado}
-                          />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden">
+                            <canvas ref={canvasVisitadoRef} width={500} height={80} className="w-full h-full" style={{ backgroundColor: '#ffffff' }} />
+                          </div>
+                          <Button type="button" variant="outline" onClick={() => abrirModalFirma('visitado')} className="border-purple-500 text-purple-700 hover:bg-purple-50">
+                            <Pen className="w-4 h-4 mr-1" /> Firmar
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaVisitado} className="text-slate-500">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaVisitado} className="mt-1 text-slate-500">
-                          <Trash2 className="w-3 h-3 mr-1" />Limpiar
-                        </Button>
                       </div>
 
                       {/* Firma del Reconocedor */}
@@ -4021,15 +4023,17 @@ export default function VisorActualizacion() {
                           <Label className="text-xs text-slate-500 mb-1 block">Nombre</Label>
                           <Input value={visitaData.nombre_reconocedor} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_reconocedor: e.target.value.toUpperCase() }))} placeholder="NOMBRE DEL RECONOCEDOR" className="uppercase mb-2" />
                         </div>
-                        <div className="border-2 border-slate-300 rounded-lg bg-white">
-                          <canvas ref={canvasReconocedorRef} width={500} height={100} className="w-full touch-none cursor-crosshair" style={{ backgroundColor: '#ffffff' }}
-                            onMouseDown={startDrawingReconocedor} onMouseMove={drawReconocedor} onMouseUp={stopDrawingReconocedor} onMouseLeave={stopDrawingReconocedor}
-                            onTouchStart={startDrawingReconocedor} onTouchMove={drawReconocedor} onTouchEnd={stopDrawingReconocedor}
-                          />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden">
+                            <canvas ref={canvasReconocedorRef} width={500} height={80} className="w-full h-full" style={{ backgroundColor: '#ffffff' }} />
+                          </div>
+                          <Button type="button" variant="outline" onClick={() => abrirModalFirma('reconocedor')} className="border-purple-500 text-purple-700 hover:bg-purple-50">
+                            <Pen className="w-4 h-4 mr-1" /> Firmar
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaReconocedor} className="text-slate-500">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={limpiarFirmaReconocedor} className="mt-1 text-slate-500">
-                          <Trash2 className="w-3 h-3 mr-1" />Limpiar
-                        </Button>
                       </div>
                     </div>
                   </div>
