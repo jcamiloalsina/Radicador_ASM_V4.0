@@ -350,8 +350,11 @@ export default function Pendientes() {
                       <p>{selectedCambio.datos_propuestos?.direccion || 'N/A'}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Propietario:</span>
-                      <p>{selectedCambio.datos_propuestos?.nombre_propietario || selectedCambio.datos_propuestos?.propietarios?.[0]?.nombre_propietario || 'N/A'}</p>
+                      <span className="text-slate-500">Propietario(s):</span>
+                      <p>{selectedCambio.datos_propuestos?.nombre_propietario || 
+                          (selectedCambio.datos_propuestos?.propietarios?.length > 0 
+                            ? selectedCambio.datos_propuestos.propietarios.map(p => p.nombre_propietario).join(', ')
+                            : 'N/A')}</p>
                     </div>
                     <div>
                       <span className="text-slate-500">Área Terreno:</span>
