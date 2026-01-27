@@ -763,6 +763,170 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Detalle de Predio Nuevo */}
+      <Dialog open={showPredioDetailDialog} onOpenChange={setShowPredioDetailDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Detalle del Predio Nuevo
+            </DialogTitle>
+            <DialogDescription>
+              Información del predio en proceso de creación
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPredioNuevo && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Badge className={estadoPredioConfig[selectedPredioNuevo.estado]?.color || 'bg-slate-100'}>
+                  {estadoPredioConfig[selectedPredioNuevo.estado]?.label || selectedPredioNuevo.estado}
+                </Badge>
+                <span className="text-sm text-slate-500">
+                  Creado: {formatDate(selectedPredioNuevo.fecha_creacion)}
+                </span>
+              </div>
+              
+              <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-slate-700">Datos del Predio</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">Código Predial:</span>
+                    <p className="font-mono break-all">{selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Municipio:</span>
+                    <p>{selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Dirección:</span>
+                    <p>{selectedPredioNuevo.datos_predio?.direccion || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Propietario(s):</span>
+                    <p>{selectedPredioNuevo.datos_predio?.propietarios?.map(p => p.nombre_propietario).join(', ') || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Área Terreno:</span>
+                    <p>{selectedPredioNuevo.datos_predio?.area_terreno?.toLocaleString() || 'N/A'} m²</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Avalúo:</span>
+                    <p>${selectedPredioNuevo.datos_predio?.avaluo?.toLocaleString() || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedPredioNuevo.radicado && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Radicado asociado:</strong> {selectedPredioNuevo.radicado}
+                  </p>
+                </div>
+              )}
+              
+              {selectedPredioNuevo.observaciones && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-1">Observaciones:</p>
+                  <p className="text-sm text-amber-700">{selectedPredioNuevo.observaciones}</p>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPredioDetailDialog(false)}>
+                  Cerrar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Acción para Predio Nuevo */}
+      <Dialog open={showPredioActionDialog} onOpenChange={setShowPredioActionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {predioActionType === 'aprobar' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
+              {predioActionType === 'devolver' && <RefreshCw className="w-5 h-5 text-orange-600" />}
+              {predioActionType === 'rechazar' && <XCircle className="w-5 h-5 text-red-600" />}
+              {predioActionType === 'enviar_revision' && <Eye className="w-5 h-5 text-purple-600" />}
+              {predioActionType === 'aprobar' && 'Aprobar Predio'}
+              {predioActionType === 'devolver' && 'Devolver Predio'}
+              {predioActionType === 'rechazar' && 'Rechazar Predio'}
+              {predioActionType === 'enviar_revision' && 'Enviar a Revisión'}
+            </DialogTitle>
+            <DialogDescription>
+              {predioActionType === 'aprobar' && 'El predio será aprobado e integrado al sistema catastral.'}
+              {predioActionType === 'devolver' && 'El predio será devuelto al gestor para correcciones.'}
+              {predioActionType === 'rechazar' && 'El predio será rechazado y no se integrará al sistema.'}
+              {predioActionType === 'enviar_revision' && 'El predio será enviado al coordinador para revisión.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedPredioNuevo && (
+              <div className="bg-slate-50 rounded-lg p-3 text-sm">
+                <p><strong>Código:</strong> {selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'Nuevo'}</p>
+                <p><strong>Municipio:</strong> {selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
+                <p><strong>Creado por:</strong> {selectedPredioNuevo.creado_por_nombre || 'N/A'}</p>
+              </div>
+            )}
+            
+            {['devolver', 'rechazar'].includes(predioActionType) && (
+              <div className="space-y-2">
+                <Label className="text-slate-700 font-medium">
+                  Observaciones *
+                </Label>
+                <Textarea
+                  value={predioObservaciones}
+                  onChange={(e) => setPredioObservaciones(e.target.value)}
+                  placeholder={predioActionType === 'devolver' 
+                    ? 'Indique las correcciones necesarias...'
+                    : 'Indique el motivo del rechazo...'}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowPredioActionDialog(false);
+                setPredioObservaciones('');
+                setPredioActionType('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className={
+                predioActionType === 'aprobar' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' :
+                predioActionType === 'devolver' ? 'bg-orange-600 hover:bg-orange-700 text-white' :
+                predioActionType === 'rechazar' ? 'bg-red-600 hover:bg-red-700 text-white' :
+                'bg-purple-600 hover:bg-purple-700 text-white'
+              }
+              onClick={handlePredioAction}
+              disabled={procesando || (['devolver', 'rechazar'].includes(predioActionType) && !predioObservaciones.trim())}
+            >
+              {procesando ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <>
+                  {predioActionType === 'aprobar' && <CheckCircle className="w-4 h-4 mr-2" />}
+                  {predioActionType === 'devolver' && <RefreshCw className="w-4 h-4 mr-2" />}
+                  {predioActionType === 'rechazar' && <XCircle className="w-4 h-4 mr-2" />}
+                  {predioActionType === 'enviar_revision' && <Eye className="w-4 h-4 mr-2" />}
+                </>
+              )}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
