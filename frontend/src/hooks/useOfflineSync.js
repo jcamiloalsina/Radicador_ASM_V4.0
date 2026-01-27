@@ -209,7 +209,8 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     syncPendingChanges,
     getOfflineData,
     forceSync,
-    refreshStats
+    refreshStats,
+    getPrediosOffline  // Agregar para uso directo en componentes
   };
 }
 
