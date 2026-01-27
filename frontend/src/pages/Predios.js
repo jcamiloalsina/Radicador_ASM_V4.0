@@ -1518,6 +1518,31 @@ export default function Predios() {
     }
   }, [codigoManual.zona, codigoManual.sector, codigoManual.comuna, codigoManual.barrio, codigoManual.manzana_vereda, formData.municipio, showCreateDialog]);
 
+  // Obtener última manzana cuando cambia zona o sector
+  useEffect(() => {
+    if (formData.municipio && showCreateDialog && codigoManual.zona && codigoManual.sector) {
+      fetchUltimaManzana();
+    }
+  }, [codigoManual.zona, codigoManual.sector, formData.municipio, showCreateDialog]);
+
+  // Función para obtener la última manzana de un sector
+  const fetchUltimaManzana = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManual.zona,
+        sector: codigoManual.sector
+      });
+      const res = await axios.get(`${API}/predios/ultima-manzana/${formData.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUltimaManzanaInfo(res.data);
+    } catch (error) {
+      console.log('Error obteniendo última manzana');
+      setUltimaManzanaInfo(null);
+    }
+  };
+
   // Función para obtener la estructura del código según el municipio
   const fetchEstructuraCodigo = async () => {
     try {
