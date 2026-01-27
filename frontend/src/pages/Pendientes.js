@@ -4,11 +4,12 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { 
   Clock, CheckCircle, XCircle, Building, User, MapPin, 
-  FileText, Eye, Loader2, AlertTriangle, ArrowRight
+  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
@@ -16,21 +17,127 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Helper para formatear fecha
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  try {
+    return new Date(dateStr).toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+// Configuración de estados para predios nuevos
+const estadoPredioConfig = {
+  creado: { color: 'bg-blue-100 text-blue-800 border-blue-300', label: 'Creado', icon: FileText },
+  digitalizacion: { color: 'bg-amber-100 text-amber-800 border-amber-300', label: 'En Digitalización', icon: Edit },
+  revision: { color: 'bg-purple-100 text-purple-800 border-purple-300', label: 'En Revisión', icon: Eye },
+  aprobado: { color: 'bg-emerald-100 text-emerald-800 border-emerald-300', label: 'Aprobado', icon: CheckCircle },
+  devuelto: { color: 'bg-orange-100 text-orange-800 border-orange-300', label: 'Devuelto', icon: RefreshCw },
+  rechazado: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Rechazado', icon: XCircle },
+};
+
 export default function Pendientes() {
   const { user } = useAuth();
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
+  const [prediosNuevos, setPrediosNuevos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPredios, setLoadingPredios] = useState(true);
   const [selectedCambio, setSelectedCambio] = useState(null);
   const [procesando, setProcesando] = useState(false);
+  const [activeTab, setActiveTab] = useState('modificaciones');
+  
+  // Estados para predios nuevos
+  const [selectedPredioNuevo, setSelectedPredioNuevo] = useState(null);
+  const [showPredioDetailDialog, setShowPredioDetailDialog] = useState(false);
+  const [showPredioActionDialog, setShowPredioActionDialog] = useState(false);
+  const [predioActionType, setPredioActionType] = useState('');
+  const [predioObservaciones, setPredioObservaciones] = useState('');
+  const [expandedHistorial, setExpandedHistorial] = useState({});
   
   // Estados para el modal de rechazo
   const [showRechazarModal, setShowRechazarModal] = useState(false);
   const [cambioArechazar, setCambioArechazar] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
+  
+  const isCoordinador = user && ['coordinador', 'administrador'].includes(user.role);
 
   useEffect(() => {
     fetchPendientes();
+    fetchPrediosNuevos();
   }, []);
+
+  const fetchPrediosNuevos = async () => {
+    setLoadingPredios(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios-nuevos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosNuevos(res.data.predios || res.data || []);
+    } catch (error) {
+      console.error('Error cargando predios nuevos:', error);
+      setPrediosNuevos([]);
+    } finally {
+      setLoadingPredios(false);
+    }
+  };
+
+  const handlePredioAction = async () => {
+    if (!selectedPredioNuevo || !predioActionType) return;
+    
+    if (['devolver', 'rechazar'].includes(predioActionType) && !predioObservaciones.trim()) {
+      toast.error('Debe ingresar observaciones para esta acción');
+      return;
+    }
+    
+    setProcesando(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/predios-nuevos/${selectedPredioNuevo.id}/accion`, {
+        accion: predioActionType,
+        observaciones: predioObservaciones.trim() || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const mensajes = {
+        enviar_revision: 'Predio enviado a revisión',
+        aprobar: 'Predio aprobado e integrado al sistema',
+        devolver: 'Predio devuelto para correcciones',
+        rechazar: 'Predio rechazado'
+      };
+      
+      toast.success(mensajes[predioActionType] || 'Acción completada');
+      setShowPredioActionDialog(false);
+      setPredioObservaciones('');
+      setPredioActionType('');
+      fetchPrediosNuevos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al procesar acción');
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const openPredioActionDialog = (predio, action) => {
+    setSelectedPredioNuevo(predio);
+    setPredioActionType(action);
+    setShowPredioActionDialog(true);
+  };
+
+  const toggleHistorial = (predioId) => {
+    setExpandedHistorial(prev => ({
+      ...prev,
+      [predioId]: !prev[predioId]
+    }));
+  };
 
   const fetchPendientes = async () => {
     try {
