@@ -86,12 +86,14 @@ function MenuItem({ item, isActive, onNavigate }) {
 
 export default function DashboardLayout() {
   const { user, logout, loading, showTimeoutWarning, extendSession } = useAuth();
+  const { isOnline, offlineData } = useOffline();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
+  const [showOfflinePanel, setShowOfflinePanel] = useState(false);
   
   // Estado de secciones colapsables
   const [conservacionOpen, setConservacionOpen] = useState(true);
