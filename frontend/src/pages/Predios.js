@@ -1768,6 +1768,36 @@ export default function Predios() {
   const fetchPredios = async () => {
     try {
       setLoading(true);
+      
+      // Si está offline, cargar desde IndexedDB
+      if (!navigator.onLine) {
+        const offlinePredios = await getPrediosOffline(filterMunicipio);
+        if (offlinePredios.length > 0) {
+          // Filtrar por vigencia y búsqueda si aplica
+          let filtered = offlinePredios;
+          if (filterVigencia) {
+            filtered = filtered.filter(p => String(p.vigencia) === String(filterVigencia));
+          }
+          if (search) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter(p => 
+              p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+              p.direccion?.toLowerCase().includes(searchLower) ||
+              p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower))
+            );
+          }
+          setPredios(filtered);
+          setTotal(filtered.length);
+          toast.info(`Modo offline: ${filtered.length} predios cargados`, { duration: 3000 });
+          return;
+        } else {
+          toast.warning('No hay datos offline disponibles para este municipio');
+          setPredios([]);
+          setTotal(0);
+          return;
+        }
+      }
+      
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (filterMunicipio) params.append('municipio', filterMunicipio);
@@ -1789,9 +1819,18 @@ export default function Predios() {
     } catch (error) {
       console.error('Error cargando predios:', error);
       
-      // Si está offline, mostrar mensaje informativo
+      // Si hay error y está offline, intentar cargar desde IndexedDB
       if (!navigator.onLine) {
-        toast.info('Trabajando en modo offline', { description: 'Algunos datos pueden no estar disponibles' });
+        const offlinePredios = await getPrediosOffline(filterMunicipio);
+        if (offlinePredios.length > 0) {
+          setPredios(offlinePredios);
+          setTotal(offlinePredios.length);
+          toast.info(`Modo offline: ${offlinePredios.length} predios cargados`);
+        } else {
+          toast.warning('No hay datos offline disponibles');
+          setPredios([]);
+          setTotal(0);
+        }
       } else {
         toast.error('Error al cargar predios');
       }
