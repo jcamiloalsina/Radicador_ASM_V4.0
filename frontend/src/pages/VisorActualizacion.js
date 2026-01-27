@@ -4386,6 +4386,53 @@ export default function VisorActualizacion() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ========== MODAL DE FIRMA GRANDE ========== */}
+      <Dialog open={showFirmaModal} onOpenChange={setShowFirmaModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-purple-800">
+              <Pen className="w-5 h-5" />
+              {firmaModalTipo === 'visitado' ? 'Firma del Visitado' : 'Firma del Reconocedor'}
+            </DialogTitle>
+            <DialogDescription>
+              Firme en el espacio blanco usando el mouse o el dedo (en dispositivos táctiles)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="border-4 border-purple-300 rounded-xl bg-white shadow-inner">
+              <canvas 
+                ref={canvasFirmaModalRef} 
+                width={700} 
+                height={250} 
+                className="w-full touch-none cursor-crosshair rounded-lg" 
+                style={{ backgroundColor: '#ffffff' }}
+                onMouseDown={startDrawingModal} 
+                onMouseMove={drawModal} 
+                onMouseUp={stopDrawingModal} 
+                onMouseLeave={stopDrawingModal}
+                onTouchStart={startDrawingModal} 
+                onTouchMove={drawModal} 
+                onTouchEnd={stopDrawingModal}
+              />
+            </div>
+            <p className="text-xs text-slate-500 text-center mt-2">
+              Use el mouse o toque la pantalla para dibujar su firma
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={limpiarFirmaModal}>
+              <Trash2 className="w-4 h-4 mr-2" /> Limpiar
+            </Button>
+            <Button variant="outline" onClick={() => setShowFirmaModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarFirmaModal} className="bg-purple-700 hover:bg-purple-800">
+              <Check className="w-4 h-4 mr-2" /> Confirmar Firma
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
