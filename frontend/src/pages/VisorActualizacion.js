@@ -3759,40 +3759,40 @@ export default function VisorActualizacion() {
                           <thead>
                             <tr className="bg-teal-50">
                               <th className="px-3 py-2 text-left font-medium text-teal-700 border border-teal-200">Área de terreno según:</th>
-                              <th className="px-3 py-2 text-center font-medium text-teal-700 border border-teal-200 w-24">m²</th>
                               <th className="px-3 py-2 text-center font-medium text-teal-700 border border-teal-200 w-24">Ha</th>
+                              <th className="px-3 py-2 text-center font-medium text-teal-700 border border-teal-200 w-24">m²</th>
                               <th className="px-3 py-2 text-left font-medium text-teal-700 border border-teal-200">Descripción</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
                               <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área de título</td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_titulo_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_titulo_m2: e.target.value, area_titulo_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_titulo_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" step="0.0001" value={visitaData.area_titulo_ha} onChange={(e) => setVisitaData(prev => ({ ...prev, area_titulo_ha: e.target.value, area_titulo_m2: e.target.value ? (parseFloat(e.target.value) * 10000).toFixed(2) : '' }))} className="h-8 text-sm text-center" placeholder="0.0000" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_titulo_m2} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_titulo_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_titulo_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
                             </tr>
                             <tr className="bg-emerald-50">
                               <td className="px-3 py-2 border border-teal-200 font-medium text-emerald-700">Área base catastral (R1)</td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_base_catastral_m2} readOnly className="h-8 text-sm text-center bg-emerald-100 font-medium" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_base_catastral_ha} readOnly className="h-8 text-sm text-center bg-emerald-100" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_base_catastral_m2} readOnly className="h-8 text-sm text-center bg-emerald-100 font-medium" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_base_catastral_desc} readOnly className="h-8 text-sm bg-emerald-100 text-emerald-700" /></td>
                             </tr>
                             <tr className="bg-blue-50">
                               <td className="px-3 py-2 border border-teal-200 font-medium text-blue-700">Área geográfica (GDB)</td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_geografica_m2} readOnly className="h-8 text-sm text-center bg-blue-100 font-medium" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_geografica_ha} readOnly className="h-8 text-sm text-center bg-blue-100" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_geografica_m2} readOnly className="h-8 text-sm text-center bg-blue-100 font-medium" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_geografica_desc} readOnly className="h-8 text-sm bg-blue-100 text-blue-700" /></td>
                             </tr>
                             <tr>
                               <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área levantamiento topográfico</td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_levantamiento_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_levantamiento_m2: e.target.value, area_levantamiento_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_levantamiento_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" step="0.0001" value={visitaData.area_levantamiento_ha} onChange={(e) => setVisitaData(prev => ({ ...prev, area_levantamiento_ha: e.target.value, area_levantamiento_m2: e.target.value ? (parseFloat(e.target.value) * 10000).toFixed(2) : '' }))} className="h-8 text-sm text-center" placeholder="0.0000" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_levantamiento_m2} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_levantamiento_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_levantamiento_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
                             </tr>
                             <tr>
                               <td className="px-3 py-2 border border-teal-200 font-medium text-slate-700">Área de la identificación predial</td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="number" value={visitaData.area_identificacion_m2} onChange={(e) => setVisitaData(prev => ({ ...prev, area_identificacion_m2: e.target.value, area_identificacion_ha: e.target.value ? (parseFloat(e.target.value) / 10000).toFixed(4) : '' }))} className="h-8 text-sm text-center" placeholder="0" /></td>
-                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_identificacion_ha} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="number" step="0.0001" value={visitaData.area_identificacion_ha} onChange={(e) => setVisitaData(prev => ({ ...prev, area_identificacion_ha: e.target.value, area_identificacion_m2: e.target.value ? (parseFloat(e.target.value) * 10000).toFixed(2) : '' }))} className="h-8 text-sm text-center" placeholder="0.0000" /></td>
+                              <td className="px-1 py-1 border border-teal-200"><Input type="text" value={visitaData.area_identificacion_m2} readOnly className="h-8 text-sm text-center bg-slate-50" placeholder="0" /></td>
                               <td className="px-1 py-1 border border-teal-200"><Input value={visitaData.area_identificacion_desc} onChange={(e) => setVisitaData(prev => ({ ...prev, area_identificacion_desc: e.target.value }))} className="h-8 text-sm" placeholder="Descripción" /></td>
                             </tr>
                           </tbody>
