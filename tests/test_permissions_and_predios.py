@@ -11,7 +11,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predio-manager-1.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://land-registry-15.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "catastro@asomunicipios.gov.co"
