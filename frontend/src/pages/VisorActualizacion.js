@@ -2961,6 +2961,46 @@ export default function VisorActualizacion() {
                 </Tabs>
               )}
               
+              {/* Indicador de Cambios Sugeridos (si existen) */}
+              {selectedPredio?.cambios_sugeridos && Object.keys(selectedPredio.cambios_sugeridos).length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-amber-800 flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Cambios Sugeridos Detectados ({Object.keys(selectedPredio.cambios_sugeridos).length})
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(selectedPredio.cambios_sugeridos).map(([campo, info]) => (
+                      <div key={campo} className="text-sm bg-white rounded p-2 border border-amber-100">
+                        <span className="font-medium text-amber-700">{info.campo}:</span>
+                        <span className="text-slate-500 ml-2">{info.valor_actual}</span>
+                        <span className="text-amber-600 mx-2">→</span>
+                        <span className="text-emerald-700 font-medium">{info.valor_propuesto}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-amber-600 mt-2">* Estos cambios serán aplicados cuando el Coordinador los apruebe</p>
+                </div>
+              )}
+              
+              {/* Indicador de Cambios Jurídicos Pendientes */}
+              {selectedPredio?.cambios_juridicos && Object.keys(selectedPredio.cambios_juridicos).length > 0 && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-purple-800 flex items-center gap-2 mb-2">
+                    <Scale className="w-4 h-4" />
+                    Cambios Jurídicos Pendientes de Revisión
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(selectedPredio.cambios_juridicos).map(([campo, info]) => (
+                      <div key={campo} className="text-sm bg-white rounded p-2 border border-purple-100">
+                        <span className="font-medium text-purple-700">{info.campo}</span>
+                        {info.nota && <p className="text-xs text-purple-500 mt-1">{info.nota}</p>}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-purple-600 mt-2">* Requieren verificación documental antes de aplicar</p>
+                </div>
+              )}
+              
               <DialogFooter className="flex flex-wrap gap-2 pt-4">
                 {!editMode ? (
                   <>
