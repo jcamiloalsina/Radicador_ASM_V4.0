@@ -2977,16 +2977,18 @@ export default function VisorActualizacion() {
                       </Button>
                     )}
                     
-                    {/* Botón Formato de Visita - Solo si NO está visitado */}
-                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado' && (
+                    {/* Botón Formato de Visita - Visible si NO está actualizado (aprobado) */}
+                    {selectedPredio.estado_visita !== 'actualizado' && (
                       <Button 
                         variant="outline" 
                         onClick={abrirFormatoVisita}
                         disabled={saving}
-                        className="flex-1 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+                        className={`flex-1 ${selectedPredio.estado_visita === 'visitado' 
+                          ? 'border-blue-500 text-blue-700 hover:bg-blue-50' 
+                          : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'}`}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        Formato de Visita
+                        {selectedPredio.estado_visita === 'visitado' ? 'Editar Formato de Visita' : 'Formato de Visita'}
                       </Button>
                     )}
                     
