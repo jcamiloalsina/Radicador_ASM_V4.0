@@ -1466,10 +1466,75 @@ export default function VisorActualizacion() {
     
     const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
     
+    // ============================================
+    // DETECTAR CAMBIOS SUGERIDOS (vs R1/R2 original)
+    // ============================================
+    const cambiosSugeridos = {};
+    const cambiosJuridicos = {};
+    
+    // Campos que se mapean directamente al R1/R2
+    const mapeoR1R2 = {
+      'direccion_visita': { campo_r1r2: 'direccion', nombre: 'Dirección' },
+      'destino_economico_visita': { campo_r1r2: 'destino_economico', nombre: 'Destino Económico' },
+      'area_terreno_visita': { campo_r1r2: 'area_terreno', nombre: 'Área Terreno', esNumero: true },
+      'area_construida_visita': { campo_r1r2: 'area_construida', nombre: 'Área Construida', esNumero: true }
+    };
+    
+    // Comparar valores del formulario con los originales del predio (R1/R2)
+    Object.entries(mapeoR1R2).forEach(([campoVisita, config]) => {
+      const valorVisita = visitaData[campoVisita];
+      const valorOriginal = selectedPredio[config.campo_r1r2];
+      
+      // Normalizar valores para comparación
+      const valorVisitaNorm = config.esNumero 
+        ? (parseFloat(valorVisita) || 0) 
+        : (valorVisita || '').toString().trim().toUpperCase();
+      const valorOriginalNorm = config.esNumero 
+        ? (parseFloat(valorOriginal) || 0) 
+        : (valorOriginal || '').toString().trim().toUpperCase();
+      
+      if (valorVisitaNorm !== valorOriginalNorm && valorVisita) {
+        cambiosSugeridos[config.campo_r1r2] = {
+          campo: config.nombre,
+          valor_actual: valorOriginal || '(vacío)',
+          valor_propuesto: valorVisita,
+          detectado_en: 'formato_visita'
+        };
+      }
+    });
+    
+    // Campos jurídicos (matrícula, propietarios) - requieren revisión especial
+    if (visitaData.jur_matricula && visitaData.jur_matricula !== (selectedPredio.matricula_inmobiliaria || '')) {
+      cambiosJuridicos['matricula_inmobiliaria'] = {
+        campo: 'Matrícula Inmobiliaria',
+        valor_actual: selectedPredio.matricula_inmobiliaria || '(vacío)',
+        valor_propuesto: visitaData.jur_matricula,
+        requiere_revision: true,
+        tipo: 'juridico'
+      };
+    }
+    
+    // Propietarios del formulario de visita
+    const propietariosConDatos = visitaPropietarios.filter(p => p.nombre || p.numero_documento);
+    if (propietariosConDatos.length > 0) {
+      cambiosJuridicos['propietarios'] = {
+        campo: 'Propietarios',
+        valor_actual: selectedPredio.propietarios || [],
+        valor_propuesto: propietariosConDatos,
+        requiere_revision: true,
+        tipo: 'juridico',
+        nota: 'Información de propietarios capturada en visita - requiere verificación documental'
+      };
+    }
+    
+    const hayCambiosSugeridos = Object.keys(cambiosSugeridos).length > 0;
+    const hayCambiosJuridicos = Object.keys(cambiosJuridicos).length > 0;
+    
     // Datos de la visita incluyendo construcciones, calificaciones y nuevas secciones
     const visitaCompleta = {
       ...visitaData,
-      construcciones: visitaConstrucciones.filter(c => c.codigo_uso || c.area), // Solo guardar construcciones con datos
+      propietarios_visita: visitaPropietarios.filter(p => p.nombre || p.numero_documento),
+      construcciones: visitaConstrucciones.filter(c => c.codigo_uso || c.area),
       firma_base64: firmaBase64,
       firma_visitado_base64: firmaVisitadoB64,
       firma_reconocedor_base64: firmaReconocedorB64,
@@ -1477,13 +1542,20 @@ export default function VisorActualizacion() {
       fotos_croquis: visitaData.fotos_croquis.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha })),
       ubicacion_gps: userPosition ? { lat: userPosition[0], lng: userPosition[1], accuracy: gpsAccuracy } : null,
       realizada_por: user?.full_name || user?.email,
-      realizada_en: new Date().toISOString()
+      realizada_en: new Date().toISOString(),
+      // Metadatos de cambios detectados
+      cambios_sugeridos: cambiosSugeridos,
+      cambios_juridicos: cambiosJuridicos,
+      tiene_cambios_sugeridos: hayCambiosSugeridos,
+      tiene_cambios_juridicos: hayCambiosJuridicos
     };
     
     const datosActualizacion = {
       estado_visita: 'visitado',
-      sin_cambios: visitaData.sin_cambios,
+      sin_cambios: visitaData.sin_cambios && !hayCambiosSugeridos,
       visita: visitaCompleta,
+      cambios_sugeridos: hayCambiosSugeridos ? cambiosSugeridos : null,
+      cambios_juridicos: hayCambiosJuridicos ? cambiosJuridicos : null,
       visitado_por: user?.full_name || user?.email,
       visitado_en: new Date().toISOString()
     };
