@@ -1297,6 +1297,14 @@ export default function Predios() {
     getPrediosOffline
   } = useOfflineSync(null, 'conservacion');
   
+  // Estado para la barra de progreso de descarga offline
+  const [downloadProgress, setDownloadProgress] = useState({
+    isDownloading: false,
+    current: 0,
+    total: 0,
+    label: ''
+  });
+  
   // Comunicaciones solo puede ver, no puede crear/editar/eliminar predios
   const canModifyPredios = user && !['usuario', 'comunicaciones'].includes(user.role);
   
