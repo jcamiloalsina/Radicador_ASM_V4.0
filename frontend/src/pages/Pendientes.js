@@ -552,49 +552,7 @@ export default function Pendientes() {
             </div>
           )}
         </TabsContent>
-      </Tabs> 
-                        Solicitado por: {cambio.propuesto_por_nombre || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedCambio(cambio)}
-                      data-testid={`view-cambio-${cambio.id}`}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Ver Detalle
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => openRechazarModal(cambio)}
-                      disabled={procesando}
-                      data-testid={`reject-cambio-${cambio.id}`}
-                    >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Rechazar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => handleAprobar(cambio.id)}
-                      disabled={procesando}
-                      data-testid={`approve-cambio-${cambio.id}`}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Aprobar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      </Tabs>
 
       {/* Modal de Detalle del Cambio con Comparación */}
       <Dialog open={!!selectedCambio} onOpenChange={() => setSelectedCambio(null)}>
