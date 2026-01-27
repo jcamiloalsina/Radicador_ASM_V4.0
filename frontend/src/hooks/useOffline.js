@@ -100,9 +100,16 @@ export function useOffline() {
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+    
+    // Escuchar evento de actualización de datos offline
+    const handleOfflineDataUpdate = () => {
+      console.log('[useOffline] Datos offline actualizados, recargando stats...');
+      loadOfflineStats();
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('offlineDataUpdated', handleOfflineDataUpdate);
 
     // Load offline data stats
     loadOfflineStats();
@@ -122,6 +129,7 @@ export function useOffline() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offlineDataUpdated', handleOfflineDataUpdate);
     };
   }, []);
 
