@@ -67,17 +67,17 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
 
   // Descargar datos para offline (se llama automáticamente al cargar el visor)
   const downloadForOffline = useCallback(async (predios, geometrias, municipio) => {
-    if (!proyectoId) return;
-
     try {
-      // Guardar predios
+      // Guardar predios - usar municipio como identificador si no hay proyectoId
+      const storeId = proyectoId || municipio || 'general';
+      
       if (predios && predios.length > 0) {
-        await savePrediosOffline(proyectoId, predios, municipio);
+        await savePrediosOffline(storeId, predios, municipio);
       }
 
       // Guardar geometrías
       if (geometrias && geometrias.length > 0) {
-        await saveGeometriasOffline(proyectoId, geometrias);
+        await saveGeometriasOffline(storeId, geometrias);
       }
 
       // Actualizar estadísticas
@@ -85,7 +85,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setHasOffline(true);
       setLastSync(new Date().toISOString());
 
-      console.log(`[Offline] Datos descargados: ${predios?.length || 0} predios, ${geometrias?.length || 0} geometrías`);
+      console.log(`[Offline] Datos descargados: ${predios?.length || 0} predios, ${geometrias?.length || 0} geometrías para ${storeId}`);
     } catch (error) {
       console.error('[Offline] Error al guardar datos:', error);
     }
