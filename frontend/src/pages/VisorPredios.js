@@ -12,9 +12,10 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { 
   Map, Search, MapPin, Building, User, DollarSign, 
-  Layers, ZoomIn, ZoomOut, Home, FileText, AlertCircle, Eye, EyeOff, Navigation, Crosshair, AlertTriangle, CheckCircle, XCircle, Upload, Trash2, Image, Loader2
+  Layers, ZoomIn, ZoomOut, Home, FileText, AlertCircle, Eye, EyeOff, Navigation, Crosshair, AlertTriangle, CheckCircle, XCircle, Upload, Trash2, Image, Loader2, WifiOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import useOfflineSync from '../hooks/useOfflineSync';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
