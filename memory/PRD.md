@@ -61,6 +61,37 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Cambios de permisos
 - **Remitente:** "Asomunicipios Catastro" (vía Gmail SMTP)
 
+---
+
+## 🔧 Configuración Pendiente para Producción
+
+### DNS - Verificación de Certificados
+**Dominio configurado:** `https://certificados.asomunicipios.gov.co`
+
+**Paso 1 - Registro DNS:**
+| Tipo | Nombre/Host | Valor | TTL |
+|------|-------------|-------|-----|
+| `A` | `certificados` | `[IP del servidor]` | 3600 |
+
+**Paso 2 - Certificado SSL (Let's Encrypt):**
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d certificados.asomunicipios.gov.co
+```
+
+**Paso 3 - Variables de entorno en producción (`/backend/.env`):**
+```env
+MONGO_URL="mongodb://localhost:27017"
+DB_NAME="asomunicipios_db"
+JWT_SECRET="[GENERAR-CLAVE-SEGURA-NUEVA]"
+VERIFICACION_URL="https://certificados.asomunicipios.gov.co"
+FRONTEND_URL="https://certificados.asomunicipios.gov.co"
+```
+
+**Estado:** ⏳ Pendiente configuración DNS por el usuario
+
+---
+
 ## Cambios Recientes
 
 ### Sesión 27 Enero 2026 (Fork 4) - Mostrar Última Manzana por Sector
