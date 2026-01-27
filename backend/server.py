@@ -4893,11 +4893,31 @@ async def sugerir_codigo_disponible(
     # Construir código sugerido completo
     codigo_sugerido = f"{prefijo_base}{siguiente_terreno}000000000"
     
-    # Verificar si hay geometría GDB disponible para este prefijo
-    geometria_disponible = await db.gdb_geometrias.find_one(
-        {"municipio": municipio, "codigo": {"$regex": f"^{prefijo_base}"}},
-        {"_id": 0, "codigo": 1}
+    # Verificar si hay geometría GDB disponible para el código sugerido específico
+    # Buscar geometría que coincida con el código sugerido (21 primeros dígitos: prefijo + terreno)
+    codigo_terreno = f"{prefijo_base}{siguiente_terreno}"  # 21 dígitos
+    geometria_codigo_exacto = await db.gdb_geometrias.find_one(
+        {"municipio": municipio, "codigo": {"$regex": f"^{codigo_terreno}"}},
+        {"_id": 0, "codigo": 1, "area_gdb": 1}
     )
+    
+    # También verificar si hay alguna geometría en la manzana (para información)
+    geometrias_en_manzana = await db.gdb_geometrias.count_documents(
+        {"municipio": municipio, "codigo": {"$regex": f"^{prefijo_base}"}}
+    )
+    
+    # Construir mensaje según disponibilidad
+    if geometria_codigo_exacto:
+        area_info = geometria_codigo_exacto.get('area_gdb')
+        if area_info:
+            mensaje_geo = f"✅ Geometría GDB disponible (área: {area_info:,.2f} m²)"
+        else:
+            mensaje_geo = "✅ Geometría GDB disponible"
+    else:
+        if geometrias_en_manzana > 0:
+            mensaje_geo = f"⚠️ Sin geometría para este código. La manzana tiene {geometrias_en_manzana} geometrías registradas."
+        else:
+            mensaje_geo = "⚠️ No hay información gráfica (GDB) para esta zona. Se relacionará cuando se cargue el GDB."
     
     return {
         "prefijo_base": prefijo_base,
@@ -4906,8 +4926,9 @@ async def sugerir_codigo_disponible(
         "terrenos_eliminados": terrenos_eliminados,
         "siguiente_terreno": siguiente_terreno,
         "codigo_sugerido": codigo_sugerido,
-        "tiene_geometria_gdb": geometria_disponible is not None,
-        "mensaje_geometria": "Hay información gráfica disponible para esta zona" if geometria_disponible else "⚠️ No hay información gráfica (GDB) para esta zona. Se relacionará cuando se cargue el GDB."
+        "tiene_geometria_gdb": geometria_codigo_exacto is not None,
+        "geometrias_en_manzana": geometrias_en_manzana,
+        "mensaje_geometria": mensaje_geo
     }
 
 
