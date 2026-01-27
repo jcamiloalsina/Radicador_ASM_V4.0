@@ -1343,6 +1343,12 @@ export default function VisorPredios() {
               Visualización geográfica de predios catastrales
             </p>
           </div>
+          {!isOnline && (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 ml-3">
+              <WifiOff className="w-3 h-3 mr-1" />
+              Modo Offline
+            </Badge>
+          )}
         </div>
         
         {gdbStats && (
