@@ -3022,6 +3022,16 @@ export default function Predios() {
                         className="font-mono text-center"
                         placeholder="00"
                       />
+                      {ultimaManzanaInfo && ultimaManzanaInfo.ultima_manzana && (
+                        <div className="mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded text-xs">
+                          <span className="text-amber-700">
+                            Última manzana: <strong>{ultimaManzanaInfo.ultima_manzana}</strong>
+                          </span>
+                        </div>
+                      )}
+                      {ultimaManzanaInfo && !ultimaManzanaInfo.ultima_manzana && (
+                        <span className="text-xs text-slate-400 block mt-1">Sin manzanas registradas</span>
+                      )}
                     </div>
                     <div>
                       <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
