@@ -145,13 +145,13 @@ export default function Pendientes() {
       let valorActual = actual[campo.key];
       let valorPropuesto = propuesto[campo.key];
       
-      // Manejar caso especial de propietarios (array)
+      // Manejar caso especial de propietarios (array) - mostrar TODOS
       if (campo.key === 'nombre_propietario') {
-        if (actual.propietarios && actual.propietarios[0]) {
-          valorActual = actual.propietarios[0].nombre_propietario;
+        if (actual.propietarios && actual.propietarios.length > 0) {
+          valorActual = actual.propietarios.map(p => p.nombre_propietario).join(', ');
         }
-        if (propuesto.propietarios && propuesto.propietarios[0]) {
-          valorPropuesto = propuesto.propietarios[0].nombre_propietario;
+        if (propuesto.propietarios && propuesto.propietarios.length > 0) {
+          valorPropuesto = propuesto.propietarios.map(p => p.nombre_propietario).join(', ');
         }
       }
       
