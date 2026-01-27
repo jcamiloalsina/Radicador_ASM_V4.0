@@ -451,3 +451,41 @@ export function PWAInstallPrompt() {
     </div>
   );
 }
+
+
+
+// ==================== SYNC PETITIONS BUTTON ====================
+export function SyncPetitionsButton({ onFetchPetitions }) {
+  const { isOnline } = useOffline();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (!isOnline || !onFetchPetitions) return;
+    
+    setSyncing(true);
+    try {
+      await onFetchPetitions();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  if (!isOnline) return null;
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleSync}
+      disabled={syncing}
+      className="gap-2"
+    >
+      {syncing ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Download className="w-4 h-4" />
+      )}
+      {syncing ? 'Sincronizando...' : 'Guardar offline'}
+    </Button>
+  );
+}
