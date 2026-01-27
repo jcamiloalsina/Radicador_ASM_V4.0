@@ -1530,10 +1530,10 @@ async def enviar_codigo_verificacion(email: str, codigo: str, nombre: str):
         tipo_notificacion="info"
     )
     
-    await send_email_notification(
+    await send_email(
         to_email=email,
         subject="Código de Verificación - Asomunicipios",
-        html_content=html_content
+        body=html_content
     )
 
 
