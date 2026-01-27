@@ -392,3 +392,62 @@ export function ModuleOfflineIndicator({ moduleId, count = 0 }) {
     <span className="w-2 h-2 rounded-full bg-slate-300" title="Requiere conexión" />
   );
 }
+
+// ==================== PWA INSTALL PROMPT ====================
+export function PWAInstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      // Solo mostrar si no se ha instalado
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      if (!isStandalone) {
+        setShowPrompt(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      setShowPrompt(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  if (!showPrompt) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 bg-white border border-slate-200 rounded-lg shadow-xl p-4 max-w-sm">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+          <Download className="w-5 h-5 text-emerald-600" />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-semibold text-slate-800">Instalar aplicación</h4>
+          <p className="text-sm text-slate-500 mt-1">
+            Instale la app para acceso rápido y uso offline
+          </p>
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" onClick={handleInstall}>
+              Instalar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowPrompt(false)}>
+              Ahora no
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
