@@ -80,10 +80,13 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         await saveGeometriasOffline(storeId, geometrias);
       }
 
-      // Actualizar estadísticas
+      // Actualizar estadísticas locales
       await refreshStats();
       setHasOffline(true);
       setLastSync(new Date().toISOString());
+      
+      // Notificar al hook global useOffline que hay datos nuevos
+      window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
 
       console.log(`[Offline] Datos descargados: ${predios?.length || 0} predios, ${geometrias?.length || 0} geometrías para ${storeId}`);
     } catch (error) {
