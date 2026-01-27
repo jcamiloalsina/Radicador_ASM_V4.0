@@ -151,14 +151,16 @@ export function useOffline() {
         const db = await openDB();
         
         // Count predios from main DB
-        const prediosTx = db.transaction('predios', 'readonly');
-        const prediosStore = prediosTx.objectStore('predios');
-        const mainPrediosCount = await new Promise((resolve) => {
-          const request = prediosStore.count();
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => resolve(0);
-        });
-        prediosCount += mainPrediosCount;
+        if (db.objectStoreNames.contains('predios')) {
+          const prediosTx = db.transaction('predios', 'readonly');
+          const prediosStore = prediosTx.objectStore('predios');
+          const mainPrediosCount = await new Promise((resolve) => {
+            const request = prediosStore.count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(0);
+          });
+          prediosCount += mainPrediosCount;
+        }
         
         // Count petitions
         if (db.objectStoreNames.contains('petitions')) {
@@ -172,31 +174,38 @@ export function useOffline() {
         }
         
         // Get preferences
-        const prefTx = db.transaction('preferences', 'readonly');
-        const prefStore = prefTx.objectStore('preferences');
-        lastSync = await new Promise((resolve) => {
-          const request = prefStore.get('lastSync');
-          request.onsuccess = () => resolve(request.result?.value);
-          request.onerror = () => resolve(null);
-        });
-        lastPetitionsSync = await new Promise((resolve) => {
-          const request = prefStore.get('lastPetitionsSync');
-          request.onsuccess = () => resolve(request.result?.value);
-          request.onerror = () => resolve(null);
-        });
+        if (db.objectStoreNames.contains('preferences')) {
+          const prefTx = db.transaction('preferences', 'readonly');
+          const prefStore = prefTx.objectStore('preferences');
+          lastSync = await new Promise((resolve) => {
+            const request = prefStore.get('lastSync');
+            request.onsuccess = () => resolve(request.result?.value);
+            request.onerror = () => resolve(null);
+          });
+          lastPetitionsSync = await new Promise((resolve) => {
+            const request = prefStore.get('lastPetitionsSync');
+            request.onsuccess = () => resolve(request.result?.value);
+            request.onerror = () => resolve(null);
+          });
+        }
       } catch (e) {
         console.log('Error reading main offline DB:', e);
       }
       
       // También leer de la base de datos secundaria (asomunicipios_offline) usada por useOfflineSync
       try {
-        const secondaryDBRequest = indexedDB.open('asomunicipios_offline', 2);
         const secondaryDB = await new Promise((resolve, reject) => {
-          secondaryDBRequest.onsuccess = () => resolve(secondaryDBRequest.result);
-          secondaryDBRequest.onerror = () => reject(secondaryDBRequest.error);
+          const request = indexedDB.open('asomunicipios_offline', 2);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+          // No crear stores nuevos, solo abrir si existe
+          request.onupgradeneeded = (event) => {
+            // Si necesita upgrade, cancelar y cerrar
+            event.target.transaction.abort();
+          };
         });
         
-        if (secondaryDB.objectStoreNames.contains('predios_offline')) {
+        if (secondaryDB && secondaryDB.objectStoreNames.contains('predios_offline')) {
           const tx = secondaryDB.transaction('predios_offline', 'readonly');
           const store = tx.objectStore('predios_offline');
           const secondaryCount = await new Promise((resolve) => {
@@ -211,9 +220,10 @@ export function useOffline() {
             lastSync = new Date().toISOString();
           }
         }
-        secondaryDB.close();
+        if (secondaryDB) secondaryDB.close();
       } catch (e) {
-        console.log('Error reading secondary offline DB:', e);
+        // Ignorar error si la DB no existe
+        console.log('Secondary offline DB not available:', e.message);
       }
       
       setOfflineData({ prediosCount, petitionsCount, lastSync, lastPetitionsSync });
