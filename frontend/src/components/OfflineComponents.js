@@ -1,9 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { WifiOff, Wifi, Download, X, RefreshCw, CheckCircle, AlertTriangle, CloudOff, Database } from 'lucide-react';
+import { 
+  WifiOff, Wifi, Download, X, RefreshCw, CheckCircle, AlertTriangle, 
+  CloudOff, Database, Trash2, HardDrive, Loader2, MapPin, FolderKanban,
+  Map, ChevronDown, ChevronUp
+} from 'lucide-react';
 import { Button } from './ui/button';
+import { Progress } from './ui/progress';
 import { useOffline } from '../hooks/useOffline';
 
-// Offline Status Indicator (shows when offline)
+// ==================== BANNER DE MODO OFFLINE ====================
+export function OfflineBanner({ onViewData }) {
+  const { isOnline, offlineData } = useOffline();
+  
+  if (isOnline) return null;
+  
+  return (
+    <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <WifiOff className="w-4 h-4" />
+        <span className="font-medium">Sin conexión</span>
+        <span className="text-amber-100 text-sm">
+          - Solo datos previamente descargados están disponibles
+        </span>
+      </div>
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="text-white hover:bg-amber-600"
+        onClick={onViewData}
+      >
+        Ver datos disponibles
+      </Button>
+    </div>
+  );
+}
+
+// ==================== BARRA DE PROGRESO DE DESCARGA ====================
+export function DownloadProgressBar({ 
+  isDownloading, 
+  progress, 
+  total, 
+  current, 
+  label,
+  onCancel 
+}) {
+  if (!isDownloading) return null;
+  
+  const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+  
+  return (
+    <div className="fixed bottom-4 right-4 z-50 w-80 bg-white border border-slate-200 rounded-lg shadow-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Download className="w-4 h-4 text-emerald-600 animate-bounce" />
+          <span className="text-sm font-medium text-slate-700">
+            Guardando para offline
+          </span>
+        </div>
+        {onCancel && (
+          <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      
+      <p className="text-xs text-slate-500 mb-2">{label}</p>
+      
+      <Progress value={percentage} className="h-2 mb-1" />
+      
+      <div className="flex justify-between text-xs text-slate-500">
+        <span>{current.toLocaleString()} de {total.toLocaleString()}</span>
+        <span>{percentage}%</span>
+      </div>
+    </div>
+  );
+}
+
+// ==================== INDICADOR OFFLINE FLOTANTE ====================
 export function OfflineIndicator() {
   const { isOnline, offlineData, cacheStatus } = useOffline();
   
@@ -17,16 +90,16 @@ export function OfflineIndicator() {
           <span className="font-semibold">Sin conexión a Internet</span>
         </div>
         
-        {cacheStatus.ready ? (
+        {offlineData.prediosCount > 0 || offlineData.petitionsCount > 0 ? (
           <div className="text-sm text-amber-100">
             <div className="flex items-center gap-1">
               <CheckCircle className="w-4 h-4" />
-              <span>Modo offline disponible</span>
+              <span>Datos offline disponibles</span>
             </div>
             {offlineData.prediosCount > 0 && (
               <div className="flex items-center gap-1 mt-1">
                 <Database className="w-4 h-4" />
-                <span>{offlineData.prediosCount} predios guardados</span>
+                <span>{offlineData.prediosCount.toLocaleString()} predios guardados</span>
               </div>
             )}
           </div>
@@ -34,10 +107,10 @@ export function OfflineIndicator() {
           <div className="text-sm text-red-100">
             <div className="flex items-center gap-1">
               <AlertTriangle className="w-4 h-4" />
-              <span>Archivos no cacheados</span>
+              <span>No hay datos descargados</span>
             </div>
             <p className="mt-1 text-xs">
-              Necesita conectarse a internet primero para cachear los archivos de la aplicación.
+              Conéctese a internet y visite los módulos para descargar datos.
             </p>
           </div>
         )}
@@ -46,7 +119,7 @@ export function OfflineIndicator() {
   );
 }
 
-// Online Status Restored
+// ==================== INDICADOR CONEXIÓN RESTAURADA ====================
 export function OnlineIndicator() {
   const { isOnline } = useOffline();
   const [showOnline, setShowOnline] = useState(false);
@@ -75,11 +148,112 @@ export function OnlineIndicator() {
   );
 }
 
-// Offline Ready Status Badge (shows cache status)
+// ==================== PANEL DE ESTADO OFFLINE DETALLADO ====================
+export function OfflineStatusPanel({ isOpen, onClose, offlineModules = [] }) {
+  const { offlineData, clearOfflineData } = useOffline();
+  const [clearing, setClearing] = useState(false);
+  
+  if (!isOpen) return null;
+  
+  const handleClearCache = async () => {
+    if (window.confirm('¿Está seguro de eliminar todos los datos offline? Tendrá que descargarlos nuevamente.')) {
+      setClearing(true);
+      await clearOfflineData();
+      setClearing(false);
+    }
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <HardDrive className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-semibold text-slate-800">Estado de Datos Offline</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto max-h-[60vh]">
+          {/* Resumen general */}
+          <div className="bg-slate-50 rounded-lg p-3 mb-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-slate-500">Predios guardados:</span>
+                <p className="font-semibold text-slate-800">{offlineData.prediosCount?.toLocaleString() || 0}</p>
+              </div>
+              <div>
+                <span className="text-slate-500">Última sincronización:</span>
+                <p className="font-semibold text-slate-800">
+                  {offlineData.lastSync 
+                    ? new Date(offlineData.lastSync).toLocaleString('es-CO') 
+                    : 'Nunca'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Lista de módulos */}
+          <h4 className="text-sm font-medium text-slate-600 mb-2">Módulos y datos disponibles:</h4>
+          <div className="space-y-2">
+            {offlineModules.length > 0 ? (
+              offlineModules.map((mod, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      mod.status === 'ready' ? 'bg-emerald-500' :
+                      mod.status === 'partial' ? 'bg-amber-500' : 'bg-slate-300'
+                    }`} />
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{mod.name}</p>
+                      <p className="text-xs text-slate-500">{mod.description}</p>
+                    </div>
+                  </div>
+                  {mod.count > 0 && (
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                      {mod.count.toLocaleString()} items
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <CloudOff className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                <p className="text-sm">No hay datos descargados</p>
+                <p className="text-xs mt-1">Visite los módulos con conexión para descargar datos</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            onClick={handleClearCache}
+            disabled={clearing}
+          >
+            {clearing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1" />}
+            Limpiar caché
+          </Button>
+          <Button onClick={onClose} size="sm">
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== BADGE DE ESTADO OFFLINE (HEADER) ====================
 export function OfflineReadyBadge() {
   const { isOnline, cacheStatus, offlineData, forceCacheResources, refreshStats } = useOffline();
   const [expanded, setExpanded] = useState(false);
   const [caching, setCaching] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
   
   const handleForceCache = async () => {
     setCaching(true);
@@ -87,7 +261,6 @@ export function OfflineReadyBadge() {
     setCaching(false);
   };
   
-  // Refresh stats when expanding
   const handleExpand = async () => {
     if (!expanded) {
       await refreshStats();
@@ -95,441 +268,127 @@ export function OfflineReadyBadge() {
     setExpanded(!expanded);
   };
   
-  // Don't show when offline (OfflineIndicator handles that)
   if (!isOnline) return null;
   
-  // Solo mostrar "Offline listo" si hay datos reales descargados
   const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0;
-  const isReallyReady = cacheStatus.ready && hasRealData;
+  const isReallyReady = hasRealData;
+  
+  // Construir lista de módulos offline
+  const offlineModules = [];
+  if (offlineData.prediosCount > 0) {
+    offlineModules.push({
+      name: 'Gestión de Predios',
+      description: 'Predios descargados para consulta offline',
+      status: 'ready',
+      count: offlineData.prediosCount
+    });
+  }
+  if (offlineData.petitionsCount > 0) {
+    offlineModules.push({
+      name: 'Peticiones',
+      description: 'Peticiones descargadas',
+      status: 'ready',
+      count: offlineData.petitionsCount
+    });
+  }
   
   return (
-    <div className="relative">
-      <button
-        onClick={handleExpand}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-          isReallyReady 
-            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
-            : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-        }`}
-        title={isReallyReady ? 'Listo para uso offline' : 'Descargue datos para modo offline'}
-      >
-        {cacheStatus.checking ? (
-          <>
-            <RefreshCw className="w-3 h-3 animate-spin" />
-            <span>Verificando...</span>
-          </>
-        ) : isReallyReady ? (
-          <>
-            <CheckCircle className="w-3 h-3" />
-            <span>Offline listo ({offlineData.prediosCount} predios)</span>
-          </>
-        ) : (
-          <>
-            <CloudOff className="w-3 h-3" />
-            <span>Descargar datos offline</span>
-          </>
-        )}
-      </button>
-      
-      {expanded && (
-        <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-xl p-4 z-50">
-          <div className="flex justify-between items-start mb-3">
-            <h4 className="font-semibold text-slate-800">Estado Offline</h4>
-            <button onClick={() => setExpanded(false)} className="text-slate-400 hover:text-slate-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            {/* Cache Status */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Archivos cacheados:</span>
-              <span className={`text-sm font-medium ${cacheStatus.staticCached ? 'text-emerald-600' : 'text-red-600'}`}>
-                {cacheStatus.staticCached ? '✓ Sí' : '✗ No'}
-              </span>
-            </div>
-            
-            {/* Data Cache */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Datos cacheados:</span>
-              <span className={`text-sm font-medium ${cacheStatus.dataCached ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {cacheStatus.dataCached ? '✓ Sí' : '○ No'}
-              </span>
-            </div>
-            
-            {/* Predios Count */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Predios guardados:</span>
-              <span className="text-sm font-medium text-slate-800">
-                {offlineData.prediosCount}
-              </span>
-            </div>
-            
-            {/* Petitions Count */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Peticiones guardadas:</span>
-              <span className="text-sm font-medium text-slate-800">
-                {offlineData.petitionsCount || 0}
-              </span>
-            </div>
-            
-            {/* Last Sync */}
-            {(offlineData.lastSync || offlineData.lastPetitionsSync) && (
-              <div className="text-xs text-slate-500 border-t pt-2 mt-2">
-                {offlineData.lastSync && (
-                  <div>Predios: {new Date(offlineData.lastSync).toLocaleString('es-CO', {
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                  })}</div>
-                )}
-                {offlineData.lastPetitionsSync && (
-                  <div>Peticiones: {new Date(offlineData.lastPetitionsSync).toLocaleString('es-CO', {
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                  })}</div>
-                )}
-              </div>
-            )}
-            
-            {/* Status Message */}
-            <div className={`p-2 rounded text-xs ${
-              cacheStatus.ready 
-                ? 'bg-emerald-50 text-emerald-700' 
-                : 'bg-amber-50 text-amber-700'
-            }`}>
-              {cacheStatus.ready ? (
-                <>
-                  <CheckCircle className="w-3 h-3 inline mr-1" />
-                  La aplicación está lista para funcionar sin conexión.
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-3 h-3 inline mr-1" />
-                  {cacheStatus.reason}
-                </>
-              )}
-            </div>
-            
-            {/* Force Cache Button */}
-            {!cacheStatus.ready && (
-              <Button
-                size="sm"
-                onClick={handleForceCache}
-                disabled={caching}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {caching ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Cacheando...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Preparar modo offline
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// PWA Install Prompt
-export function PWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
-  
-  useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
-    
-    // Check localStorage for dismissed prompt
-    const dismissed = localStorage.getItem('pwa-prompt-dismissed');
-    if (dismissed) {
-      const dismissedDate = new Date(dismissed);
-      const daysSinceDismissed = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        return; // Don't show for 7 days after dismissal
-      }
-    }
-    
-    const handler = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowPrompt(true);
-    };
-    
-    window.addEventListener('beforeinstallprompt', handler);
-    
-    // Also show after 30 seconds if not installed
-    const timer = setTimeout(() => {
-      if (!isInstalled && deferredPrompt) {
-        setShowPrompt(true);
-      }
-    }, 30000);
-    
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(timer);
-    };
-  }, [isInstalled, deferredPrompt]);
-  
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-    }
-    
-    setDeferredPrompt(null);
-    setShowPrompt(false);
-  };
-  
-  const handleDismiss = () => {
-    localStorage.setItem('pwa-prompt-dismissed', new Date().toISOString());
-    setShowPrompt(false);
-  };
-  
-  if (!showPrompt || isInstalled) return null;
-  
-  return (
-    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 bg-white border border-emerald-200 rounded-lg shadow-xl p-4">
-      <button 
-        onClick={handleDismiss}
-        className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
-      >
-        <X className="w-4 h-4" />
-      </button>
-      
-      <div className="flex items-start gap-3">
-        <div className="bg-emerald-100 p-2 rounded-lg">
-          <Download className="w-6 h-6 text-emerald-600" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-slate-800 text-sm">
-            Instalar Asomunicipios
-          </h3>
-          <p className="text-xs text-slate-600 mt-1">
-            Instala la app para acceder más rápido y usar sin conexión
-          </p>
-          <div className="flex gap-2 mt-3">
-            <Button 
-              size="sm" 
-              onClick={handleInstall}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
-            >
-              Instalar
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={handleDismiss}
-              className="text-xs"
-            >
-              Ahora no
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Sync Button for offline data
-export function SyncButton({ onSync, municipio }) {
-  const { isOnline, savePrediosOffline, offlineData } = useOffline();
-  const [syncing, setSyncing] = useState(false);
-  
-  const handleSync = async () => {
-    if (!isOnline || syncing) return;
-    
-    setSyncing(true);
-    try {
-      const data = await onSync(municipio);
-      if (data && data.length > 0) {
-        await savePrediosOffline(data);
-      }
-    } catch (error) {
-      console.error('Error syncing:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleSync}
-      disabled={!isOnline || syncing}
-      className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-      title={offlineData.lastSync ? `Última sincronización: ${new Date(offlineData.lastSync).toLocaleString()}` : 'Guardar para uso offline'}
-    >
-      <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
-      {syncing ? 'Sincronizando...' : 'Guardar offline'}
-    </Button>
-  );
-}
-
-// Sync Button specifically for Petitions
-export function SyncPetitionsButton({ onFetchPetitions }) {
-  const { isOnline, savePetitionsOffline, offlineData } = useOffline();
-  const [syncing, setSyncing] = useState(false);
-  const [result, setResult] = useState(null);
-  
-  const handleSync = async () => {
-    if (!isOnline || syncing) return;
-    
-    setSyncing(true);
-    setResult(null);
-    try {
-      const petitions = await onFetchPetitions();
-      if (petitions && petitions.length > 0) {
-        await savePetitionsOffline(petitions);
-        setResult({ success: true, count: petitions.length });
-        setTimeout(() => setResult(null), 3000);
-      } else {
-        setResult({ success: false, message: 'No hay peticiones para sincronizar' });
-        setTimeout(() => setResult(null), 3000);
-      }
-    } catch (error) {
-      console.error('Error syncing petitions:', error);
-      setResult({ success: false, message: 'Error al sincronizar' });
-      setTimeout(() => setResult(null), 3000);
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleSync}
-        disabled={!isOnline || syncing}
-        className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-        title={offlineData.lastPetitionsSync 
-          ? `Última sincronización: ${new Date(offlineData.lastPetitionsSync).toLocaleString()}` 
-          : 'Guardar peticiones para uso offline'}
-      >
-        <Download className={`w-4 h-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
-        {syncing ? 'Sincronizando...' : 'Guardar offline'}
-      </Button>
-      
-      {result && (
-        <span className={`text-xs ${result.success ? 'text-emerald-600' : 'text-amber-600'}`}>
-          {result.success ? `✓ ${result.count} guardadas` : result.message}
-        </span>
-      )}
-      
-      {offlineData.petitionsCount > 0 && !result && (
-        <span className="text-xs text-slate-500">
-          ({offlineData.petitionsCount} en caché)
-        </span>
-      )}
-    </div>
-  );
-}
-
-// Full Data Sync Component (for dashboard)
-export function FullDataSync({ onFetchPredios, onFetchPetitions }) {
-  const { isOnline, syncAllData, offlineData, refreshStats } = useOffline();
-  const [syncing, setSyncing] = useState(false);
-  const [progress, setProgress] = useState('');
-  
-  const handleFullSync = async () => {
-    if (!isOnline || syncing) return;
-    
-    setSyncing(true);
-    setProgress('Sincronizando predios...');
-    
-    try {
-      const results = await syncAllData(onFetchPredios, onFetchPetitions);
-      
-      setProgress('');
-      await refreshStats();
-      
-      const messages = [];
-      if (results.predios) messages.push('Predios sincronizados');
-      if (results.petitions) messages.push('Peticiones sincronizadas');
-      
-      if (messages.length > 0) {
-        setProgress(`✓ ${messages.join(', ')}`);
-      } else {
-        setProgress('No hay datos para sincronizar');
-      }
-      
-      setTimeout(() => setProgress(''), 3000);
-    } catch (error) {
-      console.error('Error in full sync:', error);
-      setProgress('Error al sincronizar');
-      setTimeout(() => setProgress(''), 3000);
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  return (
-    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h4 className="font-medium text-slate-800">Sincronización Offline</h4>
-          <p className="text-xs text-slate-500">Guarda datos para consultar sin conexión</p>
-        </div>
-        <Button
-          onClick={handleFullSync}
-          disabled={!isOnline || syncing}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+    <>
+      <div className="relative">
+        <button
+          onClick={handleExpand}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            isReallyReady 
+              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+          title={isReallyReady ? 'Datos offline disponibles' : 'Sin datos offline'}
         >
-          {syncing ? (
+          {cacheStatus.checking ? (
             <>
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              Sincronizando...
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Verificando...</span>
+            </>
+          ) : isReallyReady ? (
+            <>
+              <CheckCircle className="w-3 h-3" />
+              <span>Offline ({offlineData.prediosCount?.toLocaleString() || 0})</span>
             </>
           ) : (
             <>
-              <Download className="w-4 h-4 mr-2" />
-              Sincronizar Todo
+              <CloudOff className="w-3 h-3" />
+              <span>Sin datos offline</span>
             </>
           )}
-        </Button>
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+        
+        {expanded && (
+          <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-lg shadow-xl p-4 z-50">
+            <div className="flex justify-between items-start mb-3">
+              <h4 className="font-semibold text-slate-800">Estado Offline</h4>
+              <button onClick={() => setExpanded(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Datos guardados */}
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Predios guardados:</span>
+                  <span className={`text-sm font-bold ${offlineData.prediosCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {offlineData.prediosCount?.toLocaleString() || 0}
+                  </span>
+                </div>
+                {offlineData.lastSync && (
+                  <p className="text-xs text-slate-500">
+                    Última sync: {new Date(offlineData.lastSync).toLocaleString('es-CO')}
+                  </p>
+                )}
+              </div>
+              
+              {/* Info */}
+              <div className="text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded p-2">
+                <p className="font-medium text-blue-700 mb-1">💡 ¿Cómo funciona?</p>
+                <p>Al visitar cada módulo, los datos se guardan automáticamente para uso sin conexión.</p>
+              </div>
+              
+              {/* Botón ver detalles */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => {
+                  setExpanded(false);
+                  setShowPanel(true);
+                }}
+              >
+                <Database className="w-4 h-4 mr-1" />
+                Ver todos los datos guardados
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       
-      {progress && (
-        <div className="text-sm text-emerald-600 mb-2">{progress}</div>
-      )}
-      
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <Database className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-600">Predios:</span>
-          <span className="font-medium">{offlineData.prediosCount}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Database className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-600">Peticiones:</span>
-          <span className="font-medium">{offlineData.petitionsCount || 0}</span>
-        </div>
-      </div>
-      
-      {!isOnline && (
-        <div className="mt-3 text-xs text-amber-600 flex items-center gap-1">
-          <WifiOff className="w-3 h-3" />
-          Sin conexión - No es posible sincronizar
-        </div>
-      )}
-    </div>
+      <OfflineStatusPanel 
+        isOpen={showPanel} 
+        onClose={() => setShowPanel(false)}
+        offlineModules={offlineModules}
+      />
+    </>
   );
 }
 
-export default OfflineIndicator;
+// ==================== INDICADOR DE MÓDULO EN MENÚ ====================
+export function ModuleOfflineIndicator({ moduleId, count = 0 }) {
+  if (count > 0) {
+    return (
+      <span className="w-2 h-2 rounded-full bg-emerald-500" title={`${count} items disponibles offline`} />
+    );
+  }
+  return (
+    <span className="w-2 h-2 rounded-full bg-slate-300" title="Requiere conexión" />
+  );
+}
