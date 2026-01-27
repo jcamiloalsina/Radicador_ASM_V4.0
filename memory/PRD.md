@@ -63,6 +63,61 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Cambios Recientes
 
+### Sesión 27 Enero 2026 - Integración Formato de Visita con Cambios Sugeridos
+**Nuevo flujo que integra el formato de visita con la detección automática de cambios:**
+
+#### Nuevo Flujo Implementado:
+1. Gestor selecciona predio → estado: "pendiente"
+2. Gestor abre formato de visita → se pre-llena con datos R1/R2 actuales
+3. Gestor llena/modifica información en el formulario
+4. Al guardar → Se detectan **cambios sugeridos automáticamente**
+5. Si predio ya visitado → **Permite reabrir y editar** el formato
+6. Coordinador revisa y aprueba → estado: "actualizado" (formato bloqueado)
+
+#### Funcionalidades Implementadas:
+
+1. ✅ **Detección Automática de Cambios Sugeridos:**
+   - Compara campos del formulario vs datos originales R1/R2
+   - Campos mapeados: Dirección, Destino Económico, Área Terreno, Área Construida
+   - Si hay diferencias → se crean `cambios_sugeridos` automáticamente
+   - Se notifica al usuario cuántos cambios fueron detectados
+
+2. ✅ **Separación de Cambios Jurídicos:**
+   - Matrícula Inmobiliaria → marcada como `requiere_revision: true`
+   - Propietarios → marcados como `pendiente_revision_juridica`
+   - Nota: "Persona que atendió la visita ≠ Propietario"
+
+3. ✅ **Reapertura del Formato de Visita:**
+   - Si estado = "visitado" → botón cambia a "Editar Formato de Visita" (azul)
+   - Carga automática de datos previamente guardados
+   - Permite múltiples ediciones hasta que coordinador apruebe
+   - Si estado = "actualizado" → formato bloqueado (no se puede editar)
+
+4. ✅ **Indicadores Visuales en Detalle del Predio:**
+   - Panel amarillo: Cambios Sugeridos Detectados (con valores antes/después)
+   - Panel morado: Cambios Jurídicos Pendientes de Revisión
+
+5. ✅ **Certificados Catastrales - Flujo Actualizado:**
+   - Solo descarga PDF (no envía automáticamente)
+   - Radicado automático desde petición
+   - Trámite NO se finaliza automáticamente
+   - Mantiene firma de Dalgie y QR de verificación
+
+#### Estados del Predio:
+- `pendiente` / `por_visitar` → Sin visita aún
+- `visitado` → Formato llenado, puede editarse, cambios pendientes de revisión
+- `actualizado` → Cambios aprobados por coordinador, formato cerrado
+
+#### Mapeo de Campos: Formulario de Visita ↔ R1/R2
+| Campo Formulario | Campo R1/R2 | Tipo de Cambio |
+|-----------------|-------------|----------------|
+| direccion_visita | direccion | Cambio Sugerido |
+| destino_economico_visita | destino_economico | Cambio Sugerido |
+| area_terreno_visita | area_terreno | Cambio Sugerido |
+| area_construida_visita | area_construida | Cambio Sugerido |
+| jur_matricula | matricula_inmobiliaria | Revisión Jurídica |
+| propietarios_visita | propietarios | Revisión Jurídica |
+
 ### Sesión 22 Enero 2026 (Fork 3) - Formulario de Visita 5 Páginas (Completo)
 **Implementación completa del formulario de visita con 5 páginas según documento oficial:**
 
@@ -70,8 +125,8 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - **Página 1:** Secciones 2-4 (Información Básica, PH, Condominio)
 - **Página 2:** Secciones 5-6 (Información Jurídica/Propietarios, Datos de Notificación)
 - **Página 3:** Secciones 7-8 (Construcciones, Calificación)
-- **Página 4 (NUEVA):** Secciones 9-10 (Resumen Áreas de Terreno, Información de Localización)
-- **Página 5 (NUEVA):** Secciones 11-12 (Observaciones, Firmas) + Datos de la Visita
+- **Página 4:** Secciones 9-10 (Resumen Áreas de Terreno, Información de Localización)
+- **Página 5:** Secciones 11-12 (Observaciones, Firmas) + Datos de la Visita
 
 #### Funcionalidades Implementadas (Páginas 4-5):
 
