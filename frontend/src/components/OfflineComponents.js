@@ -98,31 +98,35 @@ export function OfflineReadyBadge() {
   // Don't show when offline (OfflineIndicator handles that)
   if (!isOnline) return null;
   
+  // Solo mostrar "Offline listo" si hay datos reales descargados
+  const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0;
+  const isReallyReady = cacheStatus.ready && hasRealData;
+  
   return (
     <div className="relative">
       <button
         onClick={handleExpand}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-          cacheStatus.ready 
+          isReallyReady 
             ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
             : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
         }`}
-        title={cacheStatus.ready ? 'Listo para uso offline' : 'Modo offline no disponible'}
+        title={isReallyReady ? 'Listo para uso offline' : 'Descargue datos para modo offline'}
       >
         {cacheStatus.checking ? (
           <>
             <RefreshCw className="w-3 h-3 animate-spin" />
             <span>Verificando...</span>
           </>
-        ) : cacheStatus.ready ? (
+        ) : isReallyReady ? (
           <>
             <CheckCircle className="w-3 h-3" />
-            <span>Offline listo</span>
+            <span>Offline listo ({offlineData.prediosCount} predios)</span>
           </>
         ) : (
           <>
             <CloudOff className="w-3 h-3" />
-            <span>Offline no disponible</span>
+            <span>Descargar datos offline</span>
           </>
         )}
       </button>
