@@ -1570,10 +1570,17 @@ export default function VisorActualizacion() {
           { headers: { Authorization: `Bearer ${token}` }}
         );
         
-        toast.success(visitaData.sin_cambios 
+        toast.success(visitaData.sin_cambios && !hayCambiosSugeridos
           ? 'Visita guardada - Predio marcado como visitado sin cambios' 
-          : 'Formato de visita guardado exitosamente'
+          : hayCambiosSugeridos 
+            ? `Formato guardado - Se detectaron ${Object.keys(cambiosSugeridos).length} cambio(s) sugerido(s) para revisión`
+            : 'Formato de visita guardado exitosamente'
         );
+        
+        // Notificar si hay cambios jurídicos pendientes
+        if (hayCambiosJuridicos) {
+          toast.info('Se detectaron cambios jurídicos (matrícula/propietarios) que requieren revisión especial', { duration: 5000 });
+        }
       } else {
         // Modo offline: guardar para sincronizar después
         await saveOfflineChange('visita', {
