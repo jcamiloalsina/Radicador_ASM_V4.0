@@ -218,6 +218,7 @@ function MunicipalityLimits({ limitesMunicipios, filterMunicipio, setFilterMunic
 
 export default function VisorPredios() {
   const { user } = useAuth();
+  const { isOnline } = useOfflineSync(null, 'conservacion');
   const [loading, setLoading] = useState(false);
   const [searchCode, setSearchCode] = useState('');
   const [selectedPredio, setSelectedPredio] = useState(null);
