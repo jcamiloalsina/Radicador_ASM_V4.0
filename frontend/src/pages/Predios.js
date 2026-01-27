@@ -4494,6 +4494,16 @@ export default function Predios() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Barra de progreso de descarga offline */}
+      <DownloadProgressBar
+        isDownloading={downloadProgress.isDownloading}
+        progress={downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}
+        total={downloadProgress.total}
+        current={downloadProgress.current}
+        label={downloadProgress.label}
+        onCancel={() => setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' })}
+      />
     </div>
   );
 }
