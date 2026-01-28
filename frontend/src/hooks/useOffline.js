@@ -143,6 +143,7 @@ export function useOffline() {
     try {
       let prediosCount = 0;
       let petitionsCount = 0;
+      let proyectosCount = 0;
       let lastSync = null;
       let lastPetitionsSync = null;
       
@@ -195,16 +196,22 @@ export function useOffline() {
       // También leer de la base de datos secundaria (asomunicipios_offline) usada por useOfflineSync
       try {
         const secondaryDB = await new Promise((resolve, reject) => {
-          const request = indexedDB.open('asomunicipios_offline', 2);
+          const request = indexedDB.open('asomunicipios_offline', 3);
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
           // No crear stores nuevos, solo abrir si existe
           request.onupgradeneeded = (event) => {
-            // Si necesita upgrade, cancelar y cerrar
-            event.target.transaction.abort();
+            // Dejamos que se creen los stores si es necesario
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('proyectos_offline')) {
+              const proyectosStore = db.createObjectStore('proyectos_offline', { keyPath: 'id' });
+              proyectosStore.createIndex('municipio', 'municipio', { unique: false });
+              proyectosStore.createIndex('estado', 'estado', { unique: false });
+            }
           };
         });
         
+        // Contar predios
         if (secondaryDB && secondaryDB.objectStoreNames.contains('predios_offline')) {
           const tx = secondaryDB.transaction('predios_offline', 'readonly');
           const store = tx.objectStore('predios_offline');
@@ -220,13 +227,25 @@ export function useOffline() {
             lastSync = new Date().toISOString();
           }
         }
+        
+        // Contar proyectos
+        if (secondaryDB && secondaryDB.objectStoreNames.contains('proyectos_offline')) {
+          const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
+          const storeProyectos = txProyectos.objectStore('proyectos_offline');
+          proyectosCount = await new Promise((resolve) => {
+            const request = storeProyectos.count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(0);
+          });
+        }
+        
         if (secondaryDB) secondaryDB.close();
       } catch (e) {
         // Ignorar error si la DB no existe
         console.log('Secondary offline DB not available:', e.message);
       }
       
-      setOfflineData({ prediosCount, petitionsCount, lastSync, lastPetitionsSync });
+      setOfflineData({ prediosCount, petitionsCount, proyectosCount, lastSync, lastPetitionsSync });
     } catch (error) {
       console.error('Error loading offline stats:', error);
     }
