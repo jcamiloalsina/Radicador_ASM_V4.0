@@ -382,8 +382,7 @@ export default function ProyectosActualizacion() {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Proyecto restaurado');
-      fetchProyectos();
-      fetchEstadisticas();
+      await forceRefreshProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al restaurar');
     }
@@ -401,8 +400,7 @@ export default function ProyectosActualizacion() {
       setShowEliminarModal(false);
       setShowDetalleModal(false);
       setProyectoSeleccionado(null);
-      fetchProyectos();
-      fetchEstadisticas();
+      await forceRefreshProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al eliminar');
     }
