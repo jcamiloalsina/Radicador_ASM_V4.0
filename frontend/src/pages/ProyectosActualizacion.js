@@ -202,6 +202,39 @@ export default function ProyectosActualizacion() {
     }
   }, [filtroEstado]);
 
+  // Función para forzar sincronización desde servidor
+  const forceRefreshProyectos = async () => {
+    if (!navigator.onLine) {
+      toast.warning('Sin conexión a internet');
+      return;
+    }
+    
+    setSyncing(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/actualizacion/proyectos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const proyectosData = response.data.proyectos || [];
+      setProyectos(proyectosData);
+      setIsOfflineData(false);
+      
+      // Guardar en IndexedDB
+      if (proyectosData.length > 0) {
+        await saveProyectosOffline(proyectosData);
+        toast.success(`${proyectosData.length} proyectos sincronizados`);
+      }
+      
+      // Actualizar estadísticas
+      await fetchEstadisticas();
+    } catch (error) {
+      console.error('Error syncing proyectos:', error);
+      toast.error('Error al sincronizar');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const fetchEstadisticas = useCallback(async () => {
     // Si estamos offline, calcular estadísticas desde los datos locales
     if (!navigator.onLine) {
