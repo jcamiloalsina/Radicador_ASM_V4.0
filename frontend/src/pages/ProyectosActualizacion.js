@@ -748,13 +748,17 @@ export default function ProyectosActualizacion() {
         <Card className="bg-white">
           <CardContent className="p-12 text-center">
             <FolderOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">No hay proyectos</h3>
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+              {!isOnline ? 'Sin datos offline' : 'No hay proyectos'}
+            </h3>
             <p className="text-slate-500 mb-4">
-              {searchTerm || filtroEstado !== 'todos' 
-                ? 'No se encontraron proyectos con los filtros aplicados'
-                : 'Comienza creando tu primer proyecto de actualización'}
+              {!isOnline 
+                ? 'Conéctese a internet y visite esta sección para guardar proyectos localmente'
+                : searchTerm || filtroEstado !== 'todos' 
+                  ? 'No se encontraron proyectos con los filtros aplicados'
+                  : 'Comienza creando tu primer proyecto de actualización'}
             </p>
-            {canCreate && !searchTerm && filtroEstado === 'todos' && (
+            {canCreate && !searchTerm && filtroEstado === 'todos' && isOnline && (
               <Button 
                 onClick={() => {
                   fetchMunicipiosDisponibles();
