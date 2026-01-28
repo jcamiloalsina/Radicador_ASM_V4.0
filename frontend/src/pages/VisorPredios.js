@@ -652,7 +652,7 @@ export default function VisorPredios() {
     }
   };
 
-  // Función para sincronizar manualmente
+  // Función para sincronizar manualmente - descarga TODAS las geometrías
   const handleSyncGeometrias = async () => {
     if (!navigator.onLine) {
       toast.warning('Sin conexión a internet');
