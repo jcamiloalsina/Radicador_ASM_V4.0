@@ -271,8 +271,11 @@ export function OfflineReadyBadge() {
   
   if (!isOnline) return null;
   
-  const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0 || offlineData.proyectosCount > 0;
+  const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0 || offlineData.proyectosCount > 0 || offlineData.geometriasCount > 0;
   const isReallyReady = hasRealData;
+  
+  // Calcular total de datos offline
+  const totalOffline = (offlineData.prediosCount || 0) + (offlineData.proyectosCount || 0) + (offlineData.geometriasCount || 0);
   
   // Construir lista de módulos offline
   const offlineModules = [];
@@ -290,6 +293,14 @@ export function OfflineReadyBadge() {
       description: 'Predios descargados para consulta offline',
       status: 'ready',
       count: offlineData.prediosCount
+    });
+  }
+  if (offlineData.geometriasCount > 0) {
+    offlineModules.push({
+      name: 'Visor de Predios',
+      description: 'Geometrías del mapa descargadas',
+      status: 'ready',
+      count: offlineData.geometriasCount
     });
   }
   if (offlineData.petitionsCount > 0) {
