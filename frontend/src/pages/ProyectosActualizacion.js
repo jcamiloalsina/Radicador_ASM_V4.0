@@ -339,8 +339,7 @@ export default function ProyectosActualizacion() {
       toast.success('Proyecto creado exitosamente con sus 3 etapas');
       setShowCrearModal(false);
       setNuevoProyecto({ nombre: '', municipio: '', descripcion: '' });
-      fetchProyectos();
-      fetchEstadisticas();
+      await forceRefreshProyectos();
     } catch (error) {
       console.error('Error creating proyecto:', error);
       toast.error(error.response?.data?.detail || 'Error al crear el proyecto');
@@ -357,8 +356,7 @@ export default function ProyectosActualizacion() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success(`Estado actualizado a ${estadoConfig[nuevoEstado].label}`);
-      fetchProyectos();
-      fetchEstadisticas();
+      await forceRefreshProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al cambiar el estado');
     }
@@ -371,8 +369,7 @@ export default function ProyectosActualizacion() {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Proyecto archivado');
-      fetchProyectos();
-      fetchEstadisticas();
+      await forceRefreshProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al archivar');
     }
