@@ -3075,7 +3075,13 @@ export default function Predios() {
                     </td>
                   </tr>
                 ) : (
-                  predios.map((predio) => (
+                  // Paginación: mostrar solo los predios de la página actual
+                  (() => {
+                    const startIndex = (currentPage - 1) * pageSize;
+                    const endIndex = startIndex + pageSize;
+                    const paginatedPredios = predios.slice(startIndex, endIndex);
+                    
+                    return paginatedPredios.map((predio) => (
                     <tr key={predio.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 px-4">
                         <div>
