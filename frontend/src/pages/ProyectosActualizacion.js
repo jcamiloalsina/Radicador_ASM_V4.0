@@ -44,7 +44,8 @@ import {
   FileCheck,
   CornerDownRight,
   Download,
-  BarChart3
+  BarChart3,
+  WifiOff
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,6 +55,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import CronogramaGantt from '../components/CronogramaGantt';
+import { saveProyectosOffline, getProyectosOffline as getProyectosFromDB, initOfflineDB } from '../utils/offlineDB';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
