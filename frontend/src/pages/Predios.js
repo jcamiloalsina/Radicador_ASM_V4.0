@@ -2999,7 +2999,22 @@ export default function Predios() {
         <CardHeader>
           <CardTitle className="text-slate-900 font-outfit flex items-center justify-between">
             <span>Predios Registrados</span>
-            <Badge variant="outline">{total} predios</Badge>
+            <div className="flex items-center gap-2">
+              {filterMunicipio && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => syncMunicipioManual(filterMunicipio)}
+                  disabled={downloadProgress.isDownloading || !navigator.onLine}
+                  className="text-xs"
+                  title="Actualizar datos desde el servidor"
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${downloadProgress.isDownloading ? 'animate-spin' : ''}`} />
+                  Sincronizar
+                </Button>
+              )}
+              <Badge variant="outline">{total.toLocaleString()} predios</Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
