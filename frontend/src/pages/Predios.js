@@ -1464,9 +1464,11 @@ export default function Predios() {
   };
   
   const actualizarZonaFisica = (index, campo, valor) => {
-    const nuevas = [...zonasFisicas];
-    nuevas[index][campo] = valor;
-    setZonasFisicas(nuevas);
+    setZonasFisicas(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
   };
 
   // Estado para asignar a otro gestor
