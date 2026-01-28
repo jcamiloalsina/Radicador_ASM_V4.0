@@ -608,6 +608,19 @@ export default function ProyectosActualizacion() {
 
   return (
     <div className="space-y-6" data-testid="proyectos-actualizacion-page">
+      {/* Banner modo offline */}
+      {(!isOnline || isOfflineData) && (
+        <div className="bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <WifiOff className="w-4 h-4" />
+          <span className="font-medium">
+            {!isOnline ? 'Sin conexión' : 'Datos offline'}
+          </span>
+          <span className="text-amber-100 text-sm">
+            - Mostrando {proyectos.length} proyecto(s) guardado(s) localmente
+          </span>
+        </div>
+      )}
+
       {/* Header con estadísticas */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -618,7 +631,7 @@ export default function ProyectosActualizacion() {
             Gestión de proyectos de actualización catastral por municipio
           </p>
         </div>
-        {canCreate && (
+        {canCreate && isOnline && (
           <Button 
             onClick={() => {
               fetchMunicipiosDisponibles();
