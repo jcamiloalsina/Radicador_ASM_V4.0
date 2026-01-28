@@ -64,7 +64,7 @@ import {
   Pen,
   Users,
   X,
-  Image,
+  Image as ImageIcon,
   History,
   GitCompare,
   Check,
