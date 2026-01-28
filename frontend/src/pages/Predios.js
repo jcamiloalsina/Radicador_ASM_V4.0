@@ -1775,7 +1775,7 @@ export default function Predios() {
     }
   };
 
-  // Función para actualizar datos en segundo plano - SOLO cuando el usuario lo solicite
+  // Función para sincronizar - BORRA TODO EL CACHE y guarda solo los datos nuevos
   const syncMunicipioManual = async (municipio) => {
     try {
       const token = localStorage.getItem('token');
@@ -1786,9 +1786,20 @@ export default function Predios() {
         isDownloading: true,
         current: 0,
         total: 100,
-        label: `Sincronizando ${municipio}...`
+        label: `Limpiando cache anterior...`
       });
       
+      // PASO 1: Borrar TODO el cache offline primero
+      await clearAllOfflineData();
+      
+      setDownloadProgress({
+        isDownloading: true,
+        current: 20,
+        total: 100,
+        label: `Descargando ${municipio}...`
+      });
+      
+      // PASO 2: Descargar datos del servidor
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1798,12 +1809,12 @@ export default function Predios() {
       
       setDownloadProgress({
         isDownloading: true,
-        current: 50,
+        current: 60,
         total: 100,
-        label: `Guardando ${totalPredios} predios...`
+        label: `Guardando ${totalPredios.toLocaleString()} predios...`
       });
       
-      // Guardar en IndexedDB (esto ya limpia los anteriores del mismo municipio)
+      // PASO 3: Guardar solo los datos nuevos
       await downloadForOffline(serverPredios, null, municipio);
       
       // Actualizar la UI
@@ -1831,7 +1842,7 @@ export default function Predios() {
       }
       
       setDownloadProgress({ isDownloading: false, current: 100, total: 100, label: '' });
-      toast.success(`✅ ${municipio}: ${totalPredios} predios sincronizados`, { duration: 3000 });
+      toast.success(`✅ ${municipio}: ${totalPredios.toLocaleString()} predios sincronizados (cache limpio)`, { duration: 3000 });
       
     } catch (error) {
       console.error('Error sincronizando:', error);
