@@ -1947,14 +1947,17 @@ export default function Predios() {
             filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
           }
           
+          // Ordenar por CNP antes de mostrar
+          const prediosOrdenados = sortPrediosByCNP(filtered);
+          
           // Mostrar datos del cache inmediatamente - SIN sincronizar automáticamente
-          setPredios(filtered);
-          setTotal(filtered.length);
+          setPredios(prediosOrdenados);
+          setTotal(prediosOrdenados.length);
           setLoading(false);
           
           // Si está offline, terminar aquí
           if (!navigator.onLine) {
-            toast.info(`Modo offline: ${filtered.length} predios desde cache`, { duration: 2000 });
+            toast.info(`Modo offline: ${prediosOrdenados.length} predios desde cache`, { duration: 2000 });
           }
           // Ya NO sincronizamos en segundo plano automáticamente
           // El usuario puede usar el botón "Sincronizar" cuando quiera
