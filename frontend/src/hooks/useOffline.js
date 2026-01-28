@@ -85,6 +85,7 @@ export function useOffline() {
   const [offlineData, setOfflineData] = useState({
     prediosCount: 0,
     petitionsCount: 0,
+    proyectosCount: 0,
     lastSync: null,
     lastPetitionsSync: null
   });
