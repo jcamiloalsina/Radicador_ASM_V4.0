@@ -431,10 +431,24 @@ export async function getOfflineStats() {
     request.onerror = () => resolve(0);
   });
 
+  let proyectosCount = 0;
+  try {
+    const txProyectos = database.transaction(STORES.PROYECTOS, 'readonly');
+    proyectosCount = await new Promise((resolve) => {
+      const request = txProyectos.objectStore(STORES.PROYECTOS).count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(0);
+    });
+  } catch (e) {
+    // Store puede no existir en versiones anteriores
+    console.log('[OfflineDB] Store proyectos no disponible');
+  }
+
   return {
     predios: prediosCount,
     geometrias: geomCount,
-    cambiosPendientes: cambiosPendientes
+    cambiosPendientes: cambiosPendientes,
+    proyectos: proyectosCount
   };
 }
 
