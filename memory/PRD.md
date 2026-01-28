@@ -94,6 +94,43 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 28 Enero 2026 (Fork 5) - Fix Modo Offline para Proyectos de Actualización
+**Corrección del modo offline para el módulo "Proyectos de Actualización":**
+
+#### Problema Resuelto:
+- ❌ Al visitar "Proyectos de Actualización" online, después no se podía acceder offline
+- ❌ La lista de proyectos no cargaba desde IndexedDB cuando estaba offline
+
+#### Solución Implementada:
+1. ✅ **Nuevo store `proyectos_offline`** en IndexedDB (versión 3)
+   - Database: `asomunicipios_offline`
+   - Índices: `municipio`, `estado`
+   
+2. ✅ **Funciones en `offlineDB.js`:**
+   - `saveProyectosOffline(proyectos)` - Guarda lista de proyectos
+   - `getProyectosOffline(filtroEstado)` - Obtiene proyectos desde cache
+   - `getProyectoOffline(proyectoId)` - Obtiene un proyecto específico
+   - `countProyectosOffline()` - Cuenta proyectos guardados
+
+3. ✅ **Modificaciones en `ProyectosActualizacion.js`:**
+   - Auto-save de proyectos en IndexedDB cuando se visita online
+   - Fallback a cache cuando está offline o falla la conexión
+   - Banner "Sin conexión" con conteo de proyectos guardados
+   - Estadísticas calculadas desde cache local
+   - Acciones de administración deshabilitadas cuando offline
+
+4. ✅ **Actualizaciones en `useOffline.js`:**
+   - Conteo de `proyectosCount` agregado al estado
+   - Lee desde database versión 3
+
+5. ✅ **UI Mejorada en `OfflineComponents.js`:**
+   - Badge muestra conteo total (predios + proyectos)
+   - Panel de estado incluye módulo "Proyectos de Actualización"
+
+**Testing:** 100% de éxito (4/4 tests) - iteration_18.json
+
+---
+
 ### Sesión 27 Enero 2026 (Fork 4) - Mejoras de Modo Offline
 **Implementación completa de funcionalidades offline:**
 
