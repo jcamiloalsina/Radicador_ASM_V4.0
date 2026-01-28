@@ -73,6 +73,13 @@ export function initOfflineDB() {
         database.createObjectStore(STORES.CONFIG, { keyPath: 'key' });
       }
 
+      // Store para proyectos de actualización
+      if (!database.objectStoreNames.contains(STORES.PROYECTOS)) {
+        const proyectosStore = database.createObjectStore(STORES.PROYECTOS, { keyPath: 'id' });
+        proyectosStore.createIndex('municipio', 'municipio', { unique: false });
+        proyectosStore.createIndex('estado', 'estado', { unique: false });
+      }
+
       console.log('[OfflineDB] Estructura de base de datos actualizada');
     };
   });
