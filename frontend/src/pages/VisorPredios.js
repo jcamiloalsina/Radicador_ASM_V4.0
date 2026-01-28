@@ -537,29 +537,89 @@ export default function VisorPredios() {
     }
   };
 
-  const fetchAllGeometries = async () => {
-    setLoadingGeometries(true);
+  // Estado para offline de geometrías
+  const [geometriasOfflineCount, setGeometriasOfflineCount] = useState(0);
+  const [syncingGeometrias, setSyncingGeometrias] = useState(false);
+
+  // Cargar geometrías desde el servidor (forzado)
+  const fetchGeometriasFromServer = async () => {
     try {
-      // Si está offline, intentar cargar desde cache
-      if (!navigator.onLine) {
-        toast.info('Modo offline: Cargando geometrías desde caché local');
-        // Por ahora, si no hay conexión, mostrar mensaje
-        setLoadingGeometries(false);
-        return;
-      }
-      
+      setSyncingGeometrias(true);
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', filterMunicipio);
       if (filterZona && filterZona !== 'todos') params.append('zona', filterZona);
-      params.append('limit', '10000'); // Aumentar límite para ver todas las geometrías
+      params.append('limit', '10000');
       
       const response = await axios.get(`${API}/gdb/geometrias?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
       setAllGeometries(response.data);
-      const zonaText = filterZona === 'todos' ? 'todas las zonas' : filterZona;
-      toast.success(`${response.data.total} predios de Base Gráfica (${zonaText}) cargados`);
+      
+      // Guardar para uso offline
+      if (response.data.features && response.data.features.length > 0) {
+        await saveGeometriasMunicipioOffline(filterMunicipio, response.data);
+        setGeometriasOfflineCount(response.data.features.length);
+        toast.success(`${response.data.total} geometrías cargadas y guardadas offline`);
+      } else {
+        const zonaText = filterZona === 'todos' ? 'todas las zonas' : filterZona;
+        toast.success(`${response.data.total} predios de Base Gráfica (${zonaText}) cargados`);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error loading geometries from server:', error);
+      throw error;
+    } finally {
+      setSyncingGeometrias(false);
+    }
+  };
+
+  const fetchAllGeometries = async () => {
+    setLoadingGeometries(true);
+    try {
+      // Primero intentar cargar desde caché
+      if (filterMunicipio) {
+        const cachedGeometrias = await getGeometriasMunicipioOffline(filterMunicipio);
+        if (cachedGeometrias && cachedGeometrias.features && cachedGeometrias.features.length > 0) {
+          // Aplicar filtro de zona si es necesario
+          let filtered = cachedGeometrias;
+          if (filterZona && filterZona !== 'todos') {
+            filtered = {
+              ...cachedGeometrias,
+              features: cachedGeometrias.features.filter(f => 
+                f.properties?.zona === filterZona || f.properties?.ZONA === filterZona
+              ),
+              total: 0
+            };
+            filtered.total = filtered.features.length;
+          }
+          
+          setAllGeometries(filtered);
+          setGeometriasOfflineCount(cachedGeometrias.features.length);
+          setLoadingGeometries(false);
+          
+          // Si está offline, quedarse con el caché
+          if (!navigator.onLine) {
+            toast.info(`Modo offline: ${filtered.total} geometrías desde caché`);
+            return;
+          }
+          
+          // Si está online, no sincronizar automáticamente - el usuario puede usar el botón
+          return;
+        }
+      }
+      
+      // Si no hay caché o no hay municipio, cargar del servidor
+      if (!navigator.onLine) {
+        toast.warning('Sin conexión: Las geometrías no están disponibles offline para este municipio');
+        setAllGeometries(null);
+        setLoadingGeometries(false);
+        return;
+      }
+      
+      await fetchGeometriasFromServer();
     } catch (error) {
       console.error('Error loading geometries:', error);
       if (!navigator.onLine) {
@@ -570,6 +630,19 @@ export default function VisorPredios() {
       setAllGeometries(null);
     } finally {
       setLoadingGeometries(false);
+    }
+  };
+
+  // Función para sincronizar manualmente
+  const handleSyncGeometrias = async () => {
+    if (!navigator.onLine) {
+      toast.warning('Sin conexión a internet');
+      return;
+    }
+    try {
+      await fetchGeometriasFromServer();
+    } catch (error) {
+      toast.error('Error al sincronizar geometrías');
     }
   };
 
