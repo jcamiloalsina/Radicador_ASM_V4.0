@@ -1339,6 +1339,11 @@ export default function Predios() {
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
   const [verificacionCodigo, setVerificacionCodigo] = useState(null);
   const [ultimaManzanaInfo, setUltimaManzanaInfo] = useState(null); // Info de última manzana por sector
+  
+  // Paginación del lado del cliente para mejorar rendimiento
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 100; // Mostrar 100 predios por página
+  
   const [codigoManual, setCodigoManual] = useState({
     zona: '00',          // Posición 6-7 (2 dígitos) - 00=rural, 01=urbano, 02-99=corregimiento
     sector: '00',        // Posición 8-9 (2 dígitos)
