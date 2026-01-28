@@ -255,6 +255,11 @@ export function OfflineReadyBadge() {
   const [caching, setCaching] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   
+  // Debug: log offlineData changes
+  useEffect(() => {
+    console.log('[OfflineReadyBadge] offlineData updated:', offlineData);
+  }, [offlineData]);
+  
   const handleForceCache = async () => {
     setCaching(true);
     await forceCacheResources();
