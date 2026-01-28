@@ -2390,7 +2390,8 @@ export default function Predios() {
       
       setShowCreateDialog(false);
       resetForm();
-      fetchPredios();
+      // Forzar recarga desde servidor para ver el nuevo predio
+      await forceRefreshPredios();
       fetchCambiosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al crear predio');
