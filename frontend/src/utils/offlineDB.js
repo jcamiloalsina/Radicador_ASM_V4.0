@@ -896,6 +896,7 @@ export default {
   saveGeometriasMunicipioOffline,
   getGeometriasMunicipioOffline,
   countGeometriasMunicipioOffline,
+  clearAllGeometriasOffline,
   saveCambioPendiente,
   getCambiosPendientes,
   marcarCambioSincronizado,
