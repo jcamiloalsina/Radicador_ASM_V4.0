@@ -98,49 +98,14 @@ export function useOffline() {
   });
   const [swRegistered, setSwRegistered] = useState(false);
 
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
-    // Escuchar evento de actualización de datos offline
-    const handleOfflineDataUpdate = () => {
-      console.log('[useOffline] Datos offline actualizados, recargando stats...');
-      loadOfflineStats();
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('offlineDataUpdated', handleOfflineDataUpdate);
-
-    // Load offline data stats
-    loadOfflineStats();
-    
-    // Check cache status
-    checkCacheReady();
-    
-    // Check if Service Worker is registered
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(() => {
-        setSwRegistered(true);
-        // Re-check cache after SW is ready
-        setTimeout(checkCacheReady, 1000);
-      });
-    }
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('offlineDataUpdated', handleOfflineDataUpdate);
-    };
-  }, []);
-
-  const checkCacheReady = async () => {
+  // Definir funciones antes del useEffect
+  const checkCacheReady = useCallback(async () => {
     setCacheStatus(prev => ({ ...prev, checking: true }));
     const status = await checkCacheStatus();
     setCacheStatus({ ...status, checking: false });
-  };
+  }, []);
 
-  const loadOfflineStats = async () => {
+  const loadOfflineStats = useCallback(async () => {
     try {
       let prediosCount = 0;
       let petitionsCount = 0;
@@ -256,7 +221,43 @@ export function useOffline() {
     } catch (error) {
       console.error('Error loading offline stats:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    // Escuchar evento de actualización de datos offline
+    const handleOfflineDataUpdate = () => {
+      console.log('[useOffline] Datos offline actualizados, recargando stats...');
+      loadOfflineStats();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('offlineDataUpdated', handleOfflineDataUpdate);
+
+    // Load offline data stats
+    loadOfflineStats();
+    
+    // Check cache status
+    checkCacheReady();
+    
+    // Check if Service Worker is registered
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(() => {
+        setSwRegistered(true);
+        // Re-check cache after SW is ready
+        setTimeout(checkCacheReady, 1000);
+      });
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offlineDataUpdated', handleOfflineDataUpdate);
+    };
+  }, [loadOfflineStats, checkCacheReady]);
 
   // Force cache critical resources
   const forceCacheResources = useCallback(async () => {
