@@ -1902,18 +1902,27 @@ export default function Predios() {
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPredios(res.data.predios);
-      setTotal(res.data.total);
+      
+      // Verificar que los datos correspondan al municipio filtrado
+      const prediosRecibidos = res.data.predios || [];
+      
+      // Filtrar solo predios del municipio correcto (protección adicional)
+      const prediosFiltrados = filterMunicipio 
+        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        : prediosRecibidos;
+      
+      setPredios(prediosFiltrados);
+      setTotal(prediosFiltrados.length);
       
       // Guardar automáticamente para modo offline si hay municipio filtrado
-      if (filterMunicipio && res.data.predios.length > 0) {
+      if (filterMunicipio && prediosFiltrados.length > 0) {
         // Mostrar barra de progreso de descarga
-        const totalPredios = res.data.predios.length;
+        const totalPredios = prediosFiltrados.length;
         setDownloadProgress({
           isDownloading: true,
           current: 0,
           total: totalPredios,
-          label: `Guardando ${filterMunicipio} para uso offline...`
+          label: `Guardando ${filterMunicipio} (${totalPredios.toLocaleString()} predios)...`
         });
         
         // Simular progreso mientras se guarda
@@ -1924,7 +1933,7 @@ export default function Predios() {
           }));
         }, 100);
         
-        await downloadForOffline(res.data.predios, null, filterMunicipio);
+        await downloadForOffline(prediosFiltrados, null, filterMunicipio);
         
         clearInterval(progressInterval);
         setDownloadProgress({
@@ -1934,7 +1943,7 @@ export default function Predios() {
           label: ''
         });
         
-        toast.success(`✅ ${filterMunicipio}: ${totalPredios} predios disponibles offline`, { duration: 3000 });
+        toast.success(`✅ ${filterMunicipio}: ${totalPredios.toLocaleString()} predios disponibles offline`, { duration: 3000 });
       }
     } catch (error) {
       console.error('Error cargando predios:', error);
