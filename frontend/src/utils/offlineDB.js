@@ -465,12 +465,45 @@ export async function countGeometriasMunicipioOffline(municipio) {
   const database = await initOfflineDB();
   const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
   const store = tx.objectStore(STORES.GEOMETRIAS);
-  const index = store.index('proyecto_id');
   const municipioKey = `visor_${municipio}`;
 
   return new Promise((resolve, reject) => {
-    const request = index.count(municipioKey);
-    request.onsuccess = () => resolve(request.result);
+    let count = 0;
+    const cursorRequest = store.openCursor();
+    
+    cursorRequest.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const record = cursor.value;
+        const recordId = record.id || '';
+        
+        if (recordId.startsWith(municipioKey) || 
+            record.proyecto_id === municipioKey || 
+            record.municipio === municipio) {
+          count++;
+        }
+        cursor.continue();
+      } else {
+        resolve(count);
+      }
+    };
+    cursorRequest.onerror = () => reject(cursorRequest.error);
+  });
+}
+
+// Limpiar TODAS las geometrías offline
+export async function clearAllGeometriasOffline() {
+  const database = await initOfflineDB();
+  
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+    const store = tx.objectStore(STORES.GEOMETRIAS);
+    
+    const request = store.clear();
+    request.onsuccess = () => {
+      console.log('[OfflineDB] Todas las geometrías offline eliminadas');
+      resolve(true);
+    };
     request.onerror = () => reject(request.error);
   });
 }
