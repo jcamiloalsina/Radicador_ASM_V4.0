@@ -71,52 +71,49 @@ export function initOfflineDB() {
 
 // Función auxiliar para crear todos los stores
 function createAllStores(database) {
-      
-      // Store para predios
-      if (!database.objectStoreNames.contains(STORES.PREDIOS)) {
-        const prediosStore = database.createObjectStore(STORES.PREDIOS, { keyPath: 'id' });
-        prediosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
-        prediosStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
-        prediosStore.createIndex('municipio', 'municipio', { unique: false });
-      }
+  // Store para predios
+  if (!database.objectStoreNames.contains(STORES.PREDIOS)) {
+    const prediosStore = database.createObjectStore(STORES.PREDIOS, { keyPath: 'id' });
+    prediosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
+    prediosStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
+    prediosStore.createIndex('municipio', 'municipio', { unique: false });
+  }
 
-      // Store para geometrías
-      if (!database.objectStoreNames.contains(STORES.GEOMETRIAS)) {
-        const geomStore = database.createObjectStore(STORES.GEOMETRIAS, { keyPath: 'id' });
-        geomStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
-        geomStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
-      }
+  // Store para geometrías
+  if (!database.objectStoreNames.contains(STORES.GEOMETRIAS)) {
+    const geomStore = database.createObjectStore(STORES.GEOMETRIAS, { keyPath: 'id' });
+    geomStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
+    geomStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
+  }
 
-      // Store para cambios pendientes de sincronizar
-      if (!database.objectStoreNames.contains(STORES.CAMBIOS_PENDIENTES)) {
-        const cambiosStore = database.createObjectStore(STORES.CAMBIOS_PENDIENTES, { keyPath: 'id', autoIncrement: true });
-        cambiosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
-        cambiosStore.createIndex('tipo', 'tipo', { unique: false });
-        cambiosStore.createIndex('fecha', 'fecha', { unique: false });
-      }
+  // Store para cambios pendientes de sincronizar
+  if (!database.objectStoreNames.contains(STORES.CAMBIOS_PENDIENTES)) {
+    const cambiosStore = database.createObjectStore(STORES.CAMBIOS_PENDIENTES, { keyPath: 'id', autoIncrement: true });
+    cambiosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
+    cambiosStore.createIndex('tipo', 'tipo', { unique: false });
+    cambiosStore.createIndex('fecha', 'fecha', { unique: false });
+  }
 
-      // Store para visitas pendientes
-      if (!database.objectStoreNames.contains(STORES.VISITAS_PENDIENTES)) {
-        const visitasStore = database.createObjectStore(STORES.VISITAS_PENDIENTES, { keyPath: 'id', autoIncrement: true });
-        visitasStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
-        visitasStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
-      }
+  // Store para visitas pendientes
+  if (!database.objectStoreNames.contains(STORES.VISITAS_PENDIENTES)) {
+    const visitasStore = database.createObjectStore(STORES.VISITAS_PENDIENTES, { keyPath: 'id', autoIncrement: true });
+    visitasStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
+    visitasStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
+  }
 
-      // Store para configuración
-      if (!database.objectStoreNames.contains(STORES.CONFIG)) {
-        database.createObjectStore(STORES.CONFIG, { keyPath: 'key' });
-      }
+  // Store para configuración
+  if (!database.objectStoreNames.contains(STORES.CONFIG)) {
+    database.createObjectStore(STORES.CONFIG, { keyPath: 'key' });
+  }
 
-      // Store para proyectos de actualización
-      if (!database.objectStoreNames.contains(STORES.PROYECTOS)) {
-        const proyectosStore = database.createObjectStore(STORES.PROYECTOS, { keyPath: 'id' });
-        proyectosStore.createIndex('municipio', 'municipio', { unique: false });
-        proyectosStore.createIndex('estado', 'estado', { unique: false });
-      }
+  // Store para proyectos de actualización
+  if (!database.objectStoreNames.contains(STORES.PROYECTOS)) {
+    const proyectosStore = database.createObjectStore(STORES.PROYECTOS, { keyPath: 'id' });
+    proyectosStore.createIndex('municipio', 'municipio', { unique: false });
+    proyectosStore.createIndex('estado', 'estado', { unique: false });
+  }
 
-      console.log('[OfflineDB] Estructura de base de datos actualizada');
-    };
-  });
+  console.log('[OfflineDB] Estructura de base de datos actualizada');
 }
 
 // ==================== PREDIOS ====================
