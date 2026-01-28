@@ -411,26 +411,39 @@ export async function getGeometriasMunicipioOffline(municipio) {
   const database = await initOfflineDB();
   const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
   const store = tx.objectStore(STORES.GEOMETRIAS);
-  const index = store.index('proyecto_id');
   const municipioKey = `visor_${municipio}`;
 
   return new Promise((resolve, reject) => {
-    const request = index.getAll(municipioKey);
-    request.onsuccess = () => {
-      const results = request.result || [];
-      // Reconstruir formato GeoJSON
-      const geoJson = {
-        type: 'FeatureCollection',
-        features: results.map(r => ({
-          type: r.type || 'Feature',
-          geometry: r.geometry,
-          properties: r.properties
-        })),
-        total: results.length
-      };
-      resolve(geoJson);
+    // Usar cursor para obtener todos los registros y filtrar manualmente
+    // Esto es más robusto que depender del índice
+    const results = [];
+    const cursorRequest = store.openCursor();
+    
+    cursorRequest.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        // Filtrar por municipio
+        if (cursor.value.proyecto_id === municipioKey || cursor.value.municipio === municipio) {
+          results.push(cursor.value);
+        }
+        cursor.continue();
+      } else {
+        // Cursor terminó, construir GeoJSON
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: results.map(r => ({
+            type: r.type || 'Feature',
+            geometry: r.geometry,
+            properties: r.properties
+          })),
+          total: results.length
+        };
+        console.log(`[OfflineDB] ${results.length} geometrías de ${municipio} cargadas desde offline`);
+        resolve(geoJson);
+      }
     };
-    request.onerror = () => reject(request.error);
+    
+    cursorRequest.onerror = () => reject(cursorRequest.error);
   });
 }
 
