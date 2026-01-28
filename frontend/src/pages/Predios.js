@@ -3191,7 +3191,6 @@ export default function Predios() {
               </div>
             </div>
           )}
-          )}
         </CardContent>
       </Card>
         </>
