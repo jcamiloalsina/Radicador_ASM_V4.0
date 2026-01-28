@@ -202,6 +202,24 @@ export default function ProyectosActualizacion() {
   }, [filtroEstado]);
 
   const fetchEstadisticas = useCallback(async () => {
+    // Si estamos offline, calcular estadísticas desde los datos locales
+    if (!navigator.onLine) {
+      try {
+        const allProyectos = await getProyectosFromDB('todos');
+        const stats = {
+          activos: allProyectos.filter(p => p.estado === 'activo').length,
+          pausados: allProyectos.filter(p => p.estado === 'pausado').length,
+          completados: allProyectos.filter(p => p.estado === 'completado').length,
+          archivados: allProyectos.filter(p => p.estado === 'archivado').length,
+          total: allProyectos.length
+        };
+        setEstadisticas(stats);
+      } catch (error) {
+        console.error('[Offline] Error calculando estadísticas:', error);
+      }
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/actualizacion/proyectos/estadisticas`, {
@@ -210,6 +228,22 @@ export default function ProyectosActualizacion() {
       setEstadisticas(response.data);
     } catch (error) {
       console.error('Error fetching estadísticas:', error);
+      // Intentar calcular desde cache si falla
+      try {
+        const allProyectos = await getProyectosFromDB('todos');
+        if (allProyectos && allProyectos.length > 0) {
+          const stats = {
+            activos: allProyectos.filter(p => p.estado === 'activo').length,
+            pausados: allProyectos.filter(p => p.estado === 'pausado').length,
+            completados: allProyectos.filter(p => p.estado === 'completado').length,
+            archivados: allProyectos.filter(p => p.estado === 'archivado').length,
+            total: allProyectos.length
+          };
+          setEstadisticas(stats);
+        }
+      } catch (e) {
+        console.error('[Offline] Error en fallback estadísticas:', e);
+      }
     }
   }, []);
 
