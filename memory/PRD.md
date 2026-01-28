@@ -47,11 +47,14 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Vinculación automática predio-geometría
 - Carga de archivos GDB/ZIP
 
-### PWA - Modo Offline (NUEVO)
+### PWA - Modo Offline (ACTUALIZADO)
 - ✅ Service Worker para caché de recursos
 - ✅ IndexedDB para almacenamiento de predios offline
+- ✅ IndexedDB para almacenamiento de **proyectos de actualización** offline
 - ✅ Caché de tiles de mapa para uso sin conexión
-- ✅ Indicador de estado de conexión
+- ✅ Indicador de estado de conexión en header
+- ✅ Panel de estado offline con detalle de módulos
+- ✅ Banner "Sin conexión" con conteo de datos guardados
 - ✅ Prompt de instalación como app
 - ✅ Instalable en Android e iOS desde navegador
 
