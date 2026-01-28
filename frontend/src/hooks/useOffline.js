@@ -200,10 +200,15 @@ export function useOffline() {
           const request = indexedDB.open('asomunicipios_offline', 3);
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
-          // No crear stores nuevos, solo abrir si existe
           request.onupgradeneeded = (event) => {
-            // Dejamos que se creen los stores si es necesario
+            // Crear stores si es necesario durante el upgrade
             const db = event.target.result;
+            if (!db.objectStoreNames.contains('predios_offline')) {
+              const prediosStore = db.createObjectStore('predios_offline', { keyPath: 'id' });
+              prediosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
+              prediosStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
+              prediosStore.createIndex('municipio', 'municipio', { unique: false });
+            }
             if (!db.objectStoreNames.contains('proyectos_offline')) {
               const proyectosStore = db.createObjectStore('proyectos_offline', { keyPath: 'id' });
               proyectosStore.createIndex('municipio', 'municipio', { unique: false });
@@ -212,32 +217,39 @@ export function useOffline() {
           };
         });
         
-        // Contar predios
+        // Contar predios - verificar que el store existe
         if (secondaryDB && secondaryDB.objectStoreNames.contains('predios_offline')) {
-          const tx = secondaryDB.transaction('predios_offline', 'readonly');
-          const store = tx.objectStore('predios_offline');
-          const secondaryCount = await new Promise((resolve) => {
-            const request = store.count();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => resolve(0);
-          });
-          prediosCount += secondaryCount;
-          
-          // Si hay datos en la secundaria, actualizar lastSync
-          if (secondaryCount > 0 && !lastSync) {
-            lastSync = new Date().toISOString();
+          try {
+            const tx = secondaryDB.transaction('predios_offline', 'readonly');
+            const store = tx.objectStore('predios_offline');
+            const secondaryCount = await new Promise((resolve) => {
+              const request = store.count();
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => resolve(0);
+            });
+            prediosCount += secondaryCount;
+            
+            if (secondaryCount > 0 && !lastSync) {
+              lastSync = new Date().toISOString();
+            }
+          } catch (txError) {
+            console.log('Error reading predios_offline:', txError.message);
           }
         }
         
-        // Contar proyectos
+        // Contar proyectos - verificar que el store existe
         if (secondaryDB && secondaryDB.objectStoreNames.contains('proyectos_offline')) {
-          const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
-          const storeProyectos = txProyectos.objectStore('proyectos_offline');
-          proyectosCount = await new Promise((resolve) => {
-            const request = storeProyectos.count();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => resolve(0);
-          });
+          try {
+            const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
+            const storeProyectos = txProyectos.objectStore('proyectos_offline');
+            proyectosCount = await new Promise((resolve) => {
+              const request = storeProyectos.count();
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => resolve(0);
+            });
+          } catch (txError) {
+            console.log('Error reading proyectos_offline:', txError.message);
+          }
         }
         
         if (secondaryDB) secondaryDB.close();
