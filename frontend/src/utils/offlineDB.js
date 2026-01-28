@@ -294,6 +294,81 @@ export async function getConfig(key) {
   });
 }
 
+// ==================== PROYECTOS ====================
+
+// Guardar proyectos para offline
+export async function saveProyectosOffline(proyectos) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
+  const store = tx.objectStore(STORES.PROYECTOS);
+
+  // Limpiar proyectos anteriores y guardar los nuevos
+  store.clear();
+  
+  for (const proyecto of proyectos) {
+    const record = {
+      ...proyecto,
+      saved_offline_at: new Date().toISOString()
+    };
+    store.put(record);
+  }
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => {
+      console.log(`[OfflineDB] ${proyectos.length} proyectos guardados offline`);
+      // Notificar al sistema de offline
+      window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
+      resolve(proyectos.length);
+    };
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Obtener todos los proyectos offline
+export async function getProyectosOffline(filtroEstado = null) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.PROYECTOS, 'readonly');
+  const store = tx.objectStore(STORES.PROYECTOS);
+
+  return new Promise((resolve, reject) => {
+    let request;
+    if (filtroEstado && filtroEstado !== 'todos') {
+      const index = store.index('estado');
+      request = index.getAll(filtroEstado);
+    } else {
+      request = store.getAll();
+    }
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Obtener un proyecto específico offline
+export async function getProyectoOffline(proyectoId) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.PROYECTOS, 'readonly');
+  const store = tx.objectStore(STORES.PROYECTOS);
+
+  return new Promise((resolve, reject) => {
+    const request = store.get(proyectoId);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Contar proyectos offline
+export async function countProyectosOffline() {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.PROYECTOS, 'readonly');
+  const store = tx.objectStore(STORES.PROYECTOS);
+
+  return new Promise((resolve) => {
+    const request = store.count();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(0);
+  });
+}
+
 // ==================== UTILIDADES ====================
 
 // Limpiar todos los datos offline de un proyecto
