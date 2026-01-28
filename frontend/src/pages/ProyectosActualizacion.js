@@ -83,6 +83,7 @@ export default function ProyectosActualizacion() {
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isOfflineData, setIsOfflineData] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   
   // Modal states
   const [showCrearModal, setShowCrearModal] = useState(false);
