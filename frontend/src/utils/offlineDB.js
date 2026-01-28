@@ -1,6 +1,6 @@
 // Módulo de gestión de datos offline con IndexedDB
 const DB_NAME = 'asomunicipios_offline';
-const DB_VERSION = 3; // Incrementado para agregar store de proyectos
+const DB_VERSION = 4; // Incrementado para forzar recreación de stores
 
 // Stores en IndexedDB
 const STORES = {
@@ -14,6 +14,26 @@ const STORES = {
 
 let db = null;
 
+// Función para eliminar la base de datos en caso de error
+async function deleteDatabase() {
+  return new Promise((resolve) => {
+    db = null;
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+    deleteRequest.onsuccess = () => {
+      console.log('[OfflineDB] Base de datos eliminada para recreación');
+      resolve(true);
+    };
+    deleteRequest.onerror = () => {
+      console.log('[OfflineDB] Error al eliminar base de datos');
+      resolve(false);
+    };
+    deleteRequest.onblocked = () => {
+      console.log('[OfflineDB] Eliminación bloqueada');
+      resolve(false);
+    };
+  });
+}
+
 // Inicializar la base de datos
 export function initOfflineDB() {
   return new Promise((resolve, reject) => {
@@ -24,9 +44,17 @@ export function initOfflineDB() {
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => {
-      console.error('[OfflineDB] Error al abrir la base de datos');
-      reject(request.error);
+    request.onerror = async () => {
+      console.error('[OfflineDB] Error al abrir la base de datos, intentando recrear...');
+      await deleteDatabase();
+      // Intentar de nuevo
+      const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
+      retryRequest.onsuccess = () => {
+        db = retryRequest.result;
+        resolve(db);
+      };
+      retryRequest.onerror = () => reject(retryRequest.error);
+      retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
     };
 
     request.onsuccess = () => {
@@ -36,7 +64,13 @@ export function initOfflineDB() {
     };
 
     request.onupgradeneeded = (event) => {
-      const database = event.target.result;
+      createAllStores(event.target.result);
+    };
+  });
+}
+
+// Función auxiliar para crear todos los stores
+function createAllStores(database) {
       
       // Store para predios
       if (!database.objectStoreNames.contains(STORES.PREDIOS)) {
