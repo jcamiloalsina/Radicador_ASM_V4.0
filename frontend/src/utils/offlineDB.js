@@ -330,6 +330,96 @@ export async function getGeometriasOffline(proyectoId) {
   });
 }
 
+// ==================== GEOMETRÍAS POR MUNICIPIO (VISOR DE PREDIOS) ====================
+
+// Guardar geometrías del visor por municipio
+export async function saveGeometriasMunicipioOffline(municipio, geometriasData) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+  const store = tx.objectStore(STORES.GEOMETRIAS);
+
+  // Limpiar geometrías antiguas del municipio
+  const index = store.index('proyecto_id');
+  const municipioKey = `visor_${municipio}`;
+  
+  return new Promise((resolve, reject) => {
+    const deleteRequest = index.getAllKeys(municipioKey);
+    deleteRequest.onsuccess = async () => {
+      // Eliminar registros antiguos
+      for (const key of deleteRequest.result) {
+        store.delete(key);
+      }
+      
+      // Guardar nuevas geometrías
+      const features = geometriasData.features || [];
+      for (const feature of features) {
+        const codigoPredial = feature.properties?.codigo_predial || feature.properties?.CODIGO || '';
+        const record = {
+          id: `visor_${municipio}_${codigoPredial}_${Date.now()}`,
+          proyecto_id: municipioKey,
+          municipio: municipio,
+          codigo_predial: codigoPredial,
+          type: feature.type,
+          geometry: feature.geometry,
+          properties: feature.properties,
+          saved_offline_at: new Date().toISOString()
+        };
+        store.put(record);
+      }
+      
+      tx.oncomplete = () => {
+        console.log(`[OfflineDB] ${features.length} geometrías de ${municipio} guardadas offline`);
+        resolve(features.length);
+      };
+      tx.onerror = () => reject(tx.error);
+    };
+    deleteRequest.onerror = () => reject(deleteRequest.error);
+  });
+}
+
+// Obtener geometrías del visor por municipio
+export async function getGeometriasMunicipioOffline(municipio) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
+  const store = tx.objectStore(STORES.GEOMETRIAS);
+  const index = store.index('proyecto_id');
+  const municipioKey = `visor_${municipio}`;
+
+  return new Promise((resolve, reject) => {
+    const request = index.getAll(municipioKey);
+    request.onsuccess = () => {
+      const results = request.result || [];
+      // Reconstruir formato GeoJSON
+      const geoJson = {
+        type: 'FeatureCollection',
+        features: results.map(r => ({
+          type: r.type || 'Feature',
+          geometry: r.geometry,
+          properties: r.properties
+        })),
+        total: results.length
+      };
+      resolve(geoJson);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Contar geometrías offline por municipio
+export async function countGeometriasMunicipioOffline(municipio) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
+  const store = tx.objectStore(STORES.GEOMETRIAS);
+  const index = store.index('proyecto_id');
+  const municipioKey = `visor_${municipio}`;
+
+  return new Promise((resolve, reject) => {
+    const request = index.count(municipioKey);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // ==================== CAMBIOS PENDIENTES ====================
 
 // Guardar cambio pendiente de sincronizar
