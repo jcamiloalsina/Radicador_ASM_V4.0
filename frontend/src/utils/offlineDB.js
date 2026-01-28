@@ -143,16 +143,48 @@ function createAllStores(database) {
 // Guardar predios para offline
 export async function savePrediosOffline(proyectoId, predios, municipio) {
   const database = await initOfflineDB();
+  
+  // Si es un municipio (modo Conservación), primero limpiar predios anteriores del mismo municipio
+  if (municipio && proyectoId === municipio) {
+    try {
+      const cleanTx = database.transaction(STORES.PREDIOS, 'readwrite');
+      const cleanStore = cleanTx.objectStore(STORES.PREDIOS);
+      const index = cleanStore.index('municipio');
+      const cursor = index.openCursor(IDBKeyRange.only(municipio));
+      
+      await new Promise((resolve) => {
+        cursor.onsuccess = (event) => {
+          const result = event.target.result;
+          if (result) {
+            cleanStore.delete(result.primaryKey);
+            result.continue();
+          } else {
+            resolve();
+          }
+        };
+        cursor.onerror = () => resolve();
+      });
+      console.log(`[OfflineDB] Predios anteriores de ${municipio} eliminados`);
+    } catch (e) {
+      console.log('[OfflineDB] Error limpiando predios anteriores:', e.message);
+    }
+  }
+  
   const tx = database.transaction(STORES.PREDIOS, 'readwrite');
   const store = tx.objectStore(STORES.PREDIOS);
 
-  // Guardar cada predio
+  // Guardar cada predio con ID único basado en código predial
   for (const predio of predios) {
+    const codigoPredial = predio.codigo_predial || predio.numero_predial || predio.codigo_predial_nacional;
     const record = {
-      id: `${proyectoId}_${predio.codigo_predial || predio.numero_predial}`,
+      // Para Conservación: usar solo código predial como ID (evita duplicados)
+      // Para Actualización: usar proyecto_id + código
+      id: municipio && proyectoId === municipio 
+        ? codigoPredial 
+        : `${proyectoId}_${codigoPredial}`,
       proyecto_id: proyectoId,
-      municipio: municipio,
-      codigo_predial: predio.codigo_predial || predio.numero_predial,
+      municipio: municipio || predio.municipio,
+      codigo_predial: codigoPredial,
       ...predio,
       saved_offline_at: new Date().toISOString()
     };
@@ -161,7 +193,9 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
 
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => {
-      console.log(`[OfflineDB] ${predios.length} predios guardados offline`);
+      console.log(`[OfflineDB] ${predios.length} predios guardados offline para ${municipio || proyectoId}`);
+      // Notificar cambio
+      window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
       resolve(predios.length);
     };
     tx.onerror = () => reject(tx.error);
