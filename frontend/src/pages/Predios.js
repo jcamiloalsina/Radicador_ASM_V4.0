@@ -1861,6 +1861,56 @@ export default function Predios() {
     }
   };
 
+  // Función para forzar recarga desde servidor (ignora caché)
+  const forceRefreshPredios = async () => {
+    await fetchPrediosFromServer();
+  };
+
+  // Función interna que carga desde el servidor
+  const fetchPrediosFromServer = async () => {
+    try {
+      setLoading(true);
+      
+      // Si está offline, mostrar mensaje
+      if (!navigator.onLine) {
+        toast.warning('No hay conexión. Use los datos offline disponibles.');
+        setLoading(false);
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (filterMunicipio) params.append('municipio', filterMunicipio);
+      if (filterVigencia) params.append('vigencia', filterVigencia);
+      if (search) params.append('search', search);
+      if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
+      if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
+      
+      const res = await axios.get(`${API}/predios?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const prediosRecibidos = res.data.predios || [];
+      const prediosFiltrados = filterMunicipio 
+        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        : prediosRecibidos;
+      
+      setPredios(prediosFiltrados);
+      setTotal(prediosFiltrados.length);
+      setCurrentPage(1); // Resetear a página 1
+      
+      // Actualizar caché offline
+      if (filterMunicipio && prediosFiltrados.length > 0) {
+        await downloadForOffline(prediosFiltrados, null, filterMunicipio);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error cargando predios desde servidor:', error);
+      setLoading(false);
+    }
+  };
+
   const fetchPredios = async () => {
     try {
       // OPTIMIZACIÓN: Si hay municipio filtrado, primero mostrar datos del cache
