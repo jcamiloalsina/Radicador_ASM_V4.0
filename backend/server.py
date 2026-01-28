@@ -4171,7 +4171,7 @@ async def get_predios(
     tiene_geometria: Optional[str] = None,  # Filtro para predios con/sin geometría GDB ('true' o 'false')
     search: Optional[str] = None,
     skip: int = 0,
-    limit: int = 10000,  # Aumentado de 50 a 10000 para soportar modo offline
+    limit: int = 50000,  # Aumentado para soportar municipios grandes en modo offline
     current_user: dict = Depends(get_current_user)
 ):
     """Lista todos los predios (solo staff)"""
