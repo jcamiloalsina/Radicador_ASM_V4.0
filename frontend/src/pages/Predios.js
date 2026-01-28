@@ -2469,7 +2469,8 @@ export default function Predios() {
       }
       
       setShowEditDialog(false);
-      fetchPredios();
+      // Forzar recarga desde servidor para ver cambios inmediatamente
+      await forceRefreshPredios();
       fetchCambiosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al actualizar predio');
