@@ -1518,9 +1518,28 @@ export default function VisorPredios() {
                   )}
                 </Button>
               )}
+              {filterMunicipio && mostrarPredios && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncGeometrias}
+                  disabled={syncingGeometrias || !navigator.onLine}
+                  className="border-blue-500 text-blue-700"
+                  title="Sincronizar geometrías desde el servidor"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1 ${syncingGeometrias ? 'animate-spin' : ''}`} />
+                  Sincronizar
+                </Button>
+              )}
               {allGeometries && mostrarPredios && (
                 <Badge className="bg-emerald-100 text-emerald-800">
                   {allGeometries.total} predios visibles
+                </Badge>
+              )}
+              {geometriasOfflineCount > 0 && mostrarPredios && (
+                <Badge className="bg-blue-100 text-blue-800">
+                  <WifiOff className="w-3 h-3 mr-1" />
+                  {geometriasOfflineCount} offline
                 </Badge>
               )}
             </CardContent>
