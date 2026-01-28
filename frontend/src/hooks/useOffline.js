@@ -196,29 +196,20 @@ export function useOffline() {
       
       // También leer de la base de datos secundaria (asomunicipios_offline) usada por useOfflineSync
       try {
+        // Abrir sin especificar versión para usar la versión existente
         const secondaryDB = await new Promise((resolve, reject) => {
-          const request = indexedDB.open('asomunicipios_offline', 3);
+          const request = indexedDB.open('asomunicipios_offline');
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
-          request.onupgradeneeded = (event) => {
-            // Crear stores si es necesario durante el upgrade
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('predios_offline')) {
-              const prediosStore = db.createObjectStore('predios_offline', { keyPath: 'id' });
-              prediosStore.createIndex('proyecto_id', 'proyecto_id', { unique: false });
-              prediosStore.createIndex('codigo_predial', 'codigo_predial', { unique: false });
-              prediosStore.createIndex('municipio', 'municipio', { unique: false });
-            }
-            if (!db.objectStoreNames.contains('proyectos_offline')) {
-              const proyectosStore = db.createObjectStore('proyectos_offline', { keyPath: 'id' });
-              proyectosStore.createIndex('municipio', 'municipio', { unique: false });
-              proyectosStore.createIndex('estado', 'estado', { unique: false });
-            }
+          request.onupgradeneeded = () => {
+            // Si necesita upgrade, abortar - no queremos crear una DB vacía
+            request.transaction.abort();
           };
-        });
+        }).catch(() => null);
         
-        // Contar predios - verificar que el store existe
-        if (secondaryDB && secondaryDB.objectStoreNames.contains('predios_offline')) {
+        if (!secondaryDB) {
+          console.log('[useOffline] Secondary DB not available or needs upgrade');
+        } else {
           try {
             const tx = secondaryDB.transaction('predios_offline', 'readonly');
             const store = tx.objectStore('predios_offline');
