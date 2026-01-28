@@ -1,6 +1,7 @@
 // Módulo de gestión de datos offline con IndexedDB
 const DB_NAME = 'asomunicipios_offline';
-const DB_VERSION = 5; // Incrementado para resolver conflictos de versión
+const DB_VERSION = 6; // Incrementado para forzar limpieza de datos corruptos
+const APP_VERSION = '2.0.0'; // Versión de la aplicación para detectar cambios
 
 // Stores en IndexedDB
 const STORES = {
@@ -13,6 +14,30 @@ const STORES = {
 };
 
 let db = null;
+
+// Verificar si es una nueva versión de la app y limpiar datos si es necesario
+async function checkAndCleanOldData() {
+  try {
+    const storedVersion = localStorage.getItem('asomunicipios_app_version');
+    if (storedVersion !== APP_VERSION) {
+      console.log(`[OfflineDB] Nueva versión detectada (${storedVersion} -> ${APP_VERSION}). Limpiando datos antiguos...`);
+      // Eliminar la base de datos completa
+      await new Promise((resolve) => {
+        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+        deleteRequest.onsuccess = () => resolve(true);
+        deleteRequest.onerror = () => resolve(false);
+        deleteRequest.onblocked = () => resolve(false);
+      });
+      localStorage.setItem('asomunicipios_app_version', APP_VERSION);
+      console.log('[OfflineDB] Datos antiguos eliminados');
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.log('[OfflineDB] Error verificando versión:', e);
+    return false;
+  }
+}
 
 // Función para eliminar la base de datos en caso de error
 async function deleteDatabase() {
@@ -29,7 +54,6 @@ async function deleteDatabase() {
     };
     deleteRequest.onblocked = () => {
       console.log('[OfflineDB] Eliminación bloqueada, cerrando conexiones...');
-      // Intentar cerrar la conexión actual
       if (db) {
         db.close();
         db = null;
@@ -40,7 +64,10 @@ async function deleteDatabase() {
 }
 
 // Inicializar la base de datos
-export function initOfflineDB() {
+export async function initOfflineDB() {
+  // Primero verificar si hay que limpiar datos antiguos
+  await checkAndCleanOldData();
+  
   return new Promise(async (resolve, reject) => {
     if (db) {
       resolve(db);
@@ -58,6 +85,7 @@ export function initOfflineDB() {
         if (error?.name === 'VersionError' || error?.message?.includes('version')) {
           console.log('[OfflineDB] Conflicto de versión detectado, recreando DB...');
           await deleteDatabase();
+          localStorage.setItem('asomunicipios_app_version', APP_VERSION);
           // Intentar de nuevo después de eliminar
           const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
           retryRequest.onsuccess = () => {
@@ -73,6 +101,7 @@ export function initOfflineDB() {
 
       request.onsuccess = () => {
         db = request.result;
+        localStorage.setItem('asomunicipios_app_version', APP_VERSION);
         console.log('[OfflineDB] Base de datos abierta correctamente v' + DB_VERSION);
         resolve(db);
       };
