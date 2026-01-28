@@ -237,11 +237,11 @@ export function useOffline() {
     window.addEventListener('offline', handleOffline);
     window.addEventListener('offlineDataUpdated', handleOfflineDataUpdate);
 
-    // Load offline data stats
-    loadOfflineStats();
+    // Load offline data stats (using setTimeout to avoid synchronous setState)
+    const statsTimer = setTimeout(() => loadOfflineStats(), 0);
     
     // Check cache status
-    checkCacheReady();
+    const cacheTimer = setTimeout(() => checkCacheReady(), 0);
     
     // Check if Service Worker is registered
     if ('serviceWorker' in navigator) {
@@ -256,6 +256,8 @@ export function useOffline() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('offlineDataUpdated', handleOfflineDataUpdate);
+      clearTimeout(statsTimer);
+      clearTimeout(cacheTimer);
     };
   }, [loadOfflineStats, checkCacheReady]);
 
