@@ -335,45 +335,74 @@ export async function getGeometriasOffline(proyectoId) {
 // Guardar geometrías del visor por municipio
 export async function saveGeometriasMunicipioOffline(municipio, geometriasData) {
   const database = await initOfflineDB();
-  const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
-  const store = tx.objectStore(STORES.GEOMETRIAS);
-
-  // Limpiar geometrías antiguas del municipio
-  const index = store.index('proyecto_id');
   const municipioKey = `visor_${municipio}`;
   
-  return new Promise((resolve, reject) => {
-    const deleteRequest = index.getAllKeys(municipioKey);
-    deleteRequest.onsuccess = async () => {
-      // Eliminar registros antiguos
-      for (const key of deleteRequest.result) {
-        store.delete(key);
+  // Primero, eliminar TODOS los registros del municipio en una transacción separada
+  await new Promise((resolve, reject) => {
+    const deleteTx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+    const deleteStore = deleteTx.objectStore(STORES.GEOMETRIAS);
+    
+    // Abrir cursor para eliminar todos los registros del municipio
+    const cursorRequest = deleteStore.openCursor();
+    cursorRequest.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        // Verificar si el registro pertenece a este municipio
+        if (cursor.value.proyecto_id === municipioKey || cursor.value.municipio === municipio) {
+          cursor.delete();
+        }
+        cursor.continue();
       }
-      
-      // Guardar nuevas geometrías
-      const features = geometriasData.features || [];
-      for (const feature of features) {
-        const codigoPredial = feature.properties?.codigo_predial || feature.properties?.CODIGO || '';
-        const record = {
-          id: `visor_${municipio}_${codigoPredial}_${Date.now()}`,
-          proyecto_id: municipioKey,
-          municipio: municipio,
-          codigo_predial: codigoPredial,
-          type: feature.type,
-          geometry: feature.geometry,
-          properties: feature.properties,
-          saved_offline_at: new Date().toISOString()
-        };
-        store.put(record);
-      }
-      
-      tx.oncomplete = () => {
-        console.log(`[OfflineDB] ${features.length} geometrías de ${municipio} guardadas offline`);
-        resolve(features.length);
-      };
-      tx.onerror = () => reject(tx.error);
     };
-    deleteRequest.onerror = () => reject(deleteRequest.error);
+    
+    deleteTx.oncomplete = () => {
+      console.log(`[OfflineDB] Geometrías antiguas de ${municipio} eliminadas`);
+      resolve();
+    };
+    deleteTx.onerror = () => reject(deleteTx.error);
+  });
+  
+  // Ahora guardar las nuevas geometrías
+  const features = geometriasData.features || [];
+  if (features.length === 0) {
+    return 0;
+  }
+  
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+    const store = tx.objectStore(STORES.GEOMETRIAS);
+    
+    let savedCount = 0;
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      const codigoPredial = feature.properties?.codigo_predial || feature.properties?.CODIGO || `unknown_${i}`;
+      const record = {
+        id: `${municipioKey}_${codigoPredial}`, // ID sin timestamp para evitar duplicados
+        proyecto_id: municipioKey,
+        municipio: municipio,
+        codigo_predial: codigoPredial,
+        type: feature.type,
+        geometry: feature.geometry,
+        properties: feature.properties,
+        saved_offline_at: new Date().toISOString()
+      };
+      
+      try {
+        store.put(record);
+        savedCount++;
+      } catch (e) {
+        console.warn(`[OfflineDB] Error guardando geometría ${i}:`, e);
+      }
+    }
+    
+    tx.oncomplete = () => {
+      console.log(`[OfflineDB] ${savedCount} geometrías de ${municipio} guardadas offline`);
+      resolve(savedCount);
+    };
+    tx.onerror = () => {
+      console.error('[OfflineDB] Error en transacción:', tx.error);
+      reject(tx.error);
+    };
   });
 }
 
