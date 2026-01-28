@@ -332,7 +332,7 @@ export function OfflineReadyBadge() {
           ) : isReallyReady ? (
             <>
               <CheckCircle className="w-3 h-3" />
-              <span>Offline ({((offlineData.prediosCount || 0) + (offlineData.proyectosCount || 0)).toLocaleString()})</span>
+              <span>Offline ({totalOffline.toLocaleString()})</span>
             </>
           ) : (
             <>
