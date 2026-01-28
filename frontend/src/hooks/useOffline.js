@@ -163,9 +163,12 @@ export function useOffline() {
       try {
         // Primero verificar si la DB existe usando databases() si está disponible
         let dbExists = false;
+        let dbVersion = 0;
         if (indexedDB.databases) {
           const dbs = await indexedDB.databases();
-          dbExists = dbs.some(db => db.name === 'asomunicipios_offline');
+          const foundDb = dbs.find(db => db.name === 'asomunicipios_offline');
+          dbExists = !!foundDb;
+          dbVersion = foundDb?.version || 0;
         } else {
           // Fallback: asumir que puede existir
           dbExists = true;
@@ -174,11 +177,17 @@ export function useOffline() {
         if (!dbExists) {
           console.log('[useOffline] Secondary DB does not exist yet');
         } else {
-          // Abrir la DB existente
+          // Abrir la DB existente con la versión correcta
           const secondaryDB = await new Promise((resolve, reject) => {
-            const request = indexedDB.open('asomunicipios_offline');
+            // Abrir con la versión existente para evitar conflictos
+            const request = dbVersion > 0 
+              ? indexedDB.open('asomunicipios_offline', dbVersion)
+              : indexedDB.open('asomunicipios_offline');
             request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            request.onerror = (event) => {
+              console.log('[useOffline] Error opening secondary DB:', event.target.error?.message);
+              resolve(null);
+            };
             request.onupgradeneeded = (event) => {
               // Si la DB no existía, se está creando - cancelar y no crear una DB vacía
               if (event.oldVersion === 0) {
@@ -186,7 +195,10 @@ export function useOffline() {
                 resolve(null);
               }
             };
-          }).catch(() => null);
+          }).catch((err) => {
+            console.log('[useOffline] Secondary DB error:', err?.message);
+            return null;
+          });
           
           if (!secondaryDB) {
             console.log('[useOffline] Secondary DB not initialized yet');
