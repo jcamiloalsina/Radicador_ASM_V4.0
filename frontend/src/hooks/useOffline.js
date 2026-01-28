@@ -86,6 +86,7 @@ export function useOffline() {
     prediosCount: 0,
     petitionsCount: 0,
     proyectosCount: 0,
+    geometriasCount: 0,
     lastSync: null,
     lastPetitionsSync: null
   });
@@ -110,6 +111,7 @@ export function useOffline() {
       let prediosCount = 0;
       let petitionsCount = 0;
       let proyectosCount = 0;
+      let geometriasCount = 0;
       let lastSync = null;
       let lastPetitionsSync = null;
       
