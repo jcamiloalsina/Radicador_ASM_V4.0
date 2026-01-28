@@ -64,61 +64,74 @@ async function deleteDatabase() {
   });
 }
 
-// Inicializar la base de datos
+// Inicializar la base de datos (singleton - solo se ejecuta una vez)
 export async function initOfflineDB() {
-  // Primero verificar si hay que limpiar datos antiguos
-  await checkAndCleanOldData();
+  // Si ya está inicializada, retornar inmediatamente
+  if (db && dbInitialized) {
+    return db;
+  }
   
-  return new Promise(async (resolve, reject) => {
-    if (db) {
-      resolve(db);
-      return;
-    }
-
+  // Si hay una inicialización en progreso, esperar a que termine
+  if (dbInitPromise) {
+    return dbInitPromise;
+  }
+  
+  // Crear promesa de inicialización
+  dbInitPromise = (async () => {
     try {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = async (event) => {
-        const error = event.target.error;
-        console.error('[OfflineDB] Error al abrir la base de datos:', error?.message);
-        
-        // Si es error de versión, eliminar y recrear
-        if (error?.name === 'VersionError' || error?.message?.includes('version')) {
-          console.log('[OfflineDB] Conflicto de versión detectado, recreando DB...');
-          await deleteDatabase();
-          localStorage.setItem('asomunicipios_app_version', APP_VERSION);
-          // Intentar de nuevo después de eliminar
-          const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
-          retryRequest.onsuccess = () => {
-            db = retryRequest.result;
-            resolve(db);
-          };
-          retryRequest.onerror = () => reject(retryRequest.error);
-          retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
-        } else {
-          reject(error);
-        }
-      };
-
-      request.onsuccess = () => {
-        db = request.result;
-        localStorage.setItem('asomunicipios_app_version', APP_VERSION);
-        console.log('[OfflineDB] Base de datos abierta correctamente v' + DB_VERSION);
-        resolve(db);
-      };
-
-      request.onupgradeneeded = (event) => {
-        createAllStores(event.target.result);
-      };
+      // Solo verificar versión una vez
+      if (!dbInitialized) {
+        await checkAndCleanOldData();
+      }
       
-      request.onblocked = () => {
-        console.log('[OfflineDB] Upgrade bloqueado, cerrando conexiones antiguas...');
-      };
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = async (event) => {
+          const error = event.target.error;
+          console.error('[OfflineDB] Error al abrir la base de datos:', error?.message);
+          
+          if (error?.name === 'VersionError' || error?.message?.includes('version')) {
+            console.log('[OfflineDB] Conflicto de versión detectado, recreando DB...');
+            await deleteDatabase();
+            localStorage.setItem('asomunicipios_app_version', APP_VERSION);
+            const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
+            retryRequest.onsuccess = () => {
+              db = retryRequest.result;
+              dbInitialized = true;
+              resolve(db);
+            };
+            retryRequest.onerror = () => reject(retryRequest.error);
+            retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
+          } else {
+            reject(error);
+          }
+        };
+
+        request.onsuccess = () => {
+          db = request.result;
+          dbInitialized = true;
+          localStorage.setItem('asomunicipios_app_version', APP_VERSION);
+          console.log('[OfflineDB] Base de datos abierta correctamente v' + DB_VERSION);
+          resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+          createAllStores(event.target.result);
+        };
+        
+        request.onblocked = () => {
+          console.log('[OfflineDB] Upgrade bloqueado, cerrando conexiones antiguas...');
+        };
+      });
     } catch (error) {
       console.error('[OfflineDB] Error crítico:', error);
-      reject(error);
+      dbInitPromise = null;
+      throw error;
     }
-  });
+  })();
+  
+  return dbInitPromise;
 }
 
 // Función auxiliar para crear todos los stores
