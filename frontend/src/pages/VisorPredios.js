@@ -659,7 +659,8 @@ export default function VisorPredios() {
       return;
     }
     try {
-      await fetchGeometriasFromServer();
+      // Pasar true para descargar TODAS las geometrías sin filtro de zona
+      await fetchGeometriasFromServer(true);
     } catch (error) {
       toast.error('Error al sincronizar geometrías');
     }
