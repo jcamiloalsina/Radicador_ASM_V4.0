@@ -338,25 +338,38 @@ export async function saveGeometriasMunicipioOffline(municipio, geometriasData) 
   const municipioKey = `visor_${municipio}`;
   
   // Primero, eliminar TODOS los registros del municipio en una transacción separada
+  // Usamos múltiples criterios para asegurar que se eliminen todos los registros antiguos
   await new Promise((resolve, reject) => {
     const deleteTx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
     const deleteStore = deleteTx.objectStore(STORES.GEOMETRIAS);
     
     // Abrir cursor para eliminar todos los registros del municipio
     const cursorRequest = deleteStore.openCursor();
+    let deletedCount = 0;
+    
     cursorRequest.onsuccess = (event) => {
       const cursor = event.target.result;
       if (cursor) {
-        // Verificar si el registro pertenece a este municipio
-        if (cursor.value.proyecto_id === municipioKey || cursor.value.municipio === municipio) {
+        const record = cursor.value;
+        const recordId = record.id || '';
+        
+        // Verificar si el registro pertenece a este municipio usando múltiples criterios
+        const belongsToMunicipio = 
+          recordId.startsWith(municipioKey) ||  // Nuevo formato: visor_Ábrego_...
+          recordId.startsWith(`visor_${municipio}_`) ||  // Cualquier variante
+          record.proyecto_id === municipioKey ||
+          record.municipio === municipio;
+        
+        if (belongsToMunicipio) {
           cursor.delete();
+          deletedCount++;
         }
         cursor.continue();
       }
     };
     
     deleteTx.oncomplete = () => {
-      console.log(`[OfflineDB] Geometrías antiguas de ${municipio} eliminadas`);
+      console.log(`[OfflineDB] ${deletedCount} geometrías antiguas de ${municipio} eliminadas`);
       resolve();
     };
     deleteTx.onerror = () => reject(deleteTx.error);
