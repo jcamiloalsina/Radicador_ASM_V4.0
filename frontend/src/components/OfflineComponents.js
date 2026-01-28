@@ -270,11 +270,19 @@ export function OfflineReadyBadge() {
   
   if (!isOnline) return null;
   
-  const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0;
+  const hasRealData = offlineData.prediosCount > 0 || offlineData.petitionsCount > 0 || offlineData.proyectosCount > 0;
   const isReallyReady = hasRealData;
   
   // Construir lista de módulos offline
   const offlineModules = [];
+  if (offlineData.proyectosCount > 0) {
+    offlineModules.push({
+      name: 'Proyectos de Actualización',
+      description: 'Proyectos descargados para consulta offline',
+      status: 'ready',
+      count: offlineData.proyectosCount
+    });
+  }
   if (offlineData.prediosCount > 0) {
     offlineModules.push({
       name: 'Gestión de Predios',
