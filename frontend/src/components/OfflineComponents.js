@@ -359,23 +359,40 @@ export function OfflineReadyBadge() {
               
               {/* Info */}
               <div className="text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded p-2">
-                <p className="font-medium text-blue-700 mb-1">💡 ¿Cómo funciona?</p>
-                <p>Al visitar cada módulo, los datos se guardan automáticamente para uso sin conexión.</p>
+                <p className="font-medium text-blue-700 mb-1">💡 Sincronización manual</p>
+                <p>Los datos se cargan desde cache. Use el botón "Sincronizar" en cada módulo para actualizar.</p>
               </div>
               
-              {/* Botón ver detalles */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full"
-                onClick={() => {
-                  setExpanded(false);
-                  setShowPanel(true);
-                }}
-              >
-                <Database className="w-4 h-4 mr-1" />
-                Ver todos los datos guardados
-              </Button>
+              {/* Botones de acción */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => {
+                    setExpanded(false);
+                    setShowPanel(true);
+                  }}
+                >
+                  <Database className="w-4 h-4 mr-1" />
+                  Ver detalles
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-red-600 hover:bg-red-50"
+                  onClick={async () => {
+                    if (window.confirm('¿Eliminar todos los datos guardados offline? Esto no afecta los datos del servidor.')) {
+                      await clearAllOfflineData();
+                      setExpanded(false);
+                      window.location.reload();
+                    }
+                  }}
+                  title="Limpiar datos offline"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
