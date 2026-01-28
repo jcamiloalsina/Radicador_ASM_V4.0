@@ -276,3 +276,4 @@ ortoimagenes/originales/orto_9ee7edef.tif
 # Environment files
 *.env
 *.env.*
+frontend/node_modules/.cache/default-development/17.pack

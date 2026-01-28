@@ -1,166 +1,190 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios, with a focus on the Conservación (Conservation) module. The main task is to implement a complete workflow for generating, verifying, and managing a Certificado Catastral Sencillo (Simple Cadastral Certificate).
+The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on two main modules: Conservación (property creation) and Actualización (property updates). The scope has expanded to include a detailed multi-page Formato de Visita, integration with a change proposal system, a coordinator approval workflow, specific certificate generation rules, a robust offline mode for fieldwork, and numerous UI/UX improvements and bug fixes.
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Crear Predio Workflow (New, High Priority):** Implement a full, multi-stage workflow for creating new properties.
-    *   **Roles:** The flow involves a  (creator),  (digitization), and a /authorized  (reviewer/approver).
-    *   **Statuses:** Predios move through states:  ->  ->  -> //.
-    *   **UI:** A new Predios en Proceso page should show tasks pending for each role.
-    *   **Data Linking:** The creation form must allow linking the new property to an existing  and one or more . The  input has a specific format: , where  is manually entered and the date is auto-fetched.
-    *   **Traceability:** A detailed history log must be kept for each action taken on the property.
-    *   **Integration:** Approved new properties must be integrated into the main list, sorted by CPN, and included in the R1/R2 Excel export.
-2.  **PDF Integrity Check:** Implement a system to prevent manual tampering of generated PDF certificates. The system should hash the PDF content upon creation and allow users to upload a PDF on the public verification page to confirm its integrity.
-3.  **Offline Functionality:** The application must notify the user when it's ready for offline use and allow them to synchronize key data, like Peticiones, for offline viewing.
-4.  **UI/UX Fixes:** Address various UI bugs and requests, including fixing non-functional dropdowns, correcting misaligned UI elements, and ensuring the director's signature is clearly visible on the PDF certificate.
+1.  **Robust Offline Mode:** Key modules like Gestión de Predios, Visor de Predios, and Proyectos de Actualización must be fully functional offline. This includes clear UI indicators for download status (progress bars, status panel) and seamless loading of cached data from IndexedDB.
+2.  **Coordinator's Approval UI:** Implement the interface for the Coordinador role to review, approve, or reject suggested changes () submitted through the visit form.
+3.  **Complete Visit Form:** Add the remaining sections (Linderos, Coordenadas) to the multi-page visit form.
+4.  **Production DNS Configuration:** The certificate verification URL has been configured in the backend, but the user needs to set up the corresponding DNS record on their server.
+5.  **Payment Verification Workflow:** Formalize the payment process for certificates.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application has a FastAPI backend and a React frontend. The Certificado Catastral Sencillo workflow, including PDF generation and email delivery, is complete and verified. A robust PDF integrity check system using SHA256 hashing has been implemented on the backend () and integrated into the public verification page. The application's UI has been updated with the new institutional color () and a revised PDF layout that includes the director's signature. The frontend now features an offline status indicator and allows users to sync petitions for offline access. The agent has just begun implementing the high-priority Crear Predio workflow by creating the necessary Pydantic models and API endpoints on the backend.
+The application is a full-stack solution with a FastAPI backend and a React frontend.
+-   The Crear Predio (property creation) workflow is functional and includes a feature to display the last registered manzana (block).
+-   The Formato de Visita is a 5-page modal that automatically detects changes to property data and saves them as .
+-   The certificate generation flow is correctly configured to be download-only, with the verification URL pointing to the user's production domain ().
+-   The Pendientes and Predios en Proceso sections have been merged into a single, tabbed Pendientes de Aprobación view.
+-   Numerous bugs have been fixed, including the logic for checking Base Gráfica, display of multiple owners in approval modals, user registration email delivery, and a signature saving error.
+-   A major overhaul of the offline mode has begun. New UI components for a status panel, progress bar, and indicators have been created () and partially integrated.
 
 **Last working item**:
--   **Last item agent was working:** The agent was implementing **Fase 1 (Backend)** of the new Crear Predio workflow. This involved adding new Pydantic models (, , ) and API endpoints (, , etc.) to  to manage the lifecycle of new properties.
+-   **Last item agent was working:** The agent was addressing a critical bug in the newly implemented offline mode. The user reported that after visiting a project in Proyectos de Actualización online, they could not access the list of projects again after going offline. The agent identified that the project list page was not correctly loading its data from IndexedDB.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. The new endpoints need to be tested with  to validate the creation and state transition logic before building the corresponding frontend components.
+-   **Which testing method agent to use?** Frontend testing agent to test the online/offline workflow: 1. Go online. 2. Navigate to Proyectos de Actualización. 3. Wait for data to be cached. 4. Go offline. 5. Navigate away and back to the page, verifying the project list loads correctly from the cache.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Duplicated Matrícula Label (P1)**
-    -   **Description:** The user reported seeing the Matrícula Inmobiliaria label twice in the property details side panel. The agent fixed this in , but the user reported the issue persisted. The agent confirmed the code is correct and suspects a browser cache issue on the user's end.
-    -   **Status:** USER VERIFICATION PENDING
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Frontend.
+-   **Issue 1: Offline mode for Proyectos de Actualización is broken (P0)**
+-   **Issue 2: Offline state is inconsistent across the app (P1)**
+-   **Issue 3: MongoDB database name is  (P2)**
+-   **Issue 4: Geographic Area () is not populated for existing properties (P2)**
 
--   **Issue 2: MongoDB database name is  (P2)**
-    -   **Description:** This is a low-priority carry-over issue. The database name specified in  should be updated from  to a production-relevant name like .
+**Issues Detail:**
+-   **Issue 1:**
+    -   **Attempted fixes:** The agent built the UI for the new offline experience and added caching logic to other modules, but the Proyectos de Actualización list page was missed.
+    -   **Next debug checklist:**
+        1.  Identify the component for the project list page (likely ).
+        2.  In its , add logic to load projects from IndexedDB via a  function when the app is offline.
+        3.  Create the  function in .
+        4.  Ensure that when a user visits the page online, the project list is saved to IndexedDB for later use.
+    -   **Why fix this issue and what will be achieved with the fix?** To fulfill the user's core requirement for a functional offline mode for field agents.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+
+-   **Issue 2:**
+    -   **Attempted fixes:** The agent identified that two separate IndexedDB databases were being used ( and ) with different store names, causing state inconsistency (e.g., the status badge showing 0 items after data was downloaded). A patch using custom events was attempted but was not a complete solution.
+    -   **Next debug checklist:**
+        1.  Unify all offline logic to use a single IndexedDB database name () and consistent store names.
+        2.  Refactor , , and  to work from this single source of truth.
+        3.  Remove the custom event patch in favor of a shared context or a more robust state management pattern for offline status.
+    -   **Why fix this issue and what will be achieved with the fix?** To ensure the offline status indicators are reliable and provide a clear, non-confusing user experience.
+    -   **Status:** IN PROGRESS
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue:** Issue 1
+
+-   **Issue 3:**
+    -   **Attempted fixes:** None.
+    -   **Next debug checklist:** Edit  and change  to .
+    -   **Why fix this issue and what will be achieved with the fix?** To align the development environment with production best practices.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Backend.
+    -   **Should Test frontend/backend/both after fix?** Backend
+
+-   **Issue 4:**
+    -   **Attempted fixes:** None. This is a data population issue.
+    -   **Next debug checklist:** No action required from the agent until the user provides updated data.
+    -   **Why fix this issue and what will be achieved with the fix?** It would enable the UI feature that displays the geographic area.
+    -   **Status:** BLOCKED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** N/A
 
 **In progress Task List**:
--   **Task 1: Implement Crear Predio Workflow (P0)**
-    -   **Description:** A large, multi-phase feature to create a structured workflow for adding new properties to the system.
-    -   **Where to resume:** Continue with **Fase 2: Frontend - Update 'Crear Predio' Form**. The backend models and endpoints from Fase 1 are in place. The next step is to modify the form in  to include the new fields:
-        1.  A dropdown to select a Gestor de Apoyo.
-        2.  A composite input for Radicado ().
-        3.  A multi-select component to link related Peticiones.
-    -   **What will be achieved with this?** This will provide the user interface for the primary action of the new workflow.
+-   **Task 1: Complete Offline Mode Implementation (P0)**
+    -   **Where to resume:** Start by fixing **Issue 1** (offline projects list). Then, address **Issue 2** by unifying the IndexedDB implementations so the UI indicators (status panel, badge counter) are accurate.
+    -   **What will be achieved with this?** A robust, user-friendly, and reliable offline experience for all key modules, as requested by the user.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 
 **Upcoming Tasks:**
-*   **P0: Crear Predio Workflow - Fase 3:** Build the new Predios en Proceso page to display properties pending action for different user roles.
-*   **P0: Crear Predio Workflow - Fase 4:** Implement the frontend logic for workflow actions (e.g., Enviar a Revisión, Aprobar, Devolver) and display the traceability log.
-*   **P0: Crear Predio Workflow - Fase 5:** Ensure approved properties are correctly integrated into the main database and included in the R1/R2 Excel download.
-*   **P1: Implement Payment Verification Workflow**: Formalize the payment verification process for certificates.
-*   **P1: Configure Production DNS for Verification URL**: Move the hardcoded QR code verification URL to an environment variable in .
-*   **P1: Implement Certificado Catastral Especial**: Begin work on the more detailed Especial certificate.
+*   **P0: Coordinator's Approval UI for Changes:** Implement the UI for the Coordinador role to review and approve/reject . This is the top priority after the offline mode is fully functional.
+*   **P1: Add Final Sections to Visit Form:** Add Linderos and Coordenadas to the visit form modal ().
+*   **P1: Implement Payment Verification Workflow:** Formalize the payment process for certificates beyond a simple checkbox.
 
 **Future Tasks:**
-*   **P2: PDF Report Generation (Actualización):** Implement logic to generate a PDF report for a *visit* in the Actualización module.
+*   **P2: Implement Certificado Catastral Especial**: Begin work on the more detailed Especial certificate type.
+*   **P2: PDF Report Generation (Actualización):** Generate a downloadable PDF of the complete visit form after coordinator approval.
 *   **P2: General Backlog:**
     *   Generate XTF files.
     *   Implement a history log for permission changes.
 
 **Completed work in this session**
--   **Feature: PDF Integrity Verification:** Implemented a backend system to hash PDF content and critical data to detect tampering. The public verification page now allows users to upload a PDF to check its integrity.
--   **Feature: Offline Mode & Petition Sync:** Implemented a UI badge to notify users of offline readiness and added functionality for users to synchronize petitions to their local device for offline viewing.
--   **UI/UX Bug Fix: Replaced Dropdowns with Radio Buttons:** Fixed unreliable dropdowns in the Crear Predio form by replacing them with  components for Tipo de Documento, Estado Civil, and Destino Económico in .
--   **UI/UX Enhancement: Revised PDF Certificate Layout:** Completed multiple iterations on the PDF design, including updating the institutional color, rearranging fields, adding vertical spacing, and successfully processing and embedding the director's signature with a visible white background.
--   **Core Workflow Verification: Certificate Finalization (P0 from Handoff):** Successfully tested and confirmed the fix for the entire certificate finalization workflow, resolving the primary blocker from the previous session.
+-   **Feature: Display Last Manzana:** Implemented and tested the backend endpoint and frontend display in the Crear Predio form.
+-   **Feature: Production Certificate URL:** Configured the  in  and documented the required DNS changes.
+-   **Feature: Show Password in Login:** Added a toggle button to the password field on the login page.
+-   **Feature: Add Check Spam Alert:** Added an alert to the user registration and login verification screens.
+-   **Refactor: Consolidate Approval Queues:** Merged Predios en Proceso into the Pendientes view with a tabbed interface.
+-   **Bug Fix: Incorrect Base Gráfica Availability:** Corrected backend logic to ensure the Base Gráfica indicator is accurate.
+-   **Bug Fix: Multiple Owners Not Showing:** Fixed the approval modal to correctly display all property owners.
+-   **Bug Fix: User Registration Email Not Sending:** Fixed a function call typo ( -> ) in the backend.
+-   **Bug Fix: Signature Saving Error:** Resolved a JavaScript name conflict between a Lucide icon and the native  constructor in .
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: MongoDB database name.** The database is still named . This should be updated in .
+-   **Issue 1:**  name in  is still not updated.
+-   **Issue 2:**  data is null for existing properties (data issue, not code).
 
 **Known issue recurrence from previous fork**
--   None.
+-   The task to rename the MongoDB database from  has been pending across multiple sessions.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **PDF Integrity Hashing:** Using  on the backend to compute SHA256 hashes of PDF file content and a separate hash of critical data fields to detect any form of tampering.
--   **Progressive Web App (PWA) / Offline-First:** Using a Service Worker to cache assets and  to store application data (petitions) for offline access, along with UI indicators to provide feedback to the user about the offline status.
--   **Backend Image Processing (Pillow):** Programmatically manipulating uploaded images (JPG, PNG with transparency) to create a version with a solid white background suitable for embedding into PDFs.
--   **Stateful Workflow Design:** Designing a multi-step, role-based workflow with distinct states () and driving it via a new set of RESTful API endpoints.
+-   **Offline-First Strategy:** Using IndexedDB, Service Workers, and custom React hooks (, ) to enable offline functionality. The current implementation is fragmented and needs unification.
+-   **UI State Management for Offline:** The app now has UI components (badges, progress bars, status panels) that change based on connection status and the presence of cached data.
+-   **Component Merging/Refactoring:** The  page was successfully merged into the  page using a tabbed interface.
+-   **Name Collision Debugging:** Fixed a bug caused by a name conflict between an imported component () and a native browser constructor ().
 
 **key DB schema**
--   ** (New Fields):**
-    -   : Boolean
-    -   : String (Enum: , , , , , )
-    -   , : String (User IDs)
-    -   : String
-    -   : Array of Strings
-    -   : Array of Objects 
--   ** (Modified):**
-    -   : String (SHA256 of the PDF file bytes)
-    -   : String (SHA256 of the critical data JSON)
-    -   : Object (Snapshot of key property data)
+-   ** (MongoDB):** Central collection storing property data, versioned by a  (year) field.
+-   ** (IndexedDB):** The target database for offline data.
+    -   **Stores:** , , , .
+    -   **Note:** A legacy, conflicting database named  may still exist and needs to be reconciled.
 
 **All files of reference**
--   
--   
--   
--   
--   
+-    (The new consolidated approval center)
+-    (The new UI for offline mode)
+-    (Core offline state management hook)
+-    (Hook for data sync logic)
+-    (IndexedDB helper functions)
+-    (Target for offline improvements)
+-    (Location of several business logic fixes)
 -   
 
 **Areas that need refactoring**:
--    has become extremely large. The logic for PDF generation, PDF verification, and the new Predio Nuevo workflow should be extracted into separate modules/files to improve maintainability.
--    is also overly complex, handling list views, filters, and multiple form dialogs. The Crear/Editar Predio form logic should be encapsulated in its own component.
+-   **Consolidate Offline Logic:** The highest priority for refactoring. The fragmented implementation across , , and  using different database/store names must be unified into a single, cohesive system to fix state inconsistencies.
+-    remains over 4,500 lines long and is a candidate for being broken down into smaller child components to improve maintainability.
 
 **key api endpoints**
--   ** (New):** Creates a new property and initiates the workflow.
--   ** (New):** Assigns a property in the workflow to a support user.
--   ** (New):** Advances or reverts the state of a property in the workflow.
--   ** (New):** Retrieves a list of properties pending action for the current user.
--   ** (New):** Accepts a PDF file upload to verify its hash against the database record.
--   ** (Modified):** The HTML response now includes the original data from the database and a form to upload a PDF for an integrity check.
+-   : (New) Returns the last block number.
+-   : (Fixed) Corrected the email sending logic.
+-   : (Fixed) Improved accuracy of the  flag.
+-   : (To be modified) Needs to be adapted to load from cache when offline.
 
 **Critical Info for New Agent**
--   Your highest priority is to continue the implementation of the **Crear Predio workflow**. You will start with **Fase 2: Frontend Form**.
--   The user is very detail-oriented and frequently provides visual feedback. Pay close attention to their UI/UX requests.
--   The  input requires special handling: the date part must be auto-fetched from the backend based on the number the user types. This requires implementing a new, small backend lookup endpoint.
--   When fixing UI bugs reported by the user, be aware of potential browser caching. If you are sure your code is correct, advise the user to perform a hard refresh () before assuming the fix failed.
+-   **Your immediate priority is to fix and complete the offline mode.** Start with **Issue 1** (making the Proyectos de Actualización list work offline), then immediately address **Issue 2** (unifying the fragmented IndexedDB implementation) to make the offline status indicators reliable.
+-   After stabilizing the offline mode, the user's next top priority is building the **Coordinator's Approval UI** for change proposals.
+-   Be mindful that property data in MongoDB is versioned by  (year). Queries must account for this to fetch the correct information.
+-   The user is technical and provides clear feedback. Always propose your changes before applying them using the  tool.
 
 **documents and test reports created in this job**
--   None.
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Pending):** Acknowledged the agent's plan for the Crear Predio workflow and provided a specific requirement for the Radicado field format.
-2.  **User (Info):** Confirmed the agent's detailed plan for the Crear Predio workflow, answering clarifying questions about roles and process.
-3.  **User (Request):** Requested a complex, multi-stage workflow for creating new properties.
-4.  **User (Bug):** The select/dropdown inputs in the Crear Predio form are not working.
-5.  **User (Bug):** The Matrícula Inmobiliaria field is still appearing twice in the property details view.
-6.  **User (Request):** In Gestión de predios, a duplicated matrícula label should be corrected to código homologado.
-7.  **User (Request):** Requested synchronization of petitions for offline consultation.
-8.  **User (Request):** Requested a notification to confirm that the app is ready for offline mode.
-9.  **User (Request):** Asked for a way to automatically invalidate a PDF certificate if it is manually edited.
-10. **User (Bug/Feedback):** Pointed out multiple issues with the newly added signature on the PDF: the signature was invisible/black, the text was misaligned, and spacing was incorrect.
+1.  **User (Bug):** The signature saving feature is broken, showing a  error. Status: **Completed**.
+2.  **User (Bug):** When I load an update project online, go offline, and try to return, the project list is empty. Why? Status: **In Progress**.
+3.  **User (Approval):** Apply all suggested offline mode improvements. Status: **In Progress**.
+4.  **User (Feedback):** The current offline mode is confusing. Propose improvements like progress bars and better status indicators. Status: **Completed**.
+5.  **User (Typo):** Ignore the formulario de creación comment. Status: **Completed**.
+6.  **User (Bug/Question):** The offline mode is broken. Why does it say it's ready but fails when I disconnect? Status: **In Progress**.
+7.  **User (Feedback):** The registration fix works. You should add an alert to check the spam folder. Status: **Completed**.
+8.  **User (Confirmation):** The registration email has arrived. Status: **Completed**.
+9.  **User (Bug):** The registration email isn't arriving. Can you test? Status: **Completed**.
+10. **User (Bug):** The owner's name isn't updating. (This was a user misunderstanding, but led to a verification task). Status: **Completed**.
 
 **Project Health Check:**
--   **Broken:** None. The core application is stable. The Crear Predio feature is under construction.
+-   **Broken:**
+    -   The core offline functionality is incomplete and inconsistent. The Proyectos de Actualización module does not work offline.
+    -   The offline status indicators (e.g., cached item count) do not update reliably due to a fragmented implementation.
 -   **Mocked:**
-    -   The QR code's verification URL still points to a preview environment.
-    -   The payment verification for certificates remains a simple, non-enforced checkbox.
+    -   The payment verification process for certificates is still a simple, non-enforced checkbox.
 
 **3rd Party Integrations**
--   **reportlab:** Backend PDF generation.
--   **qrcode:** Backend QR code generation.
--   **pyogrio, shapely, pyproj, geopandas:** Backend GDB/GIS data processing.
--   **react-leaflet:** Frontend map rendering.
--   **Pillow:** (New) Used on the backend for image processing of the signature.
--   **python-docx:** (New) Used on the backend to extract the signature image from a  file.
+-   No new integrations. A bug involving  was fixed.
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES, for the last manzana feature.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** None
+-   **Known regressions:** The new offline implementation, while visually improved, is not fully functional and has introduced state inconsistencies.
 
 **Credentials to test flow:**
 -   **Administrator:**
@@ -171,4 +195,5 @@ The application has a FastAPI backend and a React frontend. The Certificado Cata
     -   **Password:** 
 
 **What agent forgot to execute**
--   The agent has consistently deferred the low-priority task of renaming the MongoDB database from .</analysis>
+-   The agent did not fully resolve the fragmented offline architecture. While identifying the problem of two separate IndexedDB instances, the implemented fix (custom events) was a patch, not a full unification. The underlying issue of multiple, uncommunicative offline systems remains.
+-   The recurring low-priority task of renaming the MongoDB database from  in  remains pending.</analysis>
