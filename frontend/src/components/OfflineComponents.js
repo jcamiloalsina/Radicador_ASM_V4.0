@@ -360,7 +360,7 @@ export function OfflineReadyBadge() {
               {/* Info */}
               <div className="text-xs text-slate-500 bg-blue-50 border border-blue-100 rounded p-2">
                 <p className="font-medium text-blue-700 mb-1">💡 Sincronización manual</p>
-                <p>Los datos se cargan desde cache. Use el botón "Sincronizar" en cada módulo para actualizar.</p>
+                <p>Los datos se cargan desde cache. Use el botón Sincronizar en cada módulo para actualizar.</p>
               </div>
               
               {/* Botones de acción */}
