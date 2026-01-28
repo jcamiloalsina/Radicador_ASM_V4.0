@@ -208,42 +208,45 @@ export function useOffline() {
         }).catch(() => null);
         
         if (!secondaryDB) {
-          console.log('[useOffline] Secondary DB not available or needs upgrade');
+          console.log('[useOffline] Secondary DB not available');
         } else {
-          try {
-            const tx = secondaryDB.transaction('predios_offline', 'readonly');
-            const store = tx.objectStore('predios_offline');
-            const secondaryCount = await new Promise((resolve) => {
-              const request = store.count();
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => resolve(0);
-            });
-            prediosCount += secondaryCount;
-            
-            if (secondaryCount > 0 && !lastSync) {
-              lastSync = new Date().toISOString();
+          // Contar predios - verificar que el store existe
+          if (secondaryDB.objectStoreNames.contains('predios_offline')) {
+            try {
+              const tx = secondaryDB.transaction('predios_offline', 'readonly');
+              const store = tx.objectStore('predios_offline');
+              const secondaryCount = await new Promise((resolve) => {
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(0);
+              });
+              prediosCount += secondaryCount;
+              
+              if (secondaryCount > 0 && !lastSync) {
+                lastSync = new Date().toISOString();
+              }
+            } catch (txError) {
+              console.log('Error reading predios_offline:', txError.message);
             }
-          } catch (txError) {
-            console.log('Error reading predios_offline:', txError.message);
           }
-        }
-        
-        // Contar proyectos - verificar que el store existe
-        if (secondaryDB && secondaryDB.objectStoreNames.contains('proyectos_offline')) {
-          try {
-            const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
-            const storeProyectos = txProyectos.objectStore('proyectos_offline');
-            proyectosCount = await new Promise((resolve) => {
-              const request = storeProyectos.count();
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => resolve(0);
-            });
-          } catch (txError) {
-            console.log('Error reading proyectos_offline:', txError.message);
+          
+          // Contar proyectos - verificar que el store existe
+          if (secondaryDB.objectStoreNames.contains('proyectos_offline')) {
+            try {
+              const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
+              const storeProyectos = txProyectos.objectStore('proyectos_offline');
+              proyectosCount = await new Promise((resolve) => {
+                const request = storeProyectos.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(0);
+              });
+            } catch (txError) {
+              console.log('Error reading proyectos_offline:', txError.message);
+            }
           }
+          
+          secondaryDB.close();
         }
-        
-        if (secondaryDB) secondaryDB.close();
       } catch (e) {
         // Ignorar error si la DB no existe
         console.log('Secondary offline DB not available:', e.message);
