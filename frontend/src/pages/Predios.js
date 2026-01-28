@@ -1777,14 +1777,12 @@ export default function Predios() {
 
   const fetchPredios = async () => {
     try {
-      setLoading(true);
-      
-      // Si está offline, cargar desde IndexedDB
-      if (!navigator.onLine) {
-        const offlinePredios = await getPrediosOffline(filterMunicipio);
-        if (offlinePredios.length > 0) {
-          // Filtrar por vigencia y búsqueda si aplica
-          let filtered = offlinePredios;
+      // OPTIMIZACIÓN: Si hay municipio filtrado, primero mostrar datos del cache
+      if (filterMunicipio) {
+        const cachedPredios = await getPrediosOffline(filterMunicipio);
+        if (cachedPredios && cachedPredios.length > 0) {
+          // Aplicar filtros localmente
+          let filtered = cachedPredios;
           if (filterVigencia) {
             filtered = filtered.filter(p => String(p.vigencia) === String(filterVigencia));
           }
@@ -1796,16 +1794,38 @@ export default function Predios() {
               p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower))
             );
           }
+          if (filterGeometria === 'con') {
+            filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
+          } else if (filterGeometria === 'sin') {
+            filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
+          }
+          
+          // Mostrar datos del cache inmediatamente
           setPredios(filtered);
           setTotal(filtered.length);
-          toast.info(`Modo offline: ${filtered.length} predios cargados`, { duration: 3000 });
-          return;
-        } else {
-          toast.warning('No hay datos offline disponibles para este municipio');
-          setPredios([]);
-          setTotal(0);
+          setLoading(false);
+          
+          // Si está offline, terminar aquí
+          if (!navigator.onLine) {
+            toast.info(`Modo offline: ${filtered.length} predios desde cache`, { duration: 2000 });
+            return;
+          }
+          
+          // Si está online, actualizar en segundo plano sin bloquear
+          updateInBackground(filterMunicipio);
           return;
         }
+      }
+      
+      // Si no hay cache o no hay filtro de municipio, cargar normalmente
+      setLoading(true);
+      
+      // Si está offline y no hay cache, mostrar mensaje
+      if (!navigator.onLine) {
+        toast.warning('No hay datos offline disponibles para este municipio');
+        setPredios([]);
+        setTotal(0);
+        return;
       }
       
       const token = localStorage.getItem('token');
