@@ -471,6 +471,10 @@ export default {
   eliminarCambioSincronizado,
   saveConfig,
   getConfig,
+  saveProyectosOffline,
+  getProyectosOffline,
+  getProyectoOffline,
+  countProyectosOffline,
   clearProyectoOffline,
   getOfflineStats,
   hasOfflineData
