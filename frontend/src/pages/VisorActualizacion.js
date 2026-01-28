@@ -2474,7 +2474,7 @@ export default function VisorActualizacion() {
                 {uploadingOrtofoto ? (
                   <RefreshCw className="w-3 h-3 animate-spin mr-1" />
                 ) : (
-                  <Image className="w-3 h-3 mr-1" />
+                  <ImageIcon className="w-3 h-3 mr-1" />
                 )}
                 {uploadingOrtofoto ? 'Subiendo...' : 'Subir Ortofoto'}
               </Button>
