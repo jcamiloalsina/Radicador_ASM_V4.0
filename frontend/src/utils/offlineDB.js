@@ -14,6 +14,8 @@ const STORES = {
 };
 
 let db = null;
+let dbInitialized = false;
+let dbInitPromise = null;
 
 // Verificar si es una nueva versión de la app y limpiar datos si es necesario
 async function checkAndCleanOldData() {
@@ -21,7 +23,6 @@ async function checkAndCleanOldData() {
     const storedVersion = localStorage.getItem('asomunicipios_app_version');
     if (storedVersion !== APP_VERSION) {
       console.log(`[OfflineDB] Nueva versión detectada (${storedVersion} -> ${APP_VERSION}). Limpiando datos antiguos...`);
-      // Eliminar la base de datos completa
       await new Promise((resolve) => {
         const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
         deleteRequest.onsuccess = () => resolve(true);
