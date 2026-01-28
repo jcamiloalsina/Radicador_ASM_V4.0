@@ -565,77 +565,76 @@ export async function clearProyectoOffline(proyectoId) {
   console.log(`[OfflineDB] Datos offline del proyecto ${proyectoId} eliminados`);
 }
 
-// Obtener estadísticas de datos offline
+// Obtener estadísticas de datos offline (optimizado)
 export async function getOfflineStats() {
-  const database = await initOfflineDB();
-  
-  let prediosCount = 0;
-  let geomCount = 0;
-  let cambiosPendientes = 0;
-  let proyectosCount = 0;
+  try {
+    const database = await initOfflineDB();
+    
+    let prediosCount = 0;
+    let geomCount = 0;
+    let cambiosPendientes = 0;
+    let proyectosCount = 0;
 
-  // Predios
-  if (database.objectStoreNames.contains(STORES.PREDIOS)) {
-    try {
-      const txPredios = database.transaction(STORES.PREDIOS, 'readonly');
+    // Usar una sola transacción para todos los stores que existen
+    const storeNames = [];
+    if (database.objectStoreNames.contains(STORES.PREDIOS)) storeNames.push(STORES.PREDIOS);
+    if (database.objectStoreNames.contains(STORES.GEOMETRIAS)) storeNames.push(STORES.GEOMETRIAS);
+    if (database.objectStoreNames.contains(STORES.CAMBIOS_PENDIENTES)) storeNames.push(STORES.CAMBIOS_PENDIENTES);
+    if (database.objectStoreNames.contains(STORES.PROYECTOS)) storeNames.push(STORES.PROYECTOS);
+    
+    if (storeNames.length === 0) {
+      return { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
+    }
+    
+    const tx = database.transaction(storeNames, 'readonly');
+    
+    // Contar predios
+    if (storeNames.includes(STORES.PREDIOS)) {
       prediosCount = await new Promise((resolve) => {
-        const request = txPredios.objectStore(STORES.PREDIOS).count();
+        const request = tx.objectStore(STORES.PREDIOS).count();
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(0);
       });
-    } catch (e) {
-      console.log('[OfflineDB] Error contando predios:', e.message);
     }
-  }
-
-  // Geometrías
-  if (database.objectStoreNames.contains(STORES.GEOMETRIAS)) {
-    try {
-      const txGeom = database.transaction(STORES.GEOMETRIAS, 'readonly');
+    
+    // Contar geometrías
+    if (storeNames.includes(STORES.GEOMETRIAS)) {
       geomCount = await new Promise((resolve) => {
-        const request = txGeom.objectStore(STORES.GEOMETRIAS).count();
+        const request = tx.objectStore(STORES.GEOMETRIAS).count();
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(0);
       });
-    } catch (e) {
-      console.log('[OfflineDB] Error contando geometrías:', e.message);
     }
-  }
-
-  // Cambios pendientes
-  if (database.objectStoreNames.contains(STORES.CAMBIOS_PENDIENTES)) {
-    try {
-      const txCambios = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readonly');
-      cambiosPendientes = await new Promise((resolve) => {
-        const request = txCambios.objectStore(STORES.CAMBIOS_PENDIENTES).getAll();
-        request.onsuccess = () => resolve(request.result.filter(c => !c.sincronizado).length);
-        request.onerror = () => resolve(0);
+    
+    // Contar cambios pendientes
+    if (storeNames.includes(STORES.CAMBIOS_PENDIENTES)) {
+      const allCambios = await new Promise((resolve) => {
+        const request = tx.objectStore(STORES.CAMBIOS_PENDIENTES).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => resolve([]);
       });
-    } catch (e) {
-      console.log('[OfflineDB] Error contando cambios:', e.message);
+      cambiosPendientes = allCambios.filter(c => !c.sincronizado).length;
     }
-  }
-
-  // Proyectos
-  if (database.objectStoreNames.contains(STORES.PROYECTOS)) {
-    try {
-      const txProyectos = database.transaction(STORES.PROYECTOS, 'readonly');
+    
+    // Contar proyectos
+    if (storeNames.includes(STORES.PROYECTOS)) {
       proyectosCount = await new Promise((resolve) => {
-        const request = txProyectos.objectStore(STORES.PROYECTOS).count();
+        const request = tx.objectStore(STORES.PROYECTOS).count();
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => resolve(0);
       });
-    } catch (e) {
-      console.log('[OfflineDB] Error contando proyectos:', e.message);
     }
-  }
 
-  return {
-    predios: prediosCount,
-    geometrias: geomCount,
-    cambiosPendientes: cambiosPendientes,
-    proyectos: proyectosCount
-  };
+    return {
+      predios: prediosCount,
+      geometrias: geomCount,
+      cambiosPendientes: cambiosPendientes,
+      proyectos: proyectosCount
+    };
+  } catch (error) {
+    console.log('[OfflineDB] Error obteniendo stats:', error.message);
+    return { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
+  }
 }
 
 // Verificar si hay datos offline disponibles para un proyecto
