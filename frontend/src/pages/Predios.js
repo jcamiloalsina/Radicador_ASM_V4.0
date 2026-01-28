@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import PredioMap from '../components/PredioMap';
 import useOfflineSync from '../hooks/useOfflineSync';
 import { DownloadProgressBar } from '../components/OfflineComponents';
+import { clearAllOfflineData } from '../utils/offlineDB';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
