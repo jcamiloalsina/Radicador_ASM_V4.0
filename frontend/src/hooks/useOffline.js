@@ -241,6 +241,21 @@ export function useOffline() {
               }
             }
             
+            // Contar geometrías offline
+            if (secondaryDB.objectStoreNames.contains('geometrias_offline')) {
+              try {
+                const txGeometrias = secondaryDB.transaction('geometrias_offline', 'readonly');
+                const storeGeometrias = txGeometrias.objectStore('geometrias_offline');
+                geometriasCount = await new Promise((resolve) => {
+                  const request = storeGeometrias.count();
+                  request.onsuccess = () => resolve(request.result);
+                  request.onerror = () => resolve(0);
+                });
+              } catch (txError) {
+                console.log('Error reading geometrias_offline:', txError.message);
+              }
+            }
+            
             secondaryDB.close();
           }
         }
@@ -249,7 +264,7 @@ export function useOffline() {
         console.log('Secondary offline DB error:', e.message);
       }
       
-      setOfflineData({ prediosCount, petitionsCount, proyectosCount, lastSync, lastPetitionsSync });
+      setOfflineData({ prediosCount, petitionsCount, proyectosCount, geometriasCount, lastSync, lastPetitionsSync });
     } catch (error) {
       console.error('Error loading offline stats:', error);
     }
