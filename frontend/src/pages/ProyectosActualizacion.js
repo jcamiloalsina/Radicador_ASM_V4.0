@@ -666,17 +666,29 @@ export default function ProyectosActualizacion() {
           </p>
         </div>
         {canCreate && isOnline && (
-          <Button 
-            onClick={() => {
-              fetchMunicipiosDisponibles();
-              setShowCrearModal(true);
-            }}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-            data-testid="crear-proyecto-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Proyecto
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={forceRefreshProyectos}
+              disabled={syncing}
+              className="border-blue-500 text-blue-700"
+              data-testid="sync-proyectos-btn"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              Sincronizar
+            </Button>
+            <Button 
+              onClick={() => {
+                fetchMunicipiosDisponibles();
+                setShowCrearModal(true);
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              data-testid="crear-proyecto-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Proyecto
+            </Button>
+          </div>
         )}
       </div>
 
