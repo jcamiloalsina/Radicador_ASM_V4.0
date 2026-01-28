@@ -241,15 +241,30 @@ export function useOffline() {
               }
             }
             
-            // Contar geometrías offline
+            // Contar geometrías offline (solo las del Visor de Predios, no las de proyectos)
             if (secondaryDB.objectStoreNames.contains('geometrias_offline')) {
               try {
                 const txGeometrias = secondaryDB.transaction('geometrias_offline', 'readonly');
                 const storeGeometrias = txGeometrias.objectStore('geometrias_offline');
                 geometriasCount = await new Promise((resolve) => {
-                  const request = storeGeometrias.count();
-                  request.onsuccess = () => resolve(request.result);
-                  request.onerror = () => resolve(0);
+                  let count = 0;
+                  const cursorRequest = storeGeometrias.openCursor();
+                  
+                  cursorRequest.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                      // Solo contar geometrías del Visor (las que empiezan con "visor_")
+                      const recordId = cursor.value.id || '';
+                      const proyectoId = cursor.value.proyecto_id || '';
+                      if (recordId.startsWith('visor_') || proyectoId.startsWith('visor_')) {
+                        count++;
+                      }
+                      cursor.continue();
+                    } else {
+                      resolve(count);
+                    }
+                  };
+                  cursorRequest.onerror = () => resolve(0);
                 });
               } catch (txError) {
                 console.log('Error reading geometrias_offline:', txError.message);
