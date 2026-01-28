@@ -1315,7 +1315,7 @@ export default function Predios() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [filterMunicipio, setFilterMunicipio] = useState('');
-  const [filterVigencia, setFilterVigencia] = useState('');
+  const [filterVigencia, setFilterVigencia] = useState(String(new Date().getFullYear()));
   const [filterGeometria, setFilterGeometria] = useState(''); // '', 'con', 'sin'
   const [vigenciasData, setVigenciasData] = useState({});
   const [showDashboard, setShowDashboard] = useState(true);
