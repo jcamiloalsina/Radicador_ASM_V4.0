@@ -2499,7 +2499,8 @@ export default function Predios() {
         toast.success('Predio eliminado exitosamente');
       }
       
-      fetchPredios();
+      // Forzar recarga desde servidor para ver cambios inmediatamente
+      await forceRefreshPredios();
       fetchCambiosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al eliminar predio');
