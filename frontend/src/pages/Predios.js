@@ -3054,142 +3054,145 @@ export default function Predios() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700"></div>
             </div>
           ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Código Nacional</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Matrícula</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario(s)</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Dirección</th>
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Destino</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Avalúo</th>
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predios.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="py-8 text-center text-slate-500">
-                      No hay predios registrados para este municipio y vigencia
-                    </td>
-                  </tr>
-                ) : (
-                  // Paginación: mostrar solo los predios de la página actual
-                  (() => {
-                    const startIndex = (currentPage - 1) * pageSize;
-                    const endIndex = startIndex + pageSize;
-                    const paginatedPredios = predios.slice(startIndex, endIndex);
-                    
-                    return paginatedPredios.map((predio) => (
-                    <tr key={predio.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
-                          <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {predio.r2_registros?.[0]?.matricula_inmobiliaria ? (
-                          <span className="font-medium text-slate-800">{predio.r2_registros[0].matricula_inmobiliaria}</span>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario}
-                          </p>
-                          {(predio.propietarios?.length > 1) && (
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              <Users className="w-3 h-3 mr-1" />
-                              +{predio.propietarios.length - 1} más
-                            </Badge>
-                          )}
-                          <p className="text-xs text-slate-500">
-                            {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {predio.propietarios?.[0]?.numero_documento || predio.numero_documento}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-slate-700 max-w-[200px] truncate">{predio.direccion}</td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge className="bg-emerald-100 text-emerald-800">
-                          {predio.destino_economico}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-900">
-                        {formatCurrency(predio.avaluo)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {canModifyPredios && (
-                            <>
-                              <Button variant="ghost" size="sm" onClick={() => openEditDialog(predio)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(predio)} className="text-red-600 hover:text-red-700">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Código Nacional</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Matrícula</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario(s)</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Dirección</th>
+                      <th className="text-center py-3 px-4 font-semibold text-slate-700">Destino</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Avalúo</th>
+                      <th className="text-center py-3 px-4 font-semibold text-slate-700">Acciones</th>
                     </tr>
-                  ));
-                  })()
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Controles de Paginación */}
-          {predios.length > pageSize && (
-            <div className="flex items-center justify-between mt-4 px-4 py-3 bg-slate-50 rounded-lg">
-              <div className="text-sm text-slate-600">
-                Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, predios.length)} de {predios.length.toLocaleString()} predios
+                  </thead>
+                  <tbody>
+                    {predios.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="py-8 text-center text-slate-500">
+                          No hay predios registrados para este municipio y vigencia
+                        </td>
+                      </tr>
+                    ) : (
+                      // Paginación: mostrar solo los predios de la página actual
+                      (() => {
+                        const startIndex = (currentPage - 1) * pageSize;
+                        const endIndex = startIndex + pageSize;
+                        const paginatedPredios = predios.slice(startIndex, endIndex);
+                        
+                        return paginatedPredios.map((predio) => (
+                        <tr key={predio.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
+                              <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {predio.r2_registros?.[0]?.matricula_inmobiliaria ? (
+                              <span className="font-medium text-slate-800">{predio.r2_registros[0].matricula_inmobiliaria}</span>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium text-slate-900">
+                                {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario}
+                              </p>
+                              {(predio.propietarios?.length > 1) && (
+                                <Badge variant="secondary" className="text-xs mt-1">
+                                  <Users className="w-3 h-3 mr-1" />
+                                  +{predio.propietarios.length - 1} más
+                                </Badge>
+                              )}
+                              <p className="text-xs text-slate-500">
+                                {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {predio.propietarios?.[0]?.numero_documento || predio.numero_documento}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 max-w-[200px] truncate">{predio.direccion}</td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge className="bg-emerald-100 text-emerald-800">
+                              {predio.destino_economico}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right font-medium text-slate-900">
+                            {formatCurrency(predio.avaluo)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {canModifyPredios && (
+                                <>
+                                  <Button variant="ghost" size="sm" onClick={() => openEditDialog(predio)}>
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleDelete(predio)} className="text-red-600 hover:text-red-700">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                      })()
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                >
-                  Primera
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Anterior
-                </Button>
-                <span className="px-3 py-1 bg-white border rounded text-sm">
-                  Página {currentPage} de {Math.ceil(predios.length / pageSize)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(predios.length / pageSize), p + 1))}
-                  disabled={currentPage >= Math.ceil(predios.length / pageSize)}
-                >
-                  Siguiente
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.ceil(predios.length / pageSize))}
-                  disabled={currentPage >= Math.ceil(predios.length / pageSize)}
-                >
-                  Última
-                </Button>
-              </div>
-            </div>
+              
+              {/* Controles de Paginación */}
+              {predios.length > pageSize && (
+                <div className="flex items-center justify-between mt-4 px-4 py-3 bg-slate-50 rounded-lg">
+                  <div className="text-sm text-slate-600">
+                    Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, predios.length)} de {predios.length.toLocaleString()} predios
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      Primera
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="px-3 py-1 bg-white border rounded text-sm">
+                      Página {currentPage} de {Math.ceil(predios.length / pageSize)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(predios.length / pageSize), p + 1))}
+                      disabled={currentPage >= Math.ceil(predios.length / pageSize)}
+                    >
+                      Siguiente
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.ceil(predios.length / pageSize))}
+                      disabled={currentPage >= Math.ceil(predios.length / pageSize)}
+                    >
+                      Última
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
