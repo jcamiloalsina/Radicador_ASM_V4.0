@@ -354,15 +354,27 @@ export function OfflineReadyBadge() {
             
             <div className="space-y-3">
               {/* Datos guardados */}
-              <div className="bg-slate-50 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">Predios guardados:</span>
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Predios:</span>
                   <span className={`text-sm font-bold ${offlineData.prediosCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
                     {offlineData.prediosCount?.toLocaleString() || 0}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Geometrías:</span>
+                  <span className={`text-sm font-bold ${offlineData.geometriasCount > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
+                    {offlineData.geometriasCount?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Proyectos:</span>
+                  <span className={`text-sm font-bold ${offlineData.proyectosCount > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                    {offlineData.proyectosCount?.toLocaleString() || 0}
+                  </span>
+                </div>
                 {offlineData.lastSync && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 pt-1 border-t border-slate-200">
                     Última sync: {new Date(offlineData.lastSync).toLocaleString('es-CO')}
                   </p>
                 )}
