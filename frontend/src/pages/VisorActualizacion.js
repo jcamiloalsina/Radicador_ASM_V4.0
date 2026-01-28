@@ -2560,7 +2560,7 @@ export default function VisorActualizacion() {
                   </div>
                   {ortofotoUrl && (
                     <div className="flex items-center gap-1">
-                      <Image className="w-3 h-3 text-indigo-500" />
+                      <ImageIcon className="w-3 h-3 text-indigo-500" />
                       <span className="text-slate-600">Ortofoto</span>
                     </div>
                   )}
