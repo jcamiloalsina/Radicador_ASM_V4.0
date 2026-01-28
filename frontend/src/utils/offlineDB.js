@@ -1,6 +1,6 @@
 // Módulo de gestión de datos offline con IndexedDB
 const DB_NAME = 'asomunicipios_offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3; // Incrementado para agregar store de proyectos
 
 // Stores en IndexedDB
 const STORES = {
@@ -8,7 +8,8 @@ const STORES = {
   GEOMETRIAS: 'geometrias_offline', 
   CAMBIOS_PENDIENTES: 'cambios_pendientes',
   VISITAS_PENDIENTES: 'visitas_pendientes',
-  CONFIG: 'config_offline'
+  CONFIG: 'config_offline',
+  PROYECTOS: 'proyectos_offline'
 };
 
 let db = null;
