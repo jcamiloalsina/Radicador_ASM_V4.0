@@ -2,7 +2,7 @@
 The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on two main modules: Conservación (property creation) and Actualización (property updates). The scope has expanded to include a detailed multi-page Formato de Visita, integration with a change proposal system, a coordinator approval workflow, specific certificate generation rules, a robust offline mode for fieldwork, and numerous UI/UX improvements and bug fixes.
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Robust Offline Mode:** Key modules like Gestión de Predios, Visor de Predios, and Proyectos de Actualización must be fully functional offline. This includes clear UI indicators for download status (progress bars, status panel) and seamless loading of cached data from IndexedDB.
+1.  **Robust Offline Mode:** Key modules like Gestión de Predios, Visor de Predios, and Proyectos de Actualización must be fully functional offline. This includes clear UI indicators for download status (progress bars, status panel) and seamless loading of cached data from IndexedDB. The system must be performant and not slow down the user experience.
 2.  **Coordinator's Approval UI:** Implement the interface for the Coordinador role to review, approve, or reject suggested changes () submitted through the visit form.
 3.  **Complete Visit Form:** Add the remaining sections (Linderos, Coordenadas) to the multi-page visit form.
 4.  **Production DNS Configuration:** The certificate verification URL has been configured in the backend, but the user needs to set up the corresponding DNS record on their server.
@@ -11,51 +11,54 @@ The user's primary goal is to build a comprehensive cadastral management web app
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a full-stack solution with a FastAPI backend and a React frontend.
--   The Crear Predio (property creation) workflow is functional and includes a feature to display the last registered manzana (block).
--   The Formato de Visita is a 5-page modal that automatically detects changes to property data and saves them as .
--   The certificate generation flow is correctly configured to be download-only, with the verification URL pointing to the user's production domain ().
--   The Pendientes and Predios en Proceso sections have been merged into a single, tabbed Pendientes de Aprobación view.
--   Numerous bugs have been fixed, including the logic for checking Base Gráfica, display of multiple owners in approval modals, user registration email delivery, and a signature saving error.
--   A major overhaul of the offline mode has begun. New UI components for a status panel, progress bar, and indicators have been created () and partially integrated.
+The application has a FastAPI backend and a React frontend. The agent has been focused on fixing and enhancing the offline mode, which has been the source of numerous bugs related to performance and data consistency.
+-   The Proyectos de Actualización page now works offline, caching and loading data from IndexedDB.
+-   The Gestión de Predios page () has seen significant changes to address user complaints:
+    -   A stale-while-revalidate pattern was implemented to load cached data instantly while fetching updates in the background.
+    -   A manual Sincronizar button and a Limpiar datos offline button were added to give the user control over data management.
+    -   Logic was added to clear old data for a municipality before saving new data, preventing data accumulation.
+    -   A bug was fixed where all historical  (years) were being downloaded; it now correctly defaults to the current year (2026).
+-   To fix a severe performance issue, the agent just implemented client-side pagination on the  page to avoid rendering thousands of table rows at once. This change is not yet tested.
+-   The backend API () was updated to increase the default query limit and to perform case-insensitive searches on municipality names.
+-   The IndexedDB implementation () has been made more robust by increasing its version number (to v6) and adding error handling to automatically delete and recreate the database if version conflicts occur, which was a recurring issue for the user.
 
 **Last working item**:
--   **Last item agent was working:** The agent was addressing a critical bug in the newly implemented offline mode. The user reported that after visiting a project in Proyectos de Actualización online, they could not access the list of projects again after going offline. The agent identified that the project list page was not correctly loading its data from IndexedDB.
+-   **Last item agent was working:** The agent was addressing a critical performance issue on the Gestión de Predios page. The user reported extreme slowness when viewing the list of properties. The root cause was identified as the browser attempting to render thousands of table rows simultaneously. The agent implemented client-side pagination in  as a solution.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** Frontend testing agent to test the online/offline workflow: 1. Go online. 2. Navigate to Proyectos de Actualización. 3. Wait for data to be cached. 4. Go offline. 5. Navigate away and back to the page, verifying the project list loads correctly from the cache.
+-   **Which testing method agent to use?** Frontend testing agent. The test should verify that: 1. The Gestión de Predios page loads quickly after selecting a municipality. 2. Only a limited number of rows (50) are displayed initially. 3. Pagination controls (Next, Previous, page numbers) are visible and functional. 4. Clicking the controls correctly navigates through the pages of data.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Offline mode for Proyectos de Actualización is broken (P0)**
+-   **Issue 1: Severe performance lag on Gestión de Predios (P0)**
 -   **Issue 2: Offline state is inconsistent across the app (P1)**
 -   **Issue 3: MongoDB database name is  (P2)**
 -   **Issue 4: Geographic Area () is not populated for existing properties (P2)**
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Attempted fixes:** The agent built the UI for the new offline experience and added caching logic to other modules, but the Proyectos de Actualización list page was missed.
+    -   **Attempted fixes:** The agent has just implemented client-side pagination in  by adding state for the current page and page size, slicing the  array, and adding pagination controls to the UI.
     -   **Next debug checklist:**
-        1.  Identify the component for the project list page (likely ).
-        2.  In its , add logic to load projects from IndexedDB via a  function when the app is offline.
-        3.  Create the  function in .
-        4.  Ensure that when a user visits the page online, the project list is saved to IndexedDB for later use.
-    -   **Why fix this issue and what will be achieved with the fix?** To fulfill the user's core requirement for a functional offline mode for field agents.
+        1.  Verify the  component compiles without errors.
+        2.  Take a screenshot to confirm the UI renders correctly with only the first page of results (50 items).
+        3.  Confirm the pagination controls are visible and correctly styled.
+        4.  Use the testing agent to simulate user interaction with the pagination controls to ensure the page state updates and the correct data is displayed.
+    -   **Why fix this issue and what will be achieved with the fix?** The page is currently unusable due to lag. Fixing this will make the Gestión de Predios module functional and performant.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
+    -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Frontend
 
 -   **Issue 2:**
-    -   **Attempted fixes:** The agent identified that two separate IndexedDB databases were being used ( and ) with different store names, causing state inconsistency (e.g., the status badge showing 0 items after data was downloaded). A patch using custom events was attempted but was not a complete solution.
+    -   **Attempted fixes:** The agent has tried numerous patches, including bumping the IndexedDB version, adding error handling to delete corrupt databases, and dispatching custom events. However, these are workarounds. The core problem of using two different IndexedDB databases ( and ) managed by different hooks ( and ) remains.
     -   **Next debug checklist:**
-        1.  Unify all offline logic to use a single IndexedDB database name () and consistent store names.
-        2.  Refactor , , and  to work from this single source of truth.
-        3.  Remove the custom event patch in favor of a shared context or a more robust state management pattern for offline status.
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure the offline status indicators are reliable and provide a clear, non-confusing user experience.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
+        1.  Refactor all offline logic to use a single database name () and a single set of object stores.
+        2.  Consolidate  and  into a unified service or context provider for managing offline state.
+        3.  Ensure all components (e.g., , , ) read from and write to this single source of truth.
+    -   **Why fix this issue and what will be achieved with the fix?** This will eliminate a whole class of bugs related to inconsistent UI state (e.g., incorrect offline counts) and provide a reliable offline experience.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Frontend
-    -   **Blocked on other issue:** Issue 1
+    -   **Blocked on other issue:** Issue 1 should be resolved first as it's the user's most immediate pain point.
 
 -   **Issue 3:**
     -   **Attempted fixes:** None.
@@ -75,8 +78,8 @@ The application is a full-stack solution with a FastAPI backend and a React fron
 
 **In progress Task List**:
 -   **Task 1: Complete Offline Mode Implementation (P0)**
-    -   **Where to resume:** Start by fixing **Issue 1** (offline projects list). Then, address **Issue 2** by unifying the IndexedDB implementations so the UI indicators (status panel, badge counter) are accurate.
-    -   **What will be achieved with this?** A robust, user-friendly, and reliable offline experience for all key modules, as requested by the user.
+    -   **Where to resume:** First, finish and test the client-side pagination fix for **Issue 1**. After that is confirmed, begin the major refactoring to address **Issue 2** by unifying the IndexedDB implementation.
+    -   **What will be achieved with this?** A robust, performant, and reliable offline experience for all key modules.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on something:** None.
@@ -84,9 +87,9 @@ The application is a full-stack solution with a FastAPI backend and a React fron
 **Upcoming and Future Tasks**
 
 **Upcoming Tasks:**
-*   **P0: Coordinator's Approval UI for Changes:** Implement the UI for the Coordinador role to review and approve/reject . This is the top priority after the offline mode is fully functional.
+*   **P0: Coordinator's Approval UI for Changes:** Implement the UI for the Coordinador role to review and approve/reject .
 *   **P1: Add Final Sections to Visit Form:** Add Linderos and Coordenadas to the visit form modal ().
-*   **P1: Implement Payment Verification Workflow:** Formalize the payment process for certificates beyond a simple checkbox.
+*   **P1: Implement Payment Verification Workflow:** Formalize the payment process for certificates.
 
 **Future Tasks:**
 *   **P2: Implement Certificado Catastral Especial**: Begin work on the more detailed Especial certificate type.
@@ -96,15 +99,16 @@ The application is a full-stack solution with a FastAPI backend and a React fron
     *   Implement a history log for permission changes.
 
 **Completed work in this session**
--   **Feature: Display Last Manzana:** Implemented and tested the backend endpoint and frontend display in the Crear Predio form.
--   **Feature: Production Certificate URL:** Configured the  in  and documented the required DNS changes.
--   **Feature: Show Password in Login:** Added a toggle button to the password field on the login page.
--   **Feature: Add Check Spam Alert:** Added an alert to the user registration and login verification screens.
--   **Refactor: Consolidate Approval Queues:** Merged Predios en Proceso into the Pendientes view with a tabbed interface.
--   **Bug Fix: Incorrect Base Gráfica Availability:** Corrected backend logic to ensure the Base Gráfica indicator is accurate.
--   **Bug Fix: Multiple Owners Not Showing:** Fixed the approval modal to correctly display all property owners.
--   **Bug Fix: User Registration Email Not Sending:** Fixed a function call typo ( -> ) in the backend.
--   **Bug Fix: Signature Saving Error:** Resolved a JavaScript name conflict between a Lucide icon and the native  constructor in .
+-   **Bug Fix: Offline for Proyectos de Actualización:** Implemented caching and offline loading for the projects list.
+-   **Bug Fix: 50-Predio Limit:** Increased the default API query limit in the backend to allow loading all properties for a municipality.
+-   **Bug Fix: Incorrect Offline Data Accumulation:** Resolved multiple bugs that caused the offline predio count to be vastly inflated. This involved:
+    -   Fixing the backend to be case-insensitive for municipality names.
+    -   Fixing the frontend to default to the current  (year).
+    -   Adding logic to clear old data for a municipality before saving new data.
+    -   Implementing a versioning system () to automatically clear the entire IndexedDB on major code updates.
+-   **Feature: User-Controlled Sync:** Implemented a stale-while-revalidate loading pattern, a manual Sincronizar button, and a Limpiar datos offline button to improve performance and give the user control.
+-   **Bug Fix: IndexedDB Version Errors:** Addressed persistent errors caused by browser caching of old code by bumping the DB version to 6 and adding robust error handling to automatically delete and recreate the database on version conflicts.
+-   **Bug Fix (In Progress): Severe UI Lag:** Identified that rendering thousands of table rows was the cause of UI freezing and implemented client-side pagination in .
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:**  name in  is still not updated.
@@ -112,79 +116,77 @@ The application is a full-stack solution with a FastAPI backend and a React fron
 
 **Known issue recurrence from previous fork**
 -   The task to rename the MongoDB database from  has been pending across multiple sessions.
+-   The fragmented IndexedDB architecture has been a recurring source of bugs related to offline state inconsistency.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Offline-First Strategy:** Using IndexedDB, Service Workers, and custom React hooks (, ) to enable offline functionality. The current implementation is fragmented and needs unification.
--   **UI State Management for Offline:** The app now has UI components (badges, progress bars, status panels) that change based on connection status and the presence of cached data.
--   **Component Merging/Refactoring:** The  page was successfully merged into the  page using a tabbed interface.
--   **Name Collision Debugging:** Fixed a bug caused by a name conflict between an imported component () and a native browser constructor ().
+-   **IndexedDB Versioning & Corruption:** A major theme of the session. The final solution involves bumping the DB version in  and storing an  in localStorage to detect outdated code in the user's browser and trigger a full data wipe and recreation.
+-   **Client-Side Performance:** The root cause of the latest user complaint was rendering thousands of DOM elements. The fix is client-side pagination.
+-   **Stale-While-Revalidate:** This pattern was implemented in  to show cached data instantly for a better user experience while fetching fresh data in the background.
+-   **Singleton Pattern:** The  function was refactored into a singleton to prevent costly re-initializations on every component render.
+-   **Defensive Data Handling:** Logic was added at multiple levels (backend case-insensitive search, frontend data validation before saving) to prevent incorrect data from being stored offline.
 
 **key DB schema**
--   ** (MongoDB):** Central collection storing property data, versioned by a  (year) field.
--   ** (IndexedDB):** The target database for offline data.
-    -   **Stores:** , , , .
-    -   **Note:** A legacy, conflicting database named  may still exist and needs to be reconciled.
+-   ** (IndexedDB):** The primary offline database, now at **version 6**.
+    -   **Stores:** , , , , .
+    -   ** store:** Now contains an  key to manage forced data clearing when the application code updates significantly.
+-   ** (MongoDB):** Queries must filter by  (year) to get correct, non-historical data.
 
 **All files of reference**
--    (The new consolidated approval center)
--    (The new UI for offline mode)
--    (Core offline state management hook)
--    (Hook for data sync logic)
--    (IndexedDB helper functions)
--    (Target for offline improvements)
--    (Location of several business logic fixes)
+-   
+-   
+-   
+-   
+-   
+-   
 -   
 
 **Areas that need refactoring**:
--   **Consolidate Offline Logic:** The highest priority for refactoring. The fragmented implementation across , , and  using different database/store names must be unified into a single, cohesive system to fix state inconsistencies.
--    remains over 4,500 lines long and is a candidate for being broken down into smaller child components to improve maintainability.
+-   **Unify Offline Logic (High Priority):** The fragmented implementation across , , and two different DB names/schemes is unsustainable and the root cause of many bugs. This needs to be consolidated into a single, cohesive system.
+-   **Componentize :** This file is extremely large and complex. Now that pagination has been added, it's a prime candidate to be broken down into smaller components (e.g., , , ).
 
 **key api endpoints**
--   : (New) Returns the last block number.
--   : (Fixed) Corrected the email sending logic.
--   : (Fixed) Improved accuracy of the  flag.
--   : (To be modified) Needs to be adapted to load from cache when offline.
+-   : Modified to support case-insensitive  filtering and a higher default limit. It's crucial that this is called with  and  parameters to fetch the correct dataset.
 
 **Critical Info for New Agent**
--   **Your immediate priority is to fix and complete the offline mode.** Start with **Issue 1** (making the Proyectos de Actualización list work offline), then immediately address **Issue 2** (unifying the fragmented IndexedDB implementation) to make the offline status indicators reliable.
--   After stabilizing the offline mode, the user's next top priority is building the **Coordinator's Approval UI** for change proposals.
--   Be mindful that property data in MongoDB is versioned by  (year). Queries must account for this to fetch the correct information.
--   The user is technical and provides clear feedback. Always propose your changes before applying them using the  tool.
+-   **Your immediate priority is to test the new client-side pagination in .** The code is implemented but untested. This is the fix for the user's most recent and severe performance complaint.
+-   After confirming the pagination fix, you should strongly consider proposing the **unification of the IndexedDB architecture** as the next major task. This will prevent a whole class of recurring bugs that have frustrated the user.
+-   The user has a cached version of old, buggy code. The latest fixes rely on an  check and an increased  to force the user's browser to clear old data. Be aware that if you make significant changes to offline logic, you may need to bump these versions again.
+-   When testing, be mindful that Playwright/screenshot browser sessions are stateless. IndexedDB data does not persist between separate  calls. To test persistence, you must perform actions within a single session or reload the page within the same test context.
 
 **documents and test reports created in this job**
 -   
--   
+-    (updated multiple times)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Bug):** The signature saving feature is broken, showing a  error. Status: **Completed**.
-2.  **User (Bug):** When I load an update project online, go offline, and try to return, the project list is empty. Why? Status: **In Progress**.
-3.  **User (Approval):** Apply all suggested offline mode improvements. Status: **In Progress**.
-4.  **User (Feedback):** The current offline mode is confusing. Propose improvements like progress bars and better status indicators. Status: **Completed**.
-5.  **User (Typo):** Ignore the formulario de creación comment. Status: **Completed**.
-6.  **User (Bug/Question):** The offline mode is broken. Why does it say it's ready but fails when I disconnect? Status: **In Progress**.
-7.  **User (Feedback):** The registration fix works. You should add an alert to check the spam folder. Status: **Completed**.
-8.  **User (Confirmation):** The registration email has arrived. Status: **Completed**.
-9.  **User (Bug):** The registration email isn't arriving. Can you test? Status: **Completed**.
-10. **User (Bug):** The owner's name isn't updating. (This was a user misunderstanding, but led to a verification task). Status: **Completed**.
+1.  **User (Bug):** Performance is still terrible, it's slow to open and edit properties. Is it the offline mode?
+2.  **User (Bug):** The app is still showing a huge number of properties (44k+) for Ábrego, which is wrong.
+3.  **User (Bug):** Why is the app so slow when loading properties? Also, it loaded way more properties than exist for Ábrego.
+4.  **User (Bug):** The error still persists, showing over 44k properties. It should clear the old cache and save the new one when I sync.
+5.  **User (Bug):** Still showing more properties than are real. Can't it just show cached data and sync in the background? The app gets slow when it starts checking data. Can I sync manually?
+6.  **User (Bug):** The error still persists. (Image shows ).
+7.  **User (Bug):** The offline indicator doesn't update. It says predios are saved but the header badge shows nothing. (Image shows toast notification and header badge out of sync).
+8.  **User (Bug):** When I click on Gestión de predios I get an error. (Image shows a blank page and console error related to IndexedDB).
+9.  **User (Clarification):** What do you mean by the suggested improvement (Coordinator Approval UI)? Also, in Conservación, it only loads 50 properties, it should load all of them.
+10. **User (Continuation):** Continue working on the offline pending task.
 
 **Project Health Check:**
 -   **Broken:**
-    -   The core offline functionality is incomplete and inconsistent. The Proyectos de Actualización module does not work offline.
-    -   The offline status indicators (e.g., cached item count) do not update reliably due to a fragmented implementation.
+    -   The performance of the Gestión de Predios page is critically broken without the newly implemented (but untested) pagination fix.
+    -   The core offline architecture is fragmented, leading to unreliable UI state indicators and a high potential for future bugs.
 -   **Mocked:**
     -   The payment verification process for certificates is still a simple, non-enforced checkbox.
 
 **3rd Party Integrations**
--   No new integrations. A bug involving  was fixed.
+-   None. The stack is React, FastAPI, and MongoDB.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, for the last manzana feature.
+-   **Testing agent used after significant changes:** YES, used to verify the fix for Proyectos de Actualización offline mode.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** The new offline implementation, while visually improved, is not fully functional and has introduced state inconsistencies.
+-   **Known regressions:** None, but the primary focus has been fixing pre-existing bugs and performance issues introduced by the initial offline implementation.
 
 **Credentials to test flow:**
 -   **Administrator:**
@@ -195,5 +197,5 @@ The application is a full-stack solution with a FastAPI backend and a React fron
     -   **Password:** 
 
 **What agent forgot to execute**
--   The agent did not fully resolve the fragmented offline architecture. While identifying the problem of two separate IndexedDB instances, the implemented fix (custom events) was a patch, not a full unification. The underlying issue of multiple, uncommunicative offline systems remains.
--   The recurring low-priority task of renaming the MongoDB database from  in  remains pending.</analysis>
+-   The agent correctly identified the need for pagination but has not yet tested or verified the implementation.
+-   The agent has not yet undertaken the major but necessary refactoring to unify the two separate IndexedDB implementations, which remains a source of technical debt and bugs.</analysis>
