@@ -2447,40 +2447,38 @@ export default function Predios() {
   };
 
   const openEditDialog = (predio) => {
-    setSelectedPredio(predio);
-    
-    // Cargar propietarios del predio (si existen)
+    // Preparar todos los datos antes de hacer setState
+    let newPropietarios;
     if (predio.propietarios && predio.propietarios.length > 0) {
-      setPropietarios(predio.propietarios.map(p => ({
+      newPropietarios = predio.propietarios.map(p => ({
         nombre_propietario: p.nombre_propietario || '',
         tipo_documento: p.tipo_documento || 'C',
         numero_documento: p.numero_documento || '',
         estado_civil: p.estado_civil || ''
-      })));
+      }));
     } else if (predio.nombre_propietario) {
-      // Fallback a campos legacy si no hay array de propietarios
-      setPropietarios([{
+      newPropietarios = [{
         nombre_propietario: predio.nombre_propietario || '',
         tipo_documento: predio.tipo_documento || 'C',
         numero_documento: predio.numero_documento || '',
         estado_civil: predio.estado_civil || ''
-      }]);
+      }];
     } else {
-      setPropietarios([{
+      newPropietarios = [{
         nombre_propietario: '',
         tipo_documento: 'C',
         numero_documento: '',
         estado_civil: ''
-      }]);
+      }];
     }
     
-    // Obtener datos R2 (puede estar en r2 o r2_registros)
+    // Obtener datos R2
     const r2Data = predio.r2 || (predio.r2_registros && predio.r2_registros[0]) || {};
     const zonasData = r2Data.zonas || [];
     
-    // Cargar zonas físicas del predio
+    let newZonasFisicas;
     if (zonasData.length > 0) {
-      setZonasFisicas(zonasData.map(z => ({
+      newZonasFisicas = zonasData.map(z => ({
         zona_fisica: z.zona_fisica?.toString() || '0',
         zona_economica: z.zona_economica?.toString() || '0',
         area_terreno: z.area_terreno?.toString() || '0',
@@ -2490,9 +2488,9 @@ export default function Predios() {
         pisos: z.pisos?.toString() || '1',
         puntaje: z.puntaje?.toString() || '0',
         area_construida: z.area_construida?.toString() || '0'
-      })));
+      }));
     } else {
-      setZonasFisicas([{
+      newZonasFisicas = [{
         zona_fisica: '0',
         zona_economica: '0',
         area_terreno: '0',
@@ -2502,15 +2500,12 @@ export default function Predios() {
         pisos: '1',
         puntaje: '0',
         area_construida: '0'
-      }]);
+      }];
     }
     
-    // Obtener matrícula inmobiliaria (puede estar en r2, r2_registros, o raíz)
-    const matricula = r2Data.matricula_inmobiliaria || 
-                      predio.matricula_inmobiliaria || 
-                      '';
+    const matricula = r2Data.matricula_inmobiliaria || predio.matricula_inmobiliaria || '';
     
-    setFormData({
+    const newFormData = {
       ...formData,
       municipio: predio.municipio,
       zona: predio.zona,
@@ -2529,7 +2524,13 @@ export default function Predios() {
       tipo_mutacion: predio.tipo_mutacion || '',
       numero_resolucion: predio.numero_resolucion || '',
       matricula_inmobiliaria: matricula
-    });
+    };
+    
+    // Hacer todos los setState juntos - React los batcha automáticamente
+    setSelectedPredio(predio);
+    setPropietarios(newPropietarios);
+    setZonasFisicas(newZonasFisicas);
+    setFormData(newFormData);
     setShowEditDialog(true);
   };
 
