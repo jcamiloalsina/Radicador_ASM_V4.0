@@ -1775,19 +1775,18 @@ export default function Predios() {
     }
   };
 
-  // Función para actualizar datos en segundo plano sin bloquear la UI
-  const updateInBackground = async (municipio) => {
+  // Función para actualizar datos en segundo plano - SOLO cuando el usuario lo solicite
+  const syncMunicipioManual = async (municipio) => {
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', municipio);
       
-      // Mostrar indicador discreto de sincronización
       setDownloadProgress({
         isDownloading: true,
         current: 0,
         total: 100,
-        label: `Verificando actualizaciones de ${municipio}...`
+        label: `Sincronizando ${municipio}...`
       });
       
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
@@ -1797,29 +1796,17 @@ export default function Predios() {
       const serverPredios = res.data.predios || [];
       const totalPredios = serverPredios.length;
       
-      // Verificar si hay cambios comparando cantidad (optimización simple)
-      const cachedPredios = await getPrediosOffline(municipio);
-      const cachedCount = cachedPredios?.length || 0;
-      
-      // Si la cantidad es igual, asumir que no hay cambios (evita reescribir innecesariamente)
-      if (cachedCount === totalPredios && totalPredios > 0) {
-        setDownloadProgress({ isDownloading: false, current: 100, total: 100, label: '' });
-        console.log(`[Background] ${municipio}: Sin cambios (${totalPredios} predios)`);
-        return;
-      }
-      
-      // Hay cambios, actualizar cache
       setDownloadProgress({
         isDownloading: true,
         current: 50,
         total: 100,
-        label: `Actualizando ${municipio} (${totalPredios} predios)...`
+        label: `Guardando ${totalPredios} predios...`
       });
       
-      // Guardar en IndexedDB
+      // Guardar en IndexedDB (esto ya limpia los anteriores del mismo municipio)
       await downloadForOffline(serverPredios, null, municipio);
       
-      // Actualizar la UI solo si sigue siendo el mismo municipio filtrado
+      // Actualizar la UI
       if (filterMunicipio === municipio) {
         let filtered = serverPredios;
         if (filterVigencia) {
@@ -1844,14 +1831,12 @@ export default function Predios() {
       }
       
       setDownloadProgress({ isDownloading: false, current: 100, total: 100, label: '' });
-      
-      if (cachedCount !== totalPredios) {
-        toast.success(`✅ ${municipio}: ${totalPredios} predios sincronizados`, { duration: 2000 });
-      }
+      toast.success(`✅ ${municipio}: ${totalPredios} predios sincronizados`, { duration: 3000 });
       
     } catch (error) {
-      console.error('Error actualizando en segundo plano:', error);
+      console.error('Error sincronizando:', error);
       setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' });
+      toast.error('Error al sincronizar');
     }
   };
 
