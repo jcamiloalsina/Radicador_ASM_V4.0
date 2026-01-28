@@ -28,8 +28,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      toast.success('Conexión restaurada', { description: 'Sincronizando cambios pendientes...' });
-      syncPendingChanges();
+      // Solo mostrar toast si estaba offline
+      if (!navigator.onLine) return;
+      toast.success('Conexión restaurada');
     };
 
     const handleOffline = () => {
@@ -46,23 +47,32 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     };
   }, []);
 
-  // Inicializar DB y cargar estadísticas
+  // Inicializar DB solo una vez (ya no llama refreshStats automáticamente)
   useEffect(() => {
+    let mounted = true;
     const init = async () => {
-      await initOfflineDB();
-      await refreshStats();
-      if (proyectoId) {
-        const hasData = await hasOfflineData(proyectoId);
-        setHasOffline(hasData);
+      try {
+        await initOfflineDB();
+        if (mounted && proyectoId) {
+          const hasData = await hasOfflineData(proyectoId);
+          setHasOffline(hasData);
+        }
+      } catch (e) {
+        console.log('[useOfflineSync] Error init:', e.message);
       }
     };
     init();
+    return () => { mounted = false; };
   }, [proyectoId]);
 
-  // Refrescar estadísticas
+  // Refrescar estadísticas - solo cuando se llame explícitamente
   const refreshStats = useCallback(async () => {
-    const stats = await getOfflineStats();
-    setOfflineStats(stats);
+    try {
+      const stats = await getOfflineStats();
+      setOfflineStats(stats);
+    } catch (e) {
+      console.log('[useOfflineSync] Error refreshStats:', e.message);
+    }
   }, []);
 
   // Descargar datos para offline (se llama automáticamente al cargar el visor)
