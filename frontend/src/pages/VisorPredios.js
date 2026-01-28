@@ -542,32 +542,51 @@ export default function VisorPredios() {
   const [syncingGeometrias, setSyncingGeometrias] = useState(false);
 
   // Cargar geometrías desde el servidor (forzado)
-  const fetchGeometriasFromServer = async () => {
+  const fetchGeometriasFromServer = async (saveAllForOffline = false) => {
     try {
       setSyncingGeometrias(true);
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', filterMunicipio);
-      if (filterZona && filterZona !== 'todos') params.append('zona', filterZona);
-      params.append('limit', '10000');
+      
+      // Si saveAllForOffline es true, NO aplicar filtro de zona para guardar todas
+      if (!saveAllForOffline && filterZona && filterZona !== 'todos') {
+        params.append('zona', filterZona);
+      }
+      params.append('limit', '15000'); // Aumentar límite para asegurar todas las geometrías
       
       const response = await axios.get(`${API}/gdb/geometrias?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setAllGeometries(response.data);
-      
-      // Guardar para uso offline
+      // Guardar TODAS las geometrías para uso offline (sin filtro de zona)
       if (response.data.features && response.data.features.length > 0) {
         await saveGeometriasMunicipioOffline(filterMunicipio, response.data);
         setGeometriasOfflineCount(response.data.features.length);
-        toast.success(`${response.data.total} geometrías cargadas y guardadas offline`);
-      } else {
-        const zonaText = filterZona === 'todos' ? 'todas las zonas' : filterZona;
-        toast.success(`${response.data.total} predios de Base Gráfica (${zonaText}) cargados`);
+        
+        if (saveAllForOffline) {
+          toast.success(`${response.data.total} geometrías sincronizadas para uso offline`);
+        }
       }
       
-      return response.data;
+      // Si hay filtro de zona activo, aplicar filtro para mostrar solo esa zona
+      let displayData = response.data;
+      if (!saveAllForOffline && filterZona && filterZona !== 'todos') {
+        displayData = {
+          ...response.data,
+          features: response.data.features.filter(f => 
+            f.properties?.zona === filterZona || f.properties?.ZONA === filterZona
+          ),
+          total: 0
+        };
+        displayData.total = displayData.features.length;
+        toast.success(`${displayData.total} predios de zona ${filterZona} cargados (${response.data.total} total guardados offline)`);
+      } else if (!saveAllForOffline) {
+        toast.success(`${response.data.total} predios de Base Gráfica cargados`);
+      }
+      
+      setAllGeometries(displayData);
+      return displayData;
     } catch (error) {
       console.error('Error loading geometries from server:', error);
       throw error;
