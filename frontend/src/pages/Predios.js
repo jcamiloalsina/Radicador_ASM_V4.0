@@ -1937,8 +1937,11 @@ export default function Predios() {
             const searchLower = search.toLowerCase();
             filtered = filtered.filter(p => 
               p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+              p.codigo_homologado?.toLowerCase().includes(searchLower) ||
               p.direccion?.toLowerCase().includes(searchLower) ||
-              p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower))
+              p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower)) ||
+              p.propietarios?.some(prop => prop.numero_documento?.toLowerCase().includes(searchLower)) ||
+              p.r2_registros?.some(r2 => r2.matricula_inmobiliaria?.toLowerCase().includes(searchLower))
             );
           }
           if (filterGeometria === 'con') {
