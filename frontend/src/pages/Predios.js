@@ -1861,6 +1861,15 @@ export default function Predios() {
     }
   };
 
+  // Función helper para ordenar predios por código predial nacional
+  const sortPrediosByCNP = (prediosArray) => {
+    return [...prediosArray].sort((a, b) => {
+      const cnpA = a.codigo_predial_nacional || '';
+      const cnpB = b.codigo_predial_nacional || '';
+      return cnpA.localeCompare(cnpB);
+    });
+  };
+
   // Función para forzar recarga desde servidor (ignora caché)
   const forceRefreshPredios = async () => {
     await fetchPrediosFromServer();
@@ -1895,13 +1904,15 @@ export default function Predios() {
         ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
         : prediosRecibidos;
       
-      setPredios(prediosFiltrados);
-      setTotal(prediosFiltrados.length);
+      // Ordenar por CNP antes de guardar
+      const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
+      setPredios(prediosOrdenados);
+      setTotal(prediosOrdenados.length);
       setCurrentPage(1); // Resetear a página 1
       
       // Actualizar caché offline
-      if (filterMunicipio && prediosFiltrados.length > 0) {
-        await downloadForOffline(prediosFiltrados, null, filterMunicipio);
+      if (filterMunicipio && prediosOrdenados.length > 0) {
+        await downloadForOffline(prediosOrdenados, null, filterMunicipio);
       }
       
       setLoading(false);
