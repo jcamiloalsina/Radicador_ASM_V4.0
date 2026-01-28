@@ -7,6 +7,7 @@ import {
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { useOffline } from '../hooks/useOffline';
+import { clearAllOfflineData } from '../utils/offlineDB';
 
 // ==================== BANNER DE MODO OFFLINE ====================
 export function OfflineBanner({ onViewData }) {
