@@ -1435,9 +1435,11 @@ export default function Predios() {
   };
   
   const actualizarPropietario = (index, campo, valor) => {
-    const nuevos = [...propietarios];
-    nuevos[index][campo] = valor;
-    setPropietarios(nuevos);
+    setPropietarios(prev => {
+      const nuevos = [...prev];
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      return nuevos;
+    });
   };
   
   // Funciones para manejar múltiples zonas físicas
