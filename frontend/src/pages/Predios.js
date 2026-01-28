@@ -1775,6 +1775,81 @@ export default function Predios() {
     }
   };
 
+  // Función para actualizar datos en segundo plano sin bloquear la UI
+  const updateInBackground = async (municipio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      params.append('municipio', municipio);
+      
+      // Mostrar indicador de sincronización en segundo plano
+      setDownloadProgress({
+        isDownloading: true,
+        current: 0,
+        total: 100,
+        label: `Sincronizando ${municipio}...`
+      });
+      
+      const res = await axios.get(`${API}/predios?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const serverPredios = res.data.predios || [];
+      const totalPredios = serverPredios.length;
+      
+      // Actualizar progreso
+      setDownloadProgress({
+        isDownloading: true,
+        current: 50,
+        total: 100,
+        label: `Actualizando cache de ${municipio}...`
+      });
+      
+      // Guardar en IndexedDB
+      await downloadForOffline(serverPredios, null, municipio);
+      
+      // Actualizar la UI solo si sigue siendo el mismo municipio filtrado
+      // (el usuario podría haber cambiado a otro municipio mientras tanto)
+      if (filterMunicipio === municipio) {
+        // Aplicar los mismos filtros que teníamos
+        let filtered = serverPredios;
+        if (filterVigencia) {
+          filtered = filtered.filter(p => String(p.vigencia) === String(filterVigencia));
+        }
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filtered = filtered.filter(p => 
+            p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+            p.direccion?.toLowerCase().includes(searchLower) ||
+            p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower))
+          );
+        }
+        if (filterGeometria === 'con') {
+          filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
+        } else if (filterGeometria === 'sin') {
+          filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
+        }
+        
+        setPredios(filtered);
+        setTotal(filtered.length);
+      }
+      
+      setDownloadProgress({
+        isDownloading: false,
+        current: 100,
+        total: 100,
+        label: ''
+      });
+      
+      toast.success(`✅ ${municipio}: ${totalPredios} predios actualizados`, { duration: 2000 });
+      
+    } catch (error) {
+      console.error('Error actualizando en segundo plano:', error);
+      setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' });
+      // No mostrar error si falla la actualización en segundo plano - ya tenemos datos del cache
+    }
+  };
+
   const fetchPredios = async () => {
     try {
       // OPTIMIZACIÓN: Si hay municipio filtrado, primero mostrar datos del cache
