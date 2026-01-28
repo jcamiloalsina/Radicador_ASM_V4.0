@@ -4181,7 +4181,8 @@ async def get_predios(
     query = {"deleted": {"$ne": True}}
     
     if municipio:
-        query["municipio"] = municipio
+        # Búsqueda case-insensitive para soportar variaciones de acentos
+        query["municipio"] = {"$regex": f"^{municipio}$", "$options": "i"}
     if vigencia:
         query["vigencia"] = vigencia
     if destino_economico:
