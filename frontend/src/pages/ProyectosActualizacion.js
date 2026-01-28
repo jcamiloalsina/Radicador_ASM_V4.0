@@ -841,7 +841,7 @@ export default function ProyectosActualizacion() {
                         Ver
                       </Button>
                       
-                      {(canCreate || canDelete) && (
+                      {(canCreate || canDelete) && isOnline && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm">
