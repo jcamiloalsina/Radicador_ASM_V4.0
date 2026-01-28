@@ -81,6 +81,8 @@ export default function ProyectosActualizacion() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOfflineData, setIsOfflineData] = useState(false);
   
   // Modal states
   const [showCrearModal, setShowCrearModal] = useState(false);
@@ -114,7 +116,45 @@ export default function ProyectosActualizacion() {
   // Tab del modal de detalle
   const [detalleTab, setDetalleTab] = useState('info');
 
+  // Detectar cambios de conexión
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Conexión restaurada', { description: 'Actualizando datos...' });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('Sin conexión', { description: 'Mostrando datos guardados localmente' });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Inicializar IndexedDB
+    initOfflineDB();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const fetchProyectos = useCallback(async () => {
+    // Si estamos offline, cargar desde IndexedDB
+    if (!navigator.onLine) {
+      try {
+        const offlineProyectos = await getProyectosFromDB(filtroEstado);
+        setProyectos(offlineProyectos || []);
+        setIsOfflineData(true);
+        console.log('[Offline] Cargados', offlineProyectos?.length || 0, 'proyectos desde cache');
+      } catch (error) {
+        console.error('[Offline] Error cargando proyectos offline:', error);
+        setProyectos([]);
+      }
+      return;
+    }
+
+    // Si estamos online, cargar desde API
     try {
       const token = localStorage.getItem('token');
       const params = {};
@@ -126,9 +166,37 @@ export default function ProyectosActualizacion() {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
-      setProyectos(response.data.proyectos || []);
+      const proyectosData = response.data.proyectos || [];
+      setProyectos(proyectosData);
+      setIsOfflineData(false);
+      
+      // Guardar en IndexedDB para uso offline (solo si filtro es 'todos' para tener todos los datos)
+      if (filtroEstado === 'todos' && proyectosData.length > 0) {
+        try {
+          await saveProyectosOffline(proyectosData);
+          console.log('[Online] Proyectos guardados para uso offline');
+        } catch (e) {
+          console.error('[Online] Error guardando proyectos offline:', e);
+        }
+      }
     } catch (error) {
       console.error('Error fetching proyectos:', error);
+      
+      // Si falla la conexión, intentar cargar desde offline
+      if (error.code === 'ERR_NETWORK' || !navigator.onLine) {
+        try {
+          const offlineProyectos = await getProyectosFromDB(filtroEstado);
+          if (offlineProyectos && offlineProyectos.length > 0) {
+            setProyectos(offlineProyectos);
+            setIsOfflineData(true);
+            toast.info('Mostrando datos guardados localmente');
+            return;
+          }
+        } catch (offlineError) {
+          console.error('[Offline] Error en fallback:', offlineError);
+        }
+      }
+      
       toast.error('Error al cargar los proyectos');
     }
   }, [filtroEstado]);
