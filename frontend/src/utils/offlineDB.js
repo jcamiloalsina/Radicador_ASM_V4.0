@@ -1,6 +1,6 @@
 // Módulo de gestión de datos offline con IndexedDB
 const DB_NAME = 'asomunicipios_offline';
-const DB_VERSION = 4; // Incrementado para forzar recreación de stores
+const DB_VERSION = 5; // Incrementado para resolver conflictos de versión
 
 // Stores en IndexedDB
 const STORES = {
@@ -28,7 +28,12 @@ async function deleteDatabase() {
       resolve(false);
     };
     deleteRequest.onblocked = () => {
-      console.log('[OfflineDB] Eliminación bloqueada');
+      console.log('[OfflineDB] Eliminación bloqueada, cerrando conexiones...');
+      // Intentar cerrar la conexión actual
+      if (db) {
+        db.close();
+        db = null;
+      }
       resolve(false);
     };
   });
@@ -36,36 +41,53 @@ async function deleteDatabase() {
 
 // Inicializar la base de datos
 export function initOfflineDB() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (db) {
       resolve(db);
       return;
     }
 
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    try {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = async () => {
-      console.error('[OfflineDB] Error al abrir la base de datos, intentando recrear...');
-      await deleteDatabase();
-      // Intentar de nuevo
-      const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
-      retryRequest.onsuccess = () => {
-        db = retryRequest.result;
+      request.onerror = async (event) => {
+        const error = event.target.error;
+        console.error('[OfflineDB] Error al abrir la base de datos:', error?.message);
+        
+        // Si es error de versión, eliminar y recrear
+        if (error?.name === 'VersionError' || error?.message?.includes('version')) {
+          console.log('[OfflineDB] Conflicto de versión detectado, recreando DB...');
+          await deleteDatabase();
+          // Intentar de nuevo después de eliminar
+          const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
+          retryRequest.onsuccess = () => {
+            db = retryRequest.result;
+            resolve(db);
+          };
+          retryRequest.onerror = () => reject(retryRequest.error);
+          retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
+        } else {
+          reject(error);
+        }
+      };
+
+      request.onsuccess = () => {
+        db = request.result;
+        console.log('[OfflineDB] Base de datos abierta correctamente v' + DB_VERSION);
         resolve(db);
       };
-      retryRequest.onerror = () => reject(retryRequest.error);
-      retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
-    };
 
-    request.onsuccess = () => {
-      db = request.result;
-      console.log('[OfflineDB] Base de datos abierta correctamente');
-      resolve(db);
-    };
-
-    request.onupgradeneeded = (event) => {
-      createAllStores(event.target.result);
-    };
+      request.onupgradeneeded = (event) => {
+        createAllStores(event.target.result);
+      };
+      
+      request.onblocked = () => {
+        console.log('[OfflineDB] Upgrade bloqueado, cerrando conexiones antiguas...');
+      };
+    } catch (error) {
+      console.error('[OfflineDB] Error crítico:', error);
+      reject(error);
+    }
   });
 }
 
