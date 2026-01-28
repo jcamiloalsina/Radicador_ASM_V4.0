@@ -376,32 +376,48 @@ export async function clearProyectoOffline(proyectoId) {
   const database = await initOfflineDB();
   
   // Limpiar predios
-  const txPredios = database.transaction(STORES.PREDIOS, 'readwrite');
-  const prediosStore = txPredios.objectStore(STORES.PREDIOS);
-  const prediosIndex = prediosStore.index('proyecto_id');
-  const prediosCursor = prediosIndex.openCursor(IDBKeyRange.only(proyectoId));
-  
-  prediosCursor.onsuccess = (event) => {
-    const cursor = event.target.result;
-    if (cursor) {
-      prediosStore.delete(cursor.primaryKey);
-      cursor.continue();
+  if (database.objectStoreNames.contains(STORES.PREDIOS)) {
+    try {
+      const txPredios = database.transaction(STORES.PREDIOS, 'readwrite');
+      const prediosStore = txPredios.objectStore(STORES.PREDIOS);
+      if (prediosStore.indexNames.contains('proyecto_id')) {
+        const prediosIndex = prediosStore.index('proyecto_id');
+        const prediosCursor = prediosIndex.openCursor(IDBKeyRange.only(proyectoId));
+        
+        prediosCursor.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            prediosStore.delete(cursor.primaryKey);
+            cursor.continue();
+          }
+        };
+      }
+    } catch (e) {
+      console.log('[OfflineDB] Error limpiando predios:', e.message);
     }
-  };
+  }
 
   // Limpiar geometrías
-  const txGeom = database.transaction(STORES.GEOMETRIAS, 'readwrite');
-  const geomStore = txGeom.objectStore(STORES.GEOMETRIAS);
-  const geomIndex = geomStore.index('proyecto_id');
-  const geomCursor = geomIndex.openCursor(IDBKeyRange.only(proyectoId));
-  
-  geomCursor.onsuccess = (event) => {
-    const cursor = event.target.result;
-    if (cursor) {
-      geomStore.delete(cursor.primaryKey);
-      cursor.continue();
+  if (database.objectStoreNames.contains(STORES.GEOMETRIAS)) {
+    try {
+      const txGeom = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+      const geomStore = txGeom.objectStore(STORES.GEOMETRIAS);
+      if (geomStore.indexNames.contains('proyecto_id')) {
+        const geomIndex = geomStore.index('proyecto_id');
+        const geomCursor = geomIndex.openCursor(IDBKeyRange.only(proyectoId));
+        
+        geomCursor.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            geomStore.delete(cursor.primaryKey);
+            cursor.continue();
+          }
+        };
+      }
+    } catch (e) {
+      console.log('[OfflineDB] Error limpiando geometrías:', e.message);
     }
-  };
+  }
 
   console.log(`[OfflineDB] Datos offline del proyecto ${proyectoId} eliminados`);
 }
