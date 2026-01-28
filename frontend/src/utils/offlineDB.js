@@ -588,6 +588,71 @@ export async function hasOfflineData(proyectoId) {
   return predios.length > 0;
 }
 
+// Limpiar TODOS los datos offline (reset completo)
+export async function clearAllOfflineData() {
+  try {
+    const database = await initOfflineDB();
+    
+    const stores = [STORES.PREDIOS, STORES.GEOMETRIAS, STORES.PROYECTOS];
+    
+    for (const storeName of stores) {
+      if (database.objectStoreNames.contains(storeName)) {
+        const tx = database.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        await new Promise((resolve) => {
+          const request = store.clear();
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+        });
+      }
+    }
+    
+    console.log('[OfflineDB] Todos los datos offline eliminados');
+    window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
+    return true;
+  } catch (error) {
+    console.error('[OfflineDB] Error limpiando datos:', error);
+    return false;
+  }
+}
+
+// Limpiar datos offline de un municipio específico
+export async function clearMunicipioOffline(municipio) {
+  try {
+    const database = await initOfflineDB();
+    
+    if (database.objectStoreNames.contains(STORES.PREDIOS)) {
+      const tx = database.transaction(STORES.PREDIOS, 'readwrite');
+      const store = tx.objectStore(STORES.PREDIOS);
+      const index = store.index('municipio');
+      const cursor = index.openCursor(IDBKeyRange.only(municipio));
+      
+      let deleted = 0;
+      await new Promise((resolve) => {
+        cursor.onsuccess = (event) => {
+          const result = event.target.result;
+          if (result) {
+            store.delete(result.primaryKey);
+            deleted++;
+            result.continue();
+          } else {
+            resolve();
+          }
+        };
+        cursor.onerror = () => resolve();
+      });
+      
+      console.log(`[OfflineDB] ${deleted} predios eliminados de ${municipio}`);
+    }
+    
+    window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
+    return true;
+  } catch (error) {
+    console.error('[OfflineDB] Error limpiando municipio:', error);
+    return false;
+  }
+}
+
 export default {
   initOfflineDB,
   savePrediosOffline,
@@ -606,6 +671,8 @@ export default {
   getProyectoOffline,
   countProyectosOffline,
   clearProyectoOffline,
+  clearAllOfflineData,
+  clearMunicipioOffline,
   getOfflineStats,
   hasOfflineData
 };
