@@ -4367,7 +4367,7 @@ async def get_predios_eliminados(
     municipio: Optional[str] = None,
     vigencia: Optional[int] = None,
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 10000,  # Aumentado de 50 a 10000
     current_user: dict = Depends(get_current_user)
 ):
     """Lista predios eliminados - filtrable por municipio y vigencia"""
