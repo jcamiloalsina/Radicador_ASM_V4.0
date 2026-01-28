@@ -1782,6 +1782,9 @@ export default function Predios() {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', municipio);
+      // SIEMPRE filtrar por vigencia actual
+      const vigenciaActual = filterVigencia || String(new Date().getFullYear());
+      params.append('vigencia', vigenciaActual);
       
       setDownloadProgress({
         isDownloading: true,
@@ -1797,7 +1800,7 @@ export default function Predios() {
         isDownloading: true,
         current: 20,
         total: 100,
-        label: `Descargando ${municipio}...`
+        label: `Descargando ${municipio} (Vigencia ${vigenciaActual})...`
       });
       
       // PASO 2: Descargar datos del servidor
@@ -1821,9 +1824,6 @@ export default function Predios() {
       // Actualizar la UI
       if (filterMunicipio === municipio) {
         let filtered = serverPredios;
-        if (filterVigencia) {
-          filtered = filtered.filter(p => String(p.vigencia) === String(filterVigencia));
-        }
         if (search) {
           const searchLower = search.toLowerCase();
           filtered = filtered.filter(p => 
@@ -1843,7 +1843,7 @@ export default function Predios() {
       }
       
       setDownloadProgress({ isDownloading: false, current: 100, total: 100, label: '' });
-      toast.success(`✅ ${municipio}: ${totalPredios.toLocaleString()} predios sincronizados (cache limpio)`, { duration: 3000 });
+      toast.success(`✅ ${municipio} (${vigenciaActual}): ${totalPredios.toLocaleString()} predios sincronizados`, { duration: 3000 });
       
     } catch (error) {
       console.error('Error sincronizando:', error);
