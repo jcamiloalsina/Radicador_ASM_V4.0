@@ -1996,13 +1996,16 @@ export default function Predios() {
         ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
         : prediosRecibidos;
       
-      setPredios(prediosFiltrados);
-      setTotal(prediosFiltrados.length);
+      // Ordenar por CNP
+      const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
+      
+      setPredios(prediosOrdenados);
+      setTotal(prediosOrdenados.length);
       
       // Guardar automáticamente para modo offline si hay municipio filtrado
-      if (filterMunicipio && prediosFiltrados.length > 0) {
+      if (filterMunicipio && prediosOrdenados.length > 0) {
         // Mostrar barra de progreso de descarga
-        const totalPredios = prediosFiltrados.length;
+        const totalPredios = prediosOrdenados.length;
         setDownloadProgress({
           isDownloading: true,
           current: 0,
@@ -2018,7 +2021,7 @@ export default function Predios() {
           }));
         }, 100);
         
-        await downloadForOffline(prediosFiltrados, null, filterMunicipio);
+        await downloadForOffline(prediosOrdenados, null, filterMunicipio);
         
         clearInterval(progressInterval);
         setDownloadProgress({
@@ -2038,9 +2041,11 @@ export default function Predios() {
       if (!navigator.onLine) {
         const offlinePredios = await getPrediosOffline(filterMunicipio);
         if (offlinePredios.length > 0) {
-          setPredios(offlinePredios);
-          setTotal(offlinePredios.length);
-          toast.info(`Modo offline: ${offlinePredios.length} predios cargados`);
+          // Ordenar por CNP
+          const prediosOrdenados = sortPrediosByCNP(offlinePredios);
+          setPredios(prediosOrdenados);
+          setTotal(prediosOrdenados.length);
+          toast.info(`Modo offline: ${prediosOrdenados.length} predios cargados`);
         } else {
           toast.warning('No hay datos offline disponibles');
           setPredios([]);
