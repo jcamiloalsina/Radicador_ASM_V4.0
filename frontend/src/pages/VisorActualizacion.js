@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 
 // Offline sync
 import useOfflineSync from '../hooks/useOfflineSync';
+import { getProyectoOffline, getGeometriasOffline } from '../utils/offlineDB';
 
 // UI Components
 import { Button } from '../components/ui/button';
