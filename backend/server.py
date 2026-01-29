@@ -14808,14 +14808,122 @@ async def generar_pdf_informe_visita(
     elements.append(visita_table)
     elements.append(Spacer(1, 0.2*inch))
     
+    # Zonas Físicas (Construcciones)
+    zonas_fisicas = predio.get('zonas_fisicas', [])
+    if zonas_fisicas:
+        elements.append(Paragraph("5. ZONAS FÍSICAS (CONSTRUCCIONES)", subtitle_style))
+        
+        zonas_data = [["#", "Tipo Const.", "Uso", "Área (m²)", "Pisos", "Puntos", "Año", "Observaciones"]]
+        for i, zona in enumerate(zonas_fisicas, 1):
+            zonas_data.append([
+                str(i),
+                zona.get('tipo_construccion', ''),
+                zona.get('uso_construccion', ''),
+                str(zona.get('area_construida', '')),
+                str(zona.get('total_pisos', '')),
+                str(zona.get('puntos_construccion', '')),
+                str(zona.get('anio_construccion', '')),
+                zona.get('observaciones', '')[:30] + ('...' if len(zona.get('observaciones', '')) > 30 else '')
+            ])
+        
+        zonas_table = Table(zonas_data, colWidths=[0.3*inch, 1*inch, 0.8*inch, 0.7*inch, 0.5*inch, 0.6*inch, 0.5*inch, 2.1*inch])
+        zonas_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ]))
+        elements.append(zonas_table)
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Linderos
+    elements.append(Paragraph("6. LINDEROS DEL PREDIO", subtitle_style))
+    
+    linderos_data = [
+        ["NORTE:", predio.get('lindero_norte', 'Sin información')],
+        ["SUR:", predio.get('lindero_sur', 'Sin información')],
+        ["ESTE:", predio.get('lindero_este', 'Sin información')],
+        ["OESTE:", predio.get('lindero_oeste', 'Sin información')],
+    ]
+    
+    linderos_table = Table(linderos_data, colWidths=[1*inch, 6.5*inch])
+    linderos_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(linderos_table)
+    
+    if predio.get('observaciones_linderos'):
+        elements.append(Paragraph(f"<b>Observaciones linderos:</b> {predio.get('observaciones_linderos')}", normal_style))
+    
+    verificado_text = "Sí" if predio.get('linderos_verificados') else "No"
+    fecha_verif = predio.get('fecha_verificacion_linderos', '')
+    if fecha_verif:
+        verificado_text += f" (Fecha: {fecha_verif})"
+    elements.append(Paragraph(f"<b>Linderos verificados en campo:</b> {verificado_text}", normal_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Coordenadas
+    elements.append(Paragraph("7. GEORREFERENCIACIÓN", subtitle_style))
+    
+    coord_data = [
+        ["Sistema Referencia:", predio.get('sistema_referencia', 'MAGNA-SIRGAS'), 
+         "Precisión GPS:", predio.get('precision_gps', '-').upper() if predio.get('precision_gps') else '-'],
+        ["Latitud (Y):", str(predio.get('latitud_centroide', '-')), 
+         "Longitud (X):", str(predio.get('longitud_centroide', '-'))],
+        ["Área Calculada:", f"{predio.get('area_calculada', '-')} m²" if predio.get('area_calculada') else '-', 
+         "Equipo GPS:", predio.get('equipo_gps', '-')],
+    ]
+    
+    coord_table = Table(coord_data, colWidths=[1.5*inch, 2.25*inch, 1.5*inch, 2.25*inch])
+    coord_table.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
+    ]))
+    elements.append(coord_table)
+    
+    # Vértices del polígono si existen
+    vertices = predio.get('vertices_poligono', [])
+    if vertices and len(vertices) > 0:
+        elements.append(Spacer(1, 0.1*inch))
+        elements.append(Paragraph(f"<b>Vértices del polígono ({len(vertices)} puntos):</b>", normal_style))
+        
+        # Mostrar máximo 8 vértices en el PDF para no hacerlo muy largo
+        vertices_data = [["#", "X (Longitud)", "Y (Latitud)"]]
+        for i, v in enumerate(vertices[:8], 1):
+            vertices_data.append([
+                str(i),
+                f"{float(v.get('x', 0)):.6f}",
+                f"{float(v.get('y', 0)):.6f}"
+            ])
+        if len(vertices) > 8:
+            vertices_data.append(["...", f"(+{len(vertices) - 8} vértices más)", ""])
+        
+        vert_table = Table(vertices_data, colWidths=[0.5*inch, 2*inch, 2*inch])
+        vert_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ]))
+        elements.append(vert_table)
+    
+    if predio.get('fecha_captura_coordenadas'):
+        elements.append(Paragraph(f"<i>Fecha de captura: {predio.get('fecha_captura_coordenadas')}</i>", normal_style))
+    
+    elements.append(Spacer(1, 0.2*inch))
+    
     # Observaciones
-    elements.append(Paragraph("5. OBSERVACIONES", subtitle_style))
+    elements.append(Paragraph("8. OBSERVACIONES GENERALES", subtitle_style))
     obs_text = predio.get('observaciones_campo', visita.get('observaciones', 'Sin observaciones'))
-    elements.append(Paragraph(obs_text, normal_style))
+    elements.append(Paragraph(obs_text if obs_text else "Sin observaciones", normal_style))
     elements.append(Spacer(1, 0.3*inch))
     
     # Firmas
-    elements.append(Paragraph("6. FIRMAS", subtitle_style))
+    elements.append(Paragraph("9. FIRMAS", subtitle_style))
     
     firma_data = [
         ["FUNCIONARIO", "QUIEN ATENDIÓ LA VISITA"],
