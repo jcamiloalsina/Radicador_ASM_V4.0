@@ -2600,7 +2600,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
     historial_entry = None
     
     if current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
-        # Coordinador and Admin can update all fields
+        # Coordinador and Admin can update all fields including approval
         update_dict = update_data.model_dump(exclude_none=True)
     elif current_user['role'] == UserRole.ATENCION_USUARIO:
         # Atención al usuario can update status, notes, and can finalize/reject
@@ -2609,10 +2609,10 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
         if update_data.notas:
             update_dict['notas'] = update_data.notas
     elif current_user['role'] in [UserRole.GESTOR]:
-        # Gestores can only update notes and send to revision
+        # Gestores can update notes and change to: EN_PROCESO, REVISION, RECHAZADO
         if update_data.notas:
             update_dict['notas'] = update_data.notas
-        if update_data.estado in [PetitionStatus.REVISION, PetitionStatus.RECHAZADO]:
+        if update_data.estado in [PetitionStatus.EN_PROCESO, PetitionStatus.REVISION, PetitionStatus.RECHAZADO]:
             update_dict['estado'] = update_data.estado
     
     if update_dict:
