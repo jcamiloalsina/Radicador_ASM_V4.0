@@ -2996,22 +2996,32 @@ export default function Predios() {
                     <CardTitle className="text-lg font-outfit">Predios por Municipio</CardTitle>
                     <p className="text-sm text-slate-500">Haga clic en un municipio para ver los predios de la vigencia más reciente</p>
                   </div>
-                  {/* Botón de importar R1/R2 solo para coordinadores y admins */}
+                  {/* Botones de importar R1/R2 y Homologados solo para coordinadores y admins */}
                   {user && ['coordinador', 'administrador'].includes(user.role) && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Importar R1/R2
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle className="text-lg font-outfit">Importar Predios R1/R2</DialogTitle>
-                        </DialogHeader>
-                        <ImportR1R2Form onSuccess={() => { fetchPrediosStats(); fetchVigencias(); fetchReaparicionesConteo(); }} />
-                      </DialogContent>
-                    </Dialog>
+                    <div className="flex gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Importar R1/R2
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                          <DialogHeader>
+                            <DialogTitle className="text-lg font-outfit">Importar Predios R1/R2</DialogTitle>
+                          </DialogHeader>
+                          <ImportR1R2Form onSuccess={() => { fetchPrediosStats(); fetchVigencias(); fetchReaparicionesConteo(); }} />
+                        </DialogContent>
+                      </Dialog>
+                      <Button 
+                        variant="outline" 
+                        className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                        onClick={() => { fetchCodigosStats(); setShowCodigosDialog(true); }}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Importar Homologados
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
