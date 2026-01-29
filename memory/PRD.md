@@ -146,6 +146,7 @@ Sistema completo para gestión de códigos homologados por municipio:
 - ✅ Backend: Todos los endpoints probados con curl
 - ✅ Frontend: UI verificada con screenshots
 - ✅ Detección de códigos usados: Verificada
+- ✅ Selector de municipio: Corregido (usando select nativo HTML para compatibilidad con Dialog)
 
 ---
 
