@@ -5054,6 +5054,7 @@ export default function Predios() {
                         <th className="py-2 px-4 text-center">Usados</th>
                         <th className="py-2 px-4 text-center">Disponibles</th>
                         <th className="py-2 px-4 text-center">Estado</th>
+                        <th className="py-2 px-4 text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -5072,12 +5073,80 @@ export default function Predios() {
                               <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>
                             )}
                           </td>
+                          <td className="py-2 px-4 text-center">
+                            {stat.usados > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                onClick={() => {
+                                  setCodigosUsadosMunicipio(stat.municipio);
+                                  fetchCodigosUsados(stat.municipio);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Ver usados
+                              </Button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
+            </div>
+            
+            {/* Códigos usados por municipio seleccionado */}
+            {codigosUsadosMunicipio && (
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-amber-600" />
+                    Códigos Usados - {codigosUsadosMunicipio}
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCodigosUsadosMunicipio('');
+                      setCodigosUsados([]);
+                    }}
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {loadingCodigosUsados ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                  </div>
+                ) : codigosUsados.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">No hay códigos usados para este municipio</p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-amber-50 sticky top-0">
+                        <tr className="border-b">
+                          <th className="py-2 px-3 text-left font-medium text-amber-800">Código</th>
+                          <th className="py-2 px-3 text-left font-medium text-amber-800">Código Predial</th>
+                          <th className="py-2 px-3 text-left font-medium text-amber-800">Propietario</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {codigosUsados.map((c, idx) => (
+                          <tr key={idx} className="border-b last:border-b-0 hover:bg-amber-50/50">
+                            <td className="py-2 px-3 font-mono text-xs font-medium text-amber-700">{c.codigo}</td>
+                            <td className="py-2 px-3 font-mono text-xs">{c.codigo_predial || '-'}</td>
+                            <td className="py-2 px-3 text-xs truncate max-w-[200px]" title={c.propietario}>{c.propietario || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             </div>
             
             {/* Resumen */}
