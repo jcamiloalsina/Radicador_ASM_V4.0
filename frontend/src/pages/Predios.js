@@ -2903,7 +2903,7 @@ export default function Predios() {
                         >
                           <span className="font-medium text-slate-900 text-sm leading-tight truncate w-full">{item.municipio}</span>
                           <span className="text-lg md:text-xl font-bold text-emerald-700">{item.count?.toLocaleString()}</span>
-                          <span className="text-[10px] md:text-xs text-slate-500 leading-tight">predios · vig. {vigenciaYear}</span>
+                          <span className="text-[10px] md:text-xs text-slate-500 leading-tight">predios</span>
                         </Button>
                         {/* Badge de reapariciones pendientes */}
                         {reaparicionesCount > 0 && user && ['coordinador', 'administrador'].includes(user.role) && (
