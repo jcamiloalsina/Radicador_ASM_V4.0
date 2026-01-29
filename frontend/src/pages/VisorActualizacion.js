@@ -3067,10 +3067,12 @@ export default function VisorActualizacion() {
               ) : (
                 // Modo edición - Con Tabs igual que Conservación
                 <Tabs defaultValue="propietarios" className="w-full min-h-[300px]">
-                  <TabsList className="grid grid-cols-3 w-full">
+                  <TabsList className="grid grid-cols-5 w-full">
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
                     <TabsTrigger value="predio">Predio</TabsTrigger>
                     <TabsTrigger value="fisico">Zonas Físicas</TabsTrigger>
+                    <TabsTrigger value="linderos">Linderos</TabsTrigger>
+                    <TabsTrigger value="coordenadas">Coordenadas</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="propietarios" className="space-y-4 mt-4">
