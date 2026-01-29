@@ -4,12 +4,12 @@
 Sistema web para gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (Asomunicipios).
 
 ## Stack Tecnológico
-- **Backend:** FastAPI (Python) + MongoDB
+- **Backend:** FastAPI (Python) + MongoDB (asomunicipios_db)
 - **Frontend:** React + Tailwind CSS + shadcn/ui
 - **Mapas:** Leaflet + react-leaflet
 - **PDFs:** ReportLab
 - **Excel:** openpyxl
-- **PWA:** Service Worker + IndexedDB (modo offline)
+- **PWA:** Service Worker + IndexedDB (modo offline unificado)
 
 ## Roles de Usuario
 1. `usuario` - Usuario externo (antes "ciudadano"), puede crear peticiones y dar seguimiento
@@ -23,12 +23,15 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Funcionalidades Implementadas
 
-### Gestión de Peticiones
+### Gestión de Peticiones (Flujo Mejorado)
 - Crear peticiones con radicado único consecutivo (RASMCG-XXXX-DD-MM-YYYY)
 - Subir archivos adjuntos
-- Asignar a gestores
-- Seguimiento de estados
+- Asignar a gestores (múltiples gestores de apoyo)
+- **Estados del flujo:** RADICADO → ASIGNADO → EN_PROCESO → REVISIÓN → APROBADO → FINALIZADO
+- **Control por gestor:** Cada gestor marca su trabajo como completado
+- **Aprobación del coordinador:** Registro de quién aprobó, fecha y comentarios
 - **Histórico de Trámites** con filtros avanzados y exportación Excel
+- **PDF de flujo de radicación** para socialización
 
 ### Gestión de Predios
 - Dashboard por municipio
@@ -47,6 +50,11 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Visualización de geometrías GDB
 - Vinculación automática predio-geometría
 - Carga de archivos GDB/ZIP
+
+### Proyectos de Actualización
+- Formulario de visita con tabs: General, Propietarios, Físico, **Linderos, Coordenadas**, Propuestas, Historial
+- **Linderos:** Norte, Sur, Este, Oeste, verificación en campo
+- **Coordenadas:** Sistema de referencia, centroide, precisión GPS, área calculada, vértices
 
 ### PWA - Modo Offline (ACTUALIZADO)
 - ✅ Service Worker para caché de recursos
