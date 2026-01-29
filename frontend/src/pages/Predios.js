@@ -3376,6 +3376,30 @@ export default function Predios() {
             </DialogTitle>
           </DialogHeader>
           
+          {/* Información del Código Homologado */}
+          {siguienteCodigoHomologado && (
+            <div className={`p-3 rounded-lg border ${siguienteCodigoHomologado.codigo ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className={`w-5 h-5 ${siguienteCodigoHomologado.codigo ? 'text-emerald-600' : 'text-amber-600'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Código Homologado Asignado</p>
+                    {siguienteCodigoHomologado.codigo ? (
+                      <p className="text-lg font-bold text-emerald-700 font-mono">{siguienteCodigoHomologado.codigo}</p>
+                    ) : (
+                      <p className="text-sm text-amber-700">No hay códigos disponibles - se generará automáticamente</p>
+                    )}
+                  </div>
+                </div>
+                {siguienteCodigoHomologado.codigo && (
+                  <Badge className="bg-emerald-100 text-emerald-700">
+                    {siguienteCodigoHomologado.disponibles} disponibles
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+          
           <Tabs defaultValue="ubicacion" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ubicacion">Código Nacional (30 dígitos)</TabsTrigger>
