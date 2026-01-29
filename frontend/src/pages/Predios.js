@@ -5149,7 +5149,6 @@ export default function Predios() {
                 )}
               </div>
             )}
-            </div>
             
             {/* Resumen */}
             {codigosStats.length > 0 && (
