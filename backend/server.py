@@ -245,6 +245,12 @@ class Petition(BaseModel):
     observaciones_devolucion: str = ""  # Observaciones cuando el staff devuelve el trámite
     devuelto_por_id: Optional[str] = None  # ID del usuario que devolvió el trámite
     devuelto_por_nombre: Optional[str] = None  # Nombre del usuario que devolvió
+    # Nuevos campos para control de flujo mejorado
+    gestores_finalizados: List[str] = []  # IDs de gestores que marcaron su trabajo como completado
+    aprobado_por_id: Optional[str] = None  # ID del coordinador que aprobó
+    aprobado_por_nombre: Optional[str] = None  # Nombre del coordinador
+    fecha_aprobacion: Optional[str] = None  # Fecha de aprobación
+    comentario_aprobacion: Optional[str] = None  # Comentario del coordinador al aprobar
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
