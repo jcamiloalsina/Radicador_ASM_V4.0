@@ -8895,6 +8895,13 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
     
     await db.predios.insert_one(predio)
     
+    # Actualizar la asignación del código homologado con el ID real del predio
+    if codigo_homologado:
+        await db.codigos_homologados.update_one(
+            {'codigo': codigo_homologado, 'municipio': r1.municipio},
+            {'$set': {'predio_id': predio['id']}}
+        )
+    
     # Remover _id antes de retornar
     predio.pop("_id", None)
     
