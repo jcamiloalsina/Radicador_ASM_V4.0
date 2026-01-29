@@ -8814,8 +8814,28 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
             }
             raise HTTPException(status_code=400, detail=error_detail)
     
-    # Generar código homologado
-    codigo_homologado, numero_predio = await generate_codigo_homologado(r1.municipio)
+    # Generar código homologado - Primero intentar de la colección de códigos cargados
+    codigo_homologado = await asignar_codigo_homologado(r1.municipio, None)  # Se actualizará con el ID real después
+    
+    if codigo_homologado:
+        # Obtener el último número de predio para mantener secuencia
+        last_predio = await db.predios.find_one(
+            {"municipio": r1.municipio, "deleted": {"$ne": True}},
+            sort=[("numero_predio", -1)]
+        )
+        if last_predio:
+            num_predio = last_predio.get("numero_predio", 0)
+            if isinstance(num_predio, str):
+                try:
+                    num_predio = int(num_predio)
+                except (ValueError, TypeError):
+                    num_predio = 0
+            numero_predio = num_predio + 1
+        else:
+            numero_predio = 1
+    else:
+        # Fallback: generar código aleatorio si no hay códigos cargados
+        codigo_homologado, numero_predio = await generate_codigo_homologado(r1.municipio)
     
     # Obtener código Código Nacional Catastral
     divipola = MUNICIPIOS_DIVIPOLA[r1.municipio]
