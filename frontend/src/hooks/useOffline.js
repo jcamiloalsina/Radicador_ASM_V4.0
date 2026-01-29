@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// IndexedDB for offline data storage
-const DB_NAME = 'asomunicipios-offline';
-const DB_VERSION = 2; // Increased version for petitions store
+// IndexedDB for offline data storage - UNIFICADA con offlineDB.js
+const DB_NAME = 'asomunicipios_offline';
+const DB_VERSION = 7; // Incrementado para incluir nuevos stores
 
 const openDB = () => {
   return new Promise((resolve, reject) => {
