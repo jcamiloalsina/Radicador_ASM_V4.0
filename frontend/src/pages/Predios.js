@@ -1693,6 +1693,83 @@ export default function Predios() {
     toast.info('Por favor seleccione un gestor para continuar con el diligenciamiento', { duration: 4000 });
   };
 
+  // === FUNCIONES PARA CÓDIGOS HOMOLOGADOS ===
+  
+  // Cargar estadísticas de códigos homologados
+  const fetchCodigosStats = async () => {
+    setLoadingCodigos(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCodigosStats(res.data.stats || []);
+    } catch (error) {
+      console.error('Error cargando stats de códigos:', error);
+    } finally {
+      setLoadingCodigos(false);
+    }
+  };
+  
+  // Cargar archivo Excel de códigos homologados
+  const handleUploadCodigos = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingCodigos(true);
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await axios.post(`${API}/codigos-homologados/cargar`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      toast.success(`${res.data.codigos_insertados} códigos cargados exitosamente`);
+      if (res.data.codigos_duplicados > 0) {
+        toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
+      }
+      
+      // Recargar estadísticas
+      fetchCodigosStats();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error cargando códigos');
+    } finally {
+      setUploadingCodigos(false);
+      e.target.value = '';
+    }
+  };
+  
+  // Obtener siguiente código homologado para un municipio
+  const fetchSiguienteCodigoHomologado = async (municipio) => {
+    if (!municipio) {
+      setSiguienteCodigoHomologado(null);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSiguienteCodigoHomologado(res.data);
+    } catch (error) {
+      console.error('Error obteniendo siguiente código:', error);
+      setSiguienteCodigoHomologado(null);
+    }
+  };
+  
+  // Efecto para cargar el siguiente código cuando cambia el municipio en el formulario de creación
+  useEffect(() => {
+    if (showCreateDialog && formData.municipio) {
+      fetchSiguienteCodigoHomologado(formData.municipio);
+    }
+  }, [showCreateDialog, formData.municipio]);
+
   // === FUNCIONES PARA EL NUEVO FLUJO "CREAR PREDIO" ===
   
   // Buscar radicado por número (solo los 4 dígitos)
