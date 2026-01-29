@@ -1770,6 +1770,28 @@ export default function Predios() {
     setCodigosMunicipioSeleccionado('');
   };
   
+  // Obtener códigos usados por municipio
+  const fetchCodigosUsados = async (municipio) => {
+    if (!municipio) {
+      setCodigosUsados([]);
+      return;
+    }
+    
+    setLoadingCodigosUsados(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/usados/${encodeURIComponent(municipio)}?limit=100`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCodigosUsados(res.data.codigos || []);
+    } catch (error) {
+      console.error('Error obteniendo códigos usados:', error);
+      setCodigosUsados([]);
+    } finally {
+      setLoadingCodigosUsados(false);
+    }
+  };
+  
   // Obtener siguiente código homologado para un municipio
   const fetchSiguienteCodigoHomologado = async (municipio) => {
     if (!municipio) {
