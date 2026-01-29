@@ -4221,6 +4221,7 @@ async def cargar_codigos_homologados(
         # Procesar y guardar códigos
         codigos_insertados = 0
         codigos_duplicados = 0
+        codigos_ya_usados = 0  # Códigos que ya están asignados a predios existentes
         codigos_por_municipio = {}
         
         for _, row in df.iterrows():
@@ -4235,7 +4236,7 @@ async def cargar_codigos_homologados(
             if not muni or not codigo or muni == 'nan' or codigo == 'NAN':
                 continue
             
-            # Verificar si ya existe
+            # Verificar si ya existe en la colección de códigos
             existe = await db.codigos_homologados.find_one({
                 'municipio': muni,
                 'codigo': codigo
@@ -4245,17 +4246,40 @@ async def cargar_codigos_homologados(
                 codigos_duplicados += 1
                 continue
             
-            # Insertar nuevo código
-            await db.codigos_homologados.insert_one({
+            # Verificar si este código ya está asignado a un predio existente
+            predio_existente = await db.predios.find_one({
+                'codigo_homologado': codigo,
                 'municipio': muni,
-                'codigo': codigo,
-                'usado': False,
-                'predio_id': None,
-                'fecha_asignacion': None,
-                'cargado_por': current_user['id'],
-                'cargado_por_nombre': current_user['full_name'],
-                'fecha_carga': datetime.utcnow().isoformat()
-            })
+                'deleted': {'$ne': True}
+            }, {'_id': 0, 'id': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1})
+            
+            if predio_existente:
+                # El código ya está en uso - insertarlo como usado
+                await db.codigos_homologados.insert_one({
+                    'municipio': muni,
+                    'codigo': codigo,
+                    'usado': True,
+                    'predio_id': predio_existente['id'],
+                    'codigo_predial': predio_existente.get('codigo_predial_nacional'),
+                    'propietario': predio_existente.get('nombre_propietario'),
+                    'fecha_asignacion': None,  # Ya estaba asignado antes de cargar
+                    'cargado_por': current_user['id'],
+                    'cargado_por_nombre': current_user['full_name'],
+                    'fecha_carga': datetime.utcnow().isoformat()
+                })
+                codigos_ya_usados += 1
+            else:
+                # Código disponible
+                await db.codigos_homologados.insert_one({
+                    'municipio': muni,
+                    'codigo': codigo,
+                    'usado': False,
+                    'predio_id': None,
+                    'fecha_asignacion': None,
+                    'cargado_por': current_user['id'],
+                    'cargado_por_nombre': current_user['full_name'],
+                    'fecha_carga': datetime.utcnow().isoformat()
+                })
             
             codigos_insertados += 1
             codigos_por_municipio[muni] = codigos_por_municipio.get(muni, 0) + 1
@@ -4265,6 +4289,7 @@ async def cargar_codigos_homologados(
             "message": f"Códigos cargados exitosamente",
             "codigos_insertados": codigos_insertados,
             "codigos_duplicados": codigos_duplicados,
+            "codigos_ya_usados": codigos_ya_usados,
             "por_municipio": codigos_por_municipio
         }
         
