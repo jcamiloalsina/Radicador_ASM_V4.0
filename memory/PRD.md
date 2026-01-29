@@ -97,6 +97,48 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 29 Enero 2026 (Fork 7) - Sistema de Códigos Homologados
+
+#### Funcionalidad Implementada:
+Sistema completo para gestión de códigos homologados por municipio:
+
+1. ✅ **Backend - Nuevos Endpoints:**
+   - `POST /api/codigos-homologados/cargar` - Carga códigos desde Excel (con parámetro municipio opcional)
+   - `GET /api/codigos-homologados/stats` - Estadísticas por municipio (total, usados, disponibles)
+   - `GET /api/codigos-homologados/siguiente/{municipio}` - Obtiene siguiente código disponible
+   - `GET /api/codigos-homologados/disponibles/{municipio}` - Lista códigos disponibles
+   - `DELETE /api/codigos-homologados/{municipio}` - Elimina códigos no usados (solo admin)
+
+2. ✅ **Backend - Asignación Automática:**
+   - Al crear un predio, se asigna automáticamente el siguiente código disponible
+   - Función `asignar_codigo_homologado()` usa operación atómica para evitar duplicados
+   - Fallback a generación aleatoria si no hay códigos cargados
+
+3. ✅ **Frontend - UI de Gestión:**
+   - Botón "Códigos Homologados" en toolbar de Gestión de Predios
+   - Diálogo modal con:
+     - Carga de archivo Excel (soporta archivos con/sin columna Municipio)
+     - Selector de municipio para archivos de una sola columna
+     - Tabla de estadísticas por municipio (Total, Usados, Disponibles, Estado)
+     - Resumen total de códigos
+
+4. ✅ **Frontend - Integración en Creación de Predio:**
+   - Al abrir "Nuevo Predio", muestra el código homologado que se asignará
+   - Badge verde con cantidad de códigos disponibles
+   - Si no hay códigos, muestra advertencia y genera código aleatorio
+
+#### Datos de Prueba:
+- 3,086 códigos cargados para municipio "Ábrego"
+- Primer código disponible: BPP0002BUTE
+- Formato de códigos: BPP0002XXXX (11 caracteres)
+
+#### Testing:
+- ✅ Backend: 10/10 tests pasados (iteration_21.json)
+- ✅ Frontend: UI tests pasados
+- ✅ Integración E2E verificada
+
+---
+
 ### Sesión 28 Enero 2026 (Fork 6) - Implementación Completa Modo Offline
 
 #### 1. Fix Crítico de Rendimiento: Paginación del Lado del Cliente
