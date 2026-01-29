@@ -3309,6 +3309,200 @@ export default function VisorActualizacion() {
                       </div>
                     ))}
                   </TabsContent>
+                  
+                  {/* Tab Linderos - Edición */}
+                  <TabsContent value="linderos" className="space-y-4 mt-4">
+                    <h4 className="font-semibold text-slate-800">Linderos del Predio</h4>
+                    <p className="text-xs text-slate-500">Describa los límites del predio con los predios colindantes</p>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Lindero Norte</Label>
+                        <textarea 
+                          className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Ej: Colinda con predio de Juan Pérez, código 540030001..."
+                          value={editFormData.lindero_norte || ''}
+                          onChange={(e) => setEditFormData({...editFormData, lindero_norte: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Lindero Sur</Label>
+                        <textarea 
+                          className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Ej: Colinda con vía pública, calle 5..."
+                          value={editFormData.lindero_sur || ''}
+                          onChange={(e) => setEditFormData({...editFormData, lindero_sur: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Lindero Este</Label>
+                        <textarea 
+                          className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Ej: Colinda con quebrada La Honda..."
+                          value={editFormData.lindero_este || ''}
+                          onChange={(e) => setEditFormData({...editFormData, lindero_este: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Lindero Oeste</Label>
+                        <textarea 
+                          className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Ej: Colinda con predio de María García..."
+                          value={editFormData.lindero_oeste || ''}
+                          onChange={(e) => setEditFormData({...editFormData, lindero_oeste: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs">Observaciones de Linderos</Label>
+                      <textarea 
+                        className="w-full min-h-[60px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        placeholder="Notas adicionales sobre los límites del predio..."
+                        value={editFormData.observaciones_linderos || ''}
+                        onChange={(e) => setEditFormData({...editFormData, observaciones_linderos: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 pt-2 border-t">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          checked={editFormData.linderos_verificados || false}
+                          onChange={(e) => setEditFormData({...editFormData, linderos_verificados: e.target.checked})}
+                        />
+                        <span className="text-sm text-slate-700">Linderos verificados en campo</span>
+                      </label>
+                      
+                      {editFormData.linderos_verificados && (
+                        <div>
+                          <Label className="text-xs">Fecha verificación</Label>
+                          <Input 
+                            type="date" 
+                            className="w-40"
+                            value={editFormData.fecha_verificacion_linderos || ''}
+                            onChange={(e) => setEditFormData({...editFormData, fecha_verificacion_linderos: e.target.value})}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                  
+                  {/* Tab Coordenadas - Edición */}
+                  <TabsContent value="coordenadas" className="space-y-4 mt-4">
+                    <h4 className="font-semibold text-slate-800">Georreferenciación del Predio</h4>
+                    <p className="text-xs text-slate-500">Capture las coordenadas del predio utilizando GPS</p>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Sistema de Referencia</Label>
+                        <select 
+                          className="w-full h-10 px-3 py-2 text-sm border rounded-md bg-background focus:ring-2 focus:ring-emerald-500"
+                          value={editFormData.sistema_referencia || 'MAGNA-SIRGAS'}
+                          onChange={(e) => setEditFormData({...editFormData, sistema_referencia: e.target.value})}
+                        >
+                          <option value="MAGNA-SIRGAS">MAGNA-SIRGAS</option>
+                          <option value="WGS84">WGS84</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Precisión GPS</Label>
+                        <select 
+                          className="w-full h-10 px-3 py-2 text-sm border rounded-md bg-background focus:ring-2 focus:ring-emerald-500"
+                          value={editFormData.precision_gps || ''}
+                          onChange={(e) => setEditFormData({...editFormData, precision_gps: e.target.value})}
+                        >
+                          <option value="">Seleccione...</option>
+                          <option value="alta">Alta (±1m)</option>
+                          <option value="media">Media (±5m)</option>
+                          <option value="baja">Baja (±10m+)</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-medium text-slate-700">Coordenadas del Centroide</p>
+                        {userPosition && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setEditFormData({
+                              ...editFormData, 
+                              latitud_centroide: userPosition[0].toFixed(6),
+                              longitud_centroide: userPosition[1].toFixed(6),
+                              fecha_captura_coordenadas: new Date().toISOString().split('T')[0]
+                            })}
+                            className="text-blue-600 border-blue-300"
+                          >
+                            <MapPin className="w-4 h-4 mr-1" />
+                            Usar ubicación actual
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs">Latitud (Y)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.000001"
+                            placeholder="Ej: 8.123456"
+                            value={editFormData.latitud_centroide || ''}
+                            onChange={(e) => setEditFormData({...editFormData, latitud_centroide: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Longitud (X)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.000001"
+                            placeholder="Ej: -73.123456"
+                            value={editFormData.longitud_centroide || ''}
+                            onChange={(e) => setEditFormData({...editFormData, longitud_centroide: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Área Calculada (m²)</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="Área según medición GPS"
+                          value={editFormData.area_calculada || ''}
+                          onChange={(e) => setEditFormData({...editFormData, area_calculada: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Equipo GPS Utilizado</Label>
+                        <Input 
+                          placeholder="Ej: GPS Garmin 64s"
+                          value={editFormData.equipo_gps || ''}
+                          onChange={(e) => setEditFormData({...editFormData, equipo_gps: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs">Fecha de Captura</Label>
+                      <Input 
+                        type="date" 
+                        className="w-48"
+                        value={editFormData.fecha_captura_coordenadas || ''}
+                        onChange={(e) => setEditFormData({...editFormData, fecha_captura_coordenadas: e.target.value})}
+                      />
+                    </div>
+                    
+                    {userPosition && (
+                      <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Ubicación GPS detectada: {userPosition[0].toFixed(6)}, {userPosition[1].toFixed(6)}
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               )}
               
