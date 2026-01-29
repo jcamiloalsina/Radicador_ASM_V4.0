@@ -98,55 +98,41 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 29 Enero 2026 (Fork 7) - Sistema de Códigos Homologados
+### Sesión 29 Enero 2026 (Fork 7) - Mejoras al Flujo de Trámites
 
-#### Funcionalidad Implementada:
-Sistema completo para gestión de códigos homologados por municipio:
+#### 1. Nuevos Estados del Flujo de Trabajo:
+- ✅ **EN_PROCESO**: Gestor(es) trabajando activamente en el trámite
+- ✅ **APROBADO**: Coordinador aprobó, pendiente finalización
 
-1. ✅ **Backend - Nuevos Endpoints:**
-   - `POST /api/codigos-homologados/cargar` - Carga códigos desde Excel (con parámetro municipio opcional)
-   - `GET /api/codigos-homologados/stats` - Estadísticas por municipio (total, usados, disponibles)
-   - `GET /api/codigos-homologados/siguiente/{municipio}` - Obtiene siguiente código disponible
-   - `GET /api/codigos-homologados/disponibles/{municipio}` - Lista códigos disponibles
-   - `GET /api/codigos-homologados/usados/{municipio}` - **NUEVO**: Lista códigos usados con info del predio
-   - `DELETE /api/codigos-homologados/{municipio}` - Elimina códigos no usados (solo admin)
+**Flujo completo:**
+```
+RADICADO → ASIGNADO → EN_PROCESO → REVISIÓN → APROBADO → FINALIZADO
+                                ↘ DEVUELTO (subsanación)
+                                ↘ RECHAZADO
+```
 
-2. ✅ **Backend - Detección Automática de Códigos Usados:**
-   - Al cargar códigos desde Excel, detecta si alguno ya está asignado a un predio existente
-   - Los códigos ya usados se marcan automáticamente como `usado: true`
-   - Almacena referencia al predio (id, código predial, propietario)
+#### 2. Nuevos Campos en Peticiones:
+- `gestores_finalizados[]`: IDs de gestores que completaron su trabajo
+- `aprobado_por_id`, `aprobado_por_nombre`: Quién aprobó
+- `fecha_aprobacion`: Cuándo fue aprobado
+- `comentario_aprobacion`: Comentario del coordinador
 
-3. ✅ **Backend - Asignación Automática:**
-   - Al crear un predio, se asigna automáticamente el siguiente código disponible
-   - Función `asignar_codigo_homologado()` usa operación atómica para evitar duplicados
-   - Fallback a generación aleatoria si no hay códigos cargados
+#### 3. Nuevos Endpoints Backend:
+- `POST /api/petitions/{id}/marcar-completado`: Gestor marca su trabajo como terminado
+- `POST /api/petitions/{id}/desmarcar-completado`: Gestor retoma el trabajo
 
-4. ✅ **Frontend - UI de Gestión (Mejorada):**
-   - Botón **"Importar Homologados"** junto a "Importar R1/R2" en vista general
-   - Diálogo modal con:
-     - Carga de archivo Excel (soporta archivos con/sin columna Municipio)
-     - Selector de municipio para archivos de una sola columna
-     - Tabla de estadísticas por municipio (Total, Usados, Disponibles, Estado, Acciones)
-     - Botón **"Ver usados"** para ver detalle de códigos ya asignados
-     - Sección de códigos usados con Código, Código Predial y Propietario
-     - Resumen total de códigos
+#### 4. Nueva UI "Flujo del Trámite":
+- **Timeline visual** de estados (círculos numerados con progreso)
+- **Panel de Gestores Asignados** con estado individual (Trabajando/Completado)
+- **Botón "Marcar Completado"** para que cada gestor indique que terminó
+- **Barra de progreso** (X/Y completados)
+- **Info de aprobación** cuando el coordinador aprueba
 
-5. ✅ **Frontend - Integración en Creación de Predio:**
-   - Al abrir "Nuevo Predio", muestra el código homologado que se asignará
-   - Badge verde con cantidad de códigos disponibles
-   - Si no hay códigos, muestra advertencia y genera código aleatorio
-
-#### Datos Actuales:
-- 3,092 códigos cargados para municipio "Ábrego"
-- 3 códigos detectados como ya usados por predios existentes
-- 3,089 códigos disponibles
-- Formato de códigos: BPP0001XXXX y BPP0002XXXX (11 caracteres)
-
-#### Testing:
-- ✅ Backend: Todos los endpoints probados con curl
-- ✅ Frontend: UI verificada con screenshots
-- ✅ Detección de códigos usados: Verificada
-- ✅ Selector de municipio: Corregido (usando select nativo HTML para compatibilidad con Dialog)
+#### 5. Sistema de Códigos Homologados (Completo):
+- Botón "Importar Homologados" junto a "Importar R1/R2"
+- Selector de municipio obligatorio para carga
+- Detección automática de códigos ya usados por predios existentes
+- Vista de códigos usados con información del predio
 
 ---
 
