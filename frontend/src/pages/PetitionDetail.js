@@ -1099,6 +1099,184 @@ export default function PetitionDetail() {
         </CardContent>
       </Card>
 
+      {/* Flujo de Trabajo Card - Solo para staff */}
+      {user?.role !== 'usuario' && (
+        <Card className="border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-slate-900 font-outfit flex items-center gap-2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              Flujo del Trámite
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Timeline de estados */}
+            <div className="flex items-center justify-between mb-6 overflow-x-auto pb-2">
+              {['radicado', 'asignado', 'en_proceso', 'revision', 'aprobado', 'finalizado'].map((estado, idx) => {
+                const labels = {
+                  radicado: 'Radicado',
+                  asignado: 'Asignado',
+                  en_proceso: 'En Proceso',
+                  revision: 'En Revisión',
+                  aprobado: 'Aprobado',
+                  finalizado: 'Finalizado'
+                };
+                const estadoActual = petition.estado;
+                const estadoIndex = ['radicado', 'asignado', 'en_proceso', 'revision', 'aprobado', 'finalizado'].indexOf(estadoActual);
+                const esteIndex = idx;
+                const isPast = esteIndex < estadoIndex;
+                const isCurrent = estado === estadoActual;
+                const isRechazado = estadoActual === 'rechazado' || estadoActual === 'devuelto';
+                
+                return (
+                  <React.Fragment key={estado}>
+                    <div className="flex flex-col items-center min-w-[80px]">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        isRechazado && isCurrent ? 'bg-red-500 text-white' :
+                        isCurrent ? 'bg-emerald-500 text-white ring-4 ring-emerald-100' :
+                        isPast ? 'bg-emerald-200 text-emerald-800' :
+                        'bg-slate-200 text-slate-500'
+                      }`}>
+                        {isPast ? '✓' : idx + 1}
+                      </div>
+                      <span className={`text-xs mt-1 text-center ${
+                        isCurrent ? 'font-bold text-emerald-700' : 
+                        isPast ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        {labels[estado]}
+                      </span>
+                    </div>
+                    {idx < 5 && (
+                      <div className={`flex-1 h-1 mx-1 ${
+                        isPast ? 'bg-emerald-300' : 'bg-slate-200'
+                      }`}></div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            
+            {/* Estado especial si está rechazado o devuelto */}
+            {(petition.estado === 'rechazado' || petition.estado === 'devuelto') && (
+              <div className={`p-3 rounded-lg mb-4 ${
+                petition.estado === 'rechazado' ? 'bg-red-50 border border-red-200' : 'bg-orange-50 border border-orange-200'
+              }`}>
+                <p className={`text-sm font-medium ${
+                  petition.estado === 'rechazado' ? 'text-red-800' : 'text-orange-800'
+                }`}>
+                  {petition.estado === 'rechazado' ? '❌ Trámite Rechazado' : '↩️ Trámite Devuelto para Correcciones'}
+                </p>
+              </div>
+            )}
+
+            {/* Info de aprobación si existe */}
+            {petition.aprobado_por_nombre && (
+              <div className="p-3 rounded-lg mb-4 bg-teal-50 border border-teal-200">
+                <p className="text-sm text-teal-800">
+                  <span className="font-medium">✓ Aprobado por:</span> {petition.aprobado_por_nombre}
+                  {petition.fecha_aprobacion && (
+                    <span className="text-teal-600 ml-2">
+                      ({new Date(petition.fecha_aprobacion).toLocaleDateString('es-ES')})
+                    </span>
+                  )}
+                </p>
+                {petition.comentario_aprobacion && (
+                  <p className="text-sm text-teal-700 mt-1 italic">"{petition.comentario_aprobacion}"</p>
+                )}
+              </div>
+            )}
+
+            {/* Gestores asignados y su estado */}
+            {petition.gestores_asignados?.length > 0 && (
+              <div className="border rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Gestores Asignados</h4>
+                <div className="space-y-2">
+                  {petition.gestores_asignados.map(gestorId => {
+                    const gestor = gestores.find(g => g.id === gestorId);
+                    const completado = petition.gestores_finalizados?.includes(gestorId);
+                    const esUsuarioActual = gestorId === user?.id;
+                    
+                    return (
+                      <div key={gestorId} className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${completado ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
+                          <span className="text-sm font-medium text-slate-700">
+                            {gestor?.full_name || 'Gestor'}
+                            {esUsuarioActual && <span className="text-xs text-blue-600 ml-1">(Tú)</span>}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {completado ? (
+                            <Badge className="bg-emerald-100 text-emerald-700">Completado</Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-700">Trabajando</Badge>
+                          )}
+                          {esUsuarioActual && ['asignado', 'en_proceso'].includes(petition.estado) && (
+                            completado ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                                onClick={async () => {
+                                  try {
+                                    await axios.post(`${API}/petitions/${petition.id}/desmarcar-completado`);
+                                    toast.success('Trabajo desmarcado');
+                                    fetchPetition();
+                                  } catch (error) {
+                                    toast.error(error.response?.data?.detail || 'Error');
+                                  }
+                                }}
+                              >
+                                Retomar
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                                onClick={async () => {
+                                  try {
+                                    await axios.post(`${API}/petitions/${petition.id}/marcar-completado`);
+                                    toast.success('Trabajo marcado como completado');
+                                    fetchPetition();
+                                  } catch (error) {
+                                    toast.error(error.response?.data?.detail || 'Error');
+                                  }
+                                }}
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Marcar Completado
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Resumen del progreso */}
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">Progreso de gestores:</span>
+                    <span className="font-medium">
+                      {petition.gestores_finalizados?.length || 0} / {petition.gestores_asignados.length} completados
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-emerald-500 h-2 rounded-full transition-all" 
+                      style={{ width: `${((petition.gestores_finalizados?.length || 0) / petition.gestores_asignados.length) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Historial Card */}
       <Card className="border-slate-200">
         <CardHeader>
