@@ -5013,7 +5013,7 @@ export default function Predios() {
                     </Button>
                     <Button 
                       onClick={confirmarCargaCodigos}
-                      disabled={uploadingCodigos}
+                      disabled={uploadingCodigos || !codigosMunicipioSeleccionado}
                       className="bg-emerald-600 hover:bg-emerald-700"
                     >
                       {uploadingCodigos ? (
