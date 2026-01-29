@@ -14,11 +14,18 @@ const openDB = () => {
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       
-      // Store for cached predios
-      if (!db.objectStoreNames.contains('predios')) {
-        const prediosStore = db.createObjectStore('predios', { keyPath: 'id' });
+      // Store for cached predios (compatible con offlineDB.js)
+      if (!db.objectStoreNames.contains('predios_offline')) {
+        const prediosStore = db.createObjectStore('predios_offline', { keyPath: 'id' });
         prediosStore.createIndex('municipio', 'municipio', { unique: false });
         prediosStore.createIndex('codigo_predial_nacional', 'codigo_predial_nacional', { unique: false });
+      }
+      
+      // Store legacy 'predios' - mantener compatibilidad
+      if (!db.objectStoreNames.contains('predios')) {
+        const prediosStoreLegacy = db.createObjectStore('predios', { keyPath: 'id' });
+        prediosStoreLegacy.createIndex('municipio', 'municipio', { unique: false });
+        prediosStoreLegacy.createIndex('codigo_predial_nacional', 'codigo_predial_nacional', { unique: false });
       }
       
       // Store for cached petitions
@@ -38,6 +45,31 @@ const openDB = () => {
       // Store for user preferences
       if (!db.objectStoreNames.contains('preferences')) {
         db.createObjectStore('preferences', { keyPath: 'key' });
+      }
+      
+      // Stores de offlineDB.js
+      if (!db.objectStoreNames.contains('geometrias_offline')) {
+        const geometriasStore = db.createObjectStore('geometrias_offline', { keyPath: 'id' });
+        geometriasStore.createIndex('municipio', 'municipio', { unique: false });
+      }
+      
+      if (!db.objectStoreNames.contains('cambios_pendientes')) {
+        const cambiosStore = db.createObjectStore('cambios_pendientes', { keyPath: 'id' });
+        cambiosStore.createIndex('tipo', 'tipo', { unique: false });
+        cambiosStore.createIndex('fecha', 'fecha', { unique: false });
+      }
+      
+      if (!db.objectStoreNames.contains('visitas_pendientes')) {
+        db.createObjectStore('visitas_pendientes', { keyPath: 'id' });
+      }
+      
+      if (!db.objectStoreNames.contains('config_offline')) {
+        db.createObjectStore('config_offline', { keyPath: 'key' });
+      }
+      
+      if (!db.objectStoreNames.contains('proyectos_offline')) {
+        const proyectosStore = db.createObjectStore('proyectos_offline', { keyPath: 'id' });
+        proyectosStore.createIndex('municipio', 'municipio', { unique: false });
       }
     };
   });
