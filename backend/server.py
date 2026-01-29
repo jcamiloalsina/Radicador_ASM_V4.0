@@ -2625,8 +2625,10 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
             status_names = {
                 PetitionStatus.RADICADO: "Radicado",
                 PetitionStatus.ASIGNADO: "Asignado",
-                PetitionStatus.RECHAZADO: "Rechazado",
+                PetitionStatus.EN_PROCESO: "En Proceso",
                 PetitionStatus.REVISION: "En Revisión",
+                PetitionStatus.APROBADO: "Aprobado",
+                PetitionStatus.RECHAZADO: "Rechazado",
                 PetitionStatus.DEVUELTO: "Devuelto",
                 PetitionStatus.FINALIZADO: "Finalizado"
             }
@@ -2637,6 +2639,14 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                 update_dict['devuelto_por_nombre'] = current_user['full_name']
                 if update_data.observaciones_devolucion:
                     update_dict['observaciones_devolucion'] = update_data.observaciones_devolucion
+            
+            # Si se está aprobando, guardar info del aprobador
+            if estado_nuevo == PetitionStatus.APROBADO:
+                update_dict['aprobado_por_id'] = current_user['id']
+                update_dict['aprobado_por_nombre'] = current_user['full_name']
+                update_dict['fecha_aprobacion'] = datetime.now(timezone.utc).isoformat()
+                if hasattr(update_data, 'comentario_aprobacion') and update_data.comentario_aprobacion:
+                    update_dict['comentario_aprobacion'] = update_data.comentario_aprobacion
             
             historial_entry = {
                 "accion": f"Estado cambiado de {status_names.get(estado_anterior, estado_anterior)} a {status_names.get(estado_nuevo, estado_nuevo)}",
