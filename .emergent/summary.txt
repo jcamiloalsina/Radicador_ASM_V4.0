@@ -1,88 +1,77 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on two main modules: Conservación (property creation) and Actualización (property updates). The scope has expanded to include a detailed multi-page Formato de Visita, integration with a change proposal system, a coordinator approval workflow, specific certificate generation rules, a robust offline mode for fieldwork, and numerous UI/UX improvements and bug fixes.
+The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on property creation/management (Conservación) and property updates (Actualización).
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Robust Offline Mode:** Key modules like Gestión de Predios, Visor de Predios, and Proyectos de Actualización must be fully functional offline. This includes clear UI indicators for download status (progress bars, status panel) and seamless loading of cached data from IndexedDB. The system must be performant and not slow down the user experience.
-2.  **Coordinator's Approval UI:** Implement the interface for the Coordinador role to review, approve, or reject suggested changes () submitted through the visit form.
-3.  **Complete Visit Form:** Add the remaining sections (Linderos, Coordenadas) to the multi-page visit form.
-4.  **Production DNS Configuration:** The certificate verification URL has been configured in the backend, but the user needs to set up the corresponding DNS record on their server.
-5.  **Payment Verification Workflow:** Formalize the payment process for certificates.
+1.  **Robust Offline Mode:** Key modules must be fully functional offline, with clear UI indicators and performant caching.
+2.  **Coordinator's Approval UI:** Implement the interface for the Coordinador role to manage suggested changes.
+3.  **Complete Visit Form:** Add remaining sections (Linderos, Coordenadas).
+4.  **Payment Verification Workflow:** Formalize the payment process for certificates.
+5.  **Homologated Codes System:** The user wants to upload an Excel file containing a list of  (homologated codes) for each municipality. When creating a new property, the system must automatically assign the next available code from this list for the selected municipality. The UI should support uploading this file and viewing statistics on code usage.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application has a FastAPI backend and a React frontend. The agent has been focused on fixing and enhancing the offline mode, which has been the source of numerous bugs related to performance and data consistency.
--   The Proyectos de Actualización page now works offline, caching and loading data from IndexedDB.
--   The Gestión de Predios page () has seen significant changes to address user complaints:
-    -   A stale-while-revalidate pattern was implemented to load cached data instantly while fetching updates in the background.
-    -   A manual Sincronizar button and a Limpiar datos offline button were added to give the user control over data management.
-    -   Logic was added to clear old data for a municipality before saving new data, preventing data accumulation.
-    -   A bug was fixed where all historical  (years) were being downloaded; it now correctly defaults to the current year (2026).
--   To fix a severe performance issue, the agent just implemented client-side pagination on the  page to avoid rendering thousands of table rows at once. This change is not yet tested.
--   The backend API () was updated to increase the default query limit and to perform case-insensitive searches on municipality names.
--   The IndexedDB implementation () has been made more robust by increasing its version number (to v6) and adding error handling to automatically delete and recreate the database if version conflicts occur, which was a recurring issue for the user.
+The application consists of a FastAPI backend and a React frontend. The main focus has been on implementing and debugging a robust offline mode.
+- Critical performance issues on the Gestión de Predios page have been resolved by implementing client-side pagination, which has been tested and verified.
+- The offline mode has been successfully extended to three key modules: Gestión de Predios, Visor de Predios (map view), and Proyectos de Actualización. This includes fixing numerous bugs related to data consistency, caching, searching, and sorting.
+- The global offline status indicator in the header now correctly aggregates and displays the count of all offline items (properties, geometries, and projects).
+- A new feature for managing Códigos Homologados has been implemented but is not yet tested. This includes backend endpoints for uploading an Excel file, managing codes in a new MongoDB collection (), and frontend components for uploading the file and automatically assigning a code when creating a new property.
 
 **Last working item**:
--   **Last item agent was working:** The agent was addressing a critical performance issue on the Gestión de Predios page. The user reported extreme slowness when viewing the list of properties. The root cause was identified as the browser attempting to render thousands of table rows simultaneously. The agent implemented client-side pagination in  as a solution.
+-   **Last item agent was working:** The agent was implementing the Códigos Homologados system. The user wants to upload an Excel file with predefined codes per municipality, and have the system automatically assign the next available one when a new property is created. The agent finished implementing the backend logic (new MongoDB collection, API endpoints for uploading, getting stats, and fetching the next code) and the frontend UI (a new dialog for uploading the file and viewing stats, plus integration into the 'Create Predio' form).
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** Frontend testing agent. The test should verify that: 1. The Gestión de Predios page loads quickly after selecting a municipality. 2. Only a limited number of rows (50) are displayed initially. 3. Pagination controls (Next, Previous, page numbers) are visible and functional. 4. Clicking the controls correctly navigates through the pages of data.
+-   **Which testing method agent to use?** both.
+    -   **Backend:** Use  to test the new endpoints (, , ).
+    -   **Frontend:** Use the  tool to verify the UI for uploading codes and creating a property. Then, use the frontend testing agent for a full E2E test: upload an Excel file, verify stats, create a new property, and confirm the code is assigned correctly and stats are updated.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Severe performance lag on Gestión de Predios (P0)**
--   **Issue 2: Offline state is inconsistent across the app (P1)**
--   **Issue 3: MongoDB database name is  (P2)**
--   **Issue 4: Geographic Area () is not populated for existing properties (P2)**
+-   **Issue 1: Test the new Códigos Homologados system (P0)**
+-   **Issue 2: Unify the two IndexedDB databases (P1)**
+-   **Issue 3: The MongoDB database name is still  (P2)**
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Attempted fixes:** The agent has just implemented client-side pagination in  by adding state for the current page and page size, slicing the  array, and adding pagination controls to the UI.
+    -   **Attempted fixes:** The full feature (backend and frontend) has been implemented.
     -   **Next debug checklist:**
-        1.  Verify the  component compiles without errors.
-        2.  Take a screenshot to confirm the UI renders correctly with only the first page of results (50 items).
-        3.  Confirm the pagination controls are visible and correctly styled.
-        4.  Use the testing agent to simulate user interaction with the pagination controls to ensure the page state updates and the correct data is displayed.
-    -   **Why fix this issue and what will be achieved with the fix?** The page is currently unusable due to lag. Fixing this will make the Gestión de Predios module functional and performant.
+        1.  Create a sample Excel file () with  and  columns.
+        2.  Use  to test the  endpoint.
+        3.  Use  to test  and verify it returns a code.
+        4.  Use the  tool on  to open the new Gestionar Códigos dialog and verify the upload UI.
+        5.  Use the  tool to open the Crear Predio dialog, select a municipality, and verify that the Código Homologado field is automatically populated.
+        6.  Create a property and verify in the database that the code is marked as .
+    -   **Why fix this issue and what will be achieved with the fix?** This completes a core user requirement for standardizing property codes upon creation.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Both
 
 -   **Issue 2:**
-    -   **Attempted fixes:** The agent has tried numerous patches, including bumping the IndexedDB version, adding error handling to delete corrupt databases, and dispatching custom events. However, these are workarounds. The core problem of using two different IndexedDB databases ( and ) managed by different hooks ( and ) remains.
+    -   **Attempted fixes:** None in this session. This is a known technical debt from previous sessions.
     -   **Next debug checklist:**
-        1.  Refactor all offline logic to use a single database name () and a single set of object stores.
-        2.  Consolidate  and  into a unified service or context provider for managing offline state.
-        3.  Ensure all components (e.g., , , ) read from and write to this single source of truth.
-    -   **Why fix this issue and what will be achieved with the fix?** This will eliminate a whole class of bugs related to inconsistent UI state (e.g., incorrect offline counts) and provide a reliable offline experience.
+        1.  Analyze  (uses ) and  (uses ).
+        2.  Plan a refactor to move all offline logic into a single database () and a unified set of hooks/utils.
+        3.  Update all components to use the new unified system.
+    -   **Why fix this issue and what will be achieved with the fix?** This will eliminate a major source of recurring bugs related to inconsistent offline state and simplify future development.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Frontend
-    -   **Blocked on other issue:** Issue 1 should be resolved first as it's the user's most immediate pain point.
 
 -   **Issue 3:**
     -   **Attempted fixes:** None.
-    -   **Next debug checklist:** Edit  and change  to .
+    -   **Next debug checklist:** Edit  and change  to . Restart the backend supervisor.
     -   **Why fix this issue and what will be achieved with the fix?** To align the development environment with production best practices.
     -   **Status:** NOT STARTED
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Backend
 
--   **Issue 4:**
-    -   **Attempted fixes:** None. This is a data population issue.
-    -   **Next debug checklist:** No action required from the agent until the user provides updated data.
-    -   **Why fix this issue and what will be achieved with the fix?** It would enable the UI feature that displays the geographic area.
-    -   **Status:** BLOCKED
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** N/A
-
 **In progress Task List**:
--   **Task 1: Complete Offline Mode Implementation (P0)**
-    -   **Where to resume:** First, finish and test the client-side pagination fix for **Issue 1**. After that is confirmed, begin the major refactoring to address **Issue 2** by unifying the IndexedDB implementation.
-    -   **What will be achieved with this?** A robust, performant, and reliable offline experience for all key modules.
+-   **Task 1: Complete Códigos Homologados Feature (P0)**
+    -   **Where to resume:** The implementation is code-complete. The next step is to begin testing the backend endpoints and the frontend UI as described in **Issue 1**.
+    -   **What will be achieved with this?** A fully functional and tested system for assigning standardized codes to new properties.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Frontend
-    -   **Blocked on something:** None.
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 
@@ -99,40 +88,43 @@ The application has a FastAPI backend and a React frontend. The agent has been f
     *   Implement a history log for permission changes.
 
 **Completed work in this session**
--   **Bug Fix: Offline for Proyectos de Actualización:** Implemented caching and offline loading for the projects list.
--   **Bug Fix: 50-Predio Limit:** Increased the default API query limit in the backend to allow loading all properties for a municipality.
--   **Bug Fix: Incorrect Offline Data Accumulation:** Resolved multiple bugs that caused the offline predio count to be vastly inflated. This involved:
-    -   Fixing the backend to be case-insensitive for municipality names.
-    -   Fixing the frontend to default to the current  (year).
-    -   Adding logic to clear old data for a municipality before saving new data.
-    -   Implementing a versioning system () to automatically clear the entire IndexedDB on major code updates.
--   **Feature: User-Controlled Sync:** Implemented a stale-while-revalidate loading pattern, a manual Sincronizar button, and a Limpiar datos offline button to improve performance and give the user control.
--   **Bug Fix: IndexedDB Version Errors:** Addressed persistent errors caused by browser caching of old code by bumping the DB version to 6 and adding robust error handling to automatically delete and recreate the database on version conflicts.
--   **Bug Fix (In Progress): Severe UI Lag:** Identified that rendering thousands of table rows was the cause of UI freezing and implemented client-side pagination in .
+- **Critical Bug Fix: UI Lag on Gestión de Predios**: Successfully implemented and verified client-side pagination to fix severe performance issues.
+- **Bug Fix: Disappearing Predio After Edit**: Resolved a caching issue by implementing a  mechanism that re-fetches data from the server after create, update, or delete operations.
+- **Full Offline Mode Implementation**:
+    - **Visor de Predios**: Implemented offline saving and loading for map geometries.
+    - **Proyectos de Actualización**: Added manual sync and force-refresh capabilities.
+    - **Visor de Actualización**: Fixed a bug that prevented loading a project from cache when offline.
+- **Multiple Data Integrity Fixes**:
+    - Fixed offline search functionality in  to correctly query nested fields like matricula.
+    - Ensured predios are always sorted by  in the UI, both online and offline.
+    - Fixed bugs in the offline geometry store that caused data duplication and incorrect counts.
+    - Corrected the global offline badge to accurately count all offline entities (predios, geometrías, proyectos).
+- **Responsive UI Fix**: Corrected layout issues on the Gestión de Predios page for tablet-sized screens.
+- **Feature Implementation (Untested): Códigos Homologados System**: Implemented backend and frontend for managing and assigning codes from an Excel file.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1:**  name in  is still not updated.
--   **Issue 2:**  data is null for existing properties (data issue, not code).
+-   **Issue 1:** The MongoDB database name in  is still .
+-   **Issue 2:** The fragmented IndexedDB architecture ( and ) has not been unified.
 
 **Known issue recurrence from previous fork**
--   The task to rename the MongoDB database from  has been pending across multiple sessions.
--   The fragmented IndexedDB architecture has been a recurring source of bugs related to offline state inconsistency.
+-   **Issue recurrence in previous fork:** Renaming the MongoDB database from .
+-   **Recurrence count:** 2+
+-   **Status:** NOT STARTED
 
 **Code Architecture**
-
+create_predio
 
 **Key Technical Concepts**
--   **IndexedDB Versioning & Corruption:** A major theme of the session. The final solution involves bumping the DB version in  and storing an  in localStorage to detect outdated code in the user's browser and trigger a full data wipe and recreation.
--   **Client-Side Performance:** The root cause of the latest user complaint was rendering thousands of DOM elements. The fix is client-side pagination.
--   **Stale-While-Revalidate:** This pattern was implemented in  to show cached data instantly for a better user experience while fetching fresh data in the background.
--   **Singleton Pattern:** The  function was refactored into a singleton to prevent costly re-initializations on every component render.
--   **Defensive Data Handling:** Logic was added at multiple levels (backend case-insensitive search, frontend data validation before saving) to prevent incorrect data from being stored offline.
+-   **Robust Offline Caching:** Extensive work on IndexedDB to fix data duplication, ensure data integrity, and provide a consistent user experience. This involved creating stable IDs, using cursors for deletion, and separating concerns between different modules.
+-   **Client-Side Performance:** Solved a critical UI freezing issue by implementing client-side pagination for a large dataset.
+-   **State Management (Stale-While-Revalidate):** The pattern of showing cached data first while fetching fresh data in the background is now a core part of the application's data-heavy pages.
+-   **File Upload and Processing:** Implemented backend logic to parse an Excel file () using  for the new Códigos Homologados feature.
 
 **key DB schema**
--   ** (IndexedDB):** The primary offline database, now at **version 6**.
+-   ** (MongoDB - New):**
+    -    - Stores the list of available codes loaded from Excel.
+-   ** (IndexedDB):**
     -   **Stores:** , , , , .
-    -   ** store:** Now contains an  key to manage forced data clearing when the application code updates significantly.
--   ** (MongoDB):** Queries must filter by  (year) to get correct, non-historical data.
 
 **All files of reference**
 -   
@@ -142,60 +134,68 @@ The application has a FastAPI backend and a React frontend. The agent has been f
 -   
 -   
 -   
+-   
+-   
 
 **Areas that need refactoring**:
--   **Unify Offline Logic (High Priority):** The fragmented implementation across , , and two different DB names/schemes is unsustainable and the root cause of many bugs. This needs to be consolidated into a single, cohesive system.
--   **Componentize :** This file is extremely large and complex. Now that pagination has been added, it's a prime candidate to be broken down into smaller components (e.g., , , ).
+-   **Unify Offline Logic (High Priority):** The coexistence of  and  managing two different IndexedDB databases is a major source of technical debt and complexity. This should be consolidated.
+-   **Componentize :** The file has grown to over 5,000 lines and handles logic for stats, filtering, searching, creating, updating, deleting, pagination, and now homologated codes. It should be broken down into smaller, manageable components.
 
 **key api endpoints**
--   : Modified to support case-insensitive  filtering and a higher default limit. It's crucial that this is called with  and  parameters to fetch the correct dataset.
+-   : (New) Uploads an Excel file with homologated codes.
+-   : (New) Gets the next available code for a municipality.
+-   : (New) Gets usage statistics for homologated codes.
+-   : (Modified) Now assigns a homologated code from the new system when creating a property.
 
 **Critical Info for New Agent**
--   **Your immediate priority is to test the new client-side pagination in .** The code is implemented but untested. This is the fix for the user's most recent and severe performance complaint.
--   After confirming the pagination fix, you should strongly consider proposing the **unification of the IndexedDB architecture** as the next major task. This will prevent a whole class of recurring bugs that have frustrated the user.
--   The user has a cached version of old, buggy code. The latest fixes rely on an  check and an increased  to force the user's browser to clear old data. Be aware that if you make significant changes to offline logic, you may need to bump these versions again.
--   When testing, be mindful that Playwright/screenshot browser sessions are stateless. IndexedDB data does not persist between separate  calls. To test persistence, you must perform actions within a single session or reload the page within the same test context.
+-   **Your immediate priority is to test the new Códigos Homologados feature.** The entire implementation (backend and frontend) is complete but completely untested. Follow the checklist in the Issues Detail section.
+-   Be aware of the **two separate IndexedDB databases**. This is a recurring source of confusion and bugs.  manages  (with underscore), while the  hook and  component primarily interact with  (with dash). This technical debt needs to be addressed soon.
+-   The user is highly engaged and provides detailed feedback, often including screenshots. Pay close attention to subtle behaviors, especially regarding offline data, as the user will notice inconsistencies.
+-   The data for a single property can be complex, with information coming from the main  collection as well as nested  documents. When debugging data issues, ensure you are querying the correct fields and vigencia (year).
 
 **documents and test reports created in this job**
 -   
--    (updated multiple times)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Bug):** Performance is still terrible, it's slow to open and edit properties. Is it the offline mode?
-2.  **User (Bug):** The app is still showing a huge number of properties (44k+) for Ábrego, which is wrong.
-3.  **User (Bug):** Why is the app so slow when loading properties? Also, it loaded way more properties than exist for Ábrego.
-4.  **User (Bug):** The error still persists, showing over 44k properties. It should clear the old cache and save the new one when I sync.
-5.  **User (Bug):** Still showing more properties than are real. Can't it just show cached data and sync in the background? The app gets slow when it starts checking data. Can I sync manually?
-6.  **User (Bug):** The error still persists. (Image shows ).
-7.  **User (Bug):** The offline indicator doesn't update. It says predios are saved but the header badge shows nothing. (Image shows toast notification and header badge out of sync).
-8.  **User (Bug):** When I click on Gestión de predios I get an error. (Image shows a blank page and console error related to IndexedDB).
-9.  **User (Clarification):** What do you mean by the suggested improvement (Coordinator Approval UI)? Also, in Conservación, it only loads 50 properties, it should load all of them.
-10. **User (Continuation):** Continue working on the offline pending task.
+1.  **User (Request):** Asked for a system to manage and assign Códigos Homologados from an uploaded Excel file when creating new properties.
+2.  **User (Bug):** Reported that after entering an update project and leaving, they couldn't re-enter it in offline mode (Proyecto no encontrado).
+3.  **User (Bug):** Reported that the UI layout was broken on a tablet.
+4.  **User (Bug):** Reported that searching for a specific  wasn't working and that properties were not sorted by CNP.
+5.  **User (Bug):** After syncing geometrias for one municipality (Ábrego), the offline count was incorrectly showing a much larger number, indicating old data was not being cleared.
+6.  **User (Bug):** Pointed out that after a fix, only 279 geometries were being loaded from cache instead of the full 9,893.
+7.  **User (Bug):** Noticed that only 5,705 of 9,893 geometries were being saved offline for Ábrego.
+8.  **User (Clarification):** Asked if the global geometry counter includes geometries from Actualización projects, which it incorrectly did.
+9.  **User (Bug):** The global offline indicator in the header was only showing the count for predios, not the total of all offline items.
+10. **User (Bug):** Reported that a predio disappeared from the list after being edited. (This was a caching issue, now fixed).
 
 **Project Health Check:**
 -   **Broken:**
-    -   The performance of the Gestión de Predios page is critically broken without the newly implemented (but untested) pagination fix.
-    -   The core offline architecture is fragmented, leading to unreliable UI state indicators and a high potential for future bugs.
+    -   The new Códigos Homologados feature is completely untested and may not work as expected.
 -   **Mocked:**
-    -   The payment verification process for certificates is still a simple, non-enforced checkbox.
+    -   The payment verification workflow for certificates remains a simple, non-enforced process.
+-   **Technical Debt:**
+    -   The application uses two separate IndexedDB databases managed by different parts of the code, which is a significant source of bugs and complexity.
+    -   The  file is monolithic and urgently needs to be refactored into smaller components.
 
 **3rd Party Integrations**
--   None. The stack is React, FastAPI, and MongoDB.
+-   None.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, used to verify the fix for Proyectos de Actualización offline mode.
+-   **Testing agent used after significant changes:** YES, used to verify the pagination fix and the full offline mode implementation.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** None, but the primary focus has been fixing pre-existing bugs and performance issues introduced by the initial offline implementation.
+-   **Known regressions:** None identified in this session.
 
 **Credentials to test flow:**
 -   **Administrator:**
     -   **Email:** 
     -   **Password:** 
--   **External User:**
+-   **Coordinador:**
     -   **Email:** 
     -   **Password:** 
 
 **What agent forgot to execute**
--   The agent correctly identified the need for pagination but has not yet tested or verified the implementation.
--   The agent has not yet undertaken the major but necessary refactoring to unify the two separate IndexedDB implementations, which remains a source of technical debt and bugs.</analysis>
+-   The agent has implemented a major feature (Códigos Homologados) but has not performed any testing or verification.
+-   The agent did not address the long-standing technical debt of unifying the two IndexedDB databases, despite it being a recurring source of problems.</analysis>
