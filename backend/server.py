@@ -2585,6 +2585,98 @@ async def auto_asignar_tramite(petition_id: str, current_user: dict = Depends(ge
     
     return {"message": "Se ha asignado exitosamente al trámite"}
 
+
+@api_router.post("/petitions/{petition_id}/marcar-completado")
+async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depends(get_current_user)):
+    """El gestor marca su trabajo como completado en el trámite"""
+    if current_user['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo gestores pueden marcar su trabajo como completado")
+    
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    # Verificar que el usuario esté asignado
+    if current_user['id'] not in petition.get('gestores_asignados', []):
+        raise HTTPException(status_code=403, detail="No está asignado a este trámite")
+    
+    gestores_finalizados = petition.get('gestores_finalizados', [])
+    
+    if current_user['id'] in gestores_finalizados:
+        raise HTTPException(status_code=400, detail="Ya ha marcado su trabajo como completado")
+    
+    gestores_finalizados.append(current_user['id'])
+    
+    # Agregar al historial
+    historial_entry = {
+        "accion": f"Trabajo completado por {current_user['full_name']}",
+        "usuario": current_user['full_name'],
+        "usuario_rol": current_user['role'],
+        "notas": "El gestor marcó su trabajo como finalizado",
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    current_historial = petition.get('historial', [])
+    current_historial.append(historial_entry)
+    
+    update_data = {
+        "gestores_finalizados": gestores_finalizados,
+        "historial": current_historial,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Si todos los gestores han completado su trabajo, notificar
+    gestores_asignados = petition.get('gestores_asignados', [])
+    todos_completaron = all(g in gestores_finalizados for g in gestores_asignados)
+    
+    await db.petitions.update_one({"id": petition_id}, {"$set": update_data})
+    
+    return {
+        "message": "Trabajo marcado como completado",
+        "todos_completaron": todos_completaron,
+        "gestores_finalizados": len(gestores_finalizados),
+        "gestores_totales": len(gestores_asignados)
+    }
+
+
+@api_router.post("/petitions/{petition_id}/desmarcar-completado")
+async def desmarcar_trabajo_completado(petition_id: str, current_user: dict = Depends(get_current_user)):
+    """El gestor desmarca su trabajo como completado (por si necesita hacer más cambios)"""
+    if current_user['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo gestores pueden modificar el estado de su trabajo")
+    
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    gestores_finalizados = petition.get('gestores_finalizados', [])
+    
+    if current_user['id'] not in gestores_finalizados:
+        raise HTTPException(status_code=400, detail="No ha marcado su trabajo como completado")
+    
+    gestores_finalizados.remove(current_user['id'])
+    
+    # Agregar al historial
+    historial_entry = {
+        "accion": f"{current_user['full_name']} retomó el trabajo",
+        "usuario": current_user['full_name'],
+        "usuario_rol": current_user['role'],
+        "notas": "El gestor desmarcó su trabajo como finalizado para continuar",
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    current_historial = petition.get('historial', [])
+    current_historial.append(historial_entry)
+    
+    await db.petitions.update_one({"id": petition_id}, {"$set": {
+        "gestores_finalizados": gestores_finalizados,
+        "historial": current_historial,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }})
+    
+    return {"message": "Trabajo desmarcado como completado"}
+
+
 @api_router.patch("/petitions/{petition_id}")
 async def update_petition(petition_id: str, update_data: PetitionUpdate, current_user: dict = Depends(get_current_user)):
     # Citizens cannot update petitions
