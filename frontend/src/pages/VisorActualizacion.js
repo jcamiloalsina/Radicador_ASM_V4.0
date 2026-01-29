@@ -381,6 +381,50 @@ export default function VisorActualizacion() {
   // Cargar datos del proyecto
   const fetchProyecto = useCallback(async () => {
     try {
+      // Si está offline, intentar cargar desde IndexedDB primero
+      if (!navigator.onLine) {
+        console.log('[Offline] Intentando cargar proyecto desde IndexedDB...');
+        const proyectoOffline = await getProyectoOffline(proyectoId);
+        
+        if (proyectoOffline) {
+          console.log('[Offline] Proyecto encontrado en IndexedDB:', proyectoOffline.nombre);
+          setProyecto(proyectoOffline);
+          setLoading(false);
+          toast.info('Proyecto cargado desde datos offline');
+          
+          // Intentar cargar geometrías offline también
+          try {
+            const geometriasOffline = await getGeometriasOffline(proyectoId);
+            if (geometriasOffline && geometriasOffline.length > 0) {
+              const geojson = {
+                type: 'FeatureCollection',
+                features: geometriasOffline.map(g => ({
+                  type: g.type || 'Feature',
+                  geometry: g.geometry,
+                  properties: g.properties
+                }))
+              };
+              setGeometrias(geojson);
+              
+              const bounds = L.geoJSON(geojson).getBounds();
+              if (bounds.isValid()) {
+                setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
+              }
+            }
+          } catch (geoError) {
+            console.log('[Offline] No hay geometrías offline disponibles');
+          }
+          
+          return;
+        } else {
+          console.log('[Offline] Proyecto NO encontrado en IndexedDB');
+          toast.warning('Este proyecto no está disponible offline');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Si está online, cargar desde servidor
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -398,8 +442,37 @@ export default function VisorActualizacion() {
       // Cargar ortofoto si existe
       fetchOrtofoto();
     } catch (error) {
-      toast.error('Error al cargar el proyecto');
-      console.error(error);
+      console.error('Error al cargar el proyecto:', error);
+      
+      // Si falla la conexión, intentar cargar desde IndexedDB como fallback
+      try {
+        console.log('[Fallback] Intentando cargar proyecto desde IndexedDB...');
+        const proyectoOffline = await getProyectoOffline(proyectoId);
+        
+        if (proyectoOffline) {
+          setProyecto(proyectoOffline);
+          toast.info('Proyecto cargado desde datos offline (sin conexión)');
+          
+          // Intentar cargar geometrías offline
+          const geometriasOffline = await getGeometriasOffline(proyectoId);
+          if (geometriasOffline && geometriasOffline.length > 0) {
+            const geojson = {
+              type: 'FeatureCollection',
+              features: geometriasOffline.map(g => ({
+                type: g.type || 'Feature',
+                geometry: g.geometry,
+                properties: g.properties
+              }))
+            };
+            setGeometrias(geojson);
+          }
+        } else {
+          toast.error('Proyecto no disponible offline');
+        }
+      } catch (offlineError) {
+        console.error('Error cargando proyecto offline:', offlineError);
+        toast.error('Error al cargar el proyecto');
+      }
     } finally {
       setLoading(false);
     }
