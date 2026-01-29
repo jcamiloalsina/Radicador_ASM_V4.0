@@ -4905,7 +4905,12 @@ export default function Predios() {
       />
       
       {/* Dialog de Códigos Homologados */}
-      <Dialog open={showCodigosDialog} onOpenChange={setShowCodigosDialog}>
+      <Dialog open={showCodigosDialog} onOpenChange={(open) => {
+        setShowCodigosDialog(open);
+        if (!open) {
+          cancelarCargaCodigos();
+        }
+      }}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4920,41 +4925,85 @@ export default function Predios() {
           <div className="space-y-4">
             {/* Cargar archivo */}
             <div className="border-2 border-dashed border-slate-300 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-slate-900">Cargar Códigos desde Excel</h4>
-                  <p className="text-sm text-slate-500">
-                    El archivo debe tener columnas: <code className="bg-slate-100 px-1 rounded">Municipio</code> y <code className="bg-slate-100 px-1 rounded">Codigo_Homologado</code>
-                  </p>
+              {!codigosFileSelected ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-slate-900">Cargar Códigos desde Excel</h4>
+                    <p className="text-sm text-slate-500">
+                      Puede ser un archivo con solo códigos (seleccione el municipio) o con columnas <code className="bg-slate-100 px-1 rounded">Municipio</code> y <code className="bg-slate-100 px-1 rounded">Codigo_Homologado</code>
+                    </p>
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleUploadCodigos}
+                      className="hidden"
+                      id="upload-codigos"
+                      disabled={uploadingCodigos}
+                    />
+                    <label htmlFor="upload-codigos">
+                      <Button asChild disabled={uploadingCodigos} className="bg-blue-600 hover:bg-blue-700">
+                        <span>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Seleccionar Excel
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleUploadCodigos}
-                    className="hidden"
-                    id="upload-codigos"
-                    disabled={uploadingCodigos}
-                  />
-                  <label htmlFor="upload-codigos">
-                    <Button asChild disabled={uploadingCodigos} className="bg-blue-600 hover:bg-blue-700">
-                      <span>
-                        {uploadingCodigos ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Cargando...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Cargar Excel
-                          </>
-                        )}
-                      </span>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-blue-800">{codigosFileSelected.name}</span>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Municipio para estos códigos</Label>
+                    <p className="text-xs text-slate-500 mb-2">
+                      Si el Excel no tiene columna de municipio, seleccione el municipio aquí
+                    </p>
+                    <Select value={codigosMunicipioSeleccionado} onValueChange={setCodigosMunicipioSeleccionado}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione municipio (opcional si el Excel lo incluye)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {catalogos?.municipios?.slice().sort((a, b) => a.localeCompare(b, 'es')).map(m => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={cancelarCargaCodigos}
+                      disabled={uploadingCodigos}
+                    >
+                      Cancelar
                     </Button>
-                  </label>
+                    <Button 
+                      onClick={confirmarCargaCodigos}
+                      disabled={uploadingCodigos}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {uploadingCodigos ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Cargando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Cargar Códigos
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             
             {/* Estadísticas por municipio */}
