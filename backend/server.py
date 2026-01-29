@@ -193,8 +193,10 @@ class UserPermissionsUpdate(BaseModel):
 class PetitionStatus:
     RADICADO = "radicado"
     ASIGNADO = "asignado"
+    EN_PROCESO = "en_proceso"  # Gestor(es) trabajando activamente
+    REVISION = "revision"      # Enviado a coordinador para revisión
+    APROBADO = "aprobado"      # Aprobado por coordinador, pendiente finalizar
     RECHAZADO = "rechazado"
-    REVISION = "revision"
     DEVUELTO = "devuelto"
     FINALIZADO = "finalizado"
 
