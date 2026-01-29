@@ -1363,6 +1363,8 @@ export default function Predios() {
   const [loadingCodigos, setLoadingCodigos] = useState(false);
   const [uploadingCodigos, setUploadingCodigos] = useState(false);
   const [siguienteCodigoHomologado, setSiguienteCodigoHomologado] = useState(null);
+  const [codigosMunicipioSeleccionado, setCodigosMunicipioSeleccionado] = useState('');
+  const [codigosFileSelected, setCodigosFileSelected] = useState(null);
   
   // Estado para múltiples propietarios
   const [propietarios, setPropietarios] = useState([{
