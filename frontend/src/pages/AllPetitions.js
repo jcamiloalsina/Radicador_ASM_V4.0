@@ -266,8 +266,10 @@ export default function AllPetitions() {
     const statusConfig = {
       radicado: { label: 'Radicado', className: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
       asignado: { label: 'Asignado', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      rechazado: { label: 'Rechazado', className: 'bg-red-100 text-red-800 border-red-200' },
+      en_proceso: { label: 'En Proceso', className: 'bg-sky-100 text-sky-800 border-sky-200' },
       revision: { label: 'En Revisión', className: 'bg-purple-100 text-purple-800 border-purple-200' },
+      aprobado: { label: 'Aprobado', className: 'bg-teal-100 text-teal-800 border-teal-200' },
+      rechazado: { label: 'Rechazado', className: 'bg-red-100 text-red-800 border-red-200' },
       devuelto: { label: 'Devuelto', className: 'bg-orange-100 text-orange-800 border-orange-200' },
       finalizado: { label: 'Finalizado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
     };
