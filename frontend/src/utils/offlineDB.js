@@ -926,6 +926,7 @@ export default {
   saveConfig,
   getConfig,
   saveProyectosOffline,
+  saveProyectoOffline,
   getProyectosOffline,
   getProyectoOffline,
   countProyectosOffline,
