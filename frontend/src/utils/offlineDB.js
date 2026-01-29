@@ -1,7 +1,7 @@
 // Módulo de gestión de datos offline con IndexedDB
 const DB_NAME = 'asomunicipios_offline';
-const DB_VERSION = 6; // Incrementado para forzar limpieza de datos corruptos
-const APP_VERSION = '2.0.0'; // Versión de la aplicación para detectar cambios
+const DB_VERSION = 7; // Unificado con useOffline.js
+const APP_VERSION = '2.1.0'; // Versión de la aplicación para detectar cambios
 
 // Stores en IndexedDB
 const STORES = {
