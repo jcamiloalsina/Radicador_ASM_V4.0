@@ -677,6 +677,28 @@ export async function getProyectoOffline(proyectoId) {
   });
 }
 
+// Guardar UN solo proyecto offline (sin borrar los demás)
+export async function saveProyectoOffline(proyecto) {
+  const database = await initOfflineDB();
+  const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
+  const store = tx.objectStore(STORES.PROYECTOS);
+
+  const record = {
+    ...proyecto,
+    saved_offline_at: new Date().toISOString()
+  };
+
+  return new Promise((resolve, reject) => {
+    const request = store.put(record);
+    request.onsuccess = () => {
+      console.log(`[OfflineDB] Proyecto ${proyecto.id} guardado offline`);
+      window.dispatchEvent(new CustomEvent('offlineDataUpdated'));
+      resolve(true);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Contar proyectos offline
 export async function countProyectosOffline() {
   const database = await initOfflineDB();
