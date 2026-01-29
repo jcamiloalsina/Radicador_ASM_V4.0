@@ -3209,17 +3209,6 @@ export default function Predios() {
                   </DialogContent>
                 </Dialog>
                 )}
-                {/* Botón de Códigos Homologados - Solo para admin/coordinador */}
-                {user && ['coordinador', 'administrador'].includes(user.role) && (
-                  <Button 
-                    variant="outline" 
-                    className="border-blue-400 text-blue-700 hover:bg-blue-50"
-                    onClick={() => { fetchCodigosStats(); setShowCodigosDialog(true); }}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Códigos Homologados
-                  </Button>
-                )}
                 {/* Botón de Reapariciones - Solo para coordinadores */}
                 {user && ['coordinador', 'administrador'].includes(user.role) && (
                   <Button 
