@@ -431,6 +431,14 @@ export default function VisorActualizacion() {
       });
       setProyecto(response.data);
       
+      // Guardar proyecto para uso offline
+      try {
+        await saveProyectoOffline(response.data);
+        console.log('[Online] Proyecto guardado para uso offline');
+      } catch (saveError) {
+        console.warn('No se pudo guardar el proyecto offline:', saveError);
+      }
+      
       if (response.data.gdb_procesado) {
         fetchGeometrias();
       }
