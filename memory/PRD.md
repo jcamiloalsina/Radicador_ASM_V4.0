@@ -36,6 +36,7 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Visualización de datos R1/R2
 - Importación de Excel R1/R2
 - Creación de nuevos predios con código de 30 dígitos
+- **Sistema de Códigos Homologados:** Carga de códigos desde Excel y asignación automática al crear predios
 
 ### Sistema de Permisos Granulares
 - **upload_gdb**: Subir archivos GDB
