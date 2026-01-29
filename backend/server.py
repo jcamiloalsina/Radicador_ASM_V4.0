@@ -4333,6 +4333,57 @@ async def get_codigos_homologados_stats(
     }
 
 
+@api_router.get("/codigos-homologados/usados/{municipio}")
+async def get_codigos_usados(
+    municipio: str,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener códigos homologados usados con información del predio asociado"""
+    # Obtener códigos usados
+    codigos = await db.codigos_homologados.find(
+        {'municipio': municipio, 'usado': True},
+        {'_id': 0}
+    ).sort('codigo', 1).skip(skip).limit(limit).to_list(limit)
+    
+    # Para cada código, obtener info del predio si no está en el registro
+    codigos_con_info = []
+    for c in codigos:
+        codigo_info = {
+            'codigo': c['codigo'],
+            'predio_id': c.get('predio_id'),
+            'codigo_predial': c.get('codigo_predial'),
+            'propietario': c.get('propietario'),
+            'fecha_asignacion': c.get('fecha_asignacion')
+        }
+        
+        # Si no tiene info del predio, buscarla
+        if c.get('predio_id') and not c.get('codigo_predial'):
+            predio = await db.predios.find_one(
+                {'id': c['predio_id'], 'deleted': {'$ne': True}},
+                {'_id': 0, 'codigo_predial_nacional': 1, 'nombre_propietario': 1}
+            )
+            if predio:
+                codigo_info['codigo_predial'] = predio.get('codigo_predial_nacional')
+                codigo_info['propietario'] = predio.get('nombre_propietario')
+        
+        codigos_con_info.append(codigo_info)
+    
+    total_usados = await db.codigos_homologados.count_documents({
+        'municipio': municipio,
+        'usado': True
+    })
+    
+    return {
+        "municipio": municipio,
+        "codigos": codigos_con_info,
+        "total_usados": total_usados,
+        "skip": skip,
+        "limit": limit
+    }
+
+
 @api_router.get("/codigos-homologados/disponibles/{municipio}")
 async def get_codigos_disponibles(
     municipio: str,
