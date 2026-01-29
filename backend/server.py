@@ -4162,6 +4162,228 @@ async def get_predios_catalogos(current_user: dict = Depends(get_current_user)):
         "divipola": MUNICIPIOS_DIVIPOLA
     }
 
+# ===== SISTEMA DE CÓDIGOS HOMOLOGADOS =====
+
+@api_router.post("/codigos-homologados/cargar")
+async def cargar_codigos_homologados(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Cargar códigos homologados desde un archivo Excel"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden cargar códigos")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un Excel (.xlsx o .xls)")
+    
+    try:
+        import pandas as pd
+        from io import BytesIO
+        
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents))
+        
+        # Normalizar nombres de columnas
+        df.columns = df.columns.str.strip().str.lower()
+        
+        # Buscar columnas de municipio y código
+        municipio_col = None
+        codigo_col = None
+        
+        for col in df.columns:
+            if 'municipio' in col:
+                municipio_col = col
+            if 'codigo' in col or 'homologado' in col:
+                codigo_col = col
+        
+        if not municipio_col or not codigo_col:
+            raise HTTPException(
+                status_code=400, 
+                detail="El Excel debe tener columnas 'Municipio' y 'Codigo_Homologado' (o similar)"
+            )
+        
+        # Procesar y guardar códigos
+        codigos_insertados = 0
+        codigos_duplicados = 0
+        codigos_por_municipio = {}
+        
+        for _, row in df.iterrows():
+            municipio = str(row[municipio_col]).strip()
+            codigo = str(row[codigo_col]).strip().upper()
+            
+            if not municipio or not codigo or municipio == 'nan' or codigo == 'nan':
+                continue
+            
+            # Verificar si ya existe
+            existe = await db.codigos_homologados.find_one({
+                'municipio': municipio,
+                'codigo': codigo
+            })
+            
+            if existe:
+                codigos_duplicados += 1
+                continue
+            
+            # Insertar nuevo código
+            await db.codigos_homologados.insert_one({
+                'municipio': municipio,
+                'codigo': codigo,
+                'usado': False,
+                'predio_id': None,
+                'fecha_asignacion': None,
+                'cargado_por': current_user['user_id'],
+                'cargado_por_nombre': current_user['full_name'],
+                'fecha_carga': datetime.utcnow().isoformat()
+            })
+            
+            codigos_insertados += 1
+            codigos_por_municipio[municipio] = codigos_por_municipio.get(municipio, 0) + 1
+        
+        return {
+            "success": True,
+            "message": f"Códigos cargados exitosamente",
+            "codigos_insertados": codigos_insertados,
+            "codigos_duplicados": codigos_duplicados,
+            "por_municipio": codigos_por_municipio
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error procesando archivo: {str(e)}")
+
+
+@api_router.get("/codigos-homologados/stats")
+async def get_codigos_homologados_stats(
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener estadísticas de códigos homologados por municipio"""
+    pipeline = [
+        {
+            "$group": {
+                "_id": "$municipio",
+                "total": {"$sum": 1},
+                "usados": {"$sum": {"$cond": ["$usado", 1, 0]}},
+                "disponibles": {"$sum": {"$cond": ["$usado", 0, 1]}}
+            }
+        },
+        {"$sort": {"_id": 1}}
+    ]
+    
+    results = await db.codigos_homologados.aggregate(pipeline).to_list(100)
+    
+    stats = []
+    for r in results:
+        stats.append({
+            "municipio": r["_id"],
+            "total": r["total"],
+            "usados": r["usados"],
+            "disponibles": r["disponibles"]
+        })
+    
+    return {
+        "stats": stats,
+        "total_municipios": len(stats)
+    }
+
+
+@api_router.get("/codigos-homologados/disponibles/{municipio}")
+async def get_codigos_disponibles(
+    municipio: str,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener códigos homologados disponibles para un municipio"""
+    codigos = await db.codigos_homologados.find(
+        {'municipio': municipio, 'usado': False},
+        {'_id': 0, 'codigo': 1}
+    ).sort('codigo', 1).limit(limit).to_list(limit)
+    
+    total_disponibles = await db.codigos_homologados.count_documents({
+        'municipio': municipio,
+        'usado': False
+    })
+    
+    return {
+        "municipio": municipio,
+        "codigos": [c['codigo'] for c in codigos],
+        "total_disponibles": total_disponibles
+    }
+
+
+@api_router.get("/codigos-homologados/siguiente/{municipio}")
+async def get_siguiente_codigo_homologado(
+    municipio: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener el siguiente código homologado disponible para un municipio"""
+    # Buscar el primer código disponible (ordenado alfabéticamente)
+    codigo_doc = await db.codigos_homologados.find_one(
+        {'municipio': municipio, 'usado': False},
+        sort=[('codigo', 1)]
+    )
+    
+    if not codigo_doc:
+        return {
+            "municipio": municipio,
+            "codigo": None,
+            "disponibles": 0,
+            "mensaje": "No hay códigos homologados disponibles para este municipio"
+        }
+    
+    total_disponibles = await db.codigos_homologados.count_documents({
+        'municipio': municipio,
+        'usado': False
+    })
+    
+    return {
+        "municipio": municipio,
+        "codigo": codigo_doc['codigo'],
+        "disponibles": total_disponibles
+    }
+
+
+async def asignar_codigo_homologado(municipio: str, predio_id: str) -> str:
+    """Asigna el siguiente código homologado disponible a un predio"""
+    # Buscar y marcar como usado en una operación atómica
+    result = await db.codigos_homologados.find_one_and_update(
+        {'municipio': municipio, 'usado': False},
+        {
+            '$set': {
+                'usado': True,
+                'predio_id': predio_id,
+                'fecha_asignacion': datetime.utcnow().isoformat()
+            }
+        },
+        sort=[('codigo', 1)],
+        return_document=True
+    )
+    
+    if result:
+        return result['codigo']
+    return None
+
+
+@api_router.delete("/codigos-homologados/{municipio}")
+async def eliminar_codigos_municipio(
+    municipio: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Eliminar todos los códigos no usados de un municipio"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar códigos")
+    
+    result = await db.codigos_homologados.delete_many({
+        'municipio': municipio,
+        'usado': False
+    })
+    
+    return {
+        "success": True,
+        "eliminados": result.deleted_count,
+        "municipio": municipio
+    }
+
+# ===== FIN SISTEMA DE CÓDIGOS HOMOLOGADOS =====
+
 @api_router.get("/predios")
 async def get_predios(
     municipio: Optional[str] = None,
