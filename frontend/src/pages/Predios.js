@@ -4987,20 +4987,20 @@ export default function Predios() {
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-slate-700">Municipio para estos códigos</Label>
+                    <Label className="text-sm font-medium text-slate-700">Municipio para estos códigos *</Label>
                     <p className="text-xs text-slate-500 mb-2">
-                      Si el Excel no tiene columna de municipio, seleccione el municipio aquí
+                      Seleccione el municipio al que pertenecen estos códigos
                     </p>
-                    <Select value={codigosMunicipioSeleccionado} onValueChange={setCodigosMunicipioSeleccionado}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccione municipio (opcional si el Excel lo incluye)" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="z-[9999] max-h-60">
-                        {catalogos?.municipios?.slice().sort((a, b) => a.localeCompare(b, 'es')).map(m => (
-                          <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <select 
+                      value={codigosMunicipioSeleccionado} 
+                      onChange={(e) => setCodigosMunicipioSeleccionado(e.target.value)}
+                      className="w-full h-10 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                      <option value="">-- Seleccione un municipio --</option>
+                      {catalogos?.municipios?.slice().sort((a, b) => a.localeCompare(b, 'es')).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
                   </div>
                   
                   <div className="flex gap-2 justify-end">
