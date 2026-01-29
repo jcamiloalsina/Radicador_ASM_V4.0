@@ -4992,10 +4992,10 @@ export default function Predios() {
                       Si el Excel no tiene columna de municipio, seleccione el municipio aquí
                     </p>
                     <Select value={codigosMunicipioSeleccionado} onValueChange={setCodigosMunicipioSeleccionado}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Seleccione municipio (opcional si el Excel lo incluye)" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[9999] max-h-60">
                         {catalogos?.municipios?.slice().sort((a, b) => a.localeCompare(b, 'es')).map(m => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
