@@ -1357,6 +1357,13 @@ export default function Predios() {
     unidad: '0000'       // Posición 27-30 (4 dígitos)
   });
   
+  // Estado para códigos homologados
+  const [showCodigosDialog, setShowCodigosDialog] = useState(false);
+  const [codigosStats, setCodigosStats] = useState([]);
+  const [loadingCodigos, setLoadingCodigos] = useState(false);
+  const [uploadingCodigos, setUploadingCodigos] = useState(false);
+  const [siguienteCodigoHomologado, setSiguienteCodigoHomologado] = useState(null);
+  
   // Estado para múltiples propietarios
   const [propietarios, setPropietarios] = useState([{
     nombre_propietario: '',
