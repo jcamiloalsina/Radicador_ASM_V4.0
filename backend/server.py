@@ -3134,6 +3134,26 @@ def generate_petition_pdf(petition_data: dict, user_data: dict, signed_by: str =
     return pdf_bytes
 
 
+@api_router.get("/documentacion/flujo-radicacion-pdf")
+async def descargar_flujo_radicacion_pdf():
+    """Descarga el PDF del flujo de radicación de trámites para socialización"""
+    pdf_path = "/app/backend/static/flujo_radicacion_tramites.pdf"
+    
+    if not os.path.exists(pdf_path):
+        # Regenerar el PDF si no existe
+        try:
+            import subprocess
+            subprocess.run(["python", "/app/backend/generar_flujo_pdf.py"], check=True)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
+    
+    return FileResponse(
+        path=pdf_path,
+        filename="Flujo_Radicacion_Tramites_Asomunicipios.pdf",
+        media_type="application/pdf"
+    )
+
+
 @api_router.get("/petitions/{petition_id}/export-pdf")
 async def export_petition_pdf(petition_id: str, current_user: dict = Depends(get_current_user)):
     """Export single petition as PDF"""
