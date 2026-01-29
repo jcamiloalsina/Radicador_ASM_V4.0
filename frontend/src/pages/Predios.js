@@ -2883,7 +2883,7 @@ export default function Predios() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
                   {[...prediosStats.by_municipio].sort((a, b) => a.municipio.localeCompare(b.municipio, 'es')).map((item) => {
                     // Obtener la vigencia más reciente del municipio (ordenadas de más nueva a más vieja)
                     const vigencias = vigenciasData[item.municipio] || [];
