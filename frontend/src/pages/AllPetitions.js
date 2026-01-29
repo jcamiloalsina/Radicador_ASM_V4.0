@@ -385,9 +385,11 @@ export default function AllPetitions() {
                   <SelectItem value="todos">Todos los Estados</SelectItem>
                   <SelectItem value="radicado">Radicado</SelectItem>
                   <SelectItem value="asignado">Asignado</SelectItem>
-                  <SelectItem value="rechazado">Rechazado</SelectItem>
+                  <SelectItem value="en_proceso">En Proceso</SelectItem>
                   <SelectItem value="revision">En Revisión</SelectItem>
+                  <SelectItem value="aprobado">Aprobado</SelectItem>
                   <SelectItem value="devuelto">Devuelto</SelectItem>
+                  <SelectItem value="rechazado">Rechazado</SelectItem>
                   <SelectItem value="finalizado">Finalizado</SelectItem>
                 </SelectContent>
               </Select>
