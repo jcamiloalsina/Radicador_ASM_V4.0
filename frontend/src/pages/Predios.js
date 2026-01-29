@@ -2801,53 +2801,53 @@ export default function Predios() {
         <div className="space-y-6">
           {/* Estadísticas Generales - Solo 4 tarjetas: Total Predios, Avalúo Total, Área R1, Geometrías GDB */}
           {prediosStats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-emerald-600 font-medium">Total Predios</p>
-                      <p className="text-3xl font-bold text-emerald-800">{prediosStats.total_predios?.toLocaleString()}</p>
+                <CardContent className="p-3 md:pt-6 md:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-emerald-600 font-medium">Total Predios</p>
+                      <p className="text-xl md:text-3xl font-bold text-emerald-800 truncate">{prediosStats.total_predios?.toLocaleString()}</p>
                     </div>
-                    <Building className="w-10 h-10 text-emerald-300" />
+                    <Building className="w-8 h-8 md:w-10 md:h-10 text-emerald-300 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-600 font-medium">Avalúo Total</p>
-                      <p className="text-2xl font-bold text-blue-800">{formatCurrency(prediosStats.total_avaluo)}</p>
+                <CardContent className="p-3 md:pt-6 md:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-blue-600 font-medium">Avalúo Total</p>
+                      <p className="text-lg md:text-2xl font-bold text-blue-800 truncate">{formatCurrency(prediosStats.total_avaluo)}</p>
                     </div>
-                    <DollarSign className="w-10 h-10 text-blue-300" />
+                    <DollarSign className="w-8 h-8 md:w-10 md:h-10 text-blue-300 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-amber-600 font-medium">Área Total (R1)</p>
-                      <p className="text-2xl font-bold text-amber-800">{formatAreaHectareas(prediosStats.total_area_terreno)}</p>
+                <CardContent className="p-3 md:pt-6 md:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-amber-600 font-medium">Área Total (R1)</p>
+                      <p className="text-lg md:text-2xl font-bold text-amber-800 truncate">{formatAreaHectareas(prediosStats.total_area_terreno)}</p>
                     </div>
-                    <MapPin className="w-10 h-10 text-amber-300" />
+                    <MapPin className="w-8 h-8 md:w-10 md:h-10 text-amber-300 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-purple-600 font-medium">Base Gráfica</p>
-                      <p className="text-3xl font-bold text-purple-800">{(prediosStats.total_con_geometria || 0).toLocaleString()}</p>
+                <CardContent className="p-3 md:pt-6 md:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-purple-600 font-medium">Base Gráfica</p>
+                      <p className="text-xl md:text-3xl font-bold text-purple-800 truncate">{(prediosStats.total_con_geometria || 0).toLocaleString()}</p>
                       {prediosStats.total_area_gdb > 0 && (
-                        <p className="text-xs text-purple-500 mt-1">
+                        <p className="text-xs text-purple-500 mt-1 truncate">
                           {formatAreaHectareas(prediosStats.total_area_gdb)}
                         </p>
                       )}
                     </div>
-                    <Map className="w-10 h-10 text-purple-300" />
+                    <Map className="w-8 h-8 md:w-10 md:h-10 text-purple-300 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
