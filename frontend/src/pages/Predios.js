@@ -1718,11 +1718,25 @@ export default function Predios() {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Guardar el archivo seleccionado y mostrar el selector de municipio
+    setCodigosFileSelected(file);
+    e.target.value = '';
+  };
+  
+  // Confirmar carga del archivo con el municipio seleccionado
+  const confirmarCargaCodigos = async () => {
+    if (!codigosFileSelected) return;
+    
     setUploadingCodigos(true);
     try {
       const token = localStorage.getItem('token');
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', codigosFileSelected);
+      
+      // Si hay un municipio seleccionado, agregarlo
+      if (codigosMunicipioSeleccionado) {
+        formData.append('municipio', codigosMunicipioSeleccionado);
+      }
       
       const res = await axios.post(`${API}/codigos-homologados/cargar`, formData, {
         headers: { 
@@ -1736,14 +1750,21 @@ export default function Predios() {
         toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
       }
       
-      // Recargar estadísticas
+      // Limpiar estado y recargar estadísticas
+      setCodigosFileSelected(null);
+      setCodigosMunicipioSeleccionado('');
       fetchCodigosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error cargando códigos');
     } finally {
       setUploadingCodigos(false);
-      e.target.value = '';
     }
+  };
+  
+  // Cancelar carga de archivo
+  const cancelarCargaCodigos = () => {
+    setCodigosFileSelected(null);
+    setCodigosMunicipioSeleccionado('');
   };
   
   // Obtener siguiente código homologado para un municipio
