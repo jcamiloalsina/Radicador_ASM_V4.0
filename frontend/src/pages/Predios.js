@@ -2801,53 +2801,51 @@ export default function Predios() {
         <div className="space-y-6">
           {/* Estadísticas Generales - Solo 4 tarjetas: Total Predios, Avalúo Total, Área R1, Geometrías GDB */}
           {prediosStats && (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
               <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
-                <CardContent className="p-3 md:pt-6 md:px-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm text-emerald-600 font-medium">Total Predios</p>
-                      <p className="text-xl md:text-3xl font-bold text-emerald-800 truncate">{prediosStats.total_predios?.toLocaleString()}</p>
+                <CardContent className="p-2 md:p-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] md:text-xs text-emerald-600 font-medium">Total Predios</p>
+                      <Building className="w-5 h-5 md:w-8 md:h-8 text-emerald-300" />
                     </div>
-                    <Building className="w-8 h-8 md:w-10 md:h-10 text-emerald-300 flex-shrink-0" />
+                    <p className="text-lg md:text-2xl font-bold text-emerald-800">{prediosStats.total_predios?.toLocaleString()}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-                <CardContent className="p-3 md:pt-6 md:px-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm text-blue-600 font-medium">Avalúo Total</p>
-                      <p className="text-lg md:text-2xl font-bold text-blue-800 truncate">{formatCurrency(prediosStats.total_avaluo)}</p>
+                <CardContent className="p-2 md:p-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] md:text-xs text-blue-600 font-medium">Avalúo Total</p>
+                      <DollarSign className="w-5 h-5 md:w-8 md:h-8 text-blue-300" />
                     </div>
-                    <DollarSign className="w-8 h-8 md:w-10 md:h-10 text-blue-300 flex-shrink-0" />
+                    <p className="text-sm md:text-xl font-bold text-blue-800">{formatCurrency(prediosStats.total_avaluo)}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-                <CardContent className="p-3 md:pt-6 md:px-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm text-amber-600 font-medium">Área Total (R1)</p>
-                      <p className="text-lg md:text-2xl font-bold text-amber-800 truncate">{formatAreaHectareas(prediosStats.total_area_terreno)}</p>
+                <CardContent className="p-2 md:p-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] md:text-xs text-amber-600 font-medium">Área R1</p>
+                      <MapPin className="w-5 h-5 md:w-8 md:h-8 text-amber-300" />
                     </div>
-                    <MapPin className="w-8 h-8 md:w-10 md:h-10 text-amber-300 flex-shrink-0" />
+                    <p className="text-sm md:text-xl font-bold text-amber-800">{formatAreaHectareas(prediosStats.total_area_terreno)}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
-                <CardContent className="p-3 md:pt-6 md:px-6">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs md:text-sm text-purple-600 font-medium">Base Gráfica</p>
-                      <p className="text-xl md:text-3xl font-bold text-purple-800 truncate">{(prediosStats.total_con_geometria || 0).toLocaleString()}</p>
-                      {prediosStats.total_area_gdb > 0 && (
-                        <p className="text-xs text-purple-500 mt-1 truncate">
-                          {formatAreaHectareas(prediosStats.total_area_gdb)}
-                        </p>
-                      )}
+                <CardContent className="p-2 md:p-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] md:text-xs text-purple-600 font-medium">Base Gráfica</p>
+                      <Map className="w-5 h-5 md:w-8 md:h-8 text-purple-300" />
                     </div>
-                    <Map className="w-8 h-8 md:w-10 md:h-10 text-purple-300 flex-shrink-0" />
+                    <p className="text-lg md:text-2xl font-bold text-purple-800">{(prediosStats.total_con_geometria || 0).toLocaleString()}</p>
+                    {prediosStats.total_area_gdb > 0 && (
+                      <p className="text-[10px] md:text-xs text-purple-500">{formatAreaHectareas(prediosStats.total_area_gdb)}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
