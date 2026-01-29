@@ -4252,7 +4252,7 @@ async def cargar_codigos_homologados(
                 'usado': False,
                 'predio_id': None,
                 'fecha_asignacion': None,
-                'cargado_por': current_user['user_id'],
+                'cargado_por': current_user['id'],
                 'cargado_por_nombre': current_user['full_name'],
                 'fecha_carga': datetime.utcnow().isoformat()
             })
