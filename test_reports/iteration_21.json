@@ -1,0 +1,91 @@
+{
+  "summary": "Testing completed for Códigos Homologados feature. All backend endpoints and frontend UI components are working correctly. 3,086 códigos were loaded for Ábrego municipality, and the next available code (BPP0002BUTE) is correctly displayed in the 'Nuevo Predio' dialog.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_codigos_homologados.py",
+    "/app/test_reports/pytest/pytest_results_iteration21.xml",
+    "/.screenshots/codigos_dialog.png",
+    "/.screenshots/nuevo_predio_dialog.png"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "✓ POST /api/codigos-homologados/cargar correctly handles Excel files with/without municipio column",
+    "✓ GET /api/codigos-homologados/stats returns proper aggregation by municipio",
+    "✓ GET /api/codigos-homologados/siguiente/{municipio} returns first available code sorted alphabetically",
+    "✓ Frontend fetchCodigosStats() correctly calls API and updates state (lines 1701-1714)",
+    "✓ Frontend fetchSiguienteCodigoHomologado() correctly fetches next code when municipio changes (lines 1771-1787)",
+    "✓ useEffect triggers fetchSiguienteCodigoHomologado when showCreateDialog and formData.municipio change (lines 1789-1794)",
+    "✓ Códigos Homologados dialog displays stats table with Total, Usados, Disponibles columns",
+    "✓ Nuevo Predio dialog shows 'Código Homologado Asignado' with badge showing disponibles count"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_codigos_homologados.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all UI tests passed)"
+  },
+
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*"
+    }
+  },
+
+  "seed_data_creation": "3,086 códigos homologados were previously loaded for Ábrego via curl (as per context)",
+
+  "retest_needed": false,
+
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Códigos Homologados feature fully tested. Endpoints: POST /api/codigos-homologados/cargar (upload Excel), GET /api/codigos-homologados/stats (stats by municipio), GET /api/codigos-homologados/siguiente/{municipio} (next available code), GET /api/codigos-homologados/disponibles/{municipio} (list available codes). Frontend: 'Códigos Homologados' button visible after selecting a municipio in Predios page. 'Nuevo Predio' dialog shows assigned código homologado at top.",
+
+  "tests_executed": {
+    "backend_tests": {
+      "test_get_stats_success": "PASSED - Stats endpoint returns correct structure",
+      "test_stats_contains_abrego": "PASSED - Ábrego has 3,086 total, 0 usados, 3,086 disponibles",
+      "test_stats_without_auth_fails": "PASSED - Returns 401/403 without auth",
+      "test_get_siguiente_codigo_abrego": "PASSED - Returns BPP0002BUTE as next code",
+      "test_get_siguiente_codigo_nonexistent_municipio": "PASSED - Returns null code and message",
+      "test_siguiente_codigo_without_auth_fails": "PASSED - Returns 401/403 without auth",
+      "test_get_codigos_disponibles_abrego": "PASSED - Returns list of available codes",
+      "test_cargar_requires_auth": "PASSED - Returns 401/403 without auth",
+      "test_cargar_requires_file": "PASSED - Returns 422 without file",
+      "test_cargar_rejects_non_excel": "PASSED - Returns 400 for non-Excel files"
+    },
+    "frontend_tests": {
+      "test_codigos_homologados_dialog": "PASSED - Dialog shows stats table with Ábrego: 3,086 total, 0 usados, 3,086 disponibles",
+      "test_nuevo_predio_codigo_asignado": "PASSED - Dialog shows 'Código Homologado Asignado: BPP0002BUTE' with '3086 disponibles' badge"
+    }
+  },
+
+  "verified_features": {
+    "backend_endpoints": {
+      "POST /api/codigos-homologados/cargar": "✓ Loads codes from Excel with optional municipio parameter",
+      "GET /api/codigos-homologados/stats": "✓ Returns aggregated stats by municipio",
+      "GET /api/codigos-homologados/siguiente/{municipio}": "✓ Returns next available code (BPP0002BUTE for Ábrego)",
+      "GET /api/codigos-homologados/disponibles/{municipio}": "✓ Returns list of available codes with limit"
+    },
+    "frontend_ui": {
+      "codigos_homologados_dialog": "✓ Shows stats table with municipio, total, usados, disponibles, estado columns",
+      "nuevo_predio_dialog": "✓ Shows assigned código homologado at top with disponibles badge",
+      "excel_upload": "✓ File selector and municipio dropdown for upload"
+    }
+  }
+}
