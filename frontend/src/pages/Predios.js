@@ -2897,15 +2897,15 @@ export default function Predios() {
                       <div key={item.municipio} className="relative">
                         <Button
                           variant="outline"
-                          className="w-full h-auto py-4 flex flex-col items-start justify-start text-left hover:bg-emerald-50 hover:border-emerald-300"
+                          className="w-full h-auto min-h-[80px] py-3 px-3 flex flex-col items-start justify-center text-left hover:bg-emerald-50 hover:border-emerald-300 overflow-hidden"
                           onClick={() => {
                             setFilterMunicipio(item.municipio);
                             setFilterVigencia(String(vigenciaReciente || '2025'));
                           }}
                         >
-                          <span className="font-medium text-slate-900">{item.municipio}</span>
-                          <span className="text-xl font-bold text-emerald-700">{item.count?.toLocaleString()}</span>
-                          <span className="text-xs text-slate-500">predios · vigencia {vigenciaYear}</span>
+                          <span className="font-medium text-slate-900 text-sm leading-tight truncate w-full">{item.municipio}</span>
+                          <span className="text-lg md:text-xl font-bold text-emerald-700">{item.count?.toLocaleString()}</span>
+                          <span className="text-[10px] md:text-xs text-slate-500 leading-tight">predios · vig. {vigenciaYear}</span>
                         </Button>
                         {/* Badge de reapariciones pendientes */}
                         {reaparicionesCount > 0 && user && ['coordinador', 'administrador'].includes(user.role) && (
