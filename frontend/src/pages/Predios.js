@@ -1752,6 +1752,9 @@ export default function Predios() {
       if (res.data.codigos_duplicados > 0) {
         toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
       }
+      if (res.data.codigos_ya_usados > 0) {
+        toast.info(`${res.data.codigos_ya_usados} códigos ya estaban asignados a predios existentes`, { duration: 5000 });
+      }
       
       // Limpiar estado y recargar estadísticas
       setCodigosFileSelected(null);
