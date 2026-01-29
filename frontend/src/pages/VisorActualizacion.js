@@ -2805,6 +2805,160 @@ export default function VisorActualizacion() {
                     )}
                   </TabsContent>
                   
+                  {/* Tab Linderos */}
+                  <TabsContent value="linderos" className="mt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Norte</p>
+                        <p className="text-sm bg-slate-50 p-2 rounded border min-h-[60px]">
+                          {selectedPredio.lindero_norte || <span className="text-slate-400 italic">Sin información</span>}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Sur</p>
+                        <p className="text-sm bg-slate-50 p-2 rounded border min-h-[60px]">
+                          {selectedPredio.lindero_sur || <span className="text-slate-400 italic">Sin información</span>}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Este</p>
+                        <p className="text-sm bg-slate-50 p-2 rounded border min-h-[60px]">
+                          {selectedPredio.lindero_este || <span className="text-slate-400 italic">Sin información</span>}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Oeste</p>
+                        <p className="text-sm bg-slate-50 p-2 rounded border min-h-[60px]">
+                          {selectedPredio.lindero_oeste || <span className="text-slate-400 italic">Sin información</span>}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {selectedPredio.observaciones_linderos && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Observaciones de Linderos</p>
+                        <p className="text-sm bg-amber-50 p-2 rounded border border-amber-200">
+                          {selectedPredio.observaciones_linderos}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 pt-2 border-t">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${selectedPredio.linderos_verificados ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                        <span className="text-sm text-slate-600">
+                          {selectedPredio.linderos_verificados ? 'Verificados en campo' : 'No verificados'}
+                        </span>
+                      </div>
+                      {selectedPredio.fecha_verificacion_linderos && (
+                        <span className="text-xs text-slate-500">
+                          Fecha: {new Date(selectedPredio.fecha_verificacion_linderos).toLocaleDateString('es-ES')}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {!selectedPredio.lindero_norte && !selectedPredio.lindero_sur && !selectedPredio.lindero_este && !selectedPredio.lindero_oeste && (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-slate-500">Sin información de linderos registrada</p>
+                        <p className="text-xs text-slate-400">Use "Editar" para agregar linderos</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  {/* Tab Coordenadas */}
+                  <TabsContent value="coordenadas" className="mt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Sistema de Referencia</p>
+                        <p className="text-sm font-medium">{selectedPredio.sistema_referencia || 'MAGNA-SIRGAS'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Precisión GPS</p>
+                        <p className="text-sm font-medium">
+                          {selectedPredio.precision_gps ? (
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              selectedPredio.precision_gps === 'alta' ? 'bg-emerald-100 text-emerald-700' :
+                              selectedPredio.precision_gps === 'media' ? 'bg-amber-100 text-amber-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {selectedPredio.precision_gps.charAt(0).toUpperCase() + selectedPredio.precision_gps.slice(1)}
+                            </span>
+                          ) : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-slate-500 font-medium">Coordenadas del Centroide</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-400">Latitud (Y)</p>
+                          <p className="text-sm font-mono font-medium">
+                            {selectedPredio.latitud_centroide ? Number(selectedPredio.latitud_centroide).toFixed(6) : '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400">Longitud (X)</p>
+                          <p className="text-sm font-mono font-medium">
+                            {selectedPredio.longitud_centroide ? Number(selectedPredio.longitud_centroide).toFixed(6) : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Área Calculada</p>
+                        <p className="text-sm font-medium">
+                          {selectedPredio.area_calculada ? `${Number(selectedPredio.area_calculada).toLocaleString()} m²` : '-'}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">Equipo Utilizado</p>
+                        <p className="text-sm">{selectedPredio.equipo_gps || '-'}</p>
+                      </div>
+                    </div>
+                    
+                    {selectedPredio.vertices_poligono && selectedPredio.vertices_poligono.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-500 font-medium">Vértices del Polígono ({selectedPredio.vertices_poligono.length} puntos)</p>
+                        <div className="max-h-32 overflow-y-auto bg-slate-50 rounded border p-2">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left py-1 px-2">#</th>
+                                <th className="text-left py-1 px-2">X (Longitud)</th>
+                                <th className="text-left py-1 px-2">Y (Latitud)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedPredio.vertices_poligono.map((v, idx) => (
+                                <tr key={idx} className="border-b border-slate-100">
+                                  <td className="py-1 px-2 font-medium">{idx + 1}</td>
+                                  <td className="py-1 px-2 font-mono">{Number(v.x).toFixed(6)}</td>
+                                  <td className="py-1 px-2 font-mono">{Number(v.y).toFixed(6)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedPredio.fecha_captura_coordenadas && (
+                      <div className="text-xs text-slate-500 pt-2 border-t">
+                        Fecha de captura: {new Date(selectedPredio.fecha_captura_coordenadas).toLocaleDateString('es-ES')}
+                      </div>
+                    )}
+                    
+                    {!selectedPredio.latitud_centroide && !selectedPredio.longitud_centroide && (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-slate-500">Sin coordenadas registradas</p>
+                        <p className="text-xs text-slate-400">Use "Editar" para agregar coordenadas</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
                   {/* Tab Propuestas de Cambio */}
                   <TabsContent value="propuestas" className="mt-3 space-y-3">
                     <div className="flex justify-between items-center">
