@@ -892,7 +892,9 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     estados_info = {
         "radicado": {"texto": "Radicado", "color": "#3b82f6", "icono": "📝", "mensaje": "Su trámite ha sido registrado en el sistema."},
         "asignado": {"texto": "Asignado", "color": "#8b5cf6", "icono": "👤", "mensaje": "Su trámite ha sido asignado a un gestor para su procesamiento."},
-        "revision": {"texto": "En Revisión", "color": "#f59e0b", "icono": "🔍", "mensaje": "Su trámite está siendo revisado por nuestro equipo."},
+        "en_proceso": {"texto": "En Proceso", "color": "#0ea5e9", "icono": "⚙️", "mensaje": "Su trámite está siendo procesado por nuestro equipo."},
+        "revision": {"texto": "En Revisión", "color": "#f59e0b", "icono": "🔍", "mensaje": "Su trámite está siendo revisado por el coordinador."},
+        "aprobado": {"texto": "Aprobado", "color": "#10b981", "icono": "✓", "mensaje": "Su trámite ha sido aprobado y está en proceso de finalización."},
         "rechazado": {"texto": "Rechazado", "color": "#ef4444", "icono": "❌", "mensaje": "Lamentablemente su trámite ha sido rechazado. Por favor revise las observaciones."},
         "devuelto": {"texto": "Devuelto para Corrección", "color": "#f97316", "icono": "↩️", "mensaje": "Su trámite ha sido devuelto para correcciones. Por favor revise las observaciones e ingrese al sistema para corregir y reenviar."},
         "finalizado": {"texto": "Finalizado", "color": "#22c55e", "icono": "✅", "mensaje": "Su trámite ha sido completado exitosamente."}
