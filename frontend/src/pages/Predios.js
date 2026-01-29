@@ -4856,6 +4856,137 @@ export default function Predios() {
         label={downloadProgress.label}
         onCancel={() => setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' })}
       />
+      
+      {/* Dialog de Códigos Homologados */}
+      <Dialog open={showCodigosDialog} onOpenChange={setShowCodigosDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Gestión de Códigos Homologados
+            </DialogTitle>
+            <DialogDescription>
+              Cargue y administre los códigos homologados por municipio
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Cargar archivo */}
+            <div className="border-2 border-dashed border-slate-300 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-slate-900">Cargar Códigos desde Excel</h4>
+                  <p className="text-sm text-slate-500">
+                    El archivo debe tener columnas: <code className="bg-slate-100 px-1 rounded">Municipio</code> y <code className="bg-slate-100 px-1 rounded">Codigo_Homologado</code>
+                  </p>
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleUploadCodigos}
+                    className="hidden"
+                    id="upload-codigos"
+                    disabled={uploadingCodigos}
+                  />
+                  <label htmlFor="upload-codigos">
+                    <Button asChild disabled={uploadingCodigos} className="bg-blue-600 hover:bg-blue-700">
+                      <span>
+                        {uploadingCodigos ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Cargando...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Cargar Excel
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            {/* Estadísticas por municipio */}
+            <div>
+              <h4 className="font-medium text-slate-900 mb-3">Códigos por Municipio</h4>
+              {loadingCodigos ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+              ) : codigosStats.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <FileText className="w-12 h-12 mx-auto mb-2 text-slate-300" />
+                  <p>No hay códigos homologados cargados</p>
+                  <p className="text-sm">Cargue un archivo Excel para comenzar</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border rounded-lg">
+                    <thead>
+                      <tr className="bg-slate-100 border-b">
+                        <th className="py-2 px-4 text-left">Municipio</th>
+                        <th className="py-2 px-4 text-center">Total</th>
+                        <th className="py-2 px-4 text-center">Usados</th>
+                        <th className="py-2 px-4 text-center">Disponibles</th>
+                        <th className="py-2 px-4 text-center">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {codigosStats.map((stat) => (
+                        <tr key={stat.municipio} className="border-b last:border-b-0 hover:bg-slate-50">
+                          <td className="py-2 px-4 font-medium">{stat.municipio}</td>
+                          <td className="py-2 px-4 text-center">{stat.total.toLocaleString()}</td>
+                          <td className="py-2 px-4 text-center text-amber-600">{stat.usados.toLocaleString()}</td>
+                          <td className="py-2 px-4 text-center font-bold text-emerald-600">{stat.disponibles.toLocaleString()}</td>
+                          <td className="py-2 px-4 text-center">
+                            {stat.disponibles === 0 ? (
+                              <Badge className="bg-red-100 text-red-700">Agotados</Badge>
+                            ) : stat.disponibles < 10 ? (
+                              <Badge className="bg-amber-100 text-amber-700">Pocos</Badge>
+                            ) : (
+                              <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            
+            {/* Resumen */}
+            {codigosStats.length > 0 && (
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {codigosStats.reduce((acc, s) => acc + s.total, 0).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-slate-500">Total Códigos</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {codigosStats.reduce((acc, s) => acc + s.usados, 0).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-slate-500">Usados</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {codigosStats.reduce((acc, s) => acc + s.disponibles, 0).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-slate-500">Disponibles</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
