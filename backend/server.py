@@ -4167,9 +4167,15 @@ async def get_predios_catalogos(current_user: dict = Depends(get_current_user)):
 @api_router.post("/codigos-homologados/cargar")
 async def cargar_codigos_homologados(
     file: UploadFile = File(...),
+    municipio: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
 ):
-    """Cargar códigos homologados desde un archivo Excel"""
+    """Cargar códigos homologados desde un archivo Excel.
+    
+    El archivo puede tener:
+    1. Dos columnas: 'Municipio' y 'Codigo_Homologado' (o similar)
+    2. Una sola columna con códigos - en este caso se requiere el parámetro 'municipio'
+    """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden cargar códigos")
     
@@ -4196,11 +4202,21 @@ async def cargar_codigos_homologados(
             if 'codigo' in col or 'homologado' in col:
                 codigo_col = col
         
-        if not municipio_col or not codigo_col:
-            raise HTTPException(
-                status_code=400, 
-                detail="El Excel debe tener columnas 'Municipio' y 'Codigo_Homologado' (o similar)"
-            )
+        # Si no hay columna de código identificada, asumir que la primera columna son los códigos
+        if not codigo_col and len(df.columns) >= 1:
+            codigo_col = df.columns[0]
+        
+        # Si no hay columna de municipio, debe proporcionarse el parámetro
+        if not municipio_col:
+            if not municipio:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="El archivo no tiene columna 'Municipio'. Por favor seleccione el municipio."
+                )
+            # Usar el municipio proporcionado como parámetro
+            municipio_fijo = municipio.strip()
+        else:
+            municipio_fijo = None
         
         # Procesar y guardar códigos
         codigos_insertados = 0
@@ -4208,15 +4224,20 @@ async def cargar_codigos_homologados(
         codigos_por_municipio = {}
         
         for _, row in df.iterrows():
-            municipio = str(row[municipio_col]).strip()
+            # Determinar el municipio para esta fila
+            if municipio_fijo:
+                muni = municipio_fijo
+            else:
+                muni = str(row[municipio_col]).strip()
+            
             codigo = str(row[codigo_col]).strip().upper()
             
-            if not municipio or not codigo or municipio == 'nan' or codigo == 'nan':
+            if not muni or not codigo or muni == 'nan' or codigo == 'NAN':
                 continue
             
             # Verificar si ya existe
             existe = await db.codigos_homologados.find_one({
-                'municipio': municipio,
+                'municipio': muni,
                 'codigo': codigo
             })
             
@@ -4226,7 +4247,7 @@ async def cargar_codigos_homologados(
             
             # Insertar nuevo código
             await db.codigos_homologados.insert_one({
-                'municipio': municipio,
+                'municipio': muni,
                 'codigo': codigo,
                 'usado': False,
                 'predio_id': None,
@@ -4237,7 +4258,7 @@ async def cargar_codigos_homologados(
             })
             
             codigos_insertados += 1
-            codigos_por_municipio[municipio] = codigos_por_municipio.get(municipio, 0) + 1
+            codigos_por_municipio[muni] = codigos_por_municipio.get(muni, 0) + 1
         
         return {
             "success": True,
@@ -4247,6 +4268,8 @@ async def cargar_codigos_homologados(
             "por_municipio": codigos_por_municipio
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error procesando archivo: {str(e)}")
 
