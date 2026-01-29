@@ -218,6 +218,7 @@ class PetitionUpdate(BaseModel):
     gestor_id: Optional[str] = None
     enviar_archivos_finalizacion: Optional[bool] = False  # Flag para adjuntar archivos al correo de finalización
     observaciones_devolucion: Optional[str] = None  # Observaciones cuando se devuelve un trámite
+    comentario_aprobacion: Optional[str] = None  # Comentario del coordinador al aprobar
 
 class GestorAssignment(BaseModel):
     petition_id: str
