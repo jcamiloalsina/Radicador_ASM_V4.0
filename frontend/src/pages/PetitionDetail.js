@@ -806,6 +806,94 @@ export default function PetitionDetail() {
                           <Download className="w-4 h-4 mr-2" />
                           Descargar Certificado PDF
                         </Button>
+                        
+                        {/* Botón para regenerar certificado (actualizar con nueva fecha) */}
+                        {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="border-amber-600 text-amber-700 hover:bg-amber-50"
+                                data-testid="regenerar-certificado-btn"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Regenerar Certificado
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-amber-700">
+                                  <RefreshCw className="w-5 h-5" />
+                                  Regenerar Certificado Catastral
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Genera una nueva versión del certificado con fecha actualizada. El certificado anterior quedará inactivo.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <p className="text-sm text-amber-800 font-medium">⚠️ ¿Por qué regenerar?</p>
+                                  <p className="text-sm text-amber-700 mt-1">
+                                    Los certificados catastrales tienen vigencia de <strong>un (1) mes</strong>. Si el certificado original ya venció,
+                                    puede generar uno nuevo con fecha actualizada manteniendo el mismo radicado.
+                                  </p>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm">
+                                  <p className="font-medium text-slate-700 mb-2">Información actual:</p>
+                                  <p className="text-slate-600">Radicado: <strong>{petition.radicado}</strong></p>
+                                  <p className="text-slate-600">Código anterior: <strong className="font-mono">{petition.certificado_codigo}</strong></p>
+                                  <p className="text-slate-600">Fecha generación: <strong>{petition.certificado_fecha ? new Date(petition.certificado_fecha).toLocaleDateString('es-CO') : 'N/A'}</strong></p>
+                                  {petition.regeneraciones_count > 0 && (
+                                    <p className="text-slate-500 text-xs mt-2">
+                                      Este certificado ya ha sido regenerado {petition.regeneraciones_count} vez(es)
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <DialogFooter className="gap-2">
+                                <DialogClose asChild>
+                                  <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <Button
+                                  className="bg-amber-600 hover:bg-amber-700"
+                                  onClick={async () => {
+                                    try {
+                                      const token = localStorage.getItem('token');
+                                      const response = await fetch(`${API}/petitions/${petition.id}/regenerar-certificado`, {
+                                        method: 'POST',
+                                        headers: { 
+                                          'Authorization': `Bearer ${token}`,
+                                          'Content-Type': 'application/json'
+                                        }
+                                      });
+                                      if (!response.ok) {
+                                        const errorData = await response.json();
+                                        throw new Error(errorData.detail || 'Error al regenerar');
+                                      }
+                                      const blob = await response.blob();
+                                      const url = window.URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `Certificado_Actualizado_${petition.radicado}.pdf`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                      window.URL.revokeObjectURL(url);
+                                      toast.success('Certificado regenerado exitosamente');
+                                      // Recargar la petición para ver el nuevo código
+                                      window.location.reload();
+                                    } catch (error) {
+                                      toast.error(error.message || 'Error al regenerar el certificado');
+                                    }
+                                  }}
+                                >
+                                  <RefreshCw className="w-4 h-4 mr-2" />
+                                  Regenerar y Descargar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        )}
                       </div>
                     ) : petition.predio_relacionado ? (
                       <div className="space-y-3">
