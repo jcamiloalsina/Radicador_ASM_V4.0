@@ -1076,18 +1076,14 @@ export default function UserManagement() {
             {/* Tipo de backup */}
             <div className="space-y-2">
               <Label>Tipo de Backup</Label>
-              <Select 
+              <select 
                 value={configForm.tipo_backup} 
-                onValueChange={(v) => setConfigForm({...configForm, tipo_backup: v})}
+                onChange={(e) => setConfigForm({...configForm, tipo_backup: e.target.value})}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="completo">Completo (todas las colecciones)</SelectItem>
-                  <SelectItem value="selectivo">Selectivo (colecciones específicas)</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="completo">Completo (todas las colecciones)</option>
+                <option value="selectivo">Selectivo (colecciones específicas)</option>
+              </select>
             </div>
 
             {/* Selección de colecciones (para selectivo) */}
