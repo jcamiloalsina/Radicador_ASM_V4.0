@@ -99,14 +99,61 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.removeItem('session_expired'); // Limpiar flag de expiración
-    setToken(token);
-    setUser(user);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    return user;
+    // Verificar si estamos online
+    if (!isOnline()) {
+      // Intentar autenticación offline
+      console.log('🔌 Sin conexión - Intentando login offline...');
+      const offlineResult = await authenticateOffline(email, password);
+      
+      if (offlineResult.success) {
+        console.log('✅ Login offline exitoso');
+        localStorage.setItem('token', offlineResult.token);
+        localStorage.setItem('isOfflineSession', 'true');
+        localStorage.removeItem('session_expired');
+        setToken(offlineResult.token);
+        setUser(offlineResult.user);
+        // No configurar axios header porque no hay servidor
+        return offlineResult.user;
+      } else {
+        throw new Error(offlineResult.error);
+      }
+    }
+    
+    // Login online normal
+    try {
+      const response = await axios.post(`${API}/auth/login`, { email, password });
+      const { token, user } = response.data;
+      
+      // Guardar token y usuario
+      localStorage.setItem('token', token);
+      localStorage.removeItem('session_expired');
+      localStorage.removeItem('isOfflineSession');
+      setToken(token);
+      setUser(user);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Guardar credenciales para uso offline
+      await saveOfflineCredentials(email, password, user);
+      
+      return user;
+    } catch (error) {
+      // Si falla por problemas de red, intentar offline
+      if (!navigator.onLine || error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        console.log('🔌 Error de red - Intentando login offline...');
+        const offlineResult = await authenticateOffline(email, password);
+        
+        if (offlineResult.success) {
+          console.log('✅ Login offline exitoso (fallback)');
+          localStorage.setItem('token', offlineResult.token);
+          localStorage.setItem('isOfflineSession', 'true');
+          localStorage.removeItem('session_expired');
+          setToken(offlineResult.token);
+          setUser(offlineResult.user);
+          return offlineResult.user;
+        }
+      }
+      throw error;
+    }
   };
 
   const register = async (email, password, full_name) => {
