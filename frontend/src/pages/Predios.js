@@ -1334,6 +1334,8 @@ export default function Predios() {
   const [selectedPredio, setSelectedPredio] = useState(null);
   const [prediosEliminados, setPrediosEliminados] = useState([]);
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
+  const [cambiosHistorial, setCambiosHistorial] = useState([]);
+  const [historialTab, setHistorialTab] = useState('pendientes');
   const [cambiosStats, setCambiosStats] = useState(null);
   const [terrenoInfo, setTerrenoInfo] = useState(null);
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
