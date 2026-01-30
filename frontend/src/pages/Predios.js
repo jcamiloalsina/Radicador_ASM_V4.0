@@ -4463,142 +4463,231 @@ export default function Predios() {
         </DialogContent>
       </Dialog>
 
-      {/* Cambios Pendientes Dialog */}
-      <Dialog open={showPendientesDialog} onOpenChange={setShowPendientesDialog}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      {/* Pending Changes Dialog with History Tabs */}
+      <Dialog open={showPendientesDialog} onOpenChange={(open) => {
+        setShowPendientesDialog(open);
+        if (open && historialTab === 'historial') {
+          fetchCambiosHistorial();
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-amber-700">
-              <Bell className="w-5 h-5" />
-              Cambios Pendientes de Aprobación
+            <DialogTitle className="text-xl font-outfit flex items-center gap-2">
+              <FileEdit className="w-5 h-5 text-amber-600" />
+              Gestión de Cambios
             </DialogTitle>
+            <DialogDescription>
+              Revise y procese las solicitudes de cambios de predios
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-emerald-50 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-emerald-700">{cambiosStats?.pendientes_creacion || 0}</p>
-                <p className="text-xs text-slate-500">Creaciones</p>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-blue-700">{cambiosStats?.pendientes_modificacion || 0}</p>
-                <p className="text-xs text-slate-500">Modificaciones</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-red-700">{cambiosStats?.pendientes_eliminacion || 0}</p>
-                <p className="text-xs text-slate-500">Eliminaciones</p>
-              </div>
+            {/* Tabs for Pending and History */}
+            <div className="flex border-b border-slate-200">
+              <button
+                onClick={() => setHistorialTab('pendientes')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  historialTab === 'pendientes' 
+                    ? 'border-amber-500 text-amber-700' 
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Pendientes ({cambiosStats?.total_pendientes || 0})
+              </button>
+              <button
+                onClick={() => {
+                  setHistorialTab('historial');
+                  fetchCambiosHistorial();
+                }}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  historialTab === 'historial' 
+                    ? 'border-emerald-500 text-emerald-700' 
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Historial
+              </button>
             </div>
 
-            {cambiosPendientes.length === 0 ? (
-              <div className="py-8 text-center text-slate-500">
-                No hay cambios pendientes de aprobación
+            {/* Stats only shown in pendientes tab */}
+            {historialTab === 'pendientes' && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-emerald-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{cambiosStats?.pendientes_creacion || 0}</p>
+                  <p className="text-xs text-slate-500">Creaciones</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-blue-700">{cambiosStats?.pendientes_modificacion || 0}</p>
+                  <p className="text-xs text-slate-500">Modificaciones</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-red-700">{cambiosStats?.pendientes_eliminacion || 0}</p>
+                  <p className="text-xs text-slate-500">Eliminaciones</p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {cambiosPendientes.map((cambio) => (
-                  <Card key={cambio.id} className="border-l-4 border-l-amber-400">
-                    <CardContent className="pt-4">
-                      <div className="space-y-4">
-                        {/* Header */}
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant={
-                                cambio.tipo_cambio === 'creacion' ? 'default' :
-                                cambio.tipo_cambio === 'modificacion' ? 'secondary' : 'destructive'
-                              }>
-                                {cambio.tipo_cambio === 'creacion' ? 'Nuevo Predio' :
-                                 cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
-                              </Badge>
-                              <span className="text-xs text-slate-500">
-                                {new Date(cambio.fecha_propuesta).toLocaleString('es-CO')}
-                              </span>
-                            </div>
-                            
-                            {cambio.predio_actual && (
-                              <p className="text-sm"><strong>Predio actual:</strong> {cambio.predio_actual.codigo_homologado} - {cambio.predio_actual.nombre_propietario}</p>
-                            )}
-                            <p className="text-sm"><strong>Propuesto por:</strong> {cambio.propuesto_por_nombre} ({cambio.propuesto_por_rol})</p>
-                            {cambio.justificacion && (
-                              <p className="text-sm text-slate-600"><strong>Justificación:</strong> {cambio.justificacion}</p>
-                            )}
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              className="bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() => handleAprobarRechazar(cambio.id, true, 'Aprobado')}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Aprobar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => {
-                                const comentario = window.prompt('Motivo del rechazo:');
-                                if (comentario !== null) {
-                                  handleAprobarRechazar(cambio.id, false, comentario);
-                                }
-                              }}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Rechazar
-                            </Button>
-                          </div>
-                        </div>
+            )}
 
-                        {/* Datos propuestos expandibles */}
-                        <details className="bg-slate-50 rounded-lg p-3">
-                          <summary className="cursor-pointer font-medium text-sm text-slate-700 flex items-center gap-2">
-                            <Eye className="w-4 h-4" />
-                            Ver datos propuestos
-                          </summary>
-                          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                            {cambio.datos_propuestos.municipio && (
-                              <div><span className="text-slate-500">Municipio:</span> <strong>{cambio.datos_propuestos.municipio}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.nombre_propietario && (
-                              <div><span className="text-slate-500">Propietario:</span> <strong>{cambio.datos_propuestos.nombre_propietario}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.direccion && (
-                              <div><span className="text-slate-500">Dirección:</span> <strong>{cambio.datos_propuestos.direccion}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.destino_economico && (
-                              <div><span className="text-slate-500">Destino:</span> <strong>{cambio.datos_propuestos.destino_economico}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.area_terreno !== undefined && (
-                              <div><span className="text-slate-500">Área Terreno:</span> <strong>{cambio.datos_propuestos.area_terreno?.toLocaleString()} m²</strong></div>
-                            )}
-                            {cambio.datos_propuestos.area_construida !== undefined && (
-                              <div><span className="text-slate-500">Área Construida:</span> <strong>{cambio.datos_propuestos.area_construida?.toLocaleString()} m²</strong></div>
-                            )}
-                            {cambio.datos_propuestos.avaluo !== undefined && (
-                              <div><span className="text-slate-500">Avalúo:</span> <strong className="text-emerald-700">{formatCurrency(cambio.datos_propuestos.avaluo)}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.tipo_documento && (
-                              <div><span className="text-slate-500">Tipo Doc:</span> <strong>{cambio.datos_propuestos.tipo_documento}</strong></div>
-                            )}
-                            {cambio.datos_propuestos.numero_documento && (
-                              <div><span className="text-slate-500">Nro. Doc:</span> <strong>{cambio.datos_propuestos.numero_documento}</strong></div>
-                            )}
-                            {/* Mostrar todos los campos adicionales */}
-                            {Object.entries(cambio.datos_propuestos)
-                              .filter(([key]) => !['municipio', 'nombre_propietario', 'direccion', 'destino_economico', 'area_terreno', 'area_construida', 'avaluo', 'tipo_documento', 'numero_documento', 'codigo_homologado'].includes(key))
-                              .map(([key, value]) => (
-                                value !== null && value !== undefined && value !== '' && (
-                                  <div key={key}><span className="text-slate-500">{key.replace(/_/g, ' ')}:</span> <strong>{String(value)}</strong></div>
-                                )
-                              ))
-                            }
+            {/* Pendientes Tab Content */}
+            {historialTab === 'pendientes' && (
+              <>
+                {cambiosPendientes.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500">
+                    No hay cambios pendientes de aprobación
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cambiosPendientes.map((cambio) => (
+                      <Card key={cambio.id} className="border-l-4 border-l-amber-400">
+                        <CardContent className="pt-4">
+                          <div className="space-y-4">
+                            {/* Header */}
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant={
+                                    cambio.tipo_cambio === 'creacion' ? 'default' :
+                                    cambio.tipo_cambio === 'modificacion' ? 'secondary' : 'destructive'
+                                  }>
+                                    {cambio.tipo_cambio === 'creacion' ? 'Nuevo Predio' :
+                                     cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
+                                  </Badge>
+                                  <span className="text-xs text-slate-500">
+                                    {new Date(cambio.fecha_propuesta).toLocaleString('es-CO')}
+                                  </span>
+                                </div>
+                                
+                                {cambio.predio_actual && (
+                                  <p className="text-sm"><strong>Predio actual:</strong> {cambio.predio_actual.codigo_homologado} - {cambio.predio_actual.nombre_propietario}</p>
+                                )}
+                                <p className="text-sm"><strong>Propuesto por:</strong> {cambio.propuesto_por_nombre} ({cambio.propuesto_por_rol})</p>
+                                {cambio.justificacion && (
+                                  <p className="text-sm text-slate-600"><strong>Justificación:</strong> {cambio.justificacion}</p>
+                                )}
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  className="bg-emerald-600 hover:bg-emerald-700"
+                                  onClick={() => handleAprobarRechazar(cambio.id, true, 'Aprobado')}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Aprobar
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => {
+                                    const comentario = window.prompt('Motivo del rechazo:');
+                                    if (comentario !== null) {
+                                      handleAprobarRechazar(cambio.id, false, comentario);
+                                    }
+                                  }}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Rechazar
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Datos propuestos expandibles */}
+                            <details className="bg-slate-50 rounded-lg p-3">
+                              <summary className="cursor-pointer font-medium text-sm text-slate-700 flex items-center gap-2">
+                                <Eye className="w-4 h-4" />
+                                Ver datos propuestos
+                              </summary>
+                              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                                {cambio.datos_propuestos.municipio && (
+                                  <div><span className="text-slate-500">Municipio:</span> <strong>{cambio.datos_propuestos.municipio}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.nombre_propietario && (
+                                  <div><span className="text-slate-500">Propietario:</span> <strong>{cambio.datos_propuestos.nombre_propietario}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.direccion && (
+                                  <div><span className="text-slate-500">Dirección:</span> <strong>{cambio.datos_propuestos.direccion}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.destino_economico && (
+                                  <div><span className="text-slate-500">Destino:</span> <strong>{cambio.datos_propuestos.destino_economico}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.area_terreno !== undefined && (
+                                  <div><span className="text-slate-500">Área Terreno:</span> <strong>{cambio.datos_propuestos.area_terreno?.toLocaleString()} m²</strong></div>
+                                )}
+                                {cambio.datos_propuestos.area_construida !== undefined && (
+                                  <div><span className="text-slate-500">Área Construida:</span> <strong>{cambio.datos_propuestos.area_construida?.toLocaleString()} m²</strong></div>
+                                )}
+                                {cambio.datos_propuestos.avaluo !== undefined && (
+                                  <div><span className="text-slate-500">Avalúo:</span> <strong className="text-emerald-700">{formatCurrency(cambio.datos_propuestos.avaluo)}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.tipo_documento && (
+                                  <div><span className="text-slate-500">Tipo Doc:</span> <strong>{cambio.datos_propuestos.tipo_documento}</strong></div>
+                                )}
+                                {cambio.datos_propuestos.numero_documento && (
+                                  <div><span className="text-slate-500">Nro. Doc:</span> <strong>{cambio.datos_propuestos.numero_documento}</strong></div>
+                                )}
+                              </div>
+                            </details>
                           </div>
-                        </details>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Historial Tab Content */}
+            {historialTab === 'historial' && (
+              <>
+                {cambiosHistorial.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500">
+                    No hay historial de cambios procesados
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cambiosHistorial.map((cambio) => (
+                      <Card key={cambio.id} className={`border-l-4 ${
+                        cambio.estado === 'aprobado' ? 'border-l-emerald-500 bg-emerald-50/50' : 'border-l-red-500 bg-red-50/50'
+                      }`}>
+                        <CardContent className="py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant={cambio.estado === 'aprobado' ? 'default' : 'destructive'} className={
+                                  cambio.estado === 'aprobado' ? 'bg-emerald-600' : ''
+                                }>
+                                  {cambio.estado === 'aprobado' ? '✓ Aprobado' : '✗ Rechazado'}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {cambio.tipo_cambio === 'creacion' ? 'Creación' :
+                                   cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
+                                </Badge>
+                              </div>
+                              {cambio.predio_actual && (
+                                <p className="text-sm text-slate-700">
+                                  <strong>{cambio.predio_actual.codigo_homologado || cambio.predio_actual.codigo_predial_nacional}</strong>
+                                  {cambio.predio_actual.nombre_propietario && ` - ${cambio.predio_actual.nombre_propietario}`}
+                                </p>
+                              )}
+                              <p className="text-xs text-slate-500 mt-1">
+                                Solicitado por: {cambio.propuesto_por_nombre}
+                              </p>
+                              {cambio.comentario_aprobacion && (
+                                <p className="text-xs text-slate-600 mt-1 italic">
+                                  "{cambio.comentario_aprobacion}"
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right text-xs text-slate-500">
+                              <p>{cambio.fecha_decision ? new Date(cambio.fecha_decision).toLocaleDateString('es-CO') : 'N/A'}</p>
+                              <p className="text-slate-400">{cambio.decidido_por_nombre || 'Sistema'}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
           
