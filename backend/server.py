@@ -10364,6 +10364,39 @@ async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
     }
 
 
+@api_router.get("/predios/cambios/historial")
+async def get_cambios_historial(
+    limit: int = Query(50, ge=1, le=200),
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene el historial de cambios aprobados y rechazados"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden ver el historial")
+    
+    # Buscar cambios que ya fueron procesados (aprobados o rechazados)
+    estados_procesados = [
+        PredioEstadoAprobacion.APROBADO,
+        PredioEstadoAprobacion.RECHAZADO
+    ]
+    
+    cambios = await db.predios_cambios.find(
+        {"estado": {"$in": estados_procesados}},
+        {"_id": 0}
+    ).sort("fecha_decision", -1).limit(limit).to_list(limit)
+    
+    # Enriquecer con datos del predio original
+    for cambio in cambios:
+        if cambio.get('predio_id'):
+            predio = await db.predios.find_one({"id": cambio['predio_id']}, {"_id": 0, "codigo_predial_nacional": 1, "nombre_propietario": 1, "codigo_homologado": 1})
+            if predio:
+                cambio['predio_actual'] = predio
+    
+    return {
+        "cambios": cambios,
+        "total": len(cambios)
+    }
+
+
 # ===== GEOGRAPHIC DATABASE (GDB) INTEGRATION =====
 
 GDB_PATH = Path("/app/gdb_data/54003.gdb")
