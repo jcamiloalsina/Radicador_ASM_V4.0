@@ -1,130 +1,117 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on property creation/management (Conservación) and property updates (Actualización).
+The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on property creation/management (Conservación), property updates (Actualización), and a workflow for processing user requests (Peticiones).
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Robust Offline Mode:** Key modules must be fully functional offline, with clear UI indicators and performant caching.
-2.  **Coordinator's Approval UI:** Implement the interface for the Coordinador role to manage suggested changes.
-3.  **Complete Visit Form:** Add remaining sections (Linderos, Coordenadas).
-4.  **Payment Verification Workflow:** Formalize the payment process for certificates.
-5.  **Homologated Codes System:** The user wants to upload an Excel file containing a list of  (homologated codes) for each municipality. When creating a new property, the system must automatically assign the next available code from this list for the selected municipality. The UI should support uploading this file and viewing statistics on code usage.
+1.  **Robust Offline Mode:** Key modules must be fully functional offline.
+2.  **Homologated Codes System:** An automated system for assigning predefined property codes from an uploaded Excel file.
+3.  **Complete Visit Form:** The visit form for Actualización projects must include Linderos and Coordenadas sections.
+4.  **Improved Request Workflow:** The Peticiones workflow needs to be more detailed, tracking the progress from submission to approval.
+5.  **Database Management Tool:** A UI-driven tool for Admins and Coordinators to create backups and restore the MongoDB database.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application consists of a FastAPI backend and a React frontend. The main focus has been on implementing and debugging a robust offline mode.
-- Critical performance issues on the Gestión de Predios page have been resolved by implementing client-side pagination, which has been tested and verified.
-- The offline mode has been successfully extended to three key modules: Gestión de Predios, Visor de Predios (map view), and Proyectos de Actualización. This includes fixing numerous bugs related to data consistency, caching, searching, and sorting.
-- The global offline status indicator in the header now correctly aggregates and displays the count of all offline items (properties, geometries, and projects).
-- A new feature for managing Códigos Homologados has been implemented but is not yet tested. This includes backend endpoints for uploading an Excel file, managing codes in a new MongoDB collection (), and frontend components for uploading the file and automatically assigning a code when creating a new property.
+The application is a full-stack solution with a FastAPI backend and a React frontend using a MongoDB database. Key features are now well-established, including a robust offline mode for major modules, a complete and tested system for managing Códigos Homologados, and a significantly improved Peticiones workflow with new states and a visual timeline. The database has been cleaned up by renaming it to  and unifying the two previously separate IndexedDB instances into one, resolving significant technical debt. The agent has just started implementing a new Database Manager feature.
 
 **Last working item**:
--   **Last item agent was working:** The agent was implementing the Códigos Homologados system. The user wants to upload an Excel file with predefined codes per municipality, and have the system automatically assign the next available one when a new property is created. The agent finished implementing the backend logic (new MongoDB collection, API endpoints for uploading, getting stats, and fetching the next code) and the frontend UI (a new dialog for uploading the file and viewing stats, plus integration into the 'Create Predio' form).
+-   **Last item agent was working:** The agent was creating a Database Manager feature within the Gestión de Usuarios page, as requested by the user. This feature is intended to allow administrators and coordinators to create backups, view a history of backups, and restore the database from a file. The agent successfully created the backend endpoints in  that use  and . It then began refactoring the  file to use a tabbed layout to house this new functionality alongside the existing user list. The implementation was interrupted after the file was rewritten.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both.
-    -   **Backend:** Use  to test the new endpoints (, , ).
-    -   **Frontend:** Use the  tool to verify the UI for uploading codes and creating a property. Then, use the frontend testing agent for a full E2E test: upload an Excel file, verify stats, create a new property, and confirm the code is assigned correctly and stats are updated.
+-   **Which testing method agent to use?** both. First, use the  tool to verify the new tabbed UI on the  page. Then, use  to test the backend backup/restore endpoints. Finally, use the frontend testing agent to perform an E2E test of creating a backup, seeing it in the list, and downloading it.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Test the new Códigos Homologados system (P0)**
--   **Issue 2: Unify the two IndexedDB databases (P1)**
--   **Issue 3: The MongoDB database name is still  (P2)**
+-   **Issue 1: Complete and Test the Database Manager (P0)**
+-   **Issue 2: Test the Linderos and Coordenadas Form Sections (P1)**
+-   **Issue 3: Test the Updated Actualización PDF Generation (P2)**
 
 **Issues Detail:**
 -   **Issue 1:**
-    -   **Attempted fixes:** The full feature (backend and frontend) has been implemented.
+    -   **Attempted fixes:** The agent created all necessary backend endpoints in  (, , etc.). The frontend file  was completely rewritten to use a tabbed interface.
     -   **Next debug checklist:**
-        1.  Create a sample Excel file () with  and  columns.
-        2.  Use  to test the  endpoint.
-        3.  Use  to test  and verify it returns a code.
-        4.  Use the  tool on  to open the new Gestionar Códigos dialog and verify the upload UI.
-        5.  Use the  tool to open the Crear Predio dialog, select a municipality, and verify that the Código Homologado field is automatically populated.
-        6.  Create a property and verify in the database that the code is marked as .
-    -   **Why fix this issue and what will be achieved with the fix?** This completes a core user requirement for standardizing property codes upon creation.
+        1.  Restart services and check frontend/backend logs for errors.
+        2.  Take a screenshot of  to verify the new tabbed layout renders correctly for an Admin user.
+        3.  Test the Backup Completo functionality and verify a  file is created in .
+        4.  Test listing the backups in the UI.
+        5.  Test downloading a backup file.
+        6.  (CAUTION) Test the Restaurar functionality, as it's a destructive operation.
+        7.  Log in as a **Coordinador** and verify they can also access and use the Base de Datos tab as requested by the user.
+    -   **Why fix this issue and what will be achieved with the fix?** This fulfills a direct user requirement for a UI-driven backup/restore tool, enhancing data management capabilities.
     -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Both
 
 -   **Issue 2:**
-    -   **Attempted fixes:** None in this session. This is a known technical debt from previous sessions.
+    -   **Attempted fixes:** The UI components and state management for Linderos and Coordenadas were added to .
     -   **Next debug checklist:**
-        1.  Analyze  (uses ) and  (uses ).
-        2.  Plan a refactor to move all offline logic into a single database () and a unified set of hooks/utils.
-        3.  Update all components to use the new unified system.
-    -   **Why fix this issue and what will be achieved with the fix?** This will eliminate a major source of recurring bugs related to inconsistent offline state and simplify future development.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
+        1.  Log in and navigate to the Proyectos de Actualización page.
+        2.  Create a new project if one doesn't exist.
+        3.  Enter the project's Visor to view the visit form.
+        4.  Verify the Linderos and Coordenadas tabs appear.
+        5.  Enter edit mode and confirm the input fields for both sections are present and editable.
+        6.  Save the changes and verify the data persists.
+    -   **Why fix this issue and what will be achieved with the fix?** Completes a core part of the property data capture form.
+    -   **Status:** TESTING PENDING
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Frontend
 
 -   **Issue 3:**
-    -   **Attempted fixes:** None.
-    -   **Next debug checklist:** Edit  and change  to . Restart the backend supervisor.
-    -   **Why fix this issue and what will be achieved with the fix?** To align the development environment with production best practices.
-    -   **Status:** NOT STARTED
-    -   **Is recurring issue?** Y
+    -   **Attempted fixes:** The backend PDF generation logic in  was updated to pull data from the new linderos/coordenadas fields.
+    -   **Next debug checklist:** After completing Issue 2 and having a project with data, use the Generar PDF button in the  and verify the generated PDF contains the new sections with the correct data.
+    -   **Why fix this issue and what will be achieved with the fix?** Ensures the official visit report is complete and accurate.
+    -   **Status:** TESTING PENDING
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Backend
 
 **In progress Task List**:
--   **Task 1: Complete Códigos Homologados Feature (P0)**
-    -   **Where to resume:** The implementation is code-complete. The next step is to begin testing the backend endpoints and the frontend UI as described in **Issue 1**.
-    -   **What will be achieved with this?** A fully functional and tested system for assigning standardized codes to new properties.
+-   **Task 1: Implement Database Manager UI (P0)**
+    -   **Where to resume:** The file  has been rewritten but is untested. The next step is to test the UI and wire up the functionality to the new backend endpoints.
+    -   **What will be achieved with this?** A fully functional UI for database management.
     -   **Status:** IN PROGRESS
     -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 
-**Upcoming Tasks:**
-*   **P0: Coordinator's Approval UI for Changes:** Implement the UI for the Coordinador role to review and approve/reject .
-*   **P1: Add Final Sections to Visit Form:** Add Linderos and Coordenadas to the visit form modal ().
-*   **P1: Implement Payment Verification Workflow:** Formalize the payment process for certificates.
-
 **Future Tasks:**
-*   **P2: Implement Certificado Catastral Especial**: Begin work on the more detailed Especial certificate type.
-*   **P2: PDF Report Generation (Actualización):** Generate a downloadable PDF of the complete visit form after coordinator approval.
-*   **P2: General Backlog:**
-    *   Generate XTF files.
-    *   Implement a history log for permission changes.
+*   **P2: Generate XTF files:** Export property data in the standard XTF format.
 
 **Completed work in this session**
-- **Critical Bug Fix: UI Lag on Gestión de Predios**: Successfully implemented and verified client-side pagination to fix severe performance issues.
-- **Bug Fix: Disappearing Predio After Edit**: Resolved a caching issue by implementing a  mechanism that re-fetches data from the server after create, update, or delete operations.
-- **Full Offline Mode Implementation**:
-    - **Visor de Predios**: Implemented offline saving and loading for map geometries.
-    - **Proyectos de Actualización**: Added manual sync and force-refresh capabilities.
-    - **Visor de Actualización**: Fixed a bug that prevented loading a project from cache when offline.
-- **Multiple Data Integrity Fixes**:
-    - Fixed offline search functionality in  to correctly query nested fields like matricula.
-    - Ensured predios are always sorted by  in the UI, both online and offline.
-    - Fixed bugs in the offline geometry store that caused data duplication and incorrect counts.
-    - Corrected the global offline badge to accurately count all offline entities (predios, geometrías, proyectos).
-- **Responsive UI Fix**: Corrected layout issues on the Gestión de Predios page for tablet-sized screens.
-- **Feature Implementation (Untested): Códigos Homologados System**: Implemented backend and frontend for managing and assigning codes from an Excel file.
+- **Códigos Homologados Feature:** Completed and tested the entire system for managing homologated codes from Excel files, including refinements based on user feedback (UI placement, showing used codes, detecting existing codes on upload).
+- **Peticiones Workflow Improvement:** Enhanced the request workflow with new states (, ), logic for gestores to mark work as complete, and a visual timeline in the UI.
+- **PDF Documentation:** Generated a professional PDF document detailing the new Peticiones workflow, accessible via a download endpoint.
+- **Technical Debt Resolution:**
+    - **Renamed MongoDB Database:** Changed the DB name from  to  and migrated all data.
+    - **Unified IndexedDB:** Consolidated the two separate offline databases ( and ) into a single, unified database, resolving a major source of recurring bugs.
+- **Visit Form Completion:**
+    - Added UI tabs and form fields for Linderos and Coordenadas to the  page.
+    - Updated the backend PDF generation logic to include these new sections in the final report.
+- **User Guidance:** Provided the user with DNS configuration instructions for their custom domain and recommendations for a production server environment.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1:** The MongoDB database name in  is still .
--   **Issue 2:** The fragmented IndexedDB architecture ( and ) has not been unified.
+-   None. The major technical debt items from the previous session (DB name, fragmented IndexedDB) have been resolved.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Renaming the MongoDB database from .
+-   **Issue recurrence in previous fork:** Renaming the MongoDB database and unifying IndexedDB databases were recurring technical debt items.
 -   **Recurrence count:** 2+
--   **Status:** NOT STARTED
+-   **Status:** RESOLVED
 
 **Code Architecture**
-create_predio
+
 
 **Key Technical Concepts**
--   **Robust Offline Caching:** Extensive work on IndexedDB to fix data duplication, ensure data integrity, and provide a consistent user experience. This involved creating stable IDs, using cursors for deletion, and separating concerns between different modules.
--   **Client-Side Performance:** Solved a critical UI freezing issue by implementing client-side pagination for a large dataset.
--   **State Management (Stale-While-Revalidate):** The pattern of showing cached data first while fetching fresh data in the background is now a core part of the application's data-heavy pages.
--   **File Upload and Processing:** Implemented backend logic to parse an Excel file () using  for the new Códigos Homologados feature.
+-   **Database Management:** Using  to call system commands like  and  for creating and restoring MongoDB backups.
+-   **File Streaming:** Serving generated backup files for download using FastAPI's .
+-   **UI Refactoring:** Converting a single-view component () into a tabbed interface to accommodate new functionality.
+-   **Technical Debt Management:** Successfully resolved long-standing issues with database naming and offline storage architecture.
 
 **key DB schema**
+-   ** (MongoDB - Modified):**
+    -    (New)
+    -    (New Array of user_ids)
+    -    (Enum now includes  and )
 -   ** (MongoDB - New):**
-    -    - Stores the list of available codes loaded from Excel.
--   ** (IndexedDB):**
-    -   **Stores:** , , , , .
+    -    - To store metadata of backups.
 
 **All files of reference**
 -   
@@ -132,61 +119,57 @@ create_predio
 -   
 -   
 -   
--   
--   
--   
--   
 
 **Areas that need refactoring**:
--   **Unify Offline Logic (High Priority):** The coexistence of  and  managing two different IndexedDB databases is a major source of technical debt and complexity. This should be consolidated.
--   **Componentize :** The file has grown to over 5,000 lines and handles logic for stats, filtering, searching, creating, updating, deleting, pagination, and now homologated codes. It should be broken down into smaller, manageable components.
+-   **:** This file remains monolithic (over 5,000 lines) and is a candidate for being broken down into smaller, more manageable components.
+-   **:** This file has also grown significantly and could be broken down into smaller components for each tab.
 
 **key api endpoints**
--   : (New) Uploads an Excel file with homologated codes.
--   : (New) Gets the next available code for a municipality.
--   : (New) Gets usage statistics for homologated codes.
--   : (Modified) Now assigns a homologated code from the new system when creating a property.
+-   : Creates a new database backup.
+-   : Lists all available backups.
+-   : Restores the database from a specified backup file.
+-   : Downloads a specific backup file.
+-   : Allows a gestor to mark their work as complete on a petition.
+-   : Downloads the PDF explaining the petitions workflow.
 
 **Critical Info for New Agent**
--   **Your immediate priority is to test the new Códigos Homologados feature.** The entire implementation (backend and frontend) is complete but completely untested. Follow the checklist in the Issues Detail section.
--   Be aware of the **two separate IndexedDB databases**. This is a recurring source of confusion and bugs.  manages  (with underscore), while the  hook and  component primarily interact with  (with dash). This technical debt needs to be addressed soon.
--   The user is highly engaged and provides detailed feedback, often including screenshots. Pay close attention to subtle behaviors, especially regarding offline data, as the user will notice inconsistencies.
--   The data for a single property can be complex, with information coming from the main  collection as well as nested  documents. When debugging data issues, ensure you are querying the correct fields and vigencia (year).
+-   **Your immediate priority is to finish the Database Manager.** The backend is implemented, but the frontend () was rewritten and is completely untested. It may be broken. Start by verifying the UI renders correctly, then connect it to the backend endpoints and test the full backup/restore cycle.
+-   **Remember the user wants both Admins and Coordinators to have access to the DB Manager.** Test permissions for both roles.
+-   The major technical debt items (DB name, IndexedDB) are now resolved. Do not try to fix them again.
+-   The user has explicitly trimmed the backlog. Do not suggest features that were removed (e.g., payment verification, special certificates). Focus only on what's listed in the pending tasks.
 
 **documents and test reports created in this job**
 -   
--   
--   
+-   Backup files will be created in .
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Request):** Asked for a system to manage and assign Códigos Homologados from an uploaded Excel file when creating new properties.
-2.  **User (Bug):** Reported that after entering an update project and leaving, they couldn't re-enter it in offline mode (Proyecto no encontrado).
-3.  **User (Bug):** Reported that the UI layout was broken on a tablet.
-4.  **User (Bug):** Reported that searching for a specific  wasn't working and that properties were not sorted by CNP.
-5.  **User (Bug):** After syncing geometrias for one municipality (Ábrego), the offline count was incorrectly showing a much larger number, indicating old data was not being cleared.
-6.  **User (Bug):** Pointed out that after a fix, only 279 geometries were being loaded from cache instead of the full 9,893.
-7.  **User (Bug):** Noticed that only 5,705 of 9,893 geometries were being saved offline for Ábrego.
-8.  **User (Clarification):** Asked if the global geometry counter includes geometries from Actualización projects, which it incorrectly did.
-9.  **User (Bug):** The global offline indicator in the header was only showing the count for predios, not the total of all offline items.
-10. **User (Bug):** Reported that a predio disappeared from the list after being edited. (This was a caching issue, now fixed).
+1.  **User (Request):** Asked to create a database manager for backups and restores within Gestión de usuarios.
+2.  **User (Clarification):** Confirmed the DB manager should be available for Coordinators as well as Admins.
+3.  **User (Question):** Asked for the optimal Linux distribution for deployment.
+4.  **User (Question):** Asked for the DNS configuration needed for the certificate verification URL.
+5.  **User (Confirmation):** Confirmed that the platform is in good condition after the Códigos Homologados fix.
+6.  **User (Question):** Asked what tasks were still pending.
+7.  **User (Prioritization):** Prioritized the pending tasks: fix P0 (unify DB), work on P1.2 (complete form) and P1.4 (rename DB). Explicitly removed P1.3, P2.5, and P2.8 from the backlog. Asked for an explanation of P2.6.
+8.  **User (Decision):** After the DB was renamed and data was lost, the user confirmed that copying data from the old DB to the new one was the correct action. Approved the proposal for the Linderos/Coordenadas forms.
+9.  **User (Request):** After seeing the improved Peticiones workflow, requested a PDF document explaining the new flow to share with colleagues.
+10. **User (Request):** After seeing a diagram of the Peticiones flow, approved the agent's proposed improvements (new states, gestor tracking).
 
 **Project Health Check:**
 -   **Broken:**
-    -   The new Códigos Homologados feature is completely untested and may not work as expected.
+    -   The **Database Manager** feature is incomplete. The UI in  was rewritten but is untested and likely non-functional.
 -   **Mocked:**
-    -   The payment verification workflow for certificates remains a simple, non-enforced process.
+    -   None.
 -   **Technical Debt:**
-    -   The application uses two separate IndexedDB databases managed by different parts of the code, which is a significant source of bugs and complexity.
-    -   The  file is monolithic and urgently needs to be refactored into smaller components.
+    -   The  and  components are very large and complex, making them difficult to maintain. They are prime candidates for refactoring.
 
 **3rd Party Integrations**
 -   None.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, used to verify the pagination fix and the full offline mode implementation.
+-   **Testing agent used after significant changes:** YES, for the Códigos Homologados feature.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** None identified in this session.
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
 -   **Administrator:**
@@ -197,5 +180,4 @@ create_predio
     -   **Password:** 
 
 **What agent forgot to execute**
--   The agent has implemented a major feature (Códigos Homologados) but has not performed any testing or verification.
--   The agent did not address the long-standing technical debt of unifying the two IndexedDB databases, despite it being a recurring source of problems.</analysis>
+-   The agent overwrote  with a new tabbed layout but did not perform any testing (not even a screenshot) to ensure the page still renders. This is the first thing the next agent must verify.</analysis>
