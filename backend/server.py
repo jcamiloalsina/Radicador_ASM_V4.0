@@ -11328,6 +11328,21 @@ async def upload_gdb_file(
                             except:
                                 pass
                             
+                            # Validar que la geometría sea serializable
+                            try:
+                                geom_dict = geom_wgs84.__geo_interface__
+                                # Verificar que tenga coordenadas válidas
+                                if not geom_dict.get('coordinates'):
+                                    raise ValueError("Geometría sin coordenadas")
+                            except Exception as ser_err:
+                                errores_calidad['rurales_rechazados'] += 1
+                                errores_calidad['geometrias_rechazadas'].append({
+                                    'codigo': codigo,
+                                    'razon': f'Error serializando: {str(ser_err)[:30]}',
+                                    'capa': rural_layer
+                                })
+                                continue
+                            
                             await db.gdb_geometrias.insert_one({
                                 "codigo": codigo,
                                 "tipo": "rural",
@@ -11335,7 +11350,7 @@ async def upload_gdb_file(
                                 "gdb_source": gdb_name,
                                 "municipio": municipio_nombre,
                                 "area_m2": area_m2,
-                                "geometry": geom_wgs84.__geo_interface__
+                                "geometry": geom_dict
                             })
                             geometrias_guardadas += 1
                             rural_guardadas += 1
