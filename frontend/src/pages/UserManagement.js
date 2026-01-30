@@ -961,8 +961,8 @@ export default function UserManagement() {
       </Dialog>
 
       {/* Dialog Configuración de Backups */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog} modal={false}>
+        <DialogContent className="max-w-xl"  onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5" />
