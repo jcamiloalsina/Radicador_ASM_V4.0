@@ -2228,9 +2228,14 @@ async def get_petitions(current_user: dict = Depends(get_current_user)):
     # Citizens only see their own petitions
     if current_user['role'] == UserRole.USUARIO:
         query = {"user_id": current_user['id']}
-    # Gestores see assigned petitions
-    elif current_user['role'] in [UserRole.GESTOR]:
-        query = {"gestores_asignados": current_user['id']}
+    # Gestores see assigned petitions AND petitions they created
+    elif current_user['role'] in [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
+        query = {
+            "$or": [
+                {"gestores_asignados": current_user['id']},  # Asignadas a él
+                {"user_id": current_user['id']}              # Creadas por él
+            ]
+        }
     else:
         # Staff (atencion_usuario, coordinador, administrador) see all petitions
         query = {}
