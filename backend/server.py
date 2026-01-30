@@ -15699,8 +15699,70 @@ async def get_backup_history(current_user: dict = Depends(get_current_user)):
     return {"backups": backups}
 
 
+# Variable global para trackear backups en progreso
+backup_progress = {}
+
+async def run_backup_task(backup_id: str, backup_path: str, backup_info: dict, collections_to_backup: list):
+    """Tarea de backup que corre en segundo plano"""
+    import zipfile
+    import json
+    from bson import json_util
+    
+    global backup_progress
+    backup_progress[backup_id] = {"status": "running", "progress": 0, "current_collection": "", "error": None}
+    
+    try:
+        total_registros = 0
+        total_collections = len(collections_to_backup)
+        
+        with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Crear archivo de metadata
+            metadata = {
+                "backup_id": backup_id,
+                "db_name": db.name,
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "colecciones": collections_to_backup,
+                "version": "1.0"
+            }
+            zipf.writestr("_metadata.json", json.dumps(metadata, indent=2))
+            
+            # Exportar cada colección
+            for idx, coll_name in enumerate(collections_to_backup):
+                backup_progress[backup_id]["current_collection"] = coll_name
+                backup_progress[backup_id]["progress"] = int((idx / total_collections) * 100)
+                
+                # Exportar en lotes para colecciones grandes
+                docs = []
+                cursor = db[coll_name].find({})
+                async for doc in cursor:
+                    docs.append(doc)
+                
+                total_registros += len(docs)
+                
+                # Convertir a JSON compatible (maneja ObjectId, datetime, etc.)
+                json_data = json_util.dumps(docs, indent=2)
+                zipf.writestr(f"{coll_name}.json", json_data)
+        
+        # Obtener tamaño del archivo
+        file_size = os.path.getsize(backup_path)
+        backup_info["size_mb"] = round(file_size / (1024 * 1024), 2)
+        backup_info["registros_total"] = total_registros
+        backup_info["estado"] = "completado"
+        
+        # Guardar en historial
+        await db.backup_history.insert_one(backup_info)
+        
+        backup_progress[backup_id] = {"status": "completed", "progress": 100, "current_collection": "", "error": None}
+        
+    except Exception as e:
+        backup_progress[backup_id] = {"status": "error", "progress": 0, "current_collection": "", "error": str(e)}
+        # Limpiar archivo si hubo error
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+
 @api_router.post("/database/backup")
 async def create_backup(
+    background_tasks: BackgroundTasks,
     tipo: str = "completo",
     colecciones: List[str] = None,
     current_user: dict = Depends(get_current_user)
@@ -15708,10 +15770,6 @@ async def create_backup(
     """Crear backup de la base de datos - Solo admin y coordinador"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para crear backups")
-    
-    import zipfile
-    import json
-    from bson import json_util
     
     backup_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -15742,50 +15800,42 @@ async def create_backup(
         "creado_por_id": current_user['id'],
         "creado_por": current_user['full_name'],
         "size_mb": 0,
-        "registros_total": 0
+        "registros_total": 0,
+        "estado": "en_progreso"
     }
     
-    try:
-        total_registros = 0
-        with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Crear archivo de metadata
-            metadata = {
-                "backup_id": backup_id,
-                "db_name": db.name,
-                "fecha": datetime.now(timezone.utc).isoformat(),
-                "colecciones": collections_to_backup,
-                "version": "1.0"
-            }
-            zipf.writestr("_metadata.json", json.dumps(metadata, indent=2))
-            
-            # Exportar cada colección
-            for coll_name in collections_to_backup:
-                docs = await db[coll_name].find({}).to_list(None)
-                total_registros += len(docs)
-                
-                # Convertir a JSON compatible (maneja ObjectId, datetime, etc.)
-                json_data = json_util.dumps(docs, indent=2)
-                zipf.writestr(f"{coll_name}.json", json_data)
-        
-        # Obtener tamaño del archivo
-        file_size = os.path.getsize(backup_path)
-        backup_info["size_mb"] = round(file_size / (1024 * 1024), 2)
-        backup_info["registros_total"] = total_registros
-        
-        # Guardar en historial
-        await db.backup_history.insert_one(backup_info)
-        
-        return {
-            "success": True,
-            "message": f"Backup creado exitosamente",
-            "backup": backup_info
+    # Iniciar backup en segundo plano
+    background_tasks.add_task(run_backup_task, backup_id, backup_path, backup_info, collections_to_backup)
+    
+    return {
+        "success": True,
+        "message": "Backup iniciado en segundo plano",
+        "backup_id": backup_id,
+        "backup": {
+            "id": backup_id,
+            "filename": backup_filename,
+            "tipo": tipo,
+            "colecciones_count": len(collections_to_backup),
+            "estado": "en_progreso"
         }
-        
-    except Exception as e:
-        # Limpiar archivo si hubo error
-        if os.path.exists(backup_path):
-            os.remove(backup_path)
-        raise HTTPException(status_code=500, detail=f"Error creando backup: {str(e)}")
+    }
+
+@api_router.get("/database/backup/{backup_id}/status")
+async def get_backup_status(backup_id: str, current_user: dict = Depends(get_current_user)):
+    """Obtener estado de un backup en progreso"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    global backup_progress
+    if backup_id in backup_progress:
+        return backup_progress[backup_id]
+    
+    # Verificar si ya está completado en la BD
+    backup = await db.backup_history.find_one({"id": backup_id}, {"_id": 0})
+    if backup:
+        return {"status": "completed", "progress": 100, "current_collection": "", "error": None}
+    
+    return {"status": "not_found", "progress": 0, "current_collection": "", "error": "Backup no encontrado"}
 
 
 @api_router.get("/database/backup/{backup_id}/download")
