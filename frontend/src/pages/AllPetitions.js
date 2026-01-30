@@ -69,9 +69,9 @@ export default function AllPetitions() {
       const response = await axios.get(`${API}/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Filter gestores, coordinadores, and atencion_usuario (all can be assigned to petitions)
+      // Include ALL roles that can be assigned to petitions (including admin)
       const gestoresList = response.data.filter(u => 
-        ['gestor', 'gestor_auxiliar', 'coordinador', 'atencion_usuario'].includes(u.role)
+        ['gestor', 'gestor_auxiliar', 'coordinador', 'atencion_usuario', 'administrador'].includes(u.role)
       );
       setGestores(gestoresList);
     } catch (error) {
