@@ -12802,6 +12802,46 @@ async def obtener_progreso_ortoimagen(orto_id: str, current_user: dict = Depends
     else:
         return {"status": "pendiente", "progress": 0, "message": "En espera"}
 
+@api_router.post("/ortoimagenes/{orto_id}/reprocesar")
+async def reprocesar_ortoimagen(
+    orto_id: str, 
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Reprocesa una ortoimagen que falló"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    orto = await db.ortoimagenes.find_one({"id": orto_id}, {"_id": 0})
+    if not orto:
+        raise HTTPException(status_code=404, detail="Ortoimagen no encontrada")
+    
+    original_path = orto.get("archivo_original")
+    if not original_path or not os.path.exists(original_path):
+        raise HTTPException(status_code=400, detail="Archivo original no encontrado")
+    
+    # Limpiar tiles existentes si hay
+    tiles_path = ORTOIMAGENES_PATH / orto_id
+    if tiles_path.exists():
+        shutil.rmtree(tiles_path)
+    
+    # Resetear estado en MongoDB
+    await db.ortoimagenes.update_one(
+        {"id": orto_id},
+        {"$set": {"procesando": True, "error": None, "activa": False}}
+    )
+    
+    # Iniciar reprocesamiento
+    ortoimagen_processing_progress[orto_id] = {
+        "status": "iniciando",
+        "progress": 5,
+        "message": "Iniciando reprocesamiento..."
+    }
+    
+    background_tasks.add_task(procesar_ortoimagen_background, orto_id, original_path, orto["nombre"])
+    
+    return {"message": "Reprocesamiento iniciado", "id": orto_id}
+
 @api_router.delete("/ortoimagenes/{orto_id}")
 async def eliminar_ortoimagen(orto_id: str, current_user: dict = Depends(get_current_user)):
     """Elimina una ortoimagen y sus tiles"""
