@@ -16006,6 +16006,246 @@ async def preview_backup(backup_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=500, detail=f"Error leyendo backup: {str(e)}")
 
 
+# ===== CONFIGURACIÓN DE BACKUPS AUTOMÁTICOS =====
+
+# Variable global para el scheduler de backups
+backup_scheduler_task = None
+
+@api_router.get("/database/config")
+async def get_backup_config(current_user: dict = Depends(get_current_user)):
+    """Obtener configuración de backups - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+    
+    if not config:
+        # Configuración por defecto
+        config = {
+            "type": "backup_config",
+            "modo": "manual",  # "manual" o "automatico"
+            "frecuencia": "diario",  # "diario", "semanal", "mensual"
+            "hora": "02:00",  # Hora de ejecución (formato 24h)
+            "dia_semana": 0,  # 0=Lunes, 6=Domingo (para semanal)
+            "dia_mes": 1,  # 1-28 (para mensual)
+            "tipo_backup": "completo",  # "completo" o "selectivo"
+            "colecciones_seleccionadas": [],  # Para backup selectivo
+            "retener_ultimos": 7,  # Número de backups a retener
+            "notificar_email": True,
+            "ultimo_backup_auto": None,
+            "proximo_backup": None,
+            "activo": False
+        }
+        await db.system_config.insert_one(config)
+    
+    return config
+
+@api_router.put("/database/config")
+async def update_backup_config(
+    modo: str = "manual",
+    frecuencia: str = "diario",
+    hora: str = "02:00",
+    dia_semana: int = 0,
+    dia_mes: int = 1,
+    tipo_backup: str = "completo",
+    colecciones_seleccionadas: List[str] = Query(default=[]),
+    retener_ultimos: int = 7,
+    notificar_email: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualizar configuración de backups - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    # Validar parámetros
+    if modo not in ["manual", "automatico"]:
+        raise HTTPException(status_code=400, detail="Modo debe ser 'manual' o 'automatico'")
+    if frecuencia not in ["diario", "semanal", "mensual"]:
+        raise HTTPException(status_code=400, detail="Frecuencia inválida")
+    if tipo_backup not in ["completo", "selectivo"]:
+        raise HTTPException(status_code=400, detail="Tipo de backup inválido")
+    if tipo_backup == "selectivo" and not colecciones_seleccionadas:
+        raise HTTPException(status_code=400, detail="Debe seleccionar colecciones para backup selectivo")
+    
+    # Calcular próximo backup si es automático
+    proximo_backup = None
+    if modo == "automatico":
+        proximo_backup = calcular_proximo_backup(frecuencia, hora, dia_semana, dia_mes)
+    
+    config = {
+        "type": "backup_config",
+        "modo": modo,
+        "frecuencia": frecuencia,
+        "hora": hora,
+        "dia_semana": dia_semana,
+        "dia_mes": dia_mes,
+        "tipo_backup": tipo_backup,
+        "colecciones_seleccionadas": colecciones_seleccionadas,
+        "retener_ultimos": retener_ultimos,
+        "notificar_email": notificar_email,
+        "activo": modo == "automatico",
+        "proximo_backup": proximo_backup,
+        "modificado_por": current_user['full_name'],
+        "fecha_modificacion": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.system_config.update_one(
+        {"type": "backup_config"},
+        {"$set": config},
+        upsert=True
+    )
+    
+    return {"message": "Configuración actualizada", "config": config}
+
+def calcular_proximo_backup(frecuencia: str, hora: str, dia_semana: int, dia_mes: int) -> str:
+    """Calcula la fecha/hora del próximo backup"""
+    from datetime import datetime, timezone, timedelta
+    
+    now = datetime.now(timezone.utc)
+    hora_parts = hora.split(":")
+    hora_backup = int(hora_parts[0])
+    minuto_backup = int(hora_parts[1]) if len(hora_parts) > 1 else 0
+    
+    if frecuencia == "diario":
+        # Próximo día a la hora indicada
+        proximo = now.replace(hour=hora_backup, minute=minuto_backup, second=0, microsecond=0)
+        if proximo <= now:
+            proximo += timedelta(days=1)
+    
+    elif frecuencia == "semanal":
+        # Próximo día de la semana a la hora indicada
+        dias_hasta = (dia_semana - now.weekday()) % 7
+        if dias_hasta == 0:
+            proximo = now.replace(hour=hora_backup, minute=minuto_backup, second=0, microsecond=0)
+            if proximo <= now:
+                proximo += timedelta(days=7)
+        else:
+            proximo = now + timedelta(days=dias_hasta)
+            proximo = proximo.replace(hour=hora_backup, minute=minuto_backup, second=0, microsecond=0)
+    
+    elif frecuencia == "mensual":
+        # Próximo día del mes a la hora indicada
+        try:
+            proximo = now.replace(day=dia_mes, hour=hora_backup, minute=minuto_backup, second=0, microsecond=0)
+            if proximo <= now:
+                # Siguiente mes
+                if now.month == 12:
+                    proximo = proximo.replace(year=now.year + 1, month=1)
+                else:
+                    proximo = proximo.replace(month=now.month + 1)
+        except ValueError:
+            # Si el día no existe en el mes, usar el último día
+            proximo = (now.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            proximo = proximo.replace(hour=hora_backup, minute=minuto_backup, second=0, microsecond=0)
+    
+    return proximo.isoformat()
+
+@api_router.post("/database/backup/ejecutar-programado")
+async def ejecutar_backup_programado(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Ejecutar backup programado manualmente - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+    if not config:
+        raise HTTPException(status_code=400, detail="No hay configuración de backup")
+    
+    # Crear backup según la configuración
+    backup_id = str(uuid.uuid4())
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"backup_auto_{db.name}_{timestamp}.zip"
+    backup_path = f"/app/backend/static/backups/{backup_filename}"
+    
+    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+    
+    # Obtener colecciones
+    if config.get("tipo_backup") == "completo":
+        collections_to_backup = await db.list_collection_names()
+        collections_to_backup = [c for c in collections_to_backup if c not in ['backup_history', 'system_config']]
+    else:
+        collections_to_backup = config.get("colecciones_seleccionadas", [])
+    
+    if not collections_to_backup:
+        raise HTTPException(status_code=400, detail="No hay colecciones para respaldar")
+    
+    backup_info = {
+        "id": backup_id,
+        "filename": backup_filename,
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "tipo": config.get("tipo_backup", "completo"),
+        "colecciones": collections_to_backup,
+        "colecciones_count": len(collections_to_backup),
+        "creado_por_id": "sistema",
+        "creado_por": f"Backup automático (iniciado por {current_user['full_name']})",
+        "size_mb": 0,
+        "registros_total": 0,
+        "estado": "en_progreso",
+        "es_automatico": True
+    }
+    
+    background_tasks.add_task(run_backup_task, backup_id, backup_path, backup_info, collections_to_backup)
+    
+    # Actualizar último backup y próximo
+    proximo = calcular_proximo_backup(
+        config.get("frecuencia", "diario"),
+        config.get("hora", "02:00"),
+        config.get("dia_semana", 0),
+        config.get("dia_mes", 1)
+    )
+    
+    await db.system_config.update_one(
+        {"type": "backup_config"},
+        {"$set": {
+            "ultimo_backup_auto": datetime.now(timezone.utc).isoformat(),
+            "proximo_backup": proximo
+        }}
+    )
+    
+    return {
+        "message": "Backup programado iniciado",
+        "backup_id": backup_id,
+        "tipo": config.get("tipo_backup"),
+        "colecciones": len(collections_to_backup)
+    }
+
+@api_router.post("/database/backup/limpiar-antiguos")
+async def limpiar_backups_antiguos(current_user: dict = Depends(get_current_user)):
+    """Eliminar backups antiguos según la configuración de retención - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden limpiar backups")
+    
+    config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+    retener = config.get("retener_ultimos", 7) if config else 7
+    
+    # Obtener todos los backups ordenados por fecha
+    all_backups = await db.backup_history.find(
+        {},
+        {"_id": 0}
+    ).sort("fecha", -1).to_list(1000)
+    
+    if len(all_backups) <= retener:
+        return {"message": "No hay backups para eliminar", "eliminados": 0}
+    
+    backups_a_eliminar = all_backups[retener:]
+    eliminados = 0
+    
+    for backup in backups_a_eliminar:
+        backup_path = f"/app/backend/static/backups/{backup['filename']}"
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+        await db.backup_history.delete_one({"id": backup["id"]})
+        eliminados += 1
+    
+    return {
+        "message": f"Limpieza completada",
+        "eliminados": eliminados,
+        "retenidos": retener
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
