@@ -397,6 +397,49 @@ export default function UserManagement() {
     }
   };
 
+  // Funciones para gestionar colecciones
+  const handleEmptyCollection = async (collectionName) => {
+    const confirmMsg = `⚠️ ¿Está seguro de VACIAR la colección "${collectionName}"?\n\nEsto eliminará TODOS los registros pero mantendrá la colección.\n\nEsta acción NO se puede deshacer.`;
+    if (!window.confirm(confirmMsg)) return;
+    
+    // Segunda confirmación para colecciones críticas
+    const criticalCollections = ['predios', 'users', 'predios_historico', 'petitions'];
+    if (criticalCollections.includes(collectionName)) {
+      const secondConfirm = window.prompt(`Esta es una colección CRÍTICA. Escriba "${collectionName}" para confirmar:`);
+      if (secondConfirm !== collectionName) {
+        toast.error('Operación cancelada - nombre incorrecto');
+        return;
+      }
+    }
+    
+    try {
+      const response = await axios.post(`${API}/database/collection/${collectionName}/empty`);
+      toast.success(`Colección "${collectionName}" vaciada: ${response.data.deleted_count} registros eliminados`);
+      fetchDbStatus();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al vaciar colección');
+    }
+  };
+
+  const handleDropCollection = async (collectionName) => {
+    const confirmMsg = `🚨 ¿Está seguro de ELIMINAR la colección "${collectionName}"?\n\nEsto eliminará la colección COMPLETAMENTE de la base de datos.\n\nEsta acción NO se puede deshacer.`;
+    if (!window.confirm(confirmMsg)) return;
+    
+    const secondConfirm = window.prompt(`Escriba "${collectionName}" para confirmar la ELIMINACIÓN:`);
+    if (secondConfirm !== collectionName) {
+      toast.error('Operación cancelada - nombre incorrecto');
+      return;
+    }
+    
+    try {
+      await axios.delete(`${API}/database/collection/${collectionName}`);
+      toast.success(`Colección "${collectionName}" eliminada completamente`);
+      fetchDbStatus();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar colección');
+    }
+  };
+
   const getRoleBadge = (role) => {
     const roleConfig = {
       administrador: { label: 'Administrador', className: 'bg-rose-100 text-rose-700' },
