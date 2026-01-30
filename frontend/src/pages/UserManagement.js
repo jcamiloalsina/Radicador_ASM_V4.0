@@ -117,8 +117,41 @@ export default function UserManagement() {
     }
   };
 
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [currentBackupId, setCurrentBackupId] = useState(null);
+
+  const pollBackupStatus = async (backupId) => {
+    try {
+      const response = await axios.get(`${API}/database/backup/${backupId}/status`);
+      const status = response.data;
+      setBackupStatus(status);
+      
+      if (status.status === 'completed') {
+        toast.success('Backup completado exitosamente');
+        setCreatingBackup(false);
+        setShowBackupDialog(false);
+        setBackupStatus(null);
+        setCurrentBackupId(null);
+        fetchBackups();
+        fetchDbStatus();
+      } else if (status.status === 'error') {
+        toast.error(`Error en backup: ${status.error}`);
+        setCreatingBackup(false);
+        setBackupStatus(null);
+        setCurrentBackupId(null);
+      } else if (status.status === 'running') {
+        // Seguir polling cada 2 segundos
+        setTimeout(() => pollBackupStatus(backupId), 2000);
+      }
+    } catch (error) {
+      console.error('Error polling backup status:', error);
+      setTimeout(() => pollBackupStatus(backupId), 3000);
+    }
+  };
+
   const handleCreateBackup = async () => {
     setCreatingBackup(true);
+    setBackupStatus({ status: 'starting', progress: 0 });
     try {
       const params = new URLSearchParams();
       params.append('tipo', backupType);
@@ -127,14 +160,16 @@ export default function UserManagement() {
       }
       
       const response = await axios.post(`${API}/database/backup?${params.toString()}`);
-      toast.success(`Backup creado: ${response.data.backup.registros_total} registros respaldados`);
-      setShowBackupDialog(false);
-      fetchBackups();
-      fetchDbStatus();
+      const backupId = response.data.backup_id;
+      setCurrentBackupId(backupId);
+      toast.info('Backup iniciado en segundo plano...');
+      
+      // Iniciar polling del estado
+      setTimeout(() => pollBackupStatus(backupId), 1000);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al crear backup');
-    } finally {
       setCreatingBackup(false);
+      setBackupStatus(null);
     }
   };
 
