@@ -45,9 +45,13 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production'
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
 
-# URL Base para verificación de certificados (configurable para DNS futuro)
-# Cambiar a "https://asomunicipios.gov.co" cuando se configure el DNS
-VERIFICACION_BASE_URL = os.environ.get('VERIFICACION_URL', 'https://land-tracker-8.preview.emergentagent.com')
+# URL Base para verificación de certificados (OBLIGATORIO - debe configurarse en producción)
+# Esta variable DEBE estar definida en el archivo .env del servidor de producción
+# Ejemplo: VERIFICACION_URL="https://certificados.asomunicipios.gov.co"
+VERIFICACION_BASE_URL = os.environ.get('VERIFICACION_URL')
+if not VERIFICACION_BASE_URL:
+    print("⚠️ ADVERTENCIA: VERIFICACION_URL no está configurada. Los certificados usarán URL por defecto.")
+    VERIFICACION_BASE_URL = "https://certificados.asomunicipios.gov.co"
 
 # Email Configuration
 SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.office365.com')
