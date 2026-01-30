@@ -1011,19 +1011,15 @@ export default function UserManagement() {
                 {/* Frecuencia */}
                 <div className="space-y-2">
                   <Label>Frecuencia</Label>
-                  <Select 
+                  <select 
                     value={configForm.frecuencia} 
-                    onValueChange={(v) => setConfigForm({...configForm, frecuencia: v})}
+                    onChange={(e) => setConfigForm({...configForm, frecuencia: e.target.value})}
+                    className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="diario">Diario</SelectItem>
-                      <SelectItem value="semanal">Semanal</SelectItem>
-                      <SelectItem value="mensual">Mensual</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <option value="diario">Diario</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensual">Mensual</option>
+                  </select>
                 </div>
 
                 {/* Hora */}
