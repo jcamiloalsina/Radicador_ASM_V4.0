@@ -605,6 +605,26 @@ export default function UserManagement() {
                 </Button>
                 <Button 
                   variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingBackup}
+                  className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                >
+                  {uploadingBackup ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  Cargar Backup
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button 
+                  variant="outline"
                   onClick={() => { fetchDbStatus(); fetchBackups(); }}
                   disabled={loadingDb}
                 >
