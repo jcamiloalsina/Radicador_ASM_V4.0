@@ -333,3 +333,4 @@ backend/static/backups/
 # Environment files
 *.env
 *.env.*
+exports/
