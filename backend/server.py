@@ -16286,6 +16286,153 @@ async def limpiar_backups_antiguos(current_user: dict = Depends(get_current_user
     }
 
 
+@api_router.post("/database/backup/analizar")
+async def analizar_backup_archivo(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Analiza un archivo de backup y compara con los datos actuales"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos .zip")
+    
+    import zipfile
+    import tempfile
+    from bson import json_util
+    
+    # Guardar archivo temporal
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    
+    try:
+        comparacion = []
+        total_registros = 0
+        registros_actuales = 0
+        metadata = {}
+        
+        with zipfile.ZipFile(tmp_path, 'r') as zipf:
+            # Leer metadata si existe
+            if '_metadata.json' in zipf.namelist():
+                with zipf.open('_metadata.json') as f:
+                    metadata = json.loads(f.read().decode('utf-8'))
+            
+            # Analizar cada colección
+            for name in zipf.namelist():
+                if name.endswith('.json') and name != '_metadata.json':
+                    coll_name = name.replace('.json', '')
+                    
+                    with zipf.open(name) as f:
+                        data = json_util.loads(f.read().decode('utf-8'))
+                        registros_backup = len(data) if isinstance(data, list) else 0
+                        total_registros += registros_backup
+                    
+                    # Contar registros actuales
+                    actual = await db[coll_name].count_documents({})
+                    registros_actuales += actual
+                    
+                    comparacion.append({
+                        "coleccion": coll_name,
+                        "en_backup": registros_backup,
+                        "actual": actual,
+                        "diferencia": registros_backup - actual
+                    })
+        
+        # Ordenar por diferencia (más cambios primero)
+        comparacion.sort(key=lambda x: abs(x['diferencia']), reverse=True)
+        
+        return {
+            "archivo": file.filename,
+            "db_name": metadata.get("db_name", "N/A"),
+            "fecha_backup": metadata.get("fecha"),
+            "total_colecciones": len(comparacion),
+            "total_registros": total_registros,
+            "registros_actuales": registros_actuales,
+            "comparacion": comparacion
+        }
+        
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Archivo ZIP inválido o corrupto")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analizando backup: {str(e)}")
+    finally:
+        os.unlink(tmp_path)
+
+
+@api_router.post("/database/backup/restaurar-archivo")
+async def restaurar_backup_archivo(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Restaura la base de datos desde un archivo de backup"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden restaurar backups")
+    
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos .zip")
+    
+    import zipfile
+    import tempfile
+    from bson import json_util
+    
+    # Guardar archivo temporal
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    
+    try:
+        colecciones_restauradas = 0
+        registros_restaurados = 0
+        
+        with zipfile.ZipFile(tmp_path, 'r') as zipf:
+            for name in zipf.namelist():
+                if name.endswith('.json') and name != '_metadata.json':
+                    coll_name = name.replace('.json', '')
+                    
+                    with zipf.open(name) as f:
+                        data = json_util.loads(f.read().decode('utf-8'))
+                    
+                    if isinstance(data, list) and len(data) > 0:
+                        # Limpiar colección existente
+                        await db[coll_name].delete_many({})
+                        
+                        # Insertar datos del backup
+                        await db[coll_name].insert_many(data)
+                        
+                        colecciones_restauradas += 1
+                        registros_restaurados += len(data)
+        
+        # Registrar la restauración
+        await db.backup_history.insert_one({
+            "id": str(uuid.uuid4()),
+            "filename": f"restaurado_{file.filename}",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "tipo": "restauracion_archivo",
+            "colecciones_count": colecciones_restauradas,
+            "registros_total": registros_restaurados,
+            "creado_por_id": current_user['id'],
+            "creado_por": current_user['full_name'],
+            "estado": "restaurado"
+        })
+        
+        return {
+            "message": "Backup restaurado exitosamente",
+            "colecciones_restauradas": colecciones_restauradas,
+            "registros_restaurados": registros_restaurados
+        }
+        
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="Archivo ZIP inválido o corrupto")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error restaurando backup: {str(e)}")
+    finally:
+        os.unlink(tmp_path)
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
