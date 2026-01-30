@@ -10242,17 +10242,31 @@ async def aprobar_rechazar_cambio(
         {"$set": update_data}
     )
     
-    # Si se rechaza, notificar al usuario que propuso el cambio (solo plataforma, no email)
-    if not request.aprobado and cambio.get("propuesto_por"):
-        codigo_predio = cambio.get("datos_propuestos", {}).get("codigo_predial_nacional", "N/A")
-        await crear_notificacion(
-            usuario_id=cambio["propuesto_por"],
-            titulo="Cambio de Predio Rechazado",
-            mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido rechazado por {current_user['full_name']}. Motivo: {request.comentario or 'Sin comentario'}",
-            tipo="warning",
-            enlace="/dashboard/pendientes",
-            enviar_email=False  # Solo notificación en plataforma
-        )
+    # Notificar al usuario que propuso el cambio
+    if cambio.get("propuesto_por"):
+        codigo_predio = cambio.get("datos_propuestos", {}).get("codigo_predial_nacional", 
+                        cambio.get("datos_propuestos", {}).get("codigo_homologado", "N/A"))
+        
+        if request.aprobado:
+            # Notificar aprobación - incluir instrucción para sincronizar
+            await crear_notificacion(
+                usuario_id=cambio["propuesto_por"],
+                titulo="✅ Cambio de Predio Aprobado",
+                mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido aprobado por {current_user['full_name']}. Por favor, sincronice los datos del municipio para ver los cambios actualizados.",
+                tipo="success",
+                enlace=f"/dashboard/conservacion?municipio={cambio.get('datos_propuestos', {}).get('municipio', '')}",
+                enviar_email=False
+            )
+        else:
+            # Notificar rechazo
+            await crear_notificacion(
+                usuario_id=cambio["propuesto_por"],
+                titulo="❌ Cambio de Predio Rechazado",
+                mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido rechazado por {current_user['full_name']}. Motivo: {request.comentario or 'Sin comentario'}",
+                tipo="warning",
+                enlace="/dashboard/pendientes",
+                enviar_email=False
+            )
     
     return {
         "mensaje": "Cambio aprobado y aplicado" if request.aprobado else "Cambio rechazado",
