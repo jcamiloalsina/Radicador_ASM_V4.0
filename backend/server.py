@@ -15641,6 +15641,313 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
     }
 
 
+# ==========================================
+# GESTOR DE BASE DE DATOS
+# ==========================================
+
+@api_router.get("/database/status")
+async def get_database_status(current_user: dict = Depends(get_current_user)):
+    """Obtener estado de la base de datos - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para acceder a esta sección")
+    
+    # Obtener estadísticas de la base de datos
+    collections = await db.list_collection_names()
+    
+    stats = {
+        "db_name": db.name,
+        "collections_count": len(collections),
+        "collections": []
+    }
+    
+    total_size = 0
+    for coll_name in collections:
+        coll_stats = await db.command("collStats", coll_name)
+        count = await db[coll_name].count_documents({})
+        size_mb = coll_stats.get('size', 0) / (1024 * 1024)
+        total_size += coll_stats.get('size', 0)
+        stats["collections"].append({
+            "name": coll_name,
+            "count": count,
+            "size_mb": round(size_mb, 2)
+        })
+    
+    stats["total_size_mb"] = round(total_size / (1024 * 1024), 2)
+    
+    # Obtener último backup del historial
+    ultimo_backup = await db.backup_history.find_one(
+        {}, 
+        sort=[("fecha", -1)],
+        projection={"_id": 0, "fecha": 1, "tipo": 1}
+    )
+    stats["ultimo_backup"] = ultimo_backup
+    
+    return stats
+
+
+@api_router.get("/database/backups")
+async def get_backup_history(current_user: dict = Depends(get_current_user)):
+    """Obtener historial de backups - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para acceder a esta sección")
+    
+    backups = await db.backup_history.find(
+        {},
+        {"_id": 0}
+    ).sort("fecha", -1).limit(50).to_list(50)
+    
+    return {"backups": backups}
+
+
+@api_router.post("/database/backup")
+async def create_backup(
+    tipo: str = "completo",
+    colecciones: List[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crear backup de la base de datos - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear backups")
+    
+    import zipfile
+    import json
+    from bson import json_util
+    
+    backup_id = str(uuid.uuid4())
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"backup_{db.name}_{timestamp}.zip"
+    backup_path = f"/app/backend/static/backups/{backup_filename}"
+    
+    # Crear directorio si no existe
+    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+    
+    # Obtener colecciones a respaldar
+    if tipo == "completo":
+        collections_to_backup = await db.list_collection_names()
+        # Excluir la colección de historial de backups
+        collections_to_backup = [c for c in collections_to_backup if c != 'backup_history']
+    else:
+        collections_to_backup = colecciones or []
+    
+    if not collections_to_backup:
+        raise HTTPException(status_code=400, detail="No hay colecciones para respaldar")
+    
+    backup_info = {
+        "id": backup_id,
+        "filename": backup_filename,
+        "fecha": datetime.now(timezone.utc).isoformat(),
+        "tipo": tipo,
+        "colecciones": collections_to_backup,
+        "colecciones_count": len(collections_to_backup),
+        "creado_por_id": current_user['id'],
+        "creado_por": current_user['full_name'],
+        "size_mb": 0,
+        "registros_total": 0
+    }
+    
+    try:
+        total_registros = 0
+        with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Crear archivo de metadata
+            metadata = {
+                "backup_id": backup_id,
+                "db_name": db.name,
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "colecciones": collections_to_backup,
+                "version": "1.0"
+            }
+            zipf.writestr("_metadata.json", json.dumps(metadata, indent=2))
+            
+            # Exportar cada colección
+            for coll_name in collections_to_backup:
+                docs = await db[coll_name].find({}).to_list(None)
+                total_registros += len(docs)
+                
+                # Convertir a JSON compatible (maneja ObjectId, datetime, etc.)
+                json_data = json_util.dumps(docs, indent=2)
+                zipf.writestr(f"{coll_name}.json", json_data)
+        
+        # Obtener tamaño del archivo
+        file_size = os.path.getsize(backup_path)
+        backup_info["size_mb"] = round(file_size / (1024 * 1024), 2)
+        backup_info["registros_total"] = total_registros
+        
+        # Guardar en historial
+        await db.backup_history.insert_one(backup_info)
+        
+        return {
+            "success": True,
+            "message": f"Backup creado exitosamente",
+            "backup": backup_info
+        }
+        
+    except Exception as e:
+        # Limpiar archivo si hubo error
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+        raise HTTPException(status_code=500, detail=f"Error creando backup: {str(e)}")
+
+
+@api_router.get("/database/backup/{backup_id}/download")
+async def download_backup(backup_id: str, current_user: dict = Depends(get_current_user)):
+    """Descargar un backup - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para descargar backups")
+    
+    backup = await db.backup_history.find_one({"id": backup_id}, {"_id": 0})
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup no encontrado")
+    
+    backup_path = f"/app/backend/static/backups/{backup['filename']}"
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=404, detail="Archivo de backup no encontrado")
+    
+    return FileResponse(
+        path=backup_path,
+        filename=backup['filename'],
+        media_type="application/zip"
+    )
+
+
+@api_router.delete("/database/backup/{backup_id}")
+async def delete_backup(backup_id: str, current_user: dict = Depends(get_current_user)):
+    """Eliminar un backup - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar backups")
+    
+    backup = await db.backup_history.find_one({"id": backup_id}, {"_id": 0})
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup no encontrado")
+    
+    # Eliminar archivo
+    backup_path = f"/app/backend/static/backups/{backup['filename']}"
+    if os.path.exists(backup_path):
+        os.remove(backup_path)
+    
+    # Eliminar del historial
+    await db.backup_history.delete_one({"id": backup_id})
+    
+    return {"success": True, "message": "Backup eliminado"}
+
+
+@api_router.post("/database/restore/{backup_id}")
+async def restore_backup(
+    backup_id: str, 
+    colecciones: List[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Restaurar un backup - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden restaurar backups")
+    
+    import zipfile
+    from bson import json_util
+    
+    backup = await db.backup_history.find_one({"id": backup_id}, {"_id": 0})
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup no encontrado")
+    
+    backup_path = f"/app/backend/static/backups/{backup['filename']}"
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=404, detail="Archivo de backup no encontrado")
+    
+    try:
+        restored_collections = []
+        total_restored = 0
+        
+        with zipfile.ZipFile(backup_path, 'r') as zipf:
+            # Leer metadata
+            metadata = json.loads(zipf.read("_metadata.json"))
+            
+            # Determinar qué colecciones restaurar
+            collections_to_restore = colecciones if colecciones else backup['colecciones']
+            
+            for coll_name in collections_to_restore:
+                if f"{coll_name}.json" not in zipf.namelist():
+                    continue
+                
+                # Leer datos de la colección
+                json_data = zipf.read(f"{coll_name}.json")
+                docs = json_util.loads(json_data)
+                
+                if docs:
+                    # Eliminar colección existente y restaurar
+                    await db[coll_name].drop()
+                    await db[coll_name].insert_many(docs)
+                    total_restored += len(docs)
+                    restored_collections.append({
+                        "name": coll_name,
+                        "count": len(docs)
+                    })
+        
+        # Registrar la restauración en el historial
+        await db.backup_history.update_one(
+            {"id": backup_id},
+            {"$push": {
+                "restauraciones": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "usuario": current_user['full_name'],
+                    "colecciones": [c['name'] for c in restored_collections]
+                }
+            }}
+        )
+        
+        return {
+            "success": True,
+            "message": f"Backup restaurado exitosamente",
+            "colecciones_restauradas": restored_collections,
+            "total_registros": total_restored
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error restaurando backup: {str(e)}")
+
+
+@api_router.get("/database/backup/{backup_id}/preview")
+async def preview_backup(backup_id: str, current_user: dict = Depends(get_current_user)):
+    """Vista previa del contenido de un backup - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    import zipfile
+    from bson import json_util
+    
+    backup = await db.backup_history.find_one({"id": backup_id}, {"_id": 0})
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup no encontrado")
+    
+    backup_path = f"/app/backend/static/backups/{backup['filename']}"
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=404, detail="Archivo de backup no encontrado")
+    
+    preview = {
+        "backup_info": backup,
+        "colecciones": []
+    }
+    
+    try:
+        with zipfile.ZipFile(backup_path, 'r') as zipf:
+            metadata = json.loads(zipf.read("_metadata.json"))
+            
+            for coll_name in backup['colecciones']:
+                if f"{coll_name}.json" not in zipf.namelist():
+                    continue
+                
+                json_data = zipf.read(f"{coll_name}.json")
+                docs = json_util.loads(json_data)
+                
+                preview["colecciones"].append({
+                    "name": coll_name,
+                    "count": len(docs),
+                    "sample": docs[0] if docs else None  # Primer documento como muestra
+                })
+        
+        return preview
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo backup: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
