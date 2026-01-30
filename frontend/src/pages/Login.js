@@ -287,6 +287,39 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Indicador de estado de conexión */}
+          {!isOnline && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4" data-testid="offline-indicator">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  <WifiOff className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-800">Modo Sin Conexión</p>
+                  {hasOfflineCredentials ? (
+                    <p className="text-sm text-amber-700 mt-1">
+                      Puede iniciar sesión con las credenciales guardadas localmente.
+                      {offlineCredentialsInfo?.email && (
+                        <span className="block mt-1 font-medium">{offlineCredentialsInfo.email}</span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-700 mt-1">
+                      No hay credenciales guardadas. Necesita conectarse a internet para iniciar sesión por primera vez.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {isOnline && (
+            <div className="flex items-center justify-center gap-2 text-emerald-600 text-sm">
+              <Wifi className="w-4 h-4" />
+              <span>Conectado</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="mt-8 space-y-6" data-testid="login-form">
             {/* Mensaje de sesión expirada */}
             {sessionExpiredMsg && (
