@@ -1018,9 +1018,10 @@ export default function VisorPredios() {
                 } else if (calidadPct >= 80) {
                   toast.success(`✓ Carga exitosa. ${response.data.predios_relacionados} predios vinculados. ${calidadMsg}`, { duration: 5000 });
                 } else if (calidadPct >= 60) {
-                  toast.warning(`⚠️ Carga con observaciones. ${calidadMsg}. Códigos inválidos: ${calidad.codigos_invalidos}, Rechazadas: ${calidad.geometrias_rechazadas}`, { duration: 8000 });
+                  toast.warning(`⚠️ Carga completa con observaciones. ${calidadMsg}. Códigos inválidos: ${calidad.codigos_invalidos}, Rechazadas: ${calidad.geometrias_rechazadas}`, { duration: 8000 });
                 } else {
-                  toast.error(`❌ Problemas de calidad. ${calidadMsg}. Se generó reporte PDF para revisión.`, { duration: 10000 });
+                  // Cambio: No mostrar error si la carga funcionó, solo advertencia
+                  toast.warning(`⚠️ Carga completa - Revisar calidad. ${calidadMsg}. Códigos inválidos: ${calidad.codigos_invalidos}. Se generó reporte PDF.`, { duration: 10000 });
                 }
                 
                 // Si hay reporte PDF, mostrar notificación con enlace de descarga
