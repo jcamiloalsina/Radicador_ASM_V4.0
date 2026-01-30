@@ -8043,6 +8043,21 @@ async def generar_certificado_catastral_endpoint(
         "matricula_inmobiliaria": next((r.get('matricula_inmobiliaria', '') for r in predio.get('r2_registros', [])), '')
     }
     
+    # Formatear área para mostrar en verificación
+    area_raw = predio.get('area_terreno', 0)
+    if area_raw and area_raw >= 10000:
+        ha = int(area_raw // 10000)
+        m2_restantes = int(area_raw % 10000)
+        area_str = f"{ha} ha {m2_restantes} m²"
+    elif area_raw:
+        area_str = f"{int(area_raw)} m²"
+    else:
+        area_str = "N/A"
+    
+    # Formatear avalúo
+    avaluo_raw = predio.get('avaluo', 0)
+    avaluo_str = f"$ {int(avaluo_raw):,}".replace(',', '.') if avaluo_raw else "N/A"
+    
     # Generar hash de datos críticos (para comparación rápida)
     datos_string = "|".join([
         str(datos_criticos['codigo_predial']),
@@ -8064,6 +8079,9 @@ async def generar_certificado_catastral_endpoint(
         "direccion": predio.get('direccion', ''),
         "propietarios": [p.get('nombre_propietario', '') for p in propietarios],
         "datos_criticos": datos_criticos,  # Guardar datos originales
+        # Datos formateados para verificación
+        "area_terreno": area_str,
+        "avaluo_catastral": avaluo_str,
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "generado_por_email": current_user['email'],
