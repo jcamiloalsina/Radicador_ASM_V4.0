@@ -7301,8 +7301,11 @@ async def export_predios_excel(
         # Si no se especifica vigencia, usar la más alta disponible
         all_vigencias = await db.predios.distinct("vigencia", {"deleted": {"$ne": True}})
         if all_vigencias:
-            vigencia_exportada = max(all_vigencias)
-            query["vigencia"] = vigencia_exportada
+            # Filtrar solo valores numéricos válidos
+            numeric_vigencias = [v for v in all_vigencias if isinstance(v, (int, float)) and v is not None]
+            if numeric_vigencias:
+                vigencia_exportada = max(numeric_vigencias)
+                query["vigencia"] = vigencia_exportada
     
     predios = await db.predios.find(query, {"_id": 0}).to_list(50000)
     
