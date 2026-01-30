@@ -113,7 +113,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 30 Enero 2026 (Fork 8) - Administrador de Base de Datos
+### Sesión 30 Enero 2026 (Fork 8) - Administrador de Base de Datos + Ortoimágenes
 
 #### 1. Nueva Funcionalidad: Gestión de Backups
 - ✅ **Nueva pestaña "Base de Datos"** en página "Gestión de Usuarios"
@@ -128,25 +128,31 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - ✅ **Restaurar backup:** Solo administradores (sobrescribe datos actuales)
 - ✅ **Eliminar backup:** Solo administradores
 
-#### 2. Endpoints Backend:
-- `GET /api/database/status` - Estado de la BD (admin/coordinador)
-- `GET /api/database/backups` - Historial de backups
-- `POST /api/database/backup` - Crear backup (asíncrono)
-- `GET /api/database/backup/{id}/status` - Estado del backup en progreso
-- `GET /api/database/backup/{id}/download` - Descargar archivo ZIP
-- `GET /api/database/backup/{id}/preview` - Vista previa del contenido
-- `POST /api/database/restore/{id}` - Restaurar (solo admin)
-- `DELETE /api/database/backup/{id}` - Eliminar (solo admin)
+#### 2. Configuración de Backups Automáticos
+- ✅ **Modo Manual/Automático:** Selección mediante tarjetas visuales
+- ✅ **Frecuencia:** Diario, Semanal, Mensual
+- ✅ **Hora de ejecución:** Configurable (recomendado 02:00)
+- ✅ **Día específico:** Para semanal (día semana) o mensual (día del mes)
+- ✅ **Tipo de backup:** Completo o selectivo con colecciones específicas
+- ✅ **Retención:** Configurar cuántos backups conservar (3-30)
+- ✅ **Próximo backup:** Muestra fecha/hora calculada del próximo backup
+- ✅ **Ejecutar manualmente:** Botón para ejecutar backup programado
+- ✅ **Limpiar antiguos:** Elimina backups que exceden la retención
 
-#### 3. Permisos:
-- **Administradores:** Acceso completo (crear, ver, descargar, restaurar, eliminar)
-- **Coordinadores:** Pueden crear, ver, descargar, vista previa (NO restaurar/eliminar)
-- **Otros roles:** Sin acceso (403 Forbidden)
+#### 3. Fix: Procesamiento de Ortoimágenes
+- ✅ **GDAL instalado:** Se instaló gdal-bin y python3-gdal para procesamiento de GeoTIFF
+- ✅ **Endpoint de reprocesamiento:** `POST /api/ortoimagenes/{id}/reprocesar`
+- ✅ **Ortoimagen corregida:** La Sanjuana (Bucarasica) ahora tiene 644 tiles generados
 
-#### 4. Almacenamiento:
-- Backups guardados en `/app/backend/static/backups/` como archivos ZIP
-- Formato: `backup_asomunicipios_db_YYYYMMDD_HHMMSS.zip`
-- Metadata almacenada en colección `backup_history`
+#### 4. Endpoints Backend Nuevos:
+**Backups:**
+- `GET /api/database/config` - Obtener configuración
+- `PUT /api/database/config` - Actualizar configuración
+- `POST /api/database/backup/ejecutar-programado` - Ejecutar backup según config
+- `POST /api/database/backup/limpiar-antiguos` - Eliminar backups antiguos
+
+**Ortoimágenes:**
+- `POST /api/ortoimagenes/{id}/reprocesar` - Reprocesar ortoimagen fallida
 
 **Testing:** 100% éxito - iteration_22.json (15/15 backend tests, UI tests passed)
 
