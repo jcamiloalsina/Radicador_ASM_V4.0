@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import { LogIn, Mail, ArrowLeft, RefreshCw, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Mail, ArrowLeft, RefreshCw, AlertTriangle, Eye, EyeOff, WifiOff, Wifi } from 'lucide-react';
 import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -19,8 +19,23 @@ export default function Login() {
   const [verificationCode, setVerificationCode] = useState('');
   const [resending, setResending] = useState(false);
   const [sessionExpiredMsg, setSessionExpiredMsg] = useState(null);
-  const { login } = useAuth();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const { login, hasOfflineCredentials, offlineCredentialsInfo } = useAuth();
   const navigate = useNavigate();
+
+  // Escuchar cambios de conexión
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Verificar si la sesión expiró por inactividad
   useEffect(() => {
@@ -31,12 +46,23 @@ export default function Login() {
     }
   }, []);
 
+  // Pre-llenar email si hay credenciales offline
+  useEffect(() => {
+    if (!isOnline && offlineCredentialsInfo?.email) {
+      setEmail(offlineCredentialsInfo.email);
+    }
+  }, [isOnline, offlineCredentialsInfo]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(email, password);
-      toast.success('¡Bienvenido!');
+      if (!isOnline) {
+        toast.success('¡Sesión offline iniciada!');
+      } else {
+        toast.success('¡Bienvenido!');
+      }
       navigate('/dashboard');
     } catch (error) {
       // Verificar si el error es por email no verificado
@@ -44,7 +70,7 @@ export default function Login() {
         setShowVerification(true);
         toast.info('Tu correo no está verificado. Se ha enviado un nuevo código.');
       } else {
-        toast.error(error.response?.data?.detail || 'Error al iniciar sesión');
+        toast.error(error.response?.data?.detail || error.message || 'Error al iniciar sesión');
       }
     } finally {
       setLoading(false);
