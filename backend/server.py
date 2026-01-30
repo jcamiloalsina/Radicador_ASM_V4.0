@@ -16433,6 +16433,92 @@ async def restaurar_backup_archivo(
         os.unlink(tmp_path)
 
 
+# ===== GESTIÓN DE COLECCIONES =====
+
+@api_router.post("/database/collection/{collection_name}/empty")
+async def empty_collection(
+    collection_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Vaciar todos los documentos de una colección - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden vaciar colecciones")
+    
+    # Verificar que la colección existe
+    collections = await db.list_collection_names()
+    if collection_name not in collections:
+        raise HTTPException(status_code=404, detail=f"Colección '{collection_name}' no encontrada")
+    
+    # Proteger colecciones del sistema
+    protected_collections = ['system_config']
+    if collection_name in protected_collections:
+        raise HTTPException(status_code=403, detail=f"La colección '{collection_name}' está protegida y no puede ser vaciada")
+    
+    # Contar documentos antes de eliminar
+    count_before = await db[collection_name].count_documents({})
+    
+    # Eliminar todos los documentos
+    result = await db[collection_name].delete_many({})
+    
+    # Registrar la acción
+    await db.audit_log.insert_one({
+        "action": "empty_collection",
+        "collection": collection_name,
+        "deleted_count": result.deleted_count,
+        "user_id": current_user['id'],
+        "user_name": current_user['full_name'],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Colección '{collection_name}' vaciada exitosamente",
+        "deleted_count": result.deleted_count,
+        "collection": collection_name
+    }
+
+
+@api_router.delete("/database/collection/{collection_name}")
+async def drop_collection(
+    collection_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Eliminar una colección completamente - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar colecciones")
+    
+    # Verificar que la colección existe
+    collections = await db.list_collection_names()
+    if collection_name not in collections:
+        raise HTTPException(status_code=404, detail=f"Colección '{collection_name}' no encontrada")
+    
+    # Proteger colecciones críticas del sistema
+    critical_collections = ['users', 'system_config', 'backup_history', 'audit_log']
+    if collection_name in critical_collections:
+        raise HTTPException(status_code=403, detail=f"La colección '{collection_name}' es crítica y no puede ser eliminada")
+    
+    # Contar documentos antes de eliminar
+    count_before = await db[collection_name].count_documents({})
+    
+    # Eliminar la colección
+    await db[collection_name].drop()
+    
+    # Registrar la acción
+    await db.audit_log.insert_one({
+        "action": "drop_collection",
+        "collection": collection_name,
+        "documents_lost": count_before,
+        "user_id": current_user['id'],
+        "user_name": current_user['full_name'],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "message": f"Colección '{collection_name}' eliminada completamente",
+        "documents_lost": count_before,
+        "collection": collection_name
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
