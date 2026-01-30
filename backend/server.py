@@ -7886,10 +7886,9 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     start_x = left_margin + (total_width - total_blocks_width) / 2
     
     # === BLOQUE IZQUIERDO: FIRMA ===
-    firma_path = Path("/app/backend/logos/firma_dalgie_blanco.png")
     firma_block_y = y - 65
     
-    if firma_path.exists():
+    if firma_dalgie_path.exists():
         # Dibujar la firma
         firma_width = 90
         firma_height = 54
@@ -7897,8 +7896,19 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         firma_y = firma_block_y
         
         # Dibujar la imagen de la firma (ya tiene fondo blanco)
-        c.drawImage(str(firma_path), firma_x, firma_y, width=firma_width, height=firma_height, 
+        c.drawImage(str(firma_dalgie_path), firma_x, firma_y, width=firma_width, height=firma_height, 
                     preserveAspectRatio=True, mask='auto')
+    else:
+        # Si no existe la firma, mostrar línea para firma manual
+        print(f"⚠️ ADVERTENCIA: No se encontró imagen de firma en {firma_dalgie_path}")
+        firma_x = start_x + 20
+        firma_y = firma_block_y + 30
+        c.setStrokeColor(negro)
+        c.setLineWidth(0.5)
+        c.line(firma_x, firma_y, firma_x + 140, firma_y)
+        c.setFont(fuente_normal, 7)
+        c.setFillColor(gris_claro)
+        c.drawCentredString(firma_x + 70, firma_y + 5, "(Firma)")
     
     # Nombre y cargo debajo de la firma (centrados en el bloque)
     nombre_y = firma_block_y - 10
