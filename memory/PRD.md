@@ -113,38 +113,39 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF + Regeneración
+### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF + Regeneración + Login Offline
 
 #### 1. Fix: Imágenes Embebidas en Base64 para Certificados
 - ✅ **Archivo `certificado_images.py`:** Contiene las imágenes del encabezado, pie de página y firma en Base64
 - ✅ **Sin dependencia de archivos externos:** Las imágenes funcionan en cualquier servidor sin necesidad de copiar archivos
-- ✅ **Imágenes incluidas:** 
-  - Encabezado institucional (36 KB en Base64)
-  - Pie de página (50 KB en Base64)  
-  - Firma de Dalgie (30 KB en Base64)
 
 #### 2. Fix: URL de Verificación QR Corregida
 - ✅ **URL corregida:** Ahora apunta a `/api/verificar/{codigo}` (antes faltaba el `/api`)
-- ✅ **Página de verificación funcional:** Muestra "CERTIFICADO VÁLIDO" con todos los datos del predio
-- ✅ **Variable de entorno:** Usa `VERIFICACION_URL` del `.env` para el dominio base
+- ✅ **Área y Avalúo:** Ahora se muestran correctamente en la página de verificación
 
 #### 3. Nueva Funcionalidad: Regenerar Certificado Catastral
 - ✅ **Endpoint:** `POST /api/petitions/{petition_id}/regenerar-certificado`
-- ✅ **Botón "Regenerar Certificado"** en la UI (color naranja) visible para roles autorizados
-- ✅ **Dialog de confirmación** con información del certificado actual y explicación de vigencia
-- ✅ **Nuevo código de verificación** generado automáticamente
-- ✅ **Certificado anterior** marcado como "reemplazado" pero conservado en historial
-- ✅ **Contador de regeneraciones** para tracking
-- ✅ **Opción de enviar por correo** el certificado regenerado
+- ✅ **Botón "Regenerar Certificado"** en la UI para roles autorizados
 - ✅ **Vigencia:** Los certificados tienen validez de 1 mes
 
-#### 4. Archivos Nuevos Creados
-- `/app/backend/certificado_images.py` - Imágenes embebidas en Base64
+#### 4. Gestores con Acceso Automático a Proyectos de Actualización
+- ✅ Los gestores ahora siempre tienen acceso a proyectos de actualización sin permisos adicionales
 
-#### 5. Ya NO es necesario en producción
-- ❌ ~~Copiar archivos de imagen al servidor~~
-- ❌ ~~Configurar rutas de archivos~~
-- Las imágenes están embebidas en el código y funcionan automáticamente
+#### 5. Fix: Exportación de Excel de Predios
+- ✅ Corregido error de tipos mixtos en campo `vigencia`
+
+#### 6. NUEVO: Login Offline para Trabajo de Campo
+- ✅ **Credenciales guardadas localmente:** Al iniciar sesión online, se guardan credenciales encriptadas
+- ✅ **Autenticación sin internet:** Los usuarios pueden iniciar sesión offline con credenciales guardadas
+- ✅ **Indicador de conexión:** La pantalla de login muestra el estado de conexión
+- ✅ **Validez:** Las credenciales offline expiran después de 30 días
+- ✅ **Archivos creados:** `/app/frontend/src/utils/offlineAuth.js`
+
+#### Flujo de Login Offline:
+1. Usuario inicia sesión online → Credenciales se guardan encriptadas
+2. Usuario va a campo sin internet → Puede iniciar sesión con las mismas credenciales
+3. Trabaja offline → Cambios se guardan en IndexedDB
+4. Regresa con internet → Sincronización automática
 
 ---
 
