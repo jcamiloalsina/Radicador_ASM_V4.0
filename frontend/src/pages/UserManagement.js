@@ -579,7 +579,7 @@ export default function UserManagement() {
       </Tabs>
 
       {/* Dialog Crear Backup */}
-      <Dialog open={showBackupDialog} onOpenChange={setShowBackupDialog}>
+      <Dialog open={showBackupDialog} onOpenChange={(open) => !creatingBackup && setShowBackupDialog(open)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -593,7 +593,32 @@ export default function UserManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          {backupType === 'selectivo' && dbStatus?.collections && (
+          {/* Mostrar progreso si está creando backup */}
+          {creatingBackup && backupStatus && (
+            <div className="space-y-3 py-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                <span className="text-sm font-medium">
+                  {backupStatus.status === 'starting' && 'Iniciando backup...'}
+                  {backupStatus.status === 'running' && `Procesando: ${backupStatus.current_collection}`}
+                  {backupStatus.status === 'completed' && 'Backup completado'}
+                </span>
+              </div>
+              {backupStatus.progress > 0 && (
+                <div className="w-full bg-slate-200 rounded-full h-2">
+                  <div 
+                    className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${backupStatus.progress}%` }}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-slate-500">
+                Progreso: {backupStatus.progress}% - Este proceso puede tardar varios minutos
+              </p>
+            </div>
+          )}
+          
+          {!creatingBackup && backupType === 'selectivo' && dbStatus?.collections && (
             <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-3">
               {dbStatus.collections.filter(c => c.name !== 'backup_history').map((coll) => (
                 <label key={coll.name} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer">
@@ -615,8 +640,8 @@ export default function UserManagement() {
           )}
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBackupDialog(false)}>
-              Cancelar
+            <Button variant="outline" onClick={() => setShowBackupDialog(false)} disabled={creatingBackup}>
+              {creatingBackup ? 'Procesando...' : 'Cancelar'}
             </Button>
             <Button 
               onClick={handleCreateBackup} 
