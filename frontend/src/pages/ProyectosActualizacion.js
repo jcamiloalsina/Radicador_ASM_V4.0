@@ -1466,19 +1466,15 @@ export default function ProyectosActualizacion() {
 
             <div className="space-y-2">
               <Label>Prioridad</Label>
-              <Select
+              <select
                 value={nuevaActividad.prioridad}
-                onValueChange={(val) => setNuevaActividad(prev => ({ ...prev, prioridad: val }))}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, prioridad: e.target.value }))}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="baja">Baja</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+              </select>
             </div>
           </div>
           
