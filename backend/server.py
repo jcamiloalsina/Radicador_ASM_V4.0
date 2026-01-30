@@ -11841,12 +11841,27 @@ async def upload_gdb_file(
         }
         
     except zipfile.BadZipFile:
-        update_progress("error", 0, "El archivo ZIP no es válido")
-        raise HTTPException(status_code=400, detail="El archivo ZIP no es válido")
+        update_progress("error", 0, "El archivo ZIP no es válido o está corrupto")
+        raise HTTPException(status_code=400, detail="El archivo ZIP no es válido o está corrupto. Intente descargarlo nuevamente.")
     except Exception as e:
-        update_progress("error", 0, f"Error: {str(e)}")
-        logger.error(f"Error uploading GDB: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al procesar el archivo: {str(e)}")
+        error_msg = str(e)
+        # Identificar errores comunes y dar mensajes más claros
+        if "fiona" in error_msg.lower() or "gdal" in error_msg.lower():
+            user_msg = f"Error al leer el archivo GDB. El archivo puede estar corrupto o en formato incompatible. Detalle: {error_msg[:100]}"
+        elif "transform" in error_msg.lower() or "crs" in error_msg.lower():
+            user_msg = f"Error en la transformación de coordenadas. El sistema de referencia del GDB puede no ser compatible. Detalle: {error_msg[:100]}"
+        elif "memory" in error_msg.lower():
+            user_msg = "El archivo GDB es muy grande para procesar. Intente dividirlo en partes más pequeñas."
+        elif "permission" in error_msg.lower() or "access" in error_msg.lower():
+            user_msg = "Error de permisos al procesar el archivo. Contacte al administrador."
+        else:
+            user_msg = f"Error al procesar el archivo: {error_msg[:150]}"
+        
+        update_progress("error", 0, user_msg)
+        logger.error(f"Error uploading GDB ({files[0].filename if files else 'unknown'}): {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=user_msg)
 
 
 # ===== FUNCIÓN PARA GENERAR REPORTE PDF DE CALIDAD GDB =====
