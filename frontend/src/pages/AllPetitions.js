@@ -576,7 +576,20 @@ export default function AllPetitions() {
                       <td className="py-3 px-4">
                         <div className="text-sm text-slate-600">
                           {petition.gestores_asignados?.length > 0 
-                            ? getGestorName(petition.gestores_asignados[0])
+                            ? (
+                              <div className="space-y-1">
+                                {petition.gestores_asignados.slice(0, 2).map((gestorId, idx) => (
+                                  <span key={gestorId} className={idx > 0 ? "block text-xs text-slate-500" : ""}>
+                                    {getGestorName(gestorId)}
+                                  </span>
+                                ))}
+                                {petition.gestores_asignados.length > 2 && (
+                                  <span className="text-xs text-slate-400">
+                                    +{petition.gestores_asignados.length - 2} más
+                                  </span>
+                                )}
+                              </div>
+                            )
                             : <span className="text-slate-400">Sin asignar</span>}
                         </div>
                       </td>
