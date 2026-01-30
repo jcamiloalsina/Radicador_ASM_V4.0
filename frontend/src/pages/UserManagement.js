@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Checkbox } from '../components/ui/checkbox';
+import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { UserCog, Search, Database, Download, Upload, Trash2, RefreshCw, HardDrive, FolderArchive, Clock, User, Eye, AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
+import { UserCog, Search, Database, Download, Upload, Trash2, RefreshCw, HardDrive, FolderArchive, Clock, User, Eye, AlertTriangle, Loader2, CheckCircle, Settings, Play, Calendar, Timer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   Dialog,
