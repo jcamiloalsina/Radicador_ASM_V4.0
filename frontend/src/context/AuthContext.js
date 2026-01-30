@@ -88,10 +88,39 @@ export const AuthProvider = ({ children }) => {
 
   const fetchCurrentUser = async () => {
     try {
+      // Si es una sesión offline, usar datos guardados
+      const isOfflineSession = localStorage.getItem('isOfflineSession') === 'true';
+      if (isOfflineSession || !isOnline()) {
+        const offlineUserData = localStorage.getItem('asm_offline_user_data');
+        if (offlineUserData) {
+          const userData = JSON.parse(offlineUserData);
+          setUser(userData);
+          console.log('👤 Usuario cargado desde datos offline');
+          return;
+        }
+      }
+      
+      // Intentar obtener usuario del servidor
       const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
+      
+      // Actualizar datos offline con la información más reciente
+      localStorage.setItem('asm_offline_user_data', JSON.stringify(response.data));
     } catch (error) {
       console.error('Error fetching user:', error);
+      
+      // Si hay error de red pero tenemos datos offline, usarlos
+      if (!isOnline() || error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        const offlineUserData = localStorage.getItem('asm_offline_user_data');
+        if (offlineUserData) {
+          const userData = JSON.parse(offlineUserData);
+          setUser(userData);
+          localStorage.setItem('isOfflineSession', 'true');
+          console.log('👤 Usuario cargado desde datos offline (fallback)');
+          return;
+        }
+      }
+      
       logout();
     } finally {
       setLoading(false);
