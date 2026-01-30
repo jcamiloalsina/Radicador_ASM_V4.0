@@ -106,6 +106,45 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 30 Enero 2026 (Fork 8) - Administrador de Base de Datos
+
+#### 1. Nueva Funcionalidad: Gestión de Backups
+- ✅ **Nueva pestaña "Base de Datos"** en página "Gestión de Usuarios"
+- ✅ **Panel de estado:** Muestra nombre BD, tamaño total (MB), fecha último backup
+- ✅ **Tabla de colecciones:** Lista las 31 colecciones con conteo de registros y tamaño
+- ✅ **Backup Completo:** Respalda todas las colecciones (asíncrono con polling)
+- ✅ **Backup Selectivo:** Permite elegir colecciones específicas para respaldar
+- ✅ **Progreso en tiempo real:** Barra de progreso y colección actual durante backup
+- ✅ **Historial de Backups:** Tabla con fecha, tipo, tamaño, colecciones, creador
+- ✅ **Descarga de backups:** Archivos ZIP descargables
+- ✅ **Vista previa:** Modal con contenido del backup antes de restaurar
+- ✅ **Restaurar backup:** Solo administradores (sobrescribe datos actuales)
+- ✅ **Eliminar backup:** Solo administradores
+
+#### 2. Endpoints Backend:
+- `GET /api/database/status` - Estado de la BD (admin/coordinador)
+- `GET /api/database/backups` - Historial de backups
+- `POST /api/database/backup` - Crear backup (asíncrono)
+- `GET /api/database/backup/{id}/status` - Estado del backup en progreso
+- `GET /api/database/backup/{id}/download` - Descargar archivo ZIP
+- `GET /api/database/backup/{id}/preview` - Vista previa del contenido
+- `POST /api/database/restore/{id}` - Restaurar (solo admin)
+- `DELETE /api/database/backup/{id}` - Eliminar (solo admin)
+
+#### 3. Permisos:
+- **Administradores:** Acceso completo (crear, ver, descargar, restaurar, eliminar)
+- **Coordinadores:** Pueden crear, ver, descargar, vista previa (NO restaurar/eliminar)
+- **Otros roles:** Sin acceso (403 Forbidden)
+
+#### 4. Almacenamiento:
+- Backups guardados en `/app/backend/static/backups/` como archivos ZIP
+- Formato: `backup_asomunicipios_db_YYYYMMDD_HHMMSS.zip`
+- Metadata almacenada en colección `backup_history`
+
+**Testing:** 100% éxito - iteration_22.json (15/15 backend tests, UI tests passed)
+
+---
+
 ### Sesión 29 Enero 2026 (Fork 7) - Mejoras al Flujo de Trámites
 
 #### 1. Nuevos Estados del Flujo de Trabajo:
