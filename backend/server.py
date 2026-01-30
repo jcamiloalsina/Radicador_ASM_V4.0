@@ -15987,10 +15987,17 @@ async def preview_backup(backup_id: str, current_user: dict = Depends(get_curren
                 json_data = zipf.read(f"{coll_name}.json")
                 docs = json_util.loads(json_data)
                 
+                # Convert sample document to JSON-serializable format (exclude _id)
+                sample = None
+                if docs:
+                    sample_doc = docs[0]
+                    if isinstance(sample_doc, dict):
+                        sample = {k: str(v) if hasattr(v, '__str__') and not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v 
+                                  for k, v in sample_doc.items() if k != '_id'}
+                
                 preview["colecciones"].append({
                     "name": coll_name,
-                    "count": len(docs),
-                    "sample": docs[0] if docs else None  # Primer documento como muestra
+                    "count": len(docs)
                 })
         
         return preview
