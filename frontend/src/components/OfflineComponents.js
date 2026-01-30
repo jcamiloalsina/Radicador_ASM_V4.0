@@ -448,18 +448,56 @@ export function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Verificar si ya está instalada de múltiples formas
+    const checkIfInstalled = () => {
+      // 1. Verificar display-mode standalone
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      
+      // 2. Verificar navigator.standalone (iOS Safari)
+      const isIOSStandalone = window.navigator.standalone === true;
+      
+      // 3. Verificar si se abrió desde una PWA instalada
+      const isInstalledPWA = document.referrer.includes('android-app://') || 
+                             window.matchMedia('(display-mode: fullscreen)').matches ||
+                             window.matchMedia('(display-mode: minimal-ui)').matches;
+      
+      // 4. Verificar localStorage para recordar si ya se instaló o cerró
+      const userDismissed = localStorage.getItem('pwa-install-dismissed');
+      const installedTime = localStorage.getItem('pwa-installed');
+      
+      return isStandalone || isIOSStandalone || isInstalledPWA || userDismissed || installedTime;
+    };
+
+    // Si ya está instalada, no mostrar el prompt
+    if (checkIfInstalled()) {
+      setShowPrompt(false);
+      return;
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Solo mostrar si no se ha instalado
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      if (!isStandalone) {
+      
+      // Solo mostrar si no está instalada
+      if (!checkIfInstalled()) {
         setShowPrompt(true);
       }
     };
 
+    // Escuchar cuando se instala la app
+    const handleAppInstalled = () => {
+      localStorage.setItem('pwa-installed', Date.now().toString());
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -469,9 +507,15 @@ export function PWAInstallPrompt() {
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === 'accepted') {
+      localStorage.setItem('pwa-installed', Date.now().toString());
       setShowPrompt(false);
     }
     setDeferredPrompt(null);
+  };
+
+  const handleDismiss = () => {
+    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    setShowPrompt(false);
   };
 
   if (!showPrompt) return null;
@@ -491,8 +535,8 @@ export function PWAInstallPrompt() {
             <Button size="sm" onClick={handleInstall}>
               Instalar
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setShowPrompt(false)}>
-              Ahora no
+            <Button size="sm" variant="ghost" onClick={handleDismiss}>
+              No mostrar
             </Button>
           </div>
         </div>
