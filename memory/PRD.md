@@ -113,7 +113,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF
+### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF + Regeneración
 
 #### 1. Fix: URL de Verificación QR en Certificados
 - ✅ **Eliminado fallback a URL de preview:** El código QR ahora usa estrictamente la variable `VERIFICACION_URL`
@@ -125,13 +125,23 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - ✅ **Fallback para firma faltante:** Muestra línea para firma manual si no existe el archivo
 - ✅ **Fallback para encabezado faltante:** Muestra título de texto si no existe la imagen
 
-#### 3. Archivos de Imagen Requeridos para Certificados
+#### 3. Nueva Funcionalidad: Regenerar Certificado Catastral
+- ✅ **Endpoint:** `POST /api/petitions/{petition_id}/regenerar-certificado`
+- ✅ **Botón "Regenerar Certificado"** en la UI (color naranja) visible para roles autorizados
+- ✅ **Dialog de confirmación** con información del certificado actual y explicación de vigencia
+- ✅ **Nuevo código de verificación** generado automáticamente
+- ✅ **Certificado anterior** marcado como "reemplazado" pero conservado en historial
+- ✅ **Contador de regeneraciones** para tracking
+- ✅ **Opción de enviar por correo** el certificado regenerado
+- ✅ **Vigencia:** Los certificados tienen validez de 1 mes
+
+#### 4. Archivos de Imagen Requeridos para Certificados
 Los siguientes archivos deben existir en `/app/backend/logos/` en producción:
 - `encabezado_gestor_catastral.png` (27 KB)
 - `pie_pagina_certificado.png` (37 KB)
 - `firma_dalgie_blanco.png` (22 KB)
 
-#### 4. Configuración Requerida en Producción
+#### 5. Configuración Requerida en Producción
 En el archivo `/backend/.env` del servidor de producción:
 ```env
 VERIFICACION_URL="https://certificados.asomunicipios.gov.co"
