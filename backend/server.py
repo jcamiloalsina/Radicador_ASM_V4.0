@@ -7583,6 +7583,14 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # Paths de imágenes
     encabezado_path = Path("/app/backend/logos/encabezado_gestor_catastral.png")
     pie_pagina_path = Path("/app/backend/logos/pie_pagina_certificado.png")
+    firma_dalgie_path = Path("/app/backend/logos/firma_dalgie_blanco.png")
+    
+    # Log de verificación de archivos de imagen (ayuda en depuración en producción)
+    print(f"📋 Generando certificado - Verificación de archivos:")
+    print(f"   - Encabezado: {encabezado_path} -> {'✅ Existe' if encabezado_path.exists() else '❌ NO EXISTE'}")
+    print(f"   - Pie de página: {pie_pagina_path} -> {'✅ Existe' if pie_pagina_path.exists() else '❌ NO EXISTE'}")
+    print(f"   - Firma Dalgie: {firma_dalgie_path} -> {'✅ Existe' if firma_dalgie_path.exists() else '❌ NO EXISTE'}")
+    print(f"   - URL Verificación QR: {VERIFICACION_BASE_URL}")
     
     # Variables para manejo de páginas
     current_page = 1
@@ -7598,6 +7606,12 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
             c.drawImage(str(encabezado_path), encabezado_x, encabezado_y, 
                         width=encabezado_width, height=encabezado_height, 
                         preserveAspectRatio=True, mask='auto')
+        else:
+            # Encabezado alternativo si no existe la imagen
+            print(f"⚠️ ADVERTENCIA: No se encontró imagen de encabezado en {encabezado_path}")
+            c.setFillColor(verde_institucional)
+            c.setFont(fuente_bold, 14)
+            c.drawCentredString(width/2, height - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
         return height - 2.8 * cm
     
     def draw_footer():
@@ -7608,6 +7622,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
                         width=width, height=footer_height, 
                         preserveAspectRatio=False, mask='auto')
         else:
+            print(f"⚠️ ADVERTENCIA: No se encontró imagen de pie de página en {pie_pagina_path}")
             c.setFillColor(verde_institucional)
             c.rect(0, 0, width, 28, fill=1, stroke=0)
             c.setFillColor(blanco)
