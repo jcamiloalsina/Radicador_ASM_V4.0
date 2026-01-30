@@ -1329,27 +1329,21 @@ export default function ProyectosActualizacion() {
                     <>
                       {/* Botón para agregar actividad */}
                       <div className="flex justify-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Nueva Actividad
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            {etapas.map((etapa) => (
-                              <DropdownMenuItem 
-                                key={etapa.id}
-                                onClick={() => {
-                                  setEtapaSeleccionada(etapa);
-                                  setShowActividadModal(true);
-                                }}
-                              >
-                                {etapa.nombre}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button 
+                          size="sm" 
+                          className="bg-amber-600 hover:bg-amber-700"
+                          onClick={() => {
+                            if (etapas.length === 0) {
+                              toast.error('No hay etapas disponibles. Este proyecto no tiene etapas configuradas.');
+                              return;
+                            }
+                            setEtapaSeleccionada(etapas[0]); // Seleccionar primera etapa por defecto
+                            setShowActividadModal(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Nueva Actividad
+                        </Button>
                       </div>
                       
                       {/* Componente Gantt */}
