@@ -1116,19 +1116,15 @@ export default function UserManagement() {
               <Label>Retención de Backups</Label>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-slate-500">Conservar últimos</span>
-                <Select 
+                <select 
                   value={String(configForm.retener_ultimos)} 
-                  onValueChange={(v) => setConfigForm({...configForm, retener_ultimos: parseInt(v)})}
+                  onChange={(e) => setConfigForm({...configForm, retener_ultimos: parseInt(e.target.value)})}
+                  className="flex h-9 w-20 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[3, 5, 7, 10, 14, 30].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {[3, 5, 7, 10, 14, 30].map((n) => (
+                    <option key={n} value={String(n)}>{n}</option>
+                  ))}
+                </select>
                 <span className="text-sm text-slate-500">backups</span>
               </div>
             </div>
