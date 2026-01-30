@@ -1038,23 +1038,19 @@ export default function UserManagement() {
                 {configForm.frecuencia === 'semanal' && (
                   <div className="space-y-2">
                     <Label>Día de la Semana</Label>
-                    <Select 
+                    <select 
                       value={String(configForm.dia_semana)} 
-                      onValueChange={(v) => setConfigForm({...configForm, dia_semana: parseInt(v)})}
+                      onChange={(e) => setConfigForm({...configForm, dia_semana: parseInt(e.target.value)})}
+                      className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Lunes</SelectItem>
-                        <SelectItem value="1">Martes</SelectItem>
-                        <SelectItem value="2">Miércoles</SelectItem>
-                        <SelectItem value="3">Jueves</SelectItem>
-                        <SelectItem value="4">Viernes</SelectItem>
-                        <SelectItem value="5">Sábado</SelectItem>
-                        <SelectItem value="6">Domingo</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <option value="0">Lunes</option>
+                      <option value="1">Martes</option>
+                      <option value="2">Miércoles</option>
+                      <option value="3">Jueves</option>
+                      <option value="4">Viernes</option>
+                      <option value="5">Sábado</option>
+                      <option value="6">Domingo</option>
+                    </select>
                   </div>
                 )}
 
@@ -1062,19 +1058,15 @@ export default function UserManagement() {
                 {configForm.frecuencia === 'mensual' && (
                   <div className="space-y-2">
                     <Label>Día del Mes</Label>
-                    <Select 
+                    <select 
                       value={String(configForm.dia_mes)} 
-                      onValueChange={(v) => setConfigForm({...configForm, dia_mes: parseInt(v)})}
+                      onChange={(e) => setConfigForm({...configForm, dia_mes: parseInt(e.target.value)})}
+                      className="flex h-9 w-40 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[...Array(28)].map((_, i) => (
-                          <SelectItem key={i+1} value={String(i+1)}>{i+1}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {[...Array(28)].map((_, i) => (
+                        <option key={i+1} value={String(i+1)}>{i+1}</option>
+                      ))}
+                    </select>
                     <p className="text-xs text-slate-500">Se recomienda usar días 1-28 para evitar problemas con meses cortos</p>
                   </div>
                 )}
