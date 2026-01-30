@@ -8373,6 +8373,246 @@ async def generar_certificado_desde_peticion(
     )
 
 
+@api_router.post("/petitions/{petition_id}/regenerar-certificado")
+async def regenerar_certificado_desde_peticion(
+    petition_id: str,
+    enviar_correo: bool = Query(False, description="Si es True, envía el certificado por correo"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Regenera un certificado catastral para una petición que ya tiene un certificado previo.
+    Útil cuando el certificado original ha vencido (vigencia de 1 mes) y se necesita uno actualizado
+    con fecha reciente pero manteniendo el mismo radicado.
+    
+    - Genera un NUEVO código de verificación
+    - Mantiene el mismo radicado de la petición original
+    - Actualiza la fecha de generación
+    - El certificado anterior queda inactivo pero se mantiene en el historial
+    """
+    # Solo coordinador, administrador y atencion_usuario pueden regenerar certificados
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para regenerar certificados")
+    
+    # Buscar la petición
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    # Verificar que sea un tipo de certificado
+    tipo = petition.get('tipo_tramite', '').lower()
+    if 'certificado' not in tipo:
+        raise HTTPException(status_code=400, detail="Esta petición no es de tipo certificado catastral")
+    
+    # Verificar que ya tenga un certificado generado previamente
+    if not petition.get('certificado_generado'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Esta petición no tiene un certificado generado previamente. Use el endpoint normal de generación."
+        )
+    
+    # Buscar el predio relacionado
+    predio = None
+    predio_relacionado = petition.get('predio_relacionado')
+    
+    if predio_relacionado and predio_relacionado.get('predio_id'):
+        predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
+    
+    # Si no hay predio relacionado, buscar por código o matrícula guardada
+    if not predio:
+        codigo_buscado = petition.get('codigo_predial_buscado')
+        matricula_buscada = petition.get('matricula_buscada')
+        
+        if codigo_buscado:
+            predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
+        elif matricula_buscada:
+            predio = await db.predios.find_one(
+                {"r2_registros.matricula_inmobiliaria": matricula_buscada}, 
+                {"_id": 0}
+            )
+    
+    if not predio:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontró el predio asociado a esta petición."
+        )
+    
+    # Verificar que el predio tenga información de propietarios
+    propietarios = predio.get('propietarios', [])
+    if not propietarios or len(propietarios) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Certificado no disponible. El predio no tiene información de propietarios (R1/R2) registrada."
+        )
+    
+    # Marcar el certificado anterior como inactivo
+    codigo_anterior = petition.get('certificado_codigo')
+    if codigo_anterior:
+        await db.certificados_verificables.update_one(
+            {"codigo_verificacion": codigo_anterior},
+            {"$set": {
+                "estado": "reemplazado",
+                "reemplazado_fecha": datetime.now(timezone.utc).isoformat(),
+                "reemplazado_por": current_user['id']
+            }}
+        )
+    
+    # Generar NUEVO código de verificación
+    codigo_verificacion = generar_codigo_verificacion()
+    
+    # Registrar el nuevo certificado en la base de datos
+    propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios]
+    
+    certificado_record = {
+        "id": str(uuid.uuid4()),
+        "codigo_verificacion": codigo_verificacion,
+        "predio_id": predio.get('id'),
+        "codigo_predial": predio.get('codigo_predial_nacional'),
+        "municipio": predio.get('municipio'),
+        "direccion": predio.get('direccion'),
+        "propietarios": propietarios_nombres,
+        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+        "generado_por": current_user['id'],
+        "generado_por_nombre": current_user['full_name'],
+        "estado": "activo",
+        "hash_documento": "",
+        "petition_id": petition_id,
+        "radicado": petition.get('radicado'),
+        "generado_desde_peticion": True,
+        "es_regeneracion": True,
+        "certificado_anterior": codigo_anterior,
+        "numero_regeneracion": petition.get('regeneraciones_count', 0) + 1
+    }
+    
+    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(timezone.utc).isoformat()}")
+    certificado_record["hash_documento"] = hash_doc
+    
+    await db.certificados_verificables.insert_one(certificado_record)
+    
+    # Firmante
+    firmante = {
+        "full_name": "DALGIE ESPERANZA TORRADO RIZO",
+        "cargo": "Subdirectora Financiera y Administrativa"
+    }
+    
+    proyectado_por = current_user['full_name']
+    
+    # Generar PDF con el mismo radicado de la petición original
+    pdf_bytes = generate_certificado_catastral(
+        predio, 
+        firmante, 
+        proyectado_por, 
+        codigo_verificacion,
+        radicado=petition.get('radicado')
+    )
+    
+    # Guardar PDF
+    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}.pdf"
+    cert_path = UPLOAD_DIR / cert_filename
+    with open(cert_path, 'wb') as f:
+        f.write(pdf_bytes)
+    
+    # Actualizar la petición con el nuevo certificado
+    update_data = {
+        "certificado_codigo": codigo_verificacion,
+        "certificado_fecha": datetime.now(timezone.utc).isoformat(),
+        "certificado_archivo": str(cert_path),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Historial de regeneración
+    historial_entry = {
+        "accion": "Certificado regenerado",
+        "usuario": current_user['full_name'],
+        "usuario_rol": current_user['role'],
+        "estado_anterior": petition.get('estado'),
+        "estado_nuevo": petition.get('estado'),
+        "notas": f"Certificado regenerado con nuevo código {codigo_verificacion}. Código anterior: {codigo_anterior}.",
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.petitions.update_one(
+        {"id": petition_id},
+        {
+            "$set": update_data,
+            "$push": {"historial": historial_entry},
+            "$inc": {"regeneraciones_count": 1}
+        }
+    )
+    
+    # Si enviar_correo es True, enviar al peticionario
+    if enviar_correo:
+        try:
+            radicado_pet = petition.get('radicado', petition_id)
+            correo_destino = petition.get('correo')
+            nombre_peticionario = petition.get('nombre_completo', 'Estimado usuario')
+            codigo_predial = predio.get('codigo_predial_nacional', 'N/A')
+            
+            if correo_destino:
+                subject = f"Certificado Catastral Actualizado - {radicado_pet}"
+                
+                html_body = f"""
+                <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #009846; padding: 20px; text-align: center;">
+                        <h1 style="color: white; margin: 0;">Asomunicipios</h1>
+                        <p style="color: #e0e0e0; margin: 5px 0 0 0;">Gestión Catastral</p>
+                    </div>
+                    <div style="padding: 30px; background: #f8fafc;">
+                        <h2 style="color: #009846;">Certificado Catastral Actualizado</h2>
+                        <p style="color: #334155;">Estimado/a <strong>{nombre_peticionario}</strong>,</p>
+                        <p style="color: #334155;">Se ha generado una versión actualizada de su certificado catastral.</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #009846;">
+                            <p style="margin: 5px 0;"><strong>Radicado:</strong> {radicado_pet}</p>
+                            <p style="margin: 5px 0;"><strong>Código Predial:</strong> {codigo_predial}</p>
+                            <p style="margin: 5px 0;"><strong>Nuevo Código de Verificación:</strong> {codigo_verificacion}</p>
+                            <p style="margin: 5px 0;"><strong>Fecha de Regeneración:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                        </div>
+                        
+                        <p style="color: #334155;"><strong>📎 El certificado actualizado está adjunto a este correo.</strong></p>
+                        
+                        <p style="color: #64748b; font-size: 12px; margin-top: 30px;">
+                            Este certificado tiene vigencia de un (1) mes a partir de su fecha de emisión.
+                        </p>
+                    </div>
+                    <div style="background: #1e293b; color: #94a3b8; padding: 15px; text-align: center; font-size: 12px;">
+                        <p style="margin: 0;">Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</p>
+                        <p style="margin: 5px 0 0 0;">comunicaciones@asomunicipios.gov.co</p>
+                    </div>
+                </div>
+                """
+                
+                await send_email_with_attachment(
+                    to_email=correo_destino,
+                    subject=subject,
+                    html_body=html_body,
+                    attachment_path=str(cert_path),
+                    attachment_name=f"Certificado_Catastral_{radicado_pet}.pdf"
+                )
+                
+                # Agregar notificación de envío al historial
+                await db.petitions.update_one(
+                    {"id": petition_id},
+                    {"$push": {"historial": {
+                        "accion": "Certificado regenerado enviado por correo",
+                        "usuario": current_user['full_name'],
+                        "usuario_rol": current_user['role'],
+                        "notas": f"Certificado actualizado enviado a {correo_destino}",
+                        "fecha": datetime.now(timezone.utc).isoformat()
+                    }}}
+                )
+        except Exception as e:
+            print(f"Error enviando correo de certificado regenerado: {e}")
+    
+    # Nombre del archivo para descarga
+    filename = f"Certificado_Catastral_{petition.get('radicado', petition_id)}.pdf"
+    
+    return FileResponse(
+        path=cert_path,
+        filename=filename,
+        media_type='application/pdf'
+    )
+
+
 # === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
 
 @api_router.get("/petitions/{petition_id}/descargar-certificado")
