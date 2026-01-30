@@ -325,3 +325,11 @@ backend/static/backups/
 *.bson
 *.tif
 *.tiff
+-e 
+# Environment files
+*.env
+*.env.*
+-e 
+# Environment files
+*.env
+*.env.*
