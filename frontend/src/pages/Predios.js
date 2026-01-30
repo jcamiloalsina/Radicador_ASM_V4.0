@@ -4673,7 +4673,7 @@ export default function Predios() {
                               </p>
                               {cambio.comentario_aprobacion && (
                                 <p className="text-xs text-slate-600 mt-1 italic">
-                                  "{cambio.comentario_aprobacion}"
+                                  &ldquo;{cambio.comentario_aprobacion}&rdquo;
                                 </p>
                               )}
                             </div>
