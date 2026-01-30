@@ -142,16 +142,16 @@ function ImportR1R2Form({ onSuccess }) {
 
       <div>
         <Label className="text-sm font-medium">Vigencia (Año) *</Label>
-        <Select value={vigencia} onValueChange={setVigencia}>
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Seleccione el año" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map(year => (
-              <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select 
+          value={vigencia} 
+          onChange={(e) => setVigencia(e.target.value)}
+          className="flex h-9 w-full mt-1 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">Seleccione el año</option>
+          {years.map(year => (
+            <option key={year} value={year.toString()}>{year}</option>
+          ))}
+        </select>
         <p className="text-xs text-slate-500 mt-1">Se almacenará como vigencia 0101{vigencia}</p>
       </div>
 
