@@ -48,6 +48,13 @@ export default function UserManagement() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewData, setPreviewData] = useState(null);
 
+  // Estados para cargar backup desde archivo
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploadingBackup, setUploadingBackup] = useState(false);
+  const [uploadAnalysis, setUploadAnalysis] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = React.useRef(null);
+
   // Estados para configuración de backups automáticos
   const [backupConfig, setBackupConfig] = useState(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
