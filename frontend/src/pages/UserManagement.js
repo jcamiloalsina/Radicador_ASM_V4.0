@@ -959,6 +959,221 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Configuración de Backups */}
+      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Configuración de Backups
+            </DialogTitle>
+            <DialogDescription>
+              Configure el modo de backup (manual o automático) y las opciones de programación.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Modo */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Modo de Backup</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfigForm({...configForm, modo: 'manual'})}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    configForm.modo === 'manual' 
+                      ? 'border-emerald-600 bg-emerald-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <p className="font-medium">Manual</p>
+                  <p className="text-sm text-slate-500">Ejecutar backups manualmente</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigForm({...configForm, modo: 'automatico'})}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    configForm.modo === 'automatico' 
+                      ? 'border-emerald-600 bg-emerald-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <p className="font-medium">Automático</p>
+                  <p className="text-sm text-slate-500">Programar backups periódicos</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Opciones de modo automático */}
+            {configForm.modo === 'automatico' && (
+              <>
+                {/* Frecuencia */}
+                <div className="space-y-2">
+                  <Label>Frecuencia</Label>
+                  <Select 
+                    value={configForm.frecuencia} 
+                    onValueChange={(v) => setConfigForm({...configForm, frecuencia: v})}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="diario">Diario</SelectItem>
+                      <SelectItem value="semanal">Semanal</SelectItem>
+                      <SelectItem value="mensual">Mensual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Hora */}
+                <div className="space-y-2">
+                  <Label>Hora de Ejecución</Label>
+                  <Input 
+                    type="time"
+                    value={configForm.hora}
+                    onChange={(e) => setConfigForm({...configForm, hora: e.target.value})}
+                    className="w-40"
+                  />
+                  <p className="text-xs text-slate-500">Recomendado: horario de baja actividad (ej: 02:00)</p>
+                </div>
+
+                {/* Día de la semana (para semanal) */}
+                {configForm.frecuencia === 'semanal' && (
+                  <div className="space-y-2">
+                    <Label>Día de la Semana</Label>
+                    <Select 
+                      value={String(configForm.dia_semana)} 
+                      onValueChange={(v) => setConfigForm({...configForm, dia_semana: parseInt(v)})}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Lunes</SelectItem>
+                        <SelectItem value="1">Martes</SelectItem>
+                        <SelectItem value="2">Miércoles</SelectItem>
+                        <SelectItem value="3">Jueves</SelectItem>
+                        <SelectItem value="4">Viernes</SelectItem>
+                        <SelectItem value="5">Sábado</SelectItem>
+                        <SelectItem value="6">Domingo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Día del mes (para mensual) */}
+                {configForm.frecuencia === 'mensual' && (
+                  <div className="space-y-2">
+                    <Label>Día del Mes</Label>
+                    <Select 
+                      value={String(configForm.dia_mes)} 
+                      onValueChange={(v) => setConfigForm({...configForm, dia_mes: parseInt(v)})}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...Array(28)].map((_, i) => (
+                          <SelectItem key={i+1} value={String(i+1)}>{i+1}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">Se recomienda usar días 1-28 para evitar problemas con meses cortos</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Tipo de backup */}
+            <div className="space-y-2">
+              <Label>Tipo de Backup</Label>
+              <Select 
+                value={configForm.tipo_backup} 
+                onValueChange={(v) => setConfigForm({...configForm, tipo_backup: v})}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completo">Completo (todas las colecciones)</SelectItem>
+                  <SelectItem value="selectivo">Selectivo (colecciones específicas)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Selección de colecciones (para selectivo) */}
+            {configForm.tipo_backup === 'selectivo' && dbStatus?.collections && (
+              <div className="space-y-2">
+                <Label>Colecciones a Respaldar</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+                  {dbStatus.collections.filter(c => c.name !== 'backup_history' && c.name !== 'system_config').map((coll) => (
+                    <label key={coll.name} className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded cursor-pointer">
+                      <Checkbox
+                        checked={configForm.colecciones_seleccionadas.includes(coll.name)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setConfigForm({...configForm, colecciones_seleccionadas: [...configForm.colecciones_seleccionadas, coll.name]});
+                          } else {
+                            setConfigForm({...configForm, colecciones_seleccionadas: configForm.colecciones_seleccionadas.filter(c => c !== coll.name)});
+                          }
+                        }}
+                      />
+                      <span className="flex-1 font-mono text-xs">{coll.name}</span>
+                      <span className="text-xs text-slate-400">{coll.count.toLocaleString()}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Retención */}
+            <div className="space-y-2">
+              <Label>Retención de Backups</Label>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500">Conservar últimos</span>
+                <Select 
+                  value={String(configForm.retener_ultimos)} 
+                  onValueChange={(v) => setConfigForm({...configForm, retener_ultimos: parseInt(v)})}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[3, 5, 7, 10, 14, 30].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-slate-500">backups</span>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSaveConfig} 
+              disabled={savingConfig || (configForm.tipo_backup === 'selectivo' && configForm.colecciones_seleccionadas.length === 0)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {savingConfig ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Guardar Configuración
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
