@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { saveOfflineCredentials, authenticateOffline, isOnline, hasOfflineCredentials, getOfflineCredentialsInfo } from '../utils/offlineAuth';
 
 const AuthContext = createContext(null);
 
