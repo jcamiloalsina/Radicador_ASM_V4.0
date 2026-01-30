@@ -1378,11 +1378,28 @@ export default function ProyectosActualizacion() {
               Nueva Actividad
             </DialogTitle>
             <DialogDescription>
-              {etapaSeleccionada?.nombre}
+              Agregar actividad al cronograma
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Selector de Etapa */}
+            <div className="space-y-2">
+              <Label>Etapa *</Label>
+              <select
+                value={etapaSeleccionada?.id || ''}
+                onChange={(e) => {
+                  const etapa = etapas.find(et => et.id === e.target.value);
+                  setEtapaSeleccionada(etapa);
+                }}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {etapas.map((etapa) => (
+                  <option key={etapa.id} value={etapa.id}>{etapa.nombre}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-2">
               <Label>Nombre de la Actividad *</Label>
               <Input
@@ -1394,22 +1411,16 @@ export default function ProyectosActualizacion() {
 
             <div className="space-y-2">
               <Label>Actividad Padre (opcional)</Label>
-              <Select 
-                value={nuevaActividad.actividad_padre_id}
-                onValueChange={(value) => setNuevaActividad(prev => ({ ...prev, actividad_padre_id: value === 'ninguna' ? '' : value }))}
+              <select
+                value={nuevaActividad.actividad_padre_id || ''}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, actividad_padre_id: e.target.value }))}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Ninguna - Es actividad principal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguna">Ninguna - Es actividad principal</SelectItem>
-                  {etapaSeleccionada && getActividadesPrincipales(etapaSeleccionada.id).map((act) => (
-                    <SelectItem key={act.id} value={act.id}>
-                      ↳ {act.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Ninguna - Es actividad principal</option>
+                {etapaSeleccionada && getActividadesPrincipales(etapaSeleccionada.id).map((act) => (
+                  <option key={act.id} value={act.id}>↳ {act.nombre}</option>
+                ))}
+              </select>
               <p className="text-xs text-slate-500">
                 Selecciona una actividad padre si esta es una sub-actividad
               </p>
