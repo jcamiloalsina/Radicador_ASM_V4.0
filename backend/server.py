@@ -15764,7 +15764,7 @@ async def run_backup_task(backup_id: str, backup_path: str, backup_info: dict, c
 async def create_backup(
     background_tasks: BackgroundTasks,
     tipo: str = "completo",
-    colecciones: List[str] = None,
+    colecciones: List[str] = Query(default=[]),
     current_user: dict = Depends(get_current_user)
 ):
     """Crear backup de la base de datos - Solo admin y coordinador"""
@@ -15785,7 +15785,7 @@ async def create_backup(
         # Excluir la colección de historial de backups
         collections_to_backup = [c for c in collections_to_backup if c != 'backup_history']
     else:
-        collections_to_backup = colecciones or []
+        collections_to_backup = colecciones if colecciones else []
     
     if not collections_to_backup:
         raise HTTPException(status_code=400, detail="No hay colecciones para respaldar")
