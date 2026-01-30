@@ -46,6 +46,13 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - **import_r1r2**: Importar archivos R1/R2
 - **approve_changes**: Aprobar/Rechazar cambios
 
+### Administración de Base de Datos (NUEVO)
+- **Panel de estado:** Nombre BD, tamaño total, fecha último backup
+- **Tabla de colecciones:** 31 colecciones con registros y tamaño
+- **Backups completos y selectivos:** Con progreso en tiempo real
+- **Historial de backups:** Descargar, vista previa, restaurar, eliminar
+- **Permisos:** Admin (todo), Coordinador (crear/ver/descargar)
+
 ### Visor de Predios (Mapa)
 - Visualización de geometrías GDB
 - Vinculación automática predio-geometría
