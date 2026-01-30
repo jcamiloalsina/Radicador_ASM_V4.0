@@ -312,3 +312,7 @@ ortoimagenes/originales/orto_34de21e2.tif
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
