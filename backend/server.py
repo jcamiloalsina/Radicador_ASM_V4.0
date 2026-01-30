@@ -2903,8 +2903,14 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     if current_user['role'] == UserRole.USUARIO:
         query = {"user_id": current_user['id']}
-    elif current_user['role'] in [UserRole.GESTOR]:
-        query = {"gestores_asignados": current_user['id']}
+    elif current_user['role'] in [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
+        # Gestores ven estadísticas de peticiones asignadas Y creadas por ellos
+        query = {
+            "$or": [
+                {"gestores_asignados": current_user['id']},
+                {"user_id": current_user['id']}
+            ]
+        }
     else:
         query = {}
     
