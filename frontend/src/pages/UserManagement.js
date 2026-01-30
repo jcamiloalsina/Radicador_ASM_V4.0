@@ -1246,6 +1246,149 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Cargar Backup desde Archivo */}
+      <Dialog open={showUploadDialog} onOpenChange={(open) => {
+        if (!open && !restoring) {
+          setShowUploadDialog(false);
+          setSelectedFile(null);
+          setUploadAnalysis(null);
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-600">
+              <Upload className="w-5 h-5" />
+              Cargar Backup desde Archivo
+            </DialogTitle>
+            <DialogDescription>
+              Analiza y restaura un backup previamente descargado.
+            </DialogDescription>
+          </DialogHeader>
+
+          {uploadAnalysis && (
+            <div className="space-y-4 py-4">
+              {/* Información del archivo */}
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <h4 className="font-medium flex items-center gap-2 mb-3">
+                  <FolderArchive className="w-4 h-4" />
+                  Información del Backup
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">Archivo:</span>
+                    <p className="font-mono text-xs">{selectedFile?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Tamaño:</span>
+                    <p>{(selectedFile?.size / (1024 * 1024)).toFixed(2)} MB</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Fecha del backup:</span>
+                    <p>{uploadAnalysis.fecha_backup ? new Date(uploadAnalysis.fecha_backup).toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Base de datos:</span>
+                    <p>{uploadAnalysis.db_name || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advertencia */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <h4 className="font-medium flex items-center gap-2 text-amber-700 mb-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Advertencia de Cambios
+                </h4>
+                <p className="text-sm text-amber-700 mb-3">
+                  Esta operación <strong>reemplazará</strong> los datos existentes en las colecciones incluidas en el backup.
+                </p>
+              </div>
+
+              {/* Comparación de colecciones */}
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Database className="w-4 h-4" />
+                  Comparación de Datos ({uploadAnalysis.total_colecciones} colecciones)
+                </h4>
+                <div className="max-h-64 overflow-y-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 sticky top-0">
+                      <tr>
+                        <th className="text-left py-2 px-3 font-medium">Colección</th>
+                        <th className="text-right py-2 px-3 font-medium">En Backup</th>
+                        <th className="text-right py-2 px-3 font-medium">Actual</th>
+                        <th className="text-center py-2 px-3 font-medium">Cambio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadAnalysis.comparacion?.map((item) => (
+                        <tr key={item.coleccion} className="border-b hover:bg-slate-50">
+                          <td className="py-2 px-3 font-mono text-xs">{item.coleccion}</td>
+                          <td className="py-2 px-3 text-right">{item.en_backup?.toLocaleString()}</td>
+                          <td className="py-2 px-3 text-right">{item.actual?.toLocaleString()}</td>
+                          <td className="py-2 px-3 text-center">
+                            {item.diferencia > 0 ? (
+                              <Badge className="bg-green-100 text-green-700">+{item.diferencia.toLocaleString()}</Badge>
+                            ) : item.diferencia < 0 ? (
+                              <Badge className="bg-red-100 text-red-700">{item.diferencia.toLocaleString()}</Badge>
+                            ) : (
+                              <Badge className="bg-slate-100 text-slate-600">Sin cambio</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Resumen */}
+              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-lg text-center">
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{uploadAnalysis.total_colecciones}</p>
+                  <p className="text-xs text-slate-500">Colecciones</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-emerald-600">{uploadAnalysis.total_registros?.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">Registros en Backup</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-600">{uploadAnalysis.registros_actuales?.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500">Registros Actuales</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => { setShowUploadDialog(false); setSelectedFile(null); setUploadAnalysis(null); }}
+              disabled={restoring}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleRestoreFromFile}
+              disabled={restoring || !uploadAnalysis}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {restoring ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Restaurando...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Restaurar Backup
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
