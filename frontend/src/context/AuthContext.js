@@ -204,6 +204,7 @@ export const AuthProvider = ({ children }) => {
     if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
     setShowTimeoutWarning(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('isOfflineSession');
     setToken(null);
     setUser(null);
     delete axios.defaults.headers.common['Authorization'];
@@ -214,6 +215,39 @@ export const AuthProvider = ({ children }) => {
     resetInactivityTimer();
   };
 
+  // Estado de conexión
+  const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
+  
+  // Escuchar cambios en la conexión
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOfflineMode(false);
+      console.log('🌐 Conexión restaurada');
+      // Si tenemos token offline, intentar renovar sesión online
+      const isOfflineSession = localStorage.getItem('isOfflineSession') === 'true';
+      if (isOfflineSession && token) {
+        // Podríamos intentar reautenticar, pero por ahora solo notificamos
+        console.log('💡 Sesión offline activa - Sincronización disponible');
+      }
+    };
+    
+    const handleOffline = () => {
+      setIsOfflineMode(true);
+      console.log('📴 Sin conexión - Modo offline activado');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [token]);
+
+  // Información de credenciales offline disponibles
+  const offlineCredentialsInfo = getOfflineCredentialsInfo();
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -223,7 +257,10 @@ export const AuthProvider = ({ children }) => {
       logout, 
       token,
       showTimeoutWarning,
-      extendSession
+      extendSession,
+      isOfflineMode,
+      hasOfflineCredentials: hasOfflineCredentials(),
+      offlineCredentialsInfo
     }}>
       {children}
     </AuthContext.Provider>
