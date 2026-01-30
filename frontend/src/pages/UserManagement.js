@@ -47,6 +47,22 @@ export default function UserManagement() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewData, setPreviewData] = useState(null);
 
+  // Estados para configuración de backups automáticos
+  const [backupConfig, setBackupConfig] = useState(null);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configForm, setConfigForm] = useState({
+    modo: 'manual',
+    frecuencia: 'diario',
+    hora: '02:00',
+    dia_semana: 0,
+    dia_mes: 1,
+    tipo_backup: 'completo',
+    colecciones_seleccionadas: [],
+    retener_ultimos: 7,
+    notificar_email: true
+  });
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -55,6 +71,7 @@ export default function UserManagement() {
     if (activeTab === 'database') {
       fetchDbStatus();
       fetchBackups();
+      fetchBackupConfig();
     }
   }, [activeTab]);
 
