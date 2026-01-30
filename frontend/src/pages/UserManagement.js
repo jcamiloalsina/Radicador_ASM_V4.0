@@ -543,6 +543,96 @@ export default function UserManagement() {
             </CardContent>
           </Card>
 
+          {/* Configuración de Backups Automáticos */}
+          <Card className="border-slate-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-outfit flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Configuración de Backups
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowConfigDialog(true)}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Modo */}
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 mb-1">Modo</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={backupConfig?.modo === 'automatico' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}>
+                      {backupConfig?.modo === 'automatico' ? 'Automático' : 'Manual'}
+                    </Badge>
+                    {backupConfig?.modo === 'automatico' && (
+                      <Badge className="bg-blue-100 text-blue-700">{backupConfig?.frecuencia}</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Hora */}
+                {backupConfig?.modo === 'automatico' && (
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500 mb-1">Hora de Ejecución</p>
+                    <p className="font-medium flex items-center gap-2">
+                      <Timer className="w-4 h-4 text-slate-400" />
+                      {backupConfig?.hora || '02:00'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Próximo Backup */}
+                {backupConfig?.modo === 'automatico' && backupConfig?.proximo_backup && (
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500 mb-1">Próximo Backup</p>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400" />
+                      {formatDate(backupConfig.proximo_backup)}
+                    </p>
+                  </div>
+                )}
+
+                {/* Retención */}
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 mb-1">Retención</p>
+                  <p className="font-medium">Últimos {backupConfig?.retener_ultimos || 7} backups</p>
+                </div>
+              </div>
+
+              {/* Acciones de configuración */}
+              <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t">
+                {backupConfig?.modo === 'automatico' && (
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExecuteScheduledBackup}
+                    className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Ejecutar Backup Programado
+                  </Button>
+                )}
+                {currentUser?.role === 'administrador' && backups.length > (backupConfig?.retener_ultimos || 7) && (
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCleanOldBackups}
+                    className="border-amber-600 text-amber-700 hover:bg-amber-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Limpiar Backups Antiguos ({backups.length - (backupConfig?.retener_ultimos || 7)})
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Colecciones */}
           <Card className="border-slate-200">
             <CardHeader>
