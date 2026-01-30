@@ -115,15 +115,18 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF + Regeneración
 
-#### 1. Fix: URL de Verificación QR en Certificados
-- ✅ **Eliminado fallback a URL de preview:** El código QR ahora usa estrictamente la variable `VERIFICACION_URL`
-- ✅ **URL por defecto:** Si no está configurada, usa `https://certificados.asomunicipios.gov.co`
-- ✅ **Logs de diagnóstico:** Al generar certificados se imprime verificación de archivos de imagen y URL
+#### 1. Fix: Imágenes Embebidas en Base64 para Certificados
+- ✅ **Archivo `certificado_images.py`:** Contiene las imágenes del encabezado, pie de página y firma en Base64
+- ✅ **Sin dependencia de archivos externos:** Las imágenes funcionan en cualquier servidor sin necesidad de copiar archivos
+- ✅ **Imágenes incluidas:** 
+  - Encabezado institucional (36 KB en Base64)
+  - Pie de página (50 KB en Base64)  
+  - Firma de Dalgie (30 KB en Base64)
 
-#### 2. Fix: Diagnóstico de Archivos de Imagen
-- ✅ **Verificación de existencia:** Encabezado, pie de página, firma de Dalgie
-- ✅ **Fallback para firma faltante:** Muestra línea para firma manual si no existe el archivo
-- ✅ **Fallback para encabezado faltante:** Muestra título de texto si no existe la imagen
+#### 2. Fix: URL de Verificación QR Corregida
+- ✅ **URL corregida:** Ahora apunta a `/api/verificar/{codigo}` (antes faltaba el `/api`)
+- ✅ **Página de verificación funcional:** Muestra "CERTIFICADO VÁLIDO" con todos los datos del predio
+- ✅ **Variable de entorno:** Usa `VERIFICACION_URL` del `.env` para el dominio base
 
 #### 3. Nueva Funcionalidad: Regenerar Certificado Catastral
 - ✅ **Endpoint:** `POST /api/petitions/{petition_id}/regenerar-certificado`
@@ -135,17 +138,13 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - ✅ **Opción de enviar por correo** el certificado regenerado
 - ✅ **Vigencia:** Los certificados tienen validez de 1 mes
 
-#### 4. Archivos de Imagen Requeridos para Certificados
-Los siguientes archivos deben existir en `/app/backend/logos/` en producción:
-- `encabezado_gestor_catastral.png` (27 KB)
-- `pie_pagina_certificado.png` (37 KB)
-- `firma_dalgie_blanco.png` (22 KB)
+#### 4. Archivos Nuevos Creados
+- `/app/backend/certificado_images.py` - Imágenes embebidas en Base64
 
-#### 5. Configuración Requerida en Producción
-En el archivo `/backend/.env` del servidor de producción:
-```env
-VERIFICACION_URL="https://certificados.asomunicipios.gov.co"
-```
+#### 5. Ya NO es necesario en producción
+- ❌ ~~Copiar archivos de imagen al servidor~~
+- ❌ ~~Configurar rutas de archivos~~
+- Las imágenes están embebidas en el código y funcionan automáticamente
 
 ---
 
