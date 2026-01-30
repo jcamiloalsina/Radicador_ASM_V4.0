@@ -7512,7 +7512,8 @@ def generar_hash_documento(contenido: str) -> str:
 
 def generar_qr_verificacion(codigo_verificacion: str) -> bytes:
     """Genera código QR para verificación"""
-    url = f"{VERIFICACION_BASE_URL}/verificar/{codigo_verificacion}"
+    # La URL incluye /api porque el endpoint está en el router de API
+    url = f"{VERIFICACION_BASE_URL}/api/verificar/{codigo_verificacion}"
     
     qr = qrcode.QRCode(
         version=1,
