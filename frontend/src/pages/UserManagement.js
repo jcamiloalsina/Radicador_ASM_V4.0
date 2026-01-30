@@ -121,6 +121,77 @@ export default function UserManagement() {
     }
   };
 
+  const fetchBackupConfig = async () => {
+    try {
+      const response = await axios.get(`${API}/database/config`);
+      setBackupConfig(response.data);
+      setConfigForm({
+        modo: response.data.modo || 'manual',
+        frecuencia: response.data.frecuencia || 'diario',
+        hora: response.data.hora || '02:00',
+        dia_semana: response.data.dia_semana || 0,
+        dia_mes: response.data.dia_mes || 1,
+        tipo_backup: response.data.tipo_backup || 'completo',
+        colecciones_seleccionadas: response.data.colecciones_seleccionadas || [],
+        retener_ultimos: response.data.retener_ultimos || 7,
+        notificar_email: response.data.notificar_email !== false
+      });
+    } catch (error) {
+      console.error('Error al cargar configuración:', error);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('modo', configForm.modo);
+      params.append('frecuencia', configForm.frecuencia);
+      params.append('hora', configForm.hora);
+      params.append('dia_semana', configForm.dia_semana);
+      params.append('dia_mes', configForm.dia_mes);
+      params.append('tipo_backup', configForm.tipo_backup);
+      params.append('retener_ultimos', configForm.retener_ultimos);
+      params.append('notificar_email', configForm.notificar_email);
+      if (configForm.tipo_backup === 'selectivo') {
+        configForm.colecciones_seleccionadas.forEach(c => params.append('colecciones_seleccionadas', c));
+      }
+      
+      await axios.put(`${API}/database/config?${params.toString()}`);
+      toast.success('Configuración guardada');
+      setShowConfigDialog(false);
+      fetchBackupConfig();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al guardar configuración');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleExecuteScheduledBackup = async () => {
+    try {
+      const response = await axios.post(`${API}/database/backup/ejecutar-programado`);
+      toast.success(`Backup programado iniciado (${response.data.colecciones} colecciones)`);
+      fetchBackups();
+      fetchBackupConfig();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al ejecutar backup');
+    }
+  };
+
+  const handleCleanOldBackups = async () => {
+    if (!window.confirm(`¿Está seguro de eliminar backups antiguos? Se conservarán los últimos ${backupConfig?.retener_ultimos || 7} backups.`)) {
+      return;
+    }
+    try {
+      const response = await axios.post(`${API}/database/backup/limpiar-antiguos`);
+      toast.success(`${response.data.eliminados} backups eliminados`);
+      fetchBackups();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al limpiar backups');
+    }
+  };
+
   const handleRoleChange = async (userId, newRole) => {
     try {
       await axios.patch(`${API}/users/role`, {
