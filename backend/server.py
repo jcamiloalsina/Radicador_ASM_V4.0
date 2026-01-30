@@ -7892,19 +7892,18 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     # === BLOQUE IZQUIERDO: FIRMA ===
     firma_block_y = y - 65
     
-    if firma_dalgie_path.exists():
-        # Dibujar la firma
+    if imagenes_embebidas_ok:
+        # Dibujar la firma usando imagen embebida
         firma_width = 90
         firma_height = 54
         firma_x = start_x + (firma_block_width - firma_width) / 2
         firma_y = firma_block_y
         
-        # Dibujar la imagen de la firma (ya tiene fondo blanco)
-        c.drawImage(str(firma_dalgie_path), firma_x, firma_y, width=firma_width, height=firma_height, 
+        # Dibujar la imagen de la firma embebida
+        c.drawImage(firma_dalgie_img, firma_x, firma_y, width=firma_width, height=firma_height, 
                     preserveAspectRatio=True, mask='auto')
     else:
-        # Si no existe la firma, mostrar línea para firma manual
-        print(f"⚠️ ADVERTENCIA: No se encontró imagen de firma en {firma_dalgie_path}")
+        # Si las imágenes embebidas fallaron, mostrar línea para firma manual
         firma_x = start_x + 20
         firma_y = firma_block_y + 30
         c.setStrokeColor(negro)
