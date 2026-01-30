@@ -2295,6 +2295,18 @@ export default function Predios() {
     }
   };
 
+  const fetchCambiosHistorial = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/cambios/historial?limit=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCambiosHistorial(res.data.cambios || []);
+    } catch (error) {
+      console.log('Historial no disponible');
+    }
+  };
+
   const handleAprobarRechazar = async (cambioId, aprobado, comentario = '') => {
     try {
       const token = localStorage.getItem('token');
