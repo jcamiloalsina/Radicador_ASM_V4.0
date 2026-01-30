@@ -8752,10 +8752,9 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     propietarios = certificado.get('propietarios', [])
     propietarios_html = "<br>".join([f"• {p}" for p in propietarios]) if propietarios else "No disponible"
     
-    # Obtener datos críticos para mostrar
-    datos_criticos = certificado.get('datos_criticos', {})
-    area_terreno = datos_criticos.get('area_terreno', certificado.get('area_terreno', 'N/A'))
-    avaluo = datos_criticos.get('avaluo_catastral', 'N/A')
+    # Obtener área terreno y avalúo directamente del certificado (ya vienen formateados)
+    area_terreno = certificado.get('area_terreno', 'N/A')
+    avaluo = certificado.get('avaluo_catastral', 'N/A')
     
     # Verificar si tiene hash de PDF (sistema nuevo)
     tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
