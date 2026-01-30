@@ -316,3 +316,12 @@ ortoimagenes/originales/orto_34de21e2.tif
 # Environment files
 *.env
 *.env.*
+
+# Large files and backups
+dump/
+ortoimagenes/originales/
+ortoimagenes/tiles/
+backend/static/backups/
+*.bson
+*.tif
+*.tiff
