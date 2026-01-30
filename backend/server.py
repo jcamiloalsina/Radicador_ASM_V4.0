@@ -2229,7 +2229,7 @@ async def get_petitions(current_user: dict = Depends(get_current_user)):
     if current_user['role'] == UserRole.USUARIO:
         query = {"user_id": current_user['id']}
     # Gestores see assigned petitions AND petitions they created
-    elif current_user['role'] in [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
+    elif current_user['role'] == UserRole.GESTOR or current_user['role'] == 'gestor_auxiliar':
         query = {
             "$or": [
                 {"gestores_asignados": current_user['id']},  # Asignadas a él
