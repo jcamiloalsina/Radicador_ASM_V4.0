@@ -8485,6 +8485,23 @@ async def regenerar_certificado_desde_peticion(
     # Registrar el nuevo certificado en la base de datos
     propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios]
     
+    # Obtener área terreno y avalúo del predio
+    area_terreno = predio.get('area_terreno', 0)
+    avaluo = predio.get('avaluo', 0)
+    
+    # Formatear área para mostrar
+    if area_terreno and area_terreno >= 10000:
+        ha = int(area_terreno // 10000)
+        m2_restantes = int(area_terreno % 10000)
+        area_str = f"{ha} ha {m2_restantes} m²"
+    elif area_terreno:
+        area_str = f"{int(area_terreno)} m²"
+    else:
+        area_str = "N/A"
+    
+    # Formatear avalúo
+    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
+    
     certificado_record = {
         "id": str(uuid.uuid4()),
         "codigo_verificacion": codigo_verificacion,
@@ -8498,6 +8515,9 @@ async def regenerar_certificado_desde_peticion(
         "generado_por_nombre": current_user['full_name'],
         "estado": "activo",
         "hash_documento": "",
+        # Datos adicionales para verificación
+        "area_terreno": area_str,
+        "avaluo_catastral": avaluo_str,
         "petition_id": petition_id,
         "radicado": petition.get('radicado'),
         "generado_desde_peticion": True,
