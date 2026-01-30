@@ -16304,6 +16304,61 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@app.on_event("startup")
+async def create_default_admin():
+    """
+    Creates a default admin user if no users exist in the database.
+    This ensures fresh deployments have a way to access the system.
+    """
+    try:
+        # Check if any users exist
+        user_count = await db.users.count_documents({})
+        
+        if user_count == 0:
+            logger.warning("=" * 60)
+            logger.warning("NO USERS FOUND IN DATABASE - Creating default admin user")
+            logger.warning("=" * 60)
+            
+            # Create default admin user
+            default_admin = {
+                "id": str(uuid.uuid4()),
+                "email": "catastro@asomunicipios.gov.co",
+                "password": hash_password("Asm*123*"),
+                "full_name": "Administrador Catastro",
+                "role": UserRole.ADMINISTRADOR,
+                "email_verified": True,
+                "is_active": True,
+                "verification_code": None,
+                "verification_code_expires": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "permissions": [
+                    Permission.UPLOAD_GDB,
+                    Permission.IMPORT_R1R2,
+                    Permission.APPROVE_CHANGES,
+                    Permission.ACCESO_ACTUALIZACION
+                ],
+                "municipios_asignados": []
+            }
+            
+            await db.users.insert_one(default_admin)
+            
+            logger.warning("-" * 60)
+            logger.warning("DEFAULT ADMIN USER CREATED SUCCESSFULLY")
+            logger.warning(f"  Email: catastro@asomunicipios.gov.co")
+            logger.warning(f"  Password: Asm*123*")
+            logger.warning(f"  Role: {UserRole.ADMINISTRADOR}")
+            logger.warning("-" * 60)
+            logger.warning("⚠️  SECURITY WARNING: Please change this password immediately!")
+            logger.warning("=" * 60)
+        else:
+            logger.info(f"Database has {user_count} existing user(s). Skipping default admin creation.")
+            
+    except Exception as e:
+        logger.error(f"Error during startup admin check: {str(e)}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
