@@ -113,6 +113,32 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF
+
+#### 1. Fix: URL de Verificación QR en Certificados
+- ✅ **Eliminado fallback a URL de preview:** El código QR ahora usa estrictamente la variable `VERIFICACION_URL`
+- ✅ **URL por defecto:** Si no está configurada, usa `https://certificados.asomunicipios.gov.co`
+- ✅ **Logs de diagnóstico:** Al generar certificados se imprime verificación de archivos de imagen y URL
+
+#### 2. Fix: Diagnóstico de Archivos de Imagen
+- ✅ **Verificación de existencia:** Encabezado, pie de página, firma de Dalgie
+- ✅ **Fallback para firma faltante:** Muestra línea para firma manual si no existe el archivo
+- ✅ **Fallback para encabezado faltante:** Muestra título de texto si no existe la imagen
+
+#### 3. Archivos de Imagen Requeridos para Certificados
+Los siguientes archivos deben existir en `/app/backend/logos/` en producción:
+- `encabezado_gestor_catastral.png` (27 KB)
+- `pie_pagina_certificado.png` (37 KB)
+- `firma_dalgie_blanco.png` (22 KB)
+
+#### 4. Configuración Requerida en Producción
+En el archivo `/backend/.env` del servidor de producción:
+```env
+VERIFICACION_URL="https://certificados.asomunicipios.gov.co"
+```
+
+---
+
 ### Sesión 30 Enero 2026 (Fork 8) - Administrador de Base de Datos + Ortoimágenes
 
 #### 1. Nueva Funcionalidad: Gestión de Backups
