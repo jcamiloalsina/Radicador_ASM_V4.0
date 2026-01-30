@@ -788,6 +788,9 @@ export default function UserManagement() {
                         <th className="text-left py-2 px-3 font-medium text-slate-700">Colección</th>
                         <th className="text-right py-2 px-3 font-medium text-slate-700">Registros</th>
                         <th className="text-right py-2 px-3 font-medium text-slate-700">Tamaño</th>
+                        {currentUser?.role === 'administrador' && (
+                          <th className="text-center py-2 px-3 font-medium text-slate-700">Acciones</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -796,6 +799,33 @@ export default function UserManagement() {
                           <td className="py-2 px-3 font-mono text-xs">{coll.name}</td>
                           <td className="py-2 px-3 text-right">{coll.count.toLocaleString()}</td>
                           <td className="py-2 px-3 text-right text-slate-500">{coll.size_mb} MB</td>
+                          {currentUser?.role === 'administrador' && (
+                            <td className="py-2 px-3">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEmptyCollection(coll.name)}
+                                  title="Vaciar colección (eliminar registros)"
+                                  className="h-7 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  disabled={coll.count === 0}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                  <span className="text-xs">Vaciar</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDropCollection(coll.name)}
+                                  title="Eliminar colección completamente"
+                                  className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                  <span className="text-xs">Eliminar</span>
+                                </Button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
