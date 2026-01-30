@@ -765,14 +765,28 @@ export default function UserManagement() {
           {/* Historial de Backups */}
           <Card className="border-slate-200">
             <CardHeader>
-              <CardTitle className="text-lg font-outfit flex items-center gap-2">
-                <FolderArchive className="w-5 h-5" />
-                Historial de Backups
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-outfit flex items-center gap-2">
+                  <FolderArchive className="w-5 h-5" />
+                  Historial de Backups ({backups.length})
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchBackups}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Actualizar
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {backups.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">No hay backups registrados</p>
+                <div className="text-center py-8">
+                  <FolderArchive className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                  <p className="text-slate-500">No hay backups registrados</p>
+                  <p className="text-sm text-slate-400 mt-1">Crea tu primer backup usando los botones de arriba</p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -781,23 +795,47 @@ export default function UserManagement() {
                         <th className="text-left py-2 px-3 font-medium text-slate-700">Fecha</th>
                         <th className="text-left py-2 px-3 font-medium text-slate-700">Tipo</th>
                         <th className="text-right py-2 px-3 font-medium text-slate-700">Tamaño</th>
+                        <th className="text-right py-2 px-3 font-medium text-slate-700">Registros</th>
                         <th className="text-right py-2 px-3 font-medium text-slate-700">Colecciones</th>
                         <th className="text-left py-2 px-3 font-medium text-slate-700">Creado por</th>
+                        <th className="text-center py-2 px-3 font-medium text-slate-700">Estado</th>
                         <th className="text-center py-2 px-3 font-medium text-slate-700">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {backups.map((backup) => (
                         <tr key={backup.id} className="border-b hover:bg-slate-50">
-                          <td className="py-2 px-3">{formatDate(backup.fecha)}</td>
                           <td className="py-2 px-3">
-                            <Badge className={backup.tipo === 'completo' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}>
-                              {backup.tipo}
+                            <div>
+                              <p className="font-medium">{formatDate(backup.fecha)}</p>
+                              <p className="text-xs text-slate-400 font-mono">{backup.filename}</p>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge className={
+                              backup.tipo === 'completo' ? 'bg-emerald-100 text-emerald-700' : 
+                              backup.tipo === 'selectivo' ? 'bg-blue-100 text-blue-700' :
+                              backup.tipo === 'restauracion_archivo' ? 'bg-purple-100 text-purple-700' :
+                              'bg-slate-100 text-slate-700'
+                            }>
+                              {backup.tipo === 'restauracion_archivo' ? 'restauración' : backup.tipo}
                             </Badge>
                           </td>
-                          <td className="py-2 px-3 text-right">{backup.size_mb} MB</td>
-                          <td className="py-2 px-3 text-right">{backup.colecciones_count}</td>
-                          <td className="py-2 px-3 text-slate-600">{backup.creado_por}</td>
+                          <td className="py-2 px-3 text-right font-mono">{backup.size_mb || '—'} MB</td>
+                          <td className="py-2 px-3 text-right font-mono">{backup.registros_total?.toLocaleString() || '—'}</td>
+                          <td className="py-2 px-3 text-right">{backup.colecciones_count || backup.colecciones?.length || '—'}</td>
+                          <td className="py-2 px-3 text-slate-600 text-xs">{backup.creado_por}</td>
+                          <td className="py-2 px-3 text-center">
+                            <Badge className={
+                              backup.estado === 'completado' ? 'bg-green-100 text-green-700' :
+                              backup.estado === 'en_progreso' ? 'bg-yellow-100 text-yellow-700' :
+                              backup.estado === 'restaurado' ? 'bg-purple-100 text-purple-700' :
+                              backup.estado === 'error' ? 'bg-red-100 text-red-700' :
+                              'bg-slate-100 text-slate-600'
+                            }>
+                              {backup.estado || 'completado'}
+                            </Badge>
+                          </td>
                           <td className="py-2 px-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
@@ -805,6 +843,7 @@ export default function UserManagement() {
                                 size="sm"
                                 onClick={() => handlePreviewBackup(backup)}
                                 title="Vista previa"
+                                className="h-8 w-8 p-0"
                               >
                                 <Eye className="w-4 h-4 text-slate-600" />
                               </Button>
@@ -812,7 +851,8 @@ export default function UserManagement() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDownloadBackup(backup)}
-                                title="Descargar"
+                                title="Descargar backup"
+                                className="h-8 w-8 p-0"
                               >
                                 <Download className="w-4 h-4 text-blue-600" />
                               </Button>
@@ -822,7 +862,8 @@ export default function UserManagement() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => { setSelectedBackup(backup); setShowRestoreDialog(true); }}
-                                    title="Restaurar"
+                                    title="Restaurar desde este backup"
+                                    className="h-8 w-8 p-0"
                                   >
                                     <Upload className="w-4 h-4 text-amber-600" />
                                   </Button>
@@ -830,7 +871,8 @@ export default function UserManagement() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDeleteBackup(backup.id)}
-                                    title="Eliminar"
+                                    title="Eliminar backup"
+                                    className="h-8 w-8 p-0"
                                   >
                                     <Trash2 className="w-4 h-4 text-red-600" />
                                   </Button>
