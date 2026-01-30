@@ -200,6 +200,71 @@ export default function UserManagement() {
     }
   };
 
+  // Funciones para cargar backup desde archivo
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.name.endsWith('.zip')) {
+        toast.error('Solo se permiten archivos .zip');
+        return;
+      }
+      setSelectedFile(file);
+      analyzeBackupFile(file);
+    }
+  };
+
+  const analyzeBackupFile = async (file) => {
+    setUploadingBackup(true);
+    setUploadAnalysis(null);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await axios.post(`${API}/database/backup/analizar`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setUploadAnalysis(response.data);
+      setShowUploadDialog(true);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al analizar el backup');
+      setSelectedFile(null);
+    } finally {
+      setUploadingBackup(false);
+    }
+  };
+
+  const handleRestoreFromFile = async () => {
+    if (!selectedFile || !uploadAnalysis) return;
+    
+    const confirmMsg = `⚠️ ADVERTENCIA: Esta acción restaurará la base de datos.\n\n` +
+      `Se modificarán ${uploadAnalysis.total_colecciones} colecciones.\n` +
+      `Registros en backup: ${uploadAnalysis.total_registros?.toLocaleString()}\n\n` +
+      `¿Está seguro de continuar?`;
+    
+    if (!window.confirm(confirmMsg)) return;
+    
+    setRestoring(true);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    try {
+      const response = await axios.post(`${API}/database/backup/restaurar-archivo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(`Backup restaurado: ${response.data.colecciones_restauradas} colecciones, ${response.data.registros_restaurados?.toLocaleString()} registros`);
+      setShowUploadDialog(false);
+      setSelectedFile(null);
+      setUploadAnalysis(null);
+      fetchDbStatus();
+      fetchBackups();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al restaurar el backup');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const handleRoleChange = async (userId, newRole) => {
     try {
       await axios.patch(`${API}/users/role`, {
