@@ -622,6 +622,103 @@ export default function Pendientes() {
             </div>
           )}
         </TabsContent>
+
+        {/* Tab: Historial de Cambios Procesados */}
+        <TabsContent value="historial">
+          {loadingHistorial ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            </div>
+          ) : cambiosHistorial.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <History className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-xl font-semibold text-slate-700">Sin historial</h3>
+                <p className="text-slate-500 mt-2">No hay cambios procesados aún</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {/* Stats del historial */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-emerald-50 border-emerald-200">
+                  <CardContent className="p-4 text-center">
+                    <CheckCircle className="w-8 h-8 mx-auto text-emerald-600 mb-2" />
+                    <p className="text-2xl font-bold text-emerald-700">{historialStats.aprobados}</p>
+                    <p className="text-sm text-emerald-600">Aprobados</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="p-4 text-center">
+                    <XCircle className="w-8 h-8 mx-auto text-red-600 mb-2" />
+                    <p className="text-2xl font-bold text-red-700">{historialStats.rechazados}</p>
+                    <p className="text-sm text-red-600">Rechazados</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Lista de cambios procesados */}
+              <div className="space-y-3">
+                {cambiosHistorial.map((cambio) => (
+                  <Card 
+                    key={cambio.id} 
+                    className={`border-l-4 ${
+                      cambio.estado === 'aprobado' 
+                        ? 'border-l-emerald-500 bg-emerald-50/30' 
+                        : 'border-l-red-500 bg-red-50/30'
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={cambio.estado === 'aprobado' ? 'bg-emerald-600' : 'bg-red-600'}>
+                              {cambio.estado === 'aprobado' ? '✓ Aprobado' : '✗ Rechazado'}
+                            </Badge>
+                            <Badge variant="outline">
+                              {cambio.tipo_cambio === 'creacion' ? 'Creación' : 
+                               cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
+                            </Badge>
+                          </div>
+                          
+                          {cambio.predio_actual && (
+                            <p className="font-mono text-sm text-slate-700 mb-1">
+                              <strong>{cambio.predio_actual.codigo_homologado || cambio.predio_actual.codigo_predial_nacional || 'N/A'}</strong>
+                              {cambio.predio_actual.nombre_propietario && ` - ${cambio.predio_actual.nombre_propietario}`}
+                            </p>
+                          )}
+                          
+                          <p className="text-sm text-slate-600">
+                            <User className="w-3 h-3 inline mr-1" />
+                            Solicitado por: <span className="font-medium">{cambio.propuesto_por_nombre}</span>
+                          </p>
+                          
+                          {cambio.comentario_aprobacion && (
+                            <p className="text-sm text-slate-500 italic mt-1 bg-slate-100 px-2 py-1 rounded">
+                              "{cambio.comentario_aprobacion}"
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="text-right text-sm text-slate-500">
+                          <p className="font-medium">
+                            {cambio.fecha_aprobacion 
+                              ? formatDate(cambio.fecha_aprobacion)
+                              : formatDate(cambio.fecha_decision)
+                            }
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            por {cambio.aprobado_por_nombre || 'Sistema'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Modal de Detalle del Cambio con Comparación */}
