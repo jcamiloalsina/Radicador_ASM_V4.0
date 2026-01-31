@@ -1482,3 +1482,43 @@ Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del nav
 
 **Testing:** Verificado con curl y capturas de pantalla - Flujo completo de generación de certificado funciona sin errores.
 
+
+
+---
+
+### Sesión 31 Enero 2026 - Restricciones Rol Empresa y UI Historial de Cambios
+
+**Cambios implementados:**
+
+1. ✅ **Restricciones completas del Rol "Empresa":**
+   - **Backend:**
+     - POST `/api/predios/cambios/proponer` → retorna 403 (bloqueado)
+     - POST `/api/predios` → retorna 403 (bloqueado) - Línea 9362
+     - PATCH `/api/predios/{id}` → retorna 403 (bloqueado) - Línea 9508
+     - DELETE `/api/predios/{id}` → ya estaba restringido a admin/coordinador
+   - **Frontend:**
+     - Botón "Exportar Excel" oculto para rol empresa (`Predios.js` línea 2912)
+     - Botones Editar/Eliminar ocultos mediante `canModifyPredios` (excluye empresa)
+     - Mensaje del dashboard personalizado: "Como empresa aliada, puedes consultar información catastral, ver el visor de predios y acceder a los certificados autorizados."
+
+2. ✅ **UI del Historial de Cambios Mejorada:**
+   - La sección "Ver datos propuestos" ahora compara `datos_propuestos` vs `predio_actual`
+   - Solo muestra campos que **realmente** cambiaron (antes mostraba todos)
+   - Formato visual: valor anterior tachado en rojo → valor nuevo en azul/verde
+   - Campos comparados: nombre_propietario, direccion, destino_economico, area_terreno, area_construida, avaluo, tipo_documento, numero_documento
+
+3. ✅ **Mensaje del Dashboard por Rol:**
+   - Agregados mensajes específicos para roles `comunicaciones` y `empresa` en `DashboardHome.js`
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - Líneas 9362, 9508: Verificación de permisos para crear/modificar predios
+- `/app/frontend/src/pages/Predios.js` - Líneas 2912, 4602-4680: Botón Excel oculto, UI comparativa de cambios
+- `/app/frontend/src/pages/DashboardHome.js` - Línea 219: Mensajes por rol
+
+**Testing:** Verificado con testing_agent_v3_fork - 100% tests frontend, 100% tests backend después del fix.
+
+**Usuario de prueba creado:**
+- Email: `empresa_test@test.com`
+- Password: `Test123!`
+- Rol: `empresa`
+
