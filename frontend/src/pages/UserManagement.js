@@ -482,6 +482,7 @@ export default function UserManagement() {
       gestor: { label: 'Gestor', className: 'bg-emerald-100 text-emerald-700' },
       atencion_usuario: { label: 'Atención', className: 'bg-blue-100 text-blue-700' },
       comunicaciones: { label: 'Comunicaciones', className: 'bg-cyan-100 text-cyan-700' },
+      empresa: { label: 'Empresa', className: 'bg-amber-100 text-amber-700' },
       usuario: { label: 'Usuario', className: 'bg-slate-100 text-slate-700' },
     };
     const config = roleConfig[role] || roleConfig.usuario;
