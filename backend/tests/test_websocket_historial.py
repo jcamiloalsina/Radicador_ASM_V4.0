@@ -177,13 +177,13 @@ class TestCambiosHistorialEndpoint(TestAuth):
         assert len(data["cambios"]) <= 5, "Limit parameter not respected"
         print(f"✓ Historial respects limit parameter (returned {len(data['cambios'])} items)")
     
-    def test_historial_coordinador_access(self, coordinador_token):
-        """Verify coordinador can access historial"""
-        headers = {"Authorization": f"Bearer {coordinador_token}"}
+    def test_historial_admin_access(self, admin_token):
+        """Verify admin can access historial"""
+        headers = {"Authorization": f"Bearer {admin_token}"}
         response = requests.get(f"{BASE_URL}/api/predios/cambios/historial", headers=headers)
         
-        assert response.status_code == 200, f"Coordinador should have access to historial: {response.text}"
-        print(f"✓ Coordinador has access to historial endpoint")
+        assert response.status_code == 200, f"Admin should have access to historial: {response.text}"
+        print(f"✓ Admin has access to historial endpoint")
 
 
 class TestWebSocketEndpoint(TestAuth):
@@ -293,11 +293,13 @@ class TestCambiosPendientesEndpoint(TestAuth):
         assert response.status_code == 200, f"Pendientes endpoint failed: {response.text}"
         data = response.json()
         
-        # Verify response is a list
-        assert isinstance(data, list), "Pendientes should return a list"
+        # Verify response structure (dict with cambios and total)
+        assert "cambios" in data, "Pendientes should return dict with 'cambios' key"
+        assert "total" in data, "Pendientes should return dict with 'total' key"
+        assert isinstance(data["cambios"], list), "'cambios' should be a list"
         
         print(f"✓ Pendientes endpoint accessible")
-        print(f"  - Total pendientes: {len(data)}")
+        print(f"  - Total pendientes: {data['total']}")
 
 
 if __name__ == "__main__":
