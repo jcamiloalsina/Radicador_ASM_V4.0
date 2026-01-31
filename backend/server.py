@@ -4509,6 +4509,7 @@ async def cargar_codigos_homologados(
     except HTTPException:
         raise
     except Exception as e:
+        logging.error(f"Error procesando archivo de códigos homologados: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error procesando archivo: {str(e)}")
 
 
