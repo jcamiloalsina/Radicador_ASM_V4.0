@@ -4514,7 +4514,11 @@ export default function Predios() {
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                Historial
+                Historial {cambiosStats?.total_historial > 0 && (
+                  <span className="ml-1 px-2 py-0.5 text-xs bg-slate-200 text-slate-600 rounded-full">
+                    {cambiosStats.total_historial}
+                  </span>
+                )}
               </button>
             </div>
 
