@@ -1855,7 +1855,7 @@ async def update_user_role(role_update: UserRoleUpdate, current_user: dict = Dep
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para cambiar roles")
     
     # Validate new role
-    valid_roles = [UserRole.USUARIO, UserRole.ATENCION_USUARIO, UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.COMUNICACIONES]
+    valid_roles = [UserRole.USUARIO, UserRole.ATENCION_USUARIO, UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.COMUNICACIONES, UserRole.EMPRESA]
     if role_update.new_role not in valid_roles:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol inválido")
     
