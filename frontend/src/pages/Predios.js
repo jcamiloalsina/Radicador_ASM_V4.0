@@ -5278,6 +5278,25 @@ export default function Predios() {
                     </select>
                   </div>
                   
+                  {/* Opción para forzar como disponibles */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={forzarDisponibles}
+                        onChange={(e) => setForzarDisponibles(e.target.checked)}
+                        className="mt-1 w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
+                      />
+                      <div>
+                        <span className="font-medium text-amber-800">Forzar todos como disponibles</span>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Marque esta opción si desea que todos los códigos del archivo se registren como disponibles, 
+                          ignorando si ya existen predios con estos códigos asignados. Útil para "resetear" la lista.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                  
                   <div className="flex gap-2 justify-end">
                     <Button 
                       variant="outline" 
