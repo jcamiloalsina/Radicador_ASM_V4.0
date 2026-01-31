@@ -57,13 +57,14 @@ function App() {
             <Route path="predios-en-proceso" element={<PrediosEnProceso />} />
           </Route>
         </Routes>
-      </BrowserRouter>
-      <Toaster position="top-right" richColors />
-      
-      {/* PWA Components */}
-      <OfflineIndicator />
-      <OnlineIndicator />
-      <PWAInstallPrompt />
+        </BrowserRouter>
+        <Toaster position="top-right" richColors />
+        
+        {/* PWA Components */}
+        <OfflineIndicator />
+        <OnlineIndicator />
+        <PWAInstallPrompt />
+      </WebSocketProvider>
     </AuthProvider>
   );
 }
