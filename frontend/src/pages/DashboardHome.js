@@ -216,6 +216,10 @@ export default function DashboardHome() {
               ? 'Como gestor, puedes procesar trámites asignados, pedir ayuda a auxiliares y enviar trámites para revisión.'
               : user?.role === 'coordinador'
               ? 'Como coordinador, puedes revisar, aprobar o devolver trámites, y finalizar procesos con firma digital.'
+              : user?.role === 'comunicaciones'
+              ? 'Como personal de comunicaciones, tienes acceso para gestionar información y visualizar el estado general de las peticiones.'
+              : user?.role === 'empresa'
+              ? 'Como empresa aliada, puedes consultar información catastral, ver el visor de predios y acceder a los certificados autorizados.'
               : 'Como administrador, tienes acceso completo para gestionar usuarios y todas las peticiones del sistema.'}
           </p>
         </CardContent>
