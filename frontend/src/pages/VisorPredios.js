@@ -673,6 +673,10 @@ export default function VisorPredios() {
   };
 
   const fetchGdbStats = async () => {
+    if (!navigator.onLine) {
+      console.log('Modo offline: estadísticas GDB no disponibles');
+      return;
+    }
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/gdb/stats`, {
