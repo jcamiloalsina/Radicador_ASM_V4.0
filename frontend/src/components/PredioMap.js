@@ -145,6 +145,12 @@ export default function PredioMap({
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri'
   };
+  
+  // Tile layer alternativo para offline (OpenStreetMap con menor calidad pero más ligero)
+  const offlineFallbackTile = {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap'
+  };
 
   if (loading) {
     return (
@@ -177,15 +183,26 @@ export default function PredioMap({
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border border-slate-200" style={{ height: `${height}px` }}>
+    <div className="rounded-lg overflow-hidden border border-slate-200 relative" style={{ height: `${height}px` }}>
+      {/* Indicador de modo offline */}
+      {!isOnline && (
+        <div className="absolute top-2 left-2 z-[1000] bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+          </svg>
+          Modo Offline
+        </div>
+      )}
       <MapContainer
         center={defaultCenter}
         zoom={defaultZoom}
         style={{ height: '100%', width: '100%' }}
       >
+        {/* TileLayer con manejo de errores para offline */}
         <TileLayer
           url={tileLayer.url}
           attribution={tileLayer.attribution}
+          errorTileUrl="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
         />
         
         <GeoJSON 
