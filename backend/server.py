@@ -9506,8 +9506,9 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
 @api_router.patch("/predios/{predio_id}")
 async def update_predio(predio_id: str, update_data: PredioUpdate, current_user: dict = Depends(get_current_user)):
     """Actualiza un predio existente"""
-    if current_user['role'] == UserRole.USUARIO:
-        raise HTTPException(status_code=403, detail="No tiene permiso")
+    # Usuario, Comunicaciones y Empresa no pueden modificar predios directamente
+    if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para modificar predios")
     
     predio = await db.predios.find_one({"id": predio_id, "deleted": {"$ne": True}}, {"_id": 0})
     if not predio:
