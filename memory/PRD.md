@@ -1522,3 +1522,53 @@ Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del nav
 - Password: `Test123!`
 - Rol: `empresa`
 
+
+---
+
+### Sesión 31 Enero 2026 (Continuación) - WebSocket y Pestaña Historial
+
+**Cambios implementados:**
+
+1. ✅ **Sistema de WebSocket para Notificaciones en Tiempo Real:**
+   - **Backend:**
+     - Nuevo `ConnectionManager` class en `server.py` para gestionar conexiones WebSocket
+     - Nuevo endpoint `/ws/{user_id}` para conexiones WebSocket
+     - Al aprobar/rechazar cambios, se envía broadcast a todos los clientes conectados
+     - Implementado ping/pong para keep-alive (cada 30 segundos)
+   - **Frontend:**
+     - Nuevo contexto `WebSocketContext.js` para manejar conexiones WebSocket
+     - Integrado en `App.js` como provider global
+     - Conexión automática al iniciar sesión, desconexión al cerrar
+     - Notificación toast con botón "Sincronizar" cuando hay cambios
+     - Auto-sincronización cuando el cambio afecta el municipio actual
+   
+2. ✅ **Nueva Pestaña "Historial" en Página Pendientes:**
+   - Agregada tercera pestaña a `/dashboard/pendientes`
+   - Muestra badge con conteo total de cambios procesados
+   - Cards de estadísticas: **11 Aprobados** y **5 Rechazados**
+   - Lista de cambios con:
+     - Estado (aprobado/rechazado) con colores distintivos
+     - Código del predio y nombre del propietario
+     - Solicitante
+     - Fecha y hora de la decisión
+     - Quién procesó el cambio
+     - Comentario del aprobador
+   
+3. ✅ **Mejoras al Endpoint de Stats:**
+   - `GET /api/predios/cambios/stats` ahora incluye:
+     - `historial_aprobados`
+     - `historial_rechazados`
+     - `total_historial`
+   
+4. ✅ **Permisos expandidos para Historial:**
+   - Ahora gestores y atención al usuario también pueden ver el historial de cambios
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - WebSocket endpoint, ConnectionManager, broadcast en aprobar/rechazar
+- `/app/frontend/src/context/WebSocketContext.js` - NUEVO: Contexto de WebSocket
+- `/app/frontend/src/App.js` - Integración del WebSocketProvider
+- `/app/frontend/src/pages/Pendientes.js` - Nueva pestaña Historial
+- `/app/frontend/src/pages/Predios.js` - WebSocket listener para auto-sincronización
+
+**Testing:** Verificado con testing_agent_v3_fork - iteration_24.json - 100% tests pasados
+
