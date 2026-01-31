@@ -137,6 +137,7 @@ class UserRole:
     COORDINADOR = "coordinador"
     ADMINISTRADOR = "administrador"
     COMUNICACIONES = "comunicaciones"  # Puede consultar predios, ver visor, ver trámites, descargar/subir archivos
+    EMPRESA = "empresa"  # Similar a comunicaciones pero sin ver total peticiones ni descargar Excel
 
 class UserRegister(BaseModel):
     email: EmailStr
