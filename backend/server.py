@@ -73,6 +73,53 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
+# ===== WEBSOCKET CONNECTION MANAGER =====
+class ConnectionManager:
+    """Manages WebSocket connections for real-time notifications"""
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}  # user_id -> websocket
+    
+    async def connect(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket
+        logging.info(f"WebSocket connected for user: {user_id}")
+    
+    def disconnect(self, user_id: str):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
+            logging.info(f"WebSocket disconnected for user: {user_id}")
+    
+    async def send_personal_message(self, message: dict, user_id: str):
+        if user_id in self.active_connections:
+            try:
+                await self.active_connections[user_id].send_json(message)
+            except Exception as e:
+                logging.error(f"Error sending to {user_id}: {e}")
+                self.disconnect(user_id)
+    
+    async def broadcast(self, message: dict, exclude_user: str = None):
+        """Broadcast message to all connected users except the sender"""
+        disconnected = []
+        for user_id, connection in self.active_connections.items():
+            if user_id != exclude_user:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    logging.error(f"Error broadcasting to {user_id}: {e}")
+                    disconnected.append(user_id)
+        
+        # Clean up disconnected users
+        for user_id in disconnected:
+            self.disconnect(user_id)
+    
+    async def broadcast_to_roles(self, message: dict, roles: list, exclude_user: str = None):
+        """Broadcast message to users with specific roles"""
+        # This requires knowing user roles - for simplicity, broadcast to all
+        await self.broadcast(message, exclude_user)
+
+ws_manager = ConnectionManager()
+
+
 # ===== HELPER FUNCTIONS =====
 
 # Diccionario de nombres comunes con tildes correctas
