@@ -1793,6 +1793,9 @@ export default function Predios() {
         formData.append('municipio', codigosMunicipioSeleccionado);
       }
       
+      // Agregar opción de forzar disponibles
+      formData.append('forzar_disponibles', forzarDisponibles.toString());
+      
       const res = await axios.post(`${API}/codigos-homologados/cargar`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -1805,13 +1808,17 @@ export default function Predios() {
       if (res.data.codigos_duplicados > 0) {
         toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
       }
-      if (res.data.codigos_ya_usados > 0) {
+      if (res.data.codigos_ya_usados > 0 && !forzarDisponibles) {
         toast.info(`${res.data.codigos_ya_usados} códigos ya estaban asignados a predios existentes`, { duration: 5000 });
+      }
+      if (forzarDisponibles) {
+        toast.info('Todos los códigos fueron marcados como disponibles', { duration: 3000 });
       }
       
       // Limpiar estado y recargar estadísticas
       setCodigosFileSelected(null);
       setCodigosMunicipioSeleccionado('');
+      setForzarDisponibles(false);
       fetchCodigosStats();
     } catch (error) {
       console.error('Error cargando códigos:', error);
@@ -1832,10 +1839,40 @@ export default function Predios() {
     }
   };
   
+  // Recalcular códigos de un municipio
+  const recalcularCodigosMunicipio = async (municipio) => {
+    if (!municipio) {
+      toast.error('Seleccione un municipio');
+      return;
+    }
+    
+    setRecalculandoCodigos(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API}/codigos-homologados/recalcular/${encodeURIComponent(municipio)}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 180000 // 3 minutos
+      });
+      
+      toast.success(`${res.data.codigos_liberados} códigos liberados correctamente`, { duration: 5000 });
+      if (res.data.codigos_marcados_usados > 0) {
+        toast.info(`${res.data.codigos_marcados_usados} códigos marcados como usados`);
+      }
+      
+      // Recargar estadísticas
+      fetchCodigosStats();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error recalculando códigos');
+    } finally {
+      setRecalculandoCodigos(false);
+    }
+  };
+  
   // Cancelar carga de archivo
   const cancelarCargaCodigos = () => {
     setCodigosFileSelected(null);
     setCodigosMunicipioSeleccionado('');
+    setForzarDisponibles(false);
   };
   
   // Obtener códigos usados por municipio
