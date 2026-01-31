@@ -16994,6 +16994,26 @@ async def drop_collection(
 # Include the router in the main app
 app.include_router(api_router)
 
+
+# ===== WEBSOCKET ENDPOINT FOR REAL-TIME NOTIFICATIONS =====
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for real-time notifications"""
+    await ws_manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Keep connection alive, listen for messages
+            data = await websocket.receive_text()
+            # Echo back for ping/pong
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(user_id)
+    except Exception as e:
+        logging.error(f"WebSocket error for {user_id}: {e}")
+        ws_manager.disconnect(user_id)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
