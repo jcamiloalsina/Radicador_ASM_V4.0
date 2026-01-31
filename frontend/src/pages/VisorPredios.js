@@ -532,6 +532,10 @@ export default function VisorPredios() {
   }, [filterMunicipio, filterZona, mostrarPredios]);
 
   const fetchLimitesMunicipios = async (fuente = 'oficial') => {
+    if (!navigator.onLine) {
+      console.log('Modo offline: límites de municipios no disponibles');
+      return;
+    }
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/gdb/limites-municipios?fuente=${fuente}`, {
