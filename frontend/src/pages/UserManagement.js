@@ -33,6 +33,41 @@ export default function UserManagement() {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Estados para grupos colapsables
+  const [collapsedGroups, setCollapsedGroups] = useState({
+    administrador: false,
+    coordinador: false,
+    gestor: false,
+    atencion_usuario: false,
+    comunicaciones: false,
+    empresa: false,
+    usuario: true // Colapsado por defecto
+  });
+
+  // Configuración de grupos de roles
+  const roleGroups = [
+    { key: 'administrador', label: 'Administradores', icon: '👑', color: 'bg-purple-100 border-purple-300' },
+    { key: 'coordinador', label: 'Coordinadores', icon: '📊', color: 'bg-blue-100 border-blue-300' },
+    { key: 'gestor', label: 'Gestores', icon: '👤', color: 'bg-emerald-100 border-emerald-300' },
+    { key: 'atencion_usuario', label: 'Atención al Usuario', icon: '🎧', color: 'bg-amber-100 border-amber-300' },
+    { key: 'comunicaciones', label: 'Comunicaciones', icon: '📢', color: 'bg-cyan-100 border-cyan-300' },
+    { key: 'empresa', label: 'Empresas', icon: '🏢', color: 'bg-slate-100 border-slate-300' },
+    { key: 'usuario', label: 'Usuarios Externos', icon: '👥', color: 'bg-gray-100 border-gray-300' },
+  ];
+
+  // Función para agrupar usuarios por rol
+  const getUsersByRole = (role) => {
+    return filteredUsers.filter(u => u.role === role);
+  };
+
+  // Toggle colapsar grupo
+  const toggleGroup = (groupKey) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
 
   // Estados para base de datos
   const [dbStatus, setDbStatus] = useState(null);
