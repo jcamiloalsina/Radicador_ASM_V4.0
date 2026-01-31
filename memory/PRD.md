@@ -18,6 +18,7 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 4. `coordinador` - Aprueba cambios, gestiona permisos, ve histórico completo
 5. `administrador` - Control total del sistema
 6. `comunicaciones` - **Solo lectura**: puede consultar predios, ver visor, ver trámites
+7. `empresa` - **Solo lectura restringida**: puede consultar información catastral, ver visor de predios y acceder a certificados. **NO puede** descargar Excel, crear/editar/eliminar predios, ni proponer cambios.
 
 **Nota:** "Gestor Auxiliar" NO es un rol, sino una condición temporal.
 
