@@ -58,6 +58,16 @@ export default function Pendientes() {
   const [procesando, setProcesando] = useState(false);
   const [activeTab, setActiveTab] = useState('modificaciones');
   
+  // Filtros para historial
+  const [historialFiltros, setHistorialFiltros] = useState({
+    estado: '', // 'aprobado', 'rechazado', '' (todos)
+    tipo_cambio: '', // 'creacion', 'modificacion', 'eliminacion', ''
+    municipio: '',
+    fecha_desde: '',
+    fecha_hasta: ''
+  });
+  const [municipiosHistorial, setMunicipiosHistorial] = useState([]);
+  
   // Estados para predios nuevos
   const [selectedPredioNuevo, setSelectedPredioNuevo] = useState(null);
   const [showPredioDetailDialog, setShowPredioDetailDialog] = useState(false);
