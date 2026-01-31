@@ -2912,6 +2912,19 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
                 {"user_id": current_user['id']}
             ]
         }
+    # Rol Empresa: no puede ver estadísticas de peticiones
+    elif current_user['role'] == UserRole.EMPRESA:
+        # Retornar estadísticas vacías para el rol empresa
+        return {
+            "total": 0,
+            "radicado": 0,
+            "asignado": 0,
+            "rechazado": 0,
+            "revision": 0,
+            "devuelto": 0,
+            "finalizado": 0,
+            "mensaje": "Sin acceso a estadísticas de peticiones"
+        }
     else:
         query = {}
     
