@@ -10443,8 +10443,10 @@ async def get_cambios_historial(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtiene el historial de cambios aprobados y rechazados"""
-    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden ver el historial")
+    # Permitir a coordinadores, admins, gestores y atención ver el historial
+    allowed_roles = [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.GESTOR, UserRole.ATENCION_USUARIO]
+    if current_user['role'] not in allowed_roles:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver el historial de cambios")
     
     # Buscar cambios que ya fueron procesados (aprobados o rechazados)
     estados_procesados = [
@@ -10455,7 +10457,7 @@ async def get_cambios_historial(
     cambios = await db.predios_cambios.find(
         {"estado": {"$in": estados_procesados}},
         {"_id": 0}
-    ).sort("fecha_decision", -1).limit(limit).to_list(limit)
+    ).sort("fecha_aprobacion", -1).limit(limit).to_list(limit)
     
     # Enriquecer con datos del predio original
     for cambio in cambios:
