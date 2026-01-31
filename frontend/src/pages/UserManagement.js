@@ -548,7 +548,7 @@ export default function UserManagement() {
             </CardContent>
           </Card>
 
-          {/* Users List */}
+          {/* Users List - Grouped by Role */}
           {filteredUsers.length === 0 ? (
             <Card className="border-slate-200">
               <CardContent className="pt-6 text-center py-12">
@@ -558,51 +558,90 @@ export default function UserManagement() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {filteredUsers.map((user) => (
-                <Card key={user.id} className="border-slate-200 hover:shadow-md transition-shadow" data-testid={`user-card-${user.id}`}>
-                  <CardHeader>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-outfit text-slate-900" data-testid={`user-name-${user.id}`}>
-                          {user.full_name}
-                        </CardTitle>
-                        <p className="text-sm text-slate-600 mt-1" data-testid={`user-email-${user.id}`}>
-                          {user.email}
-                        </p>
-                      </div>
+            <div className="space-y-4">
+              {roleGroups.map((group) => {
+                const groupUsers = getUsersByRole(group.key);
+                if (groupUsers.length === 0 && searchTerm) return null; // Ocultar grupos vacíos cuando hay búsqueda
+                
+                return (
+                  <Card key={group.key} className={`border ${group.color}`}>
+                    {/* Group Header - Clickable */}
+                    <div 
+                      className="px-4 py-3 cursor-pointer flex items-center justify-between hover:bg-white/50 transition-colors"
+                      onClick={() => toggleGroup(group.key)}
+                    >
                       <div className="flex items-center gap-3">
-                        {getRoleBadge(user.role)}
+                        <span className="text-xl">{group.icon}</span>
+                        <h3 className="font-semibold text-slate-800">{group.label}</h3>
+                        <Badge variant="secondary" className="bg-white/80">
+                          {groupUsers.length}
+                        </Badge>
                       </div>
+                      <button className="text-slate-500 hover:text-slate-700 transition-colors">
+                        {collapsedGroups[group.key] ? (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {user.id !== currentUser.id ? (
-                      <div className="flex items-center gap-4">
-                        <Label htmlFor={`role-${user.id}`} className="text-slate-700">Cambiar Rol</Label>
-                        <Select 
-                          value={user.role} 
-                          onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                        >
-                          <SelectTrigger className="focus:ring-emerald-600 w-48" data-testid={`role-select-${user.id}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="usuario">Usuario</SelectItem>
-                            <SelectItem value="atencion_usuario">Atención al Usuario</SelectItem>
-                            <SelectItem value="comunicaciones">Comunicaciones</SelectItem>
-                            <SelectItem value="gestor">Gestor</SelectItem>
-                            <SelectItem value="coordinador">Coordinador</SelectItem>
-                            <SelectItem value="administrador">Administrador</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500 italic">No puedes cambiar tu propio rol</p>
+                    
+                    {/* Group Content */}
+                    {!collapsedGroups[group.key] && (
+                      <CardContent className="pt-0 pb-3">
+                        {groupUsers.length === 0 ? (
+                          <p className="text-sm text-slate-500 italic py-2 px-2">Sin usuarios en este grupo</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {groupUsers.map((user) => (
+                              <div 
+                                key={user.id} 
+                                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors gap-3"
+                                data-testid={`user-card-${user.id}`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-slate-900 truncate" data-testid={`user-name-${user.id}`}>
+                                    {user.full_name}
+                                  </p>
+                                  <p className="text-sm text-slate-500 truncate" data-testid={`user-email-${user.id}`}>
+                                    {user.email}
+                                  </p>
+                                </div>
+                                
+                                {user.id !== currentUser.id ? (
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <span className="text-xs text-slate-500 hidden sm:inline">Cambiar a:</span>
+                                    <select
+                                      value={user.role}
+                                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                                      className="text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white hover:border-emerald-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-colors"
+                                      data-testid={`role-select-${user.id}`}
+                                    >
+                                      <option value="usuario">Usuario</option>
+                                      <option value="atencion_usuario">Atención al Usuario</option>
+                                      <option value="comunicaciones">Comunicaciones</option>
+                                      <option value="empresa">Empresa</option>
+                                      <option value="gestor">Gestor</option>
+                                      <option value="coordinador">Coordinador</option>
+                                      <option value="administrador">Administrador</option>
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">Tu cuenta</Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
