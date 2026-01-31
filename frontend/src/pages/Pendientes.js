@@ -367,7 +367,7 @@ export default function Pendientes() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
           <TabsTrigger value="modificaciones" className="flex items-center gap-2">
             <Edit className="w-4 h-4" />
             Modificaciones
