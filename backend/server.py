@@ -10196,30 +10196,6 @@ async def get_cambios_pendientes(
     }
 
 
-@api_router.get("/predios/cambios/historial")
-async def get_historial_cambios(
-    predio_id: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100,
-    current_user: dict = Depends(get_current_user)
-):
-    """Obtiene el historial de cambios (aprobados y rechazados)"""
-    if current_user['role'] == UserRole.USUARIO:
-        raise HTTPException(status_code=403, detail="No tiene permiso")
-    
-    query = {}
-    if predio_id:
-        query["predio_id"] = predio_id
-    
-    total = await db.predios_cambios.count_documents(query)
-    cambios = await db.predios_cambios.find(query, {"_id": 0}).sort("fecha_propuesta", -1).skip(skip).limit(limit).to_list(limit)
-    
-    return {
-        "total": total,
-        "cambios": cambios
-    }
-
-
 @api_router.post("/predios/cambios/aprobar")
 async def aprobar_rechazar_cambio(
     request: CambioAprobacionRequest,
