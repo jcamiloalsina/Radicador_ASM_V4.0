@@ -10117,8 +10117,8 @@ async def proponer_cambio_predio(
     Propone un cambio en un predio (crear, modificar, eliminar).
     Solo gestores y atención pueden proponer. Coordinadores aprueban directamente.
     """
-    # Verificar permisos - Usuarios y Comunicaciones no pueden proponer cambios
-    if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES]:
+    # Verificar permisos - Usuarios, Comunicaciones y Empresa no pueden proponer cambios
+    if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
         raise HTTPException(status_code=403, detail="No tiene permiso para proponer cambios en predios")
     
     # Coordinadores y administradores aprueban directamente
