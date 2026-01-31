@@ -1561,6 +1561,52 @@ export default function Predios() {
     }
   }, [codigoManual.zona, codigoManual.sector, formData.municipio, showCreateDialog]);
 
+  // === WEBSOCKET LISTENER FOR REAL-TIME SYNC ===
+  // Escuchar notificaciones de cambios en predios para sincronización automática
+  useEffect(() => {
+    if (!addListener) return;
+    
+    const handleWebSocketMessage = (message) => {
+      if (message.type === 'cambio_predio') {
+        console.log('[Predios] WebSocket: Cambio de predio notificado', message);
+        
+        // Si el cambio es del municipio actual, actualizar datos
+        if (message.municipio === filterMunicipio || !filterMunicipio) {
+          // Actualizar estadísticas de cambios
+          fetchCambiosStats();
+          
+          // Si estamos viendo el historial, actualizarlo también
+          if (showPendientesDialog && historialTab === 'historial') {
+            fetchCambiosHistorial();
+          }
+          
+          // Si el cambio fue aprobado y estamos en el municipio afectado, sugerir sincronizar
+          if (message.action === 'aprobado' && message.municipio === filterMunicipio) {
+            // Auto-sincronizar los datos del municipio
+            fetchPredios();
+          }
+        }
+      }
+    };
+    
+    // Agregar listener
+    const removeListener = addListener(handleWebSocketMessage);
+    
+    // También escuchar el evento personalizado desde el toast
+    const handleSyncEvent = (e) => {
+      if (e.detail?.municipio === filterMunicipio) {
+        fetchPredios();
+        toast.success('Datos sincronizados');
+      }
+    };
+    window.addEventListener('syncPredios', handleSyncEvent);
+    
+    return () => {
+      removeListener();
+      window.removeEventListener('syncPredios', handleSyncEvent);
+    };
+  }, [addListener, filterMunicipio, showPendientesDialog, historialTab]);
+
   // Función para obtener la última manzana de un sector
   const fetchUltimaManzana = async () => {
     try {
