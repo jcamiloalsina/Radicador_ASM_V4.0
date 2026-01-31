@@ -4599,40 +4599,99 @@ export default function Predios() {
                               </div>
                             </div>
 
-                            {/* Datos propuestos expandibles */}
+                            {/* Datos propuestos expandibles - Solo muestra campos que realmente cambiaron */}
                             <details className="bg-slate-50 rounded-lg p-3">
                               <summary className="cursor-pointer font-medium text-sm text-slate-700 flex items-center gap-2">
                                 <Eye className="w-4 h-4" />
-                                Ver datos propuestos
+                                Ver cambios propuestos
                               </summary>
-                              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                                {cambio.datos_propuestos.municipio && (
-                                  <div><span className="text-slate-500">Municipio:</span> <strong>{cambio.datos_propuestos.municipio}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.nombre_propietario && (
-                                  <div><span className="text-slate-500">Propietario:</span> <strong>{cambio.datos_propuestos.nombre_propietario}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.direccion && (
-                                  <div><span className="text-slate-500">Dirección:</span> <strong>{cambio.datos_propuestos.direccion}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.destino_economico && (
-                                  <div><span className="text-slate-500">Destino:</span> <strong>{cambio.datos_propuestos.destino_economico}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.area_terreno !== undefined && (
-                                  <div><span className="text-slate-500">Área Terreno:</span> <strong>{cambio.datos_propuestos.area_terreno?.toLocaleString()} m²</strong></div>
-                                )}
-                                {cambio.datos_propuestos.area_construida !== undefined && (
-                                  <div><span className="text-slate-500">Área Construida:</span> <strong>{cambio.datos_propuestos.area_construida?.toLocaleString()} m²</strong></div>
-                                )}
-                                {cambio.datos_propuestos.avaluo !== undefined && (
-                                  <div><span className="text-slate-500">Avalúo:</span> <strong className="text-emerald-700">{formatCurrency(cambio.datos_propuestos.avaluo)}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.tipo_documento && (
-                                  <div><span className="text-slate-500">Tipo Doc:</span> <strong>{cambio.datos_propuestos.tipo_documento}</strong></div>
-                                )}
-                                {cambio.datos_propuestos.numero_documento && (
-                                  <div><span className="text-slate-500">Nro. Doc:</span> <strong>{cambio.datos_propuestos.numero_documento}</strong></div>
-                                )}
+                              <div className="mt-3 space-y-2 text-sm">
+                                {(() => {
+                                  const propuestos = cambio.datos_propuestos || {};
+                                  const original = cambio.predio_actual || {};
+                                  const cambiosReales = [];
+
+                                  // Comparar nombre_propietario
+                                  if (propuestos.nombre_propietario !== undefined && propuestos.nombre_propietario !== original.nombre_propietario) {
+                                    cambiosReales.push({
+                                      label: 'Propietario',
+                                      antes: original.nombre_propietario || 'N/A',
+                                      despues: propuestos.nombre_propietario
+                                    });
+                                  }
+                                  // Comparar direccion
+                                  if (propuestos.direccion !== undefined && propuestos.direccion !== original.direccion) {
+                                    cambiosReales.push({
+                                      label: 'Dirección',
+                                      antes: original.direccion || 'N/A',
+                                      despues: propuestos.direccion
+                                    });
+                                  }
+                                  // Comparar destino_economico
+                                  if (propuestos.destino_economico !== undefined && propuestos.destino_economico !== original.destino_economico) {
+                                    cambiosReales.push({
+                                      label: 'Destino Económico',
+                                      antes: original.destino_economico || 'N/A',
+                                      despues: propuestos.destino_economico
+                                    });
+                                  }
+                                  // Comparar area_terreno
+                                  if (propuestos.area_terreno !== undefined && propuestos.area_terreno !== original.area_terreno) {
+                                    cambiosReales.push({
+                                      label: 'Área Terreno',
+                                      antes: original.area_terreno ? `${original.area_terreno.toLocaleString()} m²` : 'N/A',
+                                      despues: `${propuestos.area_terreno?.toLocaleString()} m²`
+                                    });
+                                  }
+                                  // Comparar area_construida
+                                  if (propuestos.area_construida !== undefined && propuestos.area_construida !== original.area_construida) {
+                                    cambiosReales.push({
+                                      label: 'Área Construida',
+                                      antes: original.area_construida ? `${original.area_construida.toLocaleString()} m²` : 'N/A',
+                                      despues: `${propuestos.area_construida?.toLocaleString()} m²`
+                                    });
+                                  }
+                                  // Comparar avaluo
+                                  if (propuestos.avaluo !== undefined && propuestos.avaluo !== original.avaluo) {
+                                    cambiosReales.push({
+                                      label: 'Avalúo',
+                                      antes: original.avaluo ? formatCurrency(original.avaluo) : 'N/A',
+                                      despues: formatCurrency(propuestos.avaluo),
+                                      highlight: true
+                                    });
+                                  }
+                                  // Comparar tipo_documento
+                                  if (propuestos.tipo_documento !== undefined && propuestos.tipo_documento !== original.tipo_documento) {
+                                    cambiosReales.push({
+                                      label: 'Tipo Documento',
+                                      antes: original.tipo_documento || 'N/A',
+                                      despues: propuestos.tipo_documento
+                                    });
+                                  }
+                                  // Comparar numero_documento
+                                  if (propuestos.numero_documento !== undefined && propuestos.numero_documento !== original.numero_documento) {
+                                    cambiosReales.push({
+                                      label: 'Nro. Documento',
+                                      antes: original.numero_documento || 'N/A',
+                                      despues: propuestos.numero_documento
+                                    });
+                                  }
+
+                                  if (cambiosReales.length === 0) {
+                                    return <p className="text-slate-500 italic">No se detectaron cambios en los campos comparables</p>;
+                                  }
+
+                                  return cambiosReales.map((c, idx) => (
+                                    <div key={idx} className="bg-white rounded p-2 border border-slate-200">
+                                      <span className="font-medium text-slate-700">{c.label}:</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-red-600 line-through text-xs">{c.antes}</span>
+                                        <span className="text-slate-400">→</span>
+                                        <strong className={c.highlight ? 'text-emerald-700' : 'text-blue-700'}>{c.despues}</strong>
+                                      </div>
+                                    </div>
+                                  ));
+                                })()}
                               </div>
                             </details>
                           </div>
