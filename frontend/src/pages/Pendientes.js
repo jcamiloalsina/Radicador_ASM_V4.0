@@ -76,7 +76,65 @@ export default function Pendientes() {
   useEffect(() => {
     fetchPendientes();
     fetchPrediosNuevos();
+    fetchHistorialStats();
   }, []);
+
+  // Cargar historial cuando se selecciona el tab
+  useEffect(() => {
+    if (activeTab === 'historial' && cambiosHistorial.length === 0) {
+      fetchHistorial();
+    }
+  }, [activeTab]);
+
+  // WebSocket listener for real-time updates
+  useEffect(() => {
+    if (!addListener) return;
+    
+    const handleMessage = (message) => {
+      if (message.type === 'cambio_predio') {
+        // Refresh data when a change is approved/rejected
+        fetchPendientes();
+        fetchHistorialStats();
+        if (activeTab === 'historial') {
+          fetchHistorial();
+        }
+      }
+    };
+    
+    return addListener(handleMessage);
+  }, [addListener, activeTab]);
+
+  const fetchHistorialStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/cambios/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHistorialStats({
+        aprobados: res.data.historial_aprobados || 0,
+        rechazados: res.data.historial_rechazados || 0,
+        total: res.data.total_historial || 0
+      });
+    } catch (error) {
+      console.log('Error cargando stats de historial');
+    }
+  };
+
+  const fetchHistorial = async () => {
+    setLoadingHistorial(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/cambios/historial?limit=100`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCambiosHistorial(res.data.cambios || []);
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      setCambiosHistorial([]);
+    } finally {
+      setLoadingHistorial(false);
+    }
+  };
 
   const fetchPrediosNuevos = async () => {
     setLoadingPredios(true);
