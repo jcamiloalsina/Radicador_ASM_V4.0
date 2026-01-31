@@ -48,18 +48,6 @@ class TestAuth:
         assert response.status_code == 200
         data = response.json()
         return data.get("user", {}).get("id")
-    
-    @pytest.fixture(scope="class")
-    def coordinador_token(self):
-        """Get coordinador authentication token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": COORDINADOR_EMAIL,
-            "password": COORDINADOR_PASSWORD
-        })
-        assert response.status_code == 200, f"Coordinador login failed: {response.text}"
-        data = response.json()
-        assert "token" in data, "No token in response"
-        return data["token"]
 
 
 class TestCambiosStatsEndpoint(TestAuth):
