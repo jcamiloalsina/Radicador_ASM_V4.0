@@ -2237,6 +2237,9 @@ async def get_petitions(current_user: dict = Depends(get_current_user)):
                 {"user_id": current_user['id']}              # Creadas por él
             ]
         }
+    # Empresa y Comunicaciones solo ven sus propias peticiones (las que ellos crearon)
+    elif current_user['role'] in [UserRole.EMPRESA, UserRole.COMUNICACIONES]:
+        query = {"user_id": current_user['id']}
     else:
         # Staff (atencion_usuario, coordinador, administrador) see all petitions
         query = {}
