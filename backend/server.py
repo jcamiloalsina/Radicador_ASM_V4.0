@@ -4714,6 +4714,156 @@ async def eliminar_codigos_municipio(
         "municipio": municipio
     }
 
+
+@api_router.get("/codigos-homologados/diagnostico/{municipio}")
+async def diagnostico_codigos_municipio(
+    municipio: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Diagnóstico detallado de códigos homologados para un municipio.
+    Compara los códigos en la colección con los predios que realmente los tienen asignados."""
+    
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    # 1. Contar códigos en la colección codigos_homologados
+    total_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio})
+    usados_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': True})
+    disponibles_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': False})
+    
+    # 2. Contar predios que REALMENTE tienen codigo_homologado asignado
+    predios_con_codigo = await db.predios.count_documents({
+        'municipio': municipio,
+        'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
+        'deleted': {'$ne': True}
+    })
+    
+    # 3. Obtener los códigos que están en predios pero NO en la colección de códigos
+    codigos_en_predios = await db.predios.distinct('codigo_homologado', {
+        'municipio': municipio,
+        'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
+        'deleted': {'$ne': True}
+    })
+    
+    codigos_en_coleccion = await db.codigos_homologados.distinct('codigo', {'municipio': municipio})
+    
+    # Códigos en predios que NO están en la colección
+    codigos_solo_en_predios = set(codigos_en_predios) - set(codigos_en_coleccion)
+    
+    # Códigos marcados como usados en la colección pero el predio YA NO tiene ese código
+    codigos_huerfanos = []
+    codigos_usados = await db.codigos_homologados.find(
+        {'municipio': municipio, 'usado': True},
+        {'_id': 0, 'codigo': 1, 'predio_id': 1}
+    ).to_list(10000)
+    
+    for c in codigos_usados:
+        if c.get('predio_id'):
+            predio = await db.predios.find_one(
+                {'id': c['predio_id'], 'codigo_homologado': c['codigo'], 'deleted': {'$ne': True}},
+                {'_id': 0, 'id': 1}
+            )
+            if not predio:
+                codigos_huerfanos.append(c['codigo'])
+    
+    return {
+        "municipio": municipio,
+        "en_coleccion": {
+            "total": total_en_coleccion,
+            "usados": usados_en_coleccion,
+            "disponibles": disponibles_en_coleccion
+        },
+        "en_predios": {
+            "predios_con_codigo_homologado": predios_con_codigo,
+            "codigos_unicos": len(codigos_en_predios)
+        },
+        "inconsistencias": {
+            "codigos_solo_en_predios": len(codigos_solo_en_predios),
+            "codigos_huerfanos_en_coleccion": len(codigos_huerfanos),
+            "ejemplos_solo_en_predios": list(codigos_solo_en_predios)[:10],
+            "ejemplos_huerfanos": codigos_huerfanos[:10]
+        },
+        "recomendacion": "Si hay muchos códigos huérfanos, use el endpoint /codigos-homologados/recalcular/{municipio} para corregir"
+    }
+
+
+@api_router.post("/codigos-homologados/recalcular/{municipio}")
+async def recalcular_codigos_municipio(
+    municipio: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Recalcula el estado de los códigos homologados basándose en los predios REALMENTE asignados.
+    
+    Esto corrige situaciones donde:
+    - Un código está marcado como 'usado' pero el predio ya no lo tiene
+    - Un código está marcado como 'disponible' pero un predio lo tiene asignado
+    """
+    
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden recalcular códigos")
+    
+    codigos_corregidos = 0
+    codigos_liberados = 0
+    codigos_marcados_usados = 0
+    
+    # 1. Obtener todos los códigos del municipio
+    codigos = await db.codigos_homologados.find(
+        {'municipio': municipio},
+        {'_id': 0, 'codigo': 1, 'usado': 1, 'predio_id': 1}
+    ).to_list(100000)
+    
+    for codigo_doc in codigos:
+        codigo = codigo_doc['codigo']
+        esta_marcado_usado = codigo_doc.get('usado', False)
+        
+        # Verificar si algún predio REALMENTE tiene este código
+        predio_real = await db.predios.find_one({
+            'codigo_homologado': codigo,
+            'municipio': municipio,
+            'deleted': {'$ne': True}
+        }, {'_id': 0, 'id': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1})
+        
+        if predio_real and not esta_marcado_usado:
+            # El predio tiene el código pero está marcado como disponible -> corregir
+            await db.codigos_homologados.update_one(
+                {'municipio': municipio, 'codigo': codigo},
+                {'$set': {
+                    'usado': True,
+                    'predio_id': predio_real['id'],
+                    'codigo_predial': predio_real.get('codigo_predial_nacional'),
+                    'propietario': predio_real.get('nombre_propietario'),
+                    'corregido_en': datetime.utcnow().isoformat()
+                }}
+            )
+            codigos_marcados_usados += 1
+            codigos_corregidos += 1
+            
+        elif not predio_real and esta_marcado_usado:
+            # Está marcado como usado pero ningún predio lo tiene -> liberar
+            await db.codigos_homologados.update_one(
+                {'municipio': municipio, 'codigo': codigo},
+                {'$set': {
+                    'usado': False,
+                    'predio_id': None,
+                    'codigo_predial': None,
+                    'propietario': None,
+                    'liberado_en': datetime.utcnow().isoformat()
+                }}
+            )
+            codigos_liberados += 1
+            codigos_corregidos += 1
+    
+    return {
+        "success": True,
+        "municipio": municipio,
+        "total_revisados": len(codigos),
+        "codigos_corregidos": codigos_corregidos,
+        "codigos_liberados": codigos_liberados,
+        "codigos_marcados_usados": codigos_marcados_usados,
+        "mensaje": f"Se liberaron {codigos_liberados} códigos que estaban incorrectamente marcados como usados"
+    }
+
+
 # ===== FIN SISTEMA DE CÓDIGOS HOMOLOGADOS =====
 
 @api_router.get("/predios")
