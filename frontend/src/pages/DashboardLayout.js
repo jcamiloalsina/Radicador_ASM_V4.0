@@ -247,8 +247,10 @@ export default function DashboardLayout() {
     ];
 
     const conservacionItems = [];
-    if (isStaff) {
+    if (canSeeAllPetitions) {
       conservacionItems.push({ path: '/dashboard/todas-peticiones', label: 'Todas las Peticiones', icon: Users });
+    }
+    if (isStaff) {
       conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
       conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
       conservacionItems.push({ path: '/dashboard/certificados', label: 'Certificados', icon: ShieldCheck });
