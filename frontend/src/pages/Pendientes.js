@@ -46,10 +46,14 @@ const estadoPredioConfig = {
 
 export default function Pendientes() {
   const { user } = useAuth();
+  const { addListener } = useWebSocket() || {};
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [prediosNuevos, setPrediosNuevos] = useState([]);
+  const [cambiosHistorial, setCambiosHistorial] = useState([]);
+  const [historialStats, setHistorialStats] = useState({ aprobados: 0, rechazados: 0 });
   const [loading, setLoading] = useState(true);
   const [loadingPredios, setLoadingPredios] = useState(true);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [selectedCambio, setSelectedCambio] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [activeTab, setActiveTab] = useState('modificaciones');
