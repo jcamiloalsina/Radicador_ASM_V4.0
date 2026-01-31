@@ -1306,8 +1306,8 @@ export default function Predios() {
     label: ''
   });
   
-  // Comunicaciones solo puede ver, no puede crear/editar/eliminar predios
-  const canModifyPredios = user && !['usuario', 'comunicaciones'].includes(user.role);
+  // Comunicaciones y Empresa solo pueden ver, no pueden crear/editar/eliminar predios
+  const canModifyPredios = user && !['usuario', 'comunicaciones', 'empresa'].includes(user.role);
   
   const [predios, setPredios] = useState([]);
   const [catalogos, setCatalogos] = useState(null);
