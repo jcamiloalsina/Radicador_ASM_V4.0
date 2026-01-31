@@ -67,6 +67,9 @@ const SmartTileLayer = ({ mapType, tileLayers, ortoimagenActiva }) => {
   
   const showingGoogle = mapType === 'satellite' && currentZoom > 17;
   
+  // Tile transparente 1x1 para usar cuando no hay conexión
+  const errorTile = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88P/hfwYAB3gD/gFaK4wAAAAASUVORK5CYII=";
+  
   return (
     <>
       <TileLayer
@@ -75,6 +78,7 @@ const SmartTileLayer = ({ mapType, tileLayers, ortoimagenActiva }) => {
         attribution={effectiveLayer.attribution}
         maxZoom={effectiveLayer.maxZoom}
         maxNativeZoom={effectiveLayer.maxNativeZoom || effectiveLayer.maxZoom}
+        errorTileUrl={errorTile}
       />
       {showingGoogle && (
         <div className="absolute bottom-8 left-2 z-[1000] bg-black/60 text-white text-xs px-2 py-1 rounded">
