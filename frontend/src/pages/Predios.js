@@ -1372,6 +1372,8 @@ export default function Predios() {
   const [codigosUsados, setCodigosUsados] = useState([]);
   const [loadingCodigosUsados, setLoadingCodigosUsados] = useState(false);
   const [codigosUsadosMunicipio, setCodigosUsadosMunicipio] = useState('');
+  const [forzarDisponibles, setForzarDisponibles] = useState(false);
+  const [recalculandoCodigos, setRecalculandoCodigos] = useState(false);
   
   // Estado para múltiples propietarios
   const [propietarios, setPropietarios] = useState([{
