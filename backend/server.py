@@ -7297,7 +7297,9 @@ async def export_predios_excel(
     current_user: dict = Depends(get_current_user)
 ):
     """Exporta predios a Excel en formato EXACTO al archivo original R1-R2"""
-    if current_user['role'] == UserRole.USUARIO:
+    # Usuario externo y Empresa no pueden descargar Excel
+    if current_user['role'] in [UserRole.USUARIO, UserRole.EMPRESA]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para exportar datos")
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
     # Query
