@@ -10421,7 +10421,7 @@ async def get_mis_propuestas(
 
 @api_router.get("/predios/cambios/stats")
 async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
-    """Obtiene estadísticas de cambios pendientes"""
+    """Obtiene estadísticas de cambios pendientes e historial"""
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
@@ -10429,11 +10429,18 @@ async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
     pendientes_modificacion = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.PENDIENTE_MODIFICACION})
     pendientes_eliminacion = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.PENDIENTE_ELIMINACION})
     
+    # Contar historial de cambios procesados
+    historial_aprobados = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.APROBADO})
+    historial_rechazados = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.RECHAZADO})
+    
     return {
         "pendientes_creacion": pendientes_creacion,
         "pendientes_modificacion": pendientes_modificacion,
         "pendientes_eliminacion": pendientes_eliminacion,
-        "total_pendientes": pendientes_creacion + pendientes_modificacion + pendientes_eliminacion
+        "total_pendientes": pendientes_creacion + pendientes_modificacion + pendientes_eliminacion,
+        "historial_aprobados": historial_aprobados,
+        "historial_rechazados": historial_rechazados,
+        "total_historial": historial_aprobados + historial_rechazados
     }
 
 
