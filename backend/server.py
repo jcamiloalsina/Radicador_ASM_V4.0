@@ -4381,6 +4381,7 @@ async def get_predios_catalogos(current_user: dict = Depends(get_current_user)):
 async def cargar_codigos_homologados(
     file: UploadFile = File(...),
     municipio: Optional[str] = Form(None),
+    forzar_disponibles: bool = Form(False),
     current_user: dict = Depends(get_current_user)
 ):
     """Cargar códigos homologados desde un archivo Excel.
@@ -4388,6 +4389,9 @@ async def cargar_codigos_homologados(
     El archivo puede tener:
     1. Dos columnas: 'Municipio' y 'Codigo_Homologado' (o similar)
     2. Una sola columna con códigos - en este caso se requiere el parámetro 'municipio'
+    
+    Si forzar_disponibles=True, todos los códigos se marcarán como disponibles (no se verificará
+    contra predios existentes). Útil para "resetear" códigos de un municipio.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden cargar códigos")
