@@ -1871,6 +1871,33 @@ export default function Predios() {
     }
   };
   
+  // Diagnosticar códigos de un municipio
+  const diagnosticarCodigosMunicipio = async (municipio) => {
+    if (!municipio) {
+      toast.error('Seleccione un municipio');
+      return;
+    }
+    
+    setLoadingDiagnostico(true);
+    setDiagnosticoCodigos(null);
+    setShowDiagnosticoDialog(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/diagnostico/${encodeURIComponent(municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 120000
+      });
+      
+      setDiagnosticoCodigos(res.data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error obteniendo diagnóstico');
+      setShowDiagnosticoDialog(false);
+    } finally {
+      setLoadingDiagnostico(false);
+    }
+  };
+  
   // Cancelar carga de archivo
   const cancelarCargaCodigos = () => {
     setCodigosFileSelected(null);
