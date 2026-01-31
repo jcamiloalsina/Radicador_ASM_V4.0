@@ -1657,7 +1657,7 @@ async def login(credentials: UserLogin):
     
     # Verificar si el email está verificado (excepto admin protegido y usuarios internos)
     is_protected_admin = user.get('email', '').lower() == PROTECTED_ADMIN_EMAIL.lower()
-    is_internal_user = user.get('role') in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.ATENCION_USUARIO, UserRole.COMUNICACIONES]
+    is_internal_user = user.get('role') in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.ATENCION_USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]
     
     if not user.get('email_verified', True) and not is_protected_admin and not is_internal_user:
         # Reenviar código automáticamente
