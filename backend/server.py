@@ -10447,9 +10447,14 @@ async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
 @api_router.get("/predios/cambios/historial")
 async def get_cambios_historial(
     limit: int = Query(50, ge=1, le=200),
+    estado: Optional[str] = Query(None, description="Filtrar por estado: 'aprobado' o 'rechazado'"),
+    tipo_cambio: Optional[str] = Query(None, description="Filtrar por tipo: 'creacion', 'modificacion', 'eliminacion'"),
+    municipio: Optional[str] = Query(None, description="Filtrar por municipio"),
+    fecha_desde: Optional[str] = Query(None, description="Fecha desde (YYYY-MM-DD)"),
+    fecha_hasta: Optional[str] = Query(None, description="Fecha hasta (YYYY-MM-DD)"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtiene el historial de cambios aprobados y rechazados"""
+    """Obtiene el historial de cambios aprobados y rechazados con filtros opcionales"""
     # Permitir a coordinadores, admins, gestores y atención ver el historial
     allowed_roles = [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.GESTOR, UserRole.ATENCION_USUARIO]
     if current_user['role'] not in allowed_roles:
@@ -10461,8 +10466,35 @@ async def get_cambios_historial(
         PredioEstadoAprobacion.RECHAZADO
     ]
     
+    # Construir query con filtros
+    query = {"estado": {"$in": estados_procesados}}
+    
+    # Filtro por estado específico
+    if estado:
+        if estado == 'aprobado':
+            query["estado"] = PredioEstadoAprobacion.APROBADO
+        elif estado == 'rechazado':
+            query["estado"] = PredioEstadoAprobacion.RECHAZADO
+    
+    # Filtro por tipo de cambio
+    if tipo_cambio:
+        query["tipo_cambio"] = tipo_cambio
+    
+    # Filtro por municipio
+    if municipio:
+        query["datos_propuestos.municipio"] = municipio
+    
+    # Filtro por fecha
+    if fecha_desde or fecha_hasta:
+        fecha_query = {}
+        if fecha_desde:
+            fecha_query["$gte"] = fecha_desde + "T00:00:00"
+        if fecha_hasta:
+            fecha_query["$lte"] = fecha_hasta + "T23:59:59"
+        query["fecha_aprobacion"] = fecha_query
+    
     cambios = await db.predios_cambios.find(
-        {"estado": {"$in": estados_procesados}},
+        query,
         {"_id": 0}
     ).sort("fecha_aprobacion", -1).limit(limit).to_list(limit)
     
@@ -10473,9 +10505,14 @@ async def get_cambios_historial(
             if predio:
                 cambio['predio_actual'] = predio
     
+    # Obtener lista de municipios únicos para el selector de filtros
+    municipios_cursor = await db.predios_cambios.distinct("datos_propuestos.municipio", {"estado": {"$in": estados_procesados}})
+    municipios = sorted([m for m in municipios_cursor if m])
+    
     return {
         "cambios": cambios,
-        "total": len(cambios)
+        "total": len(cambios),
+        "municipios": municipios
     }
 
 
