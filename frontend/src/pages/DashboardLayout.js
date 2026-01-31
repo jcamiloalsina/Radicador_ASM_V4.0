@@ -236,7 +236,7 @@ export default function DashboardLayout() {
     if (!user) return { baseMenuItems: [], conservacionItems: [], actualizacionItems: [], adminItems: [] };
 
     const isStaff = user.role !== 'usuario';
-    const canSeeAllPetitions = isStaff && user.role !== 'empresa' && user.role !== 'comunicaciones';
+    const canSeeAllPetitions = isStaff && user.role !== 'empresa';
     const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
     const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
     const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
