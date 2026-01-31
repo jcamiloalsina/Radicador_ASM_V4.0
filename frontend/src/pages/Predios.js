@@ -1287,6 +1287,7 @@ function SubsanacionesPendientes({ municipio = null, onUpdate }) {
 
 export default function Predios() {
   const { user } = useAuth();
+  const { addListener, isConnected } = useWebSocket() || {};
   
   // Hook de sincronización offline para Conservación
   const { 
