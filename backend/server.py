@@ -9359,8 +9359,9 @@ async def get_construcciones_by_codigo(codigo_predio: str, current_user: dict = 
 @api_router.post("/predios")
 async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(get_current_user)):
     """Crea un nuevo predio"""
-    if current_user['role'] == UserRole.USUARIO:
-        raise HTTPException(status_code=403, detail="No tiene permiso")
+    # Usuario, Comunicaciones y Empresa no pueden crear predios
+    if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
     
     r1 = predio_data.r1
     r2 = predio_data.r2
