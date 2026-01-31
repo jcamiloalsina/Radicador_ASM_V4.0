@@ -382,6 +382,13 @@ export default function Pendientes() {
               <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="historial" className="flex items-center gap-2">
+            <History className="w-4 h-4" />
+            Historial
+            {historialStats.total > 0 && (
+              <Badge variant="outline" className="ml-1">{historialStats.total}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab: Modificaciones */}
