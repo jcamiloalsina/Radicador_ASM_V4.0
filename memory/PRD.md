@@ -1572,3 +1572,34 @@ Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del nav
 
 **Testing:** Verificado con testing_agent_v3_fork - iteration_24.json - 100% tests pasados
 
+
+---
+
+### Sesión 31 Enero 2026 (Mejora 2) - Filtros de Historial
+
+**Cambios implementados:**
+
+1. ✅ **Filtros avanzados para la pestaña Historial:**
+   - Estado: Todos, Aprobados, Rechazados
+   - Tipo de Cambio: Todos, Creación, Modificación, Eliminación
+   - Municipio: Selector dinámico con municipios disponibles
+   - Rango de fechas: Desde/Hasta
+   - Botones "Limpiar" y "Aplicar Filtros"
+
+2. ✅ **Backend actualizado:**
+   - Endpoint `/api/predios/cambios/historial` ahora acepta query params: `estado`, `tipo_cambio`, `municipio`, `fecha_desde`, `fecha_hasta`
+   - Devuelve lista de municipios únicos para el selector
+   - Contador de resultados dinámico
+
+3. ✅ **Mejoras en carga de códigos homologados:**
+   - Timeout extendido a 2 minutos para archivos grandes
+   - Mejor manejo de errores con mensajes específicos
+   - Logging mejorado en backend
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - Endpoint de historial con filtros
+- `/app/frontend/src/pages/Pendientes.js` - UI de filtros y estados
+- `/app/frontend/src/pages/Predios.js` - Mejor manejo de errores en carga de códigos
+
+**Testing:** Screenshot verificado - Filtros funcionando correctamente
+
