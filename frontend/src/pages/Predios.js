@@ -5536,6 +5536,142 @@ export default function Predios() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de Diagnóstico de Códigos */}
+      <Dialog open={showDiagnosticoDialog} onOpenChange={setShowDiagnosticoDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-blue-600" />
+              Diagnóstico de Códigos - {diagnosticoCodigos?.municipio}
+            </DialogTitle>
+            <DialogDescription>
+              Análisis de inconsistencias entre códigos cargados y predios asignados
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingDiagnostico ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+              <p className="text-slate-600">Analizando códigos...</p>
+              <p className="text-sm text-slate-400">Esto puede tomar unos segundos</p>
+            </div>
+          ) : diagnosticoCodigos && (
+            <div className="space-y-6">
+              {/* Resumen de la colección */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
+                  <Database className="w-4 h-4" />
+                  En Colección de Códigos
+                </h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-slate-700">{diagnosticoCodigos.en_coleccion?.total?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500">Total</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-amber-600">{diagnosticoCodigos.en_coleccion?.usados?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500">Marcados Usados</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-emerald-600">{diagnosticoCodigos.en_coleccion?.disponibles?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500">Disponibles</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Predios reales */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Predios con Código Asignado (Realidad)
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-blue-700">{diagnosticoCodigos.en_predios?.predios_con_codigo_homologado?.toLocaleString()}</p>
+                    <p className="text-xs text-blue-600">Predios con código_homologado</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-blue-700">{diagnosticoCodigos.en_predios?.codigos_unicos?.toLocaleString()}</p>
+                    <p className="text-xs text-blue-600">Códigos únicos en predios</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Inconsistencias */}
+              {(diagnosticoCodigos.inconsistencias?.codigos_huerfanos_en_coleccion > 0) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-medium text-red-800 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    ¡Inconsistencias Detectadas!
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-white rounded p-3">
+                      <div>
+                        <p className="font-medium text-red-700">Códigos marcados como "usados" sin predio real</p>
+                        <p className="text-sm text-red-600">Estos códigos se liberarán al recalcular</p>
+                      </div>
+                      <p className="text-3xl font-bold text-red-600">
+                        {diagnosticoCodigos.inconsistencias?.codigos_huerfanos_en_coleccion?.toLocaleString()}
+                      </p>
+                    </div>
+                    
+                    {diagnosticoCodigos.inconsistencias?.ejemplos_huerfanos?.length > 0 && (
+                      <div className="text-sm">
+                        <p className="text-red-700 font-medium mb-1">Ejemplos de códigos huérfanos:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {diagnosticoCodigos.inconsistencias.ejemplos_huerfanos.slice(0, 5).map((c, i) => (
+                            <Badge key={i} variant="outline" className="text-red-600 border-red-300">{c}</Badge>
+                          ))}
+                          {diagnosticoCodigos.inconsistencias.ejemplos_huerfanos.length > 5 && (
+                            <Badge variant="outline" className="text-slate-500">+{diagnosticoCodigos.inconsistencias.ejemplos_huerfanos.length - 5} más</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Sin inconsistencias */}
+              {diagnosticoCodigos.inconsistencias?.codigos_huerfanos_en_coleccion === 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-emerald-500 mb-2" />
+                  <p className="font-medium text-emerald-800">¡Sin inconsistencias!</p>
+                  <p className="text-sm text-emerald-600">Los códigos están correctamente sincronizados con los predios</p>
+                </div>
+              )}
+              
+              {/* Recomendación y botón de acción */}
+              {diagnosticoCodigos.inconsistencias?.codigos_huerfanos_en_coleccion > 0 && (
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div>
+                    <p className="font-medium text-amber-800">Recomendación</p>
+                    <p className="text-sm text-amber-700">
+                      Ejecute "Recalcular" para liberar {diagnosticoCodigos.inconsistencias?.codigos_huerfanos_en_coleccion?.toLocaleString()} códigos
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setShowDiagnosticoDialog(false);
+                      recalcularCodigosMunicipio(diagnosticoCodigos.municipio);
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={recalculandoCodigos}
+                  >
+                    {recalculandoCodigos ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Recalcular Ahora
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
