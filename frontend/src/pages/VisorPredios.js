@@ -355,12 +355,18 @@ export default function VisorPredios() {
   };
 
   useEffect(() => {
-    fetchGdbStats();
-    fetchLimitesMunicipios('oficial'); // Siempre usar límites oficiales
-    fetchOrtoimagenes(); // Cargar ortoimágenes disponibles
-    // Verificar estado de cargas GDB del mes (solo para roles autorizados)
-    if (user?.role === 'administrador' || user?.role === 'coordinador' || (user?.role === 'gestor' && user?.puede_actualizar_gdb)) {
-      verificarCargasMensuales();
+    // Solo cargar datos del servidor si está online
+    if (navigator.onLine) {
+      fetchGdbStats();
+      fetchLimitesMunicipios('oficial'); // Siempre usar límites oficiales
+      fetchOrtoimagenes(); // Cargar ortoimágenes disponibles
+      // Verificar estado de cargas GDB del mes (solo para roles autorizados)
+      if (user?.role === 'administrador' || user?.role === 'coordinador' || (user?.role === 'gestor' && user?.puede_actualizar_gdb)) {
+        verificarCargasMensuales();
+      }
+    } else {
+      // Modo offline - intentar cargar límites desde caché si están disponibles
+      console.log('VisorPredios: Iniciando en modo offline');
     }
   }, []);
   
