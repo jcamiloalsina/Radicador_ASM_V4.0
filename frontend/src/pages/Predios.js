@@ -5416,20 +5416,36 @@ export default function Predios() {
                                 </Button>
                               )}
                               {user?.role === 'administrador' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                  onClick={() => recalcularCodigosMunicipio(stat.municipio)}
-                                  disabled={recalculandoCodigos}
-                                  title="Recalcular códigos usados vs disponibles"
-                                >
-                                  {recalculandoCodigos ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <RefreshCw className="w-4 h-4" />
-                                  )}
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                    onClick={() => diagnosticarCodigosMunicipio(stat.municipio)}
+                                    disabled={loadingDiagnostico}
+                                    title="Diagnosticar inconsistencias"
+                                  >
+                                    {loadingDiagnostico ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Search className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                    onClick={() => recalcularCodigosMunicipio(stat.municipio)}
+                                    disabled={recalculandoCodigos}
+                                    title="Recalcular códigos usados vs disponibles"
+                                  >
+                                    {recalculandoCodigos ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </td>
