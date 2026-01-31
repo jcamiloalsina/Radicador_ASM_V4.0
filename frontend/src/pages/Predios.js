@@ -1795,7 +1795,8 @@ export default function Predios() {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        timeout: 120000 // 2 minutos de timeout para archivos grandes
       });
       
       toast.success(`${res.data.codigos_insertados} códigos cargados exitosamente`);
@@ -1811,7 +1812,19 @@ export default function Predios() {
       setCodigosMunicipioSeleccionado('');
       fetchCodigosStats();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error cargando códigos');
+      console.error('Error cargando códigos:', error);
+      
+      // Mejor manejo de errores
+      let errorMessage = 'Error cargando códigos';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'El archivo es muy grande o el servidor tardó demasiado. Por favor intente nuevamente.';
+      } else if (!error.response) {
+        errorMessage = 'Error de conexión. Verifique su conexión a internet.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setUploadingCodigos(false);
     }
