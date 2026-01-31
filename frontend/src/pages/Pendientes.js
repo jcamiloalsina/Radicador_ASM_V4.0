@@ -130,20 +130,53 @@ export default function Pendientes() {
     }
   };
 
-  const fetchHistorial = async () => {
+  const fetchHistorial = async (filtros = historialFiltros) => {
     setLoadingHistorial(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/predios/cambios/historial?limit=100`, {
+      
+      // Construir query params con filtros
+      const params = new URLSearchParams();
+      params.append('limit', '100');
+      if (filtros.estado) params.append('estado', filtros.estado);
+      if (filtros.tipo_cambio) params.append('tipo_cambio', filtros.tipo_cambio);
+      if (filtros.municipio) params.append('municipio', filtros.municipio);
+      if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde);
+      if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta);
+      
+      const res = await axios.get(`${API}/predios/cambios/historial?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCambiosHistorial(res.data.cambios || []);
+      
+      // Extraer municipios únicos para el selector
+      if (res.data.municipios) {
+        setMunicipiosHistorial(res.data.municipios);
+      }
     } catch (error) {
       console.error('Error cargando historial:', error);
       setCambiosHistorial([]);
     } finally {
       setLoadingHistorial(false);
     }
+  };
+
+  // Aplicar filtros al historial
+  const aplicarFiltrosHistorial = () => {
+    fetchHistorial(historialFiltros);
+  };
+
+  // Limpiar filtros
+  const limpiarFiltrosHistorial = () => {
+    const filtrosLimpios = {
+      estado: '',
+      tipo_cambio: '',
+      municipio: '',
+      fecha_desde: '',
+      fecha_hasta: ''
+    };
+    setHistorialFiltros(filtrosLimpios);
+    fetchHistorial(filtrosLimpios);
   };
 
   const fetchPrediosNuevos = async () => {
