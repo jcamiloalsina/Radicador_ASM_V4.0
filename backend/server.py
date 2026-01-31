@@ -10312,6 +10312,21 @@ async def aprobar_rechazar_cambio(
                 enviar_email=False
             )
     
+    # === WEBSOCKET NOTIFICATION ===
+    # Broadcast real-time notification to all connected users
+    ws_notification = {
+        "type": "cambio_predio",
+        "action": "aprobado" if request.aprobado else "rechazado",
+        "cambio_id": request.cambio_id,
+        "predio_id": cambio.get("predio_id"),
+        "codigo_predio": cambio.get("datos_propuestos", {}).get("codigo_homologado", "N/A"),
+        "municipio": cambio.get("datos_propuestos", {}).get("municipio", ""),
+        "decidido_por": current_user['full_name'],
+        "propuesto_por": cambio.get("propuesto_por"),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await ws_manager.broadcast(ws_notification, exclude_user=current_user['id'])
+    
     return {
         "mensaje": "Cambio aprobado y aplicado" if request.aprobado else "Cambio rechazado",
         "estado": nuevo_estado
