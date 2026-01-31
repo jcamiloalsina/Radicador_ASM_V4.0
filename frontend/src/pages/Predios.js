@@ -5370,20 +5370,38 @@ export default function Predios() {
                             )}
                           </td>
                           <td className="py-2 px-4 text-center">
-                            {stat.usados > 0 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                onClick={() => {
-                                  setCodigosUsadosMunicipio(stat.municipio);
-                                  fetchCodigosUsados(stat.municipio);
-                                }}
-                              >
-                                <Eye className="w-4 h-4 mr-1" />
-                                Ver usados
-                              </Button>
-                            )}
+                            <div className="flex items-center justify-center gap-1">
+                              {stat.usados > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  onClick={() => {
+                                    setCodigosUsadosMunicipio(stat.municipio);
+                                    fetchCodigosUsados(stat.municipio);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Ver
+                                </Button>
+                              )}
+                              {user?.role === 'administrador' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                  onClick={() => recalcularCodigosMunicipio(stat.municipio)}
+                                  disabled={recalculandoCodigos}
+                                  title="Recalcular códigos usados vs disponibles"
+                                >
+                                  {recalculandoCodigos ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
