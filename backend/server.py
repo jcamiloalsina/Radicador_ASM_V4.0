@@ -4777,51 +4777,63 @@ async def diagnostico_codigos_municipio(
     current_user: dict = Depends(get_current_user)
 ):
     """Diagnóstico detallado de códigos homologados para un municipio.
-    Compara los códigos en la colección con los predios que realmente los tienen asignados."""
+    Compara los códigos en la colección con los predios que realmente los tienen asignados.
+    OPTIMIZADO: Usa búsquedas en memoria para evitar N+1 queries."""
     
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    # 1. Contar códigos en la colección codigos_homologados
-    total_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio})
-    usados_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': True})
-    disponibles_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': False})
+    # 1. Contar códigos en la colección codigos_homologados (case-insensitive)
+    total_en_coleccion = await db.codigos_homologados.count_documents({
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'}
+    })
+    usados_en_coleccion = await db.codigos_homologados.count_documents({
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'}, 
+        'usado': True
+    })
+    disponibles_en_coleccion = await db.codigos_homologados.count_documents({
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'}, 
+        'usado': False
+    })
     
     # 2. Contar predios que REALMENTE tienen codigo_homologado asignado
-    # Usar búsqueda case-insensitive para municipio
     predios_con_codigo = await db.predios.count_documents({
         'municipio': {'$regex': f'^{municipio}$', '$options': 'i'},
         'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
         'deleted': {'$ne': True}
     })
     
-    # 3. Obtener los códigos que están en predios pero NO en la colección de códigos
+    # 3. Obtener los códigos que están en predios (una sola consulta)
     codigos_en_predios = await db.predios.distinct('codigo_homologado', {
         'municipio': {'$regex': f'^{municipio}$', '$options': 'i'},
         'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
         'deleted': {'$ne': True}
     })
+    # Normalizar a mayúsculas para comparación
+    codigos_en_predios_set = set(c.strip().upper() for c in codigos_en_predios if c)
     
-    codigos_en_coleccion = await db.codigos_homologados.distinct('codigo', {'municipio': municipio})
+    # 4. Obtener códigos de la colección (una sola consulta)
+    codigos_en_coleccion = await db.codigos_homologados.distinct('codigo', {
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'}
+    })
+    codigos_en_coleccion_set = set(c.strip().upper() for c in codigos_en_coleccion if c)
     
     # Códigos en predios que NO están en la colección
-    codigos_solo_en_predios = set(codigos_en_predios) - set(codigos_en_coleccion)
+    codigos_solo_en_predios = codigos_en_predios_set - codigos_en_coleccion_set
     
-    # Códigos marcados como usados en la colección pero el predio YA NO tiene ese código
+    # 5. OPTIMIZADO: Detectar códigos huérfanos sin N+1 queries
+    # Obtener todos los códigos marcados como "usados" de una sola vez
+    codigos_usados_docs = await db.codigos_homologados.find(
+        {'municipio': {'$regex': f'^{municipio}$', '$options': 'i'}, 'usado': True},
+        {'_id': 0, 'codigo': 1}
+    ).to_list(100000)
+    
+    # Códigos huérfanos = marcados como usados pero NO están en ningún predio
     codigos_huerfanos = []
-    codigos_usados = await db.codigos_homologados.find(
-        {'municipio': municipio, 'usado': True},
-        {'_id': 0, 'codigo': 1, 'predio_id': 1}
-    ).to_list(10000)
-    
-    for c in codigos_usados:
-        if c.get('predio_id'):
-            predio = await db.predios.find_one(
-                {'id': c['predio_id'], 'codigo_homologado': c['codigo'], 'deleted': {'$ne': True}},
-                {'_id': 0, 'id': 1}
-            )
-            if not predio:
-                codigos_huerfanos.append(c['codigo'])
+    for doc in codigos_usados_docs:
+        codigo = doc.get('codigo', '').strip().upper()
+        if codigo and codigo not in codigos_en_predios_set:
+            codigos_huerfanos.append(codigo)
     
     return {
         "municipio": municipio,
@@ -4832,7 +4844,7 @@ async def diagnostico_codigos_municipio(
         },
         "en_predios": {
             "predios_con_codigo_homologado": predios_con_codigo,
-            "codigos_unicos": len(codigos_en_predios)
+            "codigos_unicos": len(codigos_en_predios_set)
         },
         "inconsistencias": {
             "codigos_solo_en_predios": len(codigos_solo_en_predios),
