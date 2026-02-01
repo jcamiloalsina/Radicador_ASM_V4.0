@@ -4381,17 +4381,16 @@ async def get_predios_catalogos(current_user: dict = Depends(get_current_user)):
 async def cargar_codigos_homologados(
     file: UploadFile = File(...),
     municipio: Optional[str] = Form(None),
-    forzar_disponibles: bool = Form(False),
     current_user: dict = Depends(get_current_user)
 ):
     """Cargar códigos homologados desde un archivo Excel.
     
+    Todos los códigos se cargan como DISPONIBLES. El estado 'usado' solo cambia
+    cuando se asigna un código a un predio desde la aplicación.
+    
     El archivo puede tener:
     1. Dos columnas: 'Municipio' y 'Codigo_Homologado' (o similar)
     2. Una sola columna con códigos - en este caso se requiere el parámetro 'municipio'
-    
-    Si forzar_disponibles=True, todos los códigos se marcarán como disponibles (no se verificará
-    contra predios existentes). Útil para "resetear" códigos de un municipio.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden cargar códigos")
@@ -4430,98 +4429,79 @@ async def cargar_codigos_homologados(
                     status_code=400, 
                     detail="El archivo no tiene columna 'Municipio'. Por favor seleccione el municipio."
                 )
-            # Usar el municipio proporcionado como parámetro
             municipio_fijo = municipio.strip()
         else:
             municipio_fijo = None
         
-        # Procesar y guardar códigos
-        codigos_insertados = 0
+        # Obtener códigos existentes para este municipio (para evitar duplicados)
+        municipios_en_archivo = set()
+        if municipio_fijo:
+            municipios_en_archivo.add(municipio_fijo)
+        else:
+            for _, row in df.iterrows():
+                muni = str(row[municipio_col]).strip() if municipio_col else municipio_fijo
+                if muni and muni != 'nan':
+                    municipios_en_archivo.add(muni)
+        
+        # Obtener todos los códigos existentes de una sola vez
+        codigos_existentes = set()
+        for muni in municipios_en_archivo:
+            existing = await db.codigos_homologados.distinct('codigo', {'municipio': muni})
+            for c in existing:
+                codigos_existentes.add(f"{muni}:{c}")
+        
+        # Preparar documentos para inserción bulk
+        documentos_a_insertar = []
         codigos_duplicados = 0
-        codigos_ya_usados = 0  # Códigos que ya están asignados a predios existentes
         codigos_por_municipio = {}
+        fecha_carga = datetime.utcnow().isoformat()
         
         for _, row in df.iterrows():
-            # Determinar el municipio para esta fila
-            if municipio_fijo:
-                muni = municipio_fijo
-            else:
-                muni = str(row[municipio_col]).strip()
+            muni = municipio_fijo if municipio_fijo else str(row[municipio_col]).strip()
+            codigo = str(row[codigo_col]).strip().upper() if codigo_col else None
             
-            codigo = str(row[codigo_col]).strip().upper()
-            
+            # Validar datos
             if not muni or not codigo or muni == 'nan' or codigo == 'NAN':
                 continue
             
-            # Verificar si ya existe en la colección de códigos
-            existe = await db.codigos_homologados.find_one({
-                'municipio': muni,
-                'codigo': codigo
-            })
-            
-            if existe:
+            # Verificar duplicado
+            clave = f"{muni}:{codigo}"
+            if clave in codigos_existentes:
                 codigos_duplicados += 1
                 continue
             
-            # Verificar si este código ya está asignado a un predio existente
-            # A menos que se haya marcado forzar_disponibles=True
-            if forzar_disponibles:
-                # Forzar como disponible - no verificar contra predios
-                await db.codigos_homologados.insert_one({
-                    'municipio': muni,
-                    'codigo': codigo,
-                    'usado': False,
-                    'predio_id': None,
-                    'fecha_asignacion': None,
-                    'cargado_por': current_user['id'],
-                    'cargado_por_nombre': current_user['full_name'],
-                    'fecha_carga': datetime.utcnow().isoformat(),
-                    'forzado_disponible': True
-                })
-            else:
-                predio_existente = await db.predios.find_one({
-                    'codigo_homologado': codigo,
-                    'municipio': muni,
-                    'deleted': {'$ne': True}
-                }, {'_id': 0, 'id': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1})
-                
-                if predio_existente:
-                    # El código ya está en uso - insertarlo como usado
-                    await db.codigos_homologados.insert_one({
-                        'municipio': muni,
-                        'codigo': codigo,
-                        'usado': True,
-                        'predio_id': predio_existente['id'],
-                        'codigo_predial': predio_existente.get('codigo_predial_nacional'),
-                        'propietario': predio_existente.get('nombre_propietario'),
-                        'fecha_asignacion': None,  # Ya estaba asignado antes de cargar
-                        'cargado_por': current_user['id'],
-                        'cargado_por_nombre': current_user['full_name'],
-                        'fecha_carga': datetime.utcnow().isoformat()
-                    })
-                    codigos_ya_usados += 1
-                else:
-                    # Código disponible
-                    await db.codigos_homologados.insert_one({
-                        'municipio': muni,
-                        'codigo': codigo,
-                        'usado': False,
-                        'predio_id': None,
-                        'fecha_asignacion': None,
-                        'cargado_por': current_user['id'],
-                        'cargado_por_nombre': current_user['full_name'],
-                        'fecha_carga': datetime.utcnow().isoformat()
-                    })
+            # Agregar a la lista de existentes para evitar duplicados dentro del mismo archivo
+            codigos_existentes.add(clave)
             
-            codigos_insertados += 1
+            # Preparar documento - TODOS como disponibles
+            documentos_a_insertar.append({
+                'municipio': muni,
+                'codigo': codigo,
+                'usado': False,
+                'predio_id': None,
+                'fecha_asignacion': None,
+                'cargado_por': current_user['id'],
+                'cargado_por_nombre': current_user['full_name'],
+                'fecha_carga': fecha_carga
+            })
+            
             codigos_por_municipio[muni] = codigos_por_municipio.get(muni, 0) + 1
+        
+        # Inserción bulk (mucho más rápido)
+        codigos_insertados = 0
+        if documentos_a_insertar:
+            # Insertar en lotes de 1000 para evitar problemas de memoria
+            batch_size = 1000
+            for i in range(0, len(documentos_a_insertar), batch_size):
+                batch = documentos_a_insertar[i:i + batch_size]
+                result = await db.codigos_homologados.insert_many(batch)
+                codigos_insertados += len(result.inserted_ids)
         
         return {
             "success": True,
             "message": f"Códigos cargados exitosamente",
             "codigos_insertados": codigos_insertados,
             "codigos_duplicados": codigos_duplicados,
-            "codigos_ya_usados": codigos_ya_usados,
             "por_municipio": codigos_por_municipio
         }
         
