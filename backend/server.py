@@ -7479,12 +7479,13 @@ async def import_predios_excel(
         for predio in r1_data.values():
             predio['municipio'] = municipio
         
-        # Obtener los códigos prediales de los nuevos predios
+        # Obtener los códigos prediales de los nuevos predios (CNP)
         new_codigos = set(r1_data.keys())
         
-        # Obtener los predios existentes del municipio PARA ESTA VIGENCIA ESPECÍFICA
-        # Usar búsqueda case-insensitive para el municipio
-        existing_predios = await db.predios.find(
+        # === LÓGICA CORREGIDA: Comparar con TODAS las vigencias anteriores ===
+        
+        # 1. Obtener predios de la vigencia actual (para historial)
+        existing_predios_vigencia_actual = await db.predios.find(
             {
                 "municipio": {"$regex": f"^{municipio}$", "$options": "i"}, 
                 "vigencia": vigencia_int
@@ -7492,31 +7493,60 @@ async def import_predios_excel(
             {"_id": 0}
         ).to_list(50000)
         
-        existing_codigos = {p.get('codigo_predial_nacional') for p in existing_predios}
+        # 2. Obtener TODOS los CNP de TODAS las vigencias anteriores
+        all_previous_predios = await db.predios.find(
+            {
+                "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+                "vigencia": {"$lt": vigencia_int}
+            },
+            {"_id": 0, "codigo_predial_nacional": 1, "vigencia": 1}
+        ).to_list(100000)
+        
+        all_previous_cnp = {p['codigo_predial_nacional'] for p in all_previous_predios if p.get('codigo_predial_nacional')}
+        
+        # 3. CNP eliminados = existían en alguna vigencia anterior pero NO vienen en la nueva
+        cnp_eliminados = all_previous_cnp - new_codigos
         
         # Log para debug
-        logger.info(f"R1 Import - Municipio: {municipio}, Vigencia: {vigencia_int}, Predios existentes: {len(existing_predios)}, Nuevos: {len(new_codigos)}")
+        logger.info(f"R1 Import - Municipio: {municipio}, Vigencia: {vigencia_int}")
+        logger.info(f"  - Predios vigencia actual: {len(existing_predios_vigencia_actual)}")
+        logger.info(f"  - CNP históricos (todas vigencias anteriores): {len(all_previous_cnp)}")
+        logger.info(f"  - CNP en nueva importación: {len(new_codigos)}")
+        logger.info(f"  - CNP eliminados detectados: {len(cnp_eliminados)}")
         
-        # Calcular predios eliminados (estaban antes en esta vigencia pero no vienen en la nueva importación)
-        codigos_eliminados = existing_codigos - new_codigos
-        predios_eliminados_count = len(codigos_eliminados)
+        # 4. Guardar predios eliminados (evitando duplicados)
+        predios_eliminados_count = 0
+        predios_eliminados_nuevos = []
         
-        # Guardar predios eliminados en colección separada
-        if codigos_eliminados:
-            predios_a_eliminar = [p for p in existing_predios if p.get('codigo_predial_nacional') in codigos_eliminados]
-            if predios_a_eliminar:
-                await db.predios_eliminados.insert_many([
+        for cnp in cnp_eliminados:
+            # Verificar si ya está marcado como eliminado
+            ya_eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": cnp})
+            if not ya_eliminado:
+                # Obtener datos del predio de la última vigencia donde existió
+                predio_original = await db.predios.find_one(
                     {
-                        **p, 
+                        "codigo_predial_nacional": cnp, 
+                        "municipio": {"$regex": f"^{municipio}$", "$options": "i"}
+                    },
+                    {"_id": 0},
+                    sort=[("vigencia", -1)]
+                )
+                if predio_original:
+                    predios_eliminados_nuevos.append({
+                        **predio_original,
                         "eliminado_en": datetime.now(timezone.utc).isoformat(),
                         "vigencia_eliminacion": vigencia_int,
-                        "motivo": "No incluido en nueva importación R1-R2"
-                    }
-                    for p in predios_a_eliminar
-                ])
+                        "motivo": f"No incluido en importación R1-R2 vigencia {vigencia_int}"
+                    })
+                    predios_eliminados_count += 1
+        
+        # Insertar todos los nuevos eliminados de una vez
+        if predios_eliminados_nuevos:
+            await db.predios_eliminados.insert_many(predios_eliminados_nuevos)
+            logger.info(f"  - Predios marcados como eliminados: {len(predios_eliminados_nuevos)}")
         
         # Guardar historial de predios existentes de esta vigencia
-        if existing_predios:
+        if existing_predios_vigencia_actual:
             await db.predios_historico.insert_many([
                 {**p, "archivado_en": datetime.now(timezone.utc).isoformat(), "vigencia_archivo": vigencia_int}
                 for p in existing_predios
