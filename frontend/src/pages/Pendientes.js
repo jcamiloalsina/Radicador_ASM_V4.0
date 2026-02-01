@@ -948,7 +948,7 @@ export default function Pendientes() {
                           
                           {cambio.predio_actual && (
                             <p className="font-mono text-sm text-slate-700 mb-1">
-                              <strong>{cambio.predio_actual.codigo_homologado || cambio.predio_actual.codigo_predial_nacional || 'N/A'}</strong>
+                              <strong>{cambio.predio_actual.codigo_predial_nacional || 'N/A'}</strong>
                               {cambio.predio_actual.nombre_propietario && ` - ${cambio.predio_actual.nombre_propietario}`}
                             </p>
                           )}
