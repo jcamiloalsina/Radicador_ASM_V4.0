@@ -114,40 +114,37 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados Case-Insensitive
+### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador
 
 #### 1. Fix Crítico: Búsqueda Case-Insensitive de Municipios
 **Problema:** Al cargar códigos homologados para Bucarasica, el sistema mostraba solo 1 código "usado" cuando debían ser 1,683.
 
-**Causa raíz:** Las consultas a MongoDB para buscar predios con código homologado usaban coincidencia exacta (case-sensitive) del nombre del municipio. Si había diferencias de mayúsculas/minúsculas entre el archivo Excel y la base de datos, los predios no se detectaban.
+**Causa raíz:** Las consultas a MongoDB para buscar predios con código homologado usaban coincidencia exacta (case-sensitive) del nombre del municipio.
 
-**Solución:** Se cambió a búsqueda case-insensitive usando `$regex` con `$options: 'i'` en 3 endpoints:
-- ✅ `POST /api/codigos-homologados/cargar` - Carga de Excel
-- ✅ `GET /api/codigos-homologados/diagnostico/{municipio}` - Diagnóstico
-- ✅ `POST /api/codigos-homologados/recalcular/{municipio}` - Recálculo
+**Solución:** Se cambió a búsqueda case-insensitive usando `$regex` con `$options: 'i'` en 3 endpoints.
 
 **Resultado:** Bucarasica ahora muestra correctamente 1,683 códigos usados y 881 disponibles.
 
-#### 2. Fix: Error JavaScript al Cerrar Modal de Homologados
-**Problema:** Al cerrar el modal "Gestión de Códigos Homologados" aparecía error `setForzarDisponibles is not defined`.
+#### 2. Fix: Municipio Seleccionado Tiene Prioridad
+**Problema:** Si el Excel tenía columna "Municipio", el sistema ignoraba el municipio seleccionado por el usuario.
 
-**Solución:** Se añadió la declaración del estado faltante `const [forzarDisponibles, setForzarDisponibles] = useState(false)` en Predios.js.
+**Solución:** Ahora si el usuario selecciona un municipio, se usa SIEMPRE ese municipio, sin importar el contenido del archivo Excel.
 
-#### 3. Mejora: Debug Info en Respuesta de Carga
-Se añadió información de diagnóstico en la respuesta del endpoint de carga:
-```json
-{
-  "debug_info": {
-    "predios_encontrados_con_codigo": 1683,
-    "codigos_existentes_en_bd": 2564,
-    "municipios_procesados": ["Bucarasica"]
-  }
-}
-```
+#### 3. Fix: Permisos de Coordinador para Códigos Homologados
+**Problema:** El rol Coordinador no podía ver los botones de "Diagnosticar" ni "Recalcular" en el modal de códigos homologados.
+
+**Solución:** 
+- ✅ Frontend: Añadido `|| user?.role === 'coordinador'` a la condición de visibilidad
+- ✅ Backend: Endpoint de recálculo ahora permite `ADMINISTRADOR` y `COORDINADOR`
+
+#### 4. Fix: Error JavaScript al Cerrar Modal
+**Problema:** Error `setForzarDisponibles is not defined` al cerrar el modal.
+
+**Solución:** Añadida declaración del estado faltante en Predios.js.
 
 **Archivos modificados:**
-- `/app/backend/server.py` - Lógica de búsqueda case-insensitive
-- `/app/frontend/src/pages/Predios.js` - Estado faltante
+- `/app/backend/server.py` - Case-insensitive + municipio prioritario + permisos coordinador
+- `/app/frontend/src/pages/Predios.js` - Estado faltante + permisos coordinador
 
 ---
 
