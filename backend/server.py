@@ -4864,9 +4864,10 @@ async def recalcular_codigos_municipio(
         }
     
     # 2. Obtener todos los predios del municipio que tienen codigo_homologado de una sola vez
+    # Usar búsqueda case-insensitive para municipio
     predios_con_codigo = await db.predios.find(
         {
-            'municipio': municipio,
+            'municipio': {'$regex': f'^{municipio}$', '$options': 'i'},
             'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
             'deleted': {'$ne': True}
         },
