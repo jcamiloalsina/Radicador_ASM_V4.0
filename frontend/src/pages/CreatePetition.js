@@ -259,7 +259,7 @@ export default function CreatePetition() {
                   <SelectValue placeholder="Seleccione el tipo de trámite" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIPOS_TRAMITE.map((tipo) => (
+                  {tiposTramiteDisponibles.map((tipo) => (
                     <SelectItem key={tipo.id} value={tipo.id} data-testid={`tramite-${tipo.id}`}>
                       {tipo.nombre}
                     </SelectItem>
@@ -270,6 +270,22 @@ export default function CreatePetition() {
                 <p className="text-xs text-slate-500 mt-1">{selectedTipoTramite.descripcion}</p>
               )}
             </div>
+
+            {/* Campo "¿Cuál trámite?" para empresas que seleccionan "Otro Trámite" */}
+            {esOtroTramite && (
+              <div className="space-y-2">
+                <Label htmlFor="otro_tramite_cual" className="text-slate-700">¿Cuál trámite necesita? *</Label>
+                <Input
+                  id="otro_tramite_cual"
+                  value={formData.otro_tramite_cual}
+                  onChange={(e) => setFormData({ ...formData, otro_tramite_cual: e.target.value })}
+                  required
+                  className="focus-visible:ring-emerald-600"
+                  placeholder="Especifique el trámite que necesita..."
+                  data-testid="input-otro-tramite"
+                />
+              </div>
+            )}
 
             {/* Sub-tipo de trámite (si aplica) */}
             {hasSubOpciones && (
