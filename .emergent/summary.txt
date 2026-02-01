@@ -2,116 +2,168 @@
 The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on property creation/management (Conservación), property updates (Actualización), and a workflow for processing user requests (Peticiones).
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Robust Offline Mode:** Key modules must be fully functional offline.
-2.  **Homologated Codes System:** An automated system for assigning predefined property codes from an uploaded Excel file.
-3.  **Complete Visit Form:** The visit form for Actualización projects must include Linderos and Coordenadas sections.
-4.  **Improved Request Workflow:** The Peticiones workflow needs to be more detailed, tracking the progress from submission to approval.
-5.  **Database Management Tool:** A UI-driven tool for Admins and Coordinators to create backups and restore the MongoDB database.
+1.  **Robust Offline Mode:** Key modules, including login and the property map viewer, must be fully functional offline.
+2.  **Homologated Codes System:** An automated system for assigning predefined property codes from an uploaded Excel file. The system must be fast and accurately determine which codes are used vs. disponible.
+3.  **Role-Based Access Control:** Granular permissions for different user roles, including a new Empresa role with restricted read-only access.
+4.  **Improved Request Workflow:** The Peticiones workflow needs to be more detailed, tracking progress from submission to approval and allowing for certificate regeneration. It should also include real-time updates.
+5.  **Database Management Tool:** A UI-driven tool for Admins and Coordinators to create backups, restore, and manage collections.
+6.  **Automatic Backup Configuration & Execution:** A module to configure scheduled automatic backups and a running scheduler to execute them.
+7.  **Default Admin User:** On a fresh deployment, a default administrator user should be created automatically.
+8.  **Certificate Generation & Verification:** Generated PDF certificates must have correct headers/footers, signatures, and a QR code pointing to a specific verification endpoint.
+9.  **Clear User Interface:** The UI should be intuitive, with features like a filterable history of changes.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a full-stack solution with a FastAPI backend and a React frontend using a MongoDB database. Key features are now well-established, including a robust offline mode for major modules, a complete and tested system for managing Códigos Homologados, and a significantly improved Peticiones workflow with new states and a visual timeline. The database has been cleaned up by renaming it to  and unifying the two previously separate IndexedDB instances into one, resolving significant technical debt. The agent has just started implementing a new Database Manager feature.
+The application is a full-stack solution (FastAPI, React, MongoDB). A significant number of features are implemented, including a robust offline mode for login and map viewing. The user management UI has been redesigned to group users by role.
+
+In this session, the agent implemented several key improvements:
+1.  **Real-Time Updates via WebSockets:** When a property change is approved or rejected, all connected users now see the update instantly without needing to manually refresh or sync.
+2.  **Complete History View:** The Pendientes page now includes a comprehensive Historial tab showing all approved and rejected changes, complete with statistics and filter capabilities (by status, type, municipality, and date).
+3.  **Optimized Code Upload:** The process of uploading an Excel file with thousands of homologated codes was optimized from taking several minutes to under one second. The backend logic was rewritten to use efficient in-memory lookups and database bulk operations.
+4.  **Code Management Tools:** New diagnostic and recalculation tools were added to help the user resolve inconsistencies in the count of used vs. available codes.
+5.  **Role Restrictions Finalized:** The Empresa role was fully restricted from creating, editing, or proposing property changes, and UI elements like the Export Excel button were hidden.
 
 **Last working item**:
--   **Last item agent was working:** The agent was creating a Database Manager feature within the Gestión de Usuarios page, as requested by the user. This feature is intended to allow administrators and coordinators to create backups, view a history of backups, and restore the database from a file. The agent successfully created the backend endpoints in  that use  and . It then began refactoring the  file to use a tabbed layout to house this new functionality alongside the existing user list. The implementation was interrupted after the file was rewritten.
--   **Status:** IN PROGRESS
+-   **Last item agent was working:** The user reported that after uploading the Excel file for the Bucarasica municipality, the system incorrectly shows that only 1 code is used. The agent was about to investigate the root cause of this specific data discrepancy.
+-   **Status:** NOT STARTED
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both. First, use the  tool to verify the new tabbed UI on the  page. Then, use  to test the backend backup/restore endpoints. Finally, use the frontend testing agent to perform an E2E test of creating a backup, seeing it in the list, and downloading it.
+-   **Which testing method agent to use?** backend testing agent. The agent should use python scripts or  shell commands to:
+    1.  Count the total number of  for Bucarasica.
+    2.  Count how many of those  have the  field assigned.
+    3.  Compare this number with the usados count reported by the  endpoint to pinpoint the error in the logic.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Complete and Test the Database Manager (P0)**
--   **Issue 2: Test the Linderos and Coordenadas Form Sections (P1)**
--   **Issue 3: Test the Updated Actualización PDF Generation (P2)**
+-   **Issue 1: Bucarasica Homologated Code Count is Wrong (P0)**
+-   **Issue 2: Pendientes Badge Bug in Conservación (P1)**
+-   **Issue 3: Test Coordinator Access for DB Manager (P2)**
 
 **Issues Detail:**
--   **Issue 1:**
-    -   **Attempted fixes:** The agent created all necessary backend endpoints in  (, , etc.). The frontend file  was completely rewritten to use a tabbed interface.
+-   **Issue 1: Bucarasica Homologated Code Count is Wrong**
+    -   **Attempted fixes:** None yet for Bucarasica specifically. The agent has just completed a major optimization of the underlying code upload logic based on issues with other municipalities (Cáchira, Río de Oro).
     -   **Next debug checklist:**
-        1.  Restart services and check frontend/backend logs for errors.
-        2.  Take a screenshot of  to verify the new tabbed layout renders correctly for an Admin user.
-        3.  Test the Backup Completo functionality and verify a  file is created in .
-        4.  Test listing the backups in the UI.
-        5.  Test downloading a backup file.
-        6.  (CAUTION) Test the Restaurar functionality, as it's a destructive operation.
-        7.  Log in as a **Coordinador** and verify they can also access and use the Base de Datos tab as requested by the user.
-    -   **Why fix this issue and what will be achieved with the fix?** This fulfills a direct user requirement for a UI-driven backup/restore tool, enhancing data management capabilities.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Both
-
--   **Issue 2:**
-    -   **Attempted fixes:** The UI components and state management for Linderos and Coordenadas were added to .
-    -   **Next debug checklist:**
-        1.  Log in and navigate to the Proyectos de Actualización page.
-        2.  Create a new project if one doesn't exist.
-        3.  Enter the project's Visor to view the visit form.
-        4.  Verify the Linderos and Coordenadas tabs appear.
-        5.  Enter edit mode and confirm the input fields for both sections are present and editable.
-        6.  Save the changes and verify the data persists.
-    -   **Why fix this issue and what will be achieved with the fix?** Completes a core part of the property data capture form.
-    -   **Status:** TESTING PENDING
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Frontend
-
--   **Issue 3:**
-    -   **Attempted fixes:** The backend PDF generation logic in  was updated to pull data from the new linderos/coordenadas fields.
-    -   **Next debug checklist:** After completing Issue 2 and having a project with data, use the Generar PDF button in the  and verify the generated PDF contains the new sections with the correct data.
-    -   **Why fix this issue and what will be achieved with the fix?** Ensures the official visit report is complete and accurate.
-    -   **Status:** TESTING PENDING
-    -   **Is recurring issue?** N
+        1.  Verify the number of predios in the database for Bucarasica that have a  assigned.
+        2.  Trace the execution of the  endpoint when a Bucarasica Excel file is uploaded.
+        3.  Check the  set within the endpoint to see if it's being populated correctly for Bucarasica.
+    -   **Why fix this issue and what will be achieved with the fix?** The accuracy of available codes is critical for the application's core function. This will ensure the system reflects the correct state for all municipalities.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y (The problem of incorrect code counts was the theme of the entire session, though the root cause might be different for Bucarasica).
     -   **Should Test frontend/backend/both after fix?** Backend
+-   **Issue 2: Pendientes Badge Bug in Conservación**
+    -   **Attempted fixes:** Previous investigation suggested it's a data inconsistency issue on the user's production server.
+    -   **Next debug checklist:** Provide the user a mongo shell command  to find and fix the inconsistent data on their end.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+-   **Issue 3: Test Coordinator Access for DB Manager**
+    -   **Attempted fixes:** None.
+    -   **Next debug checklist:** Log in as a Coordinator and verify the Base de Datos tab is visible and functional in the user management section.
+    -   **Status:** TESTING PENDING
+    -   **Is recurring issue?** N
 
 **In progress Task List**:
--   **Task 1: Implement Database Manager UI (P0)**
-    -   **Where to resume:** The file  has been rewritten but is untested. The next step is to test the UI and wire up the functionality to the new backend endpoints.
-    -   **What will be achieved with this?** A fully functional UI for database management.
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** None
+-   None.
 
 **Upcoming and Future Tasks**
+**Upcoming Tasks:**
+*   **P1: Implement Scheduler for Automatic Backups:** The UI for configuring backups is done, but the background scheduler to execute them is not implemented.
 
 **Future Tasks:**
 *   **P2: Generate XTF files:** Export property data in the standard XTF format.
+*   **P2: Refactor :** The main backend file is critically large and must be broken down into smaller, route-specific modules.
+*   **P2: Refactor :** This frontend component is monolithic and should be broken down.
 
 **Completed work in this session**
-- **Códigos Homologados Feature:** Completed and tested the entire system for managing homologated codes from Excel files, including refinements based on user feedback (UI placement, showing used codes, detecting existing codes on upload).
-- **Peticiones Workflow Improvement:** Enhanced the request workflow with new states (, ), logic for gestores to mark work as complete, and a visual timeline in the UI.
-- **PDF Documentation:** Generated a professional PDF document detailing the new Peticiones workflow, accessible via a download endpoint.
-- **Technical Debt Resolution:**
-    - **Renamed MongoDB Database:** Changed the DB name from  to  and migrated all data.
-    - **Unified IndexedDB:** Consolidated the two separate offline databases ( and ) into a single, unified database, resolving a major source of recurring bugs.
-- **Visit Form Completion:**
-    - Added UI tabs and form fields for Linderos and Coordenadas to the  page.
-    - Updated the backend PDF generation logic to include these new sections in the final report.
-- **User Guidance:** Provided the user with DNS configuration instructions for their custom domain and recommendations for a production server environment.
+-   **Homologated Code System Overhaul:**
+    -   **Performance:** Optimized the Excel upload endpoint () to process over 8,000 records in under 1 second (down from 5+ minutes) by using bulk database operations and in-memory lookups.
+    -   **Logic:** Corrected the logic to accurately compare codes from the Excel file against predios already in the database to determine the usado vs. disponible count.
+    -   **Tooling:** Added backend endpoints and UI buttons for Diagnosticar and Recalcular code stats to help admins resolve data inconsistencies.
+-   **Real-Time Sync with WebSockets:** Implemented a WebSocket connection to provide real-time updates across the application, removing the need for users to manually sync data after a change is approved.
+-   **History Tab and Filters:** Added a Historial tab to the  page, showing all processed (approved/rejected) changes with cards for stats and a full set of filters (status, type, municipality, date).
+-   **Empresa Role Finalization:** Completed backend and frontend restrictions to prevent the Empresa role from editing properties or exporting data.
+-   **UI Fixes:**
+    -   Corrected the change history modal to only show fields that were actually changed.
+    -   Fixed the dashboard welcome message to be role-specific.
 
 **Earlier issues found/mentioned but not fixed**
--   None. The major technical debt items from the previous session (DB name, fragmented IndexedDB) have been resolved.
+-   None.
 
 **Known issue recurrence from previous fork**
--   **Issue recurrence in previous fork:** Renaming the MongoDB database and unifying IndexedDB databases were recurring technical debt items.
--   **Recurrence count:** 2+
--   **Status:** RESOLVED
+-   None in this session.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Database Management:** Using  to call system commands like  and  for creating and restoring MongoDB backups.
--   **File Streaming:** Serving generated backup files for download using FastAPI's .
--   **UI Refactoring:** Converting a single-view component () into a tabbed interface to accommodate new functionality.
--   **Technical Debt Management:** Successfully resolved long-standing issues with database naming and offline storage architecture.
+-   **Database Bulk Operations:** Using  in Motor (async MongoDB driver) to perform thousands of inserts/updates in a single network round-trip, dramatically improving performance.
+-   **In-Memory Data Processing:** Fetching all necessary data (e.g., used codes) into an in-memory Python BASH=/bin/bash
+BASHOPTS=checkwinsize:cmdhist:complete_fullquote:extquote:force_fignore:globasciiranges:globskipdots:hostcomplete:interactive_comments:patsub_replacement:progcomp:promptvars:sourcepath
+BASH_ALIASES=()
+BASH_ARGC=()
+BASH_ARGV=()
+BASH_CMDS=()
+BASH_EXECUTION_STRING=$'mkdir -p /app/.emergent && echo "<analysis>**original_problem_statement:**\nThe user\'s primary goal is to build a comprehensive cadastral management web application, "Asomunicipios." The application focuses on property creation/management ("Conservación"), property updates ("Actualización"), and a workflow for processing user requests ("Peticiones").\n\n**LATEST PRODUCT REQUIREMENTS:**\n1.  **Robust Offline Mode:** Key modules, including login and the property map viewer, must be fully functional offline.\n2.  **Homologated Codes System:** An automated system for assigning predefined property codes from an uploaded Excel file. The system must be fast and accurately determine which codes are "used" vs. "disponible".\n3.  **Role-Based Access Control:** Granular permissions for different user roles, including a new "Empresa" role with restricted read-only access.\n4.  **Improved Request Workflow:** The "Peticiones" workflow needs to be more detailed, tracking progress from submission to approval and allowing for certificate regeneration. It should also include real-time updates.\n5.  **Database Management Tool:** A UI-driven tool for Admins and Coordinators to create backups, restore, and manage collections.\n6.  **Automatic Backup Configuration & Execution:** A module to configure scheduled automatic backups and a running scheduler to execute them.\n7.  **Default Admin User:** On a fresh deployment, a default administrator user should be created automatically.\n8.  **Certificate Generation & Verification:** Generated PDF certificates must have correct headers/footers, signatures, and a QR code pointing to a specific verification endpoint.\n9.  **Clear User Interface:** The UI should be intuitive, with features like a filterable history of changes.\n\n**User\'s preferred language**: Spanish\n\n**what currently exists?**\nThe application is a full-stack solution (FastAPI, React, MongoDB). A significant number of features are implemented, including a robust offline mode for login and map viewing. The user management UI has been redesigned to group users by role.\n\nIn this session, the agent implemented several key improvements:\n1.  **Real-Time Updates via WebSockets:** When a property change is approved or rejected, all connected users now see the update instantly without needing to manually refresh or sync.\n2.  **Complete History View:** The "Pendientes" page now includes a comprehensive "Historial" tab showing all approved and rejected changes, complete with statistics and filter capabilities (by status, type, municipality, and date).\n3.  **Optimized Code Upload:** The process of uploading an Excel file with thousands of homologated codes was optimized from taking several minutes to under one second. The backend logic was rewritten to use efficient in-memory lookups and database bulk operations.\n4.  **Code Management Tools:** New diagnostic and recalculation tools were added to help the user resolve inconsistencies in the count of "used" vs. "available" codes.\n5.  **Role Restrictions Finalized:** The "Empresa" role was fully restricted from creating, editing, or proposing property changes, and UI elements like the "Export Excel" button were hidden.\n\n**Last working item**:\n-   **Last item agent was working:** The user reported that after uploading the Excel file for the "Bucarasica" municipality, the system incorrectly shows that only 1 code is "used". The agent was about to investigate the root cause of this specific data discrepancy.\n-   **Status:** NOT STARTED\n-   **Agent Testing Done:** N\n-   **Which testing method agent to use?** backend testing agent. The agent should use python scripts or `mongo` shell commands to:\n    1.  Count the total number of `predios` for "Bucarasica".\n    2.  Count how many of those `predios` have the `codigo_homologado` field assigned.\n    3.  Compare this number with the "usados" count reported by the `/api/codigos-homologados/stats` endpoint to pinpoint the error in the logic.\n-   **User Testing Done:** N\n\n**All Pending/In progress Issue list**:\n-   **Issue 1: Bucarasica Homologated Code Count is Wrong (P0)**\n-   **Issue 2: "Pendientes" Badge Bug in Conservación (P1)**\n-   **Issue 3: Test Coordinator Access for DB Manager (P2)**\n\n**Issues Detail:**\n-   **Issue 1: Bucarasica Homologated Code Count is Wrong**\n    -   **Attempted fixes:** None yet for Bucarasica specifically. The agent has just completed a major optimization of the underlying code upload logic based on issues with other municipalities (Cáchira, Río de Oro).\n    -   **Next debug checklist:**\n        1.  Verify the number of predios in the database for Bucarasica that have a `codigo_homologado` assigned.\n        2.  Trace the execution of the `/api/codigos-homologados/cargar` endpoint when a Bucarasica Excel file is uploaded.\n        3.  Check the `predios_existentes_con_codigo` set within the endpoint to see if it\'s being populated correctly for Bucarasica.\n    -   **Why fix this issue and what will be achieved with the fix?** The accuracy of available codes is critical for the application\'s core function. This will ensure the system reflects the correct state for all municipalities.\n    -   **Status:** NOT STARTED\n    -   **Is recurring issue?** Y (The problem of incorrect code counts was the theme of the entire session, though the root cause might be different for Bucarasica).\n    -   **Should Test frontend/backend/both after fix?** Backend\n-   **Issue 2: "Pendientes" Badge Bug in Conservación**\n    -   **Attempted fixes:** Previous investigation suggested it\'s a data inconsistency issue on the user\'s production server.\n    -   **Next debug checklist:** Provide the user a mongo shell command `db.predios_historico.find({ estado_aprobacion: { $in: ["PENDIENTE_CREACION", "PENDIENTE_MODIFICACION"] } })` to find and fix the inconsistent data on their end.\n    -   **Status:** NOT STARTED\n    -   **Is recurring issue?** N\n-   **Issue 3: Test Coordinator Access for DB Manager**\n    -   **Attempted fixes:** None.\n    -   **Next debug checklist:** Log in as a Coordinator and verify the "Base de Datos" tab is visible and functional in the user management section.\n    -   **Status:** TESTING PENDING\n    -   **Is recurring issue?** N\n\n**In progress Task List**:\n-   None.\n\n**Upcoming and Future Tasks**\n**Upcoming Tasks:**\n*   **P1: Implement Scheduler for Automatic Backups:** The UI for configuring backups is done, but the background scheduler to execute them is not implemented.\n\n**Future Tasks:**\n*   **P2: Generate XTF files:** Export property data in the standard XTF format.\n*   **P2: Refactor `server.py`:** The main backend file is critically large and must be broken down into smaller, route-specific modules.\n*   **P2: Refactor `Predios.js`:** This frontend component is monolithic and should be broken down.\n\n**Completed work in this session**\n-   **Homologated Code System Overhaul:**\n    -   **Performance:** Optimized the Excel upload endpoint (`/api/codigos-homologados/cargar`) to process over 8,000 records in under 1 second (down from 5+ minutes) by using bulk database operations and in-memory lookups.\n    -   **Logic:** Corrected the logic to accurately compare codes from the Excel file against predios already in the database to determine the "usado" vs. "disponible" count.\n    -   **Tooling:** Added backend endpoints and UI buttons for "Diagnosticar" and "Recalcular" code stats to help admins resolve data inconsistencies.\n-   **Real-Time Sync with WebSockets:** Implemented a WebSocket connection to provide real-time updates across the application, removing the need for users to manually sync data after a change is approved.\n-   **History Tab and Filters:** Added a "Historial" tab to the `/dashboard/pendientes` page, showing all processed (approved/rejected) changes with cards for stats and a full set of filters (status, type, municipality, date).\n-   **"Empresa" Role Finalization:** Completed backend and frontend restrictions to prevent the "Empresa" role from editing properties or exporting data.\n-   **UI Fixes:**\n    -   Corrected the change history modal to only show fields that were actually changed.\n    -   Fixed the dashboard welcome message to be role-specific.\n\n**Earlier issues found/mentioned but not fixed**\n-   None.\n\n**Known issue recurrence from previous fork**\n-   None in this session.\n\n**Code Architecture**\n```\n/app/\n├── backend/\n│   └── server.py        # HEAVILY MODIFIED: Optimized code upload, added diagnostic/recalculation endpoints, implemented WebSockets.\n└── frontend/\n    └── src/\n        ├── context/\n        │   └── WebSocketContext.js # NEW: Manages the WebSocket connection for real-time updates.\n        ├── pages/\n        │   ├── Predios.js          # HEAVILY MODIFIED: UI for code diagnostics, simplified upload flow, integrated WebSocket listeners.\n        │   ├── Pendientes.js       # HEAVILY MODIFIED: Added "Historial" tab, filters, stats cards, and WebSocket listeners.\n        │   ├── App.js              # MODIFIED: Wrapped app in WebSocketProvider.\n        │   └── DashboardHome.js    # MODIFIED: Corrected role-specific welcome message.\n        └── ...\n```\n\n**Key Technical Concepts**\n-   **Database Bulk Operations:** Using `bulk_write` in Motor (async MongoDB driver) to perform thousands of inserts/updates in a single network round-trip, dramatically improving performance.\n-   **In-Memory Data Processing:** Fetching all necessary data (e.g., used codes) into an in-memory Python `set` for O(1) lookups when processing a large file, avoiding N+1 query problems.\n-   **FastAPI WebSockets:** Used for real-time, bi-directional communication between the server and clients to push updates instantly.\n-   **React Context API:** Used to create a `WebSocketContext` to provide the WebSocket connection and its state to any component in the app.\n\n**key DB schema**\n-   No schema changes were made in this session.\n\n**All files of reference**\n-   `/app/backend/server.py`\n-   `/app/frontend/src/pages/Predios.js`\n-   `/app/frontend/src/pages/Pendientes.js`\n-   `/app/frontend/src/App.js`\n-   `/app/frontend/src/context/WebSocketContext.js`\n-   `/app/memory/PRD.md`\n\n**Areas that need refactoring**:\n-   **`server.py`:** Still critically large. The new WebSocket logic and code management endpoints have added to its size, making refactoring more urgent.\n-   **`Predios.js`:** Remains a very large "god component" that now also handles the complex logic for homologated code management.\n\n**key api endpoints**\n-   `POST /api/codigos-homologados/cargar`: Completely rewritten for high performance.\n-   `POST /api/codigos-homologados/recalcular/{municipio}`: (New) Triggers a recalculation of used/available codes.\n-   `GET /api/codigos-homologados/diagnostico/{municipio}`: (New) Provides a diagnostic report on code inconsistencies.\n-   `GET /api/predios/cambios/historial`: (Modified) Now accepts filter parameters (status, tipo, municipio, fechas).\n-   `WS /ws`: (New) WebSocket endpoint for real-time notifications.\n\n**Critical Info for New Agent**\n-   Your immediate priority is to solve the user\'s latest issue: **Why does Bucarasica show only 1 used code?** You must debug the optimized upload logic specifically for the "Bucarasica" case.\n-   The performance optimization of the code upload is a major success. The final logic is correct and fast. Do not change it unless the Bucarasica bug reveals a flaw.\n-   The WebSocket implementation should have resolved the old data sync issues. If the user reports sync problems again, verify the WebSocket connection and event broadcasting are working as expected.\n\n**documents and test reports created in this job**\n-   `/app/test_reports/iteration_23.json`\n-   `/app/test_reports/iteration_24.json`\n-   `/app/memory/PRD.md` (Updated)\n\n**Last 10 User Messages and any pending HUMAN messages**\n1.  **User (Bug):** Why, when I upload the file for Bucarasica, does it say only 1 code is used? *(Status: NOT STARTED)*\n2.  **User (Feedback):** The new process must be fast, and the comparison logic is obviously necessary. *(Status: COMPLETED)*\n3.  **User (Feedback):** Okay, apply the code changes for me to upload to GitHub. But the process is too slow (>5 mins) and shouldn\'t require "forcing". Can you improve it? *(Status: COMPLETED)*\n4.  **User (Request):** Test with Río de Oro. (Provided `RíodeOro.xlsx`) *(Status: COMPLETED)*\n5.  **User (Question):** Correct. Yes, do it. (Proceed with fixing Cáchira) *(Status: COMPLETED)*\n6.  **User (Question):** What would the diagnose button look like? *(Status: COMPLETED)*\n7.  **User (Question):** Will this adjustment fix the problem for Río de Oro? Should I test first? *(Status: COMPLETED)*\n8.  **User (Bug):** The code count for Cáchira is wrong (shows only 183 available when it should be >2000). *(Status: COMPLETED)*\n9.  **User (Request/Bug):** Apply the suggested improvement (history filters). Also, I\'m getting an error when uploading the homologated codes Excel. *(Status: COMPLETED)*\n10. **User (Request/Bug):** Yes, I\'d like the suggested improvement (WebSockets). Also, the history tab is not visible in the "Pendientes" view. *(Status: COMPLETED)*\n\n**Project Health Check:**\n-   **Broken:**\n    -   The count of "used" homologated codes is incorrect for the "Bucarasica" municipality.\n-   **Mocked:**\n    -   None.\n-   **Technical Debt:**\n    -   `server.py`: Urgently needs to be refactored from a single monolithic file into a structured set of route modules.\n    -   `Predios.js`: This frontend component has become a "god component" and should be broken down into smaller, reusable pieces.\n\n**3rd Party Integrations**\n-   None.\n\n**Testing status**\n-   **Testing agent used after significant changes:** YES\n-   **Troubleshoot agent used after agent stuck in loop:** NO\n-   **Test files created:** None\n-   **Known regressions:** None.\n\n**Credentials to test flow:**\n-   **Administrator:**\n    -   **Email:** `catastro@asomunicipios.gov.co`\n    -   **Password:** `Asm*123*`\n-   **Coordinador:**\n    -   **Email:** `Camilo.alsina1@hotmail.com`\n    -   **Password:** `Asm*123*`\n\n**What agent forgot to execute**\n-   The pending tasks from the original handoff (Scheduler for backups, testing Coordinator access) remain untouched as the focus shifted to the homologated codes and real-time updates.</analysis>" > /app/.emergent/summary.txt'
+BASH_LINENO=()
+BASH_LOADABLES_PATH=/usr/local/lib/bash:/usr/lib/bash:/opt/local/lib/bash:/usr/pkg/lib/bash:/opt/pkg/lib/bash:.
+BASH_SOURCE=()
+BASH_VERSINFO=([0]="5" [1]="2" [2]="15" [3]="1" [4]="release" [5]="aarch64-unknown-linux-gnu")
+BASH_VERSION='5.2.15(1)-release'
+DEBIAN_FRONTEND=noninteractive
+DIRSTACK=()
+ENABLE_RELOAD=true
+EUID=0
+GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D
+GROUPS=()
+HOME=/root
+HOSTNAME=agent-env-421c3bba-3161-4f42-a93f-e24782ac25d5
+HOSTTYPE=aarch64
+IFS=$' \t\n'
+KUBERNETES_PORT=tcp://34.118.224.1:443
+KUBERNETES_PORT_443_TCP=tcp://34.118.224.1:443
+KUBERNETES_PORT_443_TCP_ADDR=34.118.224.1
+KUBERNETES_PORT_443_TCP_PORT=443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_SERVICE_HOST=34.118.224.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+LANG=C.UTF-8
+MACHTYPE=aarch64-unknown-linux-gnu
+NEXT_TELEMETRY_DISABLED=1
+NODE_VERSION=20
+OPTERR=1
+OPTIND=1
+OSTYPE=linux-gnu
+PATH=/root/.venv/bin:/opt/plugins-venv/bin:/opt/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PIPESTATUS=([0]="0")
+PIP_NO_INPUT=1
+PLAYWRIGHT_BROWSERS_PATH=/pw-browsers
+PLUGIN_VENV_PATH=/opt/plugins-venv
+PPID=22
+PS4='+ '
+PWD=/app
+PYTHONUNBUFFERED=1
+PYTHON_SHA256=8d3ed8ec5c88c1c95f5e558612a725450d2452813ddad5e58fdb1a53b1209b78
+PYTHON_VERSION=3.11.14
+SHELL=/bin/bash
+SHELLOPTS=braceexpand:hashall:interactive-comments
+SHLVL=1
+STRIPE_API_KEY=sk_test_emergent
+TERM=dumb
+UID=0
+UV_COMPILE_BYTECODE=1
+VIRTUAL_ENV=/root/.venv
+_=/app/.emergent
+base_url=https://demobackend.emergentagent.com
+code_server_password=35a85931
+integration_proxy_url=https://integrations.emergentagent.com
+monitor_polling_interval=1
+preview_endpoint=https://landregistry-3.preview.emergentagent.com
+run_id=landregistry-3 for O(1) lookups when processing a large file, avoiding N+1 query problems.
+-   **FastAPI WebSockets:** Used for real-time, bi-directional communication between the server and clients to push updates instantly.
+-   **React Context API:** Used to create a  to provide the WebSocket connection and its state to any component in the app.
 
 **key DB schema**
--   ** (MongoDB - Modified):**
-    -    (New)
-    -    (New Array of user_ids)
-    -    (Enum now includes  and )
--   ** (MongoDB - New):**
-    -    - To store metadata of backups.
+-   No schema changes were made in this session.
 
 **All files of reference**
 -   
@@ -119,54 +171,55 @@ The application is a full-stack solution with a FastAPI backend and a React fron
 -   
 -   
 -   
+-   
 
 **Areas that need refactoring**:
--   **:** This file remains monolithic (over 5,000 lines) and is a candidate for being broken down into smaller, more manageable components.
--   **:** This file has also grown significantly and could be broken down into smaller components for each tab.
+-   **:** Still critically large. The new WebSocket logic and code management endpoints have added to its size, making refactoring more urgent.
+-   **:** Remains a very large god component that now also handles the complex logic for homologated code management.
 
 **key api endpoints**
--   : Creates a new database backup.
--   : Lists all available backups.
--   : Restores the database from a specified backup file.
--   : Downloads a specific backup file.
--   : Allows a gestor to mark their work as complete on a petition.
--   : Downloads the PDF explaining the petitions workflow.
+-   : Completely rewritten for high performance.
+-   : (New) Triggers a recalculation of used/available codes.
+-   : (New) Provides a diagnostic report on code inconsistencies.
+-   : (Modified) Now accepts filter parameters (status, tipo, municipio, fechas).
+-   : (New) WebSocket endpoint for real-time notifications.
 
 **Critical Info for New Agent**
--   **Your immediate priority is to finish the Database Manager.** The backend is implemented, but the frontend () was rewritten and is completely untested. It may be broken. Start by verifying the UI renders correctly, then connect it to the backend endpoints and test the full backup/restore cycle.
--   **Remember the user wants both Admins and Coordinators to have access to the DB Manager.** Test permissions for both roles.
--   The major technical debt items (DB name, IndexedDB) are now resolved. Do not try to fix them again.
--   The user has explicitly trimmed the backlog. Do not suggest features that were removed (e.g., payment verification, special certificates). Focus only on what's listed in the pending tasks.
+-   Your immediate priority is to solve the user's latest issue: **Why does Bucarasica show only 1 used code?** You must debug the optimized upload logic specifically for the Bucarasica case.
+-   The performance optimization of the code upload is a major success. The final logic is correct and fast. Do not change it unless the Bucarasica bug reveals a flaw.
+-   The WebSocket implementation should have resolved the old data sync issues. If the user reports sync problems again, verify the WebSocket connection and event broadcasting are working as expected.
 
 **documents and test reports created in this job**
 -   
--   Backup files will be created in .
+-   
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Request):** Asked to create a database manager for backups and restores within Gestión de usuarios.
-2.  **User (Clarification):** Confirmed the DB manager should be available for Coordinators as well as Admins.
-3.  **User (Question):** Asked for the optimal Linux distribution for deployment.
-4.  **User (Question):** Asked for the DNS configuration needed for the certificate verification URL.
-5.  **User (Confirmation):** Confirmed that the platform is in good condition after the Códigos Homologados fix.
-6.  **User (Question):** Asked what tasks were still pending.
-7.  **User (Prioritization):** Prioritized the pending tasks: fix P0 (unify DB), work on P1.2 (complete form) and P1.4 (rename DB). Explicitly removed P1.3, P2.5, and P2.8 from the backlog. Asked for an explanation of P2.6.
-8.  **User (Decision):** After the DB was renamed and data was lost, the user confirmed that copying data from the old DB to the new one was the correct action. Approved the proposal for the Linderos/Coordenadas forms.
-9.  **User (Request):** After seeing the improved Peticiones workflow, requested a PDF document explaining the new flow to share with colleagues.
-10. **User (Request):** After seeing a diagram of the Peticiones flow, approved the agent's proposed improvements (new states, gestor tracking).
+1.  **User (Bug):** Why, when I upload the file for Bucarasica, does it say only 1 code is used? *(Status: NOT STARTED)*
+2.  **User (Feedback):** The new process must be fast, and the comparison logic is obviously necessary. *(Status: COMPLETED)*
+3.  **User (Feedback):** Okay, apply the code changes for me to upload to GitHub. But the process is too slow (>5 mins) and shouldn't require forcing. Can you improve it? *(Status: COMPLETED)*
+4.  **User (Request):** Test with Río de Oro. (Provided ) *(Status: COMPLETED)*
+5.  **User (Question):** Correct. Yes, do it. (Proceed with fixing Cáchira) *(Status: COMPLETED)*
+6.  **User (Question):** What would the diagnose button look like? *(Status: COMPLETED)*
+7.  **User (Question):** Will this adjustment fix the problem for Río de Oro? Should I test first? *(Status: COMPLETED)*
+8.  **User (Bug):** The code count for Cáchira is wrong (shows only 183 available when it should be >2000). *(Status: COMPLETED)*
+9.  **User (Request/Bug):** Apply the suggested improvement (history filters). Also, I'm getting an error when uploading the homologated codes Excel. *(Status: COMPLETED)*
+10. **User (Request/Bug):** Yes, I'd like the suggested improvement (WebSockets). Also, the history tab is not visible in the Pendientes view. *(Status: COMPLETED)*
 
 **Project Health Check:**
 -   **Broken:**
-    -   The **Database Manager** feature is incomplete. The UI in  was rewritten but is untested and likely non-functional.
+    -   The count of used homologated codes is incorrect for the Bucarasica municipality.
 -   **Mocked:**
     -   None.
 -   **Technical Debt:**
-    -   The  and  components are very large and complex, making them difficult to maintain. They are prime candidates for refactoring.
+    -   : Urgently needs to be refactored from a single monolithic file into a structured set of route modules.
+    -   : This frontend component has become a god component and should be broken down into smaller, reusable pieces.
 
 **3rd Party Integrations**
 -   None.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES, for the Códigos Homologados feature.
+-   **Testing agent used after significant changes:** YES
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
 -   **Known regressions:** None.
@@ -180,4 +233,4 @@ The application is a full-stack solution with a FastAPI backend and a React fron
     -   **Password:** 
 
 **What agent forgot to execute**
--   The agent overwrote  with a new tabbed layout but did not perform any testing (not even a screenshot) to ensure the page still renders. This is the first thing the next agent must verify.</analysis>
+-   The pending tasks from the original handoff (Scheduler for backups, testing Coordinator access) remain untouched as the focus shifted to the homologated codes and real-time updates.</analysis>
