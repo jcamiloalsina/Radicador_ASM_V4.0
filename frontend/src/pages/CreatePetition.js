@@ -121,7 +121,15 @@ export default function CreatePetition() {
       formDataToSend.append('telefono', formData.telefono);
       
       // Construir el tipo de trámite completo
-      const tipoTramiteCompleto = getTramiteCompleto(formData.tipo_tramite, formData.sub_tipo_tramite);
+      let tipoTramiteCompleto;
+      if (esOtroTramite) {
+        // Para "otro trámite", incluir la especificación
+        tipoTramiteCompleto = `Otro trámite: ${formData.otro_tramite_cual}`;
+      } else if (isEmpresa && formData.tipo_tramite === 'certificado_catastral') {
+        tipoTramiteCompleto = 'Certificado Catastral (Empresa)';
+      } else {
+        tipoTramiteCompleto = getTramiteCompleto(formData.tipo_tramite, formData.sub_tipo_tramite);
+      }
       formDataToSend.append('tipo_tramite', tipoTramiteCompleto);
       formDataToSend.append('municipio', formData.municipio);
       formDataToSend.append('descripcion', formData.descripcion);
