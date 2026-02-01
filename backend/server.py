@@ -4489,6 +4489,9 @@ async def cargar_codigos_homologados(
                     if muni.lower() not in municipio_normalizado:
                         municipio_normalizado[muni.lower()] = municipio_db
         
+        # Log de debug para verificar cuántos códigos en uso se encontraron
+        logging.info(f"Códigos homologados: municipios={list(municipios_en_archivo)}, predios_con_codigo_encontrados={len(codigos_en_uso)}")
+        
         # 4. Preparar documentos para inserción bulk
         documentos_a_insertar = []
         codigos_duplicados = 0
