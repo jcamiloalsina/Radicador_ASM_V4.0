@@ -1800,12 +1800,16 @@ export default function Predios() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 120000 // 2 minutos de timeout para archivos grandes
+        timeout: 300000 // 5 minutos de timeout para archivos grandes
       });
       
-      toast.success(`${res.data.codigos_insertados} códigos cargados como disponibles`);
+      toast.success(`${res.data.codigos_insertados.toLocaleString()} códigos cargados`, { duration: 5000 });
+      toast.info(
+        `${res.data.codigos_usados?.toLocaleString() || 0} ya asignados a predios, ${res.data.codigos_disponibles?.toLocaleString() || 0} disponibles`,
+        { duration: 8000 }
+      );
       if (res.data.codigos_duplicados > 0) {
-        toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
+        toast.warning(`${res.data.codigos_duplicados.toLocaleString()} códigos duplicados ignorados`);
       }
       
       // Limpiar estado y recargar estadísticas
