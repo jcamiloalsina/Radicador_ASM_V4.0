@@ -5304,8 +5304,9 @@ export default function Predios() {
                   {/* Nota informativa */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-sm text-blue-800">
-                      <strong>Nota:</strong> Todos los códigos se cargarán como <span className="font-semibold">disponibles</span>. 
-                      El estado cambiará a "usado" solo cuando se asigne un código a un predio.
+                      <strong>Nota:</strong> Al cargar, cada código se compara con los predios existentes. 
+                      Los códigos que ya están asignados a un predio se marcan como <span className="font-semibold text-amber-700">"usados"</span>, 
+                      los demás quedan <span className="font-semibold text-emerald-700">"disponibles"</span>.
                     </p>
                   </div>
                   
