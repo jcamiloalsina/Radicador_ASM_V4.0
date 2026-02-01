@@ -4385,8 +4385,8 @@ async def cargar_codigos_homologados(
 ):
     """Cargar códigos homologados desde un archivo Excel.
     
-    Todos los códigos se cargan como DISPONIBLES. El estado 'usado' solo cambia
-    cuando se asigna un código a un predio desde la aplicación.
+    Compara cada código contra los predios existentes para determinar si está usado o disponible.
+    Un código está "usado" si ya existe un predio con ese codigo_homologado asignado.
     
     El archivo puede tener:
     1. Dos columnas: 'Municipio' y 'Codigo_Homologado' (o similar)
@@ -4433,7 +4433,9 @@ async def cargar_codigos_homologados(
         else:
             municipio_fijo = None
         
-        # Obtener códigos existentes para este municipio (para evitar duplicados)
+        # === OPTIMIZACIÓN: Obtener todos los datos necesarios de una sola vez ===
+        
+        # 1. Identificar municipios en el archivo
         municipios_en_archivo = set()
         if municipio_fijo:
             municipios_en_archivo.add(municipio_fijo)
@@ -4443,16 +4445,41 @@ async def cargar_codigos_homologados(
                 if muni and muni != 'nan':
                     municipios_en_archivo.add(muni)
         
-        # Obtener todos los códigos existentes de una sola vez
+        # 2. Obtener códigos ya cargados (para evitar duplicados) - UNA sola consulta
         codigos_existentes = set()
         for muni in municipios_en_archivo:
             existing = await db.codigos_homologados.distinct('codigo', {'municipio': muni})
             for c in existing:
                 codigos_existentes.add(f"{muni}:{c}")
         
-        # Preparar documentos para inserción bulk
+        # 3. Obtener predios con codigo_homologado asignado - UNA sola consulta por municipio
+        # Esto nos dice qué códigos ya están EN USO
+        codigos_en_uso = {}  # codigo -> {predio_id, codigo_predial, propietario}
+        for muni in municipios_en_archivo:
+            predios_con_codigo = await db.predios.find(
+                {
+                    'municipio': muni,
+                    'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
+                    'deleted': {'$ne': True}
+                },
+                {'_id': 0, 'id': 1, 'codigo_homologado': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1}
+            ).to_list(100000)
+            
+            for predio in predios_con_codigo:
+                codigo = predio.get('codigo_homologado', '').strip().upper()
+                if codigo:
+                    clave = f"{muni}:{codigo}"
+                    codigos_en_uso[clave] = {
+                        'predio_id': predio['id'],
+                        'codigo_predial': predio.get('codigo_predial_nacional'),
+                        'propietario': predio.get('nombre_propietario')
+                    }
+        
+        # 4. Preparar documentos para inserción bulk
         documentos_a_insertar = []
         codigos_duplicados = 0
+        codigos_usados = 0
+        codigos_disponibles = 0
         codigos_por_municipio = {}
         fecha_carga = datetime.utcnow().isoformat()
         
@@ -4464,33 +4491,55 @@ async def cargar_codigos_homologados(
             if not muni or not codigo or muni == 'nan' or codigo == 'NAN':
                 continue
             
-            # Verificar duplicado
             clave = f"{muni}:{codigo}"
+            
+            # Verificar duplicado en la colección
             if clave in codigos_existentes:
                 codigos_duplicados += 1
                 continue
             
-            # Agregar a la lista de existentes para evitar duplicados dentro del mismo archivo
+            # Agregar a existentes para evitar duplicados dentro del mismo archivo
             codigos_existentes.add(clave)
             
-            # Preparar documento - TODOS como disponibles
-            documentos_a_insertar.append({
-                'municipio': muni,
-                'codigo': codigo,
-                'usado': False,
-                'predio_id': None,
-                'fecha_asignacion': None,
-                'cargado_por': current_user['id'],
-                'cargado_por_nombre': current_user['full_name'],
-                'fecha_carga': fecha_carga
-            })
+            # Verificar si está en uso (predio ya tiene este código)
+            info_uso = codigos_en_uso.get(clave)
+            
+            if info_uso:
+                # Código YA ESTÁ ASIGNADO a un predio
+                documentos_a_insertar.append({
+                    'municipio': muni,
+                    'codigo': codigo,
+                    'usado': True,
+                    'predio_id': info_uso['predio_id'],
+                    'codigo_predial': info_uso['codigo_predial'],
+                    'propietario': info_uso['propietario'],
+                    'fecha_asignacion': None,
+                    'cargado_por': current_user['id'],
+                    'cargado_por_nombre': current_user['full_name'],
+                    'fecha_carga': fecha_carga
+                })
+                codigos_usados += 1
+            else:
+                # Código DISPONIBLE
+                documentos_a_insertar.append({
+                    'municipio': muni,
+                    'codigo': codigo,
+                    'usado': False,
+                    'predio_id': None,
+                    'codigo_predial': None,
+                    'propietario': None,
+                    'fecha_asignacion': None,
+                    'cargado_por': current_user['id'],
+                    'cargado_por_nombre': current_user['full_name'],
+                    'fecha_carga': fecha_carga
+                })
+                codigos_disponibles += 1
             
             codigos_por_municipio[muni] = codigos_por_municipio.get(muni, 0) + 1
         
-        # Inserción bulk (mucho más rápido)
+        # 5. Inserción bulk (mucho más rápido que inserciones individuales)
         codigos_insertados = 0
         if documentos_a_insertar:
-            # Insertar en lotes de 1000 para evitar problemas de memoria
             batch_size = 1000
             for i in range(0, len(documentos_a_insertar), batch_size):
                 batch = documentos_a_insertar[i:i + batch_size]
@@ -4502,6 +4551,8 @@ async def cargar_codigos_homologados(
             "message": f"Códigos cargados exitosamente",
             "codigos_insertados": codigos_insertados,
             "codigos_duplicados": codigos_duplicados,
+            "codigos_usados": codigos_usados,
+            "codigos_disponibles": codigos_disponibles,
             "por_municipio": codigos_por_municipio
         }
         
