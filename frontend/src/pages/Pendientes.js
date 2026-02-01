@@ -984,7 +984,168 @@ export default function Pendientes() {
             </div>
           )}
         </TabsContent>
+
+        {/* Tab: Reapariciones */}
+        <TabsContent value="reapariciones">
+          {loadingReapariciones ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
+            </div>
+          ) : reapariciones.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                <h3 className="text-xl font-semibold text-slate-700">Sin solicitudes</h3>
+                <p className="text-slate-500 mt-2">No hay solicitudes de reaparición pendientes</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {reapariciones.map((reap) => (
+                <Card key={reap.codigo_predial_nacional} className="hover:border-amber-300 transition-colors border-l-4 border-l-amber-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                          <RefreshCw className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-amber-100 text-amber-800">Reaparición</Badge>
+                            <span className="font-mono text-sm text-slate-600">
+                              {reap.codigo_predial_nacional}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-700 mt-1 font-medium">
+                            {reap.municipio}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Propietario: {reap.nombre_propietario || 'N/A'}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Eliminado: {formatDate(reap.eliminado_en)} · Solicitado por: {reap.solicitado_por_nombre || 'N/A'}
+                          </p>
+                          {reap.justificacion_solicitud && (
+                            <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded">
+                              <strong>Justificación:</strong> {reap.justificacion_solicitud}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {isCoordinador && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            onClick={() => openReaparicionModal(reap, 'aprobar')}
+                            disabled={procesandoReaparicion === reap.codigo_predial_nacional}
+                          >
+                            {procesandoReaparicion === reap.codigo_predial_nacional ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                            )}
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                            onClick={() => openReaparicionModal(reap, 'rechazar')}
+                            disabled={procesandoReaparicion === reap.codigo_predial_nacional}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Rechazar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Modal de Reaparición */}
+      <Dialog open={showReaparicionModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowReaparicionModal(false);
+          setSelectedReaparicion(null);
+          setJustificacionReaparicion('');
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-amber-600" />
+              {selectedReaparicion?.action === 'aprobar' ? 'Aprobar Reaparición' : 'Rechazar Reaparición'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedReaparicion?.action === 'aprobar' 
+                ? 'El predio será restaurado a la base de datos activa'
+                : 'La solicitud será rechazada y el predio permanecerá eliminado'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedReaparicion && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm font-mono text-slate-700">{selectedReaparicion.codigo_predial_nacional}</p>
+                <p className="text-sm text-slate-600">{selectedReaparicion.municipio}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Propietario: {selectedReaparicion.nombre_propietario || 'N/A'}
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="justificacion">
+                  {selectedReaparicion.action === 'aprobar' ? 'Justificación de aprobación' : 'Motivo del rechazo'} *
+                </Label>
+                <Textarea
+                  id="justificacion"
+                  value={justificacionReaparicion}
+                  onChange={(e) => setJustificacionReaparicion(e.target.value)}
+                  placeholder={selectedReaparicion.action === 'aprobar' 
+                    ? 'Indique por qué se aprueba la reaparición...'
+                    : 'Indique el motivo por el cual se rechaza...'
+                  }
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReaparicionModal(false)}>
+              Cancelar
+            </Button>
+            {selectedReaparicion?.action === 'aprobar' ? (
+              <Button 
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => handleAprobarReaparicion(selectedReaparicion)}
+                disabled={procesandoReaparicion || !justificacionReaparicion.trim()}
+              >
+                {procesandoReaparicion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Confirmar Aprobación
+              </Button>
+            ) : (
+              <Button 
+                variant="destructive"
+                onClick={() => handleRechazarReaparicion(selectedReaparicion)}
+                disabled={procesandoReaparicion || !justificacionReaparicion.trim()}
+              >
+                {procesandoReaparicion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Confirmar Rechazo
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Detalle del Cambio con Comparación */}
       <Dialog open={!!selectedCambio} onOpenChange={() => setSelectedCambio(null)}>
