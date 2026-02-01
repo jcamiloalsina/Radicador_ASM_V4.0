@@ -5399,7 +5399,7 @@ export default function Predios() {
                                   Ver
                                 </Button>
                               )}
-                              {user?.role === 'administrador' && (
+                              {(user?.role === 'administrador' || user?.role === 'coordinador') && (
                                 <>
                                   <Button
                                     variant="ghost"

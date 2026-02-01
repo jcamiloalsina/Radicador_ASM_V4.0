@@ -4423,13 +4423,16 @@ async def cargar_codigos_homologados(
             codigo_col = df.columns[0]
         
         # Si no hay columna de municipio, debe proporcionarse el parámetro
-        if not municipio_col:
-            if not municipio:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="El archivo no tiene columna 'Municipio'. Por favor seleccione el municipio."
-                )
+        # IMPORTANTE: Si el usuario seleccionó un municipio, SIEMPRE usarlo (tiene prioridad)
+        if municipio:
+            # El usuario seleccionó explícitamente un municipio - usarlo siempre
             municipio_fijo = municipio.strip()
+            logging.info(f"Usando municipio seleccionado por usuario: {municipio_fijo}")
+        elif not municipio_col:
+            raise HTTPException(
+                status_code=400, 
+                detail="El archivo no tiene columna 'Municipio'. Por favor seleccione el municipio."
+            )
         else:
             municipio_fijo = None
         
