@@ -488,14 +488,15 @@ export default function Pendientes() {
 
   // Contar predios nuevos en revisión (pendientes de aprobación)
   const prediosEnRevision = prediosNuevos.filter(p => p.estado === 'revision').length;
-  const totalPendientes = cambiosPendientes.length + prediosEnRevision;
+  const reaparicionesPendientes = reapariciones.length;
+  const totalPendientes = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 font-outfit">Pendientes de Aprobación</h1>
-          <p className="text-slate-600 mt-1">Cambios y predios nuevos que requieren aprobación</p>
+          <p className="text-slate-600 mt-1">Cambios, predios nuevos y reapariciones que requieren aprobación</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
           {totalPendientes} pendientes
@@ -503,7 +504,7 @@ export default function Pendientes() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
+        <TabsList className="grid w-full grid-cols-4 mb-4">
           <TabsTrigger value="modificaciones" className="flex items-center gap-2">
             <Edit className="w-4 h-4" />
             Modificaciones
@@ -516,6 +517,13 @@ export default function Pendientes() {
             Predios Nuevos
             {prediosEnRevision > 0 && (
               <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="reapariciones" className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Reapariciones
+            {reaparicionesPendientes > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{reaparicionesPendientes}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="historial" className="flex items-center gap-2">
