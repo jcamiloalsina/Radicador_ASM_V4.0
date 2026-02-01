@@ -4570,7 +4570,12 @@ async def cargar_codigos_homologados(
             "codigos_duplicados": codigos_duplicados,
             "codigos_usados": codigos_usados,
             "codigos_disponibles": codigos_disponibles,
-            "por_municipio": codigos_por_municipio
+            "por_municipio": codigos_por_municipio,
+            "debug_info": {
+                "predios_encontrados_con_codigo": len(codigos_en_uso),
+                "codigos_existentes_en_bd": len(codigos_existentes) - len(documentos_a_insertar),
+                "municipios_procesados": list(municipios_en_archivo)
+            }
         }
         
     except HTTPException:
