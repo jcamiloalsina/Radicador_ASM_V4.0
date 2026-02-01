@@ -81,7 +81,8 @@ export default function CreatePetition() {
       tipo_tramite: value,
       sub_tipo_tramite: '', // Reset sub-opción cuando cambia el tipo
       codigo_predial: '',
-      matricula_inmobiliaria: ''
+      matricula_inmobiliaria: '',
+      otro_tramite_cual: '' // Reset campo de otro trámite
     });
   };
 
@@ -104,6 +105,12 @@ export default function CreatePetition() {
         toast.error('Debe ingresar la Matrícula Inmobiliaria');
         return;
       }
+    }
+    
+    // Validar "otro trámite" para empresas
+    if (esOtroTramite && !formData.otro_tramite_cual.trim()) {
+      toast.error('Debe especificar qué trámite necesita');
+      return;
     }
     
     setLoading(true);
