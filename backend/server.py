@@ -4445,12 +4445,17 @@ async def cargar_codigos_homologados(
                 if muni and muni != 'nan':
                     municipios_en_archivo.add(muni)
         
-        # 2. Obtener códigos ya cargados (para evitar duplicados) - UNA sola consulta
+        # 2. Obtener códigos ya cargados (para evitar duplicados) - búsqueda case-insensitive
         codigos_existentes = set()
         for muni in municipios_en_archivo:
-            existing = await db.codigos_homologados.distinct('codigo', {'municipio': muni})
-            for c in existing:
-                codigos_existentes.add(f"{muni}:{c}")
+            # Usar regex case-insensitive para encontrar códigos existentes
+            existing_docs = await db.codigos_homologados.find(
+                {'municipio': {'$regex': f'^{muni}$', '$options': 'i'}},
+                {'codigo': 1, 'municipio': 1}
+            ).to_list(100000)
+            for doc in existing_docs:
+                # Normalizar: usar el nombre del archivo en la clave
+                codigos_existentes.add(f"{muni}:{doc['codigo'].upper()}")
         
         # 3. Obtener predios con codigo_homologado asignado - UNA sola consulta por municipio
         # Esto nos dice qué códigos ya están EN USO
