@@ -253,8 +253,9 @@ export default function DashboardLayout() {
     if (isStaff) {
       conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
       conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
-      // Certificados no visible para rol empresa (solicitan por Mis Peticiones)
-      if (user.role !== 'empresa') {
+      // Certificados solo para administrador, coordinador y atención al usuario
+      const canSeeCertificados = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
+      if (canSeeCertificados) {
         conservacionItems.push({ path: '/dashboard/certificados', label: 'Certificados', icon: ShieldCheck });
       }
     }
