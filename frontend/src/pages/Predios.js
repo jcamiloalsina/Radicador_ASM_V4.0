@@ -1796,9 +1796,6 @@ export default function Predios() {
         formData.append('municipio', codigosMunicipioSeleccionado);
       }
       
-      // Agregar opción de forzar disponibles
-      formData.append('forzar_disponibles', forzarDisponibles.toString());
-      
       const res = await axios.post(`${API}/codigos-homologados/cargar`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -1807,21 +1804,14 @@ export default function Predios() {
         timeout: 120000 // 2 minutos de timeout para archivos grandes
       });
       
-      toast.success(`${res.data.codigos_insertados} códigos cargados exitosamente`);
+      toast.success(`${res.data.codigos_insertados} códigos cargados como disponibles`);
       if (res.data.codigos_duplicados > 0) {
         toast.info(`${res.data.codigos_duplicados} códigos duplicados ignorados`);
-      }
-      if (res.data.codigos_ya_usados > 0 && !forzarDisponibles) {
-        toast.info(`${res.data.codigos_ya_usados} códigos ya estaban asignados a predios existentes`, { duration: 5000 });
-      }
-      if (forzarDisponibles) {
-        toast.info('Todos los códigos fueron marcados como disponibles', { duration: 3000 });
       }
       
       // Limpiar estado y recargar estadísticas
       setCodigosFileSelected(null);
       setCodigosMunicipioSeleccionado('');
-      setForzarDisponibles(false);
       fetchCodigosStats();
     } catch (error) {
       console.error('Error cargando códigos:', error);
