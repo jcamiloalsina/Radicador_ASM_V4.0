@@ -4,14 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { ArrowLeft, Send, Upload, X, FileText } from 'lucide-react';
+import { ArrowLeft, Send, Upload, X, FileText, Info, Building2 } from 'lucide-react';
 import { TIPOS_TRAMITE, MUNICIPIOS, getTramiteCompleto } from '../data/catalogos';
+import { useAuth } from '../context/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Tipos de trámite para empresas
+const TIPOS_TRAMITE_EMPRESA = [
+  {
+    id: 'certificado_catastral',
+    nombre: 'Certificado Catastral',
+    descripcion: 'Solicitud de certificado catastral del predio'
+  },
+  {
+    id: 'otro_tramite',
+    nombre: 'Otro Trámite',
+    descripcion: 'Especifique el trámite que necesita realizar'
+  }
+];
 
 export default function CreatePetition() {
   const navigate = useNavigate();
