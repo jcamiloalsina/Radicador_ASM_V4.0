@@ -4772,15 +4772,16 @@ async def diagnostico_codigos_municipio(
     disponibles_en_coleccion = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': False})
     
     # 2. Contar predios que REALMENTE tienen codigo_homologado asignado
+    # Usar búsqueda case-insensitive para municipio
     predios_con_codigo = await db.predios.count_documents({
-        'municipio': municipio,
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'},
         'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
         'deleted': {'$ne': True}
     })
     
     # 3. Obtener los códigos que están en predios pero NO en la colección de códigos
     codigos_en_predios = await db.predios.distinct('codigo_homologado', {
-        'municipio': municipio,
+        'municipio': {'$regex': f'^{municipio}$', '$options': 'i'},
         'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
         'deleted': {'$ne': True}
     })
