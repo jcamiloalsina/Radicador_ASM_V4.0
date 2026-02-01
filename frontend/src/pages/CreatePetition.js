@@ -179,6 +179,19 @@ export default function CreatePetition() {
           <p className="text-emerald-100 text-sm mt-1">Complete el formulario con los datos del trámite catastral</p>
         </CardHeader>
         <CardContent className="pt-6">
+          {/* Banner informativo para empresas */}
+          {isEmpresa && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+              <Building2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Solicitud para Empresas</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Puede solicitar certificados catastrales u otros trámites. Su solicitud será procesada por nuestro equipo y recibirá notificación al correo registrado.
+                </p>
+              </div>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-6" data-testid="petition-form">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
