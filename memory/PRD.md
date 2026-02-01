@@ -114,6 +114,43 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados Case-Insensitive
+
+#### 1. Fix Crítico: Búsqueda Case-Insensitive de Municipios
+**Problema:** Al cargar códigos homologados para Bucarasica, el sistema mostraba solo 1 código "usado" cuando debían ser 1,683.
+
+**Causa raíz:** Las consultas a MongoDB para buscar predios con código homologado usaban coincidencia exacta (case-sensitive) del nombre del municipio. Si había diferencias de mayúsculas/minúsculas entre el archivo Excel y la base de datos, los predios no se detectaban.
+
+**Solución:** Se cambió a búsqueda case-insensitive usando `$regex` con `$options: 'i'` en 3 endpoints:
+- ✅ `POST /api/codigos-homologados/cargar` - Carga de Excel
+- ✅ `GET /api/codigos-homologados/diagnostico/{municipio}` - Diagnóstico
+- ✅ `POST /api/codigos-homologados/recalcular/{municipio}` - Recálculo
+
+**Resultado:** Bucarasica ahora muestra correctamente 1,683 códigos usados y 881 disponibles.
+
+#### 2. Fix: Error JavaScript al Cerrar Modal de Homologados
+**Problema:** Al cerrar el modal "Gestión de Códigos Homologados" aparecía error `setForzarDisponibles is not defined`.
+
+**Solución:** Se añadió la declaración del estado faltante `const [forzarDisponibles, setForzarDisponibles] = useState(false)` en Predios.js.
+
+#### 3. Mejora: Debug Info en Respuesta de Carga
+Se añadió información de diagnóstico en la respuesta del endpoint de carga:
+```json
+{
+  "debug_info": {
+    "predios_encontrados_con_codigo": 1683,
+    "codigos_existentes_en_bd": 2564,
+    "municipios_procesados": ["Bucarasica"]
+  }
+}
+```
+
+**Archivos modificados:**
+- `/app/backend/server.py` - Lógica de búsqueda case-insensitive
+- `/app/frontend/src/pages/Predios.js` - Estado faltante
+
+---
+
 ### Sesión 30 Enero 2026 (Fork 9) - Corrección de Certificados PDF + Regeneración + Login Offline
 
 #### 1. Fix: Imágenes Embebidas en Base64 para Certificados
