@@ -326,6 +326,89 @@ export default function Pendientes() {
     }
   };
 
+  // === FUNCIONES PARA REAPARICIONES ===
+  const fetchReapariciones = async () => {
+    setLoadingReapariciones(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/predios/reapariciones/solicitudes-pendientes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReapariciones(response.data.solicitudes || []);
+    } catch (error) {
+      console.error('Error loading reapariciones:', error);
+      setReapariciones([]);
+    } finally {
+      setLoadingReapariciones(false);
+    }
+  };
+
+  const handleAprobarReaparicion = async (reaparicion) => {
+    if (!justificacionReaparicion.trim()) {
+      toast.error('Debe indicar una justificación para la aprobación');
+      return;
+    }
+    
+    setProcesandoReaparicion(reaparicion.codigo_predial_nacional);
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('codigo_predial', reaparicion.codigo_predial_nacional);
+      formData.append('municipio', reaparicion.municipio);
+      formData.append('justificacion', justificacionReaparicion);
+      
+      await axios.post(`${API}/predios/reapariciones/aprobar`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success('Reaparición aprobada. El predio ha sido restaurado.');
+      setShowReaparicionModal(false);
+      setSelectedReaparicion(null);
+      setJustificacionReaparicion('');
+      fetchReapariciones();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al aprobar reaparición');
+    } finally {
+      setProcesandoReaparicion(null);
+    }
+  };
+
+  const handleRechazarReaparicion = async (reaparicion) => {
+    if (!justificacionReaparicion.trim()) {
+      toast.error('Debe indicar el motivo del rechazo');
+      return;
+    }
+    
+    setProcesandoReaparicion(reaparicion.codigo_predial_nacional);
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('codigo_predial', reaparicion.codigo_predial_nacional);
+      formData.append('municipio', reaparicion.municipio);
+      formData.append('justificacion', justificacionReaparicion);
+      
+      await axios.post(`${API}/predios/reapariciones/rechazar`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success('Solicitud de reaparición rechazada');
+      setShowReaparicionModal(false);
+      setSelectedReaparicion(null);
+      setJustificacionReaparicion('');
+      fetchReapariciones();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al rechazar reaparición');
+    } finally {
+      setProcesandoReaparicion(null);
+    }
+  };
+
+  const openReaparicionModal = (reaparicion, action) => {
+    setSelectedReaparicion({ ...reaparicion, action });
+    setJustificacionReaparicion('');
+    setShowReaparicionModal(true);
+  };
+
   const getTipoCambioLabel = (tipo) => {
     const labels = {
       'creacion': 'Nuevo Predio',
