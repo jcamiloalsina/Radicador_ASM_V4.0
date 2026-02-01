@@ -1376,6 +1376,7 @@ export default function Predios() {
   const [diagnosticoCodigos, setDiagnosticoCodigos] = useState(null);
   const [loadingDiagnostico, setLoadingDiagnostico] = useState(false);
   const [showDiagnosticoDialog, setShowDiagnosticoDialog] = useState(false);
+  const [forzarDisponibles, setForzarDisponibles] = useState(false);
   
   // Estado para múltiples propietarios
   const [propietarios, setPropietarios] = useState([{
