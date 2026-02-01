@@ -96,6 +96,7 @@ export default function Pendientes() {
     fetchPendientes();
     fetchPrediosNuevos();
     fetchHistorialStats();
+    fetchReapariciones();
   }, []);
 
   // Cargar historial cuando se selecciona el tab
