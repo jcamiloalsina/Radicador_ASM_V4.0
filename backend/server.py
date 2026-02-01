@@ -7483,12 +7483,19 @@ async def import_predios_excel(
         new_codigos = set(r1_data.keys())
         
         # Obtener los predios existentes del municipio PARA ESTA VIGENCIA ESPECÍFICA
+        # Usar búsqueda case-insensitive para el municipio
         existing_predios = await db.predios.find(
-            {"municipio": municipio, "vigencia": vigencia_int}, 
+            {
+                "municipio": {"$regex": f"^{municipio}$", "$options": "i"}, 
+                "vigencia": vigencia_int
+            }, 
             {"_id": 0}
         ).to_list(50000)
         
         existing_codigos = {p.get('codigo_predial_nacional') for p in existing_predios}
+        
+        # Log para debug
+        logger.info(f"R1 Import - Municipio: {municipio}, Vigencia: {vigencia_int}, Predios existentes: {len(existing_predios)}, Nuevos: {len(new_codigos)}")
         
         # Calcular predios eliminados (estaban antes en esta vigencia pero no vienen en la nueva importación)
         codigos_eliminados = existing_codigos - new_codigos
