@@ -114,7 +114,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador
+### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador + Reapariciones
 
 #### 1. Fix Crítico: Búsqueda Case-Insensitive de Municipios
 **Problema:** Al cargar códigos homologados para Bucarasica, el sistema mostraba solo 1 código "usado" cuando debían ser 1,683.
@@ -137,14 +137,32 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - ✅ Frontend: Añadido `|| user?.role === 'coordinador'` a la condición de visibilidad
 - ✅ Backend: Endpoint de recálculo ahora permite `ADMINISTRADOR` y `COORDINADOR`
 
-#### 4. Fix: Error JavaScript al Cerrar Modal
-**Problema:** Error `setForzarDisponibles is not defined` al cerrar el modal.
+#### 4. Fix: Diagnóstico de Códigos Optimizado
+**Problema:** El endpoint de diagnóstico tardaba más de 60 segundos (timeout) por loop N+1.
 
-**Solución:** Añadida declaración del estado faltante en Predios.js.
+**Solución:** Reescrito para usar búsquedas en memoria con Python sets O(1).
+
+**Resultado:** De 60+ segundos a 0.3 segundos.
+
+#### 5. Fix: Detección de Predios Eliminados en R1
+**Problema:** Al importar R1, el conteo de "predios eliminados" aparecía en blanco.
+
+**Solución:** Cambiada la búsqueda de predios existentes a case-insensitive para el municipio.
+
+#### 6. NUEVO: Reapariciones en Pendientes
+**Mejora solicitada:** Las solicitudes de reaparición de predios eliminados ahora aparecen en la página "Pendientes de Aprobación".
+
+**Implementación:**
+- ✅ Nueva pestaña "Reapariciones" en `/dashboard/pendientes`
+- ✅ Lista de solicitudes pendientes con información completa
+- ✅ Botones Aprobar/Rechazar para Coordinadores
+- ✅ Modal de confirmación con campo de justificación obligatorio
+- ✅ Badge con conteo incluido en el total de pendientes
 
 **Archivos modificados:**
-- `/app/backend/server.py` - Case-insensitive + municipio prioritario + permisos coordinador
-- `/app/frontend/src/pages/Predios.js` - Estado faltante + permisos coordinador
+- `/app/backend/server.py` - Case-insensitive en múltiples endpoints
+- `/app/frontend/src/pages/Predios.js` - Permisos coordinador
+- `/app/frontend/src/pages/Pendientes.js` - Nueva pestaña Reapariciones
 
 ---
 
