@@ -4856,8 +4856,8 @@ async def recalcular_codigos_municipio(
     - Un código está marcado como 'disponible' pero un predio lo tiene asignado
     """
     
-    if current_user['role'] != UserRole.ADMINISTRADOR:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden recalcular códigos")
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden recalcular códigos")
     
     codigos_liberados = 0
     codigos_marcados_usados = 0
