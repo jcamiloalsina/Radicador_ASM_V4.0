@@ -114,7 +114,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador + Reapariciones
+### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador + Reapariciones + Peticiones Empresa
 
 #### 1. Fix Crítico: Búsqueda Case-Insensitive de Municipios
 **Problema:** Al cargar códigos homologados para Bucarasica, el sistema mostraba solo 1 código "usado" cuando debían ser 1,683.
@@ -159,10 +159,27 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - ✅ Modal de confirmación con campo de justificación obligatorio
 - ✅ Badge con conteo incluido en el total de pendientes
 
+#### 7. Fix: Historial Muestra CNP en lugar de Código Homologado
+**Problema:** En el historial de pendientes se mostraba el código homologado en lugar del Código Nacional Predial (CNP).
+
+**Solución:** Corregido para mostrar siempre `codigo_predial_nacional`.
+
+#### 8. NUEVO: Peticiones para Rol Empresa
+**Mejora solicitada:** El rol Empresa puede solicitar certificados y otros trámites desde "Mis Peticiones".
+
+**Implementación:**
+- ✅ Banner informativo "Solicitud para Empresas" explicando el proceso
+- ✅ Solo 2 tipos de trámite disponibles:
+  - Certificado Catastral
+  - Otro Trámite (con campo "¿Cuál trámite necesita?")
+- ✅ Las peticiones llegan a "Todas las Peticiones" para ser tramitadas
+- ✅ Validación que obliga a especificar el trámite si selecciona "Otro"
+
 **Archivos modificados:**
 - `/app/backend/server.py` - Case-insensitive en múltiples endpoints
 - `/app/frontend/src/pages/Predios.js` - Permisos coordinador
-- `/app/frontend/src/pages/Pendientes.js` - Nueva pestaña Reapariciones
+- `/app/frontend/src/pages/Pendientes.js` - Nueva pestaña Reapariciones, fix historial CNP
+- `/app/frontend/src/pages/CreatePetition.js` - Formulario para empresas
 
 ---
 
