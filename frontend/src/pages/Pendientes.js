@@ -77,6 +77,14 @@ export default function Pendientes() {
   const [predioObservaciones, setPredioObservaciones] = useState('');
   const [expandedHistorial, setExpandedHistorial] = useState({});
   
+  // Estados para reapariciones
+  const [reapariciones, setReapariciones] = useState([]);
+  const [loadingReapariciones, setLoadingReapariciones] = useState(false);
+  const [selectedReaparicion, setSelectedReaparicion] = useState(null);
+  const [showReaparicionModal, setShowReaparicionModal] = useState(false);
+  const [justificacionReaparicion, setJustificacionReaparicion] = useState('');
+  const [procesandoReaparicion, setProcesandoReaparicion] = useState(null);
+  
   // Estados para el modal de rechazo
   const [showRechazarModal, setShowRechazarModal] = useState(false);
   const [cambioArechazar, setCambioArechazar] = useState(null);
