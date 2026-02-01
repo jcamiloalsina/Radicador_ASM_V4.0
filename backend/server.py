@@ -4782,65 +4782,93 @@ async def recalcular_codigos_municipio(
     if current_user['role'] != UserRole.ADMINISTRADOR:
         raise HTTPException(status_code=403, detail="Solo administradores pueden recalcular códigos")
     
-    codigos_corregidos = 0
     codigos_liberados = 0
     codigos_marcados_usados = 0
     
-    # 1. Obtener todos los códigos del municipio
-    codigos = await db.codigos_homologados.find(
+    # 1. Obtener todos los códigos del municipio de una sola vez
+    codigos_docs = await db.codigos_homologados.find(
         {'municipio': municipio},
-        {'_id': 0, 'codigo': 1, 'usado': 1, 'predio_id': 1}
+        {'_id': 0, 'codigo': 1, 'usado': 1}
     ).to_list(100000)
     
-    for codigo_doc in codigos:
+    if not codigos_docs:
+        return {
+            "success": True,
+            "municipio": municipio,
+            "total_revisados": 0,
+            "codigos_corregidos": 0,
+            "codigos_liberados": 0,
+            "codigos_marcados_usados": 0,
+            "mensaje": "No hay códigos para este municipio"
+        }
+    
+    # 2. Obtener todos los predios del municipio que tienen codigo_homologado de una sola vez
+    predios_con_codigo = await db.predios.find(
+        {
+            'municipio': municipio,
+            'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
+            'deleted': {'$ne': True}
+        },
+        {'_id': 0, 'id': 1, 'codigo_homologado': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1}
+    ).to_list(100000)
+    
+    # 3. Crear diccionario de códigos -> predio para búsqueda O(1)
+    codigos_en_predios = {}
+    for predio in predios_con_codigo:
+        codigo = predio.get('codigo_homologado', '').strip().upper()
+        if codigo:
+            codigos_en_predios[codigo] = predio
+    
+    # 4. Preparar operaciones bulk
+    from pymongo import UpdateOne
+    operaciones = []
+    fecha_ahora = datetime.utcnow().isoformat()
+    
+    for codigo_doc in codigos_docs:
         codigo = codigo_doc['codigo']
         esta_marcado_usado = codigo_doc.get('usado', False)
-        
-        # Verificar si algún predio REALMENTE tiene este código
-        predio_real = await db.predios.find_one({
-            'codigo_homologado': codigo,
-            'municipio': municipio,
-            'deleted': {'$ne': True}
-        }, {'_id': 0, 'id': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1})
+        predio_real = codigos_en_predios.get(codigo)
         
         if predio_real and not esta_marcado_usado:
-            # El predio tiene el código pero está marcado como disponible -> corregir
-            await db.codigos_homologados.update_one(
+            # El predio tiene el código pero está marcado como disponible -> marcar como usado
+            operaciones.append(UpdateOne(
                 {'municipio': municipio, 'codigo': codigo},
                 {'$set': {
                     'usado': True,
                     'predio_id': predio_real['id'],
                     'codigo_predial': predio_real.get('codigo_predial_nacional'),
                     'propietario': predio_real.get('nombre_propietario'),
-                    'corregido_en': datetime.utcnow().isoformat()
+                    'corregido_en': fecha_ahora
                 }}
-            )
+            ))
             codigos_marcados_usados += 1
-            codigos_corregidos += 1
             
         elif not predio_real and esta_marcado_usado:
             # Está marcado como usado pero ningún predio lo tiene -> liberar
-            await db.codigos_homologados.update_one(
+            operaciones.append(UpdateOne(
                 {'municipio': municipio, 'codigo': codigo},
                 {'$set': {
                     'usado': False,
                     'predio_id': None,
                     'codigo_predial': None,
                     'propietario': None,
-                    'liberado_en': datetime.utcnow().isoformat()
+                    'liberado_en': fecha_ahora
                 }}
-            )
+            ))
             codigos_liberados += 1
-            codigos_corregidos += 1
+    
+    # 5. Ejecutar operaciones bulk
+    if operaciones:
+        await db.codigos_homologados.bulk_write(operaciones)
     
     return {
         "success": True,
         "municipio": municipio,
-        "total_revisados": len(codigos),
-        "codigos_corregidos": codigos_corregidos,
+        "total_revisados": len(codigos_docs),
+        "codigos_corregidos": codigos_liberados + codigos_marcados_usados,
         "codigos_liberados": codigos_liberados,
         "codigos_marcados_usados": codigos_marcados_usados,
-        "mensaje": f"Se liberaron {codigos_liberados} códigos que estaban incorrectamente marcados como usados"
+        "mensaje": f"Se liberaron {codigos_liberados} códigos y se marcaron {codigos_marcados_usados} como usados"
     }
 
 
