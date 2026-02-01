@@ -4454,26 +4454,35 @@ async def cargar_codigos_homologados(
         
         # 3. Obtener predios con codigo_homologado asignado - UNA sola consulta por municipio
         # Esto nos dice qué códigos ya están EN USO
-        codigos_en_uso = {}  # codigo -> {predio_id, codigo_predial, propietario}
+        # IMPORTANTE: Usamos búsqueda case-insensitive para evitar problemas de mayúsculas/minúsculas
+        codigos_en_uso = {}  # codigo -> {predio_id, codigo_predial, propietario, municipio_real}
+        municipio_normalizado = {}  # muni_lower -> muni_original_en_db
+        
         for muni in municipios_en_archivo:
+            # Búsqueda case-insensitive usando regex
             predios_con_codigo = await db.predios.find(
                 {
-                    'municipio': muni,
+                    'municipio': {'$regex': f'^{muni}$', '$options': 'i'},
                     'codigo_homologado': {'$exists': True, '$ne': None, '$ne': ''},
                     'deleted': {'$ne': True}
                 },
-                {'_id': 0, 'id': 1, 'codigo_homologado': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1}
+                {'_id': 0, 'id': 1, 'codigo_homologado': 1, 'codigo_predial_nacional': 1, 'nombre_propietario': 1, 'municipio': 1}
             ).to_list(100000)
             
             for predio in predios_con_codigo:
                 codigo = predio.get('codigo_homologado', '').strip().upper()
+                municipio_db = predio.get('municipio', muni)
                 if codigo:
+                    # Usar el nombre del municipio del archivo para la clave
                     clave = f"{muni}:{codigo}"
                     codigos_en_uso[clave] = {
                         'predio_id': predio['id'],
                         'codigo_predial': predio.get('codigo_predial_nacional'),
                         'propietario': predio.get('nombre_propietario')
                     }
+                    # Guardar mapping de municipio para referencia
+                    if muni.lower() not in municipio_normalizado:
+                        municipio_normalizado[muni.lower()] = municipio_db
         
         # 4. Preparar documentos para inserción bulk
         documentos_a_insertar = []
