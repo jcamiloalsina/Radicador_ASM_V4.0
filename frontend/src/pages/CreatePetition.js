@@ -31,6 +31,7 @@ const TIPOS_TRAMITE_EMPRESA = [
 
 export default function CreatePetition() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     nombre_completo: '',
@@ -43,16 +44,27 @@ export default function CreatePetition() {
     // Campos para certificado catastral
     codigo_predial: '',
     matricula_inmobiliaria: '',
-    busqueda_tipo: 'codigo' // 'codigo' o 'matricula'
+    busqueda_tipo: 'codigo', // 'codigo' o 'matricula'
+    // Campos para empresa - otro trámite
+    otro_tramite_cual: ''
   });
   const [files, setFiles] = useState([]);
 
+  // Verificar si es rol empresa
+  const isEmpresa = user?.role === 'empresa';
+  
+  // Lista de tipos de trámite según el rol
+  const tiposTramiteDisponibles = isEmpresa ? TIPOS_TRAMITE_EMPRESA : TIPOS_TRAMITE;
+
   // Obtener el tipo de trámite seleccionado
-  const selectedTipoTramite = TIPOS_TRAMITE.find(t => t.id === formData.tipo_tramite);
+  const selectedTipoTramite = tiposTramiteDisponibles.find(t => t.id === formData.tipo_tramite);
   const hasSubOpciones = selectedTipoTramite?.subOpciones?.length > 0;
   
   // Verificar si es un trámite de certificado
   const esCertificado = ['certificado_catastral', 'certificado_catastral_especial', 'certificado_plano'].includes(formData.tipo_tramite);
+  
+  // Verificar si es "otro trámite" (para empresas)
+  const esOtroTramite = formData.tipo_tramite === 'otro_tramite';
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
