@@ -1548,7 +1548,7 @@ export default function Predios() {
     fetchSubsanacionesConteo();
     fetchGdbStats();
     fetchGestoresDisponibles();
-    fetchPeticionesDisponibles();
+    fetchPeticionesParaModificacion();
   }, []);
 
   useEffect(() => {
