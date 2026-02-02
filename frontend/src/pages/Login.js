@@ -13,6 +13,215 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Datos de trámites catastrales
+const TRAMITES_CATASTRALES = [
+  {
+    id: 1,
+    nombre: "Cambio de Propietario o Poseedor (Mutación Primera)",
+    descripcion: "Modificación de la titularidad de un bien inmueble.",
+    requisitos: [
+      "Oficio sencillo solicitando CAMBIO DE NOMBRE con: nombre completo, cédula, número predial, dirección, celular, correo y firma",
+      "Poder (si aplica) - Autorización del propietario",
+      "Cédula del propietario (copia)",
+      "Escritura Pública (para predios registrados) o Carta Venta (para poseedores)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 2,
+    nombre: "Englobe o Desenglobe (Mutación Segunda)",
+    descripcion: "División de un predio en varias partes o unión de varios predios en uno solo.",
+    requisitos: [
+      "Oficio sencillo solicitando DESENGLOBE O ENGLOBE con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Título de dominio registrado (Escritura Pública, Acto administrativo o Sentencia)",
+      "Plano del levantamiento planimétrico en formato digital (dwg, dxf o shapefile) con coordenadas origen único Colombia",
+      "Certificado de tradición"
+    ],
+    nota: "Para Propiedad Horizontal: Incluir escritura del reglamento con modificaciones y planos en escala original."
+  },
+  {
+    id: 3,
+    nombre: "Construcciones Nuevas o Demolición (Mutación Tercera)",
+    descripcion: "Registro de nuevas edificaciones o eliminación de construcciones existentes.",
+    requisitos: [
+      "Oficio sencillo solicitando el TRÁMITE CATASTRAL con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Licencia de construcción que apruebe la construcción",
+      "O Certificación juramentada (si no hay licencia) con planos de áreas construidas",
+      "Certificado de tradición"
+    ],
+    nota: "Para Propiedad Horizontal: Incluir escritura del reglamento, relación de unidades prediales y plano de localización digital."
+  },
+  {
+    id: 4,
+    nombre: "Cambio Destino Económico (Mutación Tercera)",
+    descripcion: "Modificación del uso principal del predio (ej: residencial a comercial).",
+    requisitos: [
+      "Oficio sencillo solicitando MODIFICACIÓN DE DESTINO ECONÓMICO con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Medio probatorio que sustente la solicitud",
+      "Certificado de tradición"
+    ],
+    nota: "Para predios de interés histórico/cultural: Requiere Acto administrativo de la autoridad competente."
+  },
+  {
+    id: 5,
+    nombre: "Auto Estimación del Avalúo Catastral (Mutación Cuarta)",
+    descripcion: "Propuesta del propietario sobre el valor catastral de su predio.",
+    requisitos: [
+      "Oficio sencillo solicitando AUTOESTIMACIÓN DEL AVALÚO con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Título de dominio registrado",
+      "Documentos de soporte según el caso (escrituras, certificaciones de la Alcaldía, avalúo comercial)",
+      "Certificado de tradición"
+    ],
+    nota: "Incluir área de terreno, área de construcción y autoestimación del avalúo por separado."
+  },
+  {
+    id: 6,
+    nombre: "Inscripción de Predios Nuevos u Omitidos (Mutación Quinta)",
+    descripcion: "Registro de predios no inscritos previamente o que fueron omitidos.",
+    requisitos: [
+      "Oficio sencillo solicitando INSCRIPCIÓN DE PREDIO con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Título de dominio registrado",
+      "Plano del levantamiento planimétrico en formato digital (dwg, dxf o shapefile)",
+      "Certificado de tradición"
+    ],
+    nota: "Para mejoras en predio ajeno: Acreditar existencia y propiedad de la mejora."
+  },
+  {
+    id: 7,
+    nombre: "Revisión de Avalúos",
+    descripcion: "Solicitud para revisar el valor catastral por inconformidades.",
+    requisitos: [
+      "Oficio sencillo solicitando REVISIÓN DE AVALÚOS, indicando motivos y vigencias solicitadas",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Pruebas documentales que sustenten la inconformidad para cada vigencia",
+      "Certificado de tradición"
+    ],
+    nota: "Medios de prueba: Registro fotográfico, avalúo comercial, ofertas de mercado, planos, aerofotografías, etc."
+  },
+  {
+    id: 8,
+    nombre: "Complementación de Información Catastral",
+    descripcion: "Adición o mejora de datos en la información catastral de un predio.",
+    requisitos: [
+      "Oficio sencillo solicitando COMPLEMENTACIÓN con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Documentos que justifiquen la complementación",
+      "Certificado de tradición"
+    ],
+    nota: "Para complementar dirección: Incluir boletín de nomenclatura de la autoridad municipal."
+  },
+  {
+    id: 9,
+    nombre: "Rectificación Área y/o Linderos (Fines Catastrales)",
+    descripcion: "Corrección del área o límites de un terreno para fines catastrales.",
+    requisitos: [
+      "Oficio sencillo solicitando RECTIFICACIÓN DE ÁREA con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Título de dominio registrado",
+      "Plano del levantamiento planimétrico en formato digital",
+      "Información de contacto de los colindantes (celular y correo)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 10,
+    nombre: "Rectificación Área y/o Linderos (Fines Registrales)",
+    descripcion: "Corrección del área o límites con implicaciones legales y de registro.",
+    requisitos: [
+      "Oficio sencillo solicitando RECTIFICACIÓN DE ÁREA con datos y firma de todos los propietarios",
+      "Poder (si aplica)",
+      "Cédula de todos los propietarios (copia)",
+      "Título de dominio registrado",
+      "Plano topográfico en formato Shape, Geopackage o DWG (EPSG 9377) con cuadro de coordenadas",
+      "Títulos de dominio de los colindantes",
+      "Información de contacto de los colindantes",
+      "Certificado de tradición",
+      "Estudio de títulos de dominio (si lo tiene)"
+    ]
+  },
+  {
+    id: 11,
+    nombre: "Cancelación Inscripción Catastral",
+    descripcion: "Eliminación de un predio del registro catastral.",
+    requisitos: [
+      "Oficio sencillo solicitando CANCELACIÓN DEL PREDIO con datos personales y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Orden legal, judicial o administrativa que soporte el cambio",
+      "Certificado de tradición"
+    ],
+    nota: "Para doble inscripción: Plano protocolizado y recibos de impuesto predial. Para causas naturales: Documento que demuestre la desaparición del predio."
+  },
+  {
+    id: 12,
+    nombre: "Certificado Catastral",
+    descripcion: "Documento con la información general de un predio registrada en el catastro.",
+    requisitos: [
+      "Oficio solicitando CERTIFICADO CATASTRAL con: nombre, cédula, número predial, matrícula inmobiliaria, dirección, celular, correo y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 13,
+    nombre: "Certificado de Avalúo",
+    descripcion: "Documento que certifica el valor catastral de un predio.",
+    requisitos: [
+      "Oficio solicitando CERTIFICADO DE AVALÚO con: nombre, cédula, número predial, matrícula inmobiliaria, dirección, celular, correo y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 14,
+    nombre: "Certificado Catastral Especial",
+    descripcion: "Certificado con información catastral específica, no general.",
+    requisitos: [
+      "Oficio solicitando CERTIFICADO CATASTRAL ESPECIAL con datos personales completos",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 15,
+    nombre: "Certificado Plano Predial Catastral",
+    descripcion: "Certificado que incluye el plano catastral de un predio.",
+    requisitos: [
+      "Oficio solicitando CERTIFICADO PLANO PREDIAL CATASTRAL con datos personales completos",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Certificado de tradición"
+    ]
+  },
+  {
+    id: 16,
+    nombre: "Fotocopia de la Ficha Predial con Croquis",
+    descripcion: "Copia de la ficha catastral de un predio incluyendo croquis del mismo.",
+    requisitos: [
+      "Oficio solicitando FICHA PREDIAL con: nombre, cédula, número predial, matrícula inmobiliaria, dirección, celular, correo y firma",
+      "Poder (si aplica)",
+      "Cédula del propietario (copia)",
+      "Certificado de tradición"
+    ]
+  }
+];
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
