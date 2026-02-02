@@ -823,7 +823,7 @@ export default function Pendientes() {
                       </div>
                       
                       {/* Historial colapsable */}
-                      {predio.historial && predio.historial.length > 0 && (
+                      {(predio.historial_flujo || predio.historial) && (predio.historial_flujo || predio.historial).length > 0 && (
                         <div className="mt-3 border-t pt-3">
                           <Button
                             variant="ghost"
@@ -832,7 +832,7 @@ export default function Pendientes() {
                             onClick={() => toggleHistorial(predio.id)}
                           >
                             <History className="w-4 h-4 mr-1" />
-                            Historial ({predio.historial.length})
+                            Historial ({(predio.historial_flujo || predio.historial).length})
                             {expandedHistorial[predio.id] ? (
                               <ChevronUp className="w-4 h-4 ml-1" />
                             ) : (
@@ -842,7 +842,7 @@ export default function Pendientes() {
                           
                           {expandedHistorial[predio.id] && (
                             <div className="mt-2 space-y-2 pl-5 border-l-2 border-slate-200">
-                              {predio.historial.map((item, idx) => (
+                              {(predio.historial_flujo || predio.historial).map((item, idx) => (
                                 <div key={idx} className="text-sm">
                                   <span className="text-slate-400">{formatDate(item.fecha)}</span>
                                   <span className="mx-2">·</span>
