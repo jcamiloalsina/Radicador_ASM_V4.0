@@ -482,6 +482,8 @@ class CambioPendienteCreate(BaseModel):
     tipo_cambio: str  # creacion, modificacion, eliminacion
     datos_propuestos: dict  # Datos del predio (nuevo o modificado)
     justificacion: Optional[str] = None
+    radicado_id: Optional[str] = None  # ID de la petición/radicado asociado
+    radicado_numero: Optional[str] = None  # Número del radicado (ej: "RASMGC-0011-02-02-2026")
 
 class CambioAprobacionRequest(BaseModel):
     """Modelo para aprobar/rechazar un cambio"""
