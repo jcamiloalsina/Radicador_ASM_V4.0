@@ -10730,6 +10730,44 @@ async def aprobar_rechazar_cambio(
     }
 
 
+@api_router.patch("/predios/cambios/{cambio_id}/vincular-radicado")
+async def vincular_radicado_a_cambio(
+    cambio_id: str,
+    radicado_id: str = Form(None),
+    radicado_numero: str = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """Vincula un radicado/petición a un cambio pendiente existente"""
+    # Permitir a coordinadores, admins y gestores
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para vincular radicados")
+    
+    # Buscar el cambio
+    cambio = await db.predios_cambios.find_one({"id": cambio_id}, {"_id": 0})
+    if not cambio:
+        raise HTTPException(status_code=404, detail="Cambio no encontrado")
+    
+    # Actualizar con el radicado
+    update_data = {
+        "radicado_id": radicado_id,
+        "radicado_numero": radicado_numero,
+        "vinculado_por": current_user['id'],
+        "vinculado_por_nombre": current_user['full_name'],
+        "fecha_vinculacion": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.predios_cambios.update_one(
+        {"id": cambio_id},
+        {"$set": update_data}
+    )
+    
+    return {
+        "mensaje": f"Radicado {radicado_numero} vinculado exitosamente",
+        "cambio_id": cambio_id,
+        "radicado_numero": radicado_numero
+    }
+
+
 async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
     """Aplica un cambio aprobado al predio"""
     tipo = cambio["tipo_cambio"]
