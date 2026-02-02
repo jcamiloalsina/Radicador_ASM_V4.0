@@ -10752,8 +10752,8 @@ async def vincular_radicado_a_cambio(
     
     # Actualizar con el radicado
     update_data = {
-        "radicado_id": radicado_id,
-        "radicado_numero": radicado_numero,
+        "radicado_id": request.radicado_id,
+        "radicado_numero": request.radicado_numero,
         "vinculado_por": current_user['id'],
         "vinculado_por_nombre": current_user['full_name'],
         "fecha_vinculacion": datetime.now(timezone.utc).isoformat()
@@ -10765,9 +10765,9 @@ async def vincular_radicado_a_cambio(
     )
     
     return {
-        "mensaje": f"Radicado {radicado_numero} vinculado exitosamente",
+        "mensaje": f"Radicado {request.radicado_numero} vinculado exitosamente",
         "cambio_id": cambio_id,
-        "radicado_numero": radicado_numero
+        "radicado_numero": request.radicado_numero
     }
 
 
