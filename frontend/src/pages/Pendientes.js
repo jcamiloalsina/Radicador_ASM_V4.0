@@ -494,6 +494,9 @@ export default function Pendientes() {
     const propuesto = cambio.datos_propuestos || {};
     const actual = cambio.predio_actual || {};
     
+    // Para cambios en historial (ya procesados), usar datos_anteriores si existe
+    const datosAnteriores = cambio.datos_anteriores || actual;
+    
     // Campos a comparar
     const camposComparar = [
       { key: 'codigo_predial_nacional', label: 'Código Predial Nacional' },
@@ -510,13 +513,13 @@ export default function Pendientes() {
     const cambios = [];
     
     for (const campo of camposComparar) {
-      let valorActual = actual[campo.key];
+      let valorActual = datosAnteriores[campo.key];
       let valorPropuesto = propuesto[campo.key];
       
       // Manejar caso especial de propietarios (array)
       if (campo.key === 'nombre_propietario') {
-        if (actual.propietarios && actual.propietarios.length > 0) {
-          valorActual = actual.propietarios.map(p => p.nombre_propietario).join(', ');
+        if (datosAnteriores.propietarios && datosAnteriores.propietarios.length > 0) {
+          valorActual = datosAnteriores.propietarios.map(p => p.nombre_propietario).join(', ');
         }
         if (propuesto.propietarios && propuesto.propietarios.length > 0) {
           valorPropuesto = propuesto.propietarios.map(p => p.nombre_propietario).join(', ');
@@ -535,8 +538,8 @@ export default function Pendientes() {
       if (!sonDiferentes) continue; // Mismo valor, no mostrar
       
       const format = campo.format || ((v) => v);
-      const actualFormatted = valorActual != null ? (format(valorActual) || valorActual) : 'Sin valor';
-      const propuestoFormatted = valorPropuesto != null ? (format(valorPropuesto) || valorPropuesto) : 'Sin valor';
+      const actualFormatted = valorActual != null ? (format(valorActual) || valorActual) : '(vacío)';
+      const propuestoFormatted = valorPropuesto != null ? (format(valorPropuesto) || valorPropuesto) : '(vacío)';
       
       cambios.push({
         label: campo.label,
