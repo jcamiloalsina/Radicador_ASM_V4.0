@@ -2219,15 +2219,17 @@ export default function Predios() {
 
   const fetchPredios = async () => {
     try {
-      // OPTIMIZACIÓN: Si hay municipio filtrado, primero mostrar datos del cache
-      if (filterMunicipio) {
+      const vigenciaActual = String(new Date().getFullYear());
+      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
+      
+      // OPTIMIZACIÓN: Solo usar caché para la VIGENCIA ACTUAL
+      // Las vigencias anteriores SIEMPRE se consultan del servidor
+      if (filterMunicipio && esVigenciaActual) {
         const cachedPredios = await getPrediosOffline(filterMunicipio);
         if (cachedPredios && cachedPredios.length > 0) {
-          // Aplicar filtros localmente
-          let filtered = cachedPredios;
-          if (filterVigencia) {
-            filtered = filtered.filter(p => String(p.vigencia) === String(filterVigencia));
-          }
+          // Filtrar solo predios de la vigencia actual en el caché
+          let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+          
           if (search) {
             const searchLower = search.toLowerCase();
             filtered = filtered.filter(p => 
@@ -2248,7 +2250,7 @@ export default function Predios() {
           // Ordenar por CNP antes de mostrar
           const prediosOrdenados = sortPrediosByCNP(filtered);
           
-          // Mostrar datos del cache inmediatamente - SIN sincronizar automáticamente
+          // Mostrar datos del cache inmediatamente
           setPredios(prediosOrdenados);
           setTotal(prediosOrdenados.length);
           setLoading(false);
@@ -2257,20 +2259,23 @@ export default function Predios() {
           if (!navigator.onLine) {
             toast.info(`Modo offline: ${prediosOrdenados.length} predios desde cache`, { duration: 2000 });
           }
-          // Ya NO sincronizamos en segundo plano automáticamente
-          // El usuario puede usar el botón "Sincronizar" cuando quiera
           return;
         }
       }
       
-      // Si no hay cache o no hay filtro de municipio, cargar normalmente
+      // VIGENCIAS ANTERIORES o sin caché: Consultar del servidor
       setLoading(true);
       
-      // Si está offline y no hay cache, mostrar mensaje
+      // Si está offline y es vigencia anterior, mostrar mensaje
       if (!navigator.onLine) {
-        toast.warning('No hay datos offline disponibles para este municipio');
+        if (!esVigenciaActual) {
+          toast.warning('Las vigencias anteriores requieren conexión a internet', { duration: 3000 });
+        } else {
+          toast.warning('No hay datos offline disponibles para este municipio');
+        }
         setPredios([]);
         setTotal(0);
+        setLoading(false);
         return;
       }
       
@@ -2299,35 +2304,35 @@ export default function Predios() {
       
       setPredios(prediosOrdenados);
       setTotal(prediosOrdenados.length);
+      setLoading(false);
       
       // IMPORTANTE: Solo guardar en caché si es la vigencia ACTUAL
-      // Las vigencias anteriores se consultan del servidor pero NO se guardan en caché
-      const vigenciaActual = String(new Date().getFullYear());
-      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
-      
-      // Guardar automáticamente para modo offline si hay municipio filtrado Y es vigencia actual
+      // Las vigencias anteriores NUNCA se guardan en caché
       if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
-        // Mostrar barra de progreso de descarga
-        const totalPredios = prediosOrdenados.length;
-        setDownloadProgress({
-          isDownloading: true,
-          current: 0,
-          total: totalPredios,
-          label: `Guardando ${filterMunicipio} (${totalPredios.toLocaleString()} predios)...`
+        // Guardar en segundo plano sin bloquear la UI
+        downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
+          localStorage.setItem(`sync_${filterMunicipio}_date`, new Date().toISOString());
+          localStorage.setItem(`sync_${filterMunicipio}_vigencia`, vigenciaActual);
+        }).catch(err => {
+          console.warn('Error guardando en caché:', err);
         });
-        
-        // Simular progreso mientras se guarda
-        const progressInterval = setInterval(() => {
-          setDownloadProgress(prev => ({
-            ...prev,
-            current: Math.min(prev.current + Math.ceil(totalPredios / 10), totalPredios)
-          }));
-        }, 100);
-        
-        await downloadForOffline(prediosOrdenados, null, filterMunicipio);
-        
-        clearInterval(progressInterval);
-        setDownloadProgress({
+      }
+      
+    } catch (error) {
+      console.error('Error cargando predios:', error);
+      setLoading(false);
+      
+      // Si hay error y es vigencia actual, intentar con caché
+      if (filterMunicipio && (!filterVigencia || String(filterVigencia) === String(new Date().getFullYear()))) {
+        const cachedPredios = await getPrediosOffline(filterMunicipio);
+        if (cachedPredios && cachedPredios.length > 0) {
+          setPredios(cachedPredios);
+          setTotal(cachedPredios.length);
+          toast.info('Mostrando datos desde caché (error de conexión)', { duration: 3000 });
+        }
+      }
+    }
+  };
           isDownloading: false,
           current: totalPredios,
           total: totalPredios,
