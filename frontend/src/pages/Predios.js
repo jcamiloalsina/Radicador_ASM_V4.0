@@ -1342,6 +1342,8 @@ export default function Predios() {
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
   const [verificacionCodigo, setVerificacionCodigo] = useState(null);
   const [ultimaManzanaInfo, setUltimaManzanaInfo] = useState(null); // Info de última manzana por sector
+  const [prediosEnManzana, setPrediosEnManzana] = useState([]); // Últimos predios en la manzana seleccionada
+  const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
   
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
