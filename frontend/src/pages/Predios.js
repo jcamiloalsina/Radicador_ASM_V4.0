@@ -1332,7 +1332,6 @@ export default function Predios() {
   const [subsanacionesConteo, setSubsanacionesConteo] = useState(0);
   const [reaparicionesConteo, setReaparicionesConteo] = useState({});
   const [gdbStats, setGdbStats] = useState(null); // Estadísticas de geometrías GDB
-  const [revinculandoGdb, setRevinculandoGdb] = useState(false); // Estado de revinculación GDB
   const [selectedPredio, setSelectedPredio] = useState(null);
   const [prediosEliminados, setPrediosEliminados] = useState([]);
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
