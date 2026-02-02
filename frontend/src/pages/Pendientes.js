@@ -1542,6 +1542,84 @@ export default function Pendientes() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Vincular Radicado */}
+      <Dialog open={showVincularRadicadoModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowVincularRadicadoModal(false);
+          setRadicadoSeleccionado('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-700">
+              <Link2 className="w-5 h-5" />
+              Vincular Radicado
+            </DialogTitle>
+            <DialogDescription>
+              Asocie esta modificación con una petición existente en el sistema.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedCambio && (
+              <div className="bg-slate-50 rounded-lg p-3 text-sm">
+                <p><strong>Tipo:</strong> {getTipoCambioLabel(selectedCambio.tipo_cambio)}</p>
+                <p><strong>Código:</strong> {selectedCambio.datos_propuestos?.codigo_predial_nacional || 'N/A'}</p>
+                <p><strong>Municipio:</strong> {selectedCambio.datos_propuestos?.municipio || selectedCambio.predio_actual?.municipio || 'N/A'}</p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-medium">
+                Seleccionar Petición/Radicado
+              </Label>
+              <Select value={radicadoSeleccionado} onValueChange={setRadicadoSeleccionado}>
+                <SelectTrigger data-testid="select-radicado">
+                  <SelectValue placeholder="Seleccione una petición..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {peticionesDisponibles.length === 0 ? (
+                    <div className="p-2 text-sm text-slate-500 text-center">
+                      No hay peticiones disponibles
+                    </div>
+                  ) : (
+                    peticionesDisponibles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.radicado} - {p.tipo_tramite} ({p.municipio})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                Solo se muestran peticiones en estado activo (radicado, asignado, en revisión).
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowVincularRadicadoModal(false);
+                setRadicadoSeleccionado('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleVincularRadicado}
+              disabled={!radicadoSeleccionado}
+              data-testid="confirm-vincular-btn"
+            >
+              <Link2 className="w-4 h-4 mr-2" />
+              Vincular Radicado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Detalle de Predio Nuevo */}
       <Dialog open={showPredioDetailDialog} onOpenChange={setShowPredioDetailDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
