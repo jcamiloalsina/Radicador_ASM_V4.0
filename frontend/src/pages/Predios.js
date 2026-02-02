@@ -1712,6 +1712,48 @@ export default function Predios() {
     }
   };
 
+  // Función para buscar los últimos 5 predios existentes en la manzana
+  const fetchPrediosEnManzana = async () => {
+    if (!formData.municipio || !codigoManual.manzana_vereda || codigoManual.manzana_vereda === '0000') {
+      setPrediosEnManzana([]);
+      return;
+    }
+    
+    setBuscandoPrediosManzana(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManual.zona,
+        sector: codigoManual.sector,
+        comuna: codigoManual.comuna,
+        barrio: codigoManual.barrio,
+        manzana_vereda: codigoManual.manzana_vereda,
+        limit: 5
+      });
+      const res = await axios.get(`${API}/predios/por-manzana/${formData.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEnManzana(res.data.predios || []);
+    } catch (error) {
+      console.log('Error buscando predios en manzana:', error);
+      setPrediosEnManzana([]);
+    } finally {
+      setBuscandoPrediosManzana(false);
+    }
+  };
+
+  // Effect para buscar predios cuando cambia la manzana
+  useEffect(() => {
+    if (formData.municipio && showCreateDialog && codigoManual.manzana_vereda && codigoManual.manzana_vereda !== '0000') {
+      const timer = setTimeout(() => {
+        fetchPrediosEnManzana();
+      }, 500); // Debounce de 500ms
+      return () => clearTimeout(timer);
+    } else {
+      setPrediosEnManzana([]);
+    }
+  }, [codigoManual.zona, codigoManual.sector, codigoManual.comuna, codigoManual.barrio, codigoManual.manzana_vereda, formData.municipio, showCreateDialog]);
+
   // Función para obtener la estructura del código según el municipio
   const fetchEstructuraCodigo = async () => {
     try {
