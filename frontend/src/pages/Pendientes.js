@@ -429,7 +429,7 @@ export default function Pendientes() {
     return colors[tipo] || 'bg-slate-100 text-slate-800';
   };
 
-  // Función para comparar valores y detectar cambios
+  // Función para comparar valores y detectar cambios - SOLO devuelve campos que realmente cambiaron
   const getFieldChanges = (cambio) => {
     const propuesto = cambio.datos_propuestos || {};
     const actual = cambio.predio_actual || {};
@@ -440,18 +440,20 @@ export default function Pendientes() {
       { key: 'municipio', label: 'Municipio' },
       { key: 'direccion', label: 'Dirección' },
       { key: 'nombre_propietario', label: 'Propietario' },
-      { key: 'area_terreno', label: 'Área Terreno', format: (v) => v ? `${v.toLocaleString()} m²` : 'N/A' },
-      { key: 'area_construida', label: 'Área Construida', format: (v) => v ? `${v.toLocaleString()} m²` : 'N/A' },
-      { key: 'avaluo', label: 'Avalúo', format: (v) => v ? `$${v.toLocaleString()}` : 'N/A' },
+      { key: 'area_terreno', label: 'Área Terreno', format: (v) => v != null ? `${Number(v).toLocaleString()} m²` : null },
+      { key: 'area_construida', label: 'Área Construida', format: (v) => v != null ? `${Number(v).toLocaleString()} m²` : null },
+      { key: 'avaluo', label: 'Avalúo', format: (v) => v != null ? `$${Number(v).toLocaleString()}` : null },
       { key: 'destino_economico', label: 'Destino Económico' },
       { key: 'zona', label: 'Zona' },
     ];
     
-    return camposComparar.map(campo => {
+    const cambios = [];
+    
+    for (const campo of camposComparar) {
       let valorActual = actual[campo.key];
       let valorPropuesto = propuesto[campo.key];
       
-      // Manejar caso especial de propietarios (array) - mostrar TODOS
+      // Manejar caso especial de propietarios (array)
       if (campo.key === 'nombre_propietario') {
         if (actual.propietarios && actual.propietarios.length > 0) {
           valorActual = actual.propietarios.map(p => p.nombre_propietario).join(', ');
@@ -461,21 +463,30 @@ export default function Pendientes() {
         }
       }
       
-      const format = campo.format || ((v) => v || 'N/A');
-      const actualFormatted = format(valorActual);
-      const propuestoFormatted = format(valorPropuesto);
+      // IMPORTANTE: Solo incluir si el campo fue propuesto (existe en datos_propuestos)
+      // y es diferente al valor actual
+      const existeEnPropuesto = campo.key in propuesto || 
+        (campo.key === 'nombre_propietario' && propuesto.propietarios);
       
-      const hayCambio = valorActual !== valorPropuesto && 
-                       (valorActual || valorPropuesto) && 
-                       actualFormatted !== propuestoFormatted;
+      if (!existeEnPropuesto) continue; // No fue tocado, no mostrar
       
-      return {
+      // Verificar si realmente cambió
+      const sonDiferentes = valorActual !== valorPropuesto;
+      if (!sonDiferentes) continue; // Mismo valor, no mostrar
+      
+      const format = campo.format || ((v) => v);
+      const actualFormatted = valorActual != null ? (format(valorActual) || valorActual) : 'Sin valor';
+      const propuestoFormatted = valorPropuesto != null ? (format(valorPropuesto) || valorPropuesto) : 'Sin valor';
+      
+      cambios.push({
         label: campo.label,
         valorActual: actualFormatted,
         valorPropuesto: propuestoFormatted,
-        hayCambio
-      };
-    });
+        hayCambio: true
+      });
+    }
+    
+    return cambios;
   };
 
   if (loading) {
