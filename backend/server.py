@@ -10730,11 +10730,14 @@ async def aprobar_rechazar_cambio(
     }
 
 
+class VincularRadicadoRequest(BaseModel):
+    radicado_id: str
+    radicado_numero: Optional[str] = None
+
 @api_router.patch("/predios/cambios/{cambio_id}/vincular-radicado")
 async def vincular_radicado_a_cambio(
     cambio_id: str,
-    radicado_id: str = Form(None),
-    radicado_numero: str = Form(None),
+    request: VincularRadicadoRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """Vincula un radicado/petición a un cambio pendiente existente"""
