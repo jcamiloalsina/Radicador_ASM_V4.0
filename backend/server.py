@@ -1731,13 +1731,17 @@ async def login(credentials: UserLogin):
     
     token = create_token(user['id'], user['email'], user['role'])
     
+    # Obtener permisos del usuario
+    permissions = user.get('permissions', [])
+    
     return {
         "token": token,
         "user": {
             "id": user['id'],
             "email": user['email'],
             "full_name": user['full_name'],
-            "role": user['role']
+            "role": user['role'],
+            "permissions": permissions
         }
     }
 
