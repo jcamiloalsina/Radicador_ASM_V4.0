@@ -114,6 +114,27 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 2 Febrero 2026 (Fork) - Mejoras UI Historial + Nuevo Predio
+
+#### 8. Fix: Historial de Cambios - "Sin valor" y botones de acción
+**Problema:** En Pendientes > Historial, los cambios ya aprobados mostraban "Sin valor" en datos anteriores y seguían mostrando botones "Aprobar/Rechazar".
+
+**Solución:**
+- Cambié "Valor Actual" a "Datos Anteriores" para cambios procesados
+- Cambié "Valor Propuesto" a "Valor Aplicado" para cambios aprobados
+- Cambié "Sin valor" a "(vacío)" más descriptivo
+- Agregué panel verde/rojo con información del aprobador/rechazador y fecha
+- Oculté botones de Aprobar/Rechazar para cambios con estado != 'pendiente'
+
+#### 9. NUEVO: Mostrar predios existentes al crear nuevo predio
+**Problema:** Al digitar la manzana en Nuevo Predio, no se mostraban los predios existentes para referencia.
+
+**Implementación:**
+- Backend: Nuevo endpoint `GET /api/predios/por-manzana/{municipio}?zona=XX&sector=XX&manzana_vereda=XXXX&limit=5`
+- Frontend: Panel cyan en formulario que muestra los últimos 5 predios de la manzana
+- Se muestra: número de terreno, dirección y área
+- Debounce de 500ms para evitar llamadas excesivas
+
 ### Sesión 2 Febrero 2026 (Fork) - 5 Bug Fixes Críticos + UI/UX
 
 #### 1. Fix: Badge de Pendientes no se actualizaba en tiempo real
