@@ -1819,3 +1819,63 @@ Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del nav
 #### P3 - Backlog:
 - [ ] Mejorar sistema de notificaciones en tiempo real
 - [ ] Dashboard de métricas para coordinadores
+
+---
+
+### Sesión 2 Febrero 2026 (Continuación) - Correcciones de Caché y Modal de Trámites
+
+#### 8. NUEVO: Modal de Trámites y Requisitos en Login
+**Implementación:** Botón "Ver Trámites y Requisitos" en la página de login que abre un modal con:
+- 16 trámites catastrales en formato acordeón colapsable
+- Requisitos detallados para cada trámite
+- Notas adicionales cuando aplica
+- Contacto de WhatsApp para consultar costos (310 232 76 47)
+
+**Archivo:** `/app/frontend/src/pages/Login.js`
+
+#### 9. CRÍTICO: Corrección de Caché de Vigencias
+**Problema:** Al consultar vigencias anteriores, se borraba el caché de la última vigencia.
+
+**Solución implementada:**
+- ✅ **Vigencia actual (2026):** Se guarda en caché, disponible offline
+- ✅ **Vigencias anteriores:** SIEMPRE se consultan del servidor, NUNCA borran ni usan el caché
+- ✅ `syncMunicipioManual`: Ya NO llama a `clearAllOfflineData()` - solo actualiza el municipio específico
+- ✅ `fetchPredios`: Detecta si es vigencia actual o anterior y actúa en consecuencia
+- ✅ Guarda fecha y vigencia de última sincronización en localStorage
+
+**Comportamiento:**
+1. Usuario abre vigencia 2026 → Usa caché si existe, sino descarga y guarda
+2. Usuario cambia a vigencia 2025 → Consulta servidor, NO toca caché de 2026
+3. Usuario vuelve a vigencia 2026 → Caché intacto, carga instantánea
+
+**Archivo:** `/app/frontend/src/pages/Predios.js`
+
+#### 10. NUEVO: Sincronización Automática los Lunes
+**Implementación:** Sistema que detecta si es lunes y verifica si hay municipios que necesitan sincronización.
+
+**Lógica:**
+1. Al cargar Gestión de Predios, verifica si es lunes
+2. Revisa todos los municipios sincronizados
+3. Si alguno tiene más de 6 días sin sincronizar, muestra notificación
+4. Usuario puede hacer click en "Sincronizar ahora" para actualizar todos
+
+**Funciones agregadas:**
+- `checkAutoSyncMonday()`: Verifica si hay municipios desactualizados
+- `autoSyncMunicipios()`: Sincroniza múltiples municipios en secuencia
+
+**Archivo:** `/app/frontend/src/pages/Predios.js`
+
+#### 11. Fix: Modal de Detalle de Cambio - Layout mejorado
+- CNP en fila completa (no superpuesto con municipio)
+- "N/A" reemplazado por "Sin radicado asociado"
+
+#### 12. Fix: Visor de Predios - Popup clarificado
+- Texto cambiado de "Total predios" a "Total geometrías" con etiqueta "Base Gráfica (GDB)"
+- Botón de refrescar para limpiar caché de límites
+- Caché de límites reducido de 24h a 1h
+
+#### 13. Eliminado: Botón "Revincular GDB"
+**Razón:** La vinculación es automática al cargar el GDB. El botón era redundante y causaba timeouts.
+
+---
+
