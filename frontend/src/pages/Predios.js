@@ -4255,7 +4255,8 @@ export default function Predios() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+          <div className="max-h-[80vh] overflow-y-auto pr-2">
           <DialogHeader>
             <DialogTitle className="text-xl font-outfit">Editar Predio - {selectedPredio?.codigo_predial_nacional}</DialogTitle>
           </DialogHeader>
