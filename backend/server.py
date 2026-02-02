@@ -2658,6 +2658,74 @@ async def auto_asignar_tramite(petition_id: str, current_user: dict = Depends(ge
     return {"message": "Se ha asignado exitosamente al trámite"}
 
 
+@api_router.post("/petitions/{petition_id}/asignar/{gestor_id}")
+async def asignar_gestor_a_tramite(petition_id: str, gestor_id: str, current_user: dict = Depends(get_current_user)):
+    """Atención al usuario, coordinador o admin asigna un gestor a un trámite"""
+    # Solo estos roles pueden asignar gestores
+    if current_user['role'] not in [UserRole.ATENCION_USUARIO, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para asignar gestores")
+    
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=404, detail="Petición no encontrada")
+    
+    # Verificar que el gestor existe
+    gestor = await db.users.find_one({"id": gestor_id}, {"_id": 0})
+    if not gestor:
+        raise HTTPException(status_code=404, detail="Gestor no encontrado")
+    
+    # Verificar que el gestor tenga rol adecuado
+    if gestor['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
+        raise HTTPException(status_code=400, detail="El usuario seleccionado no puede ser asignado como gestor")
+    
+    gestores_asignados = petition.get('gestores_asignados', [])
+    
+    if gestor_id in gestores_asignados:
+        raise HTTPException(status_code=400, detail="El gestor ya está asignado a esta petición")
+    
+    gestores_asignados.append(gestor_id)
+    
+    update_data = {
+        "gestores_asignados": gestores_asignados,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Si es el primer asignado, cambiar estado
+    if petition['estado'] == PetitionStatus.RADICADO:
+        update_data['estado'] = PetitionStatus.ASIGNADO
+    
+    # Historial
+    historial_entry = {
+        "accion": f"Asignación de gestor: {gestor['full_name']} asignado por {current_user['full_name']}",
+        "usuario": current_user['full_name'],
+        "usuario_rol": current_user['role'],
+        "notas": f"Gestor {gestor['full_name']} asignado al trámite",
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    current_historial = petition.get('historial', [])
+    current_historial.append(historial_entry)
+    update_data['historial'] = current_historial
+    
+    await db.petitions.update_one({"id": petition_id}, {"$set": update_data})
+    
+    # Enviar notificación al gestor asignado
+    try:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": gestor_id,
+            "tipo": "asignacion",
+            "mensaje": f"Se te ha asignado el trámite {petition['radicado']} - {petition['tipo_tramite']}",
+            "link": f"/dashboard/peticiones/{petition_id}",
+            "leido": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    except:
+        pass
+    
+    return {"message": f"Gestor {gestor['full_name']} asignado exitosamente al trámite"}
+
+
 @api_router.post("/petitions/{petition_id}/marcar-completado")
 async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depends(get_current_user)):
     """El gestor marca su trabajo como completado en el trámite"""
