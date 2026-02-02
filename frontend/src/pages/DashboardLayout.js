@@ -228,11 +228,21 @@ export default function DashboardLayout() {
     if (user) {
       fetchNotificaciones();
       checkGdbAlert();
-      if (['administrador', 'coordinador'].includes(user.role)) {
+      if (['administrador', 'coordinador'].includes(user.role) || user.permissions?.includes('approve_changes')) {
         fetchCambiosPendientes();
         fetchAlertasCronograma();
       }
     }
+    
+    // Listener para actualizar el badge cuando se aprueba/rechaza un pendiente
+    const handlePendientesUpdated = () => {
+      if (user && (['administrador', 'coordinador'].includes(user.role) || user.permissions?.includes('approve_changes'))) {
+        fetchCambiosPendientes();
+      }
+    };
+    
+    window.addEventListener('pendientesUpdated', handlePendientesUpdated);
+    return () => window.removeEventListener('pendientesUpdated', handlePendientesUpdated);
   }, [user, fetchNotificaciones, checkGdbAlert, fetchCambiosPendientes, fetchAlertasCronograma]);
 
   const marcarLeida = async (notificacionId) => {
