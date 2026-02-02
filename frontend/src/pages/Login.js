@@ -232,6 +232,7 @@ export default function Login() {
   const [resending, setResending] = useState(false);
   const [sessionExpiredMsg, setSessionExpiredMsg] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showTramitesModal, setShowTramitesModal] = useState(false);
   const { login, hasOfflineCredentials, offlineCredentialsInfo } = useAuth();
   const navigate = useNavigate();
 
