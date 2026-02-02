@@ -114,6 +114,47 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 2 Febrero 2026 - Caché Vigencias + Destinos Económicos + Notificaciones
+
+#### 1. Fix: Caché de Vigencias Anteriores
+**Problema:** Al consultar vigencias anteriores, se eliminaba el caché total guardado.
+
+**Solución:** 
+- Las vigencias anteriores se consultan del servidor pero NO se guardan en caché
+- Solo la vigencia actual (año actual) se guarda en caché para modo offline
+- El caché existente no se elimina al consultar vigencias anteriores
+
+#### 2. Actualización: Destinos Económicos
+Actualizados según normativa:
+```
+A=Habitacional, B=Industrial, C=Comercial, D=Agropecuario, E=Minero,
+F=Cultural, G=Recreacional, H=Salubridad, I=Institucional, J=Educativo,
+K=Religioso, L=Agrícola, M=Pecuario, N=Agroindustrial, O=Forestal,
+P=Uso Público, Q=Lote Urbanizable No Urbanizado, R=Lote Urbanizable No Edificado,
+S=Lote No Urbanizable, T=Servicios Especiales
+```
+
+#### 3. Fix: Modal muestra SOLO campos modificados
+**Problema:** CNP y Municipio aparecían como "N/A ⚠️" cuando no fueron tocados.
+
+**Solución:** `getFieldChanges()` ahora filtra campos que no fueron propuestos.
+
+#### 4. Fix: Badge de Pendientes
+**Problema:** El badge mostraba 0 cuando había pendientes.
+
+**Solución:** Ahora suma todos los tipos: cambios + predios nuevos + reapariciones.
+
+#### 5. Banner de Novedades
+- Se muestra al entrar al dashboard si hay pendientes
+- Detalla cuántos hay de cada tipo
+- Botón "Ver Pendientes" para ir directo
+- Se puede cerrar (no vuelve hasta próxima sesión)
+
+#### 6. Fix: Click en notificaciones navega
+- Según el tipo, navega a la sección correspondiente (pendientes, peticiones, etc.)
+
+---
+
 ### Sesión 1 Febrero 2026 (Fork 10) - Fix Códigos Homologados + Permisos Coordinador + Reapariciones + Peticiones Empresa
 
 #### 1. Fix Crítico: Búsqueda Case-Insensitive de Municipios
