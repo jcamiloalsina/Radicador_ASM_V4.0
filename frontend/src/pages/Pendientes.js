@@ -1234,6 +1234,27 @@ export default function Pendientes() {
           </DialogHeader>
           {selectedCambio && (
             <div className="space-y-4">
+              {/* Información del predio que se modifica - CNP destacado */}
+              <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-xs text-slate-500 uppercase tracking-wide">Código Predial Nacional (CNP)</span>
+                    <p className="font-mono text-lg font-bold text-slate-800">
+                      {selectedCambio.predio_actual?.codigo_predial_nacional || 
+                       selectedCambio.datos_propuestos?.codigo_predial_nacional || 
+                       selectedCambio.codigo_predial_nacional || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 uppercase tracking-wide">Municipio</span>
+                    <p className="font-medium text-slate-700">
+                      {selectedCambio.predio_actual?.municipio || 
+                       selectedCambio.datos_propuestos?.municipio || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex items-center gap-3">
                 <Badge className={getTipoCambioColor(selectedCambio.tipo_cambio)}>
                   {getTipoCambioLabel(selectedCambio.tipo_cambio)}
