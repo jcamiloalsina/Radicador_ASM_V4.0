@@ -412,34 +412,37 @@ export default function PetitionDetail() {
         <Card className="border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-slate-900 font-outfit">Gestores Asignados</CardTitle>
-            {/* Botón auto-asignarse */}
-            {['atencion_usuario', 'coordinador', 'administrador', 'gestor'].includes(user?.role) && 
-             !petition.gestores_asignados?.includes(user?.id) && 
-             petition.estado !== 'finalizado' && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={async () => {
-                  try {
-                    const token = localStorage.getItem('token');
-                    await axios.post(`${API}/petitions/${petition.id}/auto-asignar`, {}, {
-                      headers: { Authorization: `Bearer ${token}` }
-                    });
-                    toast.success('Te has asignado al trámite');
-                    fetchPetition();
-                  } catch (error) {
-                    toast.error(error.response?.data?.detail || 'Error al auto-asignarse');
-                  }
-                }}
-                className="text-emerald-700 border-emerald-700 hover:bg-emerald-50"
-                data-testid="auto-asignar-btn"
-              >
-                <UserPlus className="w-4 h-4 mr-1" />
-                Asignarme
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {/* Botón auto-asignarse */}
+              {['atencion_usuario', 'coordinador', 'administrador', 'gestor'].includes(user?.role) && 
+               !petition.gestores_asignados?.includes(user?.id) && 
+               petition.estado !== 'finalizado' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token');
+                      await axios.post(`${API}/petitions/${petition.id}/auto-asignar`, {}, {
+                        headers: { Authorization: `Bearer ${token}` }
+                      });
+                      toast.success('Te has asignado al trámite');
+                      fetchPetition();
+                    } catch (error) {
+                      toast.error(error.response?.data?.detail || 'Error al auto-asignarse');
+                    }
+                  }}
+                  className="text-emerald-700 border-emerald-700 hover:bg-emerald-50"
+                  data-testid="auto-asignar-btn"
+                >
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  Asignarme
+                </Button>
+              )}
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Lista de gestores asignados */}
             {petition.gestores_asignados && petition.gestores_asignados.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {petition.gestores_asignados.map((gestorId, idx) => {
@@ -480,6 +483,45 @@ export default function PetitionDetail() {
               </div>
             ) : (
               <p className="text-sm text-slate-500">Sin gestores asignados</p>
+            )}
+            
+            {/* Selector para asignar gestor - visible para atencion_usuario, coordinador, admin */}
+            {canAssignGestores && petition.estado !== 'finalizado' && (
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium text-slate-700 mb-2">Asignar un gestor:</p>
+                <div className="flex gap-2">
+                  <Select 
+                    onValueChange={async (gestorId) => {
+                      if (!gestorId) return;
+                      try {
+                        const token = localStorage.getItem('token');
+                        await axios.post(`${API}/petitions/${petition.id}/asignar/${gestorId}`, {}, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        const gestor = gestores.find(g => g.id === gestorId);
+                        toast.success(`${gestor?.full_name || 'Gestor'} asignado al trámite`);
+                        fetchPetition();
+                      } catch (error) {
+                        toast.error(error.response?.data?.detail || 'Error al asignar gestor');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="flex-1" data-testid="asignar-gestor-select">
+                      <SelectValue placeholder="Seleccionar gestor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gestores
+                        .filter(g => !petition.gestores_asignados?.includes(g.id))
+                        .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                        .map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.full_name} ({g.role === 'atencion_usuario' ? 'Atención' : g.role === 'coordinador' ? 'Coordinador' : 'Gestor'})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
