@@ -114,6 +114,46 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 2 Febrero 2026 (Fork) - 5 Bug Fixes Críticos
+
+#### 1. Fix: Badge de Pendientes no se actualizaba en tiempo real
+**Problema:** El contador del menú "Pendientes" no se actualizaba después de aprobar/rechazar un item.
+
+**Solución:** 
+- `Pendientes.js`: Despacha evento `pendientesUpdated` después de aprobar/rechazar (líneas 342, 381)
+- `DashboardLayout.js`: Escucha el evento y llama `fetchCambiosPendientes()` (líneas 238-245)
+- Resultado: El badge se actualiza inmediatamente en tiempo real
+
+#### 2. Fix: Generación de certificados solo para tipo correcto
+**Problema:** Se podía generar "Certificado Catastral" para cualquier tipo de petición.
+
+**Solución:** 
+- `PetitionDetail.js` línea 955: Condición `petition.tipo_tramite === 'Certificado catastral'`
+- El botón "Generar Certificado" solo aparece para peticiones de tipo exacto "Certificado catastral"
+
+#### 3. NUEVO: Vincular radicado a modificaciones existentes
+**Problema:** No era posible asociar un radicado a cambios que fueron creados antes de implementar esta funcionalidad.
+
+**Implementación:**
+- Backend: Nuevo endpoint `PATCH /api/predios/cambios/{cambio_id}/vincular-radicado`
+- Frontend: Modal en Pendientes.js para seleccionar una petición disponible
+- Botón "Vincular radicado" visible en items sin radicado asociado
+
+#### 4. Fix: Valores "N/A" en pestaña Predios Nuevos
+**Problema:** Los predios nuevos mostraban "N/A" en todos los campos.
+
+**Causa raíz:** Frontend buscaba `predio.datos_predio?.municipio` pero la API retorna `predio.municipio` directamente.
+
+**Solución:** Actualizados los mappings de campos en `Pendientes.js`:
+- `predio.municipio || predio.datos_predio?.municipio`
+- `predio.gestor_creador_nombre || predio.creado_por_nombre`
+- `predio.estado_flujo || predio.estado`
+
+#### 5. Verificado: Conteo de geometrías GDB
+**Estado:** El botón de refrescar caché en el Visor de Predios ya estaba implementado para solucionar datos desactualizados.
+
+---
+
 ### Sesión 2 Febrero 2026 - Caché Vigencias + Destinos Económicos + Notificaciones
 
 #### 1. Fix: Caché de Vigencias Anteriores
