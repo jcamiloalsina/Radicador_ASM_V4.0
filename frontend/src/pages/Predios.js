@@ -1502,7 +1502,6 @@ export default function Predios() {
   const [gestorAsignado, setGestorAsignado] = useState('');
   
   // Estado para seleccionar radicado asociado a modificaciones
-  const [peticionesDisponibles, setPeticionesDisponibles] = useState([]);
   const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
 
   // Cargar gestores disponibles
@@ -1524,7 +1523,7 @@ export default function Predios() {
   };
   
   // Cargar peticiones disponibles para asociar a modificaciones
-  const fetchPeticionesDisponibles = async () => {
+  const fetchPeticionesParaModificacion = async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/petitions`, {
