@@ -572,10 +572,16 @@ export default function Pendientes() {
                           <Building className="w-5 h-5 text-slate-600" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge className={getTipoCambioColor(cambio.tipo_cambio)}>
                               {getTipoCambioLabel(cambio.tipo_cambio)}
                             </Badge>
+                            {cambio.radicado_numero && (
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                <FileText className="w-3 h-3 mr-1" />
+                                {cambio.radicado_numero}
+                              </Badge>
+                            )}
                             <span className="font-mono text-sm text-slate-600 break-all">
                               {cambio.datos_propuestos?.codigo_predial_nacional || 'Nuevo'}
                             </span>
@@ -584,6 +590,11 @@ export default function Pendientes() {
                             {cambio.datos_propuestos?.municipio || 'N/A'} · 
                             Solicitado por: {cambio.propuesto_por_nombre || 'N/A'}
                           </p>
+                          {!cambio.radicado_numero && cambio.tipo_cambio === 'modificacion' && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              ⚠️ Sin radicado asociado
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
