@@ -1548,7 +1548,67 @@ export default function Predios() {
     fetchGdbStats();
     fetchGestoresDisponibles();
     fetchPeticionesParaModificacion();
+    
+    // Verificar sincronización automática de los lunes
+    checkAutoSyncMonday();
   }, []);
+  
+  // Función para verificar y ejecutar sincronización automática los lunes
+  const checkAutoSyncMonday = async () => {
+    const today = new Date();
+    const isMonday = today.getDay() === 1; // 0=Domingo, 1=Lunes
+    
+    if (!isMonday || !navigator.onLine) return;
+    
+    // Obtener todos los municipios sincronizados
+    const syncedMunicipios = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sync_') && key.endsWith('_date')) {
+        const municipio = key.replace('sync_', '').replace('_date', '');
+        const lastSyncDate = localStorage.getItem(key);
+        if (lastSyncDate) {
+          const lastSync = new Date(lastSyncDate);
+          const daysSinceSync = Math.floor((today - lastSync) / (1000 * 60 * 60 * 24));
+          
+          // Si han pasado más de 6 días desde la última sincronización
+          if (daysSinceSync >= 6) {
+            syncedMunicipios.push(municipio);
+          }
+        }
+      }
+    }
+    
+    // Si hay municipios que sincronizar, mostrar notificación
+    if (syncedMunicipios.length > 0) {
+      toast.info(
+        `🔄 Sincronización semanal: ${syncedMunicipios.length} municipio(s) necesitan actualización`,
+        { 
+          duration: 10000,
+          action: {
+            label: 'Sincronizar ahora',
+            onClick: () => autoSyncMunicipios(syncedMunicipios)
+          }
+        }
+      );
+    }
+  };
+  
+  // Sincronizar múltiples municipios automáticamente
+  const autoSyncMunicipios = async (municipios) => {
+    toast.info(`Iniciando sincronización de ${municipios.length} municipio(s)...`);
+    
+    for (const municipio of municipios) {
+      try {
+        await syncMunicipioManual(municipio);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa entre municipios
+      } catch (error) {
+        console.error(`Error sincronizando ${municipio}:`, error);
+      }
+    }
+    
+    toast.success(`✅ Sincronización semanal completada`);
+  };
 
   useEffect(() => {
     if (filterMunicipio && filterVigencia) {
