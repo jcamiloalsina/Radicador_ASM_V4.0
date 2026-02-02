@@ -10524,9 +10524,13 @@ async def get_cambios_pendientes(
     limit: int = 50,
     current_user: dict = Depends(get_current_user)
 ):
-    """Lista todos los cambios pendientes de aprobación (solo coordinadores/admin)"""
-    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores pueden ver cambios pendientes")
+    """Lista todos los cambios pendientes de aprobación (coordinadores/admin o usuarios con permiso)"""
+    # Verificar si es coordinador/admin o tiene permiso de aprobar cambios
+    user_permissions = current_user.get('permissions', [])
+    has_approve_permission = 'approve_changes' in user_permissions
+    
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] and not has_approve_permission:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver cambios pendientes")
     
     query = {
         "estado": {"$in": [
