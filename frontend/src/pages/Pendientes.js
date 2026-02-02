@@ -6,11 +6,12 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { 
   Clock, CheckCircle, XCircle, Building, User, MapPin, 
-  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar
+  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -21,7 +22,7 @@ const API = `${BACKEND_URL}/api`;
 
 // Helper para formatear fecha
 const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
+  if (!dateStr) return 'No disponible';
   try {
     return new Date(dateStr).toLocaleDateString('es-CO', {
       day: '2-digit',
