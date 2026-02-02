@@ -4497,9 +4497,47 @@ export default function Predios() {
             </div>
           </div>
           
+          {/* Selector de Radicado Asociado - Solo para gestores (no coordinadores/admin que aprueban directamente) */}
+          {!['coordinador', 'administrador'].includes(user?.role) && (
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 mt-4">
+              <Label className="text-blue-800 font-medium flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Radicado Asociado (Requerido)
+              </Label>
+              <p className="text-xs text-blue-600 mt-1 mb-2">
+                Seleccione la petición/radicado que justifica esta modificación
+              </p>
+              <Select value={radicadoSeleccionado} onValueChange={setRadicadoSeleccionado}>
+                <SelectTrigger className="border-blue-300">
+                  <SelectValue placeholder="Seleccione un radicado..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {peticionesDisponibles.length === 0 ? (
+                    <SelectItem value="none" disabled>No hay peticiones disponibles</SelectItem>
+                  ) : (
+                    peticionesDisponibles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.radicado} - {p.tipo_tramite} ({p.nombre_completo})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {!radicadoSeleccionado && (
+                <p className="text-xs text-amber-600 mt-2">
+                  ⚠️ Debe seleccionar un radicado para justificar la modificación
+                </p>
+              )}
+            </div>
+          )}
+          
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancelar</Button>
-            <Button onClick={handleUpdate} className="bg-emerald-700 hover:bg-emerald-800">
+            <Button variant="outline" onClick={() => { setShowEditDialog(false); setRadicadoSeleccionado(''); }}>Cancelar</Button>
+            <Button 
+              onClick={handleUpdate} 
+              className="bg-emerald-700 hover:bg-emerald-800"
+              disabled={!['coordinador', 'administrador'].includes(user?.role) && !radicadoSeleccionado}
+            >
               Guardar Cambios
             </Button>
           </div>
