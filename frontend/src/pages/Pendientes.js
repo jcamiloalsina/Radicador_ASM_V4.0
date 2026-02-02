@@ -589,17 +589,34 @@ export default function Pendientes() {
                               </Badge>
                             )}
                             <span className="font-mono text-sm text-slate-600 break-all">
-                              {cambio.datos_propuestos?.codigo_predial_nacional || 'Nuevo'}
+                              {cambio.datos_propuestos?.codigo_predial_nacional || 
+                               cambio.predio_actual?.codigo_predial_nacional || 
+                               'Código no disponible'}
                             </span>
                           </div>
                           <p className="text-sm text-slate-500 mt-1">
-                            {cambio.datos_propuestos?.municipio || 'N/A'} · 
-                            Solicitado por: {cambio.propuesto_por_nombre || 'N/A'}
+                            {cambio.datos_propuestos?.municipio || 
+                             cambio.predio_actual?.municipio || 
+                             'Municipio no especificado'} · 
+                            Solicitado por: {cambio.propuesto_por_nombre || 'No especificado'}
                           </p>
                           {!cambio.radicado_numero && cambio.tipo_cambio === 'modificacion' && (
-                            <p className="text-xs text-amber-600 mt-1">
-                              ⚠️ Sin radicado asociado
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-amber-600">⚠️ Sin radicado asociado</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCambio(cambio);
+                                  setShowVincularRadicadoModal(true);
+                                }}
+                              >
+                                <Link2 className="w-3 h-3 mr-1" />
+                                Vincular radicado
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
