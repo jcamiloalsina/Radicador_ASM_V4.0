@@ -1713,3 +1713,109 @@ Si el GPS sigue sin funcionar en iOS, el usuario debe revisar la consola del nav
 
 **Testing:** Screenshot verificado - Filtros funcionando correctamente
 
+
+
+---
+
+### Sesión 2 Febrero 2026 - Correcciones de Flujo de Trabajo y GDB
+
+#### 1. Fix: Modal de Detalle de Cambio muestra CNP del Predio
+**Problema:** El modal "Detalle del Cambio" no mostraba qué predio se estaba modificando.
+
+**Solución:**
+- ✅ Agregado bloque destacado con CNP, Municipio y Radicado Asociado en el modal
+- ✅ El CNP se muestra con fuente monoespaciada para fácil lectura
+
+#### 2. Fix: Gestor con permiso `approve_changes` ve menú "Pendientes"
+**Problema:** Los gestores con permiso de aprobación no veían la opción "Pendientes" en el menú.
+
+**Solución:**
+- ✅ Nueva variable `canSeePendientes` que incluye: admin, coordinador, o cualquier usuario con permiso `approve_changes`
+- ✅ El menú "Pendientes" ahora es visible para gestores autorizados
+
+**Archivo:** `/app/frontend/src/pages/DashboardLayout.js`
+
+#### 3. Fix: Atención al Usuario puede asignar gestores
+**Problema:** El rol "Atención al Usuario" solo podía auto-asignarse, no asignar otros gestores.
+
+**Solución:**
+- ✅ Nueva variable `canAssignGestores` que incluye: admin, coordinador, atencion_usuario
+- ✅ Nuevo selector dropdown en tarjeta "Gestores Asignados" para asignar cualquier gestor
+- ✅ Nuevo endpoint `POST /api/petitions/{id}/asignar/{gestor_id}` en backend
+- ✅ Notificación automática al gestor asignado
+
+**Archivos:**
+- `/app/frontend/src/pages/PetitionDetail.js`
+- `/app/backend/server.py`
+
+#### 4. NUEVO: Modificaciones de Predios vinculadas a Radicados
+**Mejora:** Las modificaciones de predios ahora DEBEN estar asociadas a un radicado/petición.
+
+**Implementación:**
+- ✅ Nuevos campos `radicado_id` y `radicado_numero` en modelo `CambioPendienteCreate`
+- ✅ Selector de "Radicado Asociado (Requerido)" en diálogo de edición de predios
+- ✅ Los gestores NO pueden guardar cambios sin seleccionar un radicado
+- ✅ Coordinadores/Admin pueden aprobar cambios directamente sin radicado
+- ✅ Badge azul con número de radicado en vista de "Pendientes"
+- ✅ Columna "Radicado Asociado" en modal de detalle
+
+**Archivos:**
+- `/app/backend/server.py` - Modelo y endpoint actualizado
+- `/app/frontend/src/pages/Predios.js` - Selector de radicado en edición
+- `/app/frontend/src/pages/Pendientes.js` - Vista con radicado
+
+#### 5. Fix: Caché de Límites Municipales en Visor
+**Problema:** Los límites municipales tardaban mucho en cargar cada vez.
+
+**Solución:**
+- ✅ Caché en localStorage con clave `limites_municipales_{fuente}`
+- ✅ Duración del caché: 24 horas
+- ✅ Carga instantánea desde caché si existe y es válido
+
+**Archivo:** `/app/frontend/src/pages/VisorPredios.js`
+
+#### 6. Fix: Subir Ortoimágenes solo para Coordinador/Admin
+**Problema:** Los gestores con permiso `puede_actualizar_gdb` también veían la opción de subir ortoimágenes.
+
+**Solución:**
+- ✅ Condición cambiada a solo `administrador` y `coordinador`
+- ✅ Los gestores ya no pueden subir ortoimágenes propias
+
+**Archivo:** `/app/frontend/src/pages/VisorPredios.js`
+
+#### 7. CRÍTICO: Vinculación GDB-Predios corregida
+**Problema:** La vinculación de geometrías GDB con predios usaba lógica incorrecta que no respetaba:
+- Match EXACTO del CPN
+- Solo última vigencia del municipio
+
+**Solución:**
+- ✅ **Match EXACTO:** Solo se vinculan geometrías cuyo código coincide exactamente con el CPN del predio
+- ✅ **Última Vigencia:** Solo se procesan predios de la vigencia más reciente del municipio
+- ✅ **Revinculación mejorada:** Endpoint `/api/gdb/revincular-predios` reescrito completamente
+- ✅ **Vinculación en carga:** El proceso de upload de GDB ahora vincula automáticamente con la lógica correcta
+- ✅ **Estadísticas detalladas:** Se retorna vigencia usada, porcentaje de cobertura, etc.
+
+**Resultado para Ábrego:**
+- Vigencia 2026: 11,394 predios
+- Geometrías GDB: 9,893
+- Vinculados (match exacto): 9,683 (84.98%)
+- Sin match: 1,711 (unidades de propiedad horizontal)
+
+**Archivos:**
+- `/app/backend/server.py` - Endpoints `/gdb/upload` y `/gdb/revincular-predios`
+
+---
+
+### Tareas Pendientes
+
+#### P1 - Alta Prioridad:
+- [ ] Implementar Scheduler para Backups Automáticos (UI lista, falta el background job)
+
+#### P2 - Media Prioridad:
+- [ ] Refactorizar `server.py` (>16,000 líneas) en módulos separados
+- [ ] Refactorizar `Predios.js` y `Pendientes.js` (componentes monolíticos)
+- [ ] Generación de archivos XTF
+
+#### P3 - Backlog:
+- [ ] Mejorar sistema de notificaciones en tiempo real
+- [ ] Dashboard de métricas para coordinadores
