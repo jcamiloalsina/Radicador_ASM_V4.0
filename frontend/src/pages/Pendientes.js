@@ -726,7 +726,8 @@ export default function Pendientes() {
           ) : (
             <div className="grid gap-4">
               {prediosNuevos.map((predio) => {
-                const estadoInfo = estadoPredioConfig[predio.estado] || estadoPredioConfig.creado;
+                // Map API fields to expected fields (API returns flat structure)
+                const estadoInfo = estadoPredioConfig[predio.estado_flujo || predio.estado] || estadoPredioConfig.creado;
                 const EstadoIcon = estadoInfo.icon;
                 
                 return (
@@ -743,13 +744,13 @@ export default function Pendientes() {
                                 {estadoInfo.label}
                               </Badge>
                               <span className="font-mono text-sm text-slate-600 break-all">
-                                {predio.datos_predio?.codigo_predial_nacional || 'Nuevo'}
+                                {predio.codigo_predial_nacional || predio.datos_predio?.codigo_predial_nacional || 'Nuevo'}
                               </span>
                             </div>
                             <p className="text-sm text-slate-500 mt-1">
-                              {predio.datos_predio?.municipio || 'N/A'} · 
-                              Creado por: {predio.creado_por_nombre || 'N/A'} · 
-                              {formatDate(predio.fecha_creacion)}
+                              {predio.municipio || predio.datos_predio?.municipio || 'N/A'} · 
+                              Creado por: {predio.gestor_creador_nombre || predio.creado_por_nombre || 'N/A'} · 
+                              {formatDate(predio.created_at || predio.fecha_creacion)}
                             </p>
                           </div>
                         </div>
