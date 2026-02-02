@@ -294,6 +294,11 @@ export default function DashboardLayout() {
     const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
     const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
     const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
+    
+    // Verificar si el usuario tiene permiso de aprobar cambios (gestores con este permiso pueden ver Pendientes)
+    const userPermissions = user.permissions || [];
+    const hasApprovePermission = userPermissions.includes('approve_changes');
+    const canSeePendientes = isCoordAdmin || hasApprovePermission;
 
     const baseMenuItems = [
       { path: '/dashboard', label: 'Inicio', icon: Activity },
@@ -313,7 +318,8 @@ export default function DashboardLayout() {
         conservacionItems.push({ path: '/dashboard/certificados', label: 'Certificados', icon: ShieldCheck });
       }
     }
-    if (isCoordAdmin) {
+    // Pendientes: visible para coordinadores, admins, o gestores con permiso approve_changes
+    if (canSeePendientes) {
       conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
     }
 
