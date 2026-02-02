@@ -13100,23 +13100,24 @@ async def revincular_predios_gdb(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Re-vincula las geometrías GDB existentes con predios usando matching mejorado.
-    El código catastral colombiano tiene estructura:
-    - Pos 1-5: Depto+Municipio (ej: 54670)
-    - Pos 6-7: Zona (00=rural, 01=urbano, etc)
-    - Pos 8-9: Sector
-    - Pos 10-13: Manzana/Vereda
-    - Pos 14-17: Terreno
-    - Pos 18-21: Condición PH
-    - Pos 22-30: Unidad predial
+    Re-vincula las geometrías GDB existentes con predios usando MATCH EXACTO del CPN.
+    IMPORTANTE: Solo vincula con predios de la ÚLTIMA VIGENCIA de cada municipio.
     
-    La estrategia es hacer matching por los últimos segmentos (terreno, etc)
-    ignorando zona y sector cuando no coinciden exactamente.
+    Lógica:
+    1. Obtener la última vigencia del municipio
+    2. Obtener todos los códigos CPN de la GDB
+    3. Buscar coincidencias EXACTAS con predios de la última vigencia
+    4. Actualizar predios con tiene_geometria=true y área de GDB
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden revincular")
     
-    resultados = {"municipios_procesados": [], "total_vinculados": 0, "errores": []}
+    resultados = {
+        "municipios_procesados": [], 
+        "total_vinculados": 0, 
+        "total_sin_match": 0,
+        "errores": []
+    }
     
     # Obtener municipios a procesar
     if municipio:
@@ -13126,95 +13127,107 @@ async def revincular_predios_gdb(
     
     for muni in municipios:
         try:
-            # Obtener códigos GDB del municipio (el campo es 'codigo', no 'codigo_predial')
-            codigos_gdb = await db.gdb_geometrias.distinct("codigo", {"municipio": muni})
+            # 1. Obtener la ÚLTIMA VIGENCIA del municipio
+            vigencias = await db.predios.distinct("vigencia", {"municipio": {"$regex": f"^{muni}$", "$options": "i"}})
+            if not vigencias:
+                resultados["errores"].append(f"{muni}: Sin predios en base de datos")
+                continue
             
-            if not codigos_gdb:
+            # Ordenar vigencias y tomar la más reciente
+            vigencias_ordenadas = sorted([v for v in vigencias if v], key=lambda x: int(x) if isinstance(x, (int, str)) and str(x).isdigit() else 0, reverse=True)
+            if not vigencias_ordenadas:
+                resultados["errores"].append(f"{muni}: Sin vigencias válidas")
+                continue
+            
+            ultima_vigencia = vigencias_ordenadas[0]
+            
+            # 2. Obtener TODOS los códigos GDB del municipio
+            codigos_gdb_cursor = db.gdb_geometrias.find(
+                {"municipio": muni},
+                {"_id": 0, "codigo": 1, "area_m2": 1}
+            )
+            codigos_gdb_docs = await codigos_gdb_cursor.to_list(50000)
+            
+            if not codigos_gdb_docs:
                 resultados["errores"].append(f"{muni}: Sin geometrías GDB")
                 continue
             
-            # Obtener predios del municipio sin geometría vinculada
-            predios_sin_geo = await db.predios.find(
-                {"municipio": muni, "$or": [{"tiene_geometria": {"$ne": True}}, {"tiene_geometria": False}]},
-                {"_id": 0, "id": 1, "codigo_predial_nacional": 1}
+            # Crear diccionario para búsqueda rápida: codigo -> area_m2
+            gdb_dict = {doc["codigo"]: doc.get("area_m2", 0) for doc in codigos_gdb_docs if doc.get("codigo")}
+            codigos_gdb_set = set(gdb_dict.keys())
+            
+            # 3. Obtener predios de la ÚLTIMA VIGENCIA (todos, para revinculación completa)
+            predios_ultima_vig = await db.predios.find(
+                {
+                    "municipio": {"$regex": f"^{muni}$", "$options": "i"},
+                    "vigencia": ultima_vigencia
+                },
+                {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "tiene_geometria": 1}
             ).to_list(100000)
             
+            if not predios_ultima_vig:
+                resultados["errores"].append(f"{muni}: Sin predios en vigencia {ultima_vigencia}")
+                continue
+            
             vinculados_muni = 0
+            sin_match_muni = 0
             
-            # Crear índice de códigos GDB para búsqueda rápida
-            # Extraer segmentos significativos del código GDB
-            gdb_index = {}
-            for codigo_gdb in codigos_gdb:
-                if not codigo_gdb or len(codigo_gdb) < 17:
-                    continue
-                # Clave: municipio(5) + terreno(4, pos 14-17) + resto
-                # Ignoramos zona(2) y sector(2) para matching más flexible
-                depto_muni = codigo_gdb[:5]
-                terreno_resto = codigo_gdb[13:] if len(codigo_gdb) > 13 else codigo_gdb[9:]
-                clave = f"{depto_muni}_{terreno_resto}"
-                gdb_index[clave] = codigo_gdb
+            # 4. Buscar coincidencias EXACTAS
+            for predio in predios_ultima_vig:
+                codigo_cpn = predio.get("codigo_predial_nacional", "")
                 
-                # También crear clave con los últimos 17 dígitos significativos
-                if len(codigo_gdb) >= 22:
-                    clave2 = codigo_gdb[5:22]  # Ignorar depto-muni, tomar hasta condicion PH
-                    gdb_index[clave2] = codigo_gdb
-            
-            # Buscar coincidencias
-            for predio in predios_sin_geo:
-                codigo_bd = predio.get("codigo_predial_nacional", "")
-                if not codigo_bd or len(codigo_bd) < 17:
+                if not codigo_cpn:
+                    sin_match_muni += 1
                     continue
                 
-                codigo_gdb_match = None
-                
-                # Estrategia 1: Match exacto
-                if codigo_bd in codigos_gdb:
-                    codigo_gdb_match = codigo_bd
-                
-                # Estrategia 2: Match por segmentos (ignorando zona/sector)
-                if not codigo_gdb_match:
-                    depto_muni_bd = codigo_bd[:5]
-                    terreno_resto_bd = codigo_bd[13:] if len(codigo_bd) > 13 else codigo_bd[9:]
-                    clave_bd = f"{depto_muni_bd}_{terreno_resto_bd}"
-                    if clave_bd in gdb_index:
-                        codigo_gdb_match = gdb_index[clave_bd]
-                
-                # Estrategia 3: Match por segmento central
-                if not codigo_gdb_match and len(codigo_bd) >= 22:
-                    clave_bd2 = codigo_bd[5:22]
-                    if clave_bd2 in gdb_index:
-                        codigo_gdb_match = gdb_index[clave_bd2]
-                
-                # Si encontramos match, actualizar predio con área de GDB
-                if codigo_gdb_match:
-                    # Obtener área de la geometría GDB
-                    area_gdb = 0
-                    gdb_geo = await db.gdb_geometrias.find_one(
-                        {"codigo": codigo_gdb_match},
-                        {"_id": 0, "area_m2": 1}
-                    )
-                    if gdb_geo:
-                        area_gdb = gdb_geo.get("area_m2", 0)
+                # MATCH EXACTO únicamente
+                if codigo_cpn in codigos_gdb_set:
+                    area_gdb = gdb_dict.get(codigo_cpn, 0)
                     
+                    # Solo actualizar si no tiene geometría o si queremos refrescar
                     await db.predios.update_one(
                         {"id": predio["id"]},
                         {"$set": {
                             "tiene_geometria": True,
-                            "codigo_gdb": codigo_gdb_match,
+                            "codigo_gdb": codigo_cpn,
                             "area_gdb": area_gdb,
                             "gdb_updated": datetime.now(timezone.utc).isoformat(),
-                            "match_method": "revincular"
+                            "match_method": "exacto"
                         }}
                     )
                     vinculados_muni += 1
+                else:
+                    sin_match_muni += 1
+            
+            # También actualizar la geometría GDB con predio_vinculado
+            for codigo_cpn in codigos_gdb_set:
+                predio_match = await db.predios.find_one(
+                    {
+                        "codigo_predial_nacional": codigo_cpn,
+                        "municipio": {"$regex": f"^{muni}$", "$options": "i"},
+                        "vigencia": ultima_vigencia
+                    },
+                    {"_id": 0, "id": 1}
+                )
+                if predio_match:
+                    await db.gdb_geometrias.update_one(
+                        {"codigo": codigo_cpn, "municipio": muni},
+                        {"$set": {"predio_vinculado": predio_match["id"]}}
+                    )
             
             resultados["municipios_procesados"].append({
                 "municipio": muni,
-                "geometrias_gdb": len(codigos_gdb),
-                "predios_sin_geo": len(predios_sin_geo),
-                "nuevos_vinculados": vinculados_muni
+                "vigencia": ultima_vigencia,
+                "geometrias_gdb": len(codigos_gdb_set),
+                "predios_vigencia": len(predios_ultima_vig),
+                "vinculados": vinculados_muni,
+                "sin_match": sin_match_muni,
+                "porcentaje_cobertura": round((vinculados_muni / len(predios_ultima_vig)) * 100, 2) if predios_ultima_vig else 0
             })
             resultados["total_vinculados"] += vinculados_muni
+            resultados["total_sin_match"] += sin_match_muni
+            
+            logger.info(f"Revinculación {muni}: {vinculados_muni} vinculados de {len(predios_ultima_vig)} predios (vigencia {ultima_vigencia})")
             
         except Exception as e:
             resultados["errores"].append(f"{muni}: {str(e)}")
