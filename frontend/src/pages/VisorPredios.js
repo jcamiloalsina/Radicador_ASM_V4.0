@@ -1509,6 +1509,16 @@ export default function VisorPredios() {
               Modo Offline
             </Badge>
           )}
+          {/* Botón para refrescar datos de municipios */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={refreshLimitesMunicipios}
+            className="ml-2 text-slate-500 hover:text-emerald-700"
+            title="Actualizar datos de municipios"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
         </div>
         
         {gdbStats && (
