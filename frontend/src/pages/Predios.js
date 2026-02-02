@@ -3568,7 +3568,8 @@ export default function Predios() {
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={handleCloseDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+          <div className="max-h-[80vh] overflow-y-auto pr-2">
           <DialogHeader>
             <DialogTitle className="text-xl font-outfit">
               Nuevo Predio {filterMunicipio && `- ${filterMunicipio}`}
