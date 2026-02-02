@@ -327,6 +327,9 @@ export default function Pendientes() {
       setShowRechazarModal(false);
       setCambioArechazar(null);
       setMotivoRechazo('');
+      
+      // Emitir evento para actualizar el badge del menú
+      window.dispatchEvent(new CustomEvent('pendientesUpdated'));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al rechazar cambio');
     } finally {
