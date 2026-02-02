@@ -4196,8 +4196,9 @@ export default function Predios() {
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => handleCloseDialog(false)}>Cancelar</Button>
             <Button onClick={handleCreate} className="bg-emerald-700 hover:bg-emerald-800">
-              {usarNuevoFlujo ? 'Crear y Asignar a Flujo' : (gestorAsignado ? 'Guardar y Asignar' : 'Crear Predio')}
+              {usarNuevoFlujo ? 'Crear y Asignar a Flujo' : 'Crear Predio'}
             </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
