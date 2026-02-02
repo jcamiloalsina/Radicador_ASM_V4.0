@@ -1451,30 +1451,69 @@ export default function Pendientes() {
                 </div>
               )}
 
+              {/* Mostrar información del resultado si ya fue procesado */}
+              {selectedCambio.estado === 'aprobado' && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-emerald-700">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Cambio Aprobado</span>
+                  </div>
+                  {selectedCambio.aprobado_por_nombre && (
+                    <p className="text-sm text-emerald-600 mt-1">
+                      Por: {selectedCambio.aprobado_por_nombre} - {selectedCambio.fecha_aprobacion ? new Date(selectedCambio.fecha_aprobacion).toLocaleString('es-CO') : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {selectedCambio.estado === 'rechazado' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-red-700">
+                    <XCircle className="w-5 h-5" />
+                    <span className="font-medium">Cambio Rechazado</span>
+                  </div>
+                  {selectedCambio.motivo_rechazo && (
+                    <p className="text-sm text-red-600 mt-2">
+                      <strong>Motivo:</strong> {selectedCambio.motivo_rechazo}
+                    </p>
+                  )}
+                  {selectedCambio.rechazado_por_nombre && (
+                    <p className="text-sm text-red-600 mt-1">
+                      Por: {selectedCambio.rechazado_por_nombre} - {selectedCambio.fecha_rechazo ? new Date(selectedCambio.fecha_rechazo).toLocaleString('es-CO') : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={() => setSelectedCambio(null)}>
                   Cerrar
                 </Button>
-                <Button
-                  variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => {
-                    setSelectedCambio(null);
-                    openRechazarModal(selectedCambio);
-                  }}
-                  disabled={procesando}
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Rechazar
-                </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => handleAprobar(selectedCambio.id)}
-                  disabled={procesando}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Aprobar Cambio
-                </Button>
+                {/* Solo mostrar botones de acción si el cambio está pendiente */}
+                {selectedCambio.estado === 'pendiente' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => {
+                        setSelectedCambio(null);
+                        openRechazarModal(selectedCambio);
+                      }}
+                      disabled={procesando}
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Rechazar
+                    </Button>
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => handleAprobar(selectedCambio.id)}
+                      disabled={procesando}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Aprobar Cambio
+                    </Button>
+                  </>
+                )}
               </DialogFooter>
             </div>
           )}
