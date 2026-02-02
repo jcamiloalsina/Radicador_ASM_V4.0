@@ -2333,39 +2333,6 @@ export default function Predios() {
       }
     }
   };
-          isDownloading: false,
-          current: totalPredios,
-          total: totalPredios,
-          label: ''
-        });
-        
-        toast.success(`✅ ${filterMunicipio}: ${totalPredios.toLocaleString()} predios disponibles offline`, { duration: 3000 });
-      }
-    } catch (error) {
-      console.error('Error cargando predios:', error);
-      setDownloadProgress({ isDownloading: false, current: 0, total: 0, label: '' });
-      
-      // Si hay error y está offline, intentar cargar desde IndexedDB
-      if (!navigator.onLine) {
-        const offlinePredios = await getPrediosOffline(filterMunicipio);
-        if (offlinePredios.length > 0) {
-          // Ordenar por CNP
-          const prediosOrdenados = sortPrediosByCNP(offlinePredios);
-          setPredios(prediosOrdenados);
-          setTotal(prediosOrdenados.length);
-          toast.info(`Modo offline: ${prediosOrdenados.length} predios cargados`);
-        } else {
-          toast.warning('No hay datos offline disponibles');
-          setPredios([]);
-          setTotal(0);
-        }
-      } else {
-        toast.error('Error al cargar predios');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchGdbStats = async () => {
     try {
