@@ -1371,9 +1371,13 @@ export default function Pendientes() {
                     <thead className="bg-slate-100">
                       <tr>
                         <th className="px-4 py-3 text-left font-medium text-slate-700">Campo</th>
-                        <th className="px-4 py-3 text-left font-medium text-slate-700">Valor Actual</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-700">
+                          {['aprobado', 'rechazado'].includes(selectedCambio.estado) ? 'Datos Anteriores' : 'Valor Actual'}
+                        </th>
                         <th className="px-4 py-3 text-center w-12"></th>
-                        <th className="px-4 py-3 text-left font-medium text-slate-700">Valor Propuesto</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-700">
+                          {selectedCambio.estado === 'aprobado' ? 'Valor Aplicado' : 'Valor Propuesto'}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
