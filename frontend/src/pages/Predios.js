@@ -1500,6 +1500,10 @@ export default function Predios() {
   // Estado para asignar a otro gestor
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorAsignado, setGestorAsignado] = useState('');
+  
+  // Estado para seleccionar radicado asociado a modificaciones
+  const [peticionesDisponibles, setPeticionesDisponibles] = useState([]);
+  const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
 
   // Cargar gestores disponibles
   const fetchGestoresDisponibles = async () => {
@@ -1516,6 +1520,23 @@ export default function Predios() {
       setGestoresDisponibles(gestores);
     } catch (error) {
       console.log('Error cargando gestores');
+    }
+  };
+  
+  // Cargar peticiones disponibles para asociar a modificaciones
+  const fetchPeticionesDisponibles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/petitions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filtrar peticiones en estado asignado o en_revision (activas)
+      const peticiones = res.data.filter(p => 
+        ['asignado', 'en_revision'].includes(p.estado)
+      ).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+      setPeticionesDisponibles(peticiones);
+    } catch (error) {
+      console.log('Error cargando peticiones');
     }
   };
 
