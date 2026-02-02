@@ -207,7 +207,8 @@ function MunicipalityLimits({ limitesMunicipios, filterMunicipio, setFilterMunic
               layer.bindPopup(`
                 <div class="text-sm p-1">
                   <p class="font-bold text-base text-emerald-700 mb-1">${props?.municipio || 'Sin nombre'}</p>
-                  <p class="text-xs text-slate-600">Total predios: <strong>${props?.total_predios?.toLocaleString() || 0}</strong></p>
+                  <p class="text-xs text-slate-500 font-medium mb-1">Base Gráfica (GDB):</p>
+                  <p class="text-xs text-slate-600">Total geometrías: <strong>${props?.total_predios?.toLocaleString() || 0}</strong></p>
                   <p class="text-xs text-slate-600">Rurales: <strong>${props?.rurales?.toLocaleString() || 0}</strong></p>
                   <p class="text-xs text-slate-600">Urbanos: <strong>${props?.urbanos?.toLocaleString() || 0}</strong></p>
                   ${sinGdbMsg}
