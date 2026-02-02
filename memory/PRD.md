@@ -114,7 +114,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 2 Febrero 2026 (Fork) - 5 Bug Fixes Críticos
+### Sesión 2 Febrero 2026 (Fork) - 5 Bug Fixes Críticos + UI/UX
 
 #### 1. Fix: Badge de Pendientes no se actualizaba en tiempo real
 **Problema:** El contador del menú "Pendientes" no se actualizaba después de aprobar/rechazar un item.
@@ -149,8 +149,29 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - `predio.gestor_creador_nombre || predio.creado_por_nombre`
 - `predio.estado_flujo || predio.estado`
 
-#### 5. Verificado: Conteo de geometrías GDB
-**Estado:** El botón de refrescar caché en el Visor de Predios ya estaba implementado para solucionar datos desactualizados.
+#### 5. Fix: Conteo de geometrías GDB incorrecto para Ábrego
+**Problema:** El popup del mapa mostraba ~5,000 geometrías para Ábrego cuando en realidad tiene 9,893.
+
+**Causa raíz:** El endpoint `/api/gdb/limites-municipios` usaba `.limit(5000)` tanto para el cálculo visual como para el conteo.
+
+**Solución:** Separé el conteo real (usando aggregation `$group`) del cálculo visual del límite.
+- Ahora Ábrego muestra: Total=9,893 (Rural=5,126 + Urbano=4,767)
+
+#### 6. Fix: Dropdowns no abrían dentro de modales
+**Problema:** Los selectores de "Gestor de Apoyo" y "Radicado Asociado" no se desplegaban en modales con scroll.
+
+**Causa raíz:** El `overflow-y-auto` en `DialogContent` bloqueaba los portales de Radix Select.
+
+**Solución:**
+- Cambiado `overflow-y-auto` a `overflow-visible` en DialogContent
+- Agregado div interno con scroll: `<div className="max-h-[80vh] overflow-y-auto">`
+- Agregado `position="popper"` y `className="z-[100000]"` a SelectContent
+- Los dropdowns ahora funcionan correctamente
+
+#### 7. UI: Eliminada opción redundante
+**Problema:** Había dos opciones para asignar gestor en el modal de Nuevo Predio.
+
+**Solución:** Eliminado el checkbox "Asignar a otro gestor para que continúe..." ya que es redundante con el flujo de trabajo con Gestor de Apoyo.
 
 ---
 
