@@ -11278,15 +11278,27 @@ async def get_limites_municipios(
                 continue
             
             try:
-                # Usar solo el exterior (boundary) simplificado
-                geometrias_cursor = db.gdb_geometrias.find(
-                    {"municipio": municipio},
-                    {"_id": 0, "geometry": 1, "tipo": 1}
-                ).limit(5000)  # Limitar para rendimiento
-                
-                shapes = []
+                # PRIMERO: Obtener el conteo REAL de TODAS las geometrías del municipio
+                stats = await db.gdb_geometrias.aggregate([
+                    {"$match": {"municipio": municipio}},
+                    {"$group": {"_id": "$tipo", "count": {"$sum": 1}}}
+                ]).to_list(10)
                 rural_count = 0
                 urbano_count = 0
+                for s in stats:
+                    if s["_id"] == "rural":
+                        rural_count = s["count"]
+                    else:
+                        urbano_count = s["count"]
+                total_real = rural_count + urbano_count
+                
+                # SEGUNDO: Obtener geometrías para calcular el límite visual (limitado para rendimiento)
+                geometrias_cursor = db.gdb_geometrias.find(
+                    {"municipio": municipio},
+                    {"_id": 0, "geometry": 1}
+                ).limit(5000)  # Limitar solo para cálculo visual, NO para conteo
+                
+                shapes = []
                 
                 async for doc in geometrias_cursor:
                     geom_dict = doc.get("geometry")
@@ -11295,10 +11307,6 @@ async def get_limites_municipios(
                             geom = shape(geom_dict)
                             if geom.is_valid:
                                 shapes.append(geom)
-                                if doc.get("tipo") == "rural":
-                                    rural_count += 1
-                                else:
-                                    urbano_count += 1
                         except:
                             continue
                 
@@ -11314,7 +11322,7 @@ async def get_limites_municipios(
                         "geometry": mapping(limite),
                         "properties": {
                             "municipio": municipio,
-                            "total_predios": len(shapes),
+                            "total_predios": total_real,  # Usar conteo REAL, no len(shapes)
                             "rurales": rural_count,
                             "urbanos": urbano_count,
                             "centroid": [centroid.x, centroid.y],
