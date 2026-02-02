@@ -108,7 +108,50 @@ export default function Pendientes() {
     fetchPrediosNuevos();
     fetchHistorialStats();
     fetchReapariciones();
+    fetchPeticionesParaVincular();
   }, []);
+
+  // Cargar peticiones disponibles para vincular radicado
+  const fetchPeticionesParaVincular = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/petitions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filtrar peticiones en estado activo
+      const peticiones = res.data.filter(p => 
+        ['radicado', 'asignado', 'en_revision'].includes(p.estado)
+      ).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+      setPeticionesDisponibles(peticiones);
+    } catch (error) {
+      console.log('Error cargando peticiones');
+    }
+  };
+
+  // Vincular radicado a un cambio pendiente
+  const handleVincularRadicado = async () => {
+    if (!selectedCambio || !radicadoSeleccionado) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const peticion = peticionesDisponibles.find(p => p.id === radicadoSeleccionado);
+      
+      await axios.patch(`${API}/predios/cambios/${selectedCambio.id}/vincular-radicado`, {
+        radicado_id: radicadoSeleccionado,
+        radicado_numero: peticion?.radicado
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Radicado ${peticion?.radicado} vinculado exitosamente`);
+      setShowVincularRadicadoModal(false);
+      setRadicadoSeleccionado('');
+      setSelectedCambio(null);
+      fetchPendientes();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al vincular radicado');
+    }
+  };
 
   // Cargar historial cuando se selecciona el tab
   useEffect(() => {
