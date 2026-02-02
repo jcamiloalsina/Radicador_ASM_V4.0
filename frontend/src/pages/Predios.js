@@ -3762,6 +3762,41 @@ export default function Predios() {
                     </div>
                   </div>
 
+                  {/* Mostrar últimos predios existentes en la manzana */}
+                  {codigoManual.manzana_vereda !== '0000' && (
+                    <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          Predios existentes en manzana {codigoManual.manzana_vereda}
+                        </p>
+                        {buscandoPrediosManzana && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
+                      </div>
+                      {prediosEnManzana.length > 0 ? (
+                        <div className="space-y-1">
+                          {prediosEnManzana.map((p, idx) => (
+                            <div 
+                              key={idx} 
+                              className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1 border border-cyan-100"
+                            >
+                              <span className="font-mono font-bold text-cyan-700">{p.terreno}</span>
+                              <span className="text-slate-500">-</span>
+                              <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
+                              {p.area_terreno && (
+                                <span className="text-slate-500 text-[10px]">{Number(p.area_terreno).toLocaleString()}m²</span>
+                              )}
+                            </div>
+                          ))}
+                          <p className="text-[10px] text-cyan-600 mt-1">
+                            Mostrando últimos {prediosEnManzana.length} predios (Base R1/R2)
+                          </p>
+                        </div>
+                      ) : !buscandoPrediosManzana ? (
+                        <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
+                      ) : null}
+                    </div>
+                  )}
+
                   {/* Campos editables - Fila 2: Predio y PH */}
                   <div className="grid grid-cols-5 gap-2">
                     <div className="bg-red-50 p-2 rounded border border-red-200">
