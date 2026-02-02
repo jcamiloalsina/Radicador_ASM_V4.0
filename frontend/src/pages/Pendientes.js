@@ -1246,21 +1246,23 @@ export default function Pendientes() {
           {selectedCambio && (
             <div className="space-y-4">
               {/* Información del predio que se modifica - CNP destacado */}
-              <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <span className="text-xs text-slate-500 uppercase tracking-wide">Código Predial Nacional (CNP)</span>
-                    <p className="font-mono text-lg font-bold text-slate-800">
-                      {selectedCambio.predio_actual?.codigo_predial_nacional || 
-                       selectedCambio.datos_propuestos?.codigo_predial_nacional || 
-                       selectedCambio.codigo_predial_nacional || 'N/A'}
-                    </p>
-                  </div>
+              <div className="bg-slate-100 border border-slate-300 rounded-lg p-4 space-y-3">
+                {/* CNP en fila completa */}
+                <div>
+                  <span className="text-xs text-slate-500 uppercase tracking-wide">Código Predial Nacional (CNP)</span>
+                  <p className="font-mono text-base font-bold text-slate-800 break-all">
+                    {selectedCambio.predio_actual?.codigo_predial_nacional || 
+                     selectedCambio.datos_propuestos?.codigo_predial_nacional || 
+                     selectedCambio.codigo_predial_nacional || 'No disponible'}
+                  </p>
+                </div>
+                {/* Municipio y Radicado en segunda fila */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200">
                   <div>
                     <span className="text-xs text-slate-500 uppercase tracking-wide">Municipio</span>
                     <p className="font-medium text-slate-700">
                       {selectedCambio.predio_actual?.municipio || 
-                       selectedCambio.datos_propuestos?.municipio || 'N/A'}
+                       selectedCambio.datos_propuestos?.municipio || 'No disponible'}
                     </p>
                   </div>
                   <div>
@@ -1271,7 +1273,7 @@ export default function Pendientes() {
                         {selectedCambio.radicado_numero}
                       </p>
                     ) : (
-                      <p className="text-sm text-amber-600">Sin radicado</p>
+                      <p className="text-sm text-amber-600">Sin radicado asociado</p>
                     )}
                   </div>
                 </div>
@@ -1282,7 +1284,7 @@ export default function Pendientes() {
                   {getTipoCambioLabel(selectedCambio.tipo_cambio)}
                 </Badge>
                 <span className="text-sm text-slate-500">
-                  Solicitado por: <strong>{selectedCambio.propuesto_por_nombre || 'N/A'}</strong>
+                  Solicitado por: <strong>{selectedCambio.propuesto_por_nombre || 'No disponible'}</strong>
                 </span>
               </div>
               
