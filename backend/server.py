@@ -10559,12 +10559,19 @@ async def proponer_cambio_predio(
     # Coordinadores y administradores aprueban directamente
     aprueba_directo = current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]
     
+    # Obtener información del radicado si se proporcionó
+    radicado_info = None
+    if cambio.radicado_id:
+        radicado_info = await db.petitions.find_one({"id": cambio.radicado_id}, {"_id": 0, "radicado": 1, "tipo_tramite": 1})
+    
     cambio_doc = {
         "id": str(uuid.uuid4()),
         "predio_id": cambio.predio_id,
         "tipo_cambio": cambio.tipo_cambio,
         "datos_propuestos": cambio.datos_propuestos,
         "justificacion": cambio.justificacion,
+        "radicado_id": cambio.radicado_id,
+        "radicado_numero": radicado_info['radicado'] if radicado_info else cambio.radicado_numero,
         "estado": PredioEstadoAprobacion.APROBADO if aprueba_directo else f"pendiente_{cambio.tipo_cambio}",
         "propuesto_por": current_user['id'],
         "propuesto_por_nombre": current_user['full_name'],
