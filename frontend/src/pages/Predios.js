@@ -4075,7 +4075,7 @@ export default function Predios() {
                 </div>
                 
                 {/* Gestor de Apoyo (Obligatorio) */}
-                <div>
+                <div className="relative z-[100]">
                   <Label className="text-sm font-medium">Gestor de Apoyo *</Label>
                   <p className="text-xs text-slate-500 mb-1">Responsable de completar la digitalización del predio</p>
                   <Select 
@@ -4085,7 +4085,7 @@ export default function Predios() {
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Seleccione un gestor de apoyo..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={4} className="z-[100000]">
                       <SelectItem value="seleccionar" disabled>Seleccione un gestor...</SelectItem>
                       {gestoresDisponibles.map(g => (
                         <SelectItem key={g.id} value={g.id}>
