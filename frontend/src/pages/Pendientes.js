@@ -935,7 +935,19 @@ export default function Pendientes() {
 
               {/* Lista de cambios procesados */}
               <div className="space-y-3">
-                {cambiosHistorial.map((cambio) => (
+                {cambiosHistorial.map((cambio) => {
+                  // Obtener el CNP de la fuente disponible
+                  const cnp = cambio.predio_actual?.codigo_predial_nacional || 
+                              cambio.datos_propuestos?.codigo_predial_nacional ||
+                              cambio.codigo_predial_nacional ||
+                              'N/A';
+                  const propietario = cambio.predio_actual?.nombre_propietario || 
+                                      cambio.datos_propuestos?.nombre_propietario ||
+                                      (cambio.datos_propuestos?.propietarios?.[0]?.nombre_propietario);
+                  const municipio = cambio.predio_actual?.municipio || 
+                                    cambio.datos_propuestos?.municipio;
+                  
+                  return (
                   <Card 
                     key={cambio.id} 
                     className={`border-l-4 ${
@@ -955,21 +967,50 @@ export default function Pendientes() {
                               {cambio.tipo_cambio === 'creacion' ? 'Creación' : 
                                cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
                             </Badge>
-                            {cambio.datos_propuestos?.municipio && (
+                            {municipio && (
                               <Badge variant="secondary" className="text-xs">
-                                {cambio.datos_propuestos.municipio}
+                                {municipio}
                               </Badge>
                             )}
                           </div>
                           
-                          {cambio.predio_actual && (
-                            <p className="font-mono text-sm text-slate-700 mb-1">
-                              <strong>{cambio.predio_actual.codigo_predial_nacional || 'N/A'}</strong>
-                              {cambio.predio_actual.nombre_propietario && ` - ${cambio.predio_actual.nombre_propietario}`}
-                            </p>
+                          {/* CNP del predio */}
+                          <p className="font-mono text-sm text-slate-700 mb-1">
+                            <strong>{cnp}</strong>
+                            {propietario && ` - ${propietario}`}
+                          </p>
+                          
+                          {/* Resumen de cambios para modificaciones */}
+                          {cambio.tipo_cambio === 'modificacion' && cambio.datos_propuestos && (
+                            <div className="mt-2 text-xs bg-slate-100 p-2 rounded">
+                              <p className="font-semibold text-slate-600 mb-1">Campos modificados:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {cambio.datos_propuestos.area_terreno !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Área Terreno</Badge>
+                                )}
+                                {cambio.datos_propuestos.area_construida !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Área Construida</Badge>
+                                )}
+                                {cambio.datos_propuestos.avaluo !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Avalúo</Badge>
+                                )}
+                                {cambio.datos_propuestos.destino_economico !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Destino Económico</Badge>
+                                )}
+                                {cambio.datos_propuestos.direccion !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Dirección</Badge>
+                                )}
+                                {cambio.datos_propuestos.propietarios !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Propietarios</Badge>
+                                )}
+                                {cambio.datos_propuestos.zona !== undefined && (
+                                  <Badge variant="outline" className="text-xs">Zona</Badge>
+                                )}
+                              </div>
+                            </div>
                           )}
                           
-                          <p className="text-sm text-slate-600">
+                          <p className="text-sm text-slate-600 mt-2">
                             <User className="w-3 h-3 inline mr-1" />
                             Solicitado por: <span className="font-medium">{cambio.propuesto_por_nombre}</span>
                           </p>
@@ -991,11 +1032,22 @@ export default function Pendientes() {
                           <p className="text-xs text-slate-400">
                             por {cambio.aprobado_por_nombre || 'Sistema'}
                           </p>
+                          {/* Botón para ver detalle */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="mt-2 text-xs"
+                            onClick={() => setSelectedCambio(cambio)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            Ver detalle
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
