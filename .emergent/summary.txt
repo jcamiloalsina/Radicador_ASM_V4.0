@@ -2,83 +2,106 @@
 The user's primary goal is to build a comprehensive cadastral management web application, Asomunicipios. The application focuses on property creation/management (Conservación), property updates (Actualización), and a workflow for processing user requests (Peticiones).
 
 **LATEST PRODUCT REQUIREMENTS:**
-1.  **Robust Offline Mode:** Key modules, including login and the property map viewer, must be fully functional offline. The cache for the current year should not be deleted when viewing previous years' data.
-2.  **Homologated Codes System:** An automated system for assigning predefined property codes from an uploaded Excel file. The system must be fast and accurately determine which codes are used vs. disponible.
-3.  **Role-Based Access Control:** Granular permissions for different user roles. A 'Coordinador' should see all user roles. A 'Gestor' with the  permission should be able to manage pending items. The 'Empresa' role has restricted read-only access but can request specific services.
-4.  **Improved Request Workflow:** The Peticiones workflow needs to be detailed, tracking progress from submission to approval. It should include real-time updates via notifications and a badge counter. Reapariciones should be managed within this central Pendientes view.
-5.  **Database Management Tool:** A UI-driven tool for Admins and Coordinators to create backups, restore, and manage collections.
-6.  **Automatic Backup Configuration & Execution:** A module to configure scheduled automatic backups and a running scheduler to execute them.
-7.  **R1 Import Logic:** When importing an R1 file for a new  (year), the system must compare it against ALL previous  to correctly identify and list predios eliminados.
-8.  **Certificate Generation & Verification:** Generated PDF certificates must have correct headers/footers, signatures, and a QR code pointing to a specific verification endpoint.
-9.  **Clear User Interface:** The UI should be intuitive, with features like a filterable history of changes. The history modal must only show fields that were actually changed.
+1.  **Robust Offline Mode:** The cache for the current  (year) must be preserved when viewing previous years' data. An automatic synchronization should occur every Monday for the latest .
+2.  **Accurate GDB Processing:** When a GDB file is uploaded, it must automatically and accurately link geometries to properties from the latest  using an exact CPN match. The map viewer popups must show correct, up-to-date geometry counts from the GDB, not from outdated cache.
+3.  **Role-Based Access Control:**
+    *   'Atención al usuario' and 'Coordinador' roles must be able to assign  to any .
+    *   The 'Pendientes' menu item must be visible to any user with the  permission.
+    *   Ortoimage uploads must be restricted to 'Coordinador' and 'Administrador' roles only.
+4.  **Improved Request & Change Workflow:**
+    *   Property modifications made by a  must be linked to a  (petition number).
+    *   The UI must allow linking a  to an existing modification that lacks one.
+    *   The Pendientes badge counter in the main menu must update in real-time after an item is approved or rejected.
+    *   Generating a certificate should only be possible for  of type Certificado catastral.
+5.  **Informational UI:** The login page must display a list of services and their requirements in a non-intrusive way (e.g., a modal).
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a full-stack solution (FastAPI, React, MongoDB) with a robust set of features, including offline capabilities, WebSocket-powered real-time updates, and role-based access.
+The application is a full-stack solution using FastAPI, React, and MongoDB. It features role-based access, offline capabilities for property management, a map-based property viewer (Visor de Predios), and a detailed workflow for managing user petitions and property changes.
 
-In this session, the agent performed a large number of fixes and enhancements based on direct user feedback:
--   **Core Logic:** Fixed case-sensitive searches across multiple endpoints, ensuring municipalities like Bucarasica and bucarasica are treated the same. Optimized a slow diagnostic endpoint from >60 seconds to <0.5 seconds by removing an N+1 query. Corrected the R1 import logic to compare a new  against all previous ones to accurately detect eliminated properties.
--   **Role Permissions:** Granted Coordinators visibility of all user roles in the permissions manager. Enabled Gestors with the  permission to see and manage pending items. Refined the 'Empresa' role to hide the Certificados menu and provide a custom form for Peticiones (allowing only Certificado Catastral or Otro Trámite).
--   **UI/UX:** Moved the Reapariciones workflow into a central Pendientes page, removing the redundant button from the per-municipality view. Fixed a bug in the history modal that incorrectly showed unmodified fields (like CNP and Municipio) as changed. Added a Ver detalle button to the history view. Implemented a notification banner on the dashboard to alert users of new pending items. Fixed the pending items badge counter and made notifications in the bell icon clickable, navigating to the correct page.
--   **Bug Fixes:** Resolved a frontend crash () and adjusted offline caching logic to prevent data loss when viewing past .
+In this session, the agent implemented a large number of user-requested features and bug fixes. Key accomplishments include:
+-   **UI/UX:** Added a Trámites y Requisitos modal on the login page. Implemented a fix for the property history modal to correctly display the CNP.
+-   **Permissions:** Fixed an issue where  with approval permissions could not see the Pendientes menu. Enabled  to assign petitions to other gestores. Restricted orthoimage uploads to admins/coordinators.
+-   **Workflow:** Implemented the requirement to associate property modifications with a . Created a new backend endpoint to assign gestores to petitions.
+-   **GDB/Map:** Fixed the GDB processing logic to use only the latest  and an exact CPN match. Added frontend caching for municipal boundaries to improve map load times and included a manual refresh button.
+-   **Offline Cache:** Corrected the logic that was clearing the entire offline cache when viewing past . Added a weekly automatic sync for the current .
+-   **Code Quality:** Removed a redundant and slow Revincular GDB button, as its logic is now automated during the GDB upload process.
 
 **Last working item**:
--   **Last item agent was working:** The user reported that the Historial de predios view was not showing which property was modified or what the specific changes were. The agent addressed this by ensuring the Código Predial Nacional (CNP) is always visible and adding a Ver detalle button to each history item, which opens a modal with the changed fields.
--   **Status:** USER VERIFICATION PENDING
--   **Agent Testing Done:** Y (via screenshot)
--   **Which testing method agent to use?** frontend testing agent. The agent should log in, navigate to , switch to the Historial tab, and verify: 1. Each card clearly displays the CNP. 2. Clicking the Ver detalle (eye icon) button opens a modal. 3. The modal correctly shows only the fields that were actually changed (e.g., 'Dirección'), and does not show unchanged fields like 'Municipio' or 'CNP' with N/A values.
+-   **Last item agent was working:** The user reported a new batch of five distinct issues. The agent analyzed them and began implementing fixes. The issues are:
+    1.  The Pendientes badge count in the side menu doesn't update after approving/rejecting an item.
+    2.  The GDB geometry count for Ábrego in the map viewer is incorrect (showing 18k instead of ~9k), likely due to stale cache.
+    3.  The system allows generating a Certificado Catastral for any petition type, not just the specific Certificado catastral request.
+    4.  The Pendientes list still shows N/A for some fields (like Municipio).
+    5.  It's not possible to associate a  with a modification that was created *before* the linking feature was implemented.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** both. The fixes involve both frontend UI components (, , ) and backend logic (a new endpoint to link radicados). A combination of frontend and backend testing is required. The testing agent is recommended given the number of interconnected changes.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Multiple Feature Fixes Awaiting User Confirmation (P0)**
+-   **Issue 1: Multi-part bug fix for core workflows (P0)**
 
 **Issues Detail:**
--   **Issue 1: Multiple Feature Fixes Awaiting User Confirmation**
-    -   **Description:** The agent has implemented numerous fixes based on user feedback during this session. While the agent has performed local testing, these changes require verification by the user on their own environment to be considered fully resolved.
-    -   **List of fixes to be verified by user:**
-        1.  **R1 Import:** Does importing an R1 file now correctly identify and display predios eliminados by comparing against all previous vigencias?
-        2.  **Gestor Permissions:** Can a 'Gestor' with the  permission now see and manage items in the Pendientes page?
-        3.  **Notification System:** Does the Pendientes badge in the menu correctly count all pending items (modifications, new properties, reapariciones)? Does the new banner appear on the dashboard when there are pending items? Does clicking a notification navigate to the correct page?
-        4.  **History Modal:** Does the change detail modal in the Historial tab now correctly show *only* the fields that were modified?
-        5.  **Coordinator Permissions View:** Can a 'Coordinador' now see all user roles (including 'Atención al usuario') in the Gestión de Permisos screen?
-        6.  **Offline Cache:** Is the cache for the current  preserved when viewing data from a previous ?
-        7.  **History View (Last Item):** Does the Historial tab now clearly show the CNP and a Ver detalle button for each entry?
-    -   **Attempted fixes:** All items listed above have been implemented and tested by the agent in the development environment.
-    -   **Next debug checklist:** If the user reports any of these are still not working, the next agent must ask for specific steps to reproduce the issue in the user's environment, as the dev environment appears to be working correctly. The primary cause of divergence in the past has been differences in database state or names ( vs ).
-    -   **Why fix this issue and what will be achieved with the fix?** Confirming these fixes will resolve a large batch of user-reported issues and stabilize the application's core workflows.
-    -   **Status:** USER VERIFICATION PENDING
+-   **Issue 1: Multi-part bug fix for core workflows**
+    -   **Description:** The agent is in the middle of fixing five user-reported issues related to the Pendientes workflow, GDB data display, and certificate generation.
+    -   **Sub-Issue 1: Pendientes badge not updating.**
+        -   **Attempted Fix:** The agent is implementing a custom event () dispatched from  after an approval/rejection action. A listener in  will catch this event and refresh the count.
+        -   **Status:** IN PROGRESS
+    -   **Sub-Issue 2: Incorrect GDB geometry count.**
+        -   **Attempted Fix:** The agent confirmed the backend data is correct and the issue is a stale frontend cache. The previous fix (adding a refresh button) should resolve this, but the agent is reviewing the implementation to ensure it's robust.
+        -   **Status:** IN PROGRESS
+    -   **Sub-Issue 3: Incorrect certificate generation.**
+        -   **Attempted Fix:** The agent is adding a conditional check in  to only render the Generar Certificado button if .
+        -   **Status:** IN PROGRESS
+    -   **Sub-Isuue 4 & 5: N/A in pendientes & linking old modifications to radicados.**
+        -   **Attempted Fix:** The agent is adding a Vincular Radicado button ( icon) to pending items that lack a . This will open a modal to select an available petition. A new backend endpoint is being created to handle this linkage. The N/A text is also being replaced with more descriptive messages.
+        -   **Status:** IN PROGRESS
+    -   **Next debug checklist:**
+        1.  Complete the implementation of all 5 fixes.
+        2.  Verify the custom event for the badge count is dispatched and caught correctly.
+        3.  Test the certificate button logic with different petition types.
+        4.  Test the new Vincular Radicado modal and backend endpoint.
+        5.  Use the  to run a comprehensive test of the Pendientes and Visor Predios pages.
+    -   **Why fix this issue and what will be achieved with the fix?** Resolving these issues is critical for the usability and correctness of the core property modification and petition workflows. It will ensure data accuracy, proper UI feedback, and adherence to business rules.
+    -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on other issue:** None.
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   None.
+-   **Task 1: Complete multi-part bug fix (P0)**
+    -   **Where to resume:** The agent has already made several edits across , , and . The next step is to add the backend endpoint for linking existing modifications to a radicado, then thoroughly test all changes.
+    -   **What will be achieved with this?** The Pendientes workflow will be more robust, data display will be accurate, and business logic for certificates will be correctly enforced.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
-*   **P1: Implement Scheduler for Automatic Backups:** The UI for configuring backups is done, but the background scheduler to execute them is not implemented. This is a pending task from a previous session.
+*   **P1: Implement Scheduler for Automatic Backups:** The UI for configuring backups is done, but the background scheduler to execute them has not been implemented. This is a pending task from a previous session.
 
 **Future Tasks:**
-*   **P2: Refactor :** This main backend file is critically large and has grown even more during this session. It must be broken down into smaller, route-specific modules for maintainability.
-*   **P2: Refactor  & :** These frontend components are monolithic god components and should be broken down into smaller, manageable sub-components.
+*   **P2: Refactor :** This main backend file is critically large. It must be broken down into smaller, route-specific modules (routers, models, services) for maintainability.
+*   **P2: Refactor  & :** These frontend components are monolithic and should be broken down into smaller, manageable sub-components.
 *   **P2: Generate XTF files:** A pending feature request to export property data in the standard XTF format.
 
 **Completed work in this session**
--   **Homologated Code Logic:** Fixed case-insensitive search for the Bucarasica code count issue and optimized the diagnostic endpoint () to run in <1s.
--   **Role Permissions & UI:**
-    -   Enabled Gestors with the  permission to see and act on pending items (, ).
-    -   Ensured Coordinators can see all user roles in permissions management (, ).
-    -   Customized the 'Peticiones' workflow for the 'Empresa' role, limiting their options and hiding the main 'Certificados' menu (, ).
--   **Core Workflows:**
-    -   Corrected the R1 import logic to compare against all previous  for detecting eliminated properties ().
-    -   Centralized the Reapariciones workflow into the  page, removing it from .
--   **UI/UX & Bug Fixes:**
-    -   Fixed the notification system: corrected the pending count badge, added a dashboard banner for new items, and made notifications clickable ().
-    -   Fixed the history modal to show only fields that were actually modified ().
-    -   Updated the  catalog ().
-    -   Prevented the offline cache from being cleared when viewing past  ().
-    -   Added a Ver detalle button to the history list ().
+-   **Login Page:** Added a Ver Trámites y Requisitos button that opens a modal with a detailed, collapsible list of all 16 cadastral procedures and their requirements. ()
+-   **Permissions & Workflow:**
+    -   Fixed the Pendientes menu item visibility for the 'Gestor' role with  permission. ()
+    -   Enabled 'Atención al usuario' role to assign petitions to gestores and added a direct assignment UI. (, )
+    -   Implemented the workflow to link new property modifications to a  at the time of creation. (, )
+-   **Offline Caching:**
+    -   Fixed the offline caching logic to prevent the current year's cache from being deleted when viewing past . ()
+    -   Added an automatic synchronization for the latest 's data every Monday. ()
+-   **GDB & Map Viewer:**
+    -   Corrected the GDB processing logic to strictly use the latest  and an exact CPN match for automatic linking. ()
+    -   Added  caching for municipal boundaries to speed up the map viewer's initial load time. ()
+    -   Added a manual refresh button to the map viewer to allow users to clear the boundary cache. ()
+    -   Restricted the ability to upload orthoimages to 'admin' and 'coordinador' roles only. ()
+-   **Code Cleanup:** Removed the confusing and slow Revincular GDB button and its associated logic, as this process is now fully automated on GDB upload. ()
 
 **Earlier issues found/mentioned but not fixed**
 -   None.
@@ -90,17 +113,16 @@ In this session, the agent performed a large number of fixes and enhancements ba
 
 
 **Key Technical Concepts**
--   **Case-Insensitive MongoDB Queries:** Consistent use of  for robust matching of municipality names.
--   **Database Query Optimization:** Refactored a critical diagnostic endpoint to use in-memory sets, avoiding a slow N+1 query pattern.
--   **Role & Permission-Based Logic:** Differentiated between a user's  and their specific  (e.g., ) on both frontend and backend to enable more granular access control.
--   **Complex Business Logic:** Implemented logic to compare a new dataset () against the union of all historical datasets to find discrepancies (e.g., predios eliminados).
--   **State Management & UI Reactivity:** Used React Context and State to create a reactive UI that includes notification banners, badge counters, and role-specific views.
+-   **Frontend Caching:** Use of  with an expiry timestamp to cache data (municipal boundaries) and improve performance.
+-   **Custom DOM Events:** Using  and  to communicate state changes (like the pending items count) between disconnected React components ( and ).
+-   **Asynchronous Background Tasks:** Acknowledged that long-running backend processes (like GDB revinculation) can cause timeouts and should be handled asynchronously or optimized.
+-   **Complex UI/UX Logic:** Implementation of dynamic UI elements based on multiple conditions, such as showing a Vincular Radicado button only if a  is missing, or a Generar Certificado button only if the petition type is correct.
 
 **key DB schema**
--   **predios:** Core property collection. Heavily queried for , , and .
--   **predios_eliminados:** Stores properties that are no longer present in newer  imports.
--   **users:** User collection containing  and an array of .
--   **codigos_homologados:** Collection for homologated codes, linked to .
+-   **predios:** Core property collection. No schema changes.
+-   **users:** User collection containing  and an array of . No schema changes.
+-   **petitions:** Petition collection. A new endpoint was added to assign a  to a petition.
+-   **cambios_pendientes:** Collection for pending property changes. Now includes  and  fields.
 
 **All files of reference**
 -   
@@ -110,87 +132,56 @@ In this session, the agent performed a large number of fixes and enhancements ba
 -   
 -   
 -   
+-   
 
 **Areas that need refactoring**:
--   **:** Urgently needs to be broken down into a proper project structure with routers, models, and services. Its size and complexity are a major source of technical debt.
--   ** & :** These are classic god components that manage far too much state and logic. They should be decomposed into smaller, focused components (e.g., , , ).
+-   **:** Urgently needs to be broken down into a proper project structure with routers, models, and services. Its size and complexity remain a major source of technical debt.
+-   ** & :** These are classic god components managing excessive state and logic. They should be decomposed into smaller, focused components.
 
 **key api endpoints**
--   : Logic for detecting eliminated properties was completely overhauled.
--   : Modified to return a wider range of user roles for the permissions manager.
--   : Permissions check updated to include users with the  permission, not just a specific role.
--   : Response now includes user permissions to facilitate frontend logic.
--   : Optimized for performance.
+-   : **(NEW)** Assigns a specific gestor to a petition.
+-   : **(BEING ADDED)** Endpoint to link an existing modification to a petition.
+-   : **(MODIFIED)** Logic was completely overhauled to use only the latest  and exact CPN match. The corresponding UI button was removed.
+-   : **(MODIFIED)** Now automatically triggers the corrected revinculation logic for the latest .
+-   : No change to the endpoint, but the frontend now caches its response.
 
 **Critical Info for New Agent**
--   **User Verification is Key:** Your immediate priority should be to present the completed work to the user and guide them through verifying the numerous fixes implemented in this session. Do not start new tasks until the user confirms the current ones are resolved.
--   **Database Discrepancy Awareness:** During debugging, the agent found the server process was using  while manual Current Mongosh Log ID:	6980c7ccc60841783f284d0b
-Connecting to:		mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.6.0
-Using MongoDB:		7.0.28
-Using Mongosh:		2.6.0
-
-For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
-
-
-To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
-You can opt-out by running the disableTelemetry() command.
-
-------
-   The server generated these startup warnings when booting
-   2026-02-02T15:50:26.929+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
-   2026-02-02T15:50:28.025+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
-   2026-02-02T15:50:28.025+00:00: You are running this process as the root user, which is not recommended
-   2026-02-02T15:50:28.025+00:00: Soft rlimits for open file descriptors too low
-------
-
-test>  commands were targeting the default  database. **Always specify the database when using the mongo shell:** Current Mongosh Log ID:	6980c7cc10a271022e284d0b
-Connecting to:		mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.6.0
-Using MongoDB:		7.0.28
-Using Mongosh:		2.6.0
-
-For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
-
-------
-   The server generated these startup warnings when booting
-   2026-02-02T15:50:26.929+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
-   2026-02-02T15:50:28.025+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
-   2026-02-02T15:50:28.025+00:00: You are running this process as the root user, which is not recommended
-   2026-02-02T15:50:28.025+00:00: Soft rlimits for open file descriptors too low
-------
-
-test> .
--   **Refactoring is Overdue:** The technical debt in , , and  is significant. Once the user's current requests are verified, proposing a refactoring phase should be the next major step.
+-   **You are in the middle of a fix:** Your immediate priority is to complete the 5-part bug fix detailed in the Last working item and All Pending/In progress Issue list sections. Do not start new tasks.
+-   **GDB Data Caching:** The user has repeatedly reported incorrect GDB numbers in the map viewer. This is due to stale  cache. The fix (a manual refresh button) has been implemented. You must guide the user to use this button if the issue is reported again.
+-   **Revincular GDB button is gone:** The button was removed by user request. The logic is now automatic upon GDB file upload. Do not attempt to re-implement the button. The backend endpoint still exists but is now called internally.
 
 **documents and test reports created in this job**
--    (Updated multiple times)
+-    (Updated with recent changes)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Bug):** Historial de predios no puedo ver que predio se modificó ni que cambios se hicieron. (In the property history, I can't see which property was modified or what changes were made.) - **Status: COMPLETED (Pending User Verification)**
-2.  **User (Feedback):** Regarding map layers, Dejarlo así por el momento. (Leave it like that for now.) - **Status: COMPLETED (No action taken)**
-3.  **User (Bug):** Al gestor que le otorgo permiso de aprobar cambios no le aparece ninguna modificación para revisar... (The 'Gestor' I grant approval permission to doesn't see any modifications to review.) - **Status: COMPLETED (Pending User Verification)**
-4.  **User (Bug):** En gestión de permisos, el coordinador TIENE que ver todos los roles. A la fecha no me sale Atención al usuario. (In permissions management, the coordinator MUST see all roles. Currently, 'Atención al usuario' is not appearing.) - **Status: COMPLETED (Pending User Verification)**
-5.  **User (Bug/Request):** Si cargo vigencias anteriores en gestión de predios se me elimina el caché total... Ajustar los destinos en creación de predios... (If I load previous , the cache is deleted... Adjust the economic destinations as shown in the image.) - **Status: COMPLETED (Pending User Verification)**
-6.  **User (Bug/Request):** Tengo un pendiente para aprobar pero sin embargo en la sección pendientes aparece en 0... no me notifica que debo revisar... (I have a pending item to approve, but the pending section shows 0... it doesn't notify me.) - **Status: COMPLETED (Pending User Verification)**
-7.  **User (Bug/Request):** ...el historial de pendientes aparece el código homologado y te he dicho SIEMPRE que debe aparecer es el CNP... si alguna empresa necesita solicitar un certificado catastral como hacemos... (The history shows the homologated code, and I've ALWAYS said it should be the CNP... if a company needs to request a certificate, how do we do it?) - **Status: COMPLETED (Pending User Verification)**
-8.  **User (Decision):** Me gusta si pero entonces el tipo de trámite será 1. Certificado catastral 2. Otro trámite... (I like it, but the request type will be 1. Cadastral Certificate 2. Other...) - **Status: COMPLETED**
-9.  **User (Bug/Request):** Si ya colocamos Reapariciones dentro de Pendientes no es necesairo que esté en cada municipio... si ya cargué la información R1, por qué no se analiza los predios eliminados? (If we already put 'Reapariciones' in 'Pendientes', it's not necessary in each municipality... if I already loaded the R1 info, why aren't eliminated properties analyzed?) - **Status: COMPLETED (Pending User Verification)**
-10. **User (Request):** La empresa no debe ver la opción certificados... (The 'Empresa' role should not see the 'Certificados' option.) - **Status: COMPLETED (Pending User Verification)**
+1.  **User (Approval):** Approved the 5-part plan to fix the badge, GDB count, certificate generation, N/A text, and radicado linking. - **Status: IN PROGRESS**
+2.  **User (Bug Report):** Reported the 5 issues currently being worked on. - **Status: IN PROGRESS**
+3.  **User (Approval + New Req):** Confirmed fix for offline cache and requested an automatic sync every Monday. - **Status: COMPLETED**
+4.  **User (Bug Report):** The offline cache is being deleted when viewing past . - **Status: COMPLETED**
+5.  **User (Approval):** Approved the design for the Trámites y Requisitos modal. - **Status: COMPLETED**
+6.  **User (Feature Request):** Asked for a way to show a list of procedures and requirements on the login page. - **Status: COMPLETED**
+7.  **User (Approval):** Approved removing the Revincular GDB button. - **Status: COMPLETED**
+8.  **User (Bug Report):** The Revincular GDB button is slow and gives an error. - **Status: COMPLETED**
+9.  **User (Approval):** Approved the plan to fix GDB linking, map caching, and orthoimage permissions. - **Status: COMPLETED**
+10. **User (Bug Report):** Reported multiple issues: slow municipal limits, GDB upload error for Ábrego, orthoimage permissions too broad, and error on GDB revinculation. - **Status: COMPLETED**
 
 **Project Health Check:**
 -   **Broken:**
-    -   None in the development environment. However, multiple critical workflow fixes (R1 import, Gestor permissions, Notifications) are pending verification in the user's production environment.
+    -   The Pendientes badge counter is not updating in real-time.
+    -   Certificate generation logic is incorrect.
+    -   Linking existing modifications to a radicado is not yet possible.
 -   **Mocked:**
     -   None.
 -   **Technical Debt:**
-    -   : Critically monolithic. Needs urgent refactoring into a structured API with routers/services.
-    -   , : Overly complex god components that need to be broken down.
+    -   : Remains critically monolithic.
+    -   , : Remain overly complex god components.
 
 **3rd Party Integrations**
 -   **Leaflet.js:** (Map visualization)
 -   **Tile Providers:** ESRI, Google Maps, OpenStreetMap (for map layers).
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** NO (but recommended for the current batch of fixes)
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None.
 -   **Known regressions:** None.
@@ -202,9 +193,9 @@ test> .
 -   **Coordinador:**
     -   **Email:** 
     -   **Password:** 
--   **Empresa (Test User):**
+-   **Gestor (with approve permission):**
     -   **Email:** 
     -   **Password:** 
 
 **What agent forgot to execute**
--   The planned tasks from the previous handoff (Scheduler for automatic backups, generating XTF files) remain in the future backlog. The agent correctly prioritized addressing the user's immediate and numerous bug reports and UI/UX requests.</analysis>
+-   The future tasks (backup scheduler, major refactoring, XTF files) remain pending, which is appropriate as the agent has been prioritizing immediate user-reported bugs and features.</analysis>
