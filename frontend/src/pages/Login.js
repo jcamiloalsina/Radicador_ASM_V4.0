@@ -4,8 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../components/ui/accordion';
+import { ScrollArea } from '../components/ui/scroll-area';
 import { toast } from 'sonner';
-import { LogIn, Mail, ArrowLeft, RefreshCw, AlertTriangle, Eye, EyeOff, WifiOff, Wifi } from 'lucide-react';
+import { LogIn, Mail, ArrowLeft, RefreshCw, AlertTriangle, Eye, EyeOff, WifiOff, Wifi, FileText, Phone, MessageCircle, CheckCircle2, X } from 'lucide-react';
 import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
