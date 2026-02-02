@@ -2072,19 +2072,25 @@ export default function Predios() {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       params.append('municipio', municipio);
-      // SIEMPRE filtrar por vigencia actual
-      const vigenciaActual = filterVigencia || String(new Date().getFullYear());
+      
+      // SIEMPRE sincronizar con la vigencia ACTUAL (año actual), no la filtrada
+      const vigenciaActual = String(new Date().getFullYear());
       params.append('vigencia', vigenciaActual);
+      
+      // Si el usuario está viendo una vigencia anterior, advertir
+      if (filterVigencia && String(filterVigencia) !== vigenciaActual) {
+        toast.info(`Sincronizando vigencia ${vigenciaActual} (actual). Las vigencias anteriores se consultan del servidor.`, { duration: 4000 });
+      }
       
       setDownloadProgress({
         isDownloading: true,
         current: 0,
         total: 100,
-        label: `Limpiando cache anterior...`
+        label: `Preparando sincronización...`
       });
       
-      // PASO 1: Borrar TODO el cache offline primero
-      await clearAllOfflineData();
+      // NO borrar el caché completo - solo actualizamos los datos del municipio para la vigencia actual
+      // El caché anterior se mantiene para otros municipios
       
       setDownloadProgress({
         isDownloading: true,
@@ -2093,7 +2099,7 @@ export default function Predios() {
         label: `Descargando ${municipio} (Vigencia ${vigenciaActual})...`
       });
       
-      // PASO 2: Descargar datos del servidor
+      // Descargar datos del servidor
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2108,11 +2114,15 @@ export default function Predios() {
         label: `Guardando ${totalPredios.toLocaleString()} predios...`
       });
       
-      // PASO 3: Guardar solo los datos nuevos
+      // Guardar los datos nuevos (esto reemplaza solo los datos de este municipio)
       await downloadForOffline(serverPredios, null, municipio);
       
-      // Actualizar la UI
-      if (filterMunicipio === municipio) {
+      // Guardar fecha de última sincronización
+      localStorage.setItem(`sync_${municipio}_date`, new Date().toISOString());
+      localStorage.setItem(`sync_${municipio}_vigencia`, vigenciaActual);
+      
+      // Actualizar la UI solo si estamos viendo este municipio Y la vigencia actual
+      if (filterMunicipio === municipio && (!filterVigencia || String(filterVigencia) === vigenciaActual)) {
         let filtered = serverPredios;
         if (search) {
           const searchLower = search.toLowerCase();
