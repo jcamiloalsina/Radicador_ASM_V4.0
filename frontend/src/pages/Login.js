@@ -604,6 +604,20 @@ export default function Login() {
             </div>
           </form>
 
+          {/* Botón para ver trámites y requisitos */}
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowTramitesModal(true)}
+              className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+              data-testid="ver-tramites-btn"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Ver Trámites y Requisitos
+            </Button>
+          </div>
+
           <p className="text-center text-sm text-slate-600">
             ¿No tienes una cuenta?{' '}
             <Link to="/register" className="text-emerald-700 hover:text-emerald-800 font-medium" data-testid="register-link">
@@ -612,6 +626,100 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Modal de Trámites y Requisitos */}
+      <Dialog open={showTramitesModal} onOpenChange={setShowTramitesModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 bg-emerald-700 text-white sticky top-0 z-10">
+            <DialogTitle className="flex items-center gap-2 text-xl font-outfit">
+              <FileText className="w-6 h-6" />
+              Trámites Catastrales y Requisitos
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[calc(90vh-180px)] px-6">
+            <div className="py-4">
+              <Accordion type="single" collapsible className="space-y-2">
+                {TRAMITES_CATASTRALES.map((tramite) => (
+                  <AccordionItem 
+                    key={tramite.id} 
+                    value={`tramite-${tramite.id}`}
+                    className="border border-slate-200 rounded-lg px-4 data-[state=open]:border-emerald-300 data-[state=open]:bg-emerald-50/30"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-start gap-3 text-left">
+                        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                          {tramite.id}
+                        </span>
+                        <span className="font-medium text-slate-800 text-sm leading-tight">
+                          {tramite.nombre}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                      <div className="ml-10 space-y-3">
+                        <p className="text-sm text-slate-600 italic">
+                          {tramite.descripcion}
+                        </p>
+                        
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
+                            Requisitos:
+                          </p>
+                          <ul className="space-y-1.5">
+                            {tramite.requisitos.map((req, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                <span>{req}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        {tramite.nota && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-2">
+                            <p className="text-xs text-amber-800">
+                              <strong>Nota:</strong> {tramite.nota}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          </ScrollArea>
+          
+          {/* Footer con información de contacto */}
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 sticky bottom-0">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-slate-600">
+                <Phone className="w-4 h-4" />
+                <span className="text-sm">Consultar costos:</span>
+                <a 
+                  href="https://wa.me/573102327647" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-emerald-700 font-semibold hover:text-emerald-800"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  310 232 76 47
+                </a>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTramitesModal(false)}
+                className="text-slate-600"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
