@@ -536,16 +536,48 @@ export default function VisorPredios() {
   }, [filterMunicipio, filterZona, mostrarPredios]);
 
   const fetchLimitesMunicipios = async (fuente = 'oficial') => {
+    // Intentar cargar desde caché primero
+    const cacheKey = `limites_municipales_${fuente}`;
+    const cacheTimeKey = `limites_municipales_${fuente}_time`;
+    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+    
+    try {
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTime = localStorage.getItem(cacheTimeKey);
+      
+      // Si hay caché válido, usarlo
+      if (cachedData && cachedTime) {
+        const cacheAge = Date.now() - parseInt(cachedTime);
+        if (cacheAge < CACHE_DURATION) {
+          console.log('Usando límites municipales desde caché');
+          setLimitesMunicipios(JSON.parse(cachedData));
+          return;
+        }
+      }
+    } catch (e) {
+      console.log('Error leyendo caché de límites:', e);
+    }
+    
     if (!navigator.onLine) {
       console.log('Modo offline: límites de municipios no disponibles');
       return;
     }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/gdb/limites-municipios?fuente=${fuente}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLimitesMunicipios(response.data);
+      
+      // Guardar en caché
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(response.data));
+        localStorage.setItem(cacheTimeKey, Date.now().toString());
+        console.log('Límites municipales guardados en caché');
+      } catch (e) {
+        console.log('Error guardando caché de límites:', e);
+      }
     } catch (error) {
       console.error('Error loading municipality limits:', error);
     }
@@ -2115,8 +2147,8 @@ export default function VisorPredios() {
             </Card>
           )}
 
-          {/* Sección de Ortoimágenes Propias - Debajo de GDB */}
-          {(user?.role === 'administrador' || user?.role === 'coordinador' || (user?.role === 'gestor' && user?.puede_actualizar_gdb)) && (
+          {/* Sección de Ortoimágenes Propias - Solo coordinador y admin */}
+          {(user?.role === 'administrador' || user?.role === 'coordinador') && (
             <Card className="border-blue-200 bg-blue-50">
               <CardContent className="py-3">
                 <div className="flex items-center justify-between mb-2">
