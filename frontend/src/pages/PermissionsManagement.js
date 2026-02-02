@@ -122,7 +122,12 @@ export default function PermissionsManagement() {
   const getRoleName = (role) => {
     const roles = {
       gestor: 'Gestor',
-      coordinador: 'Coordinador'
+      coordinador: 'Coordinador',
+      atencion_usuario: 'Atención al Usuario',
+      comunicaciones: 'Comunicaciones',
+      empresa: 'Empresa',
+      administrador: 'Administrador',
+      usuario: 'Usuario'
     };
     return roles[role] || role;
   };
