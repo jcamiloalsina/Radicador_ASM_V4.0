@@ -288,6 +288,9 @@ export default function Pendientes() {
       toast.success('Cambio aprobado exitosamente');
       fetchPendientes();
       setSelectedCambio(null);
+      
+      // Emitir evento para actualizar el badge del menú
+      window.dispatchEvent(new CustomEvent('pendientesUpdated'));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al aprobar cambio');
     } finally {
