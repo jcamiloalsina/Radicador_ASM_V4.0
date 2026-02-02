@@ -3075,22 +3075,6 @@ export default function Predios() {
               Exportar Excel
             </Button>
           )}
-          {/* Botón Revincular GDB - solo admin/coordinador en dashboard */}
-          {showDashboard && (user?.role === 'administrador' || user?.role === 'coordinador') && (
-            <Button 
-              variant="outline" 
-              onClick={() => handleRevincularGdb()}
-              disabled={revinculandoGdb}
-              className="border-amber-500 text-amber-700 hover:bg-amber-50"
-            >
-              {revinculandoGdb ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              {revinculandoGdb ? 'Revinculando...' : 'Revincular GDB'}
-            </Button>
-          )}
         </div>
       </div>
 
