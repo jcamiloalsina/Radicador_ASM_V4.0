@@ -4491,6 +4491,7 @@ export default function Predios() {
               Guardar Cambios
             </Button>
           </div>
+          </div>
         </DialogContent>
       </Dialog>
 
