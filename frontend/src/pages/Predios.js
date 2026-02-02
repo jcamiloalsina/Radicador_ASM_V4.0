@@ -2270,8 +2270,13 @@ export default function Predios() {
       setPredios(prediosOrdenados);
       setTotal(prediosOrdenados.length);
       
-      // Guardar automáticamente para modo offline si hay municipio filtrado
-      if (filterMunicipio && prediosOrdenados.length > 0) {
+      // IMPORTANTE: Solo guardar en caché si es la vigencia ACTUAL
+      // Las vigencias anteriores se consultan del servidor pero NO se guardan en caché
+      const vigenciaActual = String(new Date().getFullYear());
+      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
+      
+      // Guardar automáticamente para modo offline si hay municipio filtrado Y es vigencia actual
+      if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
         // Mostrar barra de progreso de descarga
         const totalPredios = prediosOrdenados.length;
         setDownloadProgress({
