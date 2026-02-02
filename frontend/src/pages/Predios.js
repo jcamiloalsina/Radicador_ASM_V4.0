@@ -2779,12 +2779,17 @@ export default function Predios() {
         };
       }
       
+      // Obtener info del radicado seleccionado
+      const radicadoInfo = peticionesDisponibles.find(p => p.id === radicadoSeleccionado);
+      
       // Usar sistema de aprobación
       const res = await axios.post(`${API}/predios/cambios/proponer`, {
         predio_id: selectedPredio.id,
         tipo_cambio: 'modificacion',
         datos_propuestos: updateData,
-        justificacion: 'Modificación de datos del predio'
+        justificacion: radicadoInfo ? `Modificación según radicado ${radicadoInfo.radicado}` : 'Modificación de datos del predio',
+        radicado_id: radicadoSeleccionado || null,
+        radicado_numero: radicadoInfo?.radicado || null
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2796,6 +2801,7 @@ export default function Predios() {
       }
       
       setShowEditDialog(false);
+      setRadicadoSeleccionado(''); // Limpiar el radicado seleccionado
       // Forzar recarga desde servidor para ver cambios inmediatamente
       await forceRefreshPredios();
       fetchCambiosStats();
