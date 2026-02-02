@@ -2171,8 +2171,12 @@ export default function Predios() {
       setTotal(prediosOrdenados.length);
       setCurrentPage(1); // Resetear a página 1
       
-      // Actualizar caché offline
-      if (filterMunicipio && prediosOrdenados.length > 0) {
+      // IMPORTANTE: Solo actualizar caché offline para la vigencia ACTUAL (año actual)
+      // Las vigencias anteriores se consultan del servidor pero NO se guardan en caché
+      const vigenciaActual = String(new Date().getFullYear());
+      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
+      
+      if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
         await downloadForOffline(prediosOrdenados, null, filterMunicipio);
       }
       
