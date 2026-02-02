@@ -90,7 +90,12 @@ export default function Pendientes() {
   const [cambioArechazar, setCambioArechazar] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
   
-  const isCoordinador = user && ['coordinador', 'administrador'].includes(user.role);
+  // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
+  const userPermissions = user?.permissions || [];
+  const hasApprovePermission = userPermissions.includes('approve_changes');
+  const isCoordinador = user && (
+    ['coordinador', 'administrador'].includes(user.role) || hasApprovePermission
+  );
 
   useEffect(() => {
     fetchPendientes();
