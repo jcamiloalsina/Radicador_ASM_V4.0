@@ -1247,7 +1247,7 @@ export default function Pendientes() {
             <div className="space-y-4">
               {/* Información del predio que se modifica - CNP destacado */}
               <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <span className="text-xs text-slate-500 uppercase tracking-wide">Código Predial Nacional (CNP)</span>
                     <p className="font-mono text-lg font-bold text-slate-800">
@@ -1262,6 +1262,17 @@ export default function Pendientes() {
                       {selectedCambio.predio_actual?.municipio || 
                        selectedCambio.datos_propuestos?.municipio || 'N/A'}
                     </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 uppercase tracking-wide">Radicado Asociado</span>
+                    {selectedCambio.radicado_numero ? (
+                      <p className="font-medium text-blue-700 flex items-center gap-1">
+                        <FileText className="w-4 h-4" />
+                        {selectedCambio.radicado_numero}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-amber-600">Sin radicado</p>
+                    )}
                   </div>
                 </div>
               </div>
