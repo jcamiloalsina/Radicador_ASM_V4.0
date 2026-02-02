@@ -768,7 +768,7 @@ export default function Pendientes() {
                           </Button>
                           
                           {/* Acciones según estado y rol */}
-                          {predio.estado === 'digitalizacion' && (
+                          {(predio.estado_flujo === 'digitalizacion' || predio.estado === 'digitalizacion') && (
                             <Button
                               size="sm"
                               className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -780,7 +780,7 @@ export default function Pendientes() {
                             </Button>
                           )}
                           
-                          {predio.estado === 'revision' && isCoordinador && (
+                          {(predio.estado_flujo === 'revision' || predio.estado === 'revision') && isCoordinador && (
                             <>
                               <Button
                                 variant="outline"
@@ -814,7 +814,7 @@ export default function Pendientes() {
                             </>
                           )}
                           
-                          {predio.estado === 'devuelto' && (
+                          {(predio.estado_flujo === 'devuelto' || predio.estado === 'devuelto') && (
                             <Badge variant="outline" className="text-orange-600 border-orange-300">
                               Pendiente corrección
                             </Badge>
