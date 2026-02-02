@@ -2042,10 +2042,17 @@ async def get_users_with_permissions(current_user: dict = Depends(get_current_us
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para gestionar permisos")
     
-    # Obtener usuarios que pueden tener permisos (gestores, coordinadores)
+    # Obtener usuarios que pueden tener permisos (todos los roles internos)
+    roles_internos = [
+        UserRole.GESTOR, 
+        UserRole.COORDINADOR, 
+        UserRole.ATENCION_USUARIO,
+        UserRole.COMUNICACIONES,
+        UserRole.EMPRESA
+    ]
     users = await db.users.find(
-        {"role": {"$in": [UserRole.GESTOR, UserRole.COORDINADOR]}},
-        {"_id": 0, "password_hash": 0}
+        {"role": {"$in": roles_internos}},
+        {"_id": 0, "password_hash": 0, "password": 0}
     ).to_list(1000)
     
     # Agregar descripciones de permisos
