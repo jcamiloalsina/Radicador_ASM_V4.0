@@ -218,6 +218,8 @@ export default function PetitionDetail() {
 
   const canEdit = user?.role !== 'usuario';
   const canEditAllFields = ['coordinador', 'administrador'].includes(user?.role);
+  // Atención al usuario, coordinador y admin pueden asignar gestores
+  const canAssignGestores = ['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role);
 
   if (loading) {
     return (
