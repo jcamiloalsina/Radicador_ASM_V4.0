@@ -90,6 +90,11 @@ export default function Pendientes() {
   const [cambioArechazar, setCambioArechazar] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
   
+  // Estados para vincular radicado a cambios existentes
+  const [showVincularRadicadoModal, setShowVincularRadicadoModal] = useState(false);
+  const [peticionesDisponibles, setPeticionesDisponibles] = useState([]);
+  const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
+  
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
   const userPermissions = user?.permissions || [];
   const hasApprovePermission = userPermissions.includes('approve_changes');
