@@ -536,27 +536,29 @@ export default function VisorPredios() {
     }
   }, [filterMunicipio, filterZona, mostrarPredios]);
 
-  const fetchLimitesMunicipios = async (fuente = 'oficial') => {
+  const fetchLimitesMunicipios = async (fuente = 'oficial', forceRefresh = false) => {
     // Intentar cargar desde caché primero
     const cacheKey = `limites_municipales_${fuente}`;
     const cacheTimeKey = `limites_municipales_${fuente}_time`;
-    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+    const CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hora en milisegundos
     
-    try {
-      const cachedData = localStorage.getItem(cacheKey);
-      const cachedTime = localStorage.getItem(cacheTimeKey);
-      
-      // Si hay caché válido, usarlo
-      if (cachedData && cachedTime) {
-        const cacheAge = Date.now() - parseInt(cachedTime);
-        if (cacheAge < CACHE_DURATION) {
-          console.log('Usando límites municipales desde caché');
-          setLimitesMunicipios(JSON.parse(cachedData));
-          return;
+    if (!forceRefresh) {
+      try {
+        const cachedData = localStorage.getItem(cacheKey);
+        const cachedTime = localStorage.getItem(cacheTimeKey);
+        
+        // Si hay caché válido, usarlo
+        if (cachedData && cachedTime) {
+          const cacheAge = Date.now() - parseInt(cachedTime);
+          if (cacheAge < CACHE_DURATION) {
+            console.log('Usando límites municipales desde caché');
+            setLimitesMunicipios(JSON.parse(cachedData));
+            return;
+          }
         }
+      } catch (e) {
+        console.log('Error leyendo caché de límites:', e);
       }
-    } catch (e) {
-      console.log('Error leyendo caché de límites:', e);
     }
     
     if (!navigator.onLine) {
@@ -582,6 +584,18 @@ export default function VisorPredios() {
     } catch (error) {
       console.error('Error loading municipality limits:', error);
     }
+  };
+  
+  // Función para refrescar límites (limpiar caché)
+  const refreshLimitesMunicipios = async () => {
+    // Limpiar caché
+    localStorage.removeItem('limites_municipales_oficial');
+    localStorage.removeItem('limites_municipales_oficial_time');
+    localStorage.removeItem('limites_municipales_gdb');
+    localStorage.removeItem('limites_municipales_gdb_time');
+    toast.info('Actualizando datos de municipios...');
+    await fetchLimitesMunicipios('oficial', true);
+    toast.success('Datos de municipios actualizados');
   };
 
   // Estado para offline de geometrías
