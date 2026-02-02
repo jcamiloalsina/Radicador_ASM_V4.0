@@ -88,12 +88,21 @@ export default function DashboardLayout() {
   const { user, logout, loading, showTimeoutWarning, extendSession } = useAuth();
   const { isOnline, offlineData } = useOffline();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
   const [showOfflinePanel, setShowOfflinePanel] = useState(false);
+  
+  // Estado para banner de novedades
+  const [showNovedadesBanner, setShowNovedadesBanner] = useState(false);
+  const [novedadesDetalle, setNovedadesDetalle] = useState({
+    cambios: 0,
+    prediosNuevos: 0,
+    reapariciones: 0
+  });
   
   // Estado de secciones colapsables
   const [conservacionOpen, setConservacionOpen] = useState(true);
@@ -107,14 +116,59 @@ export default function DashboardLayout() {
   const fetchCambiosPendientes = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/predios/cambios/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCambiosPendientesCount(response.data.total_pendientes || 0);
+      
+      // Obtener todos los tipos de pendientes
+      const [cambiosRes, prediosNuevosRes, reaparicionesRes] = await Promise.all([
+        axios.get(`${API}/predios/cambios/stats`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { total_pendientes: 0 } })),
+        axios.get(`${API}/predios/nuevos`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { predios: [] } })),
+        axios.get(`${API}/predios/reapariciones/solicitudes-pendientes`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { solicitudes: [] } }))
+      ]);
+      
+      const cambios = cambiosRes.data.total_pendientes || 0;
+      const prediosNuevos = (prediosNuevosRes.data.predios || []).filter(p => p.estado === 'revision').length;
+      const reapariciones = (reaparicionesRes.data.solicitudes || []).length;
+      const total = cambios + prediosNuevos + reapariciones;
+      
+      setCambiosPendientesCount(total);
+      setNovedadesDetalle({ cambios, prediosNuevos, reapariciones });
+      
+      // Mostrar banner si hay pendientes y no se ha cerrado en esta sesión
+      const bannerCerrado = sessionStorage.getItem('novedadesBannerCerrado');
+      if (total > 0 && !bannerCerrado) {
+        setShowNovedadesBanner(true);
+      }
     } catch (error) {
       console.error('Error fetching pending changes:', error);
     }
   }, []);
+
+  const cerrarBannerNovedades = () => {
+    setShowNovedadesBanner(false);
+    sessionStorage.setItem('novedadesBannerCerrado', 'true');
+  };
+
+  const handleNotificationClick = (notif) => {
+    // Marcar como leída
+    marcarLeida(notif.id);
+    setShowNotifications(false);
+    
+    // Navegar según el tipo de notificación
+    const tipo = notif.tipo || '';
+    if (tipo.includes('cambio') || tipo.includes('modificacion')) {
+      navigate('/dashboard/pendientes?tab=modificaciones');
+    } else if (tipo.includes('predio_nuevo') || tipo.includes('nuevo')) {
+      navigate('/dashboard/pendientes?tab=predios-nuevos');
+    } else if (tipo.includes('reaparicion')) {
+      navigate('/dashboard/pendientes?tab=reapariciones');
+    } else if (tipo.includes('peticion') && notif.referencia_id) {
+      navigate(`/dashboard/peticiones/${notif.referencia_id}`);
+    } else if (tipo.includes('certificado')) {
+      navigate('/dashboard/certificados');
+    } else {
+      // Por defecto, ir a pendientes
+      navigate('/dashboard/pendientes');
+    }
+  };
 
   const fetchNotificaciones = useCallback(async () => {
     try {
