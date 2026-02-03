@@ -1092,7 +1092,77 @@ export default function VisorPredios() {
         }
       });
       
-      // Si hay upload_id, consultar progreso periódicamente
+      // Si la respuesta ya tiene datos de calidad o geometrías, el proceso terminó exitosamente
+      // No necesitamos consultar el progreso, mostrar resultado directo
+      if (response.data.calidad || response.data.total_geometrias_gdb) {
+        const calidad = response.data.calidad;
+        const construcciones = response.data.construcciones;
+        
+        setUploadProgress({ status: 'completado', progress: 100, message: '¡Carga completada!' });
+        
+        if (calidad) {
+          const calidadPct = calidad.porcentaje || 100;
+          let calidadMsg = `Calidad: ${calidadPct}%`;
+          
+          if (calidadPct >= 95) {
+            toast.success(`✅ ¡Excelente! ${response.data.predios_relacionados} predios vinculados. ${calidadMsg}`);
+          } else if (calidadPct >= 80) {
+            toast.success(`✓ Carga exitosa. ${response.data.predios_relacionados} predios vinculados. ${calidadMsg}`, { duration: 5000 });
+          } else if (calidadPct >= 60) {
+            toast.warning(`⚠️ Carga completa con observaciones. ${calidadMsg}. Códigos inválidos: ${calidad.codigos_invalidos}, Rechazadas: ${calidad.geometrias_rechazadas}`, { duration: 8000 });
+          } else {
+            toast.warning(`⚠️ Carga completa - Revisar calidad. ${calidadMsg}. Códigos inválidos: ${calidad.codigos_invalidos}. Se generó reporte PDF.`, { duration: 10000 });
+          }
+          
+          // Si hay reporte PDF, mostrar notificación con enlace de descarga
+          if (calidad.reporte_pdf) {
+            toast.info(
+              <div className="flex flex-col gap-1">
+                <span>📄 Reporte de calidad disponible</span>
+                <button 
+                  onClick={async () => {
+                    try {
+                      const authToken = localStorage.getItem('token');
+                      const res = await fetch(`${API}/gdb/reportes-calidad/${calidad.reporte_pdf}`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                      });
+                      if (!res.ok) throw new Error('Error al descargar');
+                      const blob = await res.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = calidad.reporte_pdf;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(url);
+                      toast.success('PDF descargado');
+                    } catch (err) {
+                      toast.error('Error al descargar el reporte');
+                    }
+                  }}
+                  className="text-blue-600 underline text-sm hover:text-blue-800"
+                >
+                  Descargar PDF
+                </button>
+              </div>,
+              { duration: 10000 }
+            );
+          }
+        } else {
+          toast.success(`¡Completado! ${response.data.predios_relacionados} predios relacionados de ${response.data.total_geometrias_gdb} en Base Gráfica`);
+        }
+        
+        fetchGdbStats();
+        verificarCargasMensuales();
+        setShowUploadGdb(false);
+        setMostrarPreguntaGdb(false);
+        setGdbCargadaEsteMes(true);
+        setTimeout(() => setUploadProgress(null), 3000);
+        return; // Salir, no necesitamos consultar progreso
+      }
+      
+      // Solo consultar progreso si no tenemos datos completos (caso legacy)
       if (response.data.upload_id) {
         let checkCount = 0;
         const maxChecks = 120; // 2 minutos máximo
