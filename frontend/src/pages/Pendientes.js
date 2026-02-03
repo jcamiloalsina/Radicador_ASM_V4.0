@@ -502,6 +502,14 @@ export default function Pendientes() {
     // Verificar si tenemos datos anteriores disponibles
     const tieneDatosAnteriores = Object.keys(datosAnteriores).length > 0;
     
+    // DEBUG: Log para verificar
+    console.log('DEBUG getFieldChanges:', {
+      'cambio.datos_anteriores': cambio.datos_anteriores,
+      'cambio.predio_actual': cambio.predio_actual,
+      'datosAnteriores': datosAnteriores,
+      'tieneDatosAnteriores': tieneDatosAnteriores
+    });
+    
     // Campos a comparar
     const camposComparar = [
       { key: 'codigo_predial_nacional', label: 'Código Predial Nacional' },
