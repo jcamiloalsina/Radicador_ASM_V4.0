@@ -10082,6 +10082,19 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
     
     # Retornar predio actualizado
     updated_predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+    
+    # Broadcast WebSocket para sincronización en tiempo real
+    await ws_manager.broadcast({
+        "type": "predio_actualizado",
+        "action": "update",
+        "predio_id": predio_id,
+        "municipio": updated_predio.get('municipio', ''),
+        "codigo_predial": updated_predio.get('codigo_predial_nacional', ''),
+        "campos_modificados": list(update_dict.keys()),
+        "updated_by": current_user['full_name'],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }, exclude_user=current_user['id'])
+    
     return updated_predio
 
 @api_router.delete("/predios/{predio_id}")
