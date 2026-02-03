@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo import ReturnDocument
+from pymongo import ReturnDocument, UpdateOne
 import os
 import logging
 import random
