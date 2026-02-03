@@ -2322,14 +2322,18 @@ export default function VisorPredios() {
                         
                         try {
                           const token = localStorage.getItem('token');
-                          // Buscar predio en la base de datos
-                          const predioResponse = await fetch(`${API}/predios?search=${codigo}&limit=1`, {
+                          // Buscar todos los registros del predio (diferentes vigencias)
+                          const predioResponse = await fetch(`${API}/predios?search=${codigo}&limit=10`, {
                             headers: { Authorization: `Bearer ${token}` }
                           });
                           const predioData = await predioResponse.json();
                           
                           if (predioData.predios && predioData.predios.length > 0) {
-                            const predio = predioData.predios[0];
+                            // Ordenar por vigencia descendente y tomar la última vigencia cargada
+                            const prediosOrdenados = predioData.predios.sort((a, b) => 
+                              (b.vigencia || 0) - (a.vigencia || 0)
+                            );
+                            const predio = prediosOrdenados[0];
                             setSelectedPredio(predio);
                             
                             // Obtener geometría para el área GDB
