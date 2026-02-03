@@ -4165,7 +4165,7 @@ export default function Predios() {
                     <SelectTrigger className="w-full" data-testid="gestor-apoyo-trigger">
                       <SelectValue placeholder="Seleccione un gestor de apoyo..." />
                     </SelectTrigger>
-                    <SelectContent className="z-[100000] max-h-[200px]">
+                    <SelectContent side="top" className="z-[100000] max-h-[250px]">
                       <SelectItem value="seleccionar" disabled>Seleccione un gestor...</SelectItem>
                       {gestoresDisponibles.map(g => (
                         <SelectItem key={g.id} value={g.id}>
