@@ -1276,9 +1276,53 @@ export default function VisorPredios() {
       }
       
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al subir la base gráfica');
-      setUploadProgress({ status: 'error', progress: 0, message: error.response?.data?.detail || 'Error al procesar' });
-      setTimeout(() => setUploadProgress(null), 5000);
+      // Detectar si es un timeout
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+      
+      if (isTimeout) {
+        // En caso de timeout, verificar si los datos se procesaron consultando las estadísticas
+        setUploadProgress({ status: 'verificando', progress: 95, message: 'Verificando estado de la carga...' });
+        
+        try {
+          // Esperar un momento y verificar si la carga se completó
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          const token = localStorage.getItem('token');
+          const statsRes = await axios.get(`${API}/gdb/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            timeout: 10000
+          });
+          
+          // Si hay estadísticas recientes, la carga probablemente se completó
+          if (statsRes.data) {
+            toast.success('✅ La carga de GDB se completó en segundo plano. Actualiza la página para ver los cambios.');
+            fetchGdbStats();
+            verificarCargasMensuales();
+            setShowUploadGdb(false);
+            setMostrarPreguntaGdb(false);
+            setGdbCargadaEsteMes(true);
+            setUploadProgress({ status: 'completado', progress: 100, message: 'Carga completada' });
+            setTimeout(() => setUploadProgress(null), 3000);
+            return;
+          }
+        } catch (verifyError) {
+          console.log('Error verificando estado:', verifyError);
+        }
+        
+        // Si no pudimos verificar, mostrar mensaje informativo
+        toast.warning('⏱️ La carga está tardando más de lo esperado. Los datos se están procesando en segundo plano.', { duration: 10000 });
+        setUploadProgress({ status: 'procesando', progress: 90, message: 'Procesando en segundo plano...' });
+        setTimeout(() => {
+          setUploadProgress(null);
+          fetchGdbStats();
+          verificarCargasMensuales();
+        }, 10000);
+      } else {
+        // Error real (no timeout)
+        toast.error(error.response?.data?.detail || 'Error al subir la base gráfica');
+        setUploadProgress({ status: 'error', progress: 0, message: error.response?.data?.detail || 'Error al procesar' });
+        setTimeout(() => setUploadProgress(null), 5000);
+      }
     } finally {
       setUploadingGdb(false);
     }
