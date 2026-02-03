@@ -951,7 +951,7 @@ export default function PetitionDetail() {
                           )}
                         </div>
                         {/* Solo mostrar botón de generar certificado para "Certificado catastral sencillo" */}
-                        {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && 
+                        {['gestor', 'coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && 
                          petition.tipo_tramite?.toLowerCase().trim().replace(/\s+/g, ' ') === 'certificado catastral sencillo' && (
                           <Dialog>
                             <DialogTrigger asChild>
