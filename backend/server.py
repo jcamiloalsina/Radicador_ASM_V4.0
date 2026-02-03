@@ -5721,8 +5721,8 @@ async def get_predios_por_manzana(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Obtiene los últimos predios existentes en una manzana específica.
-    Útil para mostrar los predios existentes al crear uno nuevo.
+    Obtiene los últimos terrenos únicos en una manzana específica.
+    Agrupa por número de terreno y cuenta registros por cada uno.
     """
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
@@ -5734,37 +5734,53 @@ async def get_predios_por_manzana(
     # Construir prefijo para buscar: departamento + municipio + zona + sector + comuna + barrio + manzana
     prefijo_manzana = f"{divipola['departamento']}{divipola['municipio']}{zona}{sector}{comuna}{barrio}{manzana_vereda}"
     
-    # Buscar predios en esta manzana
-    regex_pattern = f"^{prefijo_manzana}"
-    predios = await db.predios.find(
-        {"codigo_predial_nacional": {"$regex": regex_pattern}},
-        {"_id": 0, "codigo_predial_nacional": 1, "direccion": 1, "nombre_propietario": 1, "propietarios": 1, "area_terreno": 1}
-    ).sort("codigo_predial_nacional", -1).limit(limit).to_list(limit)
+    # Usar aggregation para agrupar por terreno (posiciones 18-21 del código)
+    pipeline = [
+        {"$match": {"codigo_predial_nacional": {"$regex": f"^{prefijo_manzana}"}}},
+        {"$addFields": {
+            "terreno": {"$substr": ["$codigo_predial_nacional", 17, 4]}
+        }},
+        {"$group": {
+            "_id": "$terreno",
+            "count": {"$sum": 1},
+            "direccion": {"$first": "$direccion"},
+            "area_terreno": {"$first": "$area_terreno"},
+            "codigo_ejemplo": {"$first": "$codigo_predial_nacional"}
+        }},
+        {"$sort": {"_id": -1}},  # Ordenar descendente para obtener los últimos
+        {"$limit": limit}
+    ]
+    
+    terrenos = await db.predios.aggregate(pipeline).to_list(limit)
+    
+    # Reordenar de menor a mayor para mostrar
+    terrenos.sort(key=lambda x: x["_id"])
+    
+    # Calcular siguiente terreno sugerido
+    siguiente_terreno = "0001"
+    if terrenos:
+        ultimo_terreno = max(t["_id"] for t in terrenos)
+        try:
+            siguiente_num = int(ultimo_terreno) + 1
+            siguiente_terreno = str(siguiente_num).zfill(4)
+        except:
+            pass
     
     # Formatear respuesta
     predios_formateados = []
-    for p in predios:
-        # Extraer el número de terreno (posiciones 18-21)
-        codigo = p.get("codigo_predial_nacional", "")
-        terreno = codigo[17:21] if len(codigo) >= 21 else "????"
-        
-        # Obtener nombre del propietario
-        propietario = p.get("nombre_propietario", "")
-        if not propietario and p.get("propietarios"):
-            propietario = ", ".join([prop.get("nombre_propietario", "") for prop in p.get("propietarios", [])[:2]])
-        
+    for t in terrenos:
         predios_formateados.append({
-            "codigo_predial_nacional": codigo,
-            "terreno": terreno,
-            "direccion": p.get("direccion", "Sin dirección"),
-            "propietario": propietario[:50] + "..." if len(propietario) > 50 else propietario,
-            "area_terreno": p.get("area_terreno")
+            "terreno": t["_id"],
+            "direccion": t.get("direccion", "Sin dirección") or "Sin dirección",
+            "area_terreno": t.get("area_terreno"),
+            "registros": t["count"]
         })
     
     return {
         "municipio": municipio,
         "manzana": manzana_vereda,
-        "total_encontrados": len(predios),
+        "total_terrenos": len(terrenos),
+        "siguiente_terreno": siguiente_terreno,
         "predios": predios_formateados
     }
 
