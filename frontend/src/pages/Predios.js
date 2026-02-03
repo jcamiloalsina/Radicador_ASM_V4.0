@@ -4159,19 +4159,22 @@ export default function Predios() {
                   <Label className="text-sm font-medium">Gestor de Apoyo *</Label>
                   <p className="text-xs text-slate-500 mb-1">Responsable de completar la digitalización del predio</p>
                   <Select 
-                    value={gestorAsignado || "seleccionar"} 
-                    onValueChange={(v) => setGestorAsignado(v === "seleccionar" ? "" : v)}
+                    value={gestorAsignado} 
+                    onValueChange={setGestorAsignado}
                   >
                     <SelectTrigger className="w-full" data-testid="gestor-apoyo-trigger">
                       <SelectValue placeholder="Seleccione un gestor de apoyo..." />
                     </SelectTrigger>
                     <SelectContent side="top" className="z-[100000] max-h-[250px]">
-                      <SelectItem value="seleccionar" disabled>Seleccione un gestor...</SelectItem>
-                      {gestoresDisponibles.map(g => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : 'Atención'})
-                        </SelectItem>
-                      ))}
+                      {gestoresDisponibles.length === 0 ? (
+                        <SelectItem value="no-disponible" disabled>No hay gestores disponibles</SelectItem>
+                      ) : (
+                        gestoresDisponibles.map(g => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : 'Atención'})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
