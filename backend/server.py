@@ -1898,6 +1898,31 @@ async def get_users(current_user: dict = Depends(get_current_user)):
     
     return users
 
+
+@api_router.get("/users/gestores-disponibles")
+async def get_gestores_disponibles(current_user: dict = Depends(get_current_user)):
+    """
+    Obtiene lista de gestores disponibles para asignar trabajo.
+    Accesible para roles internos incluyendo Gestor.
+    """
+    # Permitir acceso a roles internos (no ciudadanos)
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    # Buscar usuarios con roles que pueden recibir trabajo
+    roles_asignables = ['gestor', 'gestor_auxiliar', 'atencion_usuario', 'coordinador']
+    
+    gestores = await db.users.find(
+        {"role": {"$in": roles_asignables}},
+        {"_id": 0, "id": 1, "full_name": 1, "role": 1, "email": 1}
+    ).to_list(100)
+    
+    # Excluir al usuario actual (no puede asignarse a sí mismo)
+    gestores = [g for g in gestores if g.get('id') != current_user['id']]
+    
+    return gestores
+
+
 # Email del administrador protegido - no se puede cambiar su rol
 PROTECTED_ADMIN_EMAIL = "catastro@asomunicipios.gov.co"
 
