@@ -12844,7 +12844,6 @@ async def upload_gdb_file(
                 logger.info(f"Pre-cargadas {len(areas_dict)} áreas de geometrías para vinculación")
                 
                 # PASO 2: Identificar predios con match y preparar operaciones bulk
-                from pymongo import UpdateOne
                 predios_bulk_ops = []
                 geometrias_bulk_ops = []
                 timestamp_now = datetime.now(timezone.utc).isoformat()
