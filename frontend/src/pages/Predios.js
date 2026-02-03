@@ -1735,9 +1735,11 @@ export default function Predios() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPrediosEnManzana(res.data.predios || []);
+      setSiguienteTerrenoSugerido(res.data.siguiente_terreno || '0001');
     } catch (error) {
       console.log('Error buscando predios en manzana:', error);
       setPrediosEnManzana([]);
+      setSiguienteTerrenoSugerido('0001');
     } finally {
       setBuscandoPrediosManzana(false);
     }
@@ -1752,6 +1754,7 @@ export default function Predios() {
       return () => clearTimeout(timer);
     } else {
       setPrediosEnManzana([]);
+      setSiguienteTerrenoSugerido('0001');
     }
   }, [codigoManual.zona, codigoManual.sector, codigoManual.comuna, codigoManual.barrio, codigoManual.manzana_vereda, formData.municipio, showCreateDialog]);
 
