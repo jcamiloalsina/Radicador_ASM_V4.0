@@ -4530,7 +4530,7 @@ export default function Predios() {
           
           {/* Selector de Radicado Asociado - Solo para gestores (no coordinadores/admin que aprueban directamente) */}
           {!['coordinador', 'administrador'].includes(user?.role) && (
-            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 mt-4 relative z-[100]">
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-4 mt-4">
               <Label className="text-blue-800 font-medium flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Radicado Asociado (Requerido)
@@ -4539,10 +4539,10 @@ export default function Predios() {
                 Seleccione la petición/radicado que justifica esta modificación
               </p>
               <Select value={radicadoSeleccionado} onValueChange={setRadicadoSeleccionado}>
-                <SelectTrigger className="border-blue-300">
+                <SelectTrigger className="border-blue-300" data-testid="radicado-trigger">
                   <SelectValue placeholder="Seleccione un radicado..." />
                 </SelectTrigger>
-                <SelectContent position="popper" sideOffset={4} className="z-[100000]">
+                <SelectContent className="z-[100000] max-h-[200px]">
                   {peticionesDisponibles.length === 0 ? (
                     <SelectItem value="none" disabled>No hay peticiones disponibles</SelectItem>
                   ) : (
