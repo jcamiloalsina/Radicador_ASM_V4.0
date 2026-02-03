@@ -12848,37 +12848,9 @@ async def upload_gdb_file(
                 
                 logger.info(f"UpdateMany completado: {result.modified_count} predios actualizados")
                 
-                # Obtener áreas de geometrías y actualizar el área en los predios
-                # Esto es más lento pero lo hacemos en batch más pequeños
-                update_progress("vinculando", 88, f"Actualizando áreas de predios...")
-                
-                # Pre-cargar áreas
-                areas_dict = {}
-                async for geo in db.gdb_geometrias.find(
-                    {"municipio": municipio_nombre},
-                    {"_id": 0, "codigo": 1, "area_m2": 1}
-                ):
-                    areas_dict[geo.get("codigo", "")] = geo.get("area_m2", 0)
-                
-                # Actualizar áreas en batch
-                BATCH_SIZE = 100
-                codigos_list = list(codigos_gdb_set)
-                for i in range(0, len(codigos_list), BATCH_SIZE):
-                    batch = codigos_list[i:i + BATCH_SIZE]
-                    for codigo in batch:
-                        area = areas_dict.get(codigo, 0)
-                        if area:
-                            await db.predios.update_many(
-                                {
-                                    "codigo_predial_nacional": codigo,
-                                    "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"}
-                                },
-                                {"$set": {"codigo_gdb": codigo, "area_gdb": area}}
-                            )
-                    
-                    if i % 500 == 0:
-                        pct = 88 + int((i / len(codigos_list)) * 5)
-                        update_progress("vinculando", pct, f"Actualizando áreas: {i}/{len(codigos_list)}")
+                # NOTA: Las áreas de los predios están disponibles en gdb_geometrias
+                # No es necesario duplicarlas en cada predio, lo cual ahorra tiempo
+                update_progress("vinculando", 92, "Finalizando vinculación...")
                 
                 # Contar predios en última vigencia para el reporte
                 predios_ult_vig_count = await db.predios.count_documents({
