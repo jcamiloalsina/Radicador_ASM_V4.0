@@ -10139,6 +10139,17 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
         }
     )
     
+    # Broadcast WebSocket para sincronización en tiempo real
+    await ws_manager.broadcast({
+        "type": "predio_actualizado",
+        "action": "delete",
+        "predio_id": predio_id,
+        "municipio": predio.get('municipio', ''),
+        "codigo_predial": predio.get('codigo_predial_nacional', ''),
+        "deleted_by": current_user['full_name'],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }, exclude_user=current_user['id'])
+    
     return {"message": "Predio eliminado exitosamente"}
 
 
