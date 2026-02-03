@@ -10671,11 +10671,30 @@ async def proponer_cambio_predio(
     if cambio.radicado_id:
         radicado_info = await db.petitions.find_one({"id": cambio.radicado_id}, {"_id": 0, "radicado": 1, "tipo_tramite": 1})
     
+    # Obtener datos actuales del predio para modificaciones
+    predio_actual_data = None
+    if cambio.tipo_cambio == "modificacion" and cambio.predio_id:
+        predio_existente = await db.predios.find_one({"id": cambio.predio_id}, {"_id": 0})
+        if predio_existente:
+            predio_actual_data = {
+                "codigo_predial_nacional": predio_existente.get("codigo_predial_nacional"),
+                "municipio": predio_existente.get("municipio"),
+                "direccion": predio_existente.get("direccion"),
+                "nombre_propietario": predio_existente.get("nombre_propietario"),
+                "propietarios": predio_existente.get("propietarios", []),
+                "area_terreno": predio_existente.get("area_terreno"),
+                "area_construida": predio_existente.get("area_construida"),
+                "avaluo": predio_existente.get("avaluo"),
+                "destino_economico": predio_existente.get("destino_economico"),
+                "zona": predio_existente.get("zona"),
+            }
+    
     cambio_doc = {
         "id": str(uuid.uuid4()),
         "predio_id": cambio.predio_id,
         "tipo_cambio": cambio.tipo_cambio,
         "datos_propuestos": cambio.datos_propuestos,
+        "predio_actual": predio_actual_data,  # Guardar datos actuales para comparación
         "justificacion": cambio.justificacion,
         "radicado_id": cambio.radicado_id,
         "radicado_numero": radicado_info['radicado'] if radicado_info else cambio.radicado_numero,
@@ -10689,6 +10708,10 @@ async def proponer_cambio_predio(
         "fecha_aprobacion": datetime.now(timezone.utc).isoformat() if aprueba_directo else None,
         "comentario_aprobacion": "Aprobación directa por coordinador/administrador" if aprueba_directo else None
     }
+    
+    # Si aprueba directo, guardar también los datos_anteriores
+    if aprueba_directo and predio_actual_data:
+        cambio_doc["datos_anteriores"] = predio_actual_data
     
     # Si aprueba directo, aplicar el cambio inmediatamente
     if aprueba_directo:
