@@ -27,7 +27,7 @@ export default function MyPetitions() {
 
   // Determinar si es usuario ciudadano o personal interno
   const esUsuarioCiudadano = user?.role === 'usuario';
-  const esGestor = ['gestor', 'coordinador', 'administrador', 'atencion_usuario'].includes(user?.role);
+  const esStaffInterno = !['usuario', 'empresa'].includes(user?.role);
 
   useEffect(() => {
     fetchData();
