@@ -114,6 +114,41 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 3 Febrero 2026 - Fix Crítico: Carga de GDB (Timeout/Error)
+
+#### 12. Fix: Carga de GDB mostraba error pero procesaba datos (P0)
+**Problema:** El proceso de carga de archivos GDB mostraba un mensaje de error al usuario, aunque los datos sí se procesaban correctamente. Esto causaba confusión y desconfianza en el sistema.
+
+**Causa raíz identificada:**
+1. La **vinculación de predios** (match exacto por código predial) realizaba una operación individual por cada predio (~3,000 iteraciones)
+2. Cada iteración hacía 2-3 consultas a MongoDB (find_one + update_one × 2)
+3. El proceso tardaba **más de 5 minutos**, excediendo los timeouts de:
+   - Proxy de Kubernetes (~100s)
+   - Cliente HTTP del frontend (~60s)
+4. Aunque el backend procesaba todo correctamente, la conexión HTTP se cerraba antes de recibir la respuesta
+
+**Solución implementada:**
+1. **Optimización de vinculación masiva:** Reemplazado el loop individual por `updateMany` de MongoDB
+   - Antes: 3,000 operaciones × 3 queries = ~9,000 queries (~5 min)
+   - Ahora: 1 operación `count_documents` + 1 operación `updateMany` (~0.3 seg)
+2. **Eliminación de duplicación innecesaria:** Las áreas de predios no se duplican en cada documento de predio (ya están en `gdb_geometrias`)
+3. **Timeout del frontend aumentado:** Configurado a 180 segundos con manejo inteligente de timeout
+
+**Resultado:**
+- **Antes:** 5+ minutos (300+ segundos) → Timeout → Error falso
+- **Después:** ~10 segundos → Éxito → Respuesta correcta
+
+**Archivos modificados:**
+- `/app/backend/server.py`: Líneas 12797-12870 (vinculación optimizada)
+- `/app/frontend/src/pages/VisorPredios.js`: Timeout de axios y manejo de errores
+
+**Estado:** ✅ Verificado con archivo GDB de San Calixto (54670)
+- 2,854 geometrías procesadas
+- 2,846 predios vinculados (92.19% cobertura)
+- Tiempo de ejecución: 9-10 segundos
+
+---
+
 ### Sesión 3 Febrero 2026 - Fix Botón "Generar Certificado" + Dropdown Gestor
 
 #### 11. Fix: Botón "Generar Certificado" no aparecía para variantes de tipo certificado
