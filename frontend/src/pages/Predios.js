@@ -1506,21 +1506,17 @@ export default function Predios() {
   // Estado para seleccionar radicado asociado a modificaciones
   const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
 
-  // Cargar gestores disponibles
+  // Cargar gestores disponibles para asignar trabajo
   const fetchGestoresDisponibles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/users`, {
+      const res = await axios.get(`${API}/users/gestores-disponibles`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Filtrar solo gestores y staff
-      const gestores = res.data.filter(u => 
-        ['gestor', 'gestor_auxiliar', 'atencion_usuario', 'coordinador'].includes(u.role) && 
-        u.id !== user?.id
-      );
-      setGestoresDisponibles(gestores);
+      setGestoresDisponibles(res.data || []);
     } catch (error) {
-      console.log('Error cargando gestores');
+      console.log('Error cargando gestores disponibles');
+      setGestoresDisponibles([]);
     }
   };
   
