@@ -114,6 +114,30 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 3 Febrero 2026 - Fix Botón "Generar Certificado" + Dropdown Gestor
+
+#### 11. Fix: Botón "Generar Certificado" no aparecía para variantes de tipo certificado
+**Problema:** El botón "Generar Certificado" solo aparecía para peticiones con tipo exacto "Certificado catastral", pero no para variantes como "Certificado catastral sencillo", "Certificado Catastral" (con mayúscula), etc.
+
+**Causa raíz:** `PetitionDetail.js` línea 955 usaba comparación estricta:
+```javascript
+petition.tipo_tramite === 'Certificado catastral'
+```
+
+**Solución:** Cambié a comparación flexible e insensible a mayúsculas:
+```javascript
+petition.tipo_tramite?.toLowerCase().includes('certificado catastral')
+```
+
+**Tipos ahora soportados:**
+- ✅ Certificado catastral
+- ✅ Certificado Catastral (con C mayúscula)
+- ✅ Certificado catastral sencillo
+- ✅ Solicitudes / - Solicitud Certificado Catastral
+- ✅ Solicitudes / Certificados - Solicitud Certificado Catastral
+
+**Estado:** ✅ Verificado y probado - botones de certificado ahora aparecen correctamente
+
 ### Sesión 3 Febrero 2026 - Fix Dropdown Gestor de Apoyo
 
 #### 10. Fix: Dropdown "Gestor de Apoyo" no se abría
