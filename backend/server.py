@@ -11087,10 +11087,14 @@ async def get_cambios_historial(
     
     # Enriquecer con datos del predio original
     for cambio in cambios:
-        if cambio.get('predio_id'):
-            predio = await db.predios.find_one({"id": cambio['predio_id']}, {"_id": 0, "codigo_predial_nacional": 1, "nombre_propietario": 1, "codigo_homologado": 1})
+        # Solo enriquecer si NO tiene datos_anteriores guardados (para compatibilidad con registros antiguos)
+        if cambio.get('predio_id') and not cambio.get('datos_anteriores'):
+            predio = await db.predios.find_one({"id": cambio['predio_id']}, {"_id": 0, "codigo_predial_nacional": 1, "nombre_propietario": 1, "codigo_homologado": 1, "direccion": 1, "municipio": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "destino_economico": 1, "zona": 1, "propietarios": 1})
             if predio:
+                # Usar como predio_actual para mostrar datos de referencia (actuales)
+                # Nota: Este es el estado ACTUAL, no el estado en el momento del cambio
                 cambio['predio_actual'] = predio
+                cambio['predio_actual_es_referencia'] = True  # Flag para indicar que no son datos históricos
     
     # Obtener lista de municipios únicos para el selector de filtros
     municipios_cursor = await db.predios_cambios.distinct("datos_propuestos.municipio", {"estado": {"$in": estados_procesados}})
