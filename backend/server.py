@@ -12829,49 +12829,74 @@ async def upload_gdb_file(
                 
                 logger.info(f"Encontrados {len(predios_ult_vig)} predios en vigencia {ultima_vigencia}")
                 
-                # 4. Vincular por MATCH EXACTO
+                # 4. Vincular por MATCH EXACTO - OPTIMIZADO CON BATCH OPERATIONS
                 relacionados_total = 0
-                predios_procesados = 0
                 
+                # PASO 1: Pre-cargar todas las áreas de geometrías en un diccionario (una sola consulta)
+                update_progress("vinculando", 80, "Cargando áreas de geometrías...")
+                areas_dict = {}
+                async for geo in db.gdb_geometrias.find(
+                    {"municipio": municipio_nombre},
+                    {"_id": 0, "codigo": 1, "area_m2": 1}
+                ):
+                    areas_dict[geo.get("codigo", "")] = geo.get("area_m2", 0)
+                
+                logger.info(f"Pre-cargadas {len(areas_dict)} áreas de geometrías para vinculación")
+                
+                # PASO 2: Identificar predios con match y preparar operaciones bulk
+                from pymongo import UpdateOne
+                predios_bulk_ops = []
+                geometrias_bulk_ops = []
+                timestamp_now = datetime.now(timezone.utc).isoformat()
+                
+                update_progress("vinculando", 82, "Preparando operaciones de vinculación...")
                 for predio in predios_ult_vig:
-                    predios_procesados += 1
-                    if predios_procesados % 2000 == 0:
-                        pct = 78 + int((predios_procesados / len(predios_ult_vig)) * 15)
-                        update_progress("vinculando", pct, 
-                            f"Vinculando: {predios_procesados}/{len(predios_ult_vig)} ({relacionados_total} matches)")
-                    
                     codigo_cpn = predio.get("codigo_predial_nacional", "")
                     if not codigo_cpn:
                         continue
                     
-                    # MATCH EXACTO únicamente
+                    # MATCH EXACTO
                     if codigo_cpn in codigos_gdb_set:
-                        # Obtener área de la geometría
-                        gdb_geo = await db.gdb_geometrias.find_one(
-                            {"codigo": codigo_cpn, "municipio": municipio_nombre},
-                            {"_id": 0, "area_m2": 1}
-                        )
-                        area_gdb = gdb_geo.get("area_m2", 0) if gdb_geo else 0
+                        area_gdb = areas_dict.get(codigo_cpn, 0)
                         
-                        await db.predios.update_one(
+                        # Preparar operación bulk para predios
+                        predios_bulk_ops.append(UpdateOne(
                             {"id": predio["id"]},
                             {"$set": {
                                 "tiene_geometria": True,
                                 "gdb_source": gdb_name,
                                 "codigo_gdb": codigo_cpn,
                                 "area_gdb": area_gdb,
-                                "gdb_updated": datetime.now(timezone.utc).isoformat(),
+                                "gdb_updated": timestamp_now,
                                 "match_method": "exacto"
                             }}
-                        )
+                        ))
                         
-                        # También actualizar la geometría con el predio vinculado
-                        await db.gdb_geometrias.update_one(
+                        # Preparar operación bulk para geometrías
+                        geometrias_bulk_ops.append(UpdateOne(
                             {"codigo": codigo_cpn, "municipio": municipio_nombre},
                             {"$set": {"predio_vinculado": predio["id"]}}
-                        )
+                        ))
                         
                         relacionados_total += 1
+                
+                # PASO 3: Ejecutar operaciones bulk en batches
+                if predios_bulk_ops:
+                    update_progress("vinculando", 85, f"Actualizando {relacionados_total} predios en batch...")
+                    BATCH_SIZE = 500
+                    
+                    # Ejecutar bulk writes para predios
+                    for i in range(0, len(predios_bulk_ops), BATCH_SIZE):
+                        batch = predios_bulk_ops[i:i + BATCH_SIZE]
+                        await db.predios.bulk_write(batch, ordered=False)
+                        pct = 85 + int((i / len(predios_bulk_ops)) * 5)
+                        update_progress("vinculando", pct, f"Predios actualizados: {min(i + BATCH_SIZE, len(predios_bulk_ops))}/{len(predios_bulk_ops)}")
+                    
+                    update_progress("vinculando", 92, f"Actualizando geometrías...")
+                    # Ejecutar bulk writes para geometrías
+                    for i in range(0, len(geometrias_bulk_ops), BATCH_SIZE):
+                        batch = geometrias_bulk_ops[i:i + BATCH_SIZE]
+                        await db.gdb_geometrias.bulk_write(batch, ordered=False)
                 
                 stats["relacionados"] = relacionados_total
                 stats["vigencia_usada"] = ultima_vigencia
