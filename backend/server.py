@@ -7767,6 +7767,18 @@ async def import_predios_excel(
             "fecha": datetime.now(timezone.utc).isoformat()
         })
         
+        # Broadcast WebSocket para sincronización en tiempo real
+        await ws_manager.broadcast({
+            "type": "predio_actualizado",
+            "action": "import",
+            "municipio": municipio,
+            "vigencia": vigencia_int,
+            "predios_importados": len(predios_list),
+            "predios_nuevos": predios_nuevos_count,
+            "imported_by": current_user['full_name'],
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }, exclude_user=current_user['id'])
+        
         return {
             "message": f"Importación exitosa para {municipio}",
             "vigencia": vigencia_int,
