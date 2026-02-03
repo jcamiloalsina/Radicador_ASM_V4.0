@@ -614,8 +614,8 @@ export default function Pendientes() {
           <TabsTrigger value="predios-nuevos" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             Predios Nuevos
-            {prediosEnRevision > 0 && (
-              <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
+            {prediosBadgeCount > 0 && (
+              <Badge variant="secondary" className="ml-1">{prediosBadgeCount}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="reapariciones" className="flex items-center gap-2">
