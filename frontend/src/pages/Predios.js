@@ -1344,6 +1344,7 @@ export default function Predios() {
   const [ultimaManzanaInfo, setUltimaManzanaInfo] = useState(null); // Info de última manzana por sector
   const [prediosEnManzana, setPrediosEnManzana] = useState([]); // Últimos predios en la manzana seleccionada
   const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
+  const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
   
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
