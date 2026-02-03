@@ -10041,6 +10041,17 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
     # Remover _id antes de retornar
     predio.pop("_id", None)
     
+    # Broadcast WebSocket para sincronización en tiempo real
+    await ws_manager.broadcast({
+        "type": "predio_actualizado",
+        "action": "create",
+        "predio_id": predio['id'],
+        "municipio": predio.get('municipio', ''),
+        "codigo_predial": predio.get('codigo_predial_nacional', ''),
+        "created_by": current_user['full_name'],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }, exclude_user=current_user['id'])
+    
     return predio
 
 @api_router.patch("/predios/{predio_id}")
