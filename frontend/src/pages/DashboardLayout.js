@@ -792,7 +792,7 @@ export default function DashboardLayout() {
                         <li>• {novedadesDetalle.cambios} modificación{novedadesDetalle.cambios !== 1 ? 'es' : ''} pendiente{novedadesDetalle.cambios !== 1 ? 's' : ''}</li>
                       )}
                       {novedadesDetalle.prediosNuevos > 0 && (
-                        <li>• {novedadesDetalle.prediosNuevos} predio{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} nuevo{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} en revisión</li>
+                        <li>• {novedadesDetalle.prediosNuevos} predio{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} nuevo{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} pendiente{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''}</li>
                       )}
                       {novedadesDetalle.reapariciones > 0 && (
                         <li>• {novedadesDetalle.reapariciones} reaparición{novedadesDetalle.reapariciones !== 1 ? 'es' : ''} pendiente{novedadesDetalle.reapariciones !== 1 ? 's' : ''}</li>
