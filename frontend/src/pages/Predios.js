@@ -3772,7 +3772,7 @@ export default function Predios() {
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
                           <FileText className="w-3 h-3" />
-                          Predios existentes en manzana {codigoManual.manzana_vereda}
+                          Terrenos existentes en manzana {codigoManual.manzana_vereda}
                         </p>
                         {buscandoPrediosManzana && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
                       </div>
@@ -3781,19 +3781,26 @@ export default function Predios() {
                           {prediosEnManzana.map((p, idx) => (
                             <div 
                               key={idx} 
-                              className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1 border border-cyan-100"
+                              className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100"
                             >
-                              <span className="font-mono font-bold text-cyan-700">{p.terreno}</span>
-                              <span className="text-slate-500">-</span>
+                              <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
                               <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
                               {p.area_terreno && (
-                                <span className="text-slate-500 text-[10px]">{Number(p.area_terreno).toLocaleString()}m²</span>
+                                <span className="text-slate-500 text-[10px] w-16 text-right">{Number(p.area_terreno).toLocaleString()}m²</span>
                               )}
+                              <span className="text-cyan-600 text-[10px] bg-cyan-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                {p.registros} {p.registros === 1 ? 'reg' : 'regs'}
+                              </span>
                             </div>
                           ))}
-                          <p className="text-[10px] text-cyan-600 mt-1">
-                            Mostrando últimos {prediosEnManzana.length} predios (Base R1/R2)
-                          </p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
+                            <p className="text-[10px] text-cyan-600">
+                              Mostrando últimos {prediosEnManzana.length} terrenos únicos (Base R1/R2)
+                            </p>
+                            <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                              💡 Siguiente: <span className="font-mono font-bold">{siguienteTerrenoSugerido}</span>
+                            </p>
+                          </div>
                         </div>
                       ) : !buscandoPrediosManzana ? (
                         <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
