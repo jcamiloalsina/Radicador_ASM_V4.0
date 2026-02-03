@@ -776,8 +776,8 @@ export default function VisorPredios() {
     try {
       const token = localStorage.getItem('token');
       
-      // First search in database
-      const predioResponse = await axios.get(`${API}/predios?search=${searchCode}&limit=1`, {
+      // Buscar todos los registros del predio (diferentes vigencias)
+      const predioResponse = await axios.get(`${API}/predios?search=${searchCode}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -787,7 +787,11 @@ export default function VisorPredios() {
         return;
       }
       
-      const predio = predioResponse.data.predios[0];
+      // Ordenar por vigencia descendente y tomar la última vigencia cargada en R1/R2
+      const prediosOrdenados = predioResponse.data.predios.sort((a, b) => 
+        (b.vigencia || 0) - (a.vigencia || 0)
+      );
+      const predio = prediosOrdenados[0];
       setSelectedPredio(predio);
       
       // Get geometry
