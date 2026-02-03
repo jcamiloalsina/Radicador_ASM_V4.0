@@ -10780,6 +10780,25 @@ async def aprobar_rechazar_cambio(
         "comentario_aprobacion": request.comentario
     }
     
+    # Si es una modificación, guardar los datos anteriores del predio ANTES de aplicar el cambio
+    if cambio["tipo_cambio"] == "modificacion" and cambio.get("predio_id"):
+        predio_actual = await db.predios.find_one({"id": cambio["predio_id"]}, {"_id": 0})
+        if predio_actual:
+            # Guardar solo los campos relevantes como datos_anteriores
+            datos_anteriores = {
+                "codigo_predial_nacional": predio_actual.get("codigo_predial_nacional"),
+                "municipio": predio_actual.get("municipio"),
+                "direccion": predio_actual.get("direccion"),
+                "nombre_propietario": predio_actual.get("nombre_propietario"),
+                "propietarios": predio_actual.get("propietarios", []),
+                "area_terreno": predio_actual.get("area_terreno"),
+                "area_construida": predio_actual.get("area_construida"),
+                "avaluo": predio_actual.get("avaluo"),
+                "destino_economico": predio_actual.get("destino_economico"),
+                "zona": predio_actual.get("zona"),
+            }
+            update_data["datos_anteriores"] = datos_anteriores
+    
     # Si se aprueba, aplicar el cambio
     if request.aprobado:
         resultado = await aplicar_cambio_predio(cambio, current_user)
