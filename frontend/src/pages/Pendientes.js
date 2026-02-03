@@ -98,6 +98,9 @@ export default function Pendientes() {
   const [peticionesDisponibles, setPeticionesDisponibles] = useState([]);
   const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
   
+  // Estado para sub-tabs de predios nuevos
+  const [prediosNuevosSubTab, setPrediosNuevosSubTab] = useState('asignados');
+  
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
   const userPermissions = user?.permissions || [];
   const hasApprovePermission = userPermissions.includes('approve_changes');
