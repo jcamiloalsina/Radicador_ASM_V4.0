@@ -1346,10 +1346,21 @@ export default function Pendientes() {
                   <div>
                     <span className="text-xs text-slate-500 uppercase tracking-wide">Radicado Asociado</span>
                     {selectedCambio.radicado_numero ? (
-                      <p className="font-medium text-blue-700 flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          if (selectedCambio.radicado_id) {
+                            navigate(`/dashboard/peticiones/${selectedCambio.radicado_id}`);
+                          } else {
+                            toast.info('No se puede abrir: ID de radicado no disponible');
+                          }
+                        }}
+                        className="font-medium text-blue-700 flex items-center gap-1 hover:text-blue-900 hover:underline transition-colors cursor-pointer"
+                        data-testid="radicado-link"
+                      >
                         <FileText className="w-4 h-4" />
                         {selectedCambio.radicado_numero}
-                      </p>
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </button>
                     ) : (
                       <p className="text-sm text-amber-600">Sin radicado asociado</p>
                     )}
