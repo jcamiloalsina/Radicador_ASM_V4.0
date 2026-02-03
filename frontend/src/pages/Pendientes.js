@@ -499,6 +499,9 @@ export default function Pendientes() {
     // Para cambios en historial (ya procesados), usar datos_anteriores si existe
     const datosAnteriores = cambio.datos_anteriores || actual;
     
+    // Verificar si tenemos datos anteriores disponibles
+    const tieneDatosAnteriores = Object.keys(datosAnteriores).length > 0;
+    
     // Campos a comparar
     const camposComparar = [
       { key: 'codigo_predial_nacional', label: 'Código Predial Nacional' },
@@ -535,12 +538,17 @@ export default function Pendientes() {
       
       if (!existeEnPropuesto) continue; // No fue tocado, no mostrar
       
-      // Verificar si realmente cambió
-      const sonDiferentes = valorActual !== valorPropuesto;
-      if (!sonDiferentes) continue; // Mismo valor, no mostrar
+      // Verificar si realmente cambió (solo si tenemos datos anteriores)
+      if (tieneDatosAnteriores) {
+        const sonDiferentes = valorActual !== valorPropuesto;
+        if (!sonDiferentes) continue; // Mismo valor, no mostrar
+      }
       
       const format = campo.format || ((v) => v);
-      const actualFormatted = valorActual != null ? (format(valorActual) || valorActual) : '(vacío)';
+      // Para cambios antiguos sin datos anteriores, mostrar "No disponible" en lugar de "(vacío)"
+      const actualFormatted = !tieneDatosAnteriores 
+        ? '(no registrado)' 
+        : (valorActual != null ? (format(valorActual) || valorActual) : '(vacío)');
       const propuestoFormatted = valorPropuesto != null ? (format(valorPropuesto) || valorPropuesto) : '(vacío)';
       
       cambios.push({
