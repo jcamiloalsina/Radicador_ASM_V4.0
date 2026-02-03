@@ -500,15 +500,8 @@ export default function Pendientes() {
     const datosAnteriores = cambio.datos_anteriores || actual;
     
     // Verificar si tenemos datos anteriores disponibles
-    const tieneDatosAnteriores = Object.keys(datosAnteriores).length > 0;
-    
-    // DEBUG: Log para verificar
-    console.log('DEBUG getFieldChanges:', {
-      'cambio.datos_anteriores': cambio.datos_anteriores,
-      'cambio.predio_actual': cambio.predio_actual,
-      'datosAnteriores': datosAnteriores,
-      'tieneDatosAnteriores': tieneDatosAnteriores
-    });
+    // Si predio_actual_es_referencia es true, significa que son datos actuales, no históricos
+    const tieneDatosAnteriores = Object.keys(datosAnteriores).length > 0 && !cambio.predio_actual_es_referencia;
     
     // Campos a comparar
     const camposComparar = [
