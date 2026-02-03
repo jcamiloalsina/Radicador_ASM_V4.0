@@ -114,6 +114,21 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 3 Febrero 2026 - Fix Dropdown Gestor de Apoyo
+
+#### 10. Fix: Dropdown "Gestor de Apoyo" no se abría
+**Problema:** El selector de Gestor de Apoyo y Radicado Asociado no se desplegaban dentro del modal de Nuevo Predio/Editar Predio.
+
+**Causa raíz:** El componente Radix UI Select tiene conflictos con portales dentro de modales que tienen `overflow-y-auto`. El portal del dropdown se renderiza en el body pero el cálculo de posición falla.
+
+**Solución:** Reemplacé los componentes `<Select>` de Radix por elementos `<select>` nativos de HTML:
+- `<select>` nativo funciona correctamente dentro de cualquier contenedor
+- Mantiene los mismos estilos con clases Tailwind
+- Los 11 gestores disponibles ahora se muestran correctamente
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/Predios.js`: Líneas del selector de Gestor de Apoyo y Radicado Asociado
+
 ### Sesión 2 Febrero 2026 (Fork) - Mejoras UI Historial + Nuevo Predio
 
 #### 8. Fix: Historial de Cambios - "Sin valor" y botones de acción
