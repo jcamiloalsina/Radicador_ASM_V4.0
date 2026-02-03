@@ -4158,25 +4158,19 @@ export default function Predios() {
                 <div className="relative">
                   <Label className="text-sm font-medium">Gestor de Apoyo *</Label>
                   <p className="text-xs text-slate-500 mb-1">Responsable de completar la digitalización del predio</p>
-                  <Select 
+                  <select 
                     value={gestorAsignado} 
-                    onValueChange={setGestorAsignado}
+                    onChange={(e) => setGestorAsignado(e.target.value)}
+                    className="w-full h-10 px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    data-testid="gestor-apoyo-trigger"
                   >
-                    <SelectTrigger className="w-full" data-testid="gestor-apoyo-trigger">
-                      <SelectValue placeholder="Seleccione un gestor de apoyo..." />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100000] max-h-[250px]">
-                      {gestoresDisponibles.length === 0 ? (
-                        <SelectItem value="no-disponible" disabled>No hay gestores disponibles</SelectItem>
-                      ) : (
-                        gestoresDisponibles.map(g => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : 'Atención'})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    <option value="">Seleccione un gestor de apoyo...</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>
+                        {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : 'Atención'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 {/* Radicado relacionado */}
