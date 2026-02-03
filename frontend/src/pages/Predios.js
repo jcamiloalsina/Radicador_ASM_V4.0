@@ -4535,22 +4535,19 @@ export default function Predios() {
               <p className="text-xs text-blue-600 mt-1 mb-2">
                 Seleccione la petición/radicado que justifica esta modificación
               </p>
-              <Select value={radicadoSeleccionado} onValueChange={setRadicadoSeleccionado}>
-                <SelectTrigger className="border-blue-300" data-testid="radicado-trigger">
-                  <SelectValue placeholder="Seleccione un radicado..." />
-                </SelectTrigger>
-                <SelectContent className="z-[100000] max-h-[200px]">
-                  {peticionesDisponibles.length === 0 ? (
-                    <SelectItem value="none" disabled>No hay peticiones disponibles</SelectItem>
-                  ) : (
-                    peticionesDisponibles.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.radicado} - {p.tipo_tramite} ({p.nombre_completo})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <select 
+                value={radicadoSeleccionado} 
+                onChange={(e) => setRadicadoSeleccionado(e.target.value)}
+                className="w-full h-10 px-3 py-2 text-sm border border-blue-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="radicado-trigger"
+              >
+                <option value="">Seleccione un radicado...</option>
+                {peticionesDisponibles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.radicado} - {p.tipo_tramite} ({p.nombre_completo})
+                  </option>
+                ))}
+              </select>
               {!radicadoSeleccionado && (
                 <p className="text-xs text-amber-600 mt-2">
                   ⚠️ Debe seleccionar un radicado para justificar la modificación
