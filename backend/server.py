@@ -12818,22 +12818,41 @@ async def upload_gdb_file(
                 # 2. Crear set de códigos GDB para búsqueda rápida
                 codigos_gdb_set = set(codigo.strip() for codigo in codigos_gdb if codigo)
                 
-                # 3. Obtener predios de la última vigencia
-                predios_ult_vig = await db.predios.find(
-                    {
-                        "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"},
-                        "vigencia": ultima_vigencia
-                    },
-                    {"_id": 0, "id": 1, "codigo_predial_nacional": 1}
-                ).to_list(100000)
+                # 3. OPTIMIZACIÓN: Usar operación de update masivo en MongoDB
+                # En lugar de iterar sobre cada predio, usamos updateMany para marcar todos los predios
+                # que tienen código coincidente de una sola vez
                 
-                logger.info(f"Encontrados {len(predios_ult_vig)} predios en vigencia {ultima_vigencia}")
+                timestamp_now = datetime.now(timezone.utc).isoformat()
                 
-                # 4. Vincular por MATCH EXACTO - OPTIMIZADO CON BATCH OPERATIONS
-                relacionados_total = 0
+                # Contar cuántos predios se van a vincular (rápido con índices)
+                count_query = {
+                    "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"},
+                    "vigencia": ultima_vigencia,
+                    "codigo_predial_nacional": {"$in": list(codigos_gdb_set)}
+                }
+                relacionados_total = await db.predios.count_documents(count_query)
                 
-                # PASO 1: Pre-cargar todas las áreas de geometrías en un diccionario (una sola consulta)
-                update_progress("vinculando", 80, "Cargando áreas de geometrías...")
+                logger.info(f"Pre-conteo: {relacionados_total} predios con match exacto")
+                update_progress("vinculando", 82, f"Actualizando {relacionados_total} predios...")
+                
+                # Actualizar todos los predios con match en UNA operación
+                result = await db.predios.update_many(
+                    count_query,
+                    {"$set": {
+                        "tiene_geometria": True,
+                        "gdb_source": gdb_name,
+                        "gdb_updated": timestamp_now,
+                        "match_method": "exacto"
+                    }}
+                )
+                
+                logger.info(f"UpdateMany completado: {result.modified_count} predios actualizados")
+                
+                # Obtener áreas de geometrías y actualizar el área en los predios
+                # Esto es más lento pero lo hacemos en batch más pequeños
+                update_progress("vinculando", 88, f"Actualizando áreas de predios...")
+                
+                # Pre-cargar áreas
                 areas_dict = {}
                 async for geo in db.gdb_geometrias.find(
                     {"municipio": municipio_nombre},
@@ -12841,68 +12860,38 @@ async def upload_gdb_file(
                 ):
                     areas_dict[geo.get("codigo", "")] = geo.get("area_m2", 0)
                 
-                logger.info(f"Pre-cargadas {len(areas_dict)} áreas de geometrías para vinculación")
-                
-                # PASO 2: Identificar predios con match y preparar operaciones bulk
-                predios_bulk_ops = []
-                geometrias_bulk_ops = []
-                timestamp_now = datetime.now(timezone.utc).isoformat()
-                
-                update_progress("vinculando", 82, "Preparando operaciones de vinculación...")
-                for predio in predios_ult_vig:
-                    codigo_cpn = predio.get("codigo_predial_nacional", "")
-                    if not codigo_cpn:
-                        continue
+                # Actualizar áreas en batch
+                BATCH_SIZE = 100
+                codigos_list = list(codigos_gdb_set)
+                for i in range(0, len(codigos_list), BATCH_SIZE):
+                    batch = codigos_list[i:i + BATCH_SIZE]
+                    for codigo in batch:
+                        area = areas_dict.get(codigo, 0)
+                        if area:
+                            await db.predios.update_many(
+                                {
+                                    "codigo_predial_nacional": codigo,
+                                    "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"}
+                                },
+                                {"$set": {"codigo_gdb": codigo, "area_gdb": area}}
+                            )
                     
-                    # MATCH EXACTO
-                    if codigo_cpn in codigos_gdb_set:
-                        area_gdb = areas_dict.get(codigo_cpn, 0)
-                        
-                        # Preparar operación bulk para predios
-                        predios_bulk_ops.append(UpdateOne(
-                            {"id": predio["id"]},
-                            {"$set": {
-                                "tiene_geometria": True,
-                                "gdb_source": gdb_name,
-                                "codigo_gdb": codigo_cpn,
-                                "area_gdb": area_gdb,
-                                "gdb_updated": timestamp_now,
-                                "match_method": "exacto"
-                            }}
-                        ))
-                        
-                        # Preparar operación bulk para geometrías
-                        geometrias_bulk_ops.append(UpdateOne(
-                            {"codigo": codigo_cpn, "municipio": municipio_nombre},
-                            {"$set": {"predio_vinculado": predio["id"]}}
-                        ))
-                        
-                        relacionados_total += 1
+                    if i % 500 == 0:
+                        pct = 88 + int((i / len(codigos_list)) * 5)
+                        update_progress("vinculando", pct, f"Actualizando áreas: {i}/{len(codigos_list)}")
                 
-                # PASO 3: Ejecutar operaciones bulk en batches
-                if predios_bulk_ops:
-                    update_progress("vinculando", 85, f"Actualizando {relacionados_total} predios en batch...")
-                    BATCH_SIZE = 500
-                    
-                    # Ejecutar bulk writes para predios
-                    for i in range(0, len(predios_bulk_ops), BATCH_SIZE):
-                        batch = predios_bulk_ops[i:i + BATCH_SIZE]
-                        await db.predios.bulk_write(batch, ordered=False)
-                        pct = 85 + int((i / len(predios_bulk_ops)) * 5)
-                        update_progress("vinculando", pct, f"Predios actualizados: {min(i + BATCH_SIZE, len(predios_bulk_ops))}/{len(predios_bulk_ops)}")
-                    
-                    update_progress("vinculando", 92, f"Actualizando geometrías...")
-                    # Ejecutar bulk writes para geometrías
-                    for i in range(0, len(geometrias_bulk_ops), BATCH_SIZE):
-                        batch = geometrias_bulk_ops[i:i + BATCH_SIZE]
-                        await db.gdb_geometrias.bulk_write(batch, ordered=False)
+                # Contar predios en última vigencia para el reporte
+                predios_ult_vig_count = await db.predios.count_documents({
+                    "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"},
+                    "vigencia": ultima_vigencia
+                })
                 
                 stats["relacionados"] = relacionados_total
                 stats["vigencia_usada"] = ultima_vigencia
-                stats["predios_vigencia"] = len(predios_ult_vig)
-                stats["porcentaje_cobertura"] = round((relacionados_total / len(predios_ult_vig)) * 100, 2) if predios_ult_vig else 0
+                stats["predios_vigencia"] = predios_ult_vig_count
+                stats["porcentaje_cobertura"] = round((relacionados_total / predios_ult_vig_count) * 100, 2) if predios_ult_vig_count else 0
                 
-                logger.info(f"Vinculación completada: {relacionados_total} de {len(predios_ult_vig)} predios ({stats['porcentaje_cobertura']}%)")
+                logger.info(f"Vinculación completada: {relacionados_total} de {predios_ult_vig_count} predios ({stats['porcentaje_cobertura']}%)")
         
         update_progress("finalizando", 95, f"Registrando carga... {stats.get('relacionados', 0)} predios relacionados")
         
