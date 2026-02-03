@@ -50,6 +50,7 @@ const estadoPredioConfig = {
 export default function Pendientes() {
   const { user } = useAuth();
   const { addListener } = useWebSocket() || {};
+  const navigate = useNavigate();
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [prediosNuevos, setPrediosNuevos] = useState([]);
   const [cambiosHistorial, setCambiosHistorial] = useState([]);
