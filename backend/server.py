@@ -11053,6 +11053,15 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         datos["updated_at"] = datetime.now(timezone.utc).isoformat()
         datos["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
         
+        # Convertir r2 a formato r2_registros para mantener consistencia
+        if "r2" in datos:
+            r2_data = datos["r2"]
+            datos["r2_registros"] = [{
+                "matricula_inmobiliaria": r2_data.get("matricula_inmobiliaria"),
+                "zonas": r2_data.get("zonas", [])
+            }]
+            del datos["r2"]  # Eliminar campo r2 para evitar duplicados
+        
         await db.predios.update_one(
             {"id": predio_id},
             {
