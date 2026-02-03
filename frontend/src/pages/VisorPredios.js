@@ -1377,6 +1377,76 @@ export default function VisorPredios() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Resumen de GDB Actualizada */}
+      <Dialog open={showGdbResumen} onOpenChange={setShowGdbResumen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-700">
+              <CheckCircle className="w-5 h-5" />
+              GDB Actualizada
+            </DialogTitle>
+            <DialogDescription>
+              Resumen de municipios con Base Gráfica cargada
+            </DialogDescription>
+          </DialogHeader>
+          
+          {gdbResumenData && (
+            <div className="py-4">
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">Municipio</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Rural</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Urbano</th>
+                      <th className="px-3 py-2 text-right font-medium text-slate-700">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {gdbResumenData.municipios.map((m, idx) => (
+                      <tr key={idx} className={m.total > 0 ? 'bg-white' : 'bg-slate-50 text-slate-400'}>
+                        <td className="px-3 py-2 font-medium">{m.municipio}</td>
+                        <td className="px-3 py-2 text-right font-mono text-emerald-600">
+                          {m.rural > 0 ? m.rural.toLocaleString() : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-blue-600">
+                          {m.urbano > 0 ? m.urbano.toLocaleString() : '-'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold">
+                          {m.total > 0 ? m.total.toLocaleString() : '0'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-emerald-50">
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-emerald-800">
+                        Total ({gdbResumenData.totalMunicipios} municipios)
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-700">
+                        {gdbResumenData.municipios.reduce((acc, m) => acc + m.rural, 0).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-blue-700">
+                        {gdbResumenData.municipios.reduce((acc, m) => acc + m.urbano, 0).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-800">
+                        {gdbResumenData.totalGeometrias.toLocaleString()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setShowGdbResumen(false)} className="bg-emerald-600 hover:bg-emerald-700">
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Diálogo de Subida de Ortoimagen */}
       <Dialog open={showUploadOrtoDialog} onOpenChange={(open) => {
         if (!open) {
