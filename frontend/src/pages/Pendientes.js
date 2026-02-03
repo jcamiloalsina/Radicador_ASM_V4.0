@@ -575,9 +575,20 @@ export default function Pendientes() {
   }
 
   // Contar predios nuevos en revisión (pendientes de aprobación)
-  const prediosEnRevision = prediosNuevos.filter(p => p.estado === 'revision').length;
+  const prediosEnRevision = prediosNuevos.filter(p => (p.estado_flujo || p.estado) === 'revision').length;
   const reaparicionesPendientes = reapariciones.length;
-  const totalPendientes = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes;
+  
+  // Filtrar predios por categoría
+  const misCreaciones = prediosNuevos.filter(p => p.gestor_creador_id === user?.id);
+  const asignadosAMi = prediosNuevos.filter(p => 
+    p.gestor_apoyo_id === user?.id && 
+    ['creado', 'digitalizacion', 'devuelto'].includes(p.estado_flujo || p.estado)
+  );
+  const prediosParaRevisar = prediosNuevos.filter(p => (p.estado_flujo || p.estado) === 'revision');
+  
+  // Badge muestra: para coordinadores = en revisión, para gestores = asignados pendientes
+  const prediosBadgeCount = isCoordinador ? prediosEnRevision : asignadosAMi.length;
+  const totalPendientes = cambiosPendientes.length + (isCoordinador ? prediosEnRevision : asignadosAMi.length) + reaparicionesPendientes;
 
   return (
     <div className="space-y-6">
