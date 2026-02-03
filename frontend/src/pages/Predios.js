@@ -4165,7 +4165,7 @@ export default function Predios() {
                     <SelectTrigger className="w-full" data-testid="gestor-apoyo-trigger">
                       <SelectValue placeholder="Seleccione un gestor de apoyo..." />
                     </SelectTrigger>
-                    <SelectContent side="top" className="z-[100000] max-h-[250px]">
+                    <SelectContent className="z-[100000] max-h-[250px]">
                       {gestoresDisponibles.length === 0 ? (
                         <SelectItem value="no-disponible" disabled>No hay gestores disponibles</SelectItem>
                       ) : (
