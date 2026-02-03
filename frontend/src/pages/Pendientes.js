@@ -743,154 +743,245 @@ export default function Pendientes() {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
             </div>
-          ) : prediosNuevos.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-700">¡Todo al día!</h3>
-                <p className="text-slate-500 mt-2">No hay predios nuevos en proceso</p>
-              </CardContent>
-            </Card>
           ) : (
-            <div className="grid gap-4">
-              {prediosNuevos.map((predio) => {
-                // Map API fields to expected fields (API returns flat structure)
-                const estadoInfo = estadoPredioConfig[predio.estado_flujo || predio.estado] || estadoPredioConfig.creado;
-                const EstadoIcon = estadoInfo.icon;
+            <div className="space-y-4">
+              {/* Sub-tabs para categorías de predios nuevos */}
+              <div className="flex gap-2 border-b pb-2">
+                <Button
+                  variant={prediosNuevosSubTab === 'asignados' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPrediosNuevosSubTab('asignados')}
+                  className={prediosNuevosSubTab === 'asignados' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                >
+                  <User className="w-4 h-4 mr-1" />
+                  Asignados a Mí
+                  {asignadosAMi.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 bg-white text-purple-700">{asignadosAMi.length}</Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={prediosNuevosSubTab === 'creaciones' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPrediosNuevosSubTab('creaciones')}
+                  className={prediosNuevosSubTab === 'creaciones' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  <FileText className="w-4 h-4 mr-1" />
+                  Mis Creaciones
+                  {misCreaciones.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{misCreaciones.length}</Badge>
+                  )}
+                </Button>
+                {isCoordinador && (
+                  <Button
+                    variant={prediosNuevosSubTab === 'revision' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setPrediosNuevosSubTab('revision')}
+                    className={prediosNuevosSubTab === 'revision' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    En Revisión
+                    {prediosParaRevisar.length > 0 && (
+                      <Badge variant="secondary" className="ml-2 bg-white text-emerald-700">{prediosParaRevisar.length}</Badge>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              {/* Contenido según sub-tab seleccionado */}
+              {(() => {
+                let prediosFiltrados = [];
+                let mensajeVacio = '';
+                let subtituloVacio = '';
                 
+                if (prediosNuevosSubTab === 'asignados') {
+                  prediosFiltrados = asignadosAMi;
+                  mensajeVacio = '¡Sin tareas pendientes!';
+                  subtituloVacio = 'No tienes predios asignados para digitalizar';
+                } else if (prediosNuevosSubTab === 'creaciones') {
+                  prediosFiltrados = misCreaciones;
+                  mensajeVacio = 'Sin creaciones';
+                  subtituloVacio = 'No has creado predios nuevos';
+                } else if (prediosNuevosSubTab === 'revision') {
+                  prediosFiltrados = prediosParaRevisar;
+                  mensajeVacio = '¡Todo revisado!';
+                  subtituloVacio = 'No hay predios pendientes de aprobación';
+                }
+
+                if (prediosFiltrados.length === 0) {
+                  return (
+                    <Card>
+                      <CardContent className="py-16 text-center">
+                        <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                        <h3 className="text-xl font-semibold text-slate-700">{mensajeVacio}</h3>
+                        <p className="text-slate-500 mt-2">{subtituloVacio}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
                 return (
-                  <Card key={predio.id} className="hover:border-emerald-300 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-2 bg-slate-100 rounded-lg">
-                            <EstadoIcon className="w-5 h-5 text-slate-600" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={estadoInfo.color}>
-                                {estadoInfo.label}
-                              </Badge>
-                              <span className="font-mono text-sm text-slate-600 break-all">
-                                {predio.codigo_predial_nacional || predio.datos_predio?.codigo_predial_nacional || 'Nuevo'}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-500 mt-1">
-                              {predio.municipio || predio.datos_predio?.municipio || 'N/A'} · 
-                              Creado por: {predio.gestor_creador_nombre || predio.creado_por_nombre || 'N/A'} · 
-                              {formatDate(predio.created_at || predio.fecha_creacion)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPredioNuevo(predio);
-                              setShowPredioDetailDialog(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Ver Detalle
-                          </Button>
-                          
-                          {/* Acciones según estado y rol */}
-                          {(predio.estado_flujo === 'digitalizacion' || predio.estado === 'digitalizacion') && (
-                            <Button
-                              size="sm"
-                              className="bg-purple-600 hover:bg-purple-700 text-white"
-                              onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
-                              disabled={procesando}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Enviar a Revisión
-                            </Button>
-                          )}
-                          
-                          {(predio.estado_flujo === 'revision' || predio.estado === 'revision') && isCoordinador && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                                onClick={() => openPredioActionDialog(predio, 'devolver')}
-                                disabled={procesando}
-                              >
-                                <RefreshCw className="w-4 h-4 mr-1" />
-                                Devolver
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => openPredioActionDialog(predio, 'rechazar')}
-                                disabled={procesando}
-                              >
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Rechazar
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                onClick={() => openPredioActionDialog(predio, 'aprobar')}
-                                disabled={procesando}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Aprobar
-                              </Button>
-                            </>
-                          )}
-                          
-                          {(predio.estado_flujo === 'devuelto' || predio.estado === 'devuelto') && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-300">
-                              Pendiente corrección
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                  <div className="grid gap-4">
+                    {prediosFiltrados.map((predio) => {
+                      const estadoInfo = estadoPredioConfig[predio.estado_flujo || predio.estado] || estadoPredioConfig.creado;
+                      const EstadoIcon = estadoInfo.icon;
+                      const esCreador = predio.gestor_creador_id === user?.id;
+                      const esApoyo = predio.gestor_apoyo_id === user?.id;
                       
-                      {/* Historial colapsable */}
-                      {(predio.historial_flujo || predio.historial) && (predio.historial_flujo || predio.historial).length > 0 && (
-                        <div className="mt-3 border-t pt-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-slate-600 p-0 h-auto"
-                            onClick={() => toggleHistorial(predio.id)}
-                          >
-                            <History className="w-4 h-4 mr-1" />
-                            Historial ({(predio.historial_flujo || predio.historial).length})
-                            {expandedHistorial[predio.id] ? (
-                              <ChevronUp className="w-4 h-4 ml-1" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 ml-1" />
-                            )}
-                          </Button>
-                          
-                          {expandedHistorial[predio.id] && (
-                            <div className="mt-2 space-y-2 pl-5 border-l-2 border-slate-200">
-                              {(predio.historial_flujo || predio.historial).map((item, idx) => (
-                                <div key={idx} className="text-sm">
-                                  <span className="text-slate-400">{formatDate(item.fecha)}</span>
-                                  <span className="mx-2">·</span>
-                                  <span className="font-medium">{item.accion}</span>
-                                  {item.usuario_nombre && (
-                                    <span className="text-slate-500"> por {item.usuario_nombre}</span>
-                                  )}
-                                  {item.observaciones && (
-                                    <p className="text-slate-500 italic mt-1">"{item.observaciones}"</p>
+                      return (
+                        <Card key={predio.id} className="hover:border-emerald-300 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="p-2 bg-slate-100 rounded-lg">
+                                  <EstadoIcon className="w-5 h-5 text-slate-600" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge className={estadoInfo.color}>
+                                      {estadoInfo.label}
+                                    </Badge>
+                                    {esCreador && (
+                                      <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">
+                                        Creador
+                                      </Badge>
+                                    )}
+                                    {esApoyo && !esCreador && (
+                                      <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                                        Apoyo asignado
+                                      </Badge>
+                                    )}
+                                    <span className="font-mono text-sm text-slate-600 break-all">
+                                      {predio.codigo_predial_nacional || predio.datos_predio?.codigo_predial_nacional || 'Nuevo'}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-slate-500 mt-1">
+                                    {predio.municipio || predio.datos_predio?.municipio || 'N/A'} · 
+                                    Creado por: {predio.gestor_creador_nombre || predio.creado_por_nombre || 'N/A'} · 
+                                    Apoyo: {predio.gestor_apoyo_nombre || 'N/A'} · 
+                                    {formatDate(predio.created_at || predio.fecha_creacion)}
+                                  </p>
+                                  {predio.radicado_numero && (
+                                    <p className="text-sm text-blue-600 mt-1">
+                                      <FileText className="w-3 h-3 inline mr-1" />
+                                      Radicado: {predio.radicado_numero}
+                                    </p>
                                   )}
                                 </div>
-                              ))}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPredioNuevo(predio);
+                                    setShowPredioDetailDialog(true);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Ver Detalle
+                                </Button>
+                                
+                                {/* Botón Enviar a Revisión - visible para estado creado, digitalizacion, devuelto */}
+                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                 (esApoyo || isCoordinador) && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
+                                    disabled={procesando}
+                                  >
+                                    <ArrowRight className="w-4 h-4 mr-1" />
+                                    Enviar a Revisión
+                                  </Button>
+                                )}
+                                
+                                {/* Acciones de coordinador para predios en revisión */}
+                                {(predio.estado_flujo === 'revision' || predio.estado === 'revision') && isCoordinador && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                      onClick={() => openPredioActionDialog(predio, 'devolver')}
+                                      disabled={procesando}
+                                    >
+                                      <RefreshCw className="w-4 h-4 mr-1" />
+                                      Devolver
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 border-red-200 hover:bg-red-50"
+                                      onClick={() => openPredioActionDialog(predio, 'rechazar')}
+                                      disabled={procesando}
+                                    >
+                                      <XCircle className="w-4 h-4 mr-1" />
+                                      Rechazar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                      onClick={() => openPredioActionDialog(predio, 'aprobar')}
+                                      disabled={procesando}
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      Aprobar
+                                    </Button>
+                                  </>
+                                )}
+                                
+                                {(predio.estado_flujo === 'devuelto' || predio.estado === 'devuelto') && !esApoyo && (
+                                  <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                    Pendiente corrección
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                            
+                            {/* Historial colapsable */}
+                            {(predio.historial_flujo || predio.historial) && (predio.historial_flujo || predio.historial).length > 0 && (
+                              <div className="mt-3 border-t pt-3">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-slate-600 p-0 h-auto"
+                                  onClick={() => toggleHistorial(predio.id)}
+                                >
+                                  <History className="w-4 h-4 mr-1" />
+                                  Historial ({(predio.historial_flujo || predio.historial).length})
+                                  {expandedHistorial[predio.id] ? (
+                                    <ChevronUp className="w-4 h-4 ml-1" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 ml-1" />
+                                  )}
+                                </Button>
+                                
+                                {expandedHistorial[predio.id] && (
+                                  <div className="mt-2 space-y-2 pl-5 border-l-2 border-slate-200">
+                                    {(predio.historial_flujo || predio.historial).map((item, idx) => (
+                                      <div key={idx} className="text-sm">
+                                        <span className="text-slate-400">{formatDate(item.fecha)}</span>
+                                        <span className="mx-2">·</span>
+                                        <span className="font-medium">{item.accion}</span>
+                                        {item.usuario_nombre && (
+                                          <span className="text-slate-500"> por {item.usuario_nombre}</span>
+                                        )}
+                                        {item.observaciones && (
+                                          <p className="text-slate-500 italic mt-1">"{item.observaciones}"</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 );
-              })}
+              })()}
             </div>
           )}
         </TabsContent>
