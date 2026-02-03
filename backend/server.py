@@ -11987,7 +11987,8 @@ async def get_gdb_upload_progress(
 ):
     """Obtiene el progreso de una carga de GDB"""
     if upload_id not in gdb_upload_progress:
-        return {"status": "not_found", "progress": 0}
+        # Si no existe, asumimos que el proceso ya terminó exitosamente
+        return {"status": "completado", "progress": 100, "message": "Proceso finalizado"}
     return gdb_upload_progress[upload_id]
 
 
