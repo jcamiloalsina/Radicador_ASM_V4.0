@@ -2361,6 +2361,58 @@ async def get_my_petitions(current_user: dict = Depends(get_current_user)):
     
     return petitions
 
+
+@api_router.get("/petitions/mis-peticiones-completas")
+async def get_my_complete_petitions(current_user: dict = Depends(get_current_user)):
+    """Obtener vista completa de peticiones y predios del usuario actual.
+    
+    Incluye:
+    - Peticiones creadas por el usuario (radicados propios)
+    - Peticiones asignadas al gestor
+    - Predios nuevos creados por el gestor
+    """
+    
+    # Peticiones creadas por el usuario
+    peticiones_propias = await db.petitions.find(
+        {"user_id": current_user['id']}, {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    
+    for p in peticiones_propias:
+        if isinstance(p.get('created_at'), str):
+            p['created_at'] = datetime.fromisoformat(p['created_at'])
+        if isinstance(p.get('updated_at'), str):
+            p['updated_at'] = datetime.fromisoformat(p['updated_at'])
+    
+    # Peticiones asignadas al gestor (solo para gestores y superiores)
+    peticiones_asignadas = []
+    if current_user['role'] not in [UserRole.USUARIO, UserRole.EMPRESA]:
+        peticiones_asignadas = await db.petitions.find(
+            {
+                "gestores_asignados": current_user['id'],
+                "user_id": {"$ne": current_user['id']}  # Excluir las propias para evitar duplicados
+            }, {"_id": 0}
+        ).sort("created_at", -1).to_list(500)
+        
+        for p in peticiones_asignadas:
+            if isinstance(p.get('created_at'), str):
+                p['created_at'] = datetime.fromisoformat(p['created_at'])
+            if isinstance(p.get('updated_at'), str):
+                p['updated_at'] = datetime.fromisoformat(p['updated_at'])
+    
+    # Predios nuevos creados por el gestor
+    predios_creados = []
+    if current_user['role'] not in [UserRole.USUARIO, UserRole.EMPRESA]:
+        predios_creados = await db.predios_nuevos.find(
+            {"gestor_creador_id": current_user['id']}, {"_id": 0}
+        ).sort("created_at", -1).to_list(500)
+    
+    return {
+        "peticiones_propias": peticiones_propias,
+        "peticiones_asignadas": peticiones_asignadas,
+        "predios_creados": predios_creados
+    }
+
+
 @api_router.get("/petitions/{petition_id}")
 async def get_petition(petition_id: str, current_user: dict = Depends(get_current_user)):
     petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
