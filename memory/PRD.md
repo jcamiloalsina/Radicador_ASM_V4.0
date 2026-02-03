@@ -184,12 +184,12 @@ petition.tipo_tramite?.toLowerCase().includes('certificado catastral')
 - `DashboardLayout.js`: Escucha el evento y llama `fetchCambiosPendientes()` (líneas 238-245)
 - Resultado: El badge se actualiza inmediatamente en tiempo real
 
-#### 2. Fix: Generación de certificados solo para tipo correcto
-**Problema:** Se podía generar "Certificado Catastral" para cualquier tipo de petición.
+#### 2. Fix: Generación de certificados para tipos de certificado catastral
+**Problema:** Se podía generar "Certificado Catastral" pero solo para peticiones con tipo exacto "Certificado catastral", no para variantes.
 
 **Solución:** 
-- `PetitionDetail.js` línea 955: Condición `petition.tipo_tramite === 'Certificado catastral'`
-- El botón "Generar Certificado" solo aparece para peticiones de tipo exacto "Certificado catastral"
+- `PetitionDetail.js` línea 955: Condición actualizada a `petition.tipo_tramite?.toLowerCase().includes('certificado catastral')`
+- El botón "Generar Certificado" ahora aparece para todas las variantes de certificado catastral (sencillo, especial, con mayúsculas, etc.)
 
 #### 3. NUEVO: Vincular radicado a modificaciones existentes
 **Problema:** No era posible asociar un radicado a cambios que fueron creados antes de implementar esta funcionalidad.
