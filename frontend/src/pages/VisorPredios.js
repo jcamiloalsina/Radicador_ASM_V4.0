@@ -1077,11 +1077,13 @@ export default function VisorPredios() {
     try {
       const token = localStorage.getItem('token');
       
+      // Configurar timeout largo para cargas GDB (pueden tardar hasta 2 minutos)
       const response = await axios.post(`${API}/gdb/upload`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
+        timeout: 180000, // 3 minutos para archivos grandes
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 10) / progressEvent.total);
           setUploadProgress({ 
