@@ -1651,6 +1651,7 @@ export default function Predios() {
     if (!addListener) return;
     
     const handleWebSocketMessage = (message) => {
+      // Manejar cambios de predio aprobados/rechazados (flujo de aprobación)
       if (message.type === 'cambio_predio') {
         console.log('[Predios] WebSocket: Cambio de predio notificado', message);
         
@@ -1669,6 +1670,46 @@ export default function Predios() {
             // Auto-sincronizar los datos del municipio
             fetchPredios();
           }
+        }
+      }
+      
+      // Manejar actualizaciones en tiempo real de predios (CRUD directo)
+      if (message.type === 'predio_actualizado') {
+        console.log('[Predios] WebSocket: Predio actualizado en tiempo real', message);
+        
+        // Si el cambio es del municipio actual, actualizar datos automáticamente
+        if (message.municipio === filterMunicipio) {
+          // Mostrar notificación del cambio
+          const actionLabels = {
+            'create': 'creó',
+            'update': 'modificó', 
+            'delete': 'eliminó',
+            'import': 'importó'
+          };
+          const actionLabel = actionLabels[message.action] || 'actualizó';
+          const userName = message.updated_by || message.created_by || message.deleted_by || message.imported_by || 'Alguien';
+          
+          if (message.action === 'import') {
+            toast.info(
+              `📊 ${userName} ${actionLabel} ${message.predios_importados} predios en ${message.municipio}`,
+              { duration: 5000 }
+            );
+          } else {
+            toast.info(
+              `🔄 ${userName} ${actionLabel} un predio: ${message.codigo_predial || 'N/A'}`,
+              { duration: 3000 }
+            );
+          }
+          
+          // Auto-sincronizar los datos del municipio
+          fetchPredios();
+        } else if (!filterMunicipio) {
+          // Si no hay filtro de municipio activo, solo mostrar notificación
+          const userName = message.updated_by || message.created_by || message.deleted_by || message.imported_by || 'Alguien';
+          toast.info(
+            `🔄 ${userName} actualizó datos en ${message.municipio}`,
+            { duration: 3000 }
+          );
         }
       }
     };
