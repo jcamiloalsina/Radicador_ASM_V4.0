@@ -950,9 +950,9 @@ export default function PetitionDetail() {
                             <p><span className="text-slate-500">Dirección:</span> <span className="font-medium">{petition.predio_relacionado.direccion}</span></p>
                           )}
                         </div>
-                        {/* Solo mostrar botón de generar certificado para "Certificado catastral" sencillo */}
+                        {/* Solo mostrar botón de generar certificado para tipos de certificado catastral */}
                         {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && 
-                         petition.tipo_tramite === 'Certificado catastral' && (
+                         petition.tipo_tramite?.toLowerCase().includes('certificado catastral') && (
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button className="bg-emerald-700 hover:bg-emerald-800" data-testid="generar-certificado-btn">
