@@ -243,6 +243,8 @@ export default function VisorPredios() {
   const [mostrarPredios, setMostrarPredios] = useState(false); // Controlar si mostrar predios individuales
   const [loadingGeometries, setLoadingGeometries] = useState(false);
   const [gdbCargadaEsteMes, setGdbCargadaEsteMes] = useState(null); // null = no verificado, true/false
+  const [showGdbResumen, setShowGdbResumen] = useState(false); // Modal de resumen de GDB
+  const [gdbResumenData, setGdbResumenData] = useState(null); // Datos del resumen de GDB
   const [mostrarPreguntaGdb, setMostrarPreguntaGdb] = useState(false);
   const [coordenadasBusqueda, setCoordenadasBusqueda] = useState({ lat: '', lng: '' });
   const [formatoCoordenadas, setFormatoCoordenadas] = useState('decimal'); // 'decimal' o 'dms'
