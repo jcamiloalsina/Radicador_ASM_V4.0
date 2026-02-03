@@ -588,7 +588,7 @@ export default function VisorPredios() {
     }
   };
   
-  // Función para refrescar límites (limpiar caché)
+  // Función para refrescar límites (limpiar caché) y mostrar resumen
   const refreshLimitesMunicipios = async () => {
     // Limpiar caché
     localStorage.removeItem('limites_municipales_oficial');
@@ -596,8 +596,47 @@ export default function VisorPredios() {
     localStorage.removeItem('limites_municipales_gdb');
     localStorage.removeItem('limites_municipales_gdb_time');
     toast.info('Actualizando datos de municipios...');
-    await fetchLimitesMunicipios('oficial', true);
-    toast.success('Datos de municipios actualizados');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/gdb/limites-municipios?fuente=gdb`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setLimitesMunicipios(response.data);
+      
+      // Preparar datos para el resumen
+      const features = response.data.features || [];
+      const municipiosData = features.map(f => ({
+        municipio: f.properties?.municipio || 'Desconocido',
+        rural: f.properties?.rurales || 0,
+        urbano: f.properties?.urbanos || 0,
+        total: f.properties?.total_predios || 0
+      })).sort((a, b) => a.municipio.localeCompare(b.municipio));
+      
+      const totalGeometrias = municipiosData.reduce((acc, m) => acc + m.total, 0);
+      
+      setGdbResumenData({
+        municipios: municipiosData,
+        totalMunicipios: municipiosData.length,
+        totalGeometrias: totalGeometrias
+      });
+      
+      // Guardar en caché
+      try {
+        localStorage.setItem('limites_municipales_gdb', JSON.stringify(response.data));
+        localStorage.setItem('limites_municipales_gdb_time', Date.now().toString());
+      } catch (e) {
+        console.log('Error guardando caché:', e);
+      }
+      
+      // Mostrar modal con resumen
+      setShowGdbResumen(true);
+      
+    } catch (error) {
+      console.error('Error actualizando datos:', error);
+      toast.error('Error al actualizar datos de municipios');
+    }
   };
 
   // Estado para offline de geometrías
