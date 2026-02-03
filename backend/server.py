@@ -1917,8 +1917,14 @@ async def get_gestores_disponibles(current_user: dict = Depends(get_current_user
         {"_id": 0, "id": 1, "full_name": 1, "role": 1, "email": 1}
     ).to_list(100)
     
-    # Excluir al usuario actual (no puede asignarse a sí mismo)
-    gestores = [g for g in gestores if g.get('id') != current_user['id']]
+    # Verificar si el usuario tiene permiso de aprobación
+    user_permissions = current_user.get('permissions', [])
+    has_approve_permission = 'approve_changes' in user_permissions
+    
+    # Si tiene permiso de aprobación, puede auto-asignarse
+    # Si no tiene permiso, excluirlo de la lista
+    if not has_approve_permission:
+        gestores = [g for g in gestores if g.get('id') != current_user['id']]
     
     return gestores
 
