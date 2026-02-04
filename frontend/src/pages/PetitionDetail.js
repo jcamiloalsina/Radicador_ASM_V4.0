@@ -1287,6 +1287,8 @@ export default function PetitionDetail() {
                 const isCitizen = uploadedByRole === 'usuario';
                 const badgeColor = isCitizen ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800';
                 const roleLabel = isCitizen ? 'Usuario' : 'Personal';
+                // Usar el id del archivo o filename para la descarga
+                const fileId = archivo.id || archivo.filename;
                 
                 return (
                   <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-md border border-slate-200" data-testid={`file-${idx}`}>
@@ -1303,33 +1305,35 @@ export default function PetitionDetail() {
                       </div>
                       <Badge className={badgeColor}>{roleLabel}</Badge>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          const token = localStorage.getItem('token');
-                          const response = await axios.get(`${API}/petitions/${id}/archivo/${archivo.filename}`, {
-                            headers: { Authorization: `Bearer ${token}` },
-                            responseType: 'blob'
-                          });
-                          const url = window.URL.createObjectURL(new Blob([response.data]));
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.setAttribute('download', archivo.original_name);
-                          document.body.appendChild(link);
-                          link.click();
-                          link.remove();
-                          window.URL.revokeObjectURL(url);
-                        } catch (error) {
-                          toast.error('Error al descargar el archivo');
-                        }
-                      }}
-                      className="ml-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
-                      data-testid={`download-file-${idx}`}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
+                    {fileId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const response = await axios.get(`${API}/petitions/${id}/archivo/${fileId}`, {
+                              headers: { Authorization: `Bearer ${token}` },
+                              responseType: 'blob'
+                            });
+                            const url = window.URL.createObjectURL(new Blob([response.data]));
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute('download', archivo.original_name);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                          } catch (error) {
+                            toast.error('Error al descargar el archivo');
+                          }
+                        }}
+                        className="ml-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                        data-testid={`download-file-${idx}`}
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 );
               })}
