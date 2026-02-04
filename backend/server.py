@@ -17983,6 +17983,36 @@ async def ejecutar_backup_programado(
         "colecciones": len(collections_to_backup)
     }
 
+@api_router.get("/database/scheduler/status")
+async def get_scheduler_status(current_user: dict = Depends(get_current_user)):
+    """Obtener estado del scheduler de backups - Solo admin y coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+    
+    # Obtener jobs del scheduler
+    jobs = []
+    if backup_scheduler.running:
+        for job in backup_scheduler.get_jobs():
+            jobs.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger)
+            })
+    
+    return {
+        "scheduler_running": backup_scheduler.running,
+        "modo": config.get("modo", "manual") if config else "manual",
+        "activo": config.get("activo", False) if config else False,
+        "frecuencia": config.get("frecuencia", "diario") if config else "diario",
+        "hora": config.get("hora", "02:00") if config else "02:00",
+        "proximo_backup": config.get("proximo_backup") if config else None,
+        "ultimo_backup_auto": config.get("ultimo_backup_auto") if config else None,
+        "jobs": jobs
+    }
+
 @api_router.post("/database/backup/limpiar-antiguos")
 async def limpiar_backups_antiguos(current_user: dict = Depends(get_current_user)):
     """Eliminar backups antiguos según la configuración de retención - Solo admin"""
