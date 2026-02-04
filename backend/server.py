@@ -12069,6 +12069,8 @@ async def upload_gdb_file(
     
     # Crear ID único para esta carga
     upload_id = str(uuid.uuid4())
+    user_id = current_user['id']
+    
     gdb_upload_progress[upload_id] = {
         "status": "iniciando",
         "progress": 0,
@@ -12076,14 +12078,22 @@ async def upload_gdb_file(
         "upload_id": upload_id
     }
     
-    def update_progress(status: str, progress: int, message: str, **extra):
-        gdb_upload_progress[upload_id] = {
+    async def update_progress(status: str, progress: int, message: str, **extra):
+        """Actualiza el progreso y envía notificación WebSocket al usuario"""
+        progress_data = {
             "status": status,
             "progress": progress,
             "message": message,
             "upload_id": upload_id,
             **extra
         }
+        gdb_upload_progress[upload_id] = progress_data
+        
+        # Enviar progreso en tiempo real vía WebSocket
+        await ws_manager.send_personal_message({
+            "type": "gdb_upload_progress",
+            "data": progress_data
+        }, user_id)
     
     # Check if user is an authorized gestor
     user_db = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
