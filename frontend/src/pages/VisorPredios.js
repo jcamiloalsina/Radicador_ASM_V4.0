@@ -225,6 +225,7 @@ function MunicipalityLimits({ limitesMunicipios, filterMunicipio, setFilterMunic
 
 export default function VisorPredios() {
   const { user } = useAuth();
+  const { addListener } = useWebSocket() || {};
   const { isOnline } = useOfflineSync(null, 'conservacion');
   const [loading, setLoading] = useState(false);
   const [searchCode, setSearchCode] = useState('');
