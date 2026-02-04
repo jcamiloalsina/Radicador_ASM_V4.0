@@ -13900,38 +13900,58 @@ async def sincronizar_areas_predios(
 ):
     """
     Sincroniza las áreas de GDB con los predios que ya tienen geometría vinculada.
+    Busca por codigo_predial_nacional para mayor cobertura.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores")
     
-    query = {"tiene_geometria": True, "codigo_gdb": {"$exists": True}}
+    # Query base para predios con geometría
+    predio_query = {"tiene_geometria": True}
     if municipio:
-        query["municipio"] = municipio
+        predio_query["municipio"] = {"$regex": f"^{municipio}$", "$options": "i"}
     
+    # Obtener códigos de predios con geometría
     predios = await db.predios.find(
-        query,
-        {"_id": 0, "id": 1, "codigo_gdb": 1}
+        predio_query,
+        {"_id": 0, "id": 1, "codigo_predial_nacional": 1}
     ).to_list(200000)
     
+    if not predios:
+        return {"mensaje": "No hay predios con geometría", "actualizados": 0}
+    
+    # Obtener códigos únicos
+    codigos = list(set(p.get("codigo_predial_nacional") for p in predios if p.get("codigo_predial_nacional")))
+    
+    # Obtener áreas de gdb_geometrias
+    areas_gdb = {}
+    async for geo in db.gdb_geometrias.find(
+        {"codigo": {"$in": codigos}, "area_m2": {"$gt": 0}},
+        {"_id": 0, "codigo": 1, "area_m2": 1}
+    ):
+        areas_gdb[geo["codigo"]] = geo["area_m2"]
+    
+    # Actualizar predios usando bulk_write
+    from pymongo import UpdateOne
     actualizados = 0
     
-    for predio in predios:
-        codigo_gdb = predio.get("codigo_gdb")
-        if codigo_gdb:
-            gdb_geo = await db.gdb_geometrias.find_one(
-                {"codigo": codigo_gdb},
-                {"_id": 0, "area_m2": 1}
-            )
-            if gdb_geo and gdb_geo.get("area_m2"):
-                await db.predios.update_one(
-                    {"id": predio["id"]},
-                    {"$set": {"area_gdb": gdb_geo["area_m2"]}}
-                )
-                actualizados += 1
+    if areas_gdb:
+        bulk_ops = []
+        for codigo, area in areas_gdb.items():
+            bulk_ops.append(UpdateOne(
+                {"codigo_predial_nacional": codigo},
+                {"$set": {"area_gdb": area}}
+            ))
+        
+        # Procesar en lotes
+        for i in range(0, len(bulk_ops), 1000):
+            batch = bulk_ops[i:i+1000]
+            result = await db.predios.bulk_write(batch, ordered=False)
+            actualizados += result.modified_count
     
     return {
         "mensaje": "Áreas sincronizadas",
-        "predios_procesados": len(predios),
+        "predios_con_geometria": len(predios),
+        "geometrias_encontradas": len(areas_gdb),
         "actualizados": actualizados
     }
 
