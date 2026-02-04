@@ -114,6 +114,34 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 - Fix Permisos y Flujo Ver/Editar
+
+#### 16. Fix: Gestor no podía ver peticiones que él creó
+**Problema:** Un usuario con rol `gestor` no podía ver los detalles de peticiones que él mismo creó, recibía error 403.
+
+**Causa raíz:** El endpoint `GET /api/petitions/{petition_id}` verificaba el campo `created_by` para determinar si el usuario era el creador, pero las peticiones almacenan al creador en el campo `user_id`.
+
+**Solución:** Modificada la línea 2436 en `server.py` para verificar ambos campos para compatibilidad:
+```python
+is_creator = petition.get('user_id') == current_user['id'] or petition.get('created_by') == current_user['id']
+```
+
+**Estado:** ✅ Verificado con testing agent (iteration_28.json)
+
+#### 17. Fix: Botón "Ver / Editar" en Mis Asignaciones no funcionaba correctamente
+**Problema:** Cuando un gestor de apoyo hacía clic en "Ver / Editar" en un predio nuevo asignado desde "Mis Asignaciones", era redirigido incorrectamente en vez de abrir el modal de edición.
+
+**Implementación verificada:**
+- Frontend `Predios.js`: useEffect detecta parámetro URL `predio_nuevo` (líneas 1631-1738)
+- Carga datos del predio vía `GET /api/predios-nuevos/{id}`
+- Pre-llena formulario con datos existentes
+- Abre modal de creación con `setShowCreateDialog(true)`
+- Al guardar usa `PATCH` en lugar de `POST` (líneas 2851-2884)
+
+**Estado:** ✅ Verificado con testing agent (iteration_28.json)
+
+---
+
 ### Sesión 4 Febrero 2026 - Flujo de Gestor de Apoyo para Modificaciones
 
 #### 14. Fix: Error de sintaxis en server.py (línea 12345)
