@@ -2413,34 +2413,84 @@ export default function VisorPredios() {
                 
                 {/* Indicador de Progreso */}
                 {uploadProgress && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className={`font-medium ${uploadProgress.status === 'error' ? 'text-red-700' : uploadProgress.status === 'completado' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {uploadProgress.message}
-                      </span>
-                      <span className="text-slate-600 font-bold">{uploadProgress.progress}%</span>
+                  <div className="mt-4 space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    {/* Header con estado y porcentaje */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {uploadProgress.status === 'completado' ? (
+                          <CheckCircle className="w-5 h-5 text-emerald-500" />
+                        ) : uploadProgress.status === 'error' ? (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                        )}
+                        <span className={`font-semibold text-sm ${
+                          uploadProgress.status === 'error' ? 'text-red-700' : 
+                          uploadProgress.status === 'completado' ? 'text-emerald-700' : 
+                          'text-slate-700'
+                        }`}>
+                          {uploadProgress.status === 'completado' ? '¡Proceso completado!' : 
+                           uploadProgress.status === 'error' ? 'Error en el proceso' : 
+                           'Procesando GDB...'}
+                        </span>
+                      </div>
+                      <Badge variant={
+                        uploadProgress.status === 'completado' ? 'default' : 
+                        uploadProgress.status === 'error' ? 'destructive' : 
+                        'secondary'
+                      } className="text-xs">
+                        {uploadProgress.progress}%
+                      </Badge>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                    
+                    {/* Barra de progreso */}
+                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
+                        className={`h-full rounded-full transition-all duration-300 ease-out ${
                           uploadProgress.status === 'error' ? 'bg-red-500' : 
                           uploadProgress.status === 'completado' ? 'bg-emerald-500' : 
-                          'bg-amber-500'
+                          'bg-gradient-to-r from-amber-400 to-amber-500'
                         }`}
                         style={{ width: `${uploadProgress.progress}%` }}
                       />
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      {uploadProgress.status === 'subiendo' && <span>📤 Subiendo archivos...</span>}
-                      {uploadProgress.status === 'extrayendo' && <span>📦 Extrayendo ZIP...</span>}
-                      {uploadProgress.status === 'leyendo_rural' && <span>🌾 Leyendo capa rural...</span>}
-                      {uploadProgress.status === 'leyendo_urbano' && <span>🏘️ Leyendo capa urbana...</span>}
-                      {uploadProgress.status === 'guardando_geometrias' && <span>💾 Guardando Base Gráfica...</span>}
-                      {uploadProgress.status === 'relacionando' && <span>🔗 Relacionando con predios...</span>}
-                      {uploadProgress.status === 'matching_avanzado' && <span>🔍 Búsqueda avanzada de coincidencias...</span>}
-                      {uploadProgress.status === 'completado' && <span>✅ ¡Proceso completado!</span>}
-                      {uploadProgress.status === 'error' && <span>❌ Error en el proceso</span>}
+                    
+                    {/* Mensaje detallado */}
+                    <div className="flex items-center gap-2 text-xs text-slate-600 bg-white px-3 py-2 rounded border border-slate-100">
+                      {/* Iconos por estado */}
+                      {uploadProgress.status === 'preparando' && <span>⚙️</span>}
+                      {uploadProgress.status === 'cargando' && <span>📤</span>}
+                      {uploadProgress.status === 'extrayendo' && <span>📦</span>}
+                      {uploadProgress.status === 'identificando' && <span>🔍</span>}
+                      {uploadProgress.status === 'leyendo' && <span>📖</span>}
+                      {uploadProgress.status === 'analizando' && <span>📊</span>}
+                      {uploadProgress.status === 'leyendo_rural' && <span>🌾</span>}
+                      {uploadProgress.status === 'leyendo_urbano' && <span>🏘️</span>}
+                      {uploadProgress.status === 'guardando_geometrias' && <span>💾</span>}
+                      {uploadProgress.status === 'limpiando' && <span>🧹</span>}
+                      {uploadProgress.status === 'guardando_rural' && <span>🗺️</span>}
+                      {uploadProgress.status === 'guardando_urbano' && <span>🏙️</span>}
+                      {uploadProgress.status === 'leyendo_construcciones' && <span>🏗️</span>}
+                      {uploadProgress.status === 'guardando_construcciones' && <span>🏠</span>}
+                      {uploadProgress.status === 'construcciones_ok' && <span>✓</span>}
+                      {uploadProgress.status === 'relacionando' && <span>🔗</span>}
+                      {uploadProgress.status === 'vinculando' && <span>⚡</span>}
+                      {uploadProgress.status === 'finalizando' && <span>📋</span>}
+                      {uploadProgress.status === 'completado' && <span>✅</span>}
+                      {uploadProgress.status === 'error' && <span>❌</span>}
+                      {uploadProgress.status === 'verificando' && <span>🔄</span>}
+                      {uploadProgress.status === 'procesando' && <span>⏳</span>}
+                      
+                      <span className="flex-1">{uploadProgress.message}</span>
                     </div>
+                    
+                    {/* Indicador de tiempo real */}
+                    {uploadProgress.status !== 'completado' && uploadProgress.status !== 'error' && (
+                      <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                        Actualización en tiempo real
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
