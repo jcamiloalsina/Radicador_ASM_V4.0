@@ -17751,6 +17751,164 @@ def calcular_proximo_backup(frecuencia: str, hora: str, dia_semana: int, dia_mes
     
     return proximo.isoformat()
 
+
+# ===== BACKUP SCHEDULER FUNCTIONS =====
+async def ejecutar_backup_automatico():
+    """Ejecuta un backup automático según la configuración guardada"""
+    try:
+        logging.info("=" * 60)
+        logging.info("🔄 INICIANDO BACKUP AUTOMÁTICO PROGRAMADO")
+        logging.info("=" * 60)
+        
+        config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+        if not config or config.get("modo") != "automatico":
+            logging.warning("Backup automático cancelado: modo no es automático")
+            return
+        
+        # Crear backup
+        backup_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"backup_auto_{db.name}_{timestamp}.zip"
+        backup_path = f"/app/backend/static/backups/{backup_filename}"
+        
+        os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+        
+        # Obtener colecciones
+        if config.get("tipo_backup") == "completo":
+            collections_to_backup = await db.list_collection_names()
+            collections_to_backup = [c for c in collections_to_backup if c not in ['backup_history', 'system_config']]
+        else:
+            collections_to_backup = config.get("colecciones_seleccionadas", [])
+        
+        if not collections_to_backup:
+            logging.error("No hay colecciones para respaldar")
+            return
+        
+        backup_info = {
+            "id": backup_id,
+            "filename": backup_filename,
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "tipo": config.get("tipo_backup", "completo"),
+            "colecciones": collections_to_backup,
+            "colecciones_count": len(collections_to_backup),
+            "creado_por_id": "sistema",
+            "creado_por": "Backup automático programado",
+            "size_mb": 0,
+            "registros_total": 0,
+            "estado": "en_progreso",
+            "es_automatico": True
+        }
+        
+        # Ejecutar backup directamente (no en background)
+        await run_backup_task(backup_id, backup_path, backup_info, collections_to_backup)
+        
+        # Actualizar último backup y próximo
+        proximo = calcular_proximo_backup(
+            config.get("frecuencia", "diario"),
+            config.get("hora", "02:00"),
+            config.get("dia_semana", 0),
+            config.get("dia_mes", 1)
+        )
+        
+        await db.system_config.update_one(
+            {"type": "backup_config"},
+            {"$set": {
+                "ultimo_backup_auto": datetime.now(timezone.utc).isoformat(),
+                "proximo_backup": proximo
+            }}
+        )
+        
+        # Limpiar backups antiguos según retención
+        await limpiar_backups_por_retencion(config.get("retener_ultimos", 7))
+        
+        logging.info("=" * 60)
+        logging.info(f"✅ BACKUP AUTOMÁTICO COMPLETADO: {backup_filename}")
+        logging.info(f"📅 Próximo backup: {proximo}")
+        logging.info("=" * 60)
+        
+    except Exception as e:
+        logging.error(f"❌ Error en backup automático: {str(e)}")
+
+
+async def limpiar_backups_por_retencion(retener: int):
+    """Limpia backups automáticos que excedan el límite de retención"""
+    try:
+        # Obtener backups automáticos ordenados por fecha
+        backups = await db.backup_history.find(
+            {"es_automatico": True, "estado": "completado"}
+        ).sort("fecha", -1).to_list(None)
+        
+        if len(backups) > retener:
+            backups_a_eliminar = backups[retener:]
+            for backup in backups_a_eliminar:
+                # Eliminar archivo físico
+                backup_path = f"/app/backend/static/backups/{backup.get('filename', '')}"
+                if os.path.exists(backup_path):
+                    os.remove(backup_path)
+                    logging.info(f"🗑️ Eliminado backup antiguo: {backup.get('filename')}")
+                
+                # Eliminar registro de BD
+                await db.backup_history.delete_one({"id": backup["id"]})
+            
+            logging.info(f"🧹 Limpieza de retención: eliminados {len(backups_a_eliminar)} backups antiguos")
+    except Exception as e:
+        logging.error(f"Error en limpieza de backups: {str(e)}")
+
+
+def configurar_scheduler_backup(config: dict):
+    """Configura el scheduler según la configuración de backup"""
+    global backup_scheduler
+    
+    # Remover job existente si existe
+    try:
+        backup_scheduler.remove_job('backup_automatico')
+        logging.info("Job de backup anterior removido")
+    except:
+        pass
+    
+    if config.get("modo") != "automatico" or not config.get("activo", False):
+        logging.info("Scheduler de backup desactivado (modo manual o inactivo)")
+        return
+    
+    # Parsear hora
+    hora_parts = config.get("hora", "02:00").split(":")
+    hora = int(hora_parts[0])
+    minuto = int(hora_parts[1]) if len(hora_parts) > 1 else 0
+    
+    frecuencia = config.get("frecuencia", "diario")
+    
+    # Crear trigger según frecuencia
+    if frecuencia == "diario":
+        trigger = CronTrigger(hour=hora, minute=minuto)
+        logging.info(f"📅 Scheduler configurado: DIARIO a las {hora:02d}:{minuto:02d}")
+    
+    elif frecuencia == "semanal":
+        dia_semana = config.get("dia_semana", 0)  # 0=Lunes
+        dias_semana = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
+        trigger = CronTrigger(day_of_week=dia_semana, hour=hora, minute=minuto)
+        logging.info(f"📅 Scheduler configurado: SEMANAL los {dias_semana[dia_semana]} a las {hora:02d}:{minuto:02d}")
+    
+    elif frecuencia == "mensual":
+        dia_mes = config.get("dia_mes", 1)
+        trigger = CronTrigger(day=dia_mes, hour=hora, minute=minuto)
+        logging.info(f"📅 Scheduler configurado: MENSUAL el día {dia_mes} a las {hora:02d}:{minuto:02d}")
+    
+    else:
+        logging.warning(f"Frecuencia desconocida: {frecuencia}")
+        return
+    
+    # Agregar job
+    backup_scheduler.add_job(
+        ejecutar_backup_automatico,
+        trigger,
+        id='backup_automatico',
+        name='Backup Automático de Base de Datos',
+        replace_existing=True
+    )
+    
+    logging.info("✅ Scheduler de backup configurado correctamente")
+
+
 @api_router.post("/database/backup/ejecutar-programado")
 async def ejecutar_backup_programado(
     background_tasks: BackgroundTasks,
