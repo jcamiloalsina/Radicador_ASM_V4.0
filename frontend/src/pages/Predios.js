@@ -2869,19 +2869,31 @@ export default function Predios() {
       // Obtener info del radicado seleccionado
       const radicadoInfo = peticionesDisponibles.find(p => p.id === radicadoSeleccionado);
       
-      // Usar sistema de aprobación
-      const res = await axios.post(`${API}/predios/cambios/proponer`, {
+      // Construir payload para el endpoint
+      const payload = {
         predio_id: selectedPredio.id,
         tipo_cambio: 'modificacion',
         datos_propuestos: updateData,
         justificacion: radicadoInfo ? `Modificación según radicado ${radicadoInfo.radicado}` : 'Modificación de datos del predio',
         radicado_id: radicadoSeleccionado || null,
         radicado_numero: radicadoInfo?.radicado || null
-      }, {
+      };
+      
+      // Agregar gestor de apoyo si se seleccionó esa opción
+      if (usarGestorApoyoMod && gestorApoyoModificacion) {
+        payload.gestor_apoyo_id = gestorApoyoModificacion;
+        payload.observaciones_apoyo = observacionesApoyoMod || null;
+      }
+      
+      // Usar sistema de aprobación
+      const res = await axios.post(`${API}/predios/cambios/proponer`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (res.data.requiere_aprobacion) {
+      if (res.data.asignado_gestor_apoyo) {
+        const gestorNombre = gestoresDisponibles.find(g => g.id === gestorApoyoModificacion)?.full_name;
+        toast.success(`Modificación asignada a ${gestorNombre} para completar`);
+      } else if (res.data.requiere_aprobacion) {
         toast.success('Modificación propuesta. Pendiente de aprobación del coordinador.');
       } else {
         toast.success('Predio actualizado exitosamente');
@@ -2889,6 +2901,9 @@ export default function Predios() {
       
       setShowEditDialog(false);
       setRadicadoSeleccionado(''); // Limpiar el radicado seleccionado
+      setUsarGestorApoyoMod(false); // Resetear opción de gestor de apoyo
+      setGestorApoyoModificacion('');
+      setObservacionesApoyoMod('');
       // Forzar recarga desde servidor para ver cambios inmediatamente
       await forceRefreshPredios();
       fetchCambiosStats();
