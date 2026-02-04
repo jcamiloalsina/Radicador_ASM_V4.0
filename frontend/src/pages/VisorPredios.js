@@ -2463,9 +2463,10 @@ export default function VisorPredios() {
                       {uploadProgress.status === 'extrayendo' && <span>📦</span>}
                       {uploadProgress.status === 'identificando' && <span>🔍</span>}
                       {uploadProgress.status === 'leyendo' && <span>📖</span>}
-                      {uploadProgress.status === 'analizando' && <span>📊</span>}
+                      {uploadProgress.status === 'analizando' && <span>🔬</span>}
                       {uploadProgress.status === 'leyendo_rural' && <span>🌾</span>}
                       {uploadProgress.status === 'leyendo_urbano' && <span>🏘️</span>}
+                      {uploadProgress.status === 'relacionando_capas' && <span>🔗</span>}
                       {uploadProgress.status === 'guardando_geometrias' && <span>💾</span>}
                       {uploadProgress.status === 'limpiando' && <span>🧹</span>}
                       {uploadProgress.status === 'guardando_rural' && <span>🗺️</span>}
@@ -2473,6 +2474,8 @@ export default function VisorPredios() {
                       {uploadProgress.status === 'leyendo_construcciones' && <span>🏗️</span>}
                       {uploadProgress.status === 'guardando_construcciones' && <span>🏠</span>}
                       {uploadProgress.status === 'construcciones_ok' && <span>✓</span>}
+                      {uploadProgress.status === 'subiendo_visor' && <span>🗺️</span>}
+                      {uploadProgress.status === 'relacionando_gestion' && <span>⚡</span>}
                       {uploadProgress.status === 'relacionando' && <span>🔗</span>}
                       {uploadProgress.status === 'vinculando' && <span>⚡</span>}
                       {uploadProgress.status === 'finalizando' && <span>📋</span>}
@@ -2488,7 +2491,7 @@ export default function VisorPredios() {
                     {uploadProgress.status !== 'completado' && uploadProgress.status !== 'error' && (
                       <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                        Actualización en tiempo real
+                        Procesando en segundo plano
                       </div>
                     )}
                   </div>
