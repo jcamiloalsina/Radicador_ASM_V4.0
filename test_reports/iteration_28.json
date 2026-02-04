@@ -1,0 +1,96 @@
+{
+  "summary": "Verified and fixed two bugs: Bug 1 - Gestor can view petitions they created (fixed backend check from created_by to user_id), Bug 2 - 'Ver / Editar' flow for predios nuevos from 'Mis Asignaciones' works correctly (modal opens with pre-filled data)",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/petitions/{petition_id}",
+        "issue": "Original fix checked 'created_by' field but petitions use 'user_id' for creator. Fixed to check both fields for backwards compatibility.",
+        "status": "FIXED"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "console_errors": [
+      {
+        "error": "403 errors on /api/predios/cambios/pendientes and /api/predios/reapariciones",
+        "impact": "Low - These are permission-based endpoints that gestores don't have access to. Not a bug, expected behavior.",
+        "priority": "LOW"
+      }
+    ]
+  },
+
+  "bugs_tested": {
+    "bug_1_gestor_view_own_petitions": {
+      "status": "VERIFIED_FIXED",
+      "description": "Gestor can view details of petitions they created",
+      "original_issue": "GET /api/petitions/{petition_id} checked 'created_by' field but petitions store creator in 'user_id'",
+      "fix_applied": "Modified line 2435 in server.py to check both 'user_id' and 'created_by' for backwards compatibility",
+      "test_results": {
+        "test_gestor_creates_petition": "PASSED - Gestor can create and view their own petition",
+        "test_gestor_cannot_view_others": "PASSED - Gestor correctly denied access to others' petitions",
+        "test_gestor_can_view_assigned": "PASSED - Gestor can view petitions assigned to them"
+      }
+    },
+    "bug_2_ver_editar_predios_nuevos": {
+      "status": "VERIFIED_WORKING",
+      "description": "'Ver / Editar' button from 'Mis Asignaciones' opens modal with pre-filled data",
+      "flow_tested": "Pendientes > Mis Asignaciones > Click 'Ver / Editar' > Modal opens with predio data",
+      "test_results": {
+        "api_test": "PASSED - GET /api/predios-nuevos/{id} returns correct data",
+        "ui_test": "PASSED - Modal opens with 'Predio nuevo cargado para edición' toast",
+        "data_prefill": "PASSED - Código predial nacional and other fields pre-filled correctly"
+      }
+    }
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_bug_fixes_iteration28.py",
+    "/app/test_reports/pytest/pytest_results_iteration28.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "✓ Bug 1 fix: Changed is_creator check from 'created_by' to 'user_id' (with fallback to created_by for backwards compatibility)",
+    "✓ Bug 2: Frontend useEffect in Predios.js correctly handles predio_nuevo URL parameter",
+    "Note: Console shows 403 errors for cambios/pendientes and reapariciones endpoints - this is expected for gestor role (permission-based)"
+  ],
+
+  "updated_files": [
+    "/app/backend/server.py (line 2435 - fixed is_creator check)",
+    "/app/backend/tests/test_bug_fixes_iteration28.py (new test file)"
+  ],
+
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (Ver/Editar flow works correctly)"
+  },
+
+  "test_credentials": {
+    "gestor_apoyo": {
+      "email": "ninoatuesta@hotmail.com",
+      "password": "Asm*123*",
+      "name": "Marcelino Contreras Atuesta",
+      "role": "gestor"
+    },
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*",
+      "role": "administrador"
+    }
+  },
+
+  "seed_data_creation": "Created test petitions and predios nuevos during testing (prefixed with TEST_)",
+
+  "retest_needed": false,
+
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Both bugs verified fixed. Bug 1: The GET /api/petitions/{petition_id} endpoint now correctly allows gestores to view petitions they created by checking user_id field (not just created_by). Bug 2: The 'Ver / Editar' button in Pendientes > Mis Asignaciones correctly navigates to /dashboard/predios?predio_nuevo={id} and the useEffect in Predios.js loads the predio data and opens the creation modal with pre-filled data. Note: Marcelino's role is 'gestor' not 'gestor_apoyo' - the system uses gestor_apoyo_id field to track assignment, not a separate role."
+}
