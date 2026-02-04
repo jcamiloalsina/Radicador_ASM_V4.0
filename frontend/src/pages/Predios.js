@@ -2847,6 +2847,44 @@ export default function Predios() {
           observaciones: observacionesCreacion || null,
         };
         
+        // Si estamos editando un predio nuevo existente, usar PATCH
+        if (editingPredioNuevoId) {
+          // Construir datos planos para actualización
+          const updateData = {
+            municipio: predioNuevoData.r1.municipio,
+            direccion: predioNuevoData.r1.direccion,
+            destino_economico: predioNuevoData.r1.destino_economico,
+            area_terreno: predioNuevoData.r1.area_terreno,
+            area_construida: predioNuevoData.r1.area_construida,
+            avaluo: predioNuevoData.r1.avaluo,
+            propietarios: propietarios.filter(p => p.nombre_propietario && p.numero_documento),
+            // R2 data
+            matricula_inmobiliaria: predioNuevoData.r2.matricula_inmobiliaria,
+            zona_fisica_1: predioNuevoData.r2.zona_fisica_1,
+            zona_economica_1: predioNuevoData.r2.zona_economica_1,
+            area_terreno_1: predioNuevoData.r2.area_terreno_1,
+            habitaciones_1: predioNuevoData.r2.habitaciones_1,
+            banos_1: predioNuevoData.r2.banos_1,
+            locales_1: predioNuevoData.r2.locales_1,
+            pisos_1: predioNuevoData.r2.pisos_1,
+            puntaje_1: predioNuevoData.r2.puntaje_1,
+            area_construida_1: predioNuevoData.r2.area_construida_1,
+            observaciones: predioNuevoData.observaciones,
+          };
+          
+          await axios.patch(`${API}/predios-nuevos/${editingPredioNuevoId}`, updateData, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          toast.success('Predio actualizado correctamente');
+          setShowCreateDialog(false);
+          setEditingPredioNuevoId(null);
+          resetForm();
+          fetchPredios();
+          return;
+        }
+        
+        // Crear nuevo predio
         const res = await axios.post(`${API}/predios-nuevos`, predioNuevoData, {
           headers: { Authorization: `Bearer ${token}` }
         });
