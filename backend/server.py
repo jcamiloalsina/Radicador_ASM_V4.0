@@ -13430,8 +13430,8 @@ async def process_gdb_upload_background(
             logger.error(f"Error generando reporte de calidad: {report_err}")
         
         # Actualizar estado final con todos los datos para el polling
+        final_message = f"¡Carga completada! {stats['relacionados']} predios vinculados de {rural_guardadas + urban_guardadas} geometrías"
         final_data = {
-            "message": f"Base gráfica de {municipio_nombre} actualizada exitosamente",
             "municipio": municipio_nombre,
             "gdb_file": gdb_name,
             "upload_id": upload_id,
@@ -13464,7 +13464,7 @@ async def process_gdb_upload_background(
         await update_progress(
             "completado", 
             100, 
-            f"¡Carga completada! {stats['relacionados']} predios vinculados de {rural_guardadas + urban_guardadas} geometrías",
+            final_message,
             **final_data
         )
         
