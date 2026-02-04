@@ -10734,6 +10734,12 @@ async def ejecutar_accion_predio_nuevo(
         update_data["aprobado_por_nombre"] = current_user['full_name']
         update_data["fecha_aprobacion"] = datetime.now(timezone.utc).isoformat()
     
+    # Si se rechaza la asignación, quitar el gestor de apoyo asignado
+    if accion == "rechazar_asignacion":
+        update_data["gestor_apoyo_id"] = None
+        update_data["gestor_apoyo_nombre"] = None
+        update_data["comentario_devolucion"] = accion_data.observaciones
+    
     await db.predios_nuevos.update_one(
         {"id": predio_id},
         {
