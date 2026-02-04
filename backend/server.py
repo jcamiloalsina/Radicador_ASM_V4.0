@@ -10779,13 +10779,25 @@ async def proponer_cambio_predio(
     """
     Propone un cambio en un predio (crear, modificar, eliminar).
     Solo gestores y atención pueden proponer. Coordinadores aprueban directamente.
+    Opcionalmente puede asignar un gestor de apoyo para modificaciones.
     """
     # Verificar permisos - Usuarios, Comunicaciones y Empresa no pueden proponer cambios
     if current_user['role'] in [UserRole.USUARIO, UserRole.COMUNICACIONES, UserRole.EMPRESA]:
         raise HTTPException(status_code=403, detail="No tiene permiso para proponer cambios en predios")
     
-    # Coordinadores y administradores aprueban directamente
+    # Coordinadores y administradores aprueban directamente (a menos que asignen gestor de apoyo)
     aprueba_directo = current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]
+    
+    # Si se asigna gestor de apoyo, NO aprueba directo, va al flujo de apoyo
+    usa_gestor_apoyo = cambio.gestor_apoyo_id is not None and cambio.tipo_cambio == "modificacion"
+    if usa_gestor_apoyo:
+        aprueba_directo = False
+        # Verificar que el gestor de apoyo existe y tiene rol válido
+        gestor_apoyo = await db.users.find_one({"id": cambio.gestor_apoyo_id}, {"_id": 0})
+        if not gestor_apoyo:
+            raise HTTPException(status_code=400, detail="El gestor de apoyo no existe")
+        if gestor_apoyo.get('role') not in ['gestor', 'coordinador', 'administrador', 'atencion_usuario']:
+            raise HTTPException(status_code=400, detail="El usuario asignado no tiene rol de gestor")
     
     # Obtener información del radicado si se proporcionó
     radicado_info = None
@@ -10810,6 +10822,14 @@ async def proponer_cambio_predio(
                 "zona": predio_existente.get("zona"),
             }
     
+    # Determinar estado inicial según el flujo
+    if aprueba_directo:
+        estado_inicial = PredioEstadoAprobacion.APROBADO
+    elif usa_gestor_apoyo:
+        estado_inicial = "en_digitalizacion"  # Nuevo estado para flujo de apoyo
+    else:
+        estado_inicial = f"pendiente_{cambio.tipo_cambio}"
+    
     cambio_doc = {
         "id": str(uuid.uuid4()),
         "predio_id": cambio.predio_id,
@@ -10819,7 +10839,7 @@ async def proponer_cambio_predio(
         "justificacion": cambio.justificacion,
         "radicado_id": cambio.radicado_id,
         "radicado_numero": radicado_info['radicado'] if radicado_info else cambio.radicado_numero,
-        "estado": PredioEstadoAprobacion.APROBADO if aprueba_directo else f"pendiente_{cambio.tipo_cambio}",
+        "estado": estado_inicial,
         "propuesto_por": current_user['id'],
         "propuesto_por_nombre": current_user['full_name'],
         "propuesto_por_rol": current_user['role'],
@@ -10829,6 +10849,13 @@ async def proponer_cambio_predio(
         "fecha_aprobacion": datetime.now(timezone.utc).isoformat() if aprueba_directo else None,
         "comentario_aprobacion": "Aprobación directa por coordinador/administrador" if aprueba_directo else None
     }
+    
+    # Agregar datos del gestor de apoyo si se usa ese flujo
+    if usa_gestor_apoyo:
+        cambio_doc["gestor_apoyo_id"] = cambio.gestor_apoyo_id
+        cambio_doc["gestor_apoyo_nombre"] = gestor_apoyo.get('full_name')
+        cambio_doc["observaciones_apoyo"] = cambio.observaciones_apoyo
+        cambio_doc["fecha_asignacion_apoyo"] = datetime.now(timezone.utc).isoformat()
     
     # Si aprueba directo, guardar también los datos_anteriores
     if aprueba_directo and predio_actual_data:
@@ -10842,11 +10869,31 @@ async def proponer_cambio_predio(
     # Guardar el cambio en la colección de cambios
     await db.predios_cambios.insert_one(cambio_doc)
     
+    # Notificar al gestor de apoyo si fue asignado
+    if usa_gestor_apoyo:
+        predio_codigo = predio_actual_data.get('codigo_predial_nacional', 'N/A') if predio_actual_data else 'N/A'
+        await crear_notificacion(
+            user_id=cambio.gestor_apoyo_id,
+            tipo="modificacion_asignada",
+            titulo="Modificación de predio asignada",
+            mensaje=f"{current_user['full_name']} te ha asignado la modificación del predio {predio_codigo}",
+            datos={"cambio_id": cambio_doc["id"], "predio_id": cambio.predio_id}
+        )
+    
+    # Construir mensaje de respuesta
+    if aprueba_directo:
+        mensaje = "Cambio aplicado directamente"
+    elif usa_gestor_apoyo:
+        mensaje = f"Modificación asignada a {gestor_apoyo.get('full_name')} para completar"
+    else:
+        mensaje = "Cambio propuesto, pendiente de aprobación"
+    
     return {
         "id": cambio_doc["id"],
         "estado": cambio_doc["estado"],
-        "mensaje": "Cambio aplicado directamente" if aprueba_directo else "Cambio propuesto, pendiente de aprobación",
-        "requiere_aprobacion": not aprueba_directo
+        "mensaje": mensaje,
+        "requiere_aprobacion": not aprueba_directo,
+        "asignado_gestor_apoyo": usa_gestor_apoyo
     }
 
 
