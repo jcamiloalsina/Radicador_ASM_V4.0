@@ -4566,23 +4566,43 @@ async def generate_codigo_homologado(municipio: str) -> str:
     import string
     import random
     
-    # Obtener último código para este municipio
+    # Obtener último código para este municipio - buscar solo número_predio que sea un entero razonable
     last_predio = await db.predios.find_one(
-        {"municipio": municipio, "deleted": {"$ne": True}},
+        {
+            "municipio": municipio, 
+            "deleted": {"$ne": True},
+            "numero_predio": {"$type": "int"}  # Solo buscar donde sea entero
+        },
         sort=[("numero_predio", -1)]
     )
     
     if last_predio:
-        # Handle both string and int numero_predio values
         num_predio = last_predio.get("numero_predio", 0)
-        if isinstance(num_predio, str):
-            try:
-                num_predio = int(num_predio)
-            except (ValueError, TypeError):
-                num_predio = 0
-        next_num = num_predio + 1
+        # Verificar que sea un número razonable (menos de 100 millones)
+        if isinstance(num_predio, (int, float)) and num_predio < 100000000:
+            next_num = int(num_predio) + 1
+        else:
+            # Si no hay un número razonable, buscar el máximo de predios_nuevos
+            last_nuevo = await db.predios_nuevos.find_one(
+                {"municipio": municipio},
+                sort=[("numero_predio", -1)]
+            )
+            if last_nuevo and isinstance(last_nuevo.get("numero_predio"), int):
+                next_num = last_nuevo["numero_predio"] + 1
+            else:
+                # Contar predios como fallback
+                count = await db.predios.count_documents({"municipio": municipio})
+                next_num = count + 1
     else:
-        next_num = 1
+        # No hay predios con numero_predio entero, verificar predios_nuevos
+        last_nuevo = await db.predios_nuevos.find_one(
+            {"municipio": municipio},
+            sort=[("numero_predio", -1)]
+        )
+        if last_nuevo and isinstance(last_nuevo.get("numero_predio"), int):
+            next_num = last_nuevo["numero_predio"] + 1
+        else:
+            next_num = 1
     
     # Generar código: BPP + número + letras aleatorias
     letters = ''.join(random.choices(string.ascii_uppercase, k=4))
