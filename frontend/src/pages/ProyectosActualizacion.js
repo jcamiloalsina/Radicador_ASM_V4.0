@@ -994,7 +994,8 @@ export default function ProyectosActualizacion() {
               <select 
                 value={nuevoProyecto.municipio}
                 onChange={(e) => setNuevoProyecto(prev => ({ ...prev, municipio: e.target.value }))}
-                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring relative z-50"
+                style={{ position: 'relative' }}
               >
                 <option value="">Seleccionar municipio</option>
                 {municipiosDisponibles.map((mun) => (
