@@ -75,6 +75,9 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ===== BACKUP SCHEDULER =====
+backup_scheduler = AsyncIOScheduler()
+
 
 # ===== WEBSOCKET CONNECTION MANAGER =====
 class ConnectionManager:
