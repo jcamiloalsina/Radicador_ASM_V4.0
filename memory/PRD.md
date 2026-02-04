@@ -114,7 +114,29 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 5 Febrero 2026 - Fix Permisos y Flujo Ver/Editar
+### Sesión 5 Febrero 2026 - Fix Permisos y Flujo Ver/Editar + Scheduler Backups
+
+#### 18. NUEVO: Scheduler para Backups Automáticos
+**Solicitado por usuario:** Implementar el scheduler que faltaba para que los backups se ejecuten automáticamente según la configuración.
+
+**Implementación Backend (server.py):**
+- Integración de `APScheduler` (AsyncIOScheduler) para ejecución programada
+- Función `ejecutar_backup_automatico()` que ejecuta backups sin intervención manual
+- Función `configurar_scheduler_backup()` que configura el trigger según frecuencia (diario/semanal/mensual)
+- Función `limpiar_backups_por_retencion()` para eliminar backups antiguos automáticamente
+- Nuevo endpoint `GET /api/database/scheduler/status` para ver estado del scheduler
+- El scheduler se inicia automáticamente al arrancar el backend
+- Se reconfigura automáticamente cuando cambia la configuración de backup
+
+**Características:**
+- ✅ Backups diarios a hora configurada (ej: 02:00)
+- ✅ Backups semanales en día específico
+- ✅ Backups mensuales en día específico
+- ✅ Limpieza automática según política de retención
+- ✅ Logs detallados de cada ejecución
+- ✅ Reconfiguración en caliente sin reiniciar servidor
+
+**Estado:** ✅ Implementado y verificado
 
 #### 16. Fix: Gestor no podía ver peticiones que él creó
 **Problema:** Un usuario con rol `gestor` no podía ver los detalles de peticiones que él mismo creó, recibía error 403.
