@@ -13159,8 +13159,39 @@ async def upload_gdb_file(
                 
                 logger.info(f"UpdateMany completado: {result.modified_count} predios actualizados")
                 
-                # NOTA: Las áreas de los predios están disponibles en gdb_geometrias
-                # No es necesario duplicarlas en cada predio, lo cual ahorra tiempo
+                # Actualizar area_gdb para cada predio vinculado
+                await update_progress("relacionando_gestion", 88, "Actualizando áreas de predios...")
+                
+                # Obtener las áreas de las geometrías GDB
+                areas_gdb = {}
+                async for geo in db.gdb_geometrias.find(
+                    {"codigo": {"$in": list(codigos_gdb_set)}, "area_m2": {"$gt": 0}},
+                    {"_id": 0, "codigo": 1, "area_m2": 1}
+                ):
+                    areas_gdb[geo["codigo"]] = geo["area_m2"]
+                
+                # Actualizar predios con sus áreas GDB usando bulk_write
+                if areas_gdb:
+                    from pymongo import UpdateOne
+                    bulk_ops = []
+                    for codigo, area in areas_gdb.items():
+                        bulk_ops.append(UpdateOne(
+                            {
+                                "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"},
+                                "vigencia": ultima_vigencia,
+                                "codigo_predial_nacional": codigo
+                            },
+                            {"$set": {"area_gdb": area}}
+                        ))
+                    
+                    if bulk_ops:
+                        # Procesar en lotes de 1000
+                        for i in range(0, len(bulk_ops), 1000):
+                            batch = bulk_ops[i:i+1000]
+                            await db.predios.bulk_write(batch, ordered=False)
+                        
+                        logger.info(f"Actualizadas áreas GDB para {len(bulk_ops)} predios")
+                
                 await update_progress("relacionando_gestion", 92, "Finalizando vinculación con Gestión de Predios...")
                 
                 # Contar predios en última vigencia para el reporte
