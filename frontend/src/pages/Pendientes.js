@@ -562,6 +562,12 @@ export default function Pendientes() {
     // Si predio_actual_es_referencia es true, significa que son datos actuales, no históricos
     const tieneDatosAnteriores = Object.keys(datosAnteriores).length > 0 && !cambio.predio_actual_es_referencia;
     
+    // Función para normalizar valores para comparación (maneja tipos diferentes)
+    const normalizeValue = (val) => {
+      if (val === null || val === undefined) return '';
+      return String(val).trim();
+    };
+    
     // Campos a comparar
     const camposComparar = [
       { key: 'codigo_predial_nacional', label: 'Código Predial Nacional' },
@@ -584,23 +590,24 @@ export default function Pendientes() {
       // Manejar caso especial de propietarios (array)
       if (campo.key === 'nombre_propietario') {
         if (datosAnteriores.propietarios && datosAnteriores.propietarios.length > 0) {
-          valorActual = datosAnteriores.propietarios.map(p => p.nombre_propietario).join(', ');
+          valorActual = datosAnteriores.propietarios.map(p => `${p.nombre_propietario || ''} (${p.documento || 'Sin doc'})`).join(', ');
         }
         if (propuesto.propietarios && propuesto.propietarios.length > 0) {
-          valorPropuesto = propuesto.propietarios.map(p => p.nombre_propietario).join(', ');
+          valorPropuesto = propuesto.propietarios.map(p => `${p.nombre_propietario || ''} (${p.documento || 'Sin doc'})`).join(', ');
         }
       }
       
       // IMPORTANTE: Solo incluir si el campo fue propuesto (existe en datos_propuestos)
-      // y es diferente al valor actual
       const existeEnPropuesto = campo.key in propuesto || 
         (campo.key === 'nombre_propietario' && propuesto.propietarios);
       
       if (!existeEnPropuesto) continue; // No fue tocado, no mostrar
       
-      // Verificar si realmente cambió (solo si tenemos datos anteriores)
+      // Verificar si realmente cambió usando comparación normalizada
       if (tieneDatosAnteriores) {
-        const sonDiferentes = valorActual !== valorPropuesto;
+        const actualNorm = normalizeValue(valorActual);
+        const propuestoNorm = normalizeValue(valorPropuesto);
+        const sonDiferentes = actualNorm !== propuestoNorm;
         if (!sonDiferentes) continue; // Mismo valor, no mostrar
       }
       
