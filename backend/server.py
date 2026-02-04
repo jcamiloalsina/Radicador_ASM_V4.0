@@ -13426,7 +13426,8 @@ async def process_gdb_upload_background(
         
     except zipfile.BadZipFile:
         await update_progress("error", 0, "El archivo ZIP no es válido o está corrupto")
-        raise HTTPException(status_code=400, detail="El archivo ZIP no es válido o está corrupto. Intente descargarlo nuevamente.")
+        logger.error("Error: ZIP inválido o corrupto")
+        return  # Background task no lanza excepciones
     except Exception as e:
         error_msg = str(e)
         # Identificar errores comunes y dar mensajes más claros
@@ -13445,7 +13446,7 @@ async def process_gdb_upload_background(
         logger.error(f"Error uploading GDB ({temp_files[0]['filename'] if temp_files else 'unknown'}): {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=user_msg)
+        return  # Background task no lanza excepciones
 
 
 # ===== FUNCIÓN PARA GENERAR REPORTE PDF DE CALIDAD GDB =====
