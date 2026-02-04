@@ -13277,16 +13277,23 @@ async def process_gdb_upload_background(
                         ))
                     
                     if bulk_ops:
-                        # Procesar en lotes de 500 para evitar timeout
-                        total_batches = (len(bulk_ops) + 499) // 500
-                        for i in range(0, len(bulk_ops), 500):
-                            batch = bulk_ops[i:i+500]
+                        # Procesar en lotes más pequeños de 200 para evitar timeout
+                        total_ops = len(bulk_ops)
+                        batch_size = 200
+                        processed = 0
+                        
+                        for i in range(0, total_ops, batch_size):
+                            batch = bulk_ops[i:i+batch_size]
                             try:
                                 await db.predios.bulk_write(batch, ordered=False)
+                                processed += len(batch)
+                                # Actualizar progreso cada lote
+                                pct = 90 + int((processed / total_ops) * 2)  # 90% a 92%
+                                await update_progress("relacionando_gestion", pct, f"Actualizando áreas: {processed}/{total_ops} predios...")
                             except Exception as batch_err:
-                                logger.error(f"Error en batch {i//500 + 1}: {batch_err}")
+                                logger.error(f"Error en batch {i//batch_size + 1}: {batch_err}")
                         
-                        logger.info(f"Actualizadas áreas GDB para {len(bulk_ops)} predios en {total_batches} lotes")
+                        logger.info(f"Actualizadas áreas GDB para {processed} predios")
                 
                 await update_progress("relacionando_gestion", 92, "Finalizando vinculación con Gestión de Predios...")
                 
