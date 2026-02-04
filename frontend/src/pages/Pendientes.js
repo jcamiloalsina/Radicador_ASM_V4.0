@@ -2151,6 +2151,85 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para Completar Asignación de Apoyo */}
+      <Dialog open={showCompletarApoyoModal} onOpenChange={setShowCompletarApoyoModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <CheckCircle className="w-5 h-5" />
+              Completar Asignación de Apoyo
+            </DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que has completado esta modificación? Se enviará a revisión del coordinador.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedAsignacionApoyo && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <p className="text-sm text-slate-600">
+                  <strong>Predio:</strong> {selectedAsignacionApoyo.predio_actual?.codigo_predial_nacional}
+                </p>
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Municipio:</strong> {selectedAsignacionApoyo.predio_actual?.municipio || selectedAsignacionApoyo.datos_propuestos?.municipio}
+                </p>
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Asignado por:</strong> {selectedAsignacionApoyo.propuesto_por_nombre}
+                </p>
+                {selectedAsignacionApoyo.observaciones_apoyo && (
+                  <div className="mt-2 p-2 bg-amber-100 rounded text-sm text-amber-800">
+                    <strong>Instrucciones originales:</strong> {selectedAsignacionApoyo.observaciones_apoyo}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Observaciones al completar (opcional)
+                </Label>
+                <Textarea
+                  value={observacionesCompletarApoyo}
+                  onChange={(e) => setObservacionesCompletarApoyo(e.target.value)}
+                  placeholder="Agregar comentarios o notas sobre el trabajo realizado..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowCompletarApoyoModal(false);
+                setSelectedAsignacionApoyo(null);
+                setObservacionesCompletarApoyo('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCompletarApoyo}
+              disabled={procesandoApoyo}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {procesandoApoyo ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Completar y Enviar a Revisión
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
