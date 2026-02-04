@@ -10243,16 +10243,33 @@ async def crear_predio_nuevo(
     if gestor_apoyo.get('role') not in ['gestor', 'coordinador', 'administrador']:
         raise HTTPException(status_code=400, detail="El usuario asignado no tiene rol de gestor")
     
-    # Obtener siguiente número de terreno
-    terreno, terreno_num = await get_next_terreno_number(
-        r1.municipio, r1.zona, r1.sector, r1.manzana_vereda
+    # Construir código predial nacional usando los datos que el usuario especificó
+    divipola = MUNICIPIOS_DIVIPOLA.get(r1.municipio)
+    if not divipola:
+        raise HTTPException(status_code=400, detail=f"Municipio {r1.municipio} no válido")
+    
+    prefijo = divipola["departamento"] + divipola["municipio"]
+    
+    # Construir el código completo de 30 dígitos con los valores del usuario
+    # Estructura: prefijo(5) + zona(2) + sector(2) + comuna(2) + barrio(2) + manzana_vereda(4) + terreno(4) + condicion_predio(4) + predio_horizontal(5)
+    codigo_predial = (
+        f"{prefijo}"
+        f"{r1.zona.zfill(2)}"
+        f"{r1.sector.zfill(2)}"
+        f"{r1.comuna.zfill(2)}"
+        f"{r1.barrio.zfill(2)}"
+        f"{r1.manzana_vereda.zfill(4)}"
+        f"{r1.terreno.zfill(4)}"
+        f"{r1.condicion_predio.zfill(4)}"
+        f"{r1.predio_horizontal.zfill(5)}"
     )
     
-    # Generar código predial nacional
-    codigo_predial = await generate_codigo_predial(
-        r1.municipio, r1.zona, r1.sector, r1.manzana_vereda,
-        terreno, r1.condicion_predio, r1.predio_horizontal
-    )
+    # Asegurar que el código tenga exactamente 30 dígitos
+    codigo_predial = codigo_predial[:30].ljust(30, '0')
+    
+    # Extraer el número de terreno para guardarlo
+    terreno = r1.terreno.zfill(4)
+    terreno_num = int(terreno) if terreno.isdigit() else 1
     
     # Verificar que no exista
     existing = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
