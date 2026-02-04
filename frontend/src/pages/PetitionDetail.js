@@ -794,6 +794,23 @@ export default function PetitionDetail() {
                 </div>
               </div>
 
+              {/* Descripción/Notas del Solicitante */}
+              {petition.descripcion && (
+                <div className="border-t border-slate-200 pt-6">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <FileText className="w-5 h-5 text-amber-700" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-500">Nota del Solicitante</p>
+                      <p className="font-medium text-slate-900 whitespace-pre-line" data-testid="petition-descripcion">
+                        {petition.descripcion}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Sección de Certificado Catastral - Solo para trámites de certificado */}
               {petition.tipo_tramite?.toLowerCase().includes('certificado') && (
                 <div className="border-t border-slate-200 pt-6">
