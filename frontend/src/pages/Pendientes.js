@@ -1932,9 +1932,10 @@ export default function Pendientes() {
           <div className="space-y-4 py-4">
             {selectedPredioNuevo && (
               <div className="bg-slate-50 rounded-lg p-3 text-sm">
-                <p><strong>Código:</strong> {selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'Nuevo'}</p>
-                <p><strong>Municipio:</strong> {selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
-                <p><strong>Creado por:</strong> {selectedPredioNuevo.creado_por_nombre || 'N/A'}</p>
+                <p><strong>Código:</strong> {selectedPredioNuevo.codigo_predial_nacional || selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'Nuevo'}</p>
+                <p><strong>Municipio:</strong> {selectedPredioNuevo.municipio || selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
+                <p><strong>Propietario:</strong> {selectedPredioNuevo.nombre_propietario || 'N/A'}</p>
+                <p><strong>Creado por:</strong> {selectedPredioNuevo.gestor_creador_nombre || selectedPredioNuevo.creado_por_nombre || 'N/A'}</p>
               </div>
             )}
             
