@@ -1625,6 +1625,115 @@ export default function Predios() {
     }
   }, [filterMunicipio, filterVigencia, filterGeometria]);
 
+  // Manejar parámetro predio_nuevo de la URL para abrir un predio nuevo en modo edición
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const predioNuevoId = params.get('predio_nuevo');
+    
+    if (predioNuevoId) {
+      // Cargar el predio nuevo y abrir el modal de creación para editarlo
+      const loadPredioNuevo = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.get(`${API}/predios-nuevos/${predioNuevoId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const predioNuevo = response.data;
+          
+          // Configurar el municipio
+          if (predioNuevo.municipio) {
+            setFilterMunicipio(predioNuevo.municipio);
+          }
+          
+          // Llenar el formulario con los datos del predio nuevo
+          setFormData({
+            municipio: predioNuevo.municipio || '',
+            direccion: predioNuevo.direccion || '',
+            area_terreno: predioNuevo.area_terreno || '',
+            area_construida: predioNuevo.area_construida || '',
+            avaluo: predioNuevo.avaluo || '',
+            destino_economico: predioNuevo.destino_economico || '',
+            zona: predioNuevo.zona || '',
+            codigo_predial_nacional: predioNuevo.codigo_predial_nacional || '',
+            // R1 fields
+            numero_orden_1: predioNuevo.numero_orden_1 || '0',
+            calificacion_no_certificada_1: predioNuevo.calificacion_no_certificada_1 || '0',
+            tipo_predio_1: predioNuevo.tipo_predio_1 || '',
+            numero_predial_anterior_1: predioNuevo.numero_predial_anterior_1 || '',
+            complemento_nom_predio_1: predioNuevo.complemento_nom_predio_1 || '',
+            area_total_terreno_1: predioNuevo.area_total_terreno_1 || '',
+            valor_referencia_1: predioNuevo.valor_referencia_1 || '',
+            tipo_avaluo_catastral_1: predioNuevo.tipo_avaluo_catastral_1 || '',
+            // R2 fields
+            numero_orden_2: predioNuevo.numero_orden_2 || '0',
+            tipo_construccion_2: predioNuevo.tipo_construccion_2 || '',
+            numero_pisos_2: predioNuevo.numero_pisos_2 || '0',
+            numero_habitaciones_2: predioNuevo.numero_habitaciones_2 || '0',
+            numero_banios_2: predioNuevo.numero_banios_2 || '0',
+            numero_locales_2: predioNuevo.numero_locales_2 || '0',
+            anio_construccion_2: predioNuevo.anio_construccion_2 || '',
+            total_area_construida_2: predioNuevo.total_area_construida_2 || '',
+            area_privada_construida_2: predioNuevo.area_privada_construida_2 || '',
+            area_total_lote_2: predioNuevo.area_total_lote_2 || '',
+            puntaje_2: predioNuevo.puntaje_2 || '0',
+            valor_m2_construccion_2: predioNuevo.valor_m2_construccion_2 || '0',
+            valor_m2_terreno_2: predioNuevo.valor_m2_terreno_2 || '0',
+            uso_predominante_2: predioNuevo.uso_predominante_2 || '',
+          });
+          
+          // Configurar propietarios
+          if (predioNuevo.propietarios && predioNuevo.propietarios.length > 0) {
+            setPropietarios(predioNuevo.propietarios);
+          }
+          
+          // Configurar el código manual si existe
+          if (predioNuevo.codigo_predial_nacional) {
+            const partes = getCodigoPartes(predioNuevo.codigo_predial_nacional);
+            setCodigoManual({
+              zona: partes.zona || '',
+              sector: partes.sector || '',
+              comuna: partes.comuna || '',
+              barrio: partes.barrio || '',
+              manzana_vereda: partes.manzana_vereda || '',
+              terreno: partes.terreno || '',
+              condicion_ph: partes.condicion_ph || '',
+              edificio_torre: partes.edificio_torre || '',
+              unidad: partes.unidad || ''
+            });
+          }
+          
+          // Configurar radicado si existe
+          if (predioNuevo.radicado_id) {
+            setRadicadoSeleccionado(predioNuevo.radicado_id);
+          }
+          
+          // Configurar para usar el nuevo flujo
+          setUsarNuevoFlujo(true);
+          setGestorAsignado(predioNuevo.gestor_apoyo_id || '');
+          
+          // Guardar el ID del predio nuevo que estamos editando
+          setEditingPredioNuevoId(predioNuevoId);
+          
+          // Abrir el dialog de creación
+          setShowCreateDialog(true);
+          setShowDashboard(false);
+          
+          // Limpiar el parámetro de la URL
+          navigate('/dashboard/predios', { replace: true });
+          
+          toast.info('Predio nuevo cargado para edición');
+        } catch (error) {
+          console.error('Error loading predio nuevo:', error);
+          toast.error('Error al cargar el predio nuevo');
+          navigate('/dashboard/predios', { replace: true });
+        }
+      };
+      
+      loadPredioNuevo();
+    }
+  }, [location.search, navigate]);
+
   // Auto-seleccionar municipio cuando se abre el diálogo
   useEffect(() => {
     if (showCreateDialog && filterMunicipio) {
