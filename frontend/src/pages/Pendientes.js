@@ -1452,27 +1452,52 @@ export default function Pendientes() {
                             <div className="mt-2 text-xs bg-slate-100 p-2 rounded">
                               <p className="font-semibold text-slate-600 mb-1">Campos modificados:</p>
                               <div className="flex flex-wrap gap-1">
-                                {cambio.datos_propuestos.area_terreno !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Área Terreno</Badge>
-                                )}
-                                {cambio.datos_propuestos.area_construida !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Área Construida</Badge>
-                                )}
-                                {cambio.datos_propuestos.avaluo !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Avalúo</Badge>
-                                )}
-                                {cambio.datos_propuestos.destino_economico !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Destino Económico</Badge>
-                                )}
-                                {cambio.datos_propuestos.direccion !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Dirección</Badge>
-                                )}
-                                {cambio.datos_propuestos.propietarios !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Propietarios</Badge>
-                                )}
-                                {cambio.datos_propuestos.zona !== undefined && (
-                                  <Badge variant="outline" className="text-xs">Zona</Badge>
-                                )}
+                                {(() => {
+                                  // Función para comparar valores (maneja undefined, null, strings, números)
+                                  const hasChanged = (field) => {
+                                    const propuesto = cambio.datos_propuestos?.[field];
+                                    const actual = cambio.predio_actual?.[field];
+                                    
+                                    // Si no hay valor propuesto, no ha cambiado
+                                    if (propuesto === undefined) return false;
+                                    
+                                    // Comparar como strings para evitar problemas de tipo
+                                    const propuestoStr = String(propuesto ?? '').trim();
+                                    const actualStr = String(actual ?? '').trim();
+                                    
+                                    return propuestoStr !== actualStr;
+                                  };
+                                  
+                                  // Para propietarios, comparar de forma especial (array de objetos)
+                                  const propietariosChanged = () => {
+                                    const propPropietarios = cambio.datos_propuestos?.propietarios;
+                                    const actPropietarios = cambio.predio_actual?.propietarios;
+                                    
+                                    if (!propPropietarios) return false;
+                                    if (!actPropietarios) return true;
+                                    
+                                    // Comparar JSON stringify para detectar cambios
+                                    return JSON.stringify(propPropietarios) !== JSON.stringify(actPropietarios);
+                                  };
+                                  
+                                  const camposModificados = [];
+                                  
+                                  if (hasChanged('area_terreno')) camposModificados.push('Área Terreno');
+                                  if (hasChanged('area_construida')) camposModificados.push('Área Construida');
+                                  if (hasChanged('avaluo')) camposModificados.push('Avalúo');
+                                  if (hasChanged('destino_economico')) camposModificados.push('Destino Económico');
+                                  if (hasChanged('direccion')) camposModificados.push('Dirección');
+                                  if (hasChanged('zona')) camposModificados.push('Zona');
+                                  if (propietariosChanged()) camposModificados.push('Propietarios');
+                                  
+                                  return camposModificados.length > 0 ? (
+                                    camposModificados.map((campo, idx) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">{campo}</Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-slate-400 italic">Sin cambios detectados</span>
+                                  );
+                                })()}
                               </div>
                             </div>
                           )}
