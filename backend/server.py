@@ -1719,10 +1719,16 @@ async def login(credentials: UserLogin):
         {"_id": 0}
     )
     if not user:
+        logger.warning(f"Login fallido: usuario no encontrado para {credentials.email}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
     
+    logger.info(f"Login intento: {credentials.email} - Usuario encontrado: {user.get('full_name')}")
+    
     if not verify_password(credentials.password, user['password']):
+        logger.warning(f"Login fallido: contraseña incorrecta para {credentials.email}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
+    
+    logger.info(f"Login exitoso: {credentials.email}")
     
     # Verificar si el email está verificado (excepto admin protegido y usuarios internos)
     is_protected_admin = user.get('email', '').lower() == PROTECTED_ADMIN_EMAIL.lower()
