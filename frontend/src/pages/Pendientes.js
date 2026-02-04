@@ -794,17 +794,10 @@ export default function Pendientes() {
                                 <Button
                                   size="sm"
                                   className="bg-emerald-600 hover:bg-emerald-700"
-                                  onClick={() => handleEnviarRevision(predio)}
-                                  disabled={processingPredio === predio.id}
+                                  onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
                                 >
-                                  {processingPredio === predio.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <ArrowRight className="w-4 h-4 mr-1" />
-                                      Enviar a Revisión
-                                    </>
-                                  )}
+                                  <ArrowRight className="w-4 h-4 mr-1" />
+                                  Enviar a Revisión
                                 </Button>
                               </div>
                             </div>
