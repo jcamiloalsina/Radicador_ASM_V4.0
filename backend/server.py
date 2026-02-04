@@ -375,10 +375,12 @@ class PredioR1Create(BaseModel):
     municipio: str
     zona: str = "00"  # 00=Rural, 01=Urbano, 02-99=Corregimientos
     sector: str = "01"
+    comuna: str = "00"
+    barrio: str = "00"
     manzana_vereda: str = "0000"
     terreno: str = "0001"
     condicion_predio: str = "0000"
-    predio_horizontal: str = "0000"
+    predio_horizontal: str = "000000000"
     
     # Propietario
     nombre_propietario: str
