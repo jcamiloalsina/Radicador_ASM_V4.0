@@ -12862,7 +12862,7 @@ async def upload_gdb_file(
                 relacionados_total = await db.predios.count_documents(count_query)
                 
                 logger.info(f"Pre-conteo: {relacionados_total} predios con match exacto")
-                await update_progress("vinculando", 82, f"Actualizando {relacionados_total} predios...")
+                await update_progress("relacionando_gestion", 82, f"Vinculando {relacionados_total} predios con geometrías...")
                 
                 # Actualizar todos los predios con match en UNA operación
                 result = await db.predios.update_many(
