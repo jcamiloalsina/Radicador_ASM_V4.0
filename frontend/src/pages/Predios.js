@@ -1301,6 +1301,10 @@ export default function Predios() {
     getPrediosOffline
   } = useOfflineSync(null, 'conservacion');
   
+  // Router hooks para manejar parámetros de URL
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   // Estado para la barra de progreso de descarga offline
   const [downloadProgress, setDownloadProgress] = useState({
     isDownloading: false,
