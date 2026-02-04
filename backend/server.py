@@ -12985,7 +12985,8 @@ async def upload_gdb_file(
                     'urbanos_guardadas': urban_guardadas,
                     'predios_municipio': predios_municipio,
                     'predios_con_cartografia': predios_con_cartografia,
-                    'calidad_pct': calidad_pct
+                    'calidad_pct': calidad_pct,
+                    'vigencia_usada': vigencia_usada
                 },
                 errores=errores_calidad
             )
