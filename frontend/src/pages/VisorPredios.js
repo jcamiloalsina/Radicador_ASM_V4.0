@@ -15,6 +15,7 @@ import {
   Layers, ZoomIn, ZoomOut, Home, FileText, AlertCircle, Eye, EyeOff, Navigation, Crosshair, AlertTriangle, CheckCircle, XCircle, Upload, Trash2, Image, Loader2, WifiOff, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useWebSocket } from '../context/WebSocketContext';
 import useOfflineSync from '../hooks/useOfflineSync';
 import { saveGeometriasMunicipioOffline, getGeometriasMunicipioOffline, countGeometriasMunicipioOffline } from '../utils/offlineDB';
 
