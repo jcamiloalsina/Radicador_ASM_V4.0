@@ -4624,14 +4624,85 @@ export default function Predios() {
             </div>
           )}
           
+          {/* Opción: Asignar a Gestor de Apoyo para completar modificación */}
+          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <input 
+                type="checkbox" 
+                id="usar-gestor-apoyo-mod"
+                checked={usarGestorApoyoMod}
+                onChange={(e) => {
+                  setUsarGestorApoyoMod(e.target.checked);
+                  if (!e.target.checked) {
+                    setGestorApoyoModificacion('');
+                    setObservacionesApoyoMod('');
+                  }
+                }}
+                className="rounded border-amber-300 text-amber-600"
+              />
+              <Label htmlFor="usar-gestor-apoyo-mod" className="text-sm font-medium text-amber-700 cursor-pointer">
+                👥 Asignar a Gestor de Apoyo para completar esta modificación
+              </Label>
+            </div>
+            <p className="text-xs text-amber-600 mb-3">
+              Opcional: Otro miembro del equipo completará la modificación antes de enviarla a aprobación
+            </p>
+            
+            {usarGestorApoyoMod && (
+              <div className="space-y-3 pt-2 border-t border-amber-200">
+                <div>
+                  <Label className="text-xs text-amber-800 font-medium">Gestor de Apoyo *</Label>
+                  <select 
+                    value={gestorApoyoModificacion} 
+                    onChange={(e) => setGestorApoyoModificacion(e.target.value)}
+                    className="w-full h-10 px-3 py-2 text-sm border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 mt-1"
+                    data-testid="gestor-apoyo-mod-trigger"
+                  >
+                    <option value="">Seleccione un gestor de apoyo...</option>
+                    {gestoresDisponibles
+                      .filter(g => g.id !== user?.id) // Excluir al usuario actual
+                      .map(g => (
+                        <option key={g.id} value={g.id}>
+                          {g.full_name} ({g.role === 'gestor' ? 'Gestor' : g.role === 'coordinador' ? 'Coordinador' : g.role === 'atencion_usuario' ? 'Atención' : g.role})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs text-amber-800 font-medium">Observaciones para el Gestor de Apoyo</Label>
+                  <textarea 
+                    value={observacionesApoyoMod}
+                    onChange={(e) => setObservacionesApoyoMod(e.target.value)}
+                    placeholder="Instrucciones o detalles adicionales para completar la modificación..."
+                    className="w-full px-3 py-2 text-sm border border-amber-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 mt-1 min-h-[60px]"
+                  />
+                </div>
+                {!gestorApoyoModificacion && (
+                  <p className="text-xs text-red-600">
+                    ⚠️ Debe seleccionar un gestor de apoyo
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => { setShowEditDialog(false); setRadicadoSeleccionado(''); }}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { 
+              setShowEditDialog(false); 
+              setRadicadoSeleccionado(''); 
+              setUsarGestorApoyoMod(false);
+              setGestorApoyoModificacion('');
+              setObservacionesApoyoMod('');
+            }}>Cancelar</Button>
             <Button 
               onClick={handleUpdate} 
               className="bg-emerald-700 hover:bg-emerald-800"
-              disabled={!['coordinador', 'administrador'].includes(user?.role) && !radicadoSeleccionado}
+              disabled={
+                (!['coordinador', 'administrador'].includes(user?.role) && !radicadoSeleccionado) ||
+                (usarGestorApoyoMod && !gestorApoyoModificacion)
+              }
             >
-              Guardar Cambios
+              {usarGestorApoyoMod ? 'Asignar a Gestor de Apoyo' : 'Guardar Cambios'}
             </Button>
           </div>
           </div>
