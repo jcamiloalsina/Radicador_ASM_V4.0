@@ -2432,7 +2432,8 @@ async def get_petition(petition_id: str, current_user: dict = Depends(get_curren
     # Gestores can see assigned petitions OR petitions they created
     if current_user['role'] in [UserRole.GESTOR]:
         is_assigned = current_user['id'] in petition.get('gestores_asignados', [])
-        is_creator = petition.get('created_by') == current_user['id']
+        # Check both user_id (creator) and created_by for backwards compatibility
+        is_creator = petition.get('user_id') == current_user['id'] or petition.get('created_by') == current_user['id']
         if not is_assigned and not is_creator:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para ver esta petición")
     
