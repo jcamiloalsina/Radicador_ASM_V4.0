@@ -967,7 +967,7 @@ export default function ProyectosActualizacion() {
 
       {/* Modal Crear Proyecto */}
       <Dialog open={showCrearModal} onOpenChange={setShowCrearModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg overflow-visible">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-amber-600" />
@@ -978,7 +978,7 @@ export default function ProyectosActualizacion() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-visible">
             <div className="space-y-2">
               <Label htmlFor="nombre">Nombre del Proyecto *</Label>
               <Input
