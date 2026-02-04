@@ -1822,29 +1822,64 @@ export default function Pendientes() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-slate-500">Código Predial:</span>
-                    <p className="font-mono break-all">{selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'N/A'}</p>
+                    <p className="font-mono break-all">{selectedPredioNuevo.codigo_predial_nacional || selectedPredioNuevo.datos_predio?.codigo_predial_nacional || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Municipio:</span>
-                    <p>{selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
+                    <p>{selectedPredioNuevo.municipio || selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Dirección:</span>
-                    <p>{selectedPredioNuevo.datos_predio?.direccion || 'N/A'}</p>
+                    <p>{selectedPredioNuevo.direccion || selectedPredioNuevo.datos_predio?.direccion || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Propietario(s):</span>
-                    <p>{selectedPredioNuevo.datos_predio?.propietarios?.map(p => p.nombre_propietario).join(', ') || 'N/A'}</p>
+                    <p>{selectedPredioNuevo.nombre_propietario || selectedPredioNuevo.datos_predio?.propietarios?.map(p => p.nombre_propietario).join(', ') || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Área Terreno:</span>
-                    <p>{selectedPredioNuevo.datos_predio?.area_terreno?.toLocaleString() || 'N/A'} m²</p>
+                    <p>{(selectedPredioNuevo.area_terreno || selectedPredioNuevo.datos_predio?.area_terreno)?.toLocaleString() || 'N/A'} m²</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Avalúo:</span>
-                    <p>${selectedPredioNuevo.datos_predio?.avaluo?.toLocaleString() || 'N/A'}</p>
+                    <p>${(selectedPredioNuevo.avaluo || selectedPredioNuevo.datos_predio?.avaluo)?.toLocaleString() || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Destino Económico:</span>
+                    <p>{selectedPredioNuevo.destino_economico || selectedPredioNuevo.datos_predio?.destino_economico || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Tipo Documento:</span>
+                    <p>{selectedPredioNuevo.tipo_documento || 'N/A'} - {selectedPredioNuevo.numero_documento || 'N/A'}</p>
                   </div>
                 </div>
+                
+                {/* Mostrar información R2 si existe */}
+                {(selectedPredioNuevo.r2 || selectedPredioNuevo.matricula_inmobiliaria) && (
+                  <div className="mt-4 pt-3 border-t border-slate-200">
+                    <h5 className="font-medium text-slate-600 mb-2">Información Física (R2)</h5>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {(selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria) && (
+                        <div>
+                          <span className="text-slate-500">Matrícula:</span>
+                          <p>{selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria}</p>
+                        </div>
+                      )}
+                      {(selectedPredioNuevo.r2?.zona_fisica_1 || selectedPredioNuevo.r2?.area_construida_1) && (
+                        <>
+                          <div>
+                            <span className="text-slate-500">Zona Física:</span>
+                            <p>{selectedPredioNuevo.r2?.zona_fisica_1 || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Área Construida:</span>
+                            <p>{selectedPredioNuevo.r2?.area_construida_1?.toLocaleString() || '0'} m²</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               
               {selectedPredioNuevo.radicado && (
