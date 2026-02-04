@@ -991,17 +991,19 @@ export default function ProyectosActualizacion() {
             
             <div className="space-y-2">
               <Label htmlFor="municipio">Municipio *</Label>
-              <select 
+              <Select 
                 value={nuevoProyecto.municipio}
-                onChange={(e) => setNuevoProyecto(prev => ({ ...prev, municipio: e.target.value }))}
-                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring relative z-50"
-                style={{ position: 'relative' }}
+                onValueChange={(value) => setNuevoProyecto(prev => ({ ...prev, municipio: value }))}
               >
-                <option value="">Seleccionar municipio</option>
-                {municipiosDisponibles.map((mun) => (
-                  <option key={mun} value={mun}>{mun}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar municipio" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]" position="popper" sideOffset={5}>
+                  {municipiosDisponibles.map((mun) => (
+                    <SelectItem key={mun} value={mun}>{mun}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {municipiosDisponibles.length === 0 && (
                 <p className="text-xs text-slate-500">No hay municipios disponibles</p>
               )}
