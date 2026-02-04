@@ -802,9 +802,21 @@ export default function Pendientes() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}`)}
+                                  data-testid={`ver-editar-predio-${predio.id}`}
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
                                   Ver / Editar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  onClick={() => openPredioActionDialog(predio, 'rechazar_asignacion')}
+                                  disabled={procesando}
+                                  data-testid={`rechazar-asignacion-mis-${predio.id}`}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Rechazar
                                 </Button>
                                 <Button
                                   size="sm"
