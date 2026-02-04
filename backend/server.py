@@ -12529,17 +12529,16 @@ async def process_gdb_upload_background(
         gdb_data_dir.mkdir(exist_ok=True)
         
         gdb_found = None
-        is_zip = len(files) == 1 and files[0].filename.endswith('.zip')
+        is_zip = len(temp_files) == 1 and temp_files[0]['filename'].endswith('.zip')
         
         await update_progress("cargando", 10, "Cargando archivos GDB...")
         
         if is_zip:
             # Proceso ZIP tradicional
-            file = files[0]
+            file_data = temp_files[0]
             temp_zip = UPLOAD_DIR / f"temp_gdb_{uuid.uuid4()}.zip"
             with open(temp_zip, 'wb') as f:
-                content = await file.read()
-                f.write(content)
+                f.write(file_data['content'])
             
             await update_progress("extrayendo", 15, "Extrayendo archivo ZIP...")
             
