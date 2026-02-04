@@ -114,6 +114,38 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 (Continuación) - Fix Bugs Críticos Mis Asignaciones
+
+#### 19. Fix: Botón "Editar" faltante en "Predios Nuevos" 
+**Problema reportado:** En la pestaña "Predios Nuevos" > "Asignados a Mí" o "Mis Creaciones", solo existía el botón "Ver Detalle" que abría un modal informativo. No había forma de editar el predio desde esa vista.
+
+**Solución Frontend (Pendientes.js líneas 1177-1189):**
+- Agregado botón "Editar" que navega a `/dashboard/predios?predio_nuevo={id}`
+- El botón aparece para gestores de apoyo o coordinadores en estados editables (creado, digitalizacion, devuelto)
+- Incluye `data-testid` para testing automatizado
+
+**Estado:** ✅ Verificado con testing agent (iteration_29.json)
+
+#### 20. NUEVO: Funcionalidad "Rechazar Asignación" para Gestor de Apoyo
+**Problema reportado:** No existía la opción para que un gestor de apoyo rechace una asignación de predio nuevo. Solo podía "Enviar a Revisión".
+
+**Implementación Backend (server.py líneas 10677-10686):**
+- Nueva acción `rechazar_asignacion` en endpoint `POST /api/predios-nuevos/{id}/accion`
+- Solo el gestor de apoyo asignado puede ejecutar esta acción
+- Al rechazar: quita `gestor_apoyo_id` y `gestor_apoyo_nombre` del predio
+- El predio vuelve a estado "creado" para que el creador pueda reasignarlo
+- Se registra el motivo del rechazo en `comentario_devolucion` e historial
+
+**Implementación Frontend (Pendientes.js líneas 1191-1205, 810-820):**
+- Botón "Rechazar" (rojo) en secciones "Mis Asignaciones" y "Predios Nuevos" > "Asignados a Mí"
+- Modal de confirmación con campo obligatorio de observaciones
+- Mensaje explicativo: "El predio será devuelto al gestor creador. Ya no aparecerá en tus asignaciones."
+- Toast de éxito: "Asignación rechazada. El predio ha sido devuelto al gestor creador."
+
+**Estado:** ✅ Verificado con testing agent (iteration_29.json)
+
+---
+
 ### Sesión 5 Febrero 2026 - Fix Permisos y Flujo Ver/Editar + Scheduler Backups
 
 #### 18. NUEVO: Scheduler para Backups Automáticos
