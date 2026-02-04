@@ -590,10 +590,18 @@ export default function Pendientes() {
       // Manejar caso especial de propietarios (array)
       if (campo.key === 'nombre_propietario') {
         if (datosAnteriores.propietarios && datosAnteriores.propietarios.length > 0) {
-          valorActual = datosAnteriores.propietarios.map(p => `${p.nombre_propietario || ''} (${p.documento || 'Sin doc'})`).join(', ');
+          valorActual = datosAnteriores.propietarios.map(p => {
+            const nombre = p.nombre_propietario || '';
+            const doc = p.numero_documento || p.documento || 'Sin doc';
+            return `${nombre} (${doc})`;
+          }).join(', ');
         }
         if (propuesto.propietarios && propuesto.propietarios.length > 0) {
-          valorPropuesto = propuesto.propietarios.map(p => `${p.nombre_propietario || ''} (${p.documento || 'Sin doc'})`).join(', ');
+          valorPropuesto = propuesto.propietarios.map(p => {
+            const nombre = p.nombre_propietario || '';
+            const doc = p.numero_documento || p.documento || 'Sin doc';
+            return `${nombre} (${doc})`;
+          }).join(', ');
         }
       }
       
