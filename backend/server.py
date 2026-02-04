@@ -12933,7 +12933,7 @@ async def upload_gdb_file(
                 enviar_email=False  # No enviar correo para cargas de GDB
             )
         
-        await update_progress("completado", 100, f"¡Completado! {stats['relacionados']} predios relacionados de {stats['rurales'] + stats['urbanos']} geometrías GDB")
+        await update_progress("completado", 100, f"¡Carga completada! {stats['relacionados']} predios vinculados de {stats['rurales'] + stats['urbanos']} geometrías")
         
         # Limpiar progreso después de 5 minutos
         # (en producción esto se haría con un scheduler)
