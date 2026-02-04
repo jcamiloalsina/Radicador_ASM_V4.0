@@ -1351,6 +1351,9 @@ export default function Predios() {
   const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
   const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
   
+  // ID del predio nuevo que estamos editando (para actualizaciones)
+  const [editingPredioNuevoId, setEditingPredioNuevoId] = useState(null);
+  
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 100; // Mostrar 100 predios por página
