@@ -1121,6 +1121,41 @@ export default function VisorPredios() {
     try {
       const token = localStorage.getItem('token');
       
+      // Variable para rastrear el upload_id
+      let currentUploadId = null;
+      let pollingInterval = null;
+      let uploadCompleted = false;
+      
+      // Función para hacer polling del progreso
+      const pollProgress = async () => {
+        if (!currentUploadId || uploadCompleted) return;
+        
+        try {
+          const progressRes = await axios.get(`${API}/gdb/upload-progress/${currentUploadId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          const progress = progressRes.data;
+          console.log('[GDB Polling] Progreso:', progress.status, progress.progress + '%');
+          
+          setUploadProgress({
+            status: progress.status,
+            progress: progress.progress,
+            message: progress.message
+          });
+          
+          if (progress.status === 'completado' || progress.status === 'error') {
+            uploadCompleted = true;
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              pollingInterval = null;
+            }
+          }
+        } catch (err) {
+          console.log('[GDB Polling] Error:', err.message);
+        }
+      };
+      
       // Configurar timeout largo para cargas GDB (pueden tardar hasta 2 minutos)
       const response = await axios.post(`${API}/gdb/upload`, formData, {
         headers: {
@@ -1135,8 +1170,33 @@ export default function VisorPredios() {
             progress: percentCompleted, 
             message: `Subiendo archivos: ${Math.round(progressEvent.loaded / 1024)}KB` 
           });
+          
+          // Cuando la subida termina (100%), capturar el upload_id e iniciar polling
+          if (progressEvent.loaded === progressEvent.total && !pollingInterval) {
+            // Dar un pequeño delay para que el servidor procese y genere el upload_id
+            setTimeout(async () => {
+              // Intentar obtener el upload_id del diccionario global de progreso
+              // Por ahora, no podemos obtenerlo aquí, pero el polling se iniciará después
+              console.log('[GDB] Subida completa, procesando en servidor...');
+              setUploadProgress({ 
+                status: 'procesando', 
+                progress: 15, 
+                message: 'Procesando en el servidor...' 
+              });
+            }, 500);
+          }
         }
       });
+      
+      // Detener polling si está activo
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      
+      // Obtener upload_id de la respuesta y verificar si hay datos disponibles
+      if (response.data.upload_id) {
+        currentUploadId = response.data.upload_id;
+      }
       
       // Si la respuesta ya tiene datos de calidad o geometrías, el proceso terminó exitosamente
       // No necesitamos consultar el progreso, mostrar resultado directo
