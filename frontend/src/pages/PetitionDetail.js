@@ -324,14 +324,42 @@ export default function PetitionDetail() {
                       </div>
                     </DialogContent>
                   </Dialog>
-                  <Button 
-                    onClick={handleReenviar}
-                    className="bg-orange-600 hover:bg-orange-700 text-white" 
-                    data-testid="reenviar-button"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Reenviar para Revisión
-                  </Button>
+                  
+                  {/* Botón Reenviar para el ciudadano */}
+                  {petition.user_id === user?.id && (
+                    <Button 
+                      onClick={handleReenviar}
+                      className="bg-orange-600 hover:bg-orange-700 text-white" 
+                      data-testid="reenviar-button"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Reenviar para Revisión
+                    </Button>
+                  )}
+                  
+                  {/* Botón Reasignar para roles internos (Coordinador, Atención al Usuario, Admin) */}
+                  {petition.user_id !== user?.id && ['coordinador', 'atencion_usuario', 'administrador'].includes(user?.role) && (
+                    <Button 
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          await axios.patch(`${API}/petitions/${petition.id}`, 
+                            { estado: 'asignado' },
+                            { headers: { Authorization: `Bearer ${token}` } }
+                          );
+                          toast.success('Trámite reasignado correctamente');
+                          fetchPetition();
+                        } catch (error) {
+                          toast.error(error.response?.data?.detail || 'Error al reasignar');
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white" 
+                      data-testid="reasignar-button"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reasignar Trámite
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -339,8 +367,8 @@ export default function PetitionDetail() {
         </Card>
       )}
 
-      {/* Alert for rejected petitions - Citizens can upload files */}
-      {petition.estado === 'rechazado' && petition.user_id === user?.id && (
+      {/* Alert for rejected petitions - Citizens and internal staff can upload files */}
+      {petition.estado === 'rechazado' && (petition.user_id === user?.id || ['coordinador', 'atencion_usuario', 'administrador'].includes(user?.role)) && (
         <Card className="border-red-300 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
