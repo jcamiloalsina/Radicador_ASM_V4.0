@@ -1160,6 +1160,36 @@ export default function Pendientes() {
                                   Ver Detalle
                                 </Button>
                                 
+                                {/* Botón Editar - visible para gestor de apoyo o coordinador en estados editables */}
+                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                 (esApoyo || isCoordinador) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}`)}
+                                    data-testid={`edit-predio-${predio.id}`}
+                                  >
+                                    <Edit className="w-4 h-4 mr-1" />
+                                    Editar
+                                  </Button>
+                                )}
+                                
+                                {/* Botón Rechazar - visible para gestor de apoyo en estados pendientes */}
+                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                 esApoyo && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => openPredioActionDialog(predio, 'rechazar_asignacion')}
+                                    disabled={procesando}
+                                    data-testid={`rechazar-asignacion-${predio.id}`}
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Rechazar
+                                  </Button>
+                                )}
+                                
                                 {/* Botón Enviar a Revisión - visible para estado creado, digitalizacion, devuelto */}
                                 {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
                                  (esApoyo || isCoordinador) && (
