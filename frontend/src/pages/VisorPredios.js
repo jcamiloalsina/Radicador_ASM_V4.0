@@ -1193,13 +1193,124 @@ export default function VisorPredios() {
         clearInterval(pollingInterval);
       }
       
-      // Obtener upload_id de la respuesta y verificar si hay datos disponibles
+      // Obtener upload_id de la respuesta
       if (response.data.upload_id) {
         currentUploadId = response.data.upload_id;
+        console.log('[GDB] Upload ID recibido:', currentUploadId);
+        
+        // Iniciar polling para monitorear el progreso
+        let checkCount = 0;
+        const maxChecks = 180; // 3 minutos máximo (1 segundo por check)
+        
+        const checkProgress = async () => {
+          if (checkCount >= maxChecks) {
+            console.log('[GDB Polling] Tiempo máximo alcanzado');
+            setUploadProgress({ status: 'timeout', progress: 0, message: 'Tiempo de espera excedido. Verifique el estado más tarde.' });
+            setUploadingGdb(false);
+            return;
+          }
+          
+          try {
+            const progressRes = await axios.get(`${API}/gdb/upload-progress/${currentUploadId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            const progress = progressRes.data;
+            console.log(`[GDB Polling] ${checkCount}: ${progress.status} - ${progress.progress}%`);
+            
+            setUploadProgress({
+              status: progress.status,
+              progress: progress.progress,
+              message: progress.message
+            });
+            
+            if (progress.status === 'completado') {
+              // Proceso completado - obtener datos finales
+              console.log('[GDB] Proceso completado!', progress);
+              
+              // Mostrar toast de éxito
+              if (progress.calidad) {
+                const calidadPct = progress.calidad.porcentaje || 100;
+                if (calidadPct >= 95) {
+                  toast.success(`✅ ¡Excelente! ${progress.predios_relacionados || 0} predios vinculados. Calidad: ${calidadPct}%`);
+                } else if (calidadPct >= 80) {
+                  toast.success(`✓ Carga exitosa. ${progress.predios_relacionados || 0} predios vinculados. Calidad: ${calidadPct}%`, { duration: 5000 });
+                } else {
+                  toast.warning(`⚠️ Carga completa. Calidad: ${calidadPct}%. Revisar reporte PDF.`, { duration: 8000 });
+                }
+                
+                // Si hay reporte PDF
+                if (progress.calidad.reporte_pdf) {
+                  toast.info(
+                    <div className="flex flex-col gap-1">
+                      <span>📄 Reporte de calidad disponible</span>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const authToken = localStorage.getItem('token');
+                            const res = await fetch(`${API}/gdb/reportes-calidad/${progress.calidad.reporte_pdf}`, {
+                              headers: { 'Authorization': `Bearer ${authToken}` }
+                            });
+                            if (!res.ok) throw new Error('Error al descargar');
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = progress.calidad.reporte_pdf;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                            toast.success('PDF descargado');
+                          } catch (err) {
+                            toast.error('Error al descargar el reporte');
+                          }
+                        }}
+                        className="text-blue-600 underline text-sm hover:text-blue-800"
+                      >
+                        Descargar PDF
+                      </button>
+                    </div>,
+                    { duration: 10000 }
+                  );
+                }
+              } else {
+                toast.success(`¡Completado! ${progress.predios_relacionados || 0} predios relacionados`);
+              }
+              
+              fetchGdbStats();
+              verificarCargasMensuales();
+              setShowUploadGdb(false);
+              setMostrarPreguntaGdb(false);
+              setGdbCargadaEsteMes(true);
+              setTimeout(() => setUploadProgress(null), 3000);
+              setUploadingGdb(false);
+              return;
+              
+            } else if (progress.status === 'error') {
+              toast.error('❌ ' + progress.message);
+              setUploadingGdb(false);
+              setTimeout(() => setUploadProgress(null), 5000);
+              return;
+            }
+            
+            // Continuar polling
+            checkCount++;
+            setTimeout(checkProgress, 1000);
+            
+          } catch (err) {
+            console.log('[GDB Polling] Error:', err.message);
+            checkCount++;
+            setTimeout(checkProgress, 1000);
+          }
+        };
+        
+        // Iniciar polling después de un pequeño delay
+        setTimeout(checkProgress, 500);
+        return; // Salir y dejar que el polling maneje el resto
       }
       
-      // Si la respuesta ya tiene datos de calidad o geometrías, el proceso terminó exitosamente
-      // No necesitamos consultar el progreso, mostrar resultado directo
+      // LEGACY: Si la respuesta ya tiene datos de calidad o geometrías, el proceso terminó exitosamente
       if (response.data.calidad || response.data.total_geometrias_gdb) {
         const calidad = response.data.calidad;
         const construcciones = response.data.construcciones;
