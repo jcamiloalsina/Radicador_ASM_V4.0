@@ -2570,6 +2570,66 @@ async def download_citizen_files_as_zip(petition_id: str, current_user: dict = D
         media_type='application/zip'
     )
 
+
+@api_router.get("/petitions/{petition_id}/archivo/{filename}")
+async def download_petition_file(
+    petition_id: str,
+    filename: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Descarga un archivo individual de una petición.
+    - Staff puede descargar cualquier archivo
+    - Usuarios solo pueden descargar archivos de sus propias peticiones
+    """
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Petición no encontrada")
+    
+    # Verificar permisos
+    if current_user['role'] == UserRole.USUARIO:
+        if petition.get('user_id') != current_user['id']:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para descargar este archivo")
+    
+    # Buscar el archivo en la lista de archivos
+    archivo_encontrado = None
+    for archivo in petition.get('archivos', []):
+        if archivo.get('filename') == filename:
+            archivo_encontrado = archivo
+            break
+    
+    if not archivo_encontrado:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+    
+    file_path = Path(archivo_encontrado['path'])
+    if not file_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El archivo no existe en el servidor")
+    
+    # Determinar el tipo MIME
+    content_type = "application/octet-stream"
+    filename_lower = archivo_encontrado['original_name'].lower()
+    if filename_lower.endswith('.pdf'):
+        content_type = "application/pdf"
+    elif filename_lower.endswith(('.jpg', '.jpeg')):
+        content_type = "image/jpeg"
+    elif filename_lower.endswith('.png'):
+        content_type = "image/png"
+    elif filename_lower.endswith('.doc'):
+        content_type = "application/msword"
+    elif filename_lower.endswith('.docx'):
+        content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    elif filename_lower.endswith('.xls'):
+        content_type = "application/vnd.ms-excel"
+    elif filename_lower.endswith('.xlsx'):
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    
+    return FileResponse(
+        path=file_path,
+        filename=archivo_encontrado['original_name'],
+        media_type=content_type
+    )
+
+
 @api_router.post("/petitions/{petition_id}/assign-gestor")
 async def assign_gestor(
     petition_id: str,
