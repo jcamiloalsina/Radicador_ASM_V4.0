@@ -99,9 +99,18 @@ class ConnectionManager:
         if user_id in self.active_connections:
             try:
                 await self.active_connections[user_id].send_json(message)
+                # Log de progreso GDB para debugging
+                if message.get('type') == 'gdb_upload_progress':
+                    data = message.get('data', {})
+                    logging.info(f"[WS] GDB Progress enviado a {user_id}: {data.get('status')} - {data.get('progress')}% - {data.get('message', '')[:50]}")
             except Exception as e:
                 logging.error(f"Error sending to {user_id}: {e}")
                 self.disconnect(user_id)
+        else:
+            # Log cuando el usuario no está conectado
+            if message.get('type') == 'gdb_upload_progress':
+                data = message.get('data', {})
+                logging.warning(f"[WS] Usuario {user_id} NO conectado. GDB Progress perdido: {data.get('status')} - {data.get('progress')}%")
     
     async def broadcast(self, message: dict, exclude_user: str = None):
         """Broadcast message to all connected users except the sender"""
