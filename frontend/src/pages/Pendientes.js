@@ -663,8 +663,8 @@ export default function Pendientes() {
           <TabsTrigger value="mis-asignaciones" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Mis Asignaciones
-            {misAsignacionesApoyo.length > 0 && (
-              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{misAsignacionesApoyo.length}</Badge>
+            {(misAsignacionesApoyo.length + asignadosAMi.length) > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{misAsignacionesApoyo.length + asignadosAMi.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="modificaciones" className="flex items-center gap-2">
