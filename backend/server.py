@@ -12823,7 +12823,7 @@ async def upload_gdb_file(
         except Exception as e:
             logger.warning(f"Error procesando construcciones: {e}")
         
-        await update_progress("relacionando", 75, f"Relacionando {len(codigos_gdb)} códigos GDB con predios...")
+        await update_progress("subiendo_visor", 75, f"Subiendo al Visor de predios ({len(codigos_gdb)} geometrías)...")
         
         # ========================================
         # VINCULACIÓN GDB-PREDIOS: MATCH EXACTO + ÚLTIMA VIGENCIA
