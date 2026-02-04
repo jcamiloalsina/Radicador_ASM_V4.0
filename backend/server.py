@@ -10770,24 +10770,59 @@ async def ejecutar_accion_predio_nuevo(
     
     # Crear notificaciones
     destinatarios = set()
-    if predio['gestor_creador_id'] != user_id:
+    if predio['gestor_creador_id'] and predio['gestor_creador_id'] != user_id:
         destinatarios.add(predio['gestor_creador_id'])
-    if predio['gestor_apoyo_id'] != user_id:
+    if predio.get('gestor_apoyo_id') and predio['gestor_apoyo_id'] != user_id:
         destinatarios.add(predio['gestor_apoyo_id'])
     
+    # Si se envía a revisión, notificar también a coordinadores y usuarios con permiso de aprobar
+    if accion == "enviar_revision":
+        municipio_predio = predio.get('municipio')
+        
+        # Obtener coordinadores y administradores
+        coordinadores_cursor = db.users.find({
+            "role": {"$in": [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]},
+            "deleted": {"$ne": True}
+        }, {"id": 1, "municipios": 1})
+        
+        async for coord in coordinadores_cursor:
+            # Si el coordinador tiene municipios asignados, verificar que incluya el del predio
+            coord_municipios = coord.get('municipios', [])
+            if not coord_municipios or municipio_predio in coord_municipios:
+                if coord['id'] != user_id:
+                    destinatarios.add(coord['id'])
+        
+        # Obtener gestores con permiso de aprobar cambios
+        permisos_cursor = db.user_permissions.find({
+            "permissions.aprobar_cambios": True
+        }, {"user_id": 1})
+        
+        async for perm in permisos_cursor:
+            if perm['user_id'] != user_id:
+                # Verificar que el usuario esté activo
+                usuario = await db.users.find_one({"id": perm['user_id'], "deleted": {"$ne": True}})
+                if usuario:
+                    # Si tiene municipios asignados, verificar que incluya el del predio
+                    user_municipios = usuario.get('municipios', [])
+                    if not user_municipios or municipio_predio in user_municipios:
+                        destinatarios.add(perm['user_id'])
+        
+        logger.info(f"Predio {predio['codigo_predial_nacional']} enviado a revisión. Notificando a {len(destinatarios)} usuarios aprobadores.")
+    
     for dest_id in destinatarios:
-        notif = {
-            "id": str(uuid.uuid4()),
-            "user_id": dest_id,
-            "tipo": f"predio_{accion}",
-            "titulo": mensaje_notif,
-            "mensaje": accion_data.observaciones or mensaje_notif,
-            "predio_id": predio_id,
-            "codigo_predial": predio['codigo_predial_nacional'],
-            "leida": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.notifications.insert_one(notif)
+        if dest_id:  # Verificar que el ID no sea None
+            notif = {
+                "id": str(uuid.uuid4()),
+                "user_id": dest_id,
+                "tipo": f"predio_{accion}",
+                "titulo": mensaje_notif,
+                "mensaje": accion_data.observaciones or mensaje_notif,
+                "predio_id": predio_id,
+                "codigo_predial": predio['codigo_predial_nacional'],
+                "leida": False,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.notifications.insert_one(notif)
     
     # Retornar predio actualizado
     if accion == "aprobar":
