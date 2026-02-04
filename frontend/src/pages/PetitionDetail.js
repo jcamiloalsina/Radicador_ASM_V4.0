@@ -1303,6 +1303,33 @@ export default function PetitionDetail() {
                       </div>
                       <Badge className={badgeColor}>{roleLabel}</Badge>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          const response = await axios.get(`${API}/petitions/${id}/archivo/${archivo.filename}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            responseType: 'blob'
+                          });
+                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', archivo.original_name);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          toast.error('Error al descargar el archivo');
+                        }
+                      }}
+                      className="ml-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                      data-testid={`download-file-${idx}`}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
                   </div>
                 );
               })}
