@@ -144,6 +144,25 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 **Estado:** ✅ Verificado con testing agent (iteration_29.json)
 
+#### 21. Fix: Notificaciones a Coordinadores cuando se envía a Revisión
+**Problema reportado:** Cuando el gestor de apoyo digitaliza y envía un predio a revisión, no llegaba notificación al coordinador ni a usuarios con permiso de aprobar cambios.
+
+**Causa raíz:** El código solo notificaba al gestor creador y gestor de apoyo, pero no a los aprobadores.
+
+**Solución Backend (server.py líneas 10771-10810):**
+- Al ejecutar `enviar_revision`, ahora se buscan y notifican:
+  - Coordinadores y administradores (filtrando por municipio si tienen asignados)
+  - Usuarios con permiso `aprobar_cambios` activo
+  - Se verifica que los usuarios estén activos y tengan acceso al municipio del predio
+- Se agregó log informativo: "Predio X enviado a revisión. Notificando a N usuarios aprobadores."
+
+**Verificación:**
+- Predio enviado a revisión notificó correctamente a 3 usuarios aprobadores
+- Las notificaciones aparecen en la BD con tipo `predio_enviar_revision`
+- El predio aparece en "Predios Nuevos" con estado "revision" para los coordinadores
+
+**Estado:** ✅ Verificado con pruebas de backend
+
 ---
 
 ### Sesión 5 Febrero 2026 - Fix Permisos y Flujo Ver/Editar + Scheduler Backups
