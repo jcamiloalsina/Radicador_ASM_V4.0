@@ -11353,6 +11353,15 @@ async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
     pendientes_modificacion = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.PENDIENTE_MODIFICACION})
     pendientes_eliminacion = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.PENDIENTE_ELIMINACION})
     
+    # Contar modificaciones en digitalización (flujo de gestor de apoyo)
+    en_digitalizacion = await db.predios_cambios.count_documents({"estado": "en_digitalizacion"})
+    
+    # Mis asignaciones de apoyo pendientes
+    mis_asignaciones_apoyo = await db.predios_cambios.count_documents({
+        "gestor_apoyo_id": current_user['id'],
+        "estado": "en_digitalizacion"
+    })
+    
     # Contar historial de cambios procesados
     historial_aprobados = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.APROBADO})
     historial_rechazados = await db.predios_cambios.count_documents({"estado": PredioEstadoAprobacion.RECHAZADO})
@@ -11361,6 +11370,8 @@ async def get_cambios_stats(current_user: dict = Depends(get_current_user)):
         "pendientes_creacion": pendientes_creacion,
         "pendientes_modificacion": pendientes_modificacion,
         "pendientes_eliminacion": pendientes_eliminacion,
+        "en_digitalizacion": en_digitalizacion,
+        "mis_asignaciones_apoyo": mis_asignaciones_apoyo,
         "total_pendientes": pendientes_creacion + pendientes_modificacion + pendientes_eliminacion,
         "historial_aprobados": historial_aprobados,
         "historial_rechazados": historial_rechazados,
