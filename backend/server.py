@@ -12879,7 +12879,7 @@ async def upload_gdb_file(
                 
                 # NOTA: Las áreas de los predios están disponibles en gdb_geometrias
                 # No es necesario duplicarlas en cada predio, lo cual ahorra tiempo
-                await update_progress("vinculando", 92, "Finalizando vinculación...")
+                await update_progress("relacionando_gestion", 92, "Finalizando vinculación con Gestión de Predios...")
                 
                 # Contar predios en última vigencia para el reporte
                 predios_ult_vig_count = await db.predios.count_documents({
