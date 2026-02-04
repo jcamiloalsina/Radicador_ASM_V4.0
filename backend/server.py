@@ -12842,7 +12842,7 @@ async def upload_gdb_file(
                 stats["error_vigencia"] = "No se encontró vigencia"
             else:
                 logger.info(f"Vinculando con última vigencia: {ultima_vigencia}")
-                await update_progress("relacionando", 78, f"Vinculando con vigencia {ultima_vigencia}...")
+                await update_progress("relacionando_gestion", 78, f"Relacionando geometrías con Gestión de Predios (vigencia {ultima_vigencia})...")
                 
                 # 2. Crear set de códigos GDB para búsqueda rápida
                 codigos_gdb_set = set(codigo.strip() for codigo in codigos_gdb if codigo)
