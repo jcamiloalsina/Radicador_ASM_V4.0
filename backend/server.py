@@ -2571,10 +2571,10 @@ async def download_citizen_files_as_zip(petition_id: str, current_user: dict = D
     )
 
 
-@api_router.get("/petitions/{petition_id}/archivo/{filename}")
+@api_router.get("/petitions/{petition_id}/archivo/{file_id}")
 async def download_petition_file(
     petition_id: str,
-    filename: str,
+    file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -2594,7 +2594,8 @@ async def download_petition_file(
     # Buscar el archivo en la lista de archivos
     archivo_encontrado = None
     for archivo in petition.get('archivos', []):
-        if archivo.get('filename') == filename:
+        # Buscar por id o por filename (para compatibilidad)
+        if archivo.get('id') == file_id or archivo.get('filename') == file_id:
             archivo_encontrado = archivo
             break
     
