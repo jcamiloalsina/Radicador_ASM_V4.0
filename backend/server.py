@@ -10673,6 +10673,17 @@ async def ejecutar_accion_predio_nuevo(
         
         nuevo_estado = PredioNuevoEstado.REVISION
         mensaje_notif = f"El predio {predio['codigo_predial_nacional']} ha sido enviado para revisión"
+    
+    elif accion == "rechazar_asignacion":
+        # Solo el gestor de apoyo asignado puede rechazar su asignación
+        if predio['gestor_apoyo_id'] != user_id:
+            raise HTTPException(status_code=403, detail="Solo el gestor de apoyo asignado puede rechazar esta asignación")
+        
+        if estado_actual not in [PredioNuevoEstado.CREADO, PredioNuevoEstado.DIGITALIZACION, PredioNuevoEstado.DEVUELTO]:
+            raise HTTPException(status_code=400, detail=f"No se puede rechazar la asignación desde estado '{estado_actual}'")
+        
+        nuevo_estado = PredioNuevoEstado.CREADO  # Vuelve a estado creado sin asignación
+        mensaje_notif = f"La asignación del predio {predio['codigo_predial_nacional']} ha sido rechazada por {current_user['full_name']}"
         
     elif accion in ["aprobar", "devolver", "rechazar"]:
         # Verificar permiso de aprobar cambios
