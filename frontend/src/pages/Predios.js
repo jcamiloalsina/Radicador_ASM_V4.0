@@ -1505,7 +1505,11 @@ export default function Predios() {
   
   // Estado para seleccionar radicado asociado a modificaciones
   const [radicadoSeleccionado, setRadicadoSeleccionado] = useState('');
-
+  
+  // Estado para flujo de gestor de apoyo en modificaciones (opcional)
+  const [usarGestorApoyoMod, setUsarGestorApoyoMod] = useState(false);
+  const [gestorApoyoModificacion, setGestorApoyoModificacion] = useState('');
+  const [observacionesApoyoMod, setObservacionesApoyoMod] = useState('');
   // Cargar gestores disponibles para asignar trabajo
   const fetchGestoresDisponibles = async () => {
     try {
