@@ -122,7 +122,55 @@ export default function Pendientes() {
     fetchHistorialStats();
     fetchReapariciones();
     fetchPeticionesParaVincular();
+    fetchMisAsignacionesApoyo();
   }, []);
+
+  // Cargar mis asignaciones de apoyo en modificaciones
+  const fetchMisAsignacionesApoyo = async () => {
+    try {
+      setLoadingAsignacionesApoyo(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/cambios/mis-asignaciones`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMisAsignacionesApoyo(res.data.cambios || []);
+    } catch (error) {
+      console.log('Error cargando asignaciones de apoyo');
+      setMisAsignacionesApoyo([]);
+    } finally {
+      setLoadingAsignacionesApoyo(false);
+    }
+  };
+
+  // Completar asignación de apoyo y enviar a revisión
+  const handleCompletarApoyo = async () => {
+    if (!selectedAsignacionApoyo) return;
+    
+    try {
+      setProcesandoApoyo(true);
+      const token = localStorage.getItem('token');
+      
+      await axios.post(`${API}/predios/cambios/${selectedAsignacionApoyo.id}/completar-apoyo`, {
+        observaciones: observacionesCompletarApoyo || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success('Modificación completada y enviada a revisión del coordinador');
+      setShowCompletarApoyoModal(false);
+      setSelectedAsignacionApoyo(null);
+      setObservacionesCompletarApoyo('');
+      fetchMisAsignacionesApoyo();
+      fetchPendientes();
+      
+      // Emitir evento para actualizar badge
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al completar la asignación');
+    } finally {
+      setProcesandoApoyo(false);
+    }
+  };
 
   // Cargar peticiones disponibles para vincular radicado
   const fetchPeticionesParaVincular = async () => {
