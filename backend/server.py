@@ -12342,7 +12342,7 @@ async def upload_gdb_file(
                 layers_info = pyogrio.list_layers(str(gdb_found))
                 available_layers = [layer[0] for layer in layers_info]
                 logger.info(f"GDB {gdb_name}: Capas disponibles: {available_layers}")
-        await update_progress("analizando", 28, f"Analizando estructura del archivo GDB...")
+                await update_progress("analizando", 28, f"Analizando estructura del archivo GDB...")
             except Exception as e:
                 logger.warning(f"No se pudo listar capas: {e}")
             
