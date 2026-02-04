@@ -114,7 +114,7 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
-### Sesión 4 Febrero 2026 - Fix Error de Sintaxis Backend
+### Sesión 4 Febrero 2026 - Flujo de Gestor de Apoyo para Modificaciones
 
 #### 14. Fix: Error de sintaxis en server.py (línea 12345)
 **Problema:** El backend no iniciaba debido a un error de sintaxis en la función de procesamiento GDB.
@@ -124,6 +124,46 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 **Solución:** Corregida la indentación de la línea 12345 para que esté dentro del bloque `try` interno.
 
 **Estado:** ✅ Verificado - Backend y Frontend funcionando correctamente
+
+#### 15. NUEVO: Flujo de Gestor de Apoyo para Modificaciones de Predios
+**Solicitado por usuario:** Agregar la opción (no obligatoria) de asignar un Gestor de Apoyo al modificar predios existentes.
+
+**Implementación Frontend (Predios.js):**
+- Checkbox "👥 Asignar a Gestor de Apoyo para completar esta modificación" (opcional)
+- Selector de gestores disponibles (excluye al usuario actual)
+- Campo de observaciones/instrucciones para el gestor de apoyo
+- Validación: si se activa el checkbox, debe seleccionar un gestor
+- El botón cambia dinámicamente: "Guardar Cambios" → "Asignar a Gestor de Apoyo"
+
+**Implementación Frontend (Pendientes.js):**
+- Nueva pestaña **"Mis Asignaciones"** con badge de conteo
+- Lista de modificaciones asignadas al usuario actual
+- Modal para completar la modificación y enviarla a revisión del coordinador
+
+**Implementación Backend (server.py):**
+- Modelo `CambioPendienteCreate` extendido con campos opcionales:
+  - `gestor_apoyo_id: Optional[str]`
+  - `observaciones_apoyo: Optional[str]`
+- Endpoint `/predios/cambios/proponer` actualizado para manejar el flujo de apoyo
+- Nuevos endpoints:
+  - `GET /predios/cambios/mis-asignaciones` - Lista asignaciones del usuario actual
+  - `POST /predios/cambios/{id}/completar-apoyo` - Gestor de apoyo completa y envía a revisión
+  - `GET /predios/cambios/en-digitalizacion` - Lista todas las modificaciones en digitalización
+  - `GET /predios/cambios/stats-apoyo` - Estadísticas del flujo de apoyo
+- Notificaciones al gestor de apoyo cuando se le asigna una modificación
+
+**Flujo de estados:**
+```
+Sin Gestor de Apoyo (actual):
+  Gestor → Modifica → pendiente_modificacion → Coordinador Aprueba/Rechaza
+
+Con Gestor de Apoyo (nuevo):
+  Gestor → Asigna modificación → en_digitalizacion
+  → Gestor de Apoyo Completa → pendiente_modificacion
+  → Coordinador Aprueba/Rechaza
+```
+
+**Estado:** ✅ Implementado y verificado con capturas de pantalla
 
 ---
 
