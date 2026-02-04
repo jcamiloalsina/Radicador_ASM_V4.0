@@ -261,7 +261,7 @@ export default function PetitionDetail() {
       </Card>
 
       {/* Alert for DEVUELTO petitions - User can resubmit */}
-      {petition.estado === 'devuelto' && petition.user_id === user?.id && (
+      {petition.estado === 'devuelto' && (petition.user_id === user?.id || ['coordinador', 'atencion_usuario', 'administrador'].includes(user?.role)) && (
         <Card className="border-orange-300 bg-orange-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -269,8 +269,13 @@ export default function PetitionDetail() {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-orange-900 mb-2">Trámite Devuelto - Requiere Correcciones</h3>
                 <p className="text-sm text-orange-800 mb-3">
-                  Su trámite ha sido devuelto por <strong>{petition.devuelto_por_nombre || 'el gestor'}</strong> para realizar correcciones. 
-                  Por favor, revise las observaciones, realice los ajustes necesarios y reenvíe para revisión.
+                  {petition.user_id === user?.id ? (
+                    <>Su trámite ha sido devuelto por <strong>{petition.devuelto_por_nombre || 'el gestor'}</strong> para realizar correcciones. 
+                    Por favor, revise las observaciones, realice los ajustes necesarios y reenvíe para revisión.</>
+                  ) : (
+                    <>Este trámite fue devuelto por <strong>{petition.devuelto_por_nombre || 'el gestor'}</strong>. 
+                    Puede cargar documentos en nombre del solicitante y reasignar el trámite.</>
+                  )}
                 </p>
                 {petition.observaciones_devolucion && (
                   <div className="bg-white p-4 rounded-md border border-orange-200 mb-4">
