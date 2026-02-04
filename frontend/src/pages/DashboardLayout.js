@@ -323,6 +323,9 @@ export default function DashboardLayout() {
     const userPermissions = user.permissions || [];
     const hasApprovePermission = userPermissions.includes('approve_changes');
     const canSeePendientes = isCoordAdmin || hasApprovePermission;
+    
+    // Todos los gestores pueden ver "Mis Asignaciones" (predios nuevos o modificaciones asignados a ellos)
+    const canSeeMisAsignaciones = ['administrador', 'coordinador', 'gestor', 'atencion_usuario'].includes(user.role);
 
     const baseMenuItems = [
       { path: '/dashboard', label: 'Inicio', icon: Activity },
@@ -341,6 +344,10 @@ export default function DashboardLayout() {
       if (canSeeCertificados) {
         conservacionItems.push({ path: '/dashboard/certificados', label: 'Certificados', icon: ShieldCheck });
       }
+    }
+    // Mis Asignaciones: visible para todos los gestores (para ver predios nuevos y modificaciones asignados)
+    if (canSeeMisAsignaciones && !canSeePendientes) {
+      conservacionItems.push({ path: '/dashboard/pendientes?tab=mis-asignaciones', label: 'Mis Asignaciones', icon: UserCheck });
     }
     // Pendientes: visible para coordinadores, admins, o gestores con permiso approve_changes
     if (canSeePendientes) {
