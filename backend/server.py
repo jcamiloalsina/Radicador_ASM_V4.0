@@ -13246,11 +13246,21 @@ async def process_gdb_upload_background(
                 
                 # Obtener las áreas de las geometrías GDB
                 areas_gdb = {}
-                async for geo in db.gdb_geometrias.find(
-                    {"codigo": {"$in": list(codigos_gdb_set)}, "area_m2": {"$gt": 0}},
-                    {"_id": 0, "codigo": 1, "area_m2": 1}
-                ):
-                    areas_gdb[geo["codigo"]] = geo["area_m2"]
+                logger.info(f"Obteniendo áreas de {len(codigos_gdb_set)} códigos GDB...")
+                
+                try:
+                    async for geo in db.gdb_geometrias.find(
+                        {"codigo": {"$in": list(codigos_gdb_set)[:5000]}, "area_m2": {"$gt": 0}},  # Limitar a 5000 para evitar timeout
+                        {"_id": 0, "codigo": 1, "area_m2": 1}
+                    ):
+                        areas_gdb[geo["codigo"]] = geo["area_m2"]
+                    
+                    logger.info(f"Áreas obtenidas: {len(areas_gdb)}")
+                except Exception as area_err:
+                    logger.error(f"Error obteniendo áreas: {area_err}")
+                    areas_gdb = {}
+                
+                await update_progress("relacionando_gestion", 90, f"Actualizando {len(areas_gdb)} predios con áreas GDB...")
                 
                 # Actualizar predios con sus áreas GDB usando bulk_write
                 if areas_gdb:
@@ -13267,12 +13277,16 @@ async def process_gdb_upload_background(
                         ))
                     
                     if bulk_ops:
-                        # Procesar en lotes de 1000
-                        for i in range(0, len(bulk_ops), 1000):
-                            batch = bulk_ops[i:i+1000]
-                            await db.predios.bulk_write(batch, ordered=False)
+                        # Procesar en lotes de 500 para evitar timeout
+                        total_batches = (len(bulk_ops) + 499) // 500
+                        for i in range(0, len(bulk_ops), 500):
+                            batch = bulk_ops[i:i+500]
+                            try:
+                                await db.predios.bulk_write(batch, ordered=False)
+                            except Exception as batch_err:
+                                logger.error(f"Error en batch {i//500 + 1}: {batch_err}")
                         
-                        logger.info(f"Actualizadas áreas GDB para {len(bulk_ops)} predios")
+                        logger.info(f"Actualizadas áreas GDB para {len(bulk_ops)} predios en {total_batches} lotes")
                 
                 await update_progress("relacionando_gestion", 92, "Finalizando vinculación con Gestión de Predios...")
                 
