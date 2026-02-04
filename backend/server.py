@@ -13263,37 +13263,37 @@ async def process_gdb_upload_background(
                 await update_progress("relacionando_gestion", 90, f"Actualizando {len(areas_gdb)} predios con áreas GDB...")
                 
                 # Actualizar predios con sus áreas GDB usando bulk_write
+                # Si falla, continuar sin bloquear el proceso
+                areas_actualizadas = 0
                 if areas_gdb:
-                    from pymongo import UpdateOne
-                    bulk_ops = []
-                    for codigo, area in areas_gdb.items():
-                        bulk_ops.append(UpdateOne(
-                            {
-                                "municipio": {"$regex": f"^{municipio_nombre}$", "$options": "i"},
-                                "vigencia": ultima_vigencia,
-                                "codigo_predial_nacional": codigo
-                            },
-                            {"$set": {"area_gdb": area}}
-                        ))
-                    
-                    if bulk_ops:
-                        # Procesar en lotes más pequeños de 200 para evitar timeout
-                        total_ops = len(bulk_ops)
-                        batch_size = 200
-                        processed = 0
+                    try:
+                        from pymongo import UpdateOne
+                        bulk_ops = []
+                        for codigo, area in areas_gdb.items():
+                            bulk_ops.append(UpdateOne(
+                                {"codigo_predial_nacional": codigo},  # Búsqueda directa sin regex
+                                {"$set": {"area_gdb": area}}
+                            ))
                         
-                        for i in range(0, total_ops, batch_size):
-                            batch = bulk_ops[i:i+batch_size]
-                            try:
-                                await db.predios.bulk_write(batch, ordered=False)
-                                processed += len(batch)
-                                # Actualizar progreso cada lote
-                                pct = 90 + int((processed / total_ops) * 2)  # 90% a 92%
-                                await update_progress("relacionando_gestion", pct, f"Actualizando áreas: {processed}/{total_ops} predios...")
-                            except Exception as batch_err:
-                                logger.error(f"Error en batch {i//batch_size + 1}: {batch_err}")
-                        
-                        logger.info(f"Actualizadas áreas GDB para {processed} predios")
+                        if bulk_ops:
+                            # Procesar en lotes pequeños de 100
+                            total_ops = len(bulk_ops)
+                            batch_size = 100
+                            
+                            for i in range(0, min(total_ops, 2000), batch_size):  # Máximo 2000 para evitar timeout
+                                batch = bulk_ops[i:i+batch_size]
+                                try:
+                                    result = await db.predios.bulk_write(batch, ordered=False)
+                                    areas_actualizadas += result.modified_count
+                                except Exception as batch_err:
+                                    logger.warning(f"Batch {i//batch_size + 1} falló: {batch_err}")
+                                    continue  # Continuar con el siguiente lote
+                            
+                            logger.info(f"Áreas GDB actualizadas: {areas_actualizadas}")
+                    except Exception as area_update_err:
+                        logger.error(f"Error actualizando áreas (continuando): {area_update_err}")
+                
+                await update_progress("relacionando_gestion", 91, f"Áreas actualizadas: {areas_actualizadas}")
                 
                 await update_progress("relacionando_gestion", 92, "Finalizando vinculación con Gestión de Predios...")
                 
