@@ -13382,7 +13382,8 @@ async def process_gdb_upload_background(
         except Exception as report_err:
             logger.error(f"Error generando reporte de calidad: {report_err}")
         
-        return {
+        # Actualizar estado final con todos los datos para el polling
+        final_data = {
             "message": f"Base gráfica de {municipio_nombre} actualizada exitosamente",
             "municipio": municipio_nombre,
             "gdb_file": gdb_name,
@@ -13394,7 +13395,6 @@ async def process_gdb_upload_background(
             "geometrias_guardadas": rural_guardadas + urban_guardadas,
             "predios_relacionados": stats["relacionados"],
             "metodo_match": stats.get("metodo_match", "directo"),
-            # Campos de calidad
             "calidad": {
                 "porcentaje": round(calidad_pct, 1),
                 "rurales_archivo": rurales_en_archivo,
@@ -13412,6 +13412,17 @@ async def process_gdb_upload_background(
                 "urbanas": stats.get('construcciones_urbanas', 0)
             }
         }
+        
+        # Actualizar progreso final con todos los datos
+        await update_progress(
+            "completado", 
+            100, 
+            f"¡Carga completada! {stats['relacionados']} predios vinculados de {rural_guardadas + urban_guardadas} geometrías",
+            **final_data
+        )
+        
+        logger.info(f"GDB {municipio_nombre} procesado correctamente. Predios relacionados: {stats['relacionados']}")
+        return  # Background task no retorna al cliente
         
     except zipfile.BadZipFile:
         await update_progress("error", 0, "El archivo ZIP no es válido o está corrupto")
