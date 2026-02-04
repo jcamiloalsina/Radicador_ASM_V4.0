@@ -13431,7 +13431,7 @@ async def process_gdb_upload_background(
             user_msg = f"Error al procesar el archivo: {error_msg[:150]}"
         
         await update_progress("error", 0, user_msg)
-        logger.error(f"Error uploading GDB ({files[0].filename if files else 'unknown'}): {e}")
+        logger.error(f"Error uploading GDB ({temp_files[0]['filename'] if temp_files else 'unknown'}): {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=user_msg)
