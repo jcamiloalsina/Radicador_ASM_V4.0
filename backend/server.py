@@ -486,6 +486,9 @@ class CambioPendienteCreate(BaseModel):
     justificacion: Optional[str] = None
     radicado_id: Optional[str] = None  # ID de la petición/radicado asociado
     radicado_numero: Optional[str] = None  # Número del radicado (ej: "RASMGC-0011-02-02-2026")
+    # Flujo de Gestor de Apoyo (opcional)
+    gestor_apoyo_id: Optional[str] = None  # ID del gestor de apoyo asignado
+    observaciones_apoyo: Optional[str] = None  # Observaciones para el gestor de apoyo
 
 class CambioAprobacionRequest(BaseModel):
     """Modelo para aprobar/rechazar un cambio"""
