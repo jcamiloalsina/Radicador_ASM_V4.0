@@ -12109,7 +12109,7 @@ async def upload_gdb_file(
             detail="No tiene permiso para actualizar la base gráfica. Contacte al coordinador."
         )
     
-    update_progress("preparando", 5, "Preparando transformación de coordenadas...")
+    await update_progress("preparando", 5, "Preparando transformación de coordenadas...")
     
     # Setup coordinate transformation function (will be set based on GDB CRS)
     project = None
@@ -12173,7 +12173,7 @@ async def upload_gdb_file(
         gdb_found = None
         is_zip = len(files) == 1 and files[0].filename.endswith('.zip')
         
-        update_progress("cargando", 10, "Cargando archivos GDB...")
+        await update_progress("cargando", 10, "Cargando archivos GDB...")
         
         if is_zip:
             # Proceso ZIP tradicional
@@ -12183,7 +12183,7 @@ async def upload_gdb_file(
                 content = await file.read()
                 f.write(content)
             
-            update_progress("extrayendo", 15, "Extrayendo archivo ZIP...")
+            await update_progress("extrayendo", 15, "Extrayendo archivo ZIP...")
             
             # PRIMERO: Identificar el nombre de la carpeta .gdb dentro del ZIP
             gdb_name_in_zip = None
@@ -12287,7 +12287,7 @@ async def upload_gdb_file(
         # Determinar código de municipio desde el nombre del GDB
         gdb_name = gdb_found.stem  # ej: "54003"
         
-        update_progress("identificando", 20, f"GDB identificado: {gdb_name}")
+        await update_progress("identificando", 20, f"GDB identificado: {gdb_name}")
         
         # Mapeo de códigos a nombres de municipio
         CODIGO_TO_MUNICIPIO = {
@@ -12308,7 +12308,7 @@ async def upload_gdb_file(
         # Intentar detectar municipio desde el nombre del archivo primero
         municipio_nombre_inicial = municipio or CODIGO_TO_MUNICIPIO.get(gdb_name, None)
         
-        update_progress("leyendo", 25, f"Leyendo capas de {gdb_name}...")
+        await update_progress("leyendo", 25, f"Leyendo capas de {gdb_name}...")
         
         # Leer capas del GDB para obtener estadísticas y relacionar con predios
         stats = {"rurales": 0, "urbanos": 0, "relacionados": 0}
@@ -12323,7 +12323,7 @@ async def upload_gdb_file(
                 layers_info = pyogrio.list_layers(str(gdb_found))
                 available_layers = [layer[0] for layer in layers_info]
                 logger.info(f"GDB {gdb_name}: Capas disponibles: {available_layers}")
-                update_progress("analizando", 28, f"Capas encontradas: {', '.join(available_layers[:5])}...")
+                await update_progress("analizando", 28, f"Capas encontradas: {', '.join(available_layers[:5])}...")
             except Exception as e:
                 logger.warning(f"No se pudo listar capas: {e}")
             
@@ -12363,7 +12363,7 @@ async def upload_gdb_file(
                         logger.warning(f"Error leyendo límite municipal: {e}")
             
             # Intentar diferentes nombres de capas rurales - PRIORIZAR capas con TERRENO
-            update_progress("leyendo_rural", 30, "Leyendo capa rural...")
+            await update_progress("leyendo_rural", 30, "Leyendo capa rural...")
             # Lista ordenada por prioridad - TERRENO primero, evitar ZONA_HOMOGENEA
             rural_layers = ['R_TERRENO']  # SOLO nombre estándar
             
@@ -12377,7 +12377,7 @@ async def upload_gdb_file(
                         stats["rurales"] = len(gdf_rural)
                         rural_layer_found = rural_layer
                         logger.info(f"GDB {gdb_name}: Capa rural encontrada '{rural_layer}' con {len(gdf_rural)} registros")
-                        update_progress("leyendo_rural", 35, f"Capa rural ({rural_layer}): {len(gdf_rural)} geometrías encontradas")
+                        await update_progress("leyendo_rural", 35, f"Capa rural ({rural_layer}): {len(gdf_rural)} geometrías encontradas")
                         # Extraer códigos prediales
                         for col in ['CODIGO', 'codigo', 'CODIGO_PREDIAL', 'codigo_predial', 'COD_PREDIO']:
                             if col in gdf_rural.columns:
@@ -12389,9 +12389,9 @@ async def upload_gdb_file(
             
             if not rural_layer_found:
                 logger.warning(f"GDB {gdb_name}: No se encontró capa rural. Capas disponibles: {available_layers}")
-                update_progress("leyendo_rural", 35, "No se encontró capa rural en el GDB")
+                await update_progress("leyendo_rural", 35, "No se encontró capa rural en el GDB")
             
-            update_progress("leyendo_urbano", 40, "Leyendo capa urbana...")
+            await update_progress("leyendo_urbano", 40, "Leyendo capa urbana...")
             gdf_urban = None
             urban_layers = ['U_TERRENO']  # SOLO nombre estándar
             
@@ -12403,7 +12403,7 @@ async def upload_gdb_file(
                         stats["urbanos"] = len(gdf_urban)
                         urban_layer_found = urban_layer
                         logger.info(f"GDB {gdb_name}: Capa urbana encontrada '{urban_layer}' con {len(gdf_urban)} registros")
-                        update_progress("leyendo_urbano", 45, f"Capa urbana ({urban_layer}): {len(gdf_urban)} geometrías encontradas")
+                        await update_progress("leyendo_urbano", 45, f"Capa urbana ({urban_layer}): {len(gdf_urban)} geometrías encontradas")
                         for col in ['CODIGO', 'codigo', 'CODIGO_PREDIAL', 'codigo_predial', 'COD_PREDIO']:
                             if col in gdf_urban.columns:
                                 codigos_gdb.update(gdf_urban[col].dropna().astype(str).tolist())
@@ -12438,7 +12438,7 @@ async def upload_gdb_file(
         # Usar el municipio detectado desde códigos si está disponible, sino el del nombre del archivo
         municipio_nombre = municipio_detectado_desde_codigos or municipio_nombre_inicial or gdb_name
         
-        update_progress("guardando_geometrias", 50, f"Guardando {len(codigos_gdb)} geometrías de {municipio_nombre}...")
+        await update_progress("guardando_geometrias", 50, f"Guardando {len(codigos_gdb)} geometrías de {municipio_nombre}...")
         
         # Guardar geometrías en colección para búsquedas posteriores
         geometrias_guardadas = 0
@@ -12446,7 +12446,7 @@ async def upload_gdb_file(
         # REEMPLAZAR COMPLETAMENTE: Limpiar TODAS las geometrías anteriores de este municipio
         deleted = await db.gdb_geometrias.delete_many({"municipio": municipio_nombre})
         logger.info(f"GDB {municipio_nombre}: Eliminadas {deleted.deleted_count} geometrías anteriores")
-        update_progress("limpiando", 52, f"Reemplazando geometrías anteriores ({deleted.deleted_count} eliminadas)")
+        await update_progress("limpiando", 52, f"Reemplazando geometrías anteriores ({deleted.deleted_count} eliminadas)")
         
         # Guardar las geometrías con sus códigos
         # Inicializar diccionario de errores para el reporte de calidad
@@ -12488,7 +12488,7 @@ async def upload_gdb_file(
                     for idx, row in gdf_rural.iterrows():
                         if idx % 500 == 0:
                             pct = 50 + int((idx / total_rural) * 15)
-                            update_progress("guardando_rural", pct, f"Procesando geometrías rurales: {idx}/{total_rural}")
+                            await update_progress("guardando_rural", pct, f"Procesando geometrías rurales: {idx}/{total_rural}")
                         
                         codigo = None
                         for col in ['CODIGO', 'codigo', 'CODIGO_PREDIAL', 'codigo_predial', 'COD_PREDIO', 'CODIGO_PRED']:
@@ -12582,7 +12582,7 @@ async def upload_gdb_file(
                     logger.debug(f"Capa {rural_layer} no encontrada o error: {layer_error}")
                     continue
             
-            update_progress("guardando_urbano", 65, "Procesando geometrías urbanas...")
+            await update_progress("guardando_urbano", 65, "Procesando geometrías urbanas...")
             # Lista de capas urbanas de terreno - priorizar nombres específicos
             urban_layers_save = [
                 'U_TERRENO', 'U_TERRENO_1',  # Prioridad: nombres estándar de TERRENO
@@ -12608,7 +12608,7 @@ async def upload_gdb_file(
                     for idx, row in gdf_urban.iterrows():
                         if idx % 500 == 0:
                             pct = 65 + int((idx / total_urban) * 10)
-                            update_progress("guardando_urbano", pct, f"Procesando geometrías urbanas: {idx}/{total_urban}")
+                            await update_progress("guardando_urbano", pct, f"Procesando geometrías urbanas: {idx}/{total_urban}")
                         
                         codigo = None
                         for col in ['CODIGO', 'codigo', 'CODIGO_PREDIAL', 'codigo_predial', 'COD_PREDIO', 'CODIGO_PRED']:
@@ -12706,7 +12706,7 @@ async def upload_gdb_file(
         stats['urbanos_archivo'] = urbanos_en_archivo
         
         # ===== PROCESAR CONSTRUCCIONES =====
-        update_progress("leyendo_construcciones", 70, "Buscando capas de construcciones...")
+        await update_progress("leyendo_construcciones", 70, "Buscando capas de construcciones...")
         
         construcciones_guardadas = 0
         construcciones_rurales = 0
@@ -12729,7 +12729,7 @@ async def upload_gdb_file(
                     
                     project = get_transformer_for_gdf(gdf_const)
                     logger.info(f"GDB {municipio_nombre}: Capa construcciones ({const_layer}): {len(gdf_const)} registros")
-                    update_progress("guardando_construcciones", 72, f"Procesando {len(gdf_const)} construcciones ({const_layer})...")
+                    await update_progress("guardando_construcciones", 72, f"Procesando {len(gdf_const)} construcciones ({const_layer})...")
                     
                     for idx, row in gdf_const.iterrows():
                         codigo = None
@@ -12800,11 +12800,11 @@ async def upload_gdb_file(
             stats["construcciones_rurales"] = construcciones_rurales
             stats["construcciones_urbanas"] = construcciones_urbanas
             if construcciones_guardadas > 0:
-                update_progress("construcciones_ok", 74, f"Guardadas {construcciones_guardadas} construcciones")
+                await update_progress("construcciones_ok", 74, f"Guardadas {construcciones_guardadas} construcciones")
         except Exception as e:
             logger.warning(f"Error procesando construcciones: {e}")
         
-        update_progress("relacionando", 75, f"Relacionando {len(codigos_gdb)} códigos GDB con predios...")
+        await update_progress("relacionando", 75, f"Relacionando {len(codigos_gdb)} códigos GDB con predios...")
         
         # ========================================
         # VINCULACIÓN GDB-PREDIOS: MATCH EXACTO + ÚLTIMA VIGENCIA
@@ -12823,7 +12823,7 @@ async def upload_gdb_file(
                 stats["error_vigencia"] = "No se encontró vigencia"
             else:
                 logger.info(f"Vinculando con última vigencia: {ultima_vigencia}")
-                update_progress("relacionando", 78, f"Vinculando con vigencia {ultima_vigencia}...")
+                await update_progress("relacionando", 78, f"Vinculando con vigencia {ultima_vigencia}...")
                 
                 # 2. Crear set de códigos GDB para búsqueda rápida
                 codigos_gdb_set = set(codigo.strip() for codigo in codigos_gdb if codigo)
@@ -12843,7 +12843,7 @@ async def upload_gdb_file(
                 relacionados_total = await db.predios.count_documents(count_query)
                 
                 logger.info(f"Pre-conteo: {relacionados_total} predios con match exacto")
-                update_progress("vinculando", 82, f"Actualizando {relacionados_total} predios...")
+                await update_progress("vinculando", 82, f"Actualizando {relacionados_total} predios...")
                 
                 # Actualizar todos los predios con match en UNA operación
                 result = await db.predios.update_many(
@@ -12860,7 +12860,7 @@ async def upload_gdb_file(
                 
                 # NOTA: Las áreas de los predios están disponibles en gdb_geometrias
                 # No es necesario duplicarlas en cada predio, lo cual ahorra tiempo
-                update_progress("vinculando", 92, "Finalizando vinculación...")
+                await update_progress("vinculando", 92, "Finalizando vinculación...")
                 
                 # Contar predios en última vigencia para el reporte
                 predios_ult_vig_count = await db.predios.count_documents({
@@ -12875,7 +12875,7 @@ async def upload_gdb_file(
                 
                 logger.info(f"Vinculación completada: {relacionados_total} de {predios_ult_vig_count} predios ({stats['porcentaje_cobertura']}%)")
         
-        update_progress("finalizando", 95, f"Registrando carga... {stats.get('relacionados', 0)} predios relacionados")
+        await update_progress("finalizando", 95, f"Registrando carga... {stats.get('relacionados', 0)} predios relacionados")
         
         stats["geometrias_guardadas"] = geometrias_guardadas
         stats["codigos_gdb_unicos"] = len(codigos_gdb)
@@ -12914,7 +12914,7 @@ async def upload_gdb_file(
                 enviar_email=False  # No enviar correo para cargas de GDB
             )
         
-        update_progress("completado", 100, f"¡Completado! {stats['relacionados']} predios relacionados de {stats['rurales'] + stats['urbanos']} geometrías GDB")
+        await update_progress("completado", 100, f"¡Completado! {stats['relacionados']} predios relacionados de {stats['rurales'] + stats['urbanos']} geometrías GDB")
         
         # Limpiar progreso después de 5 minutos
         # (en producción esto se haría con un scheduler)
@@ -13024,7 +13024,7 @@ async def upload_gdb_file(
         }
         
     except zipfile.BadZipFile:
-        update_progress("error", 0, "El archivo ZIP no es válido o está corrupto")
+        await update_progress("error", 0, "El archivo ZIP no es válido o está corrupto")
         raise HTTPException(status_code=400, detail="El archivo ZIP no es válido o está corrupto. Intente descargarlo nuevamente.")
     except Exception as e:
         error_msg = str(e)
@@ -13040,7 +13040,7 @@ async def upload_gdb_file(
         else:
             user_msg = f"Error al procesar el archivo: {error_msg[:150]}"
         
-        update_progress("error", 0, user_msg)
+        await update_progress("error", 0, user_msg)
         logger.error(f"Error uploading GDB ({files[0].filename if files else 'unknown'}): {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
