@@ -11047,6 +11047,166 @@ async def aprobar_rechazar_cambio(
     }
 
 
+# ===== ENDPOINTS PARA FLUJO DE GESTOR DE APOYO EN MODIFICACIONES =====
+
+@api_router.get("/predios/cambios/mis-asignaciones")
+async def get_mis_asignaciones_apoyo(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las modificaciones asignadas al gestor de apoyo actual"""
+    query = {
+        "gestor_apoyo_id": current_user['id'],
+        "estado": "en_digitalizacion"
+    }
+    
+    total = await db.predios_cambios.count_documents(query)
+    cambios = await db.predios_cambios.find(query, {"_id": 0}).sort("fecha_asignacion_apoyo", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enriquecer con datos del predio actual
+    for cambio in cambios:
+        if cambio.get("predio_id"):
+            predio = await db.predios.find_one(
+                {"id": cambio["predio_id"]}, 
+                {"_id": 0, "historial": 0}
+            )
+            cambio["predio_actual"] = predio
+    
+    return {
+        "total": total,
+        "cambios": cambios
+    }
+
+
+@api_router.get("/predios/cambios/en-digitalizacion")
+async def get_cambios_en_digitalizacion(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista todas las modificaciones en estado 'en_digitalizacion' (para coordinadores)"""
+    # Verificar permisos
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        has_permission = 'approve_changes' in current_user.get('permissions', [])
+        if not has_permission:
+            raise HTTPException(status_code=403, detail="No tiene permiso para ver esta información")
+    
+    query = {"estado": "en_digitalizacion"}
+    
+    total = await db.predios_cambios.count_documents(query)
+    cambios = await db.predios_cambios.find(query, {"_id": 0}).sort("fecha_asignacion_apoyo", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Enriquecer con datos del predio actual
+    for cambio in cambios:
+        if cambio.get("predio_id"):
+            predio = await db.predios.find_one(
+                {"id": cambio["predio_id"]}, 
+                {"_id": 0, "historial": 0}
+            )
+            cambio["predio_actual"] = predio
+    
+    return {
+        "total": total,
+        "cambios": cambios
+    }
+
+
+class CompletarApoyoRequest(BaseModel):
+    """Request para completar una asignación de apoyo"""
+    datos_actualizados: Optional[dict] = None  # Datos modificados por el gestor de apoyo
+    observaciones: Optional[str] = None
+
+
+@api_router.post("/predios/cambios/{cambio_id}/completar-apoyo")
+async def completar_asignacion_apoyo(
+    cambio_id: str,
+    request: CompletarApoyoRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    El gestor de apoyo completa la modificación y la envía a revisión del coordinador.
+    """
+    # Buscar el cambio
+    cambio = await db.predios_cambios.find_one({"id": cambio_id}, {"_id": 0})
+    
+    if not cambio:
+        raise HTTPException(status_code=404, detail="Cambio no encontrado")
+    
+    if cambio["estado"] != "en_digitalizacion":
+        raise HTTPException(status_code=400, detail="Este cambio no está en estado de digitalización")
+    
+    # Verificar que el usuario actual es el gestor de apoyo asignado o es coordinador/admin
+    es_gestor_asignado = cambio.get("gestor_apoyo_id") == current_user['id']
+    es_supervisor = current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]
+    
+    if not es_gestor_asignado and not es_supervisor:
+        raise HTTPException(status_code=403, detail="Solo el gestor de apoyo asignado puede completar esta modificación")
+    
+    # Actualizar los datos propuestos si se proporcionaron actualizaciones
+    datos_finales = cambio.get("datos_propuestos", {})
+    if request.datos_actualizados:
+        datos_finales.update(request.datos_actualizados)
+    
+    update_data = {
+        "estado": PredioEstadoAprobacion.PENDIENTE_MODIFICACION,
+        "datos_propuestos": datos_finales,
+        "completado_por_apoyo": current_user['id'],
+        "completado_por_apoyo_nombre": current_user['full_name'],
+        "fecha_completado_apoyo": datetime.now(timezone.utc).isoformat(),
+        "observaciones_completado": request.observaciones
+    }
+    
+    await db.predios_cambios.update_one(
+        {"id": cambio_id},
+        {"$set": update_data}
+    )
+    
+    # Notificar al coordinador/aprobadores que hay un cambio listo para revisión
+    predio_codigo = cambio.get("predio_actual", {}).get("codigo_predial_nacional", "N/A")
+    
+    # Notificar al creador original del cambio
+    if cambio.get("propuesto_por"):
+        await crear_notificacion(
+            user_id=cambio["propuesto_por"],
+            tipo="modificacion_completada",
+            titulo="Modificación completada por gestor de apoyo",
+            mensaje=f"{current_user['full_name']} completó la modificación del predio {predio_codigo}. Pendiente de aprobación.",
+            datos={"cambio_id": cambio_id, "predio_id": cambio.get("predio_id")}
+        )
+    
+    return {
+        "mensaje": "Modificación completada y enviada a revisión",
+        "cambio_id": cambio_id,
+        "nuevo_estado": PredioEstadoAprobacion.PENDIENTE_MODIFICACION
+    }
+
+
+@api_router.get("/predios/cambios/stats-apoyo")
+async def get_stats_apoyo(
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene estadísticas del flujo de gestor de apoyo"""
+    
+    # Mis asignaciones pendientes
+    mis_asignaciones = await db.predios_cambios.count_documents({
+        "gestor_apoyo_id": current_user['id'],
+        "estado": "en_digitalizacion"
+    })
+    
+    # Total en digitalización (para coordinadores)
+    total_en_digitalizacion = 0
+    if current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        total_en_digitalizacion = await db.predios_cambios.count_documents({
+            "estado": "en_digitalizacion"
+        })
+    
+    return {
+        "mis_asignaciones_pendientes": mis_asignaciones,
+        "total_en_digitalizacion": total_en_digitalizacion
+    }
+
+
 class VincularRadicadoRequest(BaseModel):
     radicado_id: str
     radicado_numero: Optional[str] = None
