@@ -147,6 +147,22 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 - 2,846 predios vinculados (92.19% cobertura)
 - Tiempo de ejecución: 9-10 segundos
 
+#### 13. NUEVO: Progreso de carga GDB en tiempo real vía WebSocket
+**Implementación:** Barra de progreso en tiempo real que muestra el estado exacto del procesamiento de archivos GDB.
+
+**Características:**
+- Actualización instantánea del progreso vía WebSocket
+- Estados detallados: preparando, extrayendo, leyendo capas, guardando geometrías, vinculando predios
+- Indicador visual de "Actualización en tiempo real"
+- Iconos contextuales por cada estado del proceso
+- Cierre automático del modal al completarse
+
+**Archivos modificados:**
+- `/app/backend/server.py`: Función `update_progress` ahora es async y envía mensajes vía WebSocket
+- `/app/frontend/src/pages/VisorPredios.js`: Nuevo listener de WebSocket y UI de progreso mejorada
+
+**Beneficio:** Los usuarios ahora ven el progreso exacto de la carga (0-100%) con mensajes descriptivos en tiempo real, eliminando la incertidumbre durante el proceso.
+
 ---
 
 ### Sesión 3 Febrero 2026 - Fix Botón "Generar Certificado" + Dropdown Gestor
