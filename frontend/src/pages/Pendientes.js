@@ -80,6 +80,14 @@ export default function Pendientes() {
   const [predioObservaciones, setPredioObservaciones] = useState('');
   const [expandedHistorial, setExpandedHistorial] = useState({});
   
+  // Estados para asignaciones de apoyo en modificaciones
+  const [misAsignacionesApoyo, setMisAsignacionesApoyo] = useState([]);
+  const [loadingAsignacionesApoyo, setLoadingAsignacionesApoyo] = useState(false);
+  const [selectedAsignacionApoyo, setSelectedAsignacionApoyo] = useState(null);
+  const [showCompletarApoyoModal, setShowCompletarApoyoModal] = useState(false);
+  const [observacionesCompletarApoyo, setObservacionesCompletarApoyo] = useState('');
+  const [procesandoApoyo, setProcesandoApoyo] = useState(false);
+  
   // Estados para reapariciones
   const [reapariciones, setReapariciones] = useState([]);
   const [loadingReapariciones, setLoadingReapariciones] = useState(false);
