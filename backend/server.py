@@ -13135,9 +13135,12 @@ async def generar_reporte_calidad_gdb(
     # Tabla de vinculación con predios R1/R2
     elements.append(Paragraph("📋 Vinculación con Base de Datos R1/R2", styles['Heading2']))
     
+    vigencia_usada = stats.get('vigencia_usada', 'N/A')
+    
     vinculacion_data = [
         ["Concepto", "Cantidad"],
-        ["Predios R1/R2 en el municipio", f"{stats.get('predios_municipio', 0):,}"],
+        [f"Vigencia analizada", f"{vigencia_usada}"],
+        [f"Predios R1/R2 (vigencia {vigencia_usada})", f"{stats.get('predios_municipio', 0):,}"],
         ["Predios con cartografía (vinculados)", f"{stats.get('predios_con_cartografia', 0):,}"],
         ["Predios sin cartografía", f"{max(0, stats.get('predios_municipio', 0) - stats.get('predios_con_cartografia', 0)):,}"],
     ]
