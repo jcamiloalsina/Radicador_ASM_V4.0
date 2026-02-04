@@ -379,6 +379,48 @@ export default function VisorPredios() {
     }
   }, []);
   
+  // WebSocket listener para progreso de carga GDB en tiempo real
+  useEffect(() => {
+    if (!addListener) return;
+    
+    const handleWebSocketMessage = (message) => {
+      if (message.type === 'gdb_upload_progress') {
+        const progress = message.data;
+        console.log('[VisorPredios] Progreso GDB vía WebSocket:', progress);
+        
+        // Actualizar el estado del progreso
+        setUploadProgress({
+          status: progress.status,
+          progress: progress.progress,
+          message: progress.message
+        });
+        
+        // Si se completó, mostrar toast y actualizar datos
+        if (progress.status === 'completado') {
+          toast.success('✅ ' + progress.message, { duration: 5000 });
+          fetchGdbStats();
+          verificarCargasMensuales();
+          setGdbCargadaEsteMes(true);
+          
+          // Cerrar modal después de un momento
+          setTimeout(() => {
+            setShowUploadGdb(false);
+            setMostrarPreguntaGdb(false);
+            setUploadProgress(null);
+            setUploadingGdb(false);
+          }, 2000);
+        } else if (progress.status === 'error') {
+          toast.error('❌ ' + progress.message);
+          setUploadingGdb(false);
+          setTimeout(() => setUploadProgress(null), 3000);
+        }
+      }
+    };
+    
+    const removeListener = addListener(handleWebSocketMessage);
+    return () => removeListener && removeListener();
+  }, [addListener]);
+  
   // Fetch ortoimágenes disponibles
   const fetchOrtoimagenes = async () => {
     try {
