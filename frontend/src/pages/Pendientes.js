@@ -2263,16 +2263,19 @@ export default function Pendientes() {
               {predioActionType === 'aprobar' && <CheckCircle className="w-5 h-5 text-emerald-600" />}
               {predioActionType === 'devolver' && <RefreshCw className="w-5 h-5 text-orange-600" />}
               {predioActionType === 'rechazar' && <XCircle className="w-5 h-5 text-red-600" />}
+              {predioActionType === 'rechazar_asignacion' && <XCircle className="w-5 h-5 text-red-600" />}
               {predioActionType === 'enviar_revision' && <Eye className="w-5 h-5 text-purple-600" />}
               {predioActionType === 'aprobar' && 'Aprobar Predio'}
               {predioActionType === 'devolver' && 'Devolver Predio'}
               {predioActionType === 'rechazar' && 'Rechazar Predio'}
+              {predioActionType === 'rechazar_asignacion' && 'Rechazar Asignación'}
               {predioActionType === 'enviar_revision' && 'Enviar a Revisión'}
             </DialogTitle>
             <DialogDescription>
               {predioActionType === 'aprobar' && 'El predio será aprobado e integrado al sistema catastral.'}
               {predioActionType === 'devolver' && 'El predio será devuelto al gestor para correcciones.'}
               {predioActionType === 'rechazar' && 'El predio será rechazado y no se integrará al sistema.'}
+              {predioActionType === 'rechazar_asignacion' && 'El predio será devuelto al gestor creador. Ya no aparecerá en tus asignaciones.'}
               {predioActionType === 'enviar_revision' && 'El predio será enviado al coordinador para revisión.'}
             </DialogDescription>
           </DialogHeader>
@@ -2287,7 +2290,7 @@ export default function Pendientes() {
               </div>
             )}
             
-            {['devolver', 'rechazar'].includes(predioActionType) && (
+            {['devolver', 'rechazar', 'rechazar_asignacion'].includes(predioActionType) && (
               <div className="space-y-2">
                 <Label className="text-slate-700 font-medium">
                   Observaciones *
@@ -2295,9 +2298,13 @@ export default function Pendientes() {
                 <Textarea
                   value={predioObservaciones}
                   onChange={(e) => setPredioObservaciones(e.target.value)}
-                  placeholder={predioActionType === 'devolver' 
-                    ? 'Indique las correcciones necesarias...'
-                    : 'Indique el motivo del rechazo...'}
+                  placeholder={
+                    predioActionType === 'devolver' 
+                      ? 'Indique las correcciones necesarias...'
+                      : predioActionType === 'rechazar_asignacion'
+                      ? 'Indique el motivo por el que rechaza esta asignación...'
+                      : 'Indique el motivo del rechazo...'
+                  }
                   rows={4}
                   className="resize-none"
                 />
@@ -2320,11 +2327,11 @@ export default function Pendientes() {
               className={
                 predioActionType === 'aprobar' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' :
                 predioActionType === 'devolver' ? 'bg-orange-600 hover:bg-orange-700 text-white' :
-                predioActionType === 'rechazar' ? 'bg-red-600 hover:bg-red-700 text-white' :
+                (predioActionType === 'rechazar' || predioActionType === 'rechazar_asignacion') ? 'bg-red-600 hover:bg-red-700 text-white' :
                 'bg-purple-600 hover:bg-purple-700 text-white'
               }
               onClick={handlePredioAction}
-              disabled={procesando || (['devolver', 'rechazar'].includes(predioActionType) && !predioObservaciones.trim())}
+              disabled={procesando || (['devolver', 'rechazar', 'rechazar_asignacion'].includes(predioActionType) && !predioObservaciones.trim())}
             >
               {procesando ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
