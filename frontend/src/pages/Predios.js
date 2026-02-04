@@ -3261,6 +3261,7 @@ export default function Predios() {
     setPeticionesRelacionadas([]);
     setObservacionesCreacion('');
     setUsarNuevoFlujo(false);
+    setEditingPredioNuevoId(null); // Limpiar ID de predio en edición
   };
 
   const formatCurrency = (value) => {
