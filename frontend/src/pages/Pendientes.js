@@ -659,7 +659,14 @@ export default function Pendientes() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-4">
+        <TabsList className="grid w-full grid-cols-5 mb-4">
+          <TabsTrigger value="mis-asignaciones" className="flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Mis Asignaciones
+            {misAsignacionesApoyo.length > 0 && (
+              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{misAsignacionesApoyo.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="modificaciones" className="flex items-center gap-2">
             <Edit className="w-4 h-4" />
             Modificaciones
@@ -689,6 +696,101 @@ export default function Pendientes() {
             )}
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab: Mis Asignaciones de Apoyo */}
+        <TabsContent value="mis-asignaciones">
+          {loadingAsignacionesApoyo ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
+                <p className="mt-4 text-slate-500">Cargando asignaciones...</p>
+              </CardContent>
+            </Card>
+          ) : misAsignacionesApoyo.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                <h3 className="text-xl font-semibold text-slate-700">Sin asignaciones pendientes</h3>
+                <p className="text-slate-500 mt-2">No tienes modificaciones asignadas para completar</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {misAsignacionesApoyo.map((asignacion) => (
+                <Card key={asignacion.id} className="hover:border-amber-300 transition-colors border-amber-200 bg-amber-50/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-amber-100 rounded-lg">
+                          <Edit className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                              En Digitalización
+                            </Badge>
+                            {asignacion.radicado_numero && (
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                <FileText className="w-3 h-3 mr-1" />
+                                {asignacion.radicado_numero}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-lg font-semibold text-slate-800 mt-1">
+                            {asignacion.predio_actual?.codigo_predial_nacional || 'Código no disponible'}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {asignacion.predio_actual?.municipio || asignacion.datos_propuestos?.municipio || 'Sin municipio'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              Asignado por: {asignacion.propuesto_por_nombre}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatDate(asignacion.fecha_asignacion_apoyo)}
+                            </span>
+                          </div>
+                          {asignacion.observaciones_apoyo && (
+                            <div className="mt-2 p-2 bg-amber-100 rounded text-sm text-amber-800">
+                              <strong>Instrucciones:</strong> {asignacion.observaciones_apoyo}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedAsignacionApoyo(asignacion);
+                            // Could open a detail modal here
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver Detalles
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-amber-600 hover:bg-amber-700"
+                          onClick={() => {
+                            setSelectedAsignacionApoyo(asignacion);
+                            setShowCompletarApoyoModal(true);
+                          }}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Completar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Tab: Modificaciones */}
         <TabsContent value="modificaciones">
