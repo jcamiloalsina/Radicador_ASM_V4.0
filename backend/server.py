@@ -18344,6 +18344,38 @@ async def create_default_admin():
         logger.error(f"Error during startup admin check: {str(e)}")
 
 
+@app.on_event("startup")
+async def iniciar_backup_scheduler():
+    """Inicializa el scheduler de backups automáticos"""
+    try:
+        logger.info("=" * 60)
+        logger.info("🚀 INICIANDO SCHEDULER DE BACKUPS AUTOMÁTICOS")
+        logger.info("=" * 60)
+        
+        # Obtener configuración de backup
+        config = await db.system_config.find_one({"type": "backup_config"}, {"_id": 0})
+        
+        if config and config.get("modo") == "automatico" and config.get("activo"):
+            configurar_scheduler_backup(config)
+            backup_scheduler.start()
+            logger.info("✅ Scheduler de backups iniciado correctamente")
+            
+            # Mostrar próximo backup programado
+            if config.get("proximo_backup"):
+                logger.info(f"📅 Próximo backup programado: {config.get('proximo_backup')}")
+        else:
+            logger.info("ℹ️ Backups automáticos desactivados (modo manual)")
+            # Iniciar scheduler de todas formas para poder activarlo después
+            backup_scheduler.start()
+            
+    except Exception as e:
+        logger.error(f"❌ Error al iniciar scheduler de backups: {str(e)}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    # Detener scheduler de backups
+    if backup_scheduler.running:
+        backup_scheduler.shutdown(wait=False)
+        logger.info("Scheduler de backups detenido")
     client.close()
