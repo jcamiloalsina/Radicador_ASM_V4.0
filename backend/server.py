@@ -12374,6 +12374,7 @@ async def get_gdb_upload_progress(
 
 @api_router.post("/gdb/upload")
 async def upload_gdb_file(
+    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     municipio: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user)
@@ -12381,10 +12382,6 @@ async def upload_gdb_file(
     """Upload GDB files (ZIP or multiple files from a GDB folder). Only authorized gestors can do this."""
     import zipfile
     import shutil
-    import geopandas as gpd
-    import pandas as pd
-    from pyproj import CRS, Transformer
-    from shapely.ops import transform
     
     # Crear ID único para esta carga
     upload_id = str(uuid.uuid4())
@@ -12396,6 +12393,62 @@ async def upload_gdb_file(
         "message": "Iniciando carga de archivos...",
         "upload_id": upload_id
     }
+    
+    # Check if user is an authorized gestor
+    user_db = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+    
+    if not user_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Check permission using the new permissions system
+    has_permission = await check_permission(user_db, Permission.UPLOAD_GDB)
+    if not has_permission:
+        raise HTTPException(
+            status_code=403, 
+            detail="No tiene permiso para actualizar la base gráfica. Contacte al coordinador."
+        )
+    
+    # Guardar archivos temporalmente para procesarlos en background
+    temp_files = []
+    for file in files:
+        content = await file.read()
+        temp_files.append({
+            'filename': file.filename,
+            'content': content
+        })
+    
+    # Iniciar procesamiento en background
+    background_tasks.add_task(
+        process_gdb_upload_background,
+        upload_id,
+        user_id,
+        current_user,
+        temp_files,
+        municipio
+    )
+    
+    # Responder inmediatamente con el upload_id para que el frontend pueda hacer polling
+    return {
+        "upload_id": upload_id,
+        "status": "processing",
+        "message": "Carga iniciada. Use el endpoint /api/gdb/upload-progress/{upload_id} para consultar el progreso."
+    }
+
+
+async def process_gdb_upload_background(
+    upload_id: str,
+    user_id: str,
+    current_user: dict,
+    temp_files: list,
+    municipio: Optional[str]
+):
+    """Procesa la carga de GDB en background"""
+    import zipfile
+    import shutil
+    import geopandas as gpd
+    import pandas as pd
+    from pyproj import CRS, Transformer
+    from shapely.ops import transform
     
     async def update_progress(status: str, progress: int, message: str, **extra):
         """Actualiza el progreso y envía notificación WebSocket al usuario"""
@@ -12413,20 +12466,6 @@ async def upload_gdb_file(
             "type": "gdb_upload_progress",
             "data": progress_data
         }, user_id)
-    
-    # Check if user is an authorized gestor
-    user_db = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
-    
-    if not user_db:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    # Check permission using the new permissions system
-    has_permission = await check_permission(user_db, Permission.UPLOAD_GDB)
-    if not has_permission:
-        raise HTTPException(
-            status_code=403, 
-            detail="No tiene permiso para actualizar la base gráfica. Contacte al coordinador."
-        )
     
     await update_progress("preparando", 5, "Preparando transformación de coordenadas...")
     
