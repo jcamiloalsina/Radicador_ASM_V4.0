@@ -18508,6 +18508,53 @@ async def iniciar_backup_scheduler():
         logger.error(f"❌ Error al iniciar scheduler de backups: {str(e)}")
 
 
+@app.on_event("startup")
+async def crear_indices_mongodb():
+    """Crea índices necesarios en MongoDB para optimizar consultas"""
+    try:
+        logger.info("=" * 60)
+        logger.info("📊 CREANDO ÍNDICES EN MONGODB")
+        logger.info("=" * 60)
+        
+        # Índices para colección predios
+        await db.predios.create_index("codigo_predial_nacional", background=True)
+        await db.predios.create_index([("municipio", 1), ("vigencia", 1)], background=True)
+        await db.predios.create_index("tiene_geometria", background=True)
+        await db.predios.create_index([("municipio", 1), ("vigencia", 1), ("tiene_geometria", 1)], background=True)
+        logger.info("✅ Índices de 'predios' creados")
+        
+        # Índices para colección gdb_geometrias
+        await db.gdb_geometrias.create_index("codigo", background=True)
+        await db.gdb_geometrias.create_index("municipio", background=True)
+        await db.gdb_geometrias.create_index([("municipio", 1), ("tipo", 1)], background=True)
+        logger.info("✅ Índices de 'gdb_geometrias' creados")
+        
+        # Índices para colección predios_nuevos
+        await db.predios_nuevos.create_index("municipio", background=True)
+        await db.predios_nuevos.create_index("estado_flujo", background=True)
+        await db.predios_nuevos.create_index("gestor_apoyo_id", background=True)
+        logger.info("✅ Índices de 'predios_nuevos' creados")
+        
+        # Índices para colección cambios_pendientes
+        await db.cambios_pendientes.create_index("municipio", background=True)
+        await db.cambios_pendientes.create_index("estado", background=True)
+        await db.cambios_pendientes.create_index("gestor_apoyo_id", background=True)
+        logger.info("✅ Índices de 'cambios_pendientes' creados")
+        
+        # Índices para colección petitions
+        await db.petitions.create_index("user_id", background=True)
+        await db.petitions.create_index("estado", background=True)
+        await db.petitions.create_index("gestores_asignados", background=True)
+        logger.info("✅ Índices de 'petitions' creados")
+        
+        logger.info("=" * 60)
+        logger.info("✅ TODOS LOS ÍNDICES CREADOS CORRECTAMENTE")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"❌ Error creando índices (no crítico): {str(e)}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     # Detener scheduler de backups
