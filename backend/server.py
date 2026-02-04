@@ -17706,6 +17706,9 @@ async def update_backup_config(
         upsert=True
     )
     
+    # Reconfigurar el scheduler con la nueva configuración
+    configurar_scheduler_backup(config)
+    
     return {"message": "Configuración actualizada", "config": config}
 
 def calcular_proximo_backup(frecuencia: str, hora: str, dia_semana: int, dia_mes: int) -> str:
