@@ -323,7 +323,7 @@ export default function Pendientes() {
   const handlePredioAction = async () => {
     if (!selectedPredioNuevo || !predioActionType) return;
     
-    if (['devolver', 'rechazar'].includes(predioActionType) && !predioObservaciones.trim()) {
+    if (['devolver', 'rechazar', 'rechazar_asignacion'].includes(predioActionType) && !predioObservaciones.trim()) {
       toast.error('Debe ingresar observaciones para esta acción');
       return;
     }
@@ -342,7 +342,8 @@ export default function Pendientes() {
         enviar_revision: 'Predio enviado a revisión',
         aprobar: 'Predio aprobado e integrado al sistema',
         devolver: 'Predio devuelto para correcciones',
-        rechazar: 'Predio rechazado'
+        rechazar: 'Predio rechazado',
+        rechazar_asignacion: 'Asignación rechazada. El predio ha sido devuelto al gestor creador.'
       };
       
       toast.success(mensajes[predioActionType] || 'Acción completada');
@@ -350,6 +351,7 @@ export default function Pendientes() {
       setPredioObservaciones('');
       setPredioActionType('');
       fetchPrediosNuevos();
+      fetchMisAsignacionesApoyo();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al procesar acción');
     } finally {
