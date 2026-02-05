@@ -1429,6 +1429,48 @@ export default function Predios() {
     area_construida: '0'
   }]);
   
+  // Estado para zonas físicas (usado en modal de edición - formato antiguo para compatibilidad)
+  const [zonasFisicas, setZonasFisicas] = useState([{
+    zona_fisica: '0',
+    zona_economica: '0',
+    area_terreno: '0',
+    habitaciones: '0',
+    banos: '0',
+    locales: '0',
+    pisos: '1',
+    puntaje: '0',
+    area_construida: '0'
+  }]);
+  
+  // Funciones para manejar zonas físicas (modal de edición)
+  const agregarZonaFisica = () => {
+    setZonasFisicas([...zonasFisicas, {
+      zona_fisica: '0',
+      zona_economica: '0',
+      area_terreno: '0',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      pisos: '1',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
+  };
+  
+  const eliminarZonaFisica = (index) => {
+    if (zonasFisicas.length > 1) {
+      setZonasFisicas(zonasFisicas.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaFisica = (index, campo, valor) => {
+    setZonasFisicas(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+  
   // Función para generar ID de construcción (A, B, C... Z, AA, AB...)
   const generarIdConstruccion = (index) => {
     if (index < 26) {
