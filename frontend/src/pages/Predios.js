@@ -1358,6 +1358,8 @@ export default function Predios() {
   
   // ID del predio nuevo que estamos editando (para actualizaciones)
   const [editingPredioNuevoId, setEditingPredioNuevoId] = useState(null);
+  // URL de retorno después de editar un predio (cuando viene de Pendientes)
+  const [returnUrl, setReturnUrl] = useState(null);
   
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
