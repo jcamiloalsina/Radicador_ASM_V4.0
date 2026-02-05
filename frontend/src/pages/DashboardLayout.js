@@ -90,9 +90,6 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notificaciones, setNotificaciones] = useState([]);
-  const [noLeidas, setNoLeidas] = useState(0);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
   const [showOfflinePanel, setShowOfflinePanel] = useState(false);
   
