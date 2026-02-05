@@ -10552,16 +10552,12 @@ async def listar_predios_nuevos(
             {"gestor_apoyo_id": current_user['id']}
         ]
     elif current_user['role'] == UserRole.COORDINADOR:
-        # Verificar si tiene permiso de aprobar cambios
-        user_permisos = await db.user_permissions.find_one({"user_id": current_user['id']})
-        puede_aprobar = user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios')
-        
-        if not puede_aprobar:
-            # Solo ve predios donde está involucrado
-            query["$or"] = [
-                {"gestor_creador_id": current_user['id']},
-                {"gestor_apoyo_id": current_user['id']}
-            ]
+        # Coordinadores ven TODOS los predios (pueden aprobar por defecto)
+        # Solo filtramos por municipio si el coordinador tiene municipios asignados
+        user_municipios = current_user.get('municipios', [])
+        if user_municipios:
+            query["municipio"] = {"$in": user_municipios}
+        # Si no tiene municipios asignados, ve todos
     # Administradores ven todo
     
     # Obtener predios
