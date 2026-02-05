@@ -3407,8 +3407,11 @@ export default function Predios() {
             </Badge>
           )}
           
-          {/* Botón Exportar Excel - solo cuando está dentro de un municipio y NO para roles usuario/empresa */}
-          {!showDashboard && !['usuario', 'empresa'].includes(user?.role) && (
+          {/* Botón Exportar Excel - solo para admin, coordinador, o usuarios con permiso import_r1r2 */}
+          {!showDashboard && (
+            ['administrador', 'coordinador'].includes(user?.role) || 
+            user?.permissions?.includes('import_r1r2')
+          ) && (
             <Button variant="outline" onClick={handleExportExcel}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Excel
