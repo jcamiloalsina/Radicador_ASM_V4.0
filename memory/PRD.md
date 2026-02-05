@@ -24,7 +24,48 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (5 Febrero 2026)
+## 🔧 Cambios Recientes (5 Febrero 2026 - Sesión Actual)
+
+### COMPLETADO: Refactor R2 - Zonas y Construcciones Separadas
+
+**Problema original:** El formulario R2 (Físico) mezclaba zonas de terreno y construcciones en un solo array llamado `zonas_fisicas`. Esto no permitía tener diferentes cantidades de zonas y construcciones para un mismo predio.
+
+**Solución implementada:**
+
+#### 1. Frontend - Formulario de Creación (Predios.js)
+- ✅ **Nueva estructura de datos R2:**
+  - Array `zonasTerreno`: campos `zona_fisica`, `zona_economica`, `area_terreno`
+  - Array `construcciones`: campos `id` (A, B, C...), `piso`, `habitaciones`, `banos`, `locales`, `tipificacion`, `uso`, `puntaje`, `area_construida`
+- ✅ **UI separada en dos secciones:**
+  - "Zonas de Terreno" con botón "Agregar Zona"
+  - "Construcciones" con botón "Agregar Construcción"
+- ✅ **Cálculo automático de subtotales:**
+  - Área Terreno Total → se pasa a R1
+  - Área Construida Total → se pasa a R1
+- ✅ **Resumen R2** muestra conteo de zonas, construcciones y total de registros
+
+#### 2. Frontend - Modal de Edición
+- ✅ Añadido estado `zonasFisicas` para compatibilidad con el modal de edición existente
+- ✅ Funciones `agregarZonaFisica`, `eliminarZonaFisica`, `actualizarZonaFisica`
+
+#### 3. Backend - Endpoint crear-con-workflow (server.py)
+- ✅ Acepta nuevo formato: `zonas` y `construcciones` como arrays separados
+- ✅ Mantiene compatibilidad con formato antiguo `zonas_fisicas`
+
+#### 4. Exportación Excel R2 - Nueva Lógica
+- ✅ **1 zona + 1 construcción por fila**
+- ✅ **Total filas = max(len(zonas), len(construcciones))**
+- ✅ Columnas vacías cuando una lista es más corta
+
+**Testing:** ✅ 15/15 tests backend, 100% frontend verificado
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/Predios.js` - Estados, funciones y JSX actualizados
+- `/app/backend/server.py` - Endpoints y exportación Excel
+
+---
+
+## 🔧 Cambios Previos (5 Febrero 2026)
 
 ### Bug Fix: Predio Aprobado No Aparecía en Gestión de Predios
 **Problema reportado:** Un predio recién aprobado por el coordinador no aparecía en la lista principal de "Gestión de Predios", ni en el historial, ni en la exportación Excel R1/R2.
