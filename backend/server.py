@@ -8253,17 +8253,23 @@ async def export_predios_excel(
             ws_r1.cell(row=row, column=26, value=predio.get('fecha_resolucion', ''))
             row += 1
     
-    # === HOJA REGISTRO_R2 (Físico - 1 zona + 1 construcción por fila) ===
+    # === HOJA REGISTRO_R2 (Físico - Formato original con columnas horizontales) ===
     ws_r2 = wb.create_sheet(title="REGISTRO_R2")
     
-    # Headers R2 - Nueva estructura: 1 zona + 1 construcción por fila
+    # Headers R2 - Formato original con zonas en columnas horizontales
     headers_r2 = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL",
         "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS", "MATRICULA_INMOBILIARIA",
-        # Zona (1 por fila)
-        "ZONA_FISICA", "ZONA_ECONOMICA", "AREA_TERRENO",
-        # Construcción (1 por fila)
-        "CONSTRUCCION_ID", "HABITACIONES", "BANOS", "LOCALES", "PISOS", "TIPIFICACION", "USO", "PUNTAJE", "AREA_CONSTRUIDA",
+        # Zona 1
+        "ZONA_FISICA_1", "ZONA_ECONOMICA_1", "AREA_TERRENO_1",
+        # Zona 2
+        "ZONA_FISICA_2", "ZONA_ECONOMICA_2", "AREA_TERRENO_2",
+        # Construcción 1
+        "HABITACIONES_1", "BANOS_1", "LOCALES_1", "PISOS_1", "TIPIFICACION_1", "USO_1", "PUNTAJE_1", "AREA_CONSTRUIDA_1",
+        # Construcción 2
+        "HABITACIONES_2", "BANOS_2", "LOCALES_2", "PISOS_2", "TIPIFICACION_2", "USO_2", "PUNTAJE_2", "AREA_CONSTRUIDA_2",
+        # Construcción 3
+        "HABITACIONES_3", "BANOS_3", "LOCALES_3", "PISOS_3", "TIPIFICACION_3", "USO_3", "PUNTAJE_3", "AREA_CONSTRUIDA_3",
         "VIGENCIA"
     ]
     
@@ -8274,90 +8280,101 @@ async def export_predios_excel(
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
     
-    # Escribir datos R2 - Nueva lógica: 1 zona + 1 construcción por fila
-    # Total filas = max(len(zonas), len(construcciones))
+    # Escribir datos R2 - Una fila por registro R2 con zonas en columnas
     row = 2
     for predio in predios:
-        # Obtener datos R2 del predio
         r2_registros = predio.get('r2_registros', [])
-        matricula = ''
-        zonas = []
-        construcciones = []
+        total_r2 = len(r2_registros) if r2_registros else 0
         
-        # Extraer zonas y construcciones del nuevo formato o del formato antiguo
-        if predio.get('zonas') and predio.get('construcciones'):
-            # Nuevo formato separado
+        # Si el predio tiene el nuevo formato (zonas y construcciones separadas), convertir a r2_registros
+        if not r2_registros and (predio.get('zonas') or predio.get('construcciones')):
             zonas = predio.get('zonas', [])
             construcciones = predio.get('construcciones', [])
             matricula = predio.get('matricula_inmobiliaria', '')
-        elif r2_registros:
-            # Formato antiguo: r2_registros con zonas mixtas
-            r2 = r2_registros[0] if r2_registros else {}
-            matricula = r2.get('matricula_inmobiliaria', '')
-            zonas_mixtas = r2.get('zonas', [])
             
-            # Separar zonas y construcciones del formato antiguo (donde todo estaba mezclado)
-            for zm in zonas_mixtas:
-                zonas.append({
-                    'zona_fisica': zm.get('zona_fisica', 0),
-                    'zona_economica': zm.get('zona_economica', 0),
-                    'area_terreno': zm.get('area_terreno', 0)
+            # Crear un r2_registro combinando zonas y construcciones
+            zonas_combinadas = []
+            max_items = max(len(zonas), len(construcciones))
+            for i in range(max_items):
+                zona_data = zonas[i] if i < len(zonas) else {}
+                const_data = construcciones[i] if i < len(construcciones) else {}
+                zonas_combinadas.append({
+                    'zona_fisica': zona_data.get('zona_fisica', 0),
+                    'zona_economica': zona_data.get('zona_economica', 0),
+                    'area_terreno': zona_data.get('area_terreno', 0),
+                    'habitaciones': const_data.get('habitaciones', 0),
+                    'banos': const_data.get('banos', 0),
+                    'locales': const_data.get('locales', 0),
+                    'pisos': const_data.get('piso', const_data.get('pisos', 0)),
+                    'tipificacion': const_data.get('tipificacion', ''),
+                    'uso': const_data.get('uso', ''),
+                    'puntaje': const_data.get('puntaje', 0),
+                    'area_construida': const_data.get('area_construida', 0)
                 })
-                # Si la zona tiene datos de construcción, agregarla
-                if zm.get('area_construida', 0) > 0 or zm.get('habitaciones', 0) > 0:
-                    construcciones.append({
-                        'id': zm.get('id', chr(65 + len(construcciones))),  # A, B, C...
-                        'piso': zm.get('pisos', 1),
-                        'habitaciones': zm.get('habitaciones', 0),
-                        'banos': zm.get('banos', 0),
-                        'locales': zm.get('locales', 0),
-                        'tipificacion': zm.get('tipificacion', ''),
-                        'uso': zm.get('uso', ''),
-                        'puntaje': zm.get('puntaje', 0),
-                        'area_construida': zm.get('area_construida', 0)
-                    })
-        
-        # Calcular total de registros R2 (máximo entre zonas y construcciones)
-        total_r2 = max(len(zonas), len(construcciones)) if (zonas or construcciones) else 0
-        
-        # Si no hay datos R2, crear una fila con valores vacíos/0
-        if total_r2 == 0:
-            total_r2 = 1
-            zonas = [{}]
-            construcciones = [{}]
-        
-        # Generar filas: 1 zona + 1 construcción por fila
-        for idx in range(total_r2):
-            zona = zonas[idx] if idx < len(zonas) else {}
-            const = construcciones[idx] if idx < len(construcciones) else {}
             
+            r2_registros = [{
+                'matricula_inmobiliaria': matricula,
+                'zonas': zonas_combinadas
+            }]
+            total_r2 = 1
+        
+        for r2_idx, r2 in enumerate(r2_registros, 1):
             ws_r2.cell(row=row, column=1, value=predio.get('departamento', ''))
             ws_r2.cell(row=row, column=2, value=predio.get('municipio', ''))
             ws_r2.cell(row=row, column=3, value=predio.get('numero_predio', ''))
             ws_r2.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', ''))
             ws_r2.cell(row=row, column=5, value='2')
-            ws_r2.cell(row=row, column=6, value=str(idx + 1).zfill(2))
+            ws_r2.cell(row=row, column=6, value=str(r2_idx).zfill(2))
             ws_r2.cell(row=row, column=7, value=str(total_r2).zfill(2))
-            ws_r2.cell(row=row, column=8, value=matricula)
+            ws_r2.cell(row=row, column=8, value=r2.get('matricula_inmobiliaria', ''))
             
-            # Zona (columnas 9-11)
-            ws_r2.cell(row=row, column=9, value=zona.get('zona_fisica', 0) or 0)
-            ws_r2.cell(row=row, column=10, value=zona.get('zona_economica', 0) or 0)
-            ws_r2.cell(row=row, column=11, value=zona.get('area_terreno', 0) or 0)
+            zonas = r2.get('zonas', [])
             
-            # Construcción (columnas 12-20)
-            ws_r2.cell(row=row, column=12, value=const.get('id', ''))
-            ws_r2.cell(row=row, column=13, value=const.get('habitaciones', 0) or 0)
-            ws_r2.cell(row=row, column=14, value=const.get('banos', 0) or 0)
-            ws_r2.cell(row=row, column=15, value=const.get('locales', 0) or 0)
-            ws_r2.cell(row=row, column=16, value=const.get('piso', const.get('pisos', 0)) or 0)
-            ws_r2.cell(row=row, column=17, value=const.get('tipificacion', 0) or 0)
-            ws_r2.cell(row=row, column=18, value=const.get('uso', 0) or 0)
-            ws_r2.cell(row=row, column=19, value=const.get('puntaje', 0) or 0)
-            ws_r2.cell(row=row, column=20, value=const.get('area_construida', 0) or 0)
+            # Zona 1 (columnas 9-11) - siempre llenar con 0 si vacío
+            z1 = zonas[0] if len(zonas) >= 1 else {}
+            ws_r2.cell(row=row, column=9, value=z1.get('zona_fisica', 0) or 0)
+            ws_r2.cell(row=row, column=10, value=z1.get('zona_economica', 0) or 0)
+            ws_r2.cell(row=row, column=11, value=z1.get('area_terreno', 0) or 0)
+            
+            # Zona 2 (columnas 12-14)
+            z2 = zonas[1] if len(zonas) >= 2 else {}
+            ws_r2.cell(row=row, column=12, value=z2.get('zona_fisica', 0) or 0)
+            ws_r2.cell(row=row, column=13, value=z2.get('zona_economica', 0) or 0)
+            ws_r2.cell(row=row, column=14, value=z2.get('area_terreno', 0) or 0)
+            
+            # Construcción 1 (columnas 15-22)
+            ws_r2.cell(row=row, column=15, value=z1.get('habitaciones', 0) or 0)
+            ws_r2.cell(row=row, column=16, value=z1.get('banos', 0) or 0)
+            ws_r2.cell(row=row, column=17, value=z1.get('locales', 0) or 0)
+            ws_r2.cell(row=row, column=18, value=z1.get('pisos', 0) or 0)
+            ws_r2.cell(row=row, column=19, value=z1.get('tipificacion', 0) or 0)
+            ws_r2.cell(row=row, column=20, value=z1.get('uso', 0) or 0)
+            ws_r2.cell(row=row, column=21, value=z1.get('puntaje', 0) or 0)
+            ws_r2.cell(row=row, column=22, value=z1.get('area_construida', 0) or 0)
+            
+            # Construcción 2 (columnas 23-30)
+            ws_r2.cell(row=row, column=23, value=z2.get('habitaciones', 0) or 0)
+            ws_r2.cell(row=row, column=24, value=z2.get('banos', 0) or 0)
+            ws_r2.cell(row=row, column=25, value=z2.get('locales', 0) or 0)
+            ws_r2.cell(row=row, column=26, value=z2.get('pisos', 0) or 0)
+            ws_r2.cell(row=row, column=27, value=z2.get('tipificacion', 0) or 0)
+            ws_r2.cell(row=row, column=28, value=z2.get('uso', 0) or 0)
+            ws_r2.cell(row=row, column=29, value=z2.get('puntaje', 0) or 0)
+            ws_r2.cell(row=row, column=30, value=z2.get('area_construida', 0) or 0)
+            
+            # Construcción 3 (columnas 31-38)
+            z3 = zonas[2] if len(zonas) >= 3 else {}
+            ws_r2.cell(row=row, column=31, value=z3.get('habitaciones', 0) or 0)
+            ws_r2.cell(row=row, column=32, value=z3.get('banos', 0) or 0)
+            ws_r2.cell(row=row, column=33, value=z3.get('locales', 0) or 0)
+            ws_r2.cell(row=row, column=34, value=z3.get('pisos', 0) or 0)
+            ws_r2.cell(row=row, column=35, value=z3.get('tipificacion', 0) or 0)
+            ws_r2.cell(row=row, column=36, value=z3.get('uso', 0) or 0)
+            ws_r2.cell(row=row, column=37, value=z3.get('puntaje', 0) or 0)
+            ws_r2.cell(row=row, column=38, value=z3.get('area_construida', 0) or 0)
             
             # Vigencia
-            ws_r2.cell(row=row, column=21, value=predio.get('vigencia', datetime.now().year))
+            ws_r2.cell(row=row, column=39, value=predio.get('vigencia', datetime.now().year))
             row += 1
     
     # Ajustar anchos de columna
