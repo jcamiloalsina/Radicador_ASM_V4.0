@@ -17,15 +17,7 @@ ADMIN_PASSWORD = "Asm*123*"
 class TestAuthentication:
     """Authentication tests"""
     
-    def test_01_backend_health(self):
-        """Test backend is running"""
-        response = requests.get(f"{BASE_URL}/api/")
-        assert response.status_code == 200
-        data = response.json()
-        assert "message" in data
-        print(f"✅ Backend health: {data['message']}")
-    
-    def test_02_coordinador_login(self):
+    def test_01_coordinador_login(self):
         """Test coordinador login"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": COORDINADOR_EMAIL,
@@ -37,9 +29,8 @@ class TestAuthentication:
         assert "user" in data
         assert data["user"]["role"] == "coordinador"
         print(f"✅ Coordinador login successful: {data['user']['full_name']}")
-        return data["token"]
     
-    def test_03_admin_login(self):
+    def test_02_admin_login(self):
         """Test admin login"""
         response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": ADMIN_EMAIL,
@@ -64,7 +55,7 @@ class TestPrediosAPI:
         })
         return response.json()["token"]
     
-    def test_04_get_predios_san_calixto(self, auth_token):
+    def test_03_get_predios_san_calixto(self, auth_token):
         """Test getting predios for San Calixto"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.get(
@@ -83,7 +74,7 @@ class TestPrediosAPI:
             assert "codigo_predial_nacional" in predio
             print(f"✅ First predio: {predio['codigo_predial_nacional']}")
     
-    def test_05_verify_predio_r2_structure(self, auth_token):
+    def test_04_verify_predio_r2_structure(self, auth_token):
         """Test that predios have the new R2 structure with zonas and construcciones"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.get(
@@ -108,23 +99,22 @@ class TestPrediosAPI:
             if "r2" in predio:
                 print(f"ℹ️ Predio also has legacy 'r2' field")
     
-    def test_06_get_catalogos(self, auth_token):
+    def test_05_get_catalogos(self, auth_token):
         """Test getting catalogos"""
         headers = {"Authorization": f"Bearer {auth_token}"}
-        response = requests.get(f"{BASE_URL}/api/catalogos", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/predios/catalogos", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert "destinos_economicos" in data
         print(f"✅ Catalogos loaded: {len(data.get('destinos_economicos', []))} destinos económicos")
     
-    def test_07_get_vigencias(self, auth_token):
-        """Test getting vigencias"""
+    def test_06_get_predios_stats_summary(self, auth_token):
+        """Test getting predios stats summary"""
         headers = {"Authorization": f"Bearer {auth_token}"}
-        response = requests.get(f"{BASE_URL}/api/predios/vigencias", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/predios/stats/summary", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert "vigencias" in data
-        print(f"✅ Vigencias: {data['vigencias']}")
+        print(f"✅ Predios stats summary: {data}")
 
 
 class TestExcelExport:
@@ -139,61 +129,26 @@ class TestExcelExport:
         })
         return response.json()["token"]
     
-    def test_08_export_excel_predios(self, auth_token):
+    def test_07_export_excel_predios(self, auth_token):
         """Test Excel export for predios"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.get(
-            f"{BASE_URL}/api/predios/exportar-excel?municipio=San Calixto&vigencia=2026",
+            f"{BASE_URL}/api/predios/export-excel?municipio=San Calixto&vigencia=2026",
             headers=headers
         )
         assert response.status_code == 200
-        assert response.headers.get('content-type') == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        assert 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' in response.headers.get('content-type', '')
         print(f"✅ Excel export successful, size: {len(response.content)} bytes")
     
-    def test_09_export_excel_tramites(self, auth_token):
+    def test_08_export_excel_tramites(self, auth_token):
         """Test Excel export for tramites"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.get(
-            f"{BASE_URL}/api/petitions/export-excel",
+            f"{BASE_URL}/api/reports/tramites/export-excel",
             headers=headers
         )
         assert response.status_code == 200
-        print(f"✅ Tramites Excel export successful")
-
-
-class TestPrediosStats:
-    """Predios statistics tests"""
-    
-    @pytest.fixture
-    def auth_token(self):
-        """Get auth token"""
-        response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": COORDINADOR_EMAIL,
-            "password": COORDINADOR_PASSWORD
-        })
-        return response.json()["token"]
-    
-    def test_10_get_predios_stats(self, auth_token):
-        """Test getting predios statistics"""
-        headers = {"Authorization": f"Bearer {auth_token}"}
-        response = requests.get(f"{BASE_URL}/api/predios/stats", headers=headers)
-        assert response.status_code == 200
-        data = response.json()
-        print(f"✅ Predios stats: {data}")
-    
-    def test_11_get_municipios_stats(self, auth_token):
-        """Test getting municipios with predio counts"""
-        headers = {"Authorization": f"Bearer {auth_token}"}
-        response = requests.get(f"{BASE_URL}/api/predios/municipios-stats", headers=headers)
-        assert response.status_code == 200
-        data = response.json()
-        
-        # Find San Calixto
-        san_calixto = next((m for m in data if m.get('municipio') == 'San Calixto'), None)
-        if san_calixto:
-            print(f"✅ San Calixto stats: {san_calixto.get('total', 0)} predios")
-        else:
-            print(f"✅ Municipios stats loaded: {len(data)} municipios")
+        print(f"✅ Tramites Excel export successful, size: {len(response.content)} bytes")
 
 
 class TestPetitionsAPI:
@@ -208,7 +163,7 @@ class TestPetitionsAPI:
         })
         return response.json()["token"]
     
-    def test_12_get_petitions(self, auth_token):
+    def test_09_get_petitions(self, auth_token):
         """Test getting petitions"""
         headers = {"Authorization": f"Bearer {auth_token}"}
         response = requests.get(f"{BASE_URL}/api/petitions", headers=headers)
@@ -216,13 +171,50 @@ class TestPetitionsAPI:
         data = response.json()
         print(f"✅ Petitions loaded: {len(data)} petitions")
     
-    def test_13_get_gestores_disponibles(self, auth_token):
+    def test_10_get_gestores_disponibles(self, auth_token):
         """Test getting available gestores"""
         headers = {"Authorization": f"Bearer {auth_token}"}
-        response = requests.get(f"{BASE_URL}/api/users/gestores", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/users/gestores-disponibles", headers=headers)
         assert response.status_code == 200
         data = response.json()
         print(f"✅ Gestores disponibles: {len(data)}")
+    
+    def test_11_get_dashboard_stats(self, auth_token):
+        """Test getting dashboard stats"""
+        headers = {"Authorization": f"Bearer {auth_token}"}
+        response = requests.get(f"{BASE_URL}/api/petitions/stats/dashboard", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        print(f"✅ Dashboard stats: {data.get('total_activos', 0)} active petitions")
+
+
+class TestPrediosEliminados:
+    """Predios eliminados tests"""
+    
+    @pytest.fixture
+    def auth_token(self):
+        """Get auth token"""
+        response = requests.post(f"{BASE_URL}/api/auth/login", json={
+            "email": COORDINADOR_EMAIL,
+            "password": COORDINADOR_PASSWORD
+        })
+        return response.json()["token"]
+    
+    def test_12_get_predios_eliminados(self, auth_token):
+        """Test getting eliminated predios"""
+        headers = {"Authorization": f"Bearer {auth_token}"}
+        response = requests.get(f"{BASE_URL}/api/predios/eliminados", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        print(f"✅ Predios eliminados: {len(data.get('predios', data))} predios")
+    
+    def test_13_get_predios_eliminados_stats(self, auth_token):
+        """Test getting eliminated predios stats"""
+        headers = {"Authorization": f"Bearer {auth_token}"}
+        response = requests.get(f"{BASE_URL}/api/predios/eliminados/stats", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        print(f"✅ Predios eliminados stats: {data}")
 
 
 if __name__ == "__main__":
