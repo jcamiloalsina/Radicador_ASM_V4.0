@@ -2047,6 +2047,12 @@ export default function Predios() {
     setShowConfirmClose(false);
     setShowCreateDialog(false);
     resetForm();
+    
+    // Si hay URL de retorno (viene de Pendientes), navegar allí
+    if (returnUrl) {
+      navigate(returnUrl);
+      setReturnUrl(null);
+    }
   };
 
   // Asignar a gestor y cerrar
