@@ -869,6 +869,250 @@ export default function Pendientes() {
     return cambios;
   };
 
+  // Función para renderizar el contenido del historial
+  const renderHistorialContent = () => {
+    return (
+      <>
+        {/* Filtros del Historial */}
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <span className="font-medium text-slate-700">Filtros</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Estado */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Estado</Label>
+                <select 
+                  value={historialFiltros.estado}
+                  onChange={(e) => setHistorialFiltros({...historialFiltros, estado: e.target.value})}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Todos</option>
+                  <option value="aprobado">Aprobados</option>
+                  <option value="rechazado">Rechazados</option>
+                </select>
+              </div>
+              
+              {/* Tipo de Cambio */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Tipo</Label>
+                <select 
+                  value={historialFiltros.tipo_cambio}
+                  onChange={(e) => setHistorialFiltros({...historialFiltros, tipo_cambio: e.target.value})}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Todos</option>
+                  <option value="creacion">Creación</option>
+                  <option value="modificacion">Modificación</option>
+                  <option value="eliminacion">Eliminación</option>
+                </select>
+              </div>
+              
+              {/* Municipio */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Municipio</Label>
+                <select 
+                  value={historialFiltros.municipio}
+                  onChange={(e) => setHistorialFiltros({...historialFiltros, municipio: e.target.value})}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">Todos</option>
+                  {municipiosHistorial.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Fecha Desde */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Desde</Label>
+                <Input 
+                  type="date"
+                  value={historialFiltros.fecha_desde}
+                  onChange={(e) => setHistorialFiltros({...historialFiltros, fecha_desde: e.target.value})}
+                  className="text-sm"
+                />
+              </div>
+              
+              {/* Fecha Hasta */}
+              <div>
+                <Label className="text-xs text-slate-500 mb-1 block">Hasta</Label>
+                <Input 
+                  type="date"
+                  value={historialFiltros.fecha_hasta}
+                  onChange={(e) => setHistorialFiltros({...historialFiltros, fecha_hasta: e.target.value})}
+                  className="text-sm"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-3 justify-end">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={limpiarFiltrosHistorial}
+                className="text-slate-600"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Limpiar
+              </Button>
+              <Button 
+                size="sm"
+                onClick={aplicarFiltrosHistorial}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Filter className="w-4 h-4 mr-1" />
+                Aplicar Filtros
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {loadingHistorial ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          </div>
+        ) : cambiosHistorial.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <History className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+              <h3 className="text-xl font-semibold text-slate-700">Sin resultados</h3>
+              <p className="text-slate-500 mt-2">
+                {(historialFiltros.estado || historialFiltros.tipo_cambio || historialFiltros.municipio || historialFiltros.fecha_desde || historialFiltros.fecha_hasta)
+                  ? 'No hay cambios que coincidan con los filtros seleccionados'
+                  : 'No hay cambios procesados aún'
+                }
+              </p>
+              {(historialFiltros.estado || historialFiltros.tipo_cambio || historialFiltros.municipio || historialFiltros.fecha_desde || historialFiltros.fecha_hasta) && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={limpiarFiltrosHistorial}
+                >
+                  Limpiar filtros
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {/* Stats del historial */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="bg-emerald-50 border-emerald-200">
+                <CardContent className="p-4 text-center">
+                  <CheckCircle className="w-8 h-8 mx-auto text-emerald-600 mb-2" />
+                  <p className="text-2xl font-bold text-emerald-700">{historialStats.aprobados}</p>
+                  <p className="text-sm text-emerald-600">Aprobados</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-red-50 border-red-200">
+                <CardContent className="p-4 text-center">
+                  <XCircle className="w-8 h-8 mx-auto text-red-600 mb-2" />
+                  <p className="text-2xl font-bold text-red-700">{historialStats.rechazados}</p>
+                  <p className="text-sm text-red-600">Rechazados</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Contador de resultados filtrados */}
+            <div className="text-sm text-slate-500 text-right">
+              Mostrando {cambiosHistorial.length} resultados
+            </div>
+
+            {/* Lista de cambios procesados */}
+            <div className="space-y-3">
+              {cambiosHistorial.map((cambio) => {
+                // Obtener el CNP de la fuente disponible
+                const cnp = cambio.predio_actual?.codigo_predial_nacional || 
+                            cambio.datos_propuestos?.codigo_predial_nacional ||
+                            cambio.codigo_predial_nacional ||
+                            'N/A';
+                const propietario = cambio.predio_actual?.nombre_propietario || 
+                                    cambio.datos_propuestos?.nombre_propietario ||
+                                    (cambio.datos_propuestos?.propietarios?.[0]?.nombre_propietario);
+                const municipio = cambio.predio_actual?.municipio || 
+                                  cambio.datos_propuestos?.municipio;
+                
+                return (
+                <Card 
+                  key={cambio.id} 
+                  className={`border-l-4 ${
+                    cambio.estado === 'aprobado' 
+                      ? 'border-l-emerald-500 bg-emerald-50/30' 
+                      : 'border-l-red-500 bg-red-50/30'
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={cambio.estado === 'aprobado' ? 'bg-emerald-600' : 'bg-red-600'}>
+                            {cambio.estado === 'aprobado' ? '✓ Aprobado' : '✗ Rechazado'}
+                          </Badge>
+                          <Badge variant="outline">
+                            {cambio.tipo_cambio === 'creacion' ? 'Creación' : 
+                             cambio.tipo_cambio === 'modificacion' ? 'Modificación' : 'Eliminación'}
+                          </Badge>
+                          {municipio && (
+                            <Badge variant="secondary" className="text-xs">
+                              {municipio}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* CNP del predio */}
+                        <p className="font-mono text-sm text-slate-700 mb-1">
+                          <strong>{cnp}</strong>
+                          {propietario && ` - ${propietario}`}
+                        </p>
+                        
+                        <p className="text-sm text-slate-600 mt-2">
+                          <User className="w-3 h-3 inline mr-1" />
+                          Solicitado por: <span className="font-medium">{cambio.propuesto_por_nombre}</span>
+                        </p>
+                        
+                        {cambio.comentario_aprobacion && (
+                          <p className="text-sm text-slate-500 italic mt-1 bg-slate-100 px-2 py-1 rounded">
+                            "{cambio.comentario_aprobacion}"
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="text-right text-sm text-slate-500">
+                        <p className="font-medium">
+                          {cambio.fecha_aprobacion 
+                            ? formatDate(cambio.fecha_aprobacion)
+                            : formatDate(cambio.fecha_decision)
+                          }
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          por {cambio.aprobado_por_nombre || 'Sistema'}
+                        </p>
+                        {/* Botón para ver detalle */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="mt-2 text-xs"
+                          onClick={() => setSelectedCambio(cambio)}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Ver detalle
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
