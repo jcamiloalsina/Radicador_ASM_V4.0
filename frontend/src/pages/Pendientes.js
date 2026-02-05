@@ -1572,52 +1572,89 @@ export default function Pendientes() {
             )}
           </TabsContent>
 
-          {/* Tab: Predios Nuevos */}
-        <TabsContent value="predios-nuevos">
-          {loadingPredios ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Sub-tabs para categorías de predios nuevos */}
-              <div className="flex gap-2 border-b pb-2">
-                <Button
-                  variant={prediosNuevosSubTab === 'asignados' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setPrediosNuevosSubTab('asignados')}
-                  className={prediosNuevosSubTab === 'asignados' ? 'bg-purple-600 hover:bg-purple-700' : ''}
-                >
-                  <User className="w-4 h-4 mr-1" />
-                  Asignados a Mí
-                  {asignadosAMi.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 bg-white text-purple-700">{asignadosAMi.length}</Badge>
-                  )}
-                </Button>
-                <Button
-                  variant={prediosNuevosSubTab === 'creaciones' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setPrediosNuevosSubTab('creaciones')}
-                  className={prediosNuevosSubTab === 'creaciones' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                >
-                  <FileText className="w-4 h-4 mr-1" />
-                  Mis Creaciones
-                  {misCreaciones.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">{misCreaciones.length}</Badge>
-                  )}
-                </Button>
-                {isCoordinador && (
-                  <Button
-                    variant={prediosNuevosSubTab === 'revision' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setPrediosNuevosSubTab('revision')}
-                    className={prediosNuevosSubTab === 'revision' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    En Revisión
-                    {prediosParaRevisar.length > 0 && (
-                      <Badge variant="secondary" className="ml-2 bg-white text-emerald-700">{prediosParaRevisar.length}</Badge>
-                    )}
+          {/* Tab: Predios Nuevos (En Revisión para aprobar) */}
+          <TabsContent value="predios-nuevos">
+            {loadingPredios ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              </div>
+            ) : prediosParaRevisar.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-700">¡Sin predios pendientes!</h3>
+                  <p className="text-slate-500 mt-2">No hay predios nuevos esperando aprobación</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {prediosParaRevisar.map(predio => {
+                  const estadoConfig = estadoPredioConfig[predio.estado_flujo] || estadoPredioConfig['revision'];
+                  const IconoEstado = estadoConfig.icon;
+                  
+                  return (
+                    <Card key={predio.id} className="hover:border-emerald-300 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="font-mono text-sm text-slate-700">{predio.codigo_predial_nacional}</div>
+                            <div className="text-sm text-slate-600">
+                              <MapPin className="w-4 h-4 inline mr-1" />
+                              {predio.municipio} - {predio.direccion || 'Sin dirección'}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <Badge className={`${estadoConfig.color} border`}>
+                                <IconoEstado className="w-3 h-3 mr-1" />
+                                {estadoConfig.label}
+                              </Badge>
+                              {predio.gestor_creador_nombre && (
+                                <span className="text-xs text-slate-500">Creador: {predio.gestor_creador_nombre}</span>
+                              )}
+                              {predio.gestor_apoyo_nombre && (
+                                <span className="text-xs text-slate-500">Apoyo: {predio.gestor_apoyo_nombre}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPredioNuevo(predio);
+                                setShowPredioDetailDialog(true);
+                              }}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Ver Detalle
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => openPredioActionDialog(predio, 'devolver')}
+                              disabled={procesando}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Devolver
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => openPredioActionDialog(predio, 'aprobar')}
+                              disabled={procesando}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Aprobar
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
                   </Button>
                 )}
               </div>
