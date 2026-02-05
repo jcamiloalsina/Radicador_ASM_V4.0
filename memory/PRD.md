@@ -22,6 +22,29 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Nota:** "Gestor Auxiliar" NO es un rol, sino una condición temporal.
 
+---
+
+## 🔧 Cambios Recientes (5 Febrero 2026)
+
+### Bug Fix: Predio Aprobado No Aparecía en Gestión de Predios
+**Problema reportado:** Un predio recién aprobado por el coordinador no aparecía en la lista principal de "Gestión de Predios", ni en el historial, ni en la exportación Excel R1/R2.
+
+**Causa raíz identificada:**
+1. **Bug de permisos de coordinador:** Corregido en sesión anterior
+2. **Bug de formato de vigencia:** Corregido en sesión anterior (vigencia se guardaba como fecha ISO en lugar de año entero)
+3. **Bug de IndexedDB cache:** Corregido en sesión anterior (try-catch para fallos de caché)
+4. **Bug de selección de vigencia en dropdown (NUEVO):** El dropdown de vigencias mostraba vigencias con formato incorrecto (ej: "01222026" en lugar de "2026"), causando que se seleccionara la vigencia incorrecta por defecto
+
+**Solución implementada (Predios.js):**
+- Filtrado de vigencias válidas: Solo se muestran vigencias que sean años entre 2000 y 2100
+- Ordenamiento correcto: Vigencias ordenadas de más reciente a más antigua
+- Debounce de búsqueda: Al buscar con 3+ caracteres, se consulta directamente al servidor ignorando el caché local
+- Console logs para debugging
+
+**Estado:** ✅ VERIFICADO - Los predios aprobados ahora aparecen correctamente en la lista, se pueden buscar, y se incluyen en la exportación Excel
+
+---
+
 ## Funcionalidades Implementadas
 
 ### Gestión de Peticiones (Flujo Mejorado)
@@ -41,6 +64,7 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Importación de Excel R1/R2
 - Creación de nuevos predios con código de 30 dígitos
 - **Sistema de Códigos Homologados:** Carga de códigos desde Excel y asignación automática al crear predios
+- **Búsqueda con debounce:** Consulta directa al servidor para resultados frescos
 
 ### Sistema de Permisos Granulares
 - **upload_gdb**: Subir archivos GDB
