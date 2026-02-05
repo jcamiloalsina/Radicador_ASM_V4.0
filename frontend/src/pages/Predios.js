@@ -1639,8 +1639,17 @@ export default function Predios() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const predioNuevoId = params.get('predio_nuevo');
+    const fromUrl = params.get('return');
     
     if (predioNuevoId) {
+      // Guardar URL de retorno si viene de Pendientes
+      if (fromUrl) {
+        setReturnUrl(decodeURIComponent(fromUrl));
+      } else {
+        // Por defecto, regresar a pendientes si viene con predio_nuevo
+        setReturnUrl('/dashboard/pendientes');
+      }
+      
       // Cargar el predio nuevo y abrir el modal de creación para editarlo
       const loadPredioNuevo = async () => {
         try {
