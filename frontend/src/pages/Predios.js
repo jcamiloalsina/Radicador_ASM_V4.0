@@ -3527,9 +3527,17 @@ export default function Predios() {
                   {[...prediosStats.by_municipio].sort((a, b) => a.municipio.localeCompare(b.municipio, 'es')).map((item) => {
                     // Obtener la vigencia más reciente del municipio (ordenadas de más nueva a más vieja)
                     const vigencias = vigenciasData[item.municipio] || [];
-                    const vigenciaReciente = vigencias.length > 0 ? vigencias[0].vigencia : null;
-                    // Extraer el año de la vigencia (puede ser 2025 o 01012025 o 1012025)
-                    const vigenciaYear = vigenciaReciente ? (String(vigenciaReciente).length >= 7 ? String(vigenciaReciente).slice(-4) : vigenciaReciente) : '---';
+                    // Filtrar solo vigencias que sean años válidos (4 dígitos entre 2000 y 2100)
+                    const vigenciasValidas = vigencias.filter(v => {
+                      const vig = v.vigencia;
+                      return typeof vig === 'number' && vig >= 2000 && vig <= 2100;
+                    });
+                    // Ordenar por año descendente y tomar la más reciente
+                    const vigenciaReciente = vigenciasValidas.length > 0 
+                      ? vigenciasValidas.sort((a, b) => b.vigencia - a.vigencia)[0].vigencia 
+                      : new Date().getFullYear();
+                    // Extraer el año de la vigencia
+                    const vigenciaYear = vigenciaReciente;
                     // Conteo de reapariciones para este municipio
                     const reaparicionesCount = reaparicionesConteo[item.municipio] || 0;
                     
