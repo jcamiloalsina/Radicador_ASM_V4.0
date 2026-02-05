@@ -1409,18 +1409,36 @@ export default function Predios() {
   // Estado para mostrar diálogo de confirmación al cerrar sin completar
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   
-  // Estado para múltiples zonas físicas (R2)
-  const [zonasFisicas, setZonasFisicas] = useState([{
-    zona_fisica: '0',
-    zona_economica: '0',
-    area_terreno: '0',
+  // Estado para zonas de terreno (R2) - SEPARADO
+  const [zonasTerreno, setZonasTerreno] = useState([{
+    zona_fisica: '',
+    zona_economica: '',
+    area_terreno: '0'
+  }]);
+  
+  // Estado para construcciones (R2) - SEPARADO
+  const [construcciones, setConstrucciones] = useState([{
+    id: 'A',
+    piso: '1',
     habitaciones: '0',
     banos: '0',
     locales: '0',
-    pisos: '1',
+    tipificacion: '',
+    uso: '',
     puntaje: '0',
     area_construida: '0'
   }]);
+  
+  // Función para generar ID de construcción (A, B, C... Z, AA, AB...)
+  const generarIdConstruccion = (index) => {
+    if (index < 26) {
+      return String.fromCharCode(65 + index); // A-Z
+    } else {
+      const firstChar = String.fromCharCode(65 + Math.floor((index - 26) / 26));
+      const secondChar = String.fromCharCode(65 + ((index - 26) % 26));
+      return firstChar + secondChar; // AA, AB, AC...
+    }
+  };
   
   // Estados para el nuevo flujo "Crear Predio" con workflow
   const [radicadoNumero, setRadicadoNumero] = useState(''); // Solo los 4 dígitos (XXXX)
