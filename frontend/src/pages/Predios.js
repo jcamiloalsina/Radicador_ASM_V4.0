@@ -3082,15 +3082,23 @@ export default function Predios() {
           },
           r2: {
             matricula_inmobiliaria: formData.matricula_inmobiliaria || null,
-            zona_fisica_1: parseFloat(zonasFisicas[0]?.zona_fisica) || 0,
-            zona_economica_1: parseFloat(zonasFisicas[0]?.zona_economica) || 0,
-            area_terreno_1: parseFloat(zonasFisicas[0]?.area_terreno) || 0,
-            habitaciones_1: parseInt(zonasFisicas[0]?.habitaciones) || 0,
-            banos_1: parseInt(zonasFisicas[0]?.banos) || 0,
-            locales_1: parseInt(zonasFisicas[0]?.locales) || 0,
-            pisos_1: parseInt(zonasFisicas[0]?.pisos) || 1,
-            puntaje_1: parseFloat(zonasFisicas[0]?.puntaje) || 0,
-            area_construida_1: parseFloat(zonasFisicas[0]?.area_construida) || 0,
+            // Nuevo formato separado: zonas y construcciones
+            zonas: zonasTerreno.map(z => ({
+              zona_fisica: z.zona_fisica || '0',
+              zona_economica: z.zona_economica || '0',
+              area_terreno: parseFloat(z.area_terreno) || 0
+            })),
+            construcciones: construcciones.map(c => ({
+              id: c.id,
+              piso: parseInt(c.piso) || 1,
+              habitaciones: parseInt(c.habitaciones) || 0,
+              banos: parseInt(c.banos) || 0,
+              locales: parseInt(c.locales) || 0,
+              tipificacion: c.tipificacion || '',
+              uso: c.uso || '',
+              puntaje: parseFloat(c.puntaje) || 0,
+              area_construida: parseFloat(c.area_construida) || 0
+            }))
           },
           propietarios: propietariosFormateados,
           gestor_apoyo_id: gestorAsignado,
