@@ -3524,6 +3524,23 @@ export default function Predios() {
       puntaje: '0',
       area_construida: '0'
     }]);
+    // Resetear nuevos estados separados R2
+    setZonasTerreno([{
+      zona_fisica: '',
+      zona_economica: '',
+      area_terreno: '0'
+    }]);
+    setConstrucciones([{
+      id: 'A',
+      piso: '1',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      tipificacion: '',
+      uso: '',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
     setEstructuraCodigo(null);
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
