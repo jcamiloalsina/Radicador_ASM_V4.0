@@ -889,9 +889,16 @@ export default function Pendientes() {
   );
   const prediosParaRevisar = prediosNuevos.filter(p => (p.estado_flujo || p.estado) === 'revision');
   
-  // Badge muestra: para coordinadores = en revisión, para gestores = asignados pendientes
-  const prediosBadgeCount = isCoordinador ? prediosEnRevision : asignadosAMi.length;
-  const totalPendientes = cambiosPendientes.length + (isCoordinador ? prediosEnRevision : asignadosAMi.length) + reaparicionesPendientes;
+  // Calcular totales según el rol
+  const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length;
+  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes;
+  
+  // Título y descripción según el rol
+  const pageTitle = puedeAprobar ? 'Pendientes' : 'Mis Asignaciones';
+  const pageDescription = puedeAprobar 
+    ? 'Cambios, predios nuevos y reapariciones que requieren aprobación'
+    : 'Predios y modificaciones asignadas para tu gestión';
+  const totalBadge = puedeAprobar ? totalPendientesAprobacion : totalMisAsignaciones;
 
   return (
     <div className="space-y-6">
