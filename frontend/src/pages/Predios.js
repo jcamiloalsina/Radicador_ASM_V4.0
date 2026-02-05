@@ -3192,17 +3192,22 @@ export default function Predios() {
         area_terreno: areaTerrenoTotal,
         area_construida: areaConstruidaTotal,
         avaluo: parseFloat(formData.avaluo) || 0,
-        // Zonas físicas múltiples
-        zonas_fisicas: zonasFisicas.map(z => ({
-          zona_fisica: parseFloat(z.zona_fisica) || 0,
-          zona_economica: parseFloat(z.zona_economica) || 0,
-          area_terreno: parseFloat(z.area_terreno) || 0,
-          habitaciones: parseInt(z.habitaciones) || 0,
-          banos: parseInt(z.banos) || 0,
-          locales: parseInt(z.locales) || 0,
-          pisos: parseInt(z.pisos) || 1,
-          puntaje: parseFloat(z.puntaje) || 0,
-          area_construida: parseFloat(z.area_construida) || 0
+        // Nuevo formato R2: zonas y construcciones separadas
+        zonas: zonasTerreno.map(z => ({
+          zona_fisica: z.zona_fisica || '0',
+          zona_economica: z.zona_economica || '0',
+          area_terreno: parseFloat(z.area_terreno) || 0
+        })),
+        construcciones: construcciones.map(c => ({
+          id: c.id,
+          piso: parseInt(c.piso) || 1,
+          habitaciones: parseInt(c.habitaciones) || 0,
+          banos: parseInt(c.banos) || 0,
+          locales: parseInt(c.locales) || 0,
+          tipificacion: c.tipificacion || '',
+          uso: c.uso || '',
+          puntaje: parseFloat(c.puntaje) || 0,
+          area_construida: parseFloat(c.area_construida) || 0
         })),
         // Gestor asignado para continuar
         gestor_asignado_id: gestorAsignado || null
