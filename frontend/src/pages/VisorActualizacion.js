@@ -2415,6 +2415,20 @@ export default function VisorActualizacion() {
         
         {/* GPS Status + Offline Status */}
         <div className="flex items-center gap-2">
+          {/* Indicador Offline Ready */}
+          {offlineReady && (
+            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              Offline Ready
+            </Badge>
+          )}
+          {/* Indicador cargado desde caché */}
+          {loadedFromCache && (
+            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+              <Database className="w-3 h-3 mr-1" />
+              Caché
+            </Badge>
+          )}
           {/* Indicador Offline */}
           {!isOnline && (
             <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
@@ -2422,16 +2436,37 @@ export default function VisorActualizacion() {
               Offline
             </Badge>
           )}
+          {/* Descarga en progreso */}
+          {isDownloading && (
+            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              {downloadProgress.phase}
+            </Badge>
+          )}
+          {/* Cambios pendientes con botón de sincronización */}
           {offlineStats.cambiosPendientes > 0 && (
             <Badge 
               variant="outline" 
-              className="text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer"
-              onClick={forceSync}
-              title="Click para sincronizar"
+              className="text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-200"
+              onClick={() => setShowSyncDialog(true)}
+              title="Click para ver opciones de sincronización"
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
               {offlineStats.cambiosPendientes} pendientes
             </Badge>
+          )}
+          {/* Botón de Sincronizar visible siempre que haya conexión */}
+          {isOnline && offlineStats.cambiosPendientes > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncWithHistory}
+              disabled={isSyncing}
+              className="text-xs bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+            >
+              <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+              Sincronizar
+            </Button>
           )}
           {watchingPosition && gpsAccuracy && (
             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
