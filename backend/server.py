@@ -10963,6 +10963,11 @@ async def ejecutar_accion_predio_nuevo(
         # Preparar zonas físicas en formato R2
         if predio_aprobado.get("zonas_fisicas"):
             predio_aprobado["r2_registros"] = []
+            # Obtener matrícula del R2 o del nivel superior
+            matricula = predio_aprobado.get("matricula_inmobiliaria", "")
+            if not matricula and predio_aprobado.get("r2"):
+                matricula = predio_aprobado["r2"].get("matricula_inmobiliaria", "")
+            
             for i, zona in enumerate(predio_aprobado["zonas_fisicas"]):
                 r2_registro = {
                     "numero_orden": str(i + 1),
@@ -10977,12 +10982,19 @@ async def ejecutar_accion_predio_nuevo(
                     "puntaje": zona.get("puntaje", 0),
                     "zona_fisica": zona.get("zona_fisica", ""),
                     "zona_economica": zona.get("zona_economica", ""),
-                    "matricula_inmobiliaria": predio_aprobado.get("matricula_inmobiliaria", "")
+                    "matricula_inmobiliaria": matricula
                 }
                 predio_aprobado["r2_registros"].append(r2_registro)
+            
+            # Asegurar que la matrícula también esté a nivel superior del predio
+            if matricula:
+                predio_aprobado["matricula_inmobiliaria"] = matricula
+                
         elif predio_aprobado.get("r2"):
             # Si tiene r2 pero no zonas_fisicas, crear r2_registros desde r2
             r2 = predio_aprobado["r2"]
+            matricula = r2.get("matricula_inmobiliaria", "")
+            
             predio_aprobado["r2_registros"] = [{
                 "numero_orden": r2.get("numero_orden", "1"),
                 "tipo_construccion": r2.get("tipo_construccion", "C"),
@@ -10996,8 +11008,12 @@ async def ejecutar_accion_predio_nuevo(
                 "puntaje": r2.get("puntaje_1", 0),
                 "zona_fisica": r2.get("zona_fisica_1", ""),
                 "zona_economica": r2.get("zona_economica_1", ""),
-                "matricula_inmobiliaria": r2.get("matricula_inmobiliaria", "")
+                "matricula_inmobiliaria": matricula
             }]
+            
+            # Asegurar que la matrícula también esté a nivel superior del predio
+            if matricula:
+                predio_aprobado["matricula_inmobiliaria"] = matricula
         
         # Insertar en colección principal
         await db.predios.insert_one(predio_aprobado)
