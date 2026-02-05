@@ -340,9 +340,11 @@ export default function Pendientes() {
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
   const userPermissions = user?.permissions || [];
   const hasApprovePermission = userPermissions.includes('approve_changes');
-  const isCoordinador = user && (
+  const puedeAprobar = user && (
     ['coordinador', 'administrador'].includes(user.role) || hasApprovePermission
   );
+  // Mantener isCoordinador para compatibilidad con el resto del código
+  const isCoordinador = puedeAprobar;
 
   useEffect(() => {
     fetchPendientes();
