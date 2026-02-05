@@ -14,7 +14,7 @@ import os
 import uuid
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predio-tracker-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cadastral-tools.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "catastro@asomunicipios.gov.co"
