@@ -26,7 +26,7 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (5 Febrero 2026 - Sesión Actual)
 
-### COMPLETADO: Refactor R2 - Zonas y Construcciones Separadas
+### ✅ COMPLETADO: Refactor R2 - Zonas y Construcciones Separadas
 
 **Problema original:** El formulario R2 (Físico) mezclaba zonas de terreno y construcciones en un solo array llamado `zonas_fisicas`. Esto no permitía tener diferentes cantidades de zonas y construcciones para un mismo predio.
 
@@ -57,11 +57,20 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - ✅ **Total filas = max(len(zonas), len(construcciones))**
 - ✅ Columnas vacías cuando una lista es más corta
 
-**Testing:** ✅ 15/15 tests backend, 100% frontend verificado
+#### 5. Migración de Datos R2 - EJECUTADA
+- ✅ Script: `/app/scripts/migrar_r2_estructura.py`
+- ✅ **165,362 predios migrados** al nuevo formato
+- ✅ **199,457 zonas creadas**
+- ✅ **175,398 construcciones creadas**
+- ✅ **0 errores**
+- ✅ Backup creado en `/app/backups/` antes de la migración
+
+**Testing Final:** ✅ 13/13 tests backend, 100% frontend verificado
 
 **Archivos modificados:**
 - `/app/frontend/src/pages/Predios.js` - Estados, funciones y JSX actualizados
 - `/app/backend/server.py` - Endpoints y exportación Excel
+- `/app/scripts/migrar_r2_estructura.py` - Script de migración (nuevo)
 
 ---
 
