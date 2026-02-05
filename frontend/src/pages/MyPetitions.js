@@ -257,6 +257,19 @@ export default function MyPetitions() {
         )}
         
         <div className="mt-4 flex justify-end gap-2">
+          {/* Botón Editar - visible para el creador en estados editables */}
+          {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && (
+            <Button
+              onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}`)}
+              variant="outline"
+              size="sm"
+              className="text-blue-700 border-blue-700 hover:bg-blue-50"
+              data-testid={`edit-predio-creado-${predio.id}`}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Editar
+            </Button>
+          )}
           <Button
             onClick={() => navigate('/dashboard/pendientes')}
             variant="outline"
