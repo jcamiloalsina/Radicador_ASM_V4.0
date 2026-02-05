@@ -332,6 +332,7 @@ def ejecutar_migraciones():
         # Ejecutar migraciones en orden
         migrar_propietarios_r1(db)
         migrar_estructura_r2(db)
+        migrar_vigencias_incorrectas(db)
         
         logger.info("=" * 60)
         logger.info("✅ PROCESO DE MIGRACIONES COMPLETADO")
