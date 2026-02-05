@@ -1227,27 +1227,106 @@ export default function Pendientes() {
 
           {/* Tab: Modificaciones (para aprobadores) */}
           <TabsContent value="modificaciones">
-          {cambiosPendientes.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-700">¡Todo al día!</h3>
-                <p className="text-slate-500 mt-2">No hay modificaciones pendientes de aprobación</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {cambiosPendientes.map((cambio) => (
-                <Card key={cambio.id} className="hover:border-emerald-300 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-slate-100 rounded-lg">
-                          <Building className="w-5 h-5 text-slate-600" />
+            {cambiosPendientes.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-700">¡Todo al día!</h3>
+                  <p className="text-slate-500 mt-2">No hay modificaciones pendientes de aprobación</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {cambiosPendientes.map((cambio) => (
+                  <Card key={cambio.id} className="hover:border-emerald-300 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-slate-100 rounded-lg">
+                            <Building className="w-5 h-5 text-slate-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className={getTipoCambioColor(cambio.tipo_cambio)}>
+                                {getTipoCambioLabel(cambio.tipo_cambio)}
+                              </Badge>
+                              {cambio.radicado_numero && (
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                  <FileText className="w-3 h-3 mr-1" />
+                                  {cambio.radicado_numero}
+                                </Badge>
+                              )}
+                              <span className="font-mono text-sm text-slate-600 break-all">
+                                {cambio.datos_propuestos?.codigo_predial_nacional || 
+                                 cambio.predio_actual?.codigo_predial_nacional || 
+                                 'Código no disponible'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-500 mt-1">
+                              {cambio.datos_propuestos?.municipio || 
+                               cambio.predio_actual?.municipio || 
+                               'Municipio no especificado'} · 
+                              Solicitado por: {cambio.propuesto_por_nombre || 'No especificado'}
+                            </p>
+                            {!cambio.radicado_numero && cambio.tipo_cambio === 'modificacion' && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-amber-600">⚠️ Sin radicado asociado</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCambio(cambio);
+                                    setShowVincularRadicadoModal(true);
+                                  }}
+                                >
+                                  <Link2 className="w-3 h-3 mr-1" />
+                                  Vincular radicado
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge className={getTipoCambioColor(cambio.tipo_cambio)}>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedCambio(cambio)}
+                            data-testid={`view-cambio-${cambio.id}`}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Ver Detalle
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => openRechazarModal(cambio)}
+                            disabled={procesando}
+                            data-testid={`reject-cambio-${cambio.id}`}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Rechazar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleAprobar(cambio.id)}
+                            disabled={procesando}
+                            data-testid={`approve-cambio-${cambio.id}`}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Aprobar
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
                               {getTipoCambioLabel(cambio.tipo_cambio)}
                             </Badge>
                             {cambio.radicado_numero && (
