@@ -1234,6 +1234,7 @@ export default function Pendientes() {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedPredioNuevo(predio);
+                                    setIsEditingPredio(false);
                                     setShowPredioDetailDialog(true);
                                   }}
                                 >
@@ -1247,7 +1248,7 @@ export default function Pendientes() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => openPredioEditor(predio.id)}
+                                    onClick={() => openPredioEditor(predio)}
                                     data-testid={`edit-predio-${predio.id}`}
                                   >
                                     <Edit className="w-4 h-4 mr-1" />
