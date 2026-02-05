@@ -255,6 +255,24 @@ export function OfflineReadyBadge() {
   const [expanded, setExpanded] = useState(false);
   const [caching, setCaching] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setExpanded(false);
+      }
+    };
+    
+    if (expanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [expanded]);
   
   const handleForceCache = async () => {
     setCaching(true);
