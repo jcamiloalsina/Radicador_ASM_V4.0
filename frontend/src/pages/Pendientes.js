@@ -823,7 +823,7 @@ export default function Pendientes() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}&return=${encodeURIComponent('/dashboard/pendientes')}`)}
+                                  onClick={() => openPredioEditor(predio.id)}
                                   data-testid={`ver-editar-predio-${predio.id}`}
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
