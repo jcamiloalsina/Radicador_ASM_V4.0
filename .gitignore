@@ -556,3 +556,4 @@ frontend/node_modules/.cache/default-development/2.pack_
 # Environment files
 *.env
 *.env.*
+backups/backup_20260205_155645/asomunicipios_db/predios.bson
