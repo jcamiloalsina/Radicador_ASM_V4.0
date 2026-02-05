@@ -4591,64 +4591,138 @@ export default function Predios() {
             </TabsContent>
             
             <TabsContent value="fisico" className="space-y-4 mt-4">
-              {/* Sección de Zonas Físicas - Múltiples */}
-              <div className="flex justify-between items-center">
-                <h4 className="font-semibold text-slate-800">Zonas Físicas (R2)</h4>
-                <Button type="button" variant="outline" size="sm" onClick={agregarZonaFisica} className="text-emerald-700">
-                  <Plus className="w-4 h-4 mr-1" /> Agregar Zona
-                </Button>
+              {/* Matrícula Inmobiliaria */}
+              <div>
+                <Label>Matrícula Inmobiliaria</Label>
+                <Input 
+                  value={formData.matricula_inmobiliaria} 
+                  onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} 
+                  placeholder="Ej: 270-8920" 
+                />
               </div>
               
-              {zonasFisicas.map((zona, index) => (
-                <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm font-medium text-slate-700">Zona Física {index + 1}</span>
-                    {zonasFisicas.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaFisica(index)} className="text-red-600 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+              {/* ═══════════ ZONAS DE TERRENO ═══════════ */}
+              <div className="border-t border-slate-200 pt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-slate-800">Zonas de Terreno</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={agregarZonaTerreno} className="text-emerald-700">
+                    <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                  </Button>
+                </div>
+                
+                {zonasTerreno.map((zona, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
+                      {zonasTerreno.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaTerreno(index)} className="text-red-600 hover:text-red-700 h-6 w-6 p-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Zona Física</Label>
+                        <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno(index, 'zona_fisica', e.target.value)} placeholder="Ej: 03" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Zona Económica</Label>
+                        <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno(index, 'zona_economica', e.target.value)} placeholder="Ej: 05" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área Terreno (m²)</Label>
+                        <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno(index, 'area_terreno', e.target.value)} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs">Zona Física</Label>
-                      <Input type="number" value={zona.zona_fisica} onChange={(e) => actualizarZonaFisica(index, 'zona_fisica', e.target.value)} />
+                ))}
+                
+                {/* Subtotal Área Terreno */}
+                <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                  <p className="text-sm text-blue-800">
+                    📊 <strong>Subtotal Área Terreno:</strong> {calcularAreasTotales().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m² → R1
+                  </p>
+                </div>
+              </div>
+              
+              {/* ═══════════ CONSTRUCCIONES ═══════════ */}
+              <div className="border-t border-slate-200 pt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-slate-800">Construcciones</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={agregarConstruccion} className="text-emerald-700">
+                    <Plus className="w-4 h-4 mr-1" /> Agregar Construcción
+                  </Button>
+                </div>
+                
+                {construcciones.map((const_, index) => (
+                  <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-amber-800">Construcción {const_.id}</span>
+                      {construcciones.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => eliminarConstruccion(index)} className="text-red-600 hover:text-red-700 h-6 w-6 p-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-xs">Zona Económica</Label>
-                      <Input type="number" value={zona.zona_economica} onChange={(e) => actualizarZonaFisica(index, 'zona_economica', e.target.value)} />
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <Label className="text-xs">Piso</Label>
+                        <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion(index, 'piso', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Habitaciones</Label>
+                        <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion(index, 'habitaciones', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Baños</Label>
+                        <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion(index, 'banos', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Locales</Label>
+                        <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccion(index, 'locales', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tipificación</Label>
+                        <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccion(index, 'tipificacion', e.target.value.toUpperCase())} placeholder="Libre" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Uso</Label>
+                        <Input value={const_.uso} onChange={(e) => actualizarConstruccion(index, 'uso', e.target.value.toUpperCase())} placeholder="Libre" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Puntaje</Label>
+                        <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccion(index, 'puntaje', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área Construida (m²)</Label>
+                        <Input type="number" value={const_.area_construida} onChange={(e) => actualizarConstruccion(index, 'area_construida', e.target.value)} />
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-xs">Área Terreno (m²)</Label>
-                      <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaFisica(index, 'area_terreno', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Habitaciones</Label>
-                      <Input type="number" value={zona.habitaciones} onChange={(e) => actualizarZonaFisica(index, 'habitaciones', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Baños</Label>
-                      <Input type="number" value={zona.banos} onChange={(e) => actualizarZonaFisica(index, 'banos', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Locales</Label>
-                      <Input type="number" value={zona.locales} onChange={(e) => actualizarZonaFisica(index, 'locales', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Pisos</Label>
-                      <Input type="number" value={zona.pisos} onChange={(e) => actualizarZonaFisica(index, 'pisos', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Puntaje</Label>
-                      <Input type="number" value={zona.puntaje} onChange={(e) => actualizarZonaFisica(index, 'puntaje', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Área Construida (m²)</Label>
-                      <Input type="number" value={zona.area_construida} onChange={(e) => actualizarZonaFisica(index, 'area_construida', e.target.value)} />
-                    </div>
+                  </div>
+                ))}
+                
+                {/* Subtotal Área Construida */}
+                <div className="bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                  <p className="text-sm text-amber-800">
+                    📊 <strong>Subtotal Área Construida:</strong> {calcularAreasTotales().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m² → R1
+                  </p>
+                </div>
+              </div>
+              
+              {/* ═══════════ RESUMEN R2 ═══════════ */}
+              <div className="border-t border-slate-200 pt-4">
+                <div className="bg-slate-100 border border-slate-300 rounded-lg p-3">
+                  <h4 className="font-semibold text-slate-800 mb-2">Resumen R2</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <p>• Zonas de Terreno: <strong>{zonasTerreno.length}</strong></p>
+                    <p>• Construcciones: <strong>{construcciones.length}</strong> ({construcciones.map(c => c.id).join(', ')})</p>
+                    <p>• Total Registros R2: <strong>{calcularTotalRegistrosR2()}</strong></p>
+                    <p></p>
+                    <p className="text-blue-700">• Área Terreno → R1: <strong>{calcularAreasTotales().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</strong></p>
+                    <p className="text-amber-700">• Área Construida → R1: <strong>{calcularAreasTotales().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</strong></p>
                   </div>
                 </div>
-              ))}
+              </div>
             </TabsContent>
           </Tabs>
           
