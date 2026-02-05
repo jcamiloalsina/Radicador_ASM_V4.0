@@ -36,7 +36,7 @@ class TestPredioAprobacionBugFixes:
             "password": COORDINADOR_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Coordinador login failed: {response.status_code} - {response.text}")
     
     @pytest.fixture(scope="class")
@@ -47,7 +47,7 @@ class TestPredioAprobacionBugFixes:
             "password": ADMIN_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Admin login failed: {response.status_code} - {response.text}")
     
     @pytest.fixture(scope="class")
@@ -58,7 +58,7 @@ class TestPredioAprobacionBugFixes:
             "password": GESTOR_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Gestor login failed: {response.status_code} - {response.text}")
     
     def test_01_coordinador_login(self, coordinador_token):
@@ -344,7 +344,7 @@ class TestCoordinadorPermissions:
             "password": COORDINADOR_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Coordinador login failed: {response.status_code}")
     
     def test_coordinador_role_check(self, coordinador_token):
@@ -389,7 +389,7 @@ class TestPrediosNuevosEndpoints:
             "password": ADMIN_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Admin login failed: {response.status_code}")
     
     def test_list_predios_nuevos(self, admin_token):
