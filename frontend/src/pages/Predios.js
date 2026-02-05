@@ -1527,22 +1527,80 @@ export default function Predios() {
     return partes.join(' ');
   };
   
-  // Calcular áreas totales desde las zonas R2
+  // Calcular áreas totales desde zonas y construcciones (SEPARADOS)
   const calcularAreasTotales = () => {
-    const areaTerrenoTotal = zonasFisicas.reduce((sum, zona) => {
+    const areaTerrenoTotal = zonasTerreno.reduce((sum, zona) => {
       return sum + (parseFloat(zona.area_terreno) || 0);
     }, 0);
-    const areaConstruidaTotal = zonasFisicas.reduce((sum, zona) => {
-      return sum + (parseFloat(zona.area_construida) || 0);
+    const areaConstruidaTotal = construcciones.reduce((sum, const_) => {
+      return sum + (parseFloat(const_.area_construida) || 0);
     }, 0);
     return { areaTerrenoTotal, areaConstruidaTotal };
   };
   
-  // Funciones para manejar múltiples zonas físicas
-  const agregarZonaFisica = () => {
-    setZonasFisicas([...zonasFisicas, {
-      zona_fisica: '0',
-      zona_economica: '0',
+  // Calcular total de registros R2
+  const calcularTotalRegistrosR2 = () => {
+    return Math.max(zonasTerreno.length, construcciones.length);
+  };
+  
+  // Funciones para manejar zonas de terreno
+  const agregarZonaTerreno = () => {
+    setZonasTerreno([...zonasTerreno, {
+      zona_fisica: '',
+      zona_economica: '',
+      area_terreno: '0'
+    }]);
+  };
+  
+  const eliminarZonaTerreno = (index) => {
+    if (zonasTerreno.length > 1) {
+      setZonasTerreno(zonasTerreno.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaTerreno = (index, campo, valor) => {
+    setZonasTerreno(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+  
+  // Funciones para manejar construcciones
+  const agregarConstruccion = () => {
+    const nuevoId = generarIdConstruccion(construcciones.length);
+    setConstrucciones([...construcciones, {
+      id: nuevoId,
+      piso: '1',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      tipificacion: '',
+      uso: '',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
+  };
+  
+  const eliminarConstruccion = (index) => {
+    if (construcciones.length > 1) {
+      const nuevas = construcciones.filter((_, i) => i !== index);
+      // Reasignar IDs
+      const reasignadas = nuevas.map((c, i) => ({
+        ...c,
+        id: generarIdConstruccion(i)
+      }));
+      setConstrucciones(reasignadas);
+    }
+  };
+  
+  const actualizarConstruccion = (index, campo, valor) => {
+    setConstrucciones(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
       area_terreno: '0',
       habitaciones: '0',
       banos: '0',
