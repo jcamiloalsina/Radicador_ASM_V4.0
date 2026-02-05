@@ -2897,7 +2897,14 @@ export default function Predios() {
           setShowCreateDialog(false);
           setEditingPredioNuevoId(null);
           resetForm();
-          fetchPredios();
+          
+          // Si hay URL de retorno, navegar allí (viene de Pendientes)
+          if (returnUrl) {
+            navigate(returnUrl);
+            setReturnUrl(null);
+          } else {
+            fetchPredios();
+          }
           return;
         }
         
