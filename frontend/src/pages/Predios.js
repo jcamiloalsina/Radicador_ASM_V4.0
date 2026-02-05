@@ -1765,17 +1765,47 @@ export default function Predios() {
             zona_economica_1: r2Data.zona_economica_1 || '',
           });
           
-          // Configurar propietarios - manejar tanto array como campos separados
+          // Configurar propietarios - manejar tanto array como campos separados (nuevo formato XTF)
           if (predioNuevo.propietarios && predioNuevo.propietarios.length > 0) {
-            setPropietarios(predioNuevo.propietarios);
-          } else if (predioNuevo.nombre_propietario) {
+            // Convertir propietarios existentes al nuevo formato si es necesario
+            const propietariosConvertidos = predioNuevo.propietarios.map(p => ({
+              primer_apellido: p.primer_apellido || '',
+              segundo_apellido: p.segundo_apellido || '',
+              primer_nombre: p.primer_nombre || '',
+              segundo_nombre: p.segundo_nombre || '',
+              estado: p.estado || p.estado_civil || '',
+              tipo_documento: p.tipo_documento || 'C',
+              numero_documento: p.numero_documento || ''
+            }));
+            setPropietarios(propietariosConvertidos);
+          } else if (predioNuevo.primer_apellido || predioNuevo.nombre_propietario) {
             // Si no hay array de propietarios pero hay datos del propietario principal
             setPropietarios([{
-              nombre: predioNuevo.nombre_propietario,
+              primer_apellido: predioNuevo.primer_apellido || '',
+              segundo_apellido: predioNuevo.segundo_apellido || '',
+              primer_nombre: predioNuevo.primer_nombre || '',
+              segundo_nombre: predioNuevo.segundo_nombre || '',
+              estado: predioNuevo.estado || predioNuevo.estado_civil || '',
               tipo_documento: predioNuevo.tipo_documento || 'C',
-              numero_documento: predioNuevo.numero_documento || '',
-              estado_civil: predioNuevo.estado_civil || '',
-              porcentaje: '100'
+              numero_documento: predioNuevo.numero_documento || ''
+            }]);
+          }
+          
+          // Configurar zonas físicas si existen
+          if (predioNuevo.zonas_fisicas && predioNuevo.zonas_fisicas.length > 0) {
+            setZonasFisicas(predioNuevo.zonas_fisicas);
+          } else {
+            // Cargar desde campos planos del R2
+            setZonasFisicas([{
+              zona_fisica: predioNuevo.zona_fisica_1 || r2Data.zona_fisica_1 || '0',
+              zona_economica: predioNuevo.zona_economica_1 || r2Data.zona_economica_1 || '0',
+              area_terreno: predioNuevo.area_terreno_1 || r2Data.area_terreno_1 || '0',
+              habitaciones: predioNuevo.habitaciones_1 || r2Data.habitaciones_1 || '0',
+              banos: predioNuevo.banos_1 || r2Data.banos_1 || '0',
+              locales: predioNuevo.locales_1 || r2Data.locales_1 || '0',
+              pisos: predioNuevo.pisos_1 || r2Data.pisos_1 || '1',
+              puntaje: predioNuevo.puntaje_1 || r2Data.puntaje_1 || '0',
+              area_construida: predioNuevo.area_construida_1 || r2Data.area_construida_1 || '0'
             }]);
           }
           
