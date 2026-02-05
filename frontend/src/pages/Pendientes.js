@@ -203,11 +203,10 @@ export default function Pendientes() {
   // Función para agregar propietario
   const addPropietario = () => {
     setEditingPropietarios([...editingPropietarios, {
-      nombre: '',
+      nombre_propietario: '',
       tipo_documento: 'C',
       numero_documento: '',
-      estado_civil: '',
-      porcentaje: ''
+      estado_civil: ''
     }]);
   };
   
@@ -225,9 +224,43 @@ export default function Pendientes() {
     setEditingPropietarios(updated);
   };
   
+  // Funciones para zonas físicas
+  const addZonaFisica = () => {
+    setEditingZonasFisicas([...editingZonasFisicas, {
+      zona_fisica: '',
+      zona_economica: '',
+      area_terreno: '',
+      area_construida: '',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      pisos: '0',
+      puntaje: '0'
+    }]);
+  };
+  
+  const removeZonaFisica = (index) => {
+    if (editingZonasFisicas.length > 1) {
+      setEditingZonasFisicas(editingZonasFisicas.filter((_, i) => i !== index));
+    }
+  };
+  
+  const updateZonaFisica = (index, field, value) => {
+    const updated = [...editingZonasFisicas];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditingZonasFisicas(updated);
+  };
+  
   // Función para guardar cambios del predio
   const handleSavePredioChanges = async () => {
     if (!selectedPredioNuevo) return;
+    
+    // Validar propietarios
+    const propietariosValidos = editingPropietarios.filter(p => p.nombre_propietario && p.numero_documento);
+    if (propietariosValidos.length === 0) {
+      toast.error('Debe ingresar al menos un propietario con nombre y documento');
+      return;
+    }
     
     setSavingPredio(true);
     try {
@@ -236,13 +269,13 @@ export default function Pendientes() {
       // Preparar datos completos
       const updateData = {
         ...editingPredioData,
-        r1: editingR1,
-        r2: editingR2,
-        propietarios: editingPropietarios,
-        // Actualizar campos principales del propietario
-        nombre_propietario: editingPropietarios[0]?.nombre || '',
-        tipo_documento: editingPropietarios[0]?.tipo_documento || 'C',
-        numero_documento: editingPropietarios[0]?.numero_documento || ''
+        propietarios: propietariosValidos,
+        zonas_fisicas: editingZonasFisicas,
+        // Campos legacy para compatibilidad
+        nombre_propietario: propietariosValidos[0]?.nombre_propietario || '',
+        tipo_documento: propietariosValidos[0]?.tipo_documento || 'C',
+        numero_documento: propietariosValidos[0]?.numero_documento || '',
+        estado_civil: propietariosValidos[0]?.estado_civil || ''
       };
       
       await axios.patch(`${API}/predios-nuevos/${selectedPredioNuevo.id}`, updateData, {
@@ -261,14 +294,47 @@ export default function Pendientes() {
     }
   };
   
+  // Función para eliminar solicitud de predio nuevo
+  const handleEliminarSolicitud = async () => {
+    if (!solicitudAEliminar || !motivoEliminacion.trim()) {
+      toast.error('Debe ingresar un motivo para eliminar la solicitud');
+      return;
+    }
+    
+    setEliminandoSolicitud(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/predios-nuevos/${solicitudAEliminar.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { motivo: motivoEliminacion.trim() }
+      });
+      
+      toast.success('Solicitud eliminada correctamente');
+      setShowEliminarSolicitudModal(false);
+      setSolicitudAEliminar(null);
+      setMotivoEliminacion('');
+      fetchPrediosNuevos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al eliminar la solicitud');
+    } finally {
+      setEliminandoSolicitud(false);
+    }
+  };
+  
+  // Función para abrir modal de eliminar solicitud
+  const openEliminarSolicitudModal = (predio) => {
+    setSolicitudAEliminar(predio);
+    setMotivoEliminacion('');
+    setShowEliminarSolicitudModal(true);
+  };
+  
   // Función para cerrar el modal de detalle/edición
   const closePredioDetailDialog = () => {
     setShowPredioDetailDialog(false);
     setIsEditingPredio(false);
     setEditingPredioData({});
-    setEditingR1({});
-    setEditingR2({});
     setEditingPropietarios([]);
+    setEditingZonasFisicas([]);
   };
   
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
