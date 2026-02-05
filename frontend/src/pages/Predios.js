@@ -2907,8 +2907,13 @@ export default function Predios() {
           setEditingPredioNuevoId(null);
           resetForm();
           
-          // Si hay URL de retorno, navegar allí (viene de Pendientes)
-          if (returnUrl) {
+          // Si está en modo embedded (iframe), notificar al padre
+          const params = new URLSearchParams(location.search);
+          const isEmbedded = params.get('embedded') === 'true';
+          if (isEmbedded && window.parent !== window) {
+            window.parent.postMessage({ type: 'PREDIO_SAVED', predioId: editingPredioNuevoId }, '*');
+          } else if (returnUrl) {
+            // Si hay URL de retorno, navegar allí (viene de Pendientes)
             navigate(returnUrl);
             setReturnUrl(null);
           } else {
