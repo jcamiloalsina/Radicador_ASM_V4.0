@@ -2210,26 +2210,41 @@ export default function Pendientes() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Detalle de Predio Nuevo */}
-      <Dialog open={showPredioDetailDialog} onOpenChange={setShowPredioDetailDialog}>
+      {/* Modal de Detalle/Edición de Predio Nuevo */}
+      <Dialog open={showPredioDetailDialog} onOpenChange={(open) => {
+        if (!open) closePredioDetailDialog();
+        else setShowPredioDetailDialog(true);
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Detalle del Predio Nuevo
+              {isEditingPredio ? (
+                <>
+                  <Edit className="w-5 h-5 text-blue-600" />
+                  Editar Predio Nuevo
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5" />
+                  Detalle del Predio Nuevo
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Información del predio en proceso de creación
+              {isEditingPredio 
+                ? 'Modifique los campos necesarios y guarde los cambios'
+                : 'Información del predio en proceso de creación'
+              }
             </DialogDescription>
           </DialogHeader>
           {selectedPredioNuevo && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Badge className={estadoPredioConfig[selectedPredioNuevo.estado]?.color || 'bg-slate-100'}>
-                  {estadoPredioConfig[selectedPredioNuevo.estado]?.label || selectedPredioNuevo.estado}
+                <Badge className={estadoPredioConfig[selectedPredioNuevo.estado_flujo]?.color || estadoPredioConfig[selectedPredioNuevo.estado]?.color || 'bg-slate-100'}>
+                  {estadoPredioConfig[selectedPredioNuevo.estado_flujo]?.label || estadoPredioConfig[selectedPredioNuevo.estado]?.label || selectedPredioNuevo.estado_flujo || selectedPredioNuevo.estado}
                 </Badge>
                 <span className="text-sm text-slate-500">
-                  Creado: {formatDate(selectedPredioNuevo.fecha_creacion)}
+                  Creado: {formatDate(selectedPredioNuevo.created_at || selectedPredioNuevo.fecha_creacion)}
                 </span>
               </div>
               
@@ -2244,40 +2259,265 @@ export default function Pendientes() {
                     <span className="text-slate-500">Municipio:</span>
                     <p>{selectedPredioNuevo.municipio || selectedPredioNuevo.datos_predio?.municipio || 'N/A'}</p>
                   </div>
-                  <div>
-                    <span className="text-slate-500">Dirección:</span>
-                    <p>{selectedPredioNuevo.direccion || selectedPredioNuevo.datos_predio?.direccion || 'N/A'}</p>
+                  
+                  {/* Dirección - Editable */}
+                  <div className="col-span-2">
+                    <Label className="text-slate-500">Dirección:</Label>
+                    {isEditingPredio ? (
+                      <Input
+                        value={editingPredioData.direccion || ''}
+                        onChange={(e) => setEditingPredioData({...editingPredioData, direccion: e.target.value})}
+                        placeholder="Dirección del predio"
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p>{selectedPredioNuevo.direccion || selectedPredioNuevo.datos_predio?.direccion || 'N/A'}</p>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-slate-500">Propietario(s):</span>
-                    <p>{selectedPredioNuevo.nombre_propietario || selectedPredioNuevo.datos_predio?.propietarios?.map(p => p.nombre_propietario).join(', ') || 'N/A'}</p>
+                  
+                  {/* Propietario - Editable */}
+                  <div className="col-span-2">
+                    <Label className="text-slate-500">Propietario:</Label>
+                    {isEditingPredio ? (
+                      <div className="grid grid-cols-3 gap-2 mt-1">
+                        <Input
+                          value={editingPredioData.nombre_propietario || ''}
+                          onChange={(e) => setEditingPredioData({...editingPredioData, nombre_propietario: e.target.value})}
+                          placeholder="Nombre completo"
+                          className="col-span-2"
+                        />
+                        <div className="flex gap-1">
+                          <Select 
+                            value={editingPredioData.tipo_documento || 'C'}
+                            onValueChange={(v) => setEditingPredioData({...editingPredioData, tipo_documento: v})}
+                          >
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="C">CC</SelectItem>
+                              <SelectItem value="N">NIT</SelectItem>
+                              <SelectItem value="E">CE</SelectItem>
+                              <SelectItem value="T">TI</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={editingPredioData.numero_documento || ''}
+                            onChange={(e) => setEditingPredioData({...editingPredioData, numero_documento: e.target.value})}
+                            placeholder="Número"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p>
+                        {selectedPredioNuevo.nombre_propietario || selectedPredioNuevo.datos_predio?.propietarios?.map(p => p.nombre_propietario).join(', ') || 'N/A'}
+                        {selectedPredioNuevo.tipo_documento && ` (${selectedPredioNuevo.tipo_documento}: ${selectedPredioNuevo.numero_documento || 'N/A'})`}
+                      </p>
+                    )}
                   </div>
+                  
+                  {/* Área Terreno - Editable */}
                   <div>
-                    <span className="text-slate-500">Área Terreno:</span>
-                    <p>{(selectedPredioNuevo.area_terreno || selectedPredioNuevo.datos_predio?.area_terreno)?.toLocaleString() || 'N/A'} m²</p>
+                    <Label className="text-slate-500">Área Terreno (m²):</Label>
+                    {isEditingPredio ? (
+                      <Input
+                        type="number"
+                        value={editingPredioData.area_terreno || ''}
+                        onChange={(e) => setEditingPredioData({...editingPredioData, area_terreno: parseFloat(e.target.value) || 0})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p>{(selectedPredioNuevo.area_terreno || selectedPredioNuevo.datos_predio?.area_terreno)?.toLocaleString() || 'N/A'} m²</p>
+                    )}
                   </div>
+                  
+                  {/* Área Construida - Editable */}
                   <div>
-                    <span className="text-slate-500">Avalúo:</span>
-                    <p>${(selectedPredioNuevo.avaluo || selectedPredioNuevo.datos_predio?.avaluo)?.toLocaleString() || 'N/A'}</p>
+                    <Label className="text-slate-500">Área Construida (m²):</Label>
+                    {isEditingPredio ? (
+                      <Input
+                        type="number"
+                        value={editingPredioData.area_construida || ''}
+                        onChange={(e) => setEditingPredioData({...editingPredioData, area_construida: parseFloat(e.target.value) || 0})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p>{(selectedPredioNuevo.area_construida || selectedPredioNuevo.datos_predio?.area_construida)?.toLocaleString() || '0'} m²</p>
+                    )}
                   </div>
+                  
+                  {/* Avalúo - Editable */}
                   <div>
-                    <span className="text-slate-500">Destino Económico:</span>
-                    <p>{selectedPredioNuevo.destino_economico || selectedPredioNuevo.datos_predio?.destino_economico || 'N/A'}</p>
+                    <Label className="text-slate-500">Avalúo:</Label>
+                    {isEditingPredio ? (
+                      <Input
+                        type="number"
+                        value={editingPredioData.avaluo || ''}
+                        onChange={(e) => setEditingPredioData({...editingPredioData, avaluo: parseFloat(e.target.value) || 0})}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p>${(selectedPredioNuevo.avaluo || selectedPredioNuevo.datos_predio?.avaluo)?.toLocaleString() || 'N/A'}</p>
+                    )}
                   </div>
+                  
+                  {/* Destino Económico - Editable */}
                   <div>
-                    <span className="text-slate-500">Tipo Documento:</span>
-                    <p>{selectedPredioNuevo.tipo_documento || 'N/A'} - {selectedPredioNuevo.numero_documento || 'N/A'}</p>
+                    <Label className="text-slate-500">Destino Económico:</Label>
+                    {isEditingPredio ? (
+                      <Select 
+                        value={editingPredioData.destino_economico || ''}
+                        onValueChange={(v) => setEditingPredioData({...editingPredioData, destino_economico: v})}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Seleccione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A">A - Agrícola</SelectItem>
+                          <SelectItem value="B">B - Comercial</SelectItem>
+                          <SelectItem value="C">C - Industrial</SelectItem>
+                          <SelectItem value="D">D - Servicios</SelectItem>
+                          <SelectItem value="E">E - Educativo</SelectItem>
+                          <SelectItem value="F">F - Recreacional</SelectItem>
+                          <SelectItem value="G">G - Salubridad</SelectItem>
+                          <SelectItem value="H">H - Habitacional</SelectItem>
+                          <SelectItem value="I">I - Institucional</SelectItem>
+                          <SelectItem value="J">J - Uso Público</SelectItem>
+                          <SelectItem value="K">K - Lote</SelectItem>
+                          <SelectItem value="L">L - Minero</SelectItem>
+                          <SelectItem value="M">M - Cultural</SelectItem>
+                          <SelectItem value="N">N - Pecuario</SelectItem>
+                          <SelectItem value="O">O - Forestal</SelectItem>
+                          <SelectItem value="P">P - Agropecuario</SelectItem>
+                          <SelectItem value="Q">Q - Agroindustrial</SelectItem>
+                          <SelectItem value="R">R - Religioso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p>{selectedPredioNuevo.destino_economico || selectedPredioNuevo.datos_predio?.destino_economico || 'N/A'}</p>
+                    )}
                   </div>
                 </div>
                 
-                {/* Mostrar información R2 si existe */}
-                {(selectedPredioNuevo.r2 || selectedPredioNuevo.matricula_inmobiliaria) && (
+                {/* Observaciones - Editable */}
+                {isEditingPredio && (
+                  <div className="mt-3">
+                    <Label className="text-slate-500">Observaciones:</Label>
+                    <Textarea
+                      value={editingPredioData.observaciones || ''}
+                      onChange={(e) => setEditingPredioData({...editingPredioData, observaciones: e.target.value})}
+                      placeholder="Observaciones adicionales..."
+                      className="mt-1"
+                      rows={3}
+                    />
+                  </div>
+                )}
+                
+                {/* Mostrar información R2 si existe y no está en modo edición */}
+                {!isEditingPredio && (selectedPredioNuevo.r2 || selectedPredioNuevo.matricula_inmobiliaria) && (
                   <div className="mt-4 pt-3 border-t border-slate-200">
                     <h5 className="font-medium text-slate-600 mb-2">Información Física (R2)</h5>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {(selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria) && (
                         <div>
                           <span className="text-slate-500">Matrícula:</span>
+                          <p>{selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Información del flujo */}
+              {!isEditingPredio && (
+                <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium text-blue-800">Información del Flujo</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-blue-600">Creador:</span>
+                      <p className="text-blue-900">{selectedPredioNuevo.gestor_creador_nombre || selectedPredioNuevo.creado_por_nombre || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">Gestor de Apoyo:</span>
+                      <p className="text-blue-900">{selectedPredioNuevo.gestor_apoyo_nombre || 'Sin asignar'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Historial del flujo */}
+              {!isEditingPredio && selectedPredioNuevo.historial_flujo && selectedPredioNuevo.historial_flujo.length > 0 && (
+                <div className="bg-slate-100 rounded-lg p-4">
+                  <h4 className="font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    Historial
+                  </h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedPredioNuevo.historial_flujo.slice().reverse().map((h, idx) => (
+                      <div key={idx} className="text-sm border-l-2 border-slate-300 pl-3">
+                        <span className="font-medium">{h.accion}</span>
+                        <span className="text-slate-500"> por {h.usuario_nombre}</span>
+                        <span className="text-slate-400 text-xs block">{formatDate(h.fecha)}</span>
+                        {h.observaciones && <p className="text-slate-600 text-xs mt-1">{h.observaciones}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2">
+            {isEditingPredio ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditingPredio(false);
+                    setEditingPredioData({});
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handleSavePredioChanges}
+                  disabled={savingPredio}
+                >
+                  {savingPredio ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Guardar Cambios
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={closePredioDetailDialog}>
+                  Cerrar
+                </Button>
+                {/* Mostrar botón de editar si tiene permisos */}
+                {selectedPredioNuevo && ['creado', 'digitalizacion', 'devuelto'].includes(selectedPredioNuevo.estado_flujo || selectedPredioNuevo.estado) && (
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => openPredioEditor(selectedPredioNuevo)}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
                           <p>{selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria}</p>
                         </div>
                       )}
