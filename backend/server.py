@@ -10773,7 +10773,7 @@ async def ejecutar_accion_predio_nuevo(
         # Verificar permiso de aprobar cambios
         user_permisos = await db.user_permissions.find_one({"user_id": user_id})
         puede_aprobar = (
-            current_user['role'] == UserRole.ADMINISTRADOR or
+            current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR] or
             (user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios'))
         )
         
