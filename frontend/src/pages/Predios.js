@@ -1969,6 +1969,11 @@ export default function Predios() {
 
   // Función para obtener sugerencia de próximo código disponible
   const fetchSugerenciaCodigo = async () => {
+    // NO auto-llenar terreno si estamos editando un predio existente
+    if (editingPredioNuevoId) {
+      return; // No sugerir código cuando estamos editando
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams({
@@ -1982,7 +1987,7 @@ export default function Predios() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTerrenoInfo(res.data);
-      // Auto-llenar el terreno sugerido
+      // Auto-llenar el terreno sugerido solo para predios NUEVOS
       if (res.data.siguiente_terreno) {
         setCodigoManual(prev => ({ ...prev, terreno: res.data.siguiente_terreno }));
       }
