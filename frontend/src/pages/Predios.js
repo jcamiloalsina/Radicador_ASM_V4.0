@@ -1662,11 +1662,16 @@ export default function Predios() {
           });
           
           const predioNuevo = response.data;
+          console.log('Predio cargado para edición:', predioNuevo);
           
           // Configurar el municipio
           if (predioNuevo.municipio) {
             setFilterMunicipio(predioNuevo.municipio);
           }
+          
+          // Extraer datos de R1 y R2 si existen como objetos
+          const r1Data = predioNuevo.r1 || {};
+          const r2Data = predioNuevo.r2 || {};
           
           // Llenar el formulario con los datos del predio nuevo
           setFormData({
@@ -1678,30 +1683,34 @@ export default function Predios() {
             destino_economico: predioNuevo.destino_economico || '',
             zona: predioNuevo.zona || '',
             codigo_predial_nacional: predioNuevo.codigo_predial_nacional || '',
-            // R1 fields
-            numero_orden_1: predioNuevo.numero_orden_1 || '0',
-            calificacion_no_certificada_1: predioNuevo.calificacion_no_certificada_1 || '0',
-            tipo_predio_1: predioNuevo.tipo_predio_1 || '',
-            numero_predial_anterior_1: predioNuevo.numero_predial_anterior_1 || '',
-            complemento_nom_predio_1: predioNuevo.complemento_nom_predio_1 || '',
-            area_total_terreno_1: predioNuevo.area_total_terreno_1 || '',
-            valor_referencia_1: predioNuevo.valor_referencia_1 || '',
-            tipo_avaluo_catastral_1: predioNuevo.tipo_avaluo_catastral_1 || '',
-            // R2 fields
-            numero_orden_2: predioNuevo.numero_orden_2 || '0',
-            tipo_construccion_2: predioNuevo.tipo_construccion_2 || '',
-            numero_pisos_2: predioNuevo.numero_pisos_2 || '0',
-            numero_habitaciones_2: predioNuevo.numero_habitaciones_2 || '0',
-            numero_banios_2: predioNuevo.numero_banios_2 || '0',
-            numero_locales_2: predioNuevo.numero_locales_2 || '0',
-            anio_construccion_2: predioNuevo.anio_construccion_2 || '',
-            total_area_construida_2: predioNuevo.total_area_construida_2 || '',
-            area_privada_construida_2: predioNuevo.area_privada_construida_2 || '',
-            area_total_lote_2: predioNuevo.area_total_lote_2 || '',
-            puntaje_2: predioNuevo.puntaje_2 || '0',
-            valor_m2_construccion_2: predioNuevo.valor_m2_construccion_2 || '0',
-            valor_m2_terreno_2: predioNuevo.valor_m2_terreno_2 || '0',
-            uso_predominante_2: predioNuevo.uso_predominante_2 || '',
+            // R1 fields (desde objeto r1 o campos planos)
+            numero_orden_1: r1Data.numero_orden || predioNuevo.numero_orden_1 || '0',
+            calificacion_no_certificada_1: r1Data.calificacion_no_certificada || predioNuevo.calificacion_no_certificada_1 || '0',
+            tipo_predio_1: r1Data.tipo_predio || predioNuevo.tipo_predio_1 || '',
+            numero_predial_anterior_1: r1Data.numero_predial_anterior || predioNuevo.numero_predial_anterior_1 || '',
+            complemento_nom_predio_1: r1Data.complemento_nom_predio || predioNuevo.complemento_nom_predio_1 || '',
+            area_total_terreno_1: r1Data.area_total_terreno || predioNuevo.area_total_terreno_1 || '',
+            valor_referencia_1: r1Data.valor_referencia || predioNuevo.valor_referencia_1 || '',
+            tipo_avaluo_catastral_1: r1Data.tipo_avaluo_catastral || predioNuevo.tipo_avaluo_catastral_1 || '',
+            // R2 fields (desde objeto r2 o campos planos)
+            numero_orden_2: r2Data.numero_orden || predioNuevo.numero_orden_2 || '0',
+            tipo_construccion_2: r2Data.tipo_construccion || predioNuevo.tipo_construccion_2 || '',
+            numero_pisos_2: r2Data.pisos_1 || r2Data.numero_pisos || predioNuevo.numero_pisos_2 || '0',
+            numero_habitaciones_2: r2Data.habitaciones_1 || r2Data.numero_habitaciones || predioNuevo.numero_habitaciones_2 || '0',
+            numero_banios_2: r2Data.banos_1 || r2Data.numero_banios || predioNuevo.numero_banios_2 || '0',
+            numero_locales_2: r2Data.locales_1 || r2Data.numero_locales || predioNuevo.numero_locales_2 || '0',
+            anio_construccion_2: r2Data.anio_construccion || predioNuevo.anio_construccion_2 || '',
+            total_area_construida_2: r2Data.area_construida_1 || r2Data.total_area_construida || predioNuevo.total_area_construida_2 || '',
+            area_privada_construida_2: r2Data.area_privada_construida || predioNuevo.area_privada_construida_2 || '',
+            area_total_lote_2: r2Data.area_terreno_1 || r2Data.area_total_lote || predioNuevo.area_total_lote_2 || '',
+            puntaje_2: r2Data.puntaje_1 || r2Data.puntaje || predioNuevo.puntaje_2 || '0',
+            valor_m2_construccion_2: r2Data.valor_m2_construccion || predioNuevo.valor_m2_construccion_2 || '0',
+            valor_m2_terreno_2: r2Data.valor_m2_terreno || predioNuevo.valor_m2_terreno_2 || '0',
+            uso_predominante_2: r2Data.uso_1 || r2Data.uso_predominante || predioNuevo.uso_predominante_2 || '',
+            // Campos adicionales de R2
+            matricula_inmobiliaria: r2Data.matricula_inmobiliaria || predioNuevo.matricula_inmobiliaria || '',
+            zona_fisica_1: r2Data.zona_fisica_1 || '',
+            zona_economica_1: r2Data.zona_economica_1 || '',
           });
           
           // Configurar propietarios
