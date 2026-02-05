@@ -2984,7 +2984,7 @@ export default function Predios() {
             area_terreno: predioNuevoData.r1.area_terreno,
             area_construida: predioNuevoData.r1.area_construida,
             avaluo: predioNuevoData.r1.avaluo,
-            propietarios: propietarios.filter(p => p.nombre_propietario && p.numero_documento),
+            propietarios: propietariosFormateados,
             // R2 data
             matricula_inmobiliaria: predioNuevoData.r2.matricula_inmobiliaria,
             zona_fisica_1: predioNuevoData.r2.zona_fisica_1,
