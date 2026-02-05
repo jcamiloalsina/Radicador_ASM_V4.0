@@ -2447,6 +2447,42 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Sheet lateral para editar predio - pantalla completa */}
+      <Sheet open={showPredioEditor} onOpenChange={(open) => !open && closePredioEditor()}>
+        <SheetContent 
+          side="right" 
+          className="w-full sm:max-w-full md:max-w-[95vw] lg:max-w-[90vw] p-0 overflow-hidden"
+          style={{ maxWidth: '95vw' }}
+        >
+          <SheetHeader className="px-6 py-4 border-b bg-slate-50">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <Edit className="w-5 h-5 text-emerald-600" />
+                Editar Predio Nuevo
+              </SheetTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={closePredioEditor}
+                className="text-slate-600"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Cerrar
+              </Button>
+            </div>
+          </SheetHeader>
+          <div className="h-[calc(100vh-80px)] overflow-hidden">
+            {editingPredioId && (
+              <iframe
+                src={`/dashboard/predios?predio_nuevo=${editingPredioId}&embedded=true`}
+                className="w-full h-full border-0"
+                title="Editor de Predio"
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
