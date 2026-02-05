@@ -3615,18 +3615,19 @@ export default function Predios() {
                     </SelectTrigger>
                     <SelectContent>
                       {vigenciasDelMunicipio.length > 0 ? (
-                        vigenciasDelMunicipio.map(v => {
-                          // Mostrar solo el año (extraer de formato 0101YYYY, 1012024 o usar directamente si es número)
-                          const vigStr = String(v.vigencia);
-                          const yearDisplay = vigStr.length >= 7 ? vigStr.slice(-4) : vigStr;
-                          return (
-                            <SelectItem key={v.vigencia} value={String(v.vigencia)}>
-                              {yearDisplay} ({v.predios?.toLocaleString()} predios) {v.historico && '(histórico)'}
-                            </SelectItem>
-                          );
-                        })
+                        // Filtrar solo vigencias válidas (años entre 2000 y 2100)
+                        vigenciasDelMunicipio
+                          .filter(v => typeof v.vigencia === 'number' && v.vigencia >= 2000 && v.vigencia <= 2100)
+                          .sort((a, b) => b.vigencia - a.vigencia)
+                          .map(v => {
+                            return (
+                              <SelectItem key={v.vigencia} value={String(v.vigencia)}>
+                                {v.vigencia} ({v.predios?.toLocaleString()} predios) {v.historico && '(histórico)'}
+                              </SelectItem>
+                            );
+                          })
                       ) : (
-                        <SelectItem value="2025">2025 (vigencia actual)</SelectItem>
+                        <SelectItem value={String(new Date().getFullYear())}>{new Date().getFullYear()} (vigencia actual)</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
