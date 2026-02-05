@@ -2468,20 +2468,21 @@ export default function Pendientes() {
           className="w-full sm:max-w-full md:max-w-[95vw] lg:max-w-[90vw] p-0 overflow-hidden"
           style={{ maxWidth: '95vw' }}
         >
-          <SheetHeader className="px-6 py-4 border-b bg-slate-50">
+          <SheetHeader className="px-6 py-4 border-b bg-slate-50 relative z-50">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
                 <Edit className="w-5 h-5 text-emerald-600" />
                 Editar Predio Nuevo
               </SheetTitle>
               <Button 
-                variant="outline" 
+                variant="destructive" 
                 size="sm" 
                 onClick={closePredioEditor}
-                className="text-slate-600"
+                className="relative z-50"
+                data-testid="close-predio-editor"
               >
                 <X className="w-4 h-4 mr-1" />
-                Cerrar
+                Cerrar Editor
               </Button>
             </div>
           </SheetHeader>
