@@ -128,75 +128,74 @@ export default function Pendientes() {
     setSelectedPredioNuevo(predio);
     
     // Extraer datos de R1 y R2
-    const r1 = predio.r1 || {};
     const r2 = predio.r2 || {};
     
-    // Datos básicos
+    // Datos básicos del predio (incluye info de R1)
     setEditingPredioData({
       direccion: predio.direccion || '',
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo: predio.avaluo || '',
       destino_economico: predio.destino_economico || '',
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || r2.matricula_inmobiliaria || '',
       observaciones: predio.observaciones || '',
       observaciones_apoyo: predio.observaciones_apoyo || ''
     });
     
-    // Datos R1
-    setEditingR1({
-      numero_orden: r1.numero_orden || '0',
-      calificacion_no_certificada: r1.calificacion_no_certificada || '0',
-      tipo_predio: r1.tipo_predio || '',
-      numero_predial_anterior: r1.numero_predial_anterior || '',
-      complemento_nom_predio: r1.complemento_nom_predio || '',
-      area_total_terreno: r1.area_total_terreno || predio.area_terreno || '',
-      valor_referencia: r1.valor_referencia || '',
-      tipo_avaluo_catastral: r1.tipo_avaluo_catastral || ''
-    });
-    
-    // Datos R2
-    setEditingR2({
-      numero_orden: r2.numero_orden || '0',
-      tipo_construccion: r2.tipo_construccion || '',
-      pisos_1: r2.pisos_1 || r2.numero_pisos || '0',
-      habitaciones_1: r2.habitaciones_1 || r2.numero_habitaciones || '0',
-      banos_1: r2.banos_1 || r2.numero_banios || '0',
-      locales_1: r2.locales_1 || r2.numero_locales || '0',
-      anio_construccion: r2.anio_construccion || '',
-      area_construida_1: r2.area_construida_1 || predio.area_construida || '0',
-      area_privada_construida: r2.area_privada_construida || '',
-      area_terreno_1: r2.area_terreno_1 || predio.area_terreno || '',
-      puntaje_1: r2.puntaje_1 || '0',
-      valor_m2_construccion: r2.valor_m2_construccion || '0',
-      valor_m2_terreno: r2.valor_m2_terreno || '0',
-      uso_1: r2.uso_1 || '',
-      matricula_inmobiliaria: r2.matricula_inmobiliaria || predio.matricula_inmobiliaria || '',
-      zona_fisica_1: r2.zona_fisica_1 || '',
-      zona_economica_1: r2.zona_economica_1 || ''
-    });
-    
-    // Propietarios
+    // Propietarios - usar nombre_propietario como en Predios.js
     if (predio.propietarios && predio.propietarios.length > 0) {
-      setEditingPropietarios([...predio.propietarios]);
+      setEditingPropietarios(predio.propietarios.map(p => ({
+        nombre_propietario: p.nombre_propietario || p.nombre || '',
+        tipo_documento: p.tipo_documento || 'C',
+        numero_documento: p.numero_documento || '',
+        estado_civil: p.estado_civil || ''
+      })));
     } else if (predio.nombre_propietario) {
       setEditingPropietarios([{
-        nombre: predio.nombre_propietario,
+        nombre_propietario: predio.nombre_propietario,
         tipo_documento: predio.tipo_documento || 'C',
         numero_documento: predio.numero_documento || '',
-        estado_civil: predio.estado_civil || '',
-        porcentaje: '100'
+        estado_civil: predio.estado_civil || ''
       }]);
     } else {
       setEditingPropietarios([{
-        nombre: '',
+        nombre_propietario: '',
         tipo_documento: 'C',
         numero_documento: '',
-        estado_civil: '',
-        porcentaje: '100'
+        estado_civil: ''
       }]);
     }
     
-    setEditTabActive('basico');
+    // Zonas Físicas (R2) - puede haber múltiples
+    if (predio.zonas_fisicas && predio.zonas_fisicas.length > 0) {
+      setEditingZonasFisicas([...predio.zonas_fisicas]);
+    } else if (r2 && Object.keys(r2).length > 0) {
+      setEditingZonasFisicas([{
+        zona_fisica: r2.zona_fisica_1 || '',
+        zona_economica: r2.zona_economica_1 || '',
+        area_terreno: r2.area_terreno_1 || predio.area_terreno || '',
+        area_construida: r2.area_construida_1 || predio.area_construida || '',
+        habitaciones: r2.habitaciones_1 || r2.numero_habitaciones || '0',
+        banos: r2.banos_1 || r2.numero_banios || '0',
+        locales: r2.locales_1 || r2.numero_locales || '0',
+        pisos: r2.pisos_1 || r2.numero_pisos || '0',
+        puntaje: r2.puntaje_1 || '0'
+      }]);
+    } else {
+      setEditingZonasFisicas([{
+        zona_fisica: '',
+        zona_economica: '',
+        area_terreno: predio.area_terreno || '',
+        area_construida: predio.area_construida || '',
+        habitaciones: '0',
+        banos: '0',
+        locales: '0',
+        pisos: '0',
+        puntaje: '0'
+      }]);
+    }
+    
+    setEditTabActive('propietario');
     setIsEditingPredio(true);
     setShowPredioDetailDialog(true);
   };
