@@ -49,6 +49,7 @@ import {
   Home,
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
   Crosshair,
   Satellite,
   Map as MapIcon,
@@ -79,7 +80,8 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  Scale
+  Scale,
+  Loader2
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
