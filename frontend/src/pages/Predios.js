@@ -3118,17 +3118,10 @@ export default function Predios() {
             area_construida: predioNuevoData.r1.area_construida,
             avaluo: predioNuevoData.r1.avaluo,
             propietarios: propietariosFormateados,
-            // R2 data
+            // R2 data - nuevo formato separado
             matricula_inmobiliaria: predioNuevoData.r2.matricula_inmobiliaria,
-            zona_fisica_1: predioNuevoData.r2.zona_fisica_1,
-            zona_economica_1: predioNuevoData.r2.zona_economica_1,
-            area_terreno_1: predioNuevoData.r2.area_terreno_1,
-            habitaciones_1: predioNuevoData.r2.habitaciones_1,
-            banos_1: predioNuevoData.r2.banos_1,
-            locales_1: predioNuevoData.r2.locales_1,
-            pisos_1: predioNuevoData.r2.pisos_1,
-            puntaje_1: predioNuevoData.r2.puntaje_1,
-            area_construida_1: predioNuevoData.r2.area_construida_1,
+            zonas: predioNuevoData.r2.zonas,
+            construcciones: predioNuevoData.r2.construcciones,
             observaciones: predioNuevoData.observaciones,
           };
           
