@@ -260,7 +260,7 @@ export default function MyPetitions() {
           {/* Botón Editar - visible para el creador en estados editables */}
           {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && (
             <Button
-              onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}`)}
+              onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}&return=${encodeURIComponent('/dashboard/mis-peticiones')}`)}
               variant="outline"
               size="sm"
               className="text-blue-700 border-blue-700 hover:bg-blue-50"
