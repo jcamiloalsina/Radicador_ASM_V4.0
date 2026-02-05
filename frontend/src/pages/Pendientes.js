@@ -2247,6 +2247,7 @@ export default function Pendientes() {
           )}
         </TabsContent>
       </Tabs>
+      )}
 
       {/* Modal de Reaparición */}
       <Dialog open={showReaparicionModal} onOpenChange={(open) => {
