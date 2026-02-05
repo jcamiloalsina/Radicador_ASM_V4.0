@@ -265,6 +265,57 @@ def migrar_estructura_r2(db):
     return stats['errores'] == 0
 
 
+def migrar_vigencias_incorrectas(db):
+    """
+    Migración 3: Corregir vigencias con formato incorrecto (ej: "02042026" -> 2026)
+    Aplica a predios_nuevos y predios que tengan vigencia en formato string largo
+    """
+    nombre_migracion = 'corregir_vigencias_formato'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    stats = {'predios_nuevos': 0, 'predios': 0, 'errores': 0}
+    anio_actual = datetime.now().year
+    
+    # Corregir en predios_nuevos
+    for predio in db.predios_nuevos.find({'vigencia': {'$type': 'string'}}):
+        try:
+            vigencia = predio.get('vigencia', '')
+            # Si es string con más de 4 caracteres, es formato incorrecto
+            if isinstance(vigencia, str) and len(vigencia) > 4:
+                db.predios_nuevos.update_one(
+                    {'_id': predio['_id']},
+                    {'$set': {'vigencia': anio_actual}}
+                )
+                stats['predios_nuevos'] += 1
+        except Exception as e:
+            stats['errores'] += 1
+            logger.error(f"   Error en predios_nuevos {predio.get('_id')}: {e}")
+    
+    # Corregir en predios principal
+    for predio in db.predios.find({'vigencia': {'$type': 'string'}}):
+        try:
+            vigencia = predio.get('vigencia', '')
+            # Si es string con más de 4 caracteres, es formato incorrecto
+            if isinstance(vigencia, str) and len(vigencia) > 4:
+                db.predios.update_one(
+                    {'_id': predio['_id']},
+                    {'$set': {'vigencia': anio_actual}}
+                )
+                stats['predios'] += 1
+        except Exception as e:
+            stats['errores'] += 1
+            logger.error(f"   Error en predios {predio.get('_id')}: {e}")
+    
+    logger.info(f"✅ Migración vigencias completada: {stats['predios_nuevos']} en predios_nuevos, {stats['predios']} en predios, {stats['errores']} errores")
+    registrar_migracion(db, nombre_migracion, stats)
+    return stats['errores'] == 0
+
+
 def ejecutar_migraciones():
     """
     Ejecuta todas las migraciones pendientes.
