@@ -1467,10 +1467,13 @@ export default function Predios() {
   // Funciones para manejar múltiples propietarios
   const agregarPropietario = () => {
     setPropietarios([...propietarios, {
-      nombre_propietario: '',
+      primer_apellido: '',
+      segundo_apellido: '',
+      primer_nombre: '',
+      segundo_nombre: '',
+      estado: '',
       tipo_documento: 'C',
-      numero_documento: '',
-      estado_civil: ''
+      numero_documento: ''
     }]);
   };
   
@@ -1486,6 +1489,35 @@ export default function Predios() {
       nuevos[index] = { ...nuevos[index], [campo]: valor };
       return nuevos;
     });
+  };
+  
+  // Función para formatear número de documento con padding de 0s (12 dígitos)
+  const formatearNumeroDocumento = (numero) => {
+    if (!numero) return '';
+    const soloNumeros = numero.replace(/\D/g, '');
+    return soloNumeros.padStart(12, '0');
+  };
+  
+  // Función para generar nombre completo desde campos separados
+  const generarNombreCompleto = (prop) => {
+    const partes = [
+      prop.primer_apellido,
+      prop.segundo_apellido,
+      prop.primer_nombre,
+      prop.segundo_nombre
+    ].filter(p => p && p.trim());
+    return partes.join(' ');
+  };
+  
+  // Calcular áreas totales desde las zonas R2
+  const calcularAreasTotales = () => {
+    const areaTerrenoTotal = zonasFisicas.reduce((sum, zona) => {
+      return sum + (parseFloat(zona.area_terreno) || 0);
+    }, 0);
+    const areaConstruidaTotal = zonasFisicas.reduce((sum, zona) => {
+      return sum + (parseFloat(zona.area_construida) || 0);
+    }, 0);
+    return { areaTerrenoTotal, areaConstruidaTotal };
   };
   
   // Funciones para manejar múltiples zonas físicas
