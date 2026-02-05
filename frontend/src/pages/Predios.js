@@ -1640,10 +1640,13 @@ export default function Predios() {
     const params = new URLSearchParams(location.search);
     const predioNuevoId = params.get('predio_nuevo');
     const fromUrl = params.get('return');
+    const isEmbedded = params.get('embedded') === 'true';
     
     if (predioNuevoId) {
-      // Guardar URL de retorno si viene de Pendientes
-      if (fromUrl) {
+      // Si está embebido en un iframe, no necesitamos URL de retorno
+      if (isEmbedded) {
+        setReturnUrl(null);
+      } else if (fromUrl) {
         setReturnUrl(decodeURIComponent(fromUrl));
       } else {
         // Por defecto, regresar a pendientes si viene con predio_nuevo
