@@ -114,17 +114,42 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 (Fork) - Modal de Edición Multi-Pestaña Completo
+
+#### 22. COMPLETADO: Modal de Edición Multi-Pestaña en Pendientes.js
+**Problema reportado:** El usuario requería un modal de edición completo sin navegar a otra página. Las soluciones anteriores (navegación, iframe, modal simple) fueron rechazadas.
+
+**Solución Frontend (Pendientes.js líneas 2306-2820):**
+- Modal completo "Editar Predio Nuevo" con 4 pestañas:
+  - **Básico:** Dirección, Área Terreno, Área Construida, Avalúo, Destino Económico, Observaciones
+  - **R1 - Jurídico:** Número Orden, Calificación No Certificada, Tipo Predio, Número Predial Anterior, Complemento Nombre, Área Total Terreno, Valor Referencia, Tipo Avalúo
+  - **R2 - Físico:** Matrícula Inmobiliaria, Tipo Construcción, Año, Pisos, Habitaciones, Baños, Locales, Áreas, Puntaje, Valores m², Zonas
+  - **Propietarios:** Lista dinámica con agregar/eliminar. Cada propietario tiene: Nombre, Tipo Documento, Número, Estado Civil, Porcentaje
+
+**Funciones implementadas (líneas 122-268):**
+- `openPredioEditor(predio)`: Extrae y carga datos de predio, R1, R2 y propietarios
+- `handleSavePredioChanges()`: Envía PATCH a `/api/predios-nuevos/{id}` con todos los datos
+- `addPropietario()`, `removePropietario()`, `updatePropietario()`: Gestión de propietarios
+
+**Protecciones Backend (server.py líneas 10899-10902):**
+- Campos protegidos: `id`, `codigo_predial_nacional`, `gestor_creador_id`, `created_at`, `historial_flujo`
+- El código predial NO puede modificarse (fix de corrupción de CPN)
+
+**Verificación:** ✅ Testing agent iteration_30.json - 100% features passed
+
+---
+
 ### Sesión 5 Febrero 2026 (Continuación) - Fix Bugs Críticos Mis Asignaciones
 
 #### 19. Fix: Botón "Editar" faltante en "Predios Nuevos" 
 **Problema reportado:** En la pestaña "Predios Nuevos" > "Asignados a Mí" o "Mis Creaciones", solo existía el botón "Ver Detalle" que abría un modal informativo. No había forma de editar el predio desde esa vista.
 
-**Solución Frontend (Pendientes.js líneas 1177-1189):**
-- Agregado botón "Editar" que navega a `/dashboard/predios?predio_nuevo={id}`
-- El botón aparece para gestores de apoyo o coordinadores en estados editables (creado, digitalizacion, devuelto)
+**Solución Frontend (Pendientes.js líneas 1337-1348):**
+- Agregado botón "Editar" que abre el modal de edición multi-pestaña
+- El botón aparece para creador, gestor de apoyo o coordinador en estados editables (creado, digitalizacion, devuelto)
 - Incluye `data-testid` para testing automatizado
 
-**Estado:** ✅ Verificado con testing agent (iteration_29.json)
+**Estado:** ✅ Verificado con testing agent (iteration_29.json, iteration_30.json)
 
 #### 20. NUEVO: Funcionalidad "Rechazar Asignación" para Gestor de Apoyo
 **Problema reportado:** No existía la opción para que un gestor de apoyo rechace una asignación de predio nuevo. Solo podía "Enviar a Revisión".
