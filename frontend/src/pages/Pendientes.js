@@ -112,24 +112,113 @@ export default function Pendientes() {
   // Estado para modo edición del modal de detalle
   const [isEditingPredio, setIsEditingPredio] = useState(false);
   const [editingPredioData, setEditingPredioData] = useState({});
+  const [editingR1, setEditingR1] = useState({});
+  const [editingR2, setEditingR2] = useState({});
+  const [editingPropietarios, setEditingPropietarios] = useState([]);
+  const [editTabActive, setEditTabActive] = useState('basico');
   const [savingPredio, setSavingPredio] = useState(false);
   
   // Función para abrir el modal en modo edición
   const openPredioEditor = (predio) => {
     setSelectedPredioNuevo(predio);
+    
+    // Extraer datos de R1 y R2
+    const r1 = predio.r1 || {};
+    const r2 = predio.r2 || {};
+    
+    // Datos básicos
     setEditingPredioData({
       direccion: predio.direccion || '',
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo: predio.avaluo || '',
       destino_economico: predio.destino_economico || '',
-      nombre_propietario: predio.nombre_propietario || '',
-      tipo_documento: predio.tipo_documento || 'C',
-      numero_documento: predio.numero_documento || '',
-      observaciones: predio.observaciones || ''
+      observaciones: predio.observaciones || '',
+      observaciones_apoyo: predio.observaciones_apoyo || ''
     });
+    
+    // Datos R1
+    setEditingR1({
+      numero_orden: r1.numero_orden || '0',
+      calificacion_no_certificada: r1.calificacion_no_certificada || '0',
+      tipo_predio: r1.tipo_predio || '',
+      numero_predial_anterior: r1.numero_predial_anterior || '',
+      complemento_nom_predio: r1.complemento_nom_predio || '',
+      area_total_terreno: r1.area_total_terreno || predio.area_terreno || '',
+      valor_referencia: r1.valor_referencia || '',
+      tipo_avaluo_catastral: r1.tipo_avaluo_catastral || ''
+    });
+    
+    // Datos R2
+    setEditingR2({
+      numero_orden: r2.numero_orden || '0',
+      tipo_construccion: r2.tipo_construccion || '',
+      pisos_1: r2.pisos_1 || r2.numero_pisos || '0',
+      habitaciones_1: r2.habitaciones_1 || r2.numero_habitaciones || '0',
+      banos_1: r2.banos_1 || r2.numero_banios || '0',
+      locales_1: r2.locales_1 || r2.numero_locales || '0',
+      anio_construccion: r2.anio_construccion || '',
+      area_construida_1: r2.area_construida_1 || predio.area_construida || '0',
+      area_privada_construida: r2.area_privada_construida || '',
+      area_terreno_1: r2.area_terreno_1 || predio.area_terreno || '',
+      puntaje_1: r2.puntaje_1 || '0',
+      valor_m2_construccion: r2.valor_m2_construccion || '0',
+      valor_m2_terreno: r2.valor_m2_terreno || '0',
+      uso_1: r2.uso_1 || '',
+      matricula_inmobiliaria: r2.matricula_inmobiliaria || predio.matricula_inmobiliaria || '',
+      zona_fisica_1: r2.zona_fisica_1 || '',
+      zona_economica_1: r2.zona_economica_1 || ''
+    });
+    
+    // Propietarios
+    if (predio.propietarios && predio.propietarios.length > 0) {
+      setEditingPropietarios([...predio.propietarios]);
+    } else if (predio.nombre_propietario) {
+      setEditingPropietarios([{
+        nombre: predio.nombre_propietario,
+        tipo_documento: predio.tipo_documento || 'C',
+        numero_documento: predio.numero_documento || '',
+        estado_civil: predio.estado_civil || '',
+        porcentaje: '100'
+      }]);
+    } else {
+      setEditingPropietarios([{
+        nombre: '',
+        tipo_documento: 'C',
+        numero_documento: '',
+        estado_civil: '',
+        porcentaje: '100'
+      }]);
+    }
+    
+    setEditTabActive('basico');
     setIsEditingPredio(true);
     setShowPredioDetailDialog(true);
+  };
+  
+  // Función para agregar propietario
+  const addPropietario = () => {
+    setEditingPropietarios([...editingPropietarios, {
+      nombre: '',
+      tipo_documento: 'C',
+      numero_documento: '',
+      estado_civil: '',
+      porcentaje: ''
+    }]);
+  };
+  
+  // Función para eliminar propietario
+  const removePropietario = (index) => {
+    if (editingPropietarios.length > 1) {
+      setEditingPropietarios(editingPropietarios.filter((_, i) => i !== index));
+    }
+  };
+  
+  // Función para actualizar propietario
+  const updatePropietario = (index, field, value) => {
+    const updated = [...editingPropietarios];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditingPropietarios(updated);
   };
   
   // Función para guardar cambios del predio
@@ -139,7 +228,20 @@ export default function Pendientes() {
     setSavingPredio(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${API}/predios-nuevos/${selectedPredioNuevo.id}`, editingPredioData, {
+      
+      // Preparar datos completos
+      const updateData = {
+        ...editingPredioData,
+        r1: editingR1,
+        r2: editingR2,
+        propietarios: editingPropietarios,
+        // Actualizar campos principales del propietario
+        nombre_propietario: editingPropietarios[0]?.nombre || '',
+        tipo_documento: editingPropietarios[0]?.tipo_documento || 'C',
+        numero_documento: editingPropietarios[0]?.numero_documento || ''
+      };
+      
+      await axios.patch(`${API}/predios-nuevos/${selectedPredioNuevo.id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -160,6 +262,9 @@ export default function Pendientes() {
     setShowPredioDetailDialog(false);
     setIsEditingPredio(false);
     setEditingPredioData({});
+    setEditingR1({});
+    setEditingR2({});
+    setEditingPropietarios([]);
   };
   
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
