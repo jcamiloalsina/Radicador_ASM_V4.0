@@ -110,23 +110,57 @@ export default function Pendientes() {
   // Estado para sub-tabs de predios nuevos
   const [prediosNuevosSubTab, setPrediosNuevosSubTab] = useState('asignados');
   
-  // Estado para editor de predio en panel lateral
-  const [showPredioEditor, setShowPredioEditor] = useState(false);
-  const [editingPredioId, setEditingPredioId] = useState(null);
+  // Estado para modo edición del modal de detalle
+  const [isEditingPredio, setIsEditingPredio] = useState(false);
+  const [editingPredioData, setEditingPredioData] = useState({});
+  const [savingPredio, setSavingPredio] = useState(false);
   
-  // Función para abrir el editor de predio
-  const openPredioEditor = (predioId) => {
-    setEditingPredioId(predioId);
-    setShowPredioEditor(true);
+  // Función para abrir el modal en modo edición
+  const openPredioEditor = (predio) => {
+    setSelectedPredioNuevo(predio);
+    setEditingPredioData({
+      direccion: predio.direccion || '',
+      area_terreno: predio.area_terreno || '',
+      area_construida: predio.area_construida || '',
+      avaluo: predio.avaluo || '',
+      destino_economico: predio.destino_economico || '',
+      nombre_propietario: predio.nombre_propietario || '',
+      tipo_documento: predio.tipo_documento || 'C',
+      numero_documento: predio.numero_documento || '',
+      observaciones: predio.observaciones || ''
+    });
+    setIsEditingPredio(true);
+    setShowPredioDetailDialog(true);
   };
   
-  // Función para cerrar el editor y refrescar datos
-  const closePredioEditor = () => {
-    setShowPredioEditor(false);
-    setEditingPredioId(null);
-    // Refrescar los datos
-    fetchPrediosNuevos();
-    fetchMisAsignacionesApoyo();
+  // Función para guardar cambios del predio
+  const handleSavePredioChanges = async () => {
+    if (!selectedPredioNuevo) return;
+    
+    setSavingPredio(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${API}/predios-nuevos/${selectedPredioNuevo.id}`, editingPredioData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success('Predio actualizado correctamente');
+      setShowPredioDetailDialog(false);
+      setIsEditingPredio(false);
+      fetchPrediosNuevos();
+      fetchMisAsignacionesApoyo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al guardar cambios');
+    } finally {
+      setSavingPredio(false);
+    }
+  };
+  
+  // Función para cerrar el modal de detalle/edición
+  const closePredioDetailDialog = () => {
+    setShowPredioDetailDialog(false);
+    setIsEditingPredio(false);
+    setEditingPredioData({});
   };
   
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
