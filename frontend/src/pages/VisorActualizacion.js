@@ -734,6 +734,54 @@ export default function VisorActualizacion() {
     });
   }, [geometrias, filterEstado, prediosR1R2]);
   
+  // Función de sincronización con historial
+  const handleSyncWithHistory = async () => {
+    if (!isOnline) {
+      toast.warning('Sin conexión - No se puede sincronizar');
+      return;
+    }
+    
+    const timestamp = new Date().toISOString();
+    const pendientes = offlineStats.cambiosPendientes;
+    
+    try {
+      // Agregar al historial como "en progreso"
+      setSyncHistory(prev => [{
+        id: timestamp,
+        fecha: timestamp,
+        estado: 'sincronizando',
+        cambios: pendientes,
+        mensaje: 'Sincronizando...'
+      }, ...prev.slice(0, 9)]); // Mantener últimos 10
+      
+      // Ejecutar sincronización
+      await forceSync();
+      
+      // Actualizar historial como exitoso
+      setSyncHistory(prev => prev.map(item => 
+        item.id === timestamp 
+          ? { ...item, estado: 'completado', mensaje: `${pendientes} cambios sincronizados exitosamente` }
+          : item
+      ));
+      
+      toast.success(`Sincronización completada: ${pendientes} cambios enviados al servidor`);
+      
+    } catch (error) {
+      console.error('Error en sincronización:', error);
+      
+      // Actualizar historial como fallido
+      setSyncHistory(prev => prev.map(item => 
+        item.id === timestamp 
+          ? { ...item, estado: 'error', mensaje: `Error: ${error.message || 'Falló la sincronización'}` }
+          : item
+      ));
+      
+      toast.error('Error en sincronización', {
+        description: error.message || 'No se pudieron enviar los cambios'
+      });
+    }
+  };
+  
   // Funciones GPS - Compatibilidad universal (iOS Safari, iOS Chrome/Firefox, Android, Desktop)
   const startWatchingPosition = async () => {
     console.log('GPS: ========== INICIANDO GEOLOCALIZACIÓN ==========');
