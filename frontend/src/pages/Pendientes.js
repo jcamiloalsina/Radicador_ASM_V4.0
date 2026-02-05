@@ -1258,9 +1258,10 @@ export default function Pendientes() {
                                   </Button>
                                 )}
                                 
-                                {/* Botón Enviar a Revisión - visible para estado creado, digitalizacion, devuelto */}
+                                {/* Botón Enviar a Revisión - visible para gestor de apoyo o coordinador */}
+                                {/* El creador NO puede enviar a revisión si hay un gestor de apoyo asignado (debe esperar que el apoyo lo haga) */}
                                 {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 (esApoyo || isCoordinador) && (
+                                 (esApoyo || (isCoordinador && !esCreador) || (esCreador && !predio.gestor_apoyo_id)) && (
                                   <Button
                                     size="sm"
                                     className="bg-purple-600 hover:bg-purple-700 text-white"
