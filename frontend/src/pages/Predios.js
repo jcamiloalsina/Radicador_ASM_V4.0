@@ -1713,9 +1713,18 @@ export default function Predios() {
             zona_economica_1: r2Data.zona_economica_1 || '',
           });
           
-          // Configurar propietarios
+          // Configurar propietarios - manejar tanto array como campos separados
           if (predioNuevo.propietarios && predioNuevo.propietarios.length > 0) {
             setPropietarios(predioNuevo.propietarios);
+          } else if (predioNuevo.nombre_propietario) {
+            // Si no hay array de propietarios pero hay datos del propietario principal
+            setPropietarios([{
+              nombre: predioNuevo.nombre_propietario,
+              tipo_documento: predioNuevo.tipo_documento || 'C',
+              numero_documento: predioNuevo.numero_documento || '',
+              estado_civil: predioNuevo.estado_civil || '',
+              porcentaje: '100'
+            }]);
           }
           
           // Configurar el código manual si existe
