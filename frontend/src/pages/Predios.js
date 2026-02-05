@@ -1601,29 +1601,6 @@ export default function Predios() {
       return nuevas;
     });
   };
-      area_terreno: '0',
-      habitaciones: '0',
-      banos: '0',
-      locales: '0',
-      pisos: '1',
-      puntaje: '0',
-      area_construida: '0'
-    }]);
-  };
-  
-  const eliminarZonaFisica = (index) => {
-    if (zonasFisicas.length > 1) {
-      setZonasFisicas(zonasFisicas.filter((_, i) => i !== index));
-    }
-  };
-  
-  const actualizarZonaFisica = (index, campo, valor) => {
-    setZonasFisicas(prev => {
-      const nuevas = [...prev];
-      nuevas[index] = { ...nuevas[index], [campo]: valor };
-      return nuevas;
-    });
-  };
 
   // Estado para asignar a otro gestor
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
