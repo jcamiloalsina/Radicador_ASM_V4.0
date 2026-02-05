@@ -10926,6 +10926,65 @@ async def actualizar_predio_nuevo(
     return predio_actualizado
 
 
+@api_router.delete("/predios-nuevos/{predio_id}")
+async def eliminar_predio_nuevo(
+    predio_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Elimina una solicitud de predio nuevo.
+    Solo el gestor creador puede eliminar su propia solicitud.
+    Solo se puede eliminar en estados: creado, digitalizacion, devuelto.
+    """
+    predio = await db.predios_nuevos.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Solo el gestor creador puede eliminar
+    if predio['gestor_creador_id'] != current_user['id']:
+        raise HTTPException(status_code=403, detail="Solo el gestor creador puede eliminar esta solicitud")
+    
+    # Solo se puede eliminar en estados editables
+    if predio['estado_flujo'] not in [PredioNuevoEstado.CREADO, PredioNuevoEstado.DIGITALIZACION, PredioNuevoEstado.DEVUELTO]:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el predio en este estado. Solo se puede eliminar en estados: creado, digitalizacion o devuelto")
+    
+    # Obtener motivo del body
+    try:
+        body = await request.json()
+        motivo = body.get('motivo', '')
+    except:
+        motivo = ''
+    
+    if not motivo:
+        raise HTTPException(status_code=400, detail="Debe proporcionar un motivo para eliminar la solicitud")
+    
+    # Guardar registro de eliminación para auditoría
+    registro_eliminacion = {
+        "id": str(uuid.uuid4()),
+        "predio_id": predio_id,
+        "codigo_predial_nacional": predio.get('codigo_predial_nacional'),
+        "municipio": predio.get('municipio'),
+        "direccion": predio.get('direccion'),
+        "gestor_creador_id": predio.get('gestor_creador_id'),
+        "gestor_creador_nombre": predio.get('gestor_creador_nombre'),
+        "eliminado_por_id": current_user['id'],
+        "eliminado_por_nombre": current_user['full_name'],
+        "motivo": motivo,
+        "datos_predio": predio,
+        "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.predios_nuevos_eliminados.insert_one(registro_eliminacion)
+    
+    # Eliminar el predio
+    await db.predios_nuevos.delete_one({"id": predio_id})
+    
+    logger.info(f"Predio nuevo {predio_id} eliminado por {current_user['full_name']}. Motivo: {motivo}")
+    
+    return {"message": "Solicitud eliminada correctamente", "motivo": motivo}
+
+
 # ===== SISTEMA DE APROBACIÓN DE PREDIOS =====
 
 @api_router.post("/predios/cambios/proponer")
