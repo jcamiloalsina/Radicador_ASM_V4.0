@@ -10689,7 +10689,7 @@ async def predios_nuevos_pendientes(current_user: dict = Depends(get_current_use
     # Predios en revisión (para coordinadores con permiso)
     user_permisos = await db.user_permissions.find_one({"user_id": user_id})
     puede_aprobar = (
-        current_user['role'] == UserRole.ADMINISTRADOR or
+        current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR] or
         (user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios'))
     )
     
