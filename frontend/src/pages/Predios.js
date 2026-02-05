@@ -1395,12 +1395,15 @@ export default function Predios() {
   const [showDiagnosticoDialog, setShowDiagnosticoDialog] = useState(false);
   const [forzarDisponibles, setForzarDisponibles] = useState(false);
   
-  // Estado para múltiples propietarios
+  // Estado para múltiples propietarios (formato XTF)
   const [propietarios, setPropietarios] = useState([{
-    nombre_propietario: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    primer_nombre: '',
+    segundo_nombre: '',
+    estado: '',  // Campo libre: casado, viudo, soltero, etc.
     tipo_documento: 'C',
-    numero_documento: '',
-    estado_civil: ''
+    numero_documento: ''
   }]);
   
   // Estado para mostrar diálogo de confirmación al cerrar sin completar
