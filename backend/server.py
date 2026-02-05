@@ -10543,8 +10543,28 @@ async def crear_predio_nuevo(
                 "mensaje": f"Este código predial fue ELIMINADO. Debe solicitar reaparición."
             })
     
-    # Generar código homologado
-    codigo_homologado, numero_predio = await generate_codigo_homologado(r1.municipio)
+    # Generar código homologado - Primero intentar de la colección de códigos cargados del Excel
+    codigo_homologado = await asignar_codigo_homologado(r1.municipio, None)
+    
+    if codigo_homologado:
+        # Obtener el último número de predio para mantener secuencia
+        last_predio = await db.predios.find_one(
+            {"municipio": r1.municipio, "deleted": {"$ne": True}},
+            sort=[("numero_predio", -1)]
+        )
+        if last_predio:
+            num_predio = last_predio.get("numero_predio", 0)
+            if isinstance(num_predio, str):
+                try:
+                    num_predio = int(num_predio)
+                except (ValueError, TypeError):
+                    num_predio = 0
+            numero_predio = num_predio + 1
+        else:
+            numero_predio = 1
+    else:
+        # Fallback: generar código aleatorio si no hay códigos cargados en el Excel
+        codigo_homologado, numero_predio = await generate_codigo_homologado(r1.municipio)
     
     # Obtener código Divipola
     divipola = MUNICIPIOS_DIVIPOLA[r1.municipio]
