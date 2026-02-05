@@ -481,6 +481,7 @@ def ejecutar_migraciones():
         migrar_estructura_r2(db)
         migrar_vigencias_incorrectas(db)
         corregir_codigo_homologado_predio_especifico(db)
+        corregir_matricula_predio_especifico(db)
         
         logger.info("=" * 60)
         logger.info("✅ PROCESO DE MIGRACIONES COMPLETADO")
