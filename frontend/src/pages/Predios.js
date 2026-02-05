@@ -2095,13 +2095,13 @@ export default function Predios() {
                              codigoManual.manzana_vereda !== '0000' ||
                              codigoManual.terreno !== '0001';
     
-    // Verificar si hay datos de propietario
-    const tienePropietario = propietarios[0]?.nombre_propietario?.trim() || 
+    // Verificar si hay datos de propietario (nuevo formato)
+    const tienePropietario = propietarios[0]?.primer_apellido?.trim() || 
+                             propietarios[0]?.primer_nombre?.trim() ||
                              propietarios[0]?.numero_documento?.trim();
     
     // Verificar si hay datos del predio
     const tieneDatosPredio = formData.direccion?.trim() || 
-                             formData.area_terreno || 
                              formData.avaluo;
     
     return codigoModificado || tienePropietario || tieneDatosPredio;
