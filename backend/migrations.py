@@ -316,6 +316,78 @@ def migrar_vigencias_incorrectas(db):
     return stats['errores'] == 0
 
 
+def corregir_codigo_homologado_predio_especifico(db):
+    """
+    Migración única: Corregir código homologado del predio 541280002000000030236000000000
+    Asigna un código homologado disponible de la colección codigos_homologados
+    """
+    nombre_migracion = 'corregir_homologado_541280002000000030236000000000'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    codigo_predial = "541280002000000030236000000000"
+    
+    # Buscar el predio
+    predio = db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+    
+    if not predio:
+        logger.info(f"   Predio {codigo_predial} no encontrado en la base de datos")
+        registrar_migracion(db, nombre_migracion, {'mensaje': 'Predio no encontrado', 'corregido': False})
+        return True
+    
+    municipio = predio.get('municipio', '')
+    codigo_homologado_actual = predio.get('codigo_homologado', '')
+    
+    logger.info(f"   Predio encontrado: {codigo_predial}")
+    logger.info(f"   Municipio: {municipio}")
+    logger.info(f"   Código homologado actual: {codigo_homologado_actual}")
+    
+    # Buscar un código homologado disponible para este municipio
+    codigo_disponible = db.codigos_homologados.find_one({
+        "municipio": municipio,
+        "usado": {"$ne": True}
+    })
+    
+    if not codigo_disponible:
+        logger.warning(f"   No hay códigos homologados disponibles para {municipio}")
+        registrar_migracion(db, nombre_migracion, {
+            'mensaje': f'No hay códigos disponibles para {municipio}',
+            'corregido': False,
+            'codigo_actual': codigo_homologado_actual
+        })
+        return True
+    
+    nuevo_codigo = codigo_disponible.get('codigo', '')
+    
+    # Actualizar el predio con el nuevo código homologado
+    db.predios.update_one(
+        {"codigo_predial_nacional": codigo_predial},
+        {"$set": {"codigo_homologado": nuevo_codigo}}
+    )
+    
+    # Marcar el código como usado
+    db.codigos_homologados.update_one(
+        {"_id": codigo_disponible["_id"]},
+        {"$set": {"usado": True}}
+    )
+    
+    logger.info(f"   ✅ Código homologado actualizado: {codigo_homologado_actual} → {nuevo_codigo}")
+    
+    registrar_migracion(db, nombre_migracion, {
+        'codigo_predial': codigo_predial,
+        'municipio': municipio,
+        'codigo_anterior': codigo_homologado_actual,
+        'codigo_nuevo': nuevo_codigo,
+        'corregido': True
+    })
+    
+    return True
+
+
 def ejecutar_migraciones():
     """
     Ejecuta todas las migraciones pendientes.
