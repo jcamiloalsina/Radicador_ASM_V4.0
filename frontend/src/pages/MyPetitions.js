@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Plus, Search, Eye, FileText, User, Building, Clock, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Eye, FileText, User, Building, Clock, CheckCircle, Loader2, ArrowRight, Edit } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
