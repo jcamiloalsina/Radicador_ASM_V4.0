@@ -10846,6 +10846,81 @@ async def ejecutar_accion_predio_nuevo(
             "fecha": datetime.now(timezone.utc).isoformat()
         })
         
+        # Normalizar vigencia al año actual (formato consistente con colección principal)
+        vigencia_actual = datetime.now(timezone.utc).year
+        predio_aprobado["vigencia"] = vigencia_actual
+        
+        # Asegurar que tenga los campos necesarios para R1/R2
+        if "r1" not in predio_aprobado or not predio_aprobado.get("r1"):
+            predio_aprobado["r1"] = {
+                "numero_orden": "1",
+                "calificacion_no_certificada": "0",
+                "tipo_predio": predio_aprobado.get("tipo_predio", ""),
+                "numero_predial_anterior": "",
+                "complemento_nom_predio": "",
+                "area_total_terreno": predio_aprobado.get("area_terreno", 0),
+                "valor_referencia": predio_aprobado.get("avaluo", 0),
+                "tipo_avaluo_catastral": "1"
+            }
+        
+        # Preparar propietarios en formato R1
+        if predio_aprobado.get("propietarios"):
+            predio_aprobado["r1_registros"] = []
+            for i, prop in enumerate(predio_aprobado["propietarios"]):
+                r1_registro = {
+                    "numero_orden": str(i + 1),
+                    "calificacion_no_certificada": "0",
+                    "tipo_documento": prop.get("tipo_documento", "C"),
+                    "numero_documento": prop.get("numero_documento", ""),
+                    "nombre_propietario": prop.get("nombre_propietario", ""),
+                    "estado_civil": prop.get("estado_civil", ""),
+                    "direccion": predio_aprobado.get("direccion", ""),
+                    "destino_economico": predio_aprobado.get("destino_economico", ""),
+                    "area_terreno": predio_aprobado.get("area_terreno", 0),
+                    "area_construida": predio_aprobado.get("area_construida", 0),
+                    "avaluo": predio_aprobado.get("avaluo", 0)
+                }
+                predio_aprobado["r1_registros"].append(r1_registro)
+        
+        # Preparar zonas físicas en formato R2
+        if predio_aprobado.get("zonas_fisicas"):
+            predio_aprobado["r2_registros"] = []
+            for i, zona in enumerate(predio_aprobado["zonas_fisicas"]):
+                r2_registro = {
+                    "numero_orden": str(i + 1),
+                    "tipo_construccion": zona.get("tipo_construccion", "C"),
+                    "numero_pisos": zona.get("pisos", 0),
+                    "numero_habitaciones": zona.get("habitaciones", 0),
+                    "numero_banios": zona.get("banos", 0),
+                    "numero_locales": zona.get("locales", 0),
+                    "anio_construccion": zona.get("anio_construccion", ""),
+                    "area_construida": zona.get("area_construida", 0),
+                    "area_terreno": zona.get("area_terreno", 0),
+                    "puntaje": zona.get("puntaje", 0),
+                    "zona_fisica": zona.get("zona_fisica", ""),
+                    "zona_economica": zona.get("zona_economica", ""),
+                    "matricula_inmobiliaria": predio_aprobado.get("matricula_inmobiliaria", "")
+                }
+                predio_aprobado["r2_registros"].append(r2_registro)
+        elif predio_aprobado.get("r2"):
+            # Si tiene r2 pero no zonas_fisicas, crear r2_registros desde r2
+            r2 = predio_aprobado["r2"]
+            predio_aprobado["r2_registros"] = [{
+                "numero_orden": r2.get("numero_orden", "1"),
+                "tipo_construccion": r2.get("tipo_construccion", "C"),
+                "numero_pisos": r2.get("pisos_1", 0),
+                "numero_habitaciones": r2.get("habitaciones_1", 0),
+                "numero_banios": r2.get("banos_1", 0),
+                "numero_locales": r2.get("locales_1", 0),
+                "anio_construccion": r2.get("anio_construccion", ""),
+                "area_construida": r2.get("area_construida_1", 0),
+                "area_terreno": r2.get("area_terreno_1", 0),
+                "puntaje": r2.get("puntaje_1", 0),
+                "zona_fisica": r2.get("zona_fisica_1", ""),
+                "zona_economica": r2.get("zona_economica_1", ""),
+                "matricula_inmobiliaria": r2.get("matricula_inmobiliaria", "")
+            }]
+        
         # Insertar en colección principal
         await db.predios.insert_one(predio_aprobado)
         
