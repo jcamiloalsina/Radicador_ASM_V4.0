@@ -1200,7 +1200,7 @@ export default function Pendientes() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => navigate(`/dashboard/predios?predio_nuevo=${predio.id}&return=${encodeURIComponent('/dashboard/pendientes')}`)}
+                                    onClick={() => openPredioEditor(predio.id)}
                                     data-testid={`edit-predio-${predio.id}`}
                                   >
                                     <Edit className="w-4 h-4 mr-1" />
