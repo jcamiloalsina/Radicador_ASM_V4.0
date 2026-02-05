@@ -110,6 +110,25 @@ export default function Pendientes() {
   // Estado para sub-tabs de predios nuevos
   const [prediosNuevosSubTab, setPrediosNuevosSubTab] = useState('asignados');
   
+  // Estado para editor de predio en panel lateral
+  const [showPredioEditor, setShowPredioEditor] = useState(false);
+  const [editingPredioId, setEditingPredioId] = useState(null);
+  
+  // Función para abrir el editor de predio
+  const openPredioEditor = (predioId) => {
+    setEditingPredioId(predioId);
+    setShowPredioEditor(true);
+  };
+  
+  // Función para cerrar el editor y refrescar datos
+  const closePredioEditor = () => {
+    setShowPredioEditor(false);
+    setEditingPredioId(null);
+    // Refrescar los datos
+    fetchPrediosNuevos();
+    fetchMisAsignacionesApoyo();
+  };
+  
   // Verificar si puede aprobar cambios (coordinador, admin, o gestor con permiso)
   const userPermissions = user?.permissions || [];
   const hasApprovePermission = userPermissions.includes('approve_changes');
