@@ -2128,7 +2128,7 @@ export default function Pendientes() {
                           
                           {cambio.comentario_aprobacion && (
                             <p className="text-sm text-slate-500 italic mt-1 bg-slate-100 px-2 py-1 rounded">
-                              "{cambio.comentario_aprobacion}"
+                              &quot;{cambio.comentario_aprobacion}&quot;
                             </p>
                           )}
                         </div>
