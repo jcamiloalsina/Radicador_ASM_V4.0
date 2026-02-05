@@ -224,7 +224,6 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (user) {
-      fetchNotificaciones();
       checkGdbAlert();
       if (['administrador', 'coordinador'].includes(user.role) || user.permissions?.includes('approve_changes')) {
         fetchCambiosPendientes();
@@ -241,32 +240,7 @@ export default function DashboardLayout() {
     
     window.addEventListener('pendientesUpdated', handlePendientesUpdated);
     return () => window.removeEventListener('pendientesUpdated', handlePendientesUpdated);
-  }, [user, fetchNotificaciones, checkGdbAlert, fetchCambiosPendientes, fetchAlertasCronograma]);
-
-  const marcarLeida = async (notificacionId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`${API}/notificaciones/${notificacionId}/leer`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchNotificaciones();
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const marcarTodasLeidas = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/notificaciones/marcar-todas-leidas`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchNotificaciones();
-      toast.success('Todas las notificaciones marcadas como leídas');
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
-  };
+  }, [user, checkGdbAlert, fetchCambiosPendientes, fetchAlertasCronograma]);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
