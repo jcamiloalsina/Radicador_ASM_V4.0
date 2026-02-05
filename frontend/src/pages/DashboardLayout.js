@@ -181,19 +181,6 @@ export default function DashboardLayout() {
     }
   };
 
-  const fetchNotificaciones = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/notificaciones`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotificaciones(response.data.notificaciones || []);
-      setNoLeidas(response.data.no_leidas || 0);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  }, []);
-
   const checkGdbAlert = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
