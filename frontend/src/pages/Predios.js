@@ -1641,12 +1641,11 @@ export default function Predios() {
     
     // Debounce de 500ms para evitar llamadas excesivas
     const timeoutId = setTimeout(() => {
-      // Si hay búsqueda activa, consultar del servidor para obtener resultados frescos
+      // Si hay búsqueda activa de 3+ caracteres, FORZAR consulta del servidor
+      // para asegurar resultados frescos (ignorando caché que puede estar desactualizado)
       if (search && search.length >= 3) {
+        console.log('[Predios] Búsqueda activa, consultando servidor:', search);
         fetchPrediosFromServer();
-      } else if (!search) {
-        // Si se borró la búsqueda, recargar todos los predios
-        fetchPredios();
       }
     }, 500);
     
