@@ -2939,6 +2939,71 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para Eliminar Solicitud de Predio Nuevo */}
+      <Dialog open={showEliminarSolicitudModal} onOpenChange={setShowEliminarSolicitudModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Eliminar Solicitud
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará permanentemente la solicitud de creación del predio.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {solicitudAEliminar && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-sm text-slate-600">
+                  <strong>Código:</strong> {solicitudAEliminar.codigo_predial_nacional || 'No asignado'}
+                </p>
+                <p className="text-sm text-slate-600">
+                  <strong>Municipio:</strong> {solicitudAEliminar.municipio}
+                </p>
+                <p className="text-sm text-slate-600">
+                  <strong>Dirección:</strong> {solicitudAEliminar.direccion || 'N/A'}
+                </p>
+              </div>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  Esta acción no se puede deshacer. El registro será eliminado permanentemente.
+                </p>
+              </div>
+              
+              <div>
+                <Label>Motivo de la eliminación *</Label>
+                <Textarea
+                  value={motivoEliminacion}
+                  onChange={(e) => setMotivoEliminacion(e.target.value)}
+                  placeholder="Ingrese el motivo por el cual desea eliminar esta solicitud..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowEliminarSolicitudModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleEliminarSolicitud}
+              disabled={eliminandoSolicitud || !motivoEliminacion.trim()}
+            >
+              {eliminandoSolicitud ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Eliminando...</>
+              ) : (
+                <><Trash2 className="w-4 h-4 mr-2" /> Eliminar Solicitud</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
