@@ -1655,11 +1655,47 @@ export default function Pendientes() {
               </div>
             )}
           </TabsContent>
-                  </Button>
-                )}
-              </div>
 
-              {/* Contenido según sub-tab seleccionado */}
+          {/* Tab: Predios Nuevos (Sub-tabs para coordinadores) */}
+          <TabsContent value="predios-nuevos">
+            {loadingPredios ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              </div>
+            ) : (
+              <div>
+                {/* Sub-tabs para predios nuevos */}
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={prediosNuevosSubTab === 'asignados' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPrediosNuevosSubTab('asignados')}
+                    className="flex items-center gap-2"
+                  >
+                    <User className="w-4 h-4" />
+                    Asignados a Mí ({asignadosAMi.length})
+                  </Button>
+                  <Button
+                    variant={prediosNuevosSubTab === 'creaciones' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPrediosNuevosSubTab('creaciones')}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Mis Creaciones ({misCreaciones.length})
+                  </Button>
+                  <Button
+                    variant={prediosNuevosSubTab === 'revision' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPrediosNuevosSubTab('revision')}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Para Revisar ({prediosParaRevisar.length})
+                  </Button>
+                </div>
+
+                {/* Contenido según sub-tab seleccionado */}
               {(() => {
                 let prediosFiltrados = [];
                 let mensajeVacio = '';
