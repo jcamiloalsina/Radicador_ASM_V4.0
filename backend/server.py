@@ -15641,10 +15641,36 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/geometrias/info")
+async def get_geometrias_info(
+    proyecto_id: str,
+    zona: str = Query(None, description="Filtrar por zona: urbano, rural"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene información sobre las geometrías del proyecto (para descarga progresiva)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    query = {"proyecto_id": proyecto_id}
+    if zona:
+        query["zona"] = zona
+    
+    total = await db.geometrias_actualizacion.count_documents(query)
+    total_construcciones = await db.construcciones_actualizacion.count_documents({"proyecto_id": proyecto_id})
+    
+    return {
+        "total": total,
+        "total_construcciones": total_construcciones,
+        "proyecto_id": proyecto_id
+    }
+
+
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/geometrias")
 async def get_geometrias_proyecto(
     proyecto_id: str,
     zona: str = Query(None, description="Filtrar por zona: urbano, rural"),
+    offset: int = Query(0, description="Offset para paginación"),
+    limit: int = Query(50000, description="Límite de resultados"),
     current_user: dict = Depends(get_current_user)
 ):
     """Obtiene las geometrías procesadas del proyecto para el visor"""
@@ -15655,13 +15681,17 @@ async def get_geometrias_proyecto(
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     
-    # Query de geometrías
+    # Query de geometrías con paginación
     query = {"proyecto_id": proyecto_id}
     if zona:
         query["zona"] = zona
     
-    geometrias = await db.geometrias_actualizacion.find(query, {"_id": 0}).to_list(50000)
-    construcciones = await db.construcciones_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
+    geometrias = await db.geometrias_actualizacion.find(query, {"_id": 0}).skip(offset).limit(limit).to_list(limit)
+    
+    # Solo cargar construcciones en la primera página (offset=0)
+    construcciones = []
+    if offset == 0:
+        construcciones = await db.construcciones_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
     
     # Convertir a GeoJSON FeatureCollection
     geom_features = []
@@ -15695,7 +15725,9 @@ async def get_geometrias_proyecto(
             "features": constr_features
         },
         "total_geometrias": len(geom_features),
-        "total_construcciones": len(constr_features)
+        "total_construcciones": len(constr_features),
+        "offset": offset,
+        "limit": limit
     }
 
 
