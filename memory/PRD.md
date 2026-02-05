@@ -65,6 +65,13 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - ✅ **0 errores**
 - ✅ Backup creado en `/app/backups/` antes de la migración
 
+#### 6. Sistema de Migraciones Automáticas - IMPLEMENTADO
+- ✅ Archivo: `/app/backend/migrations.py`
+- ✅ **Se ejecuta automáticamente** al iniciar el servidor
+- ✅ **Solo corre una vez** (registra estado en colección `migraciones`)
+- ✅ **Incluye ambas migraciones:** R1 (propietarios) y R2 (zonas/construcciones)
+- ✅ **En producción:** Al subir el código desde Github, las migraciones se ejecutan automáticamente
+
 **Testing Final:** ✅ 13/13 tests backend, 100% frontend verificado
 
 **Archivos modificados:**
