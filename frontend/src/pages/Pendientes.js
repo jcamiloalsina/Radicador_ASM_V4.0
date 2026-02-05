@@ -144,6 +144,19 @@ export default function Pendientes() {
     fetchPeticionesParaVincular();
     fetchMisAsignacionesApoyo();
   }, []);
+  
+  // Listener para mensajes del iframe (cuando se guarda el predio)
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === 'PREDIO_SAVED') {
+        toast.success('Predio actualizado correctamente');
+        closePredioEditor();
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   // Cargar mis asignaciones de apoyo en modificaciones
   const fetchMisAsignacionesApoyo = async () => {
