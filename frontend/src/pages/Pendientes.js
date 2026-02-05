@@ -1174,9 +1174,9 @@ export default function Pendientes() {
                                   Ver Detalle
                                 </Button>
                                 
-                                {/* Botón Editar - visible para gestor de apoyo o coordinador en estados editables */}
+                                {/* Botón Editar - visible para creador, gestor de apoyo o coordinador en estados editables */}
                                 {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 (esApoyo || isCoordinador) && (
+                                 (esCreador || esApoyo || isCoordinador) && (
                                   <Button
                                     variant="outline"
                                     size="sm"
