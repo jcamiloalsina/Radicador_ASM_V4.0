@@ -10626,7 +10626,7 @@ async def crear_predio_nuevo(
         "observaciones": predio_data.observaciones,
         
         # Metadata
-        "vigencia": datetime.now().strftime("%m%d%Y"),
+        "vigencia": datetime.now().year,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "deleted": False,
