@@ -666,75 +666,10 @@ export default function DashboardLayout() {
             </h1>
           </div>
           
-          {/* Offline Status + Notificaciones */}
+          {/* Offline Status */}
           <div className="flex items-center gap-3">
             {/* Badge de estado offline */}
             <OfflineReadyBadge />
-            
-            {/* Notificaciones */}
-            <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full transition-colors"
-              data-testid="notifications-button"
-            >
-              <Bell className="w-5 h-5" />
-              {noLeidas > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {noLeidas > 9 ? '9+' : noLeidas}
-                </span>
-              )}
-            </button>
-            
-            {/* Dropdown de notificaciones */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-slate-200 z-[9999]">
-                <div className="p-3 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">Notificaciones</h3>
-                  {noLeidas > 0 && (
-                    <button
-                      onClick={marcarTodasLeidas}
-                      className="text-xs text-emerald-600 hover:text-emerald-700"
-                    >
-                      Marcar todas como leídas
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {notificaciones.length === 0 ? (
-                    <div className="p-4 text-center text-slate-500 text-sm">
-                      No hay notificaciones
-                    </div>
-                  ) : (
-                    notificaciones.slice(0, 10).map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={`p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${!notif.leida ? 'bg-emerald-50' : ''}`}
-                        onClick={() => handleNotificationClick(notif)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                            notif.tipo === 'warning' ? 'bg-amber-500' :
-                            notif.tipo === 'success' ? 'bg-emerald-500' :
-                            notif.tipo === 'error' ? 'bg-red-500' : 'bg-blue-500'
-                          }`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">{notif.titulo}</p>
-                            <p className="text-xs text-slate-500 line-clamp-2">{notif.mensaje}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {new Date(notif.fecha).toLocaleDateString('es-CO', {
-                                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
           </div>
         </div>
 
