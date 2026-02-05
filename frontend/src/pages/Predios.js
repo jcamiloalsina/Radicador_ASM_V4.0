@@ -3048,17 +3048,23 @@ export default function Predios() {
           ? 'Reactivación de predio eliminado' 
           : 'Creación de nuevo predio',
         // Usar el primer propietario como principal (para compatibilidad)
-        nombre_propietario: propietarios[0].nombre_propietario,
-        tipo_documento: propietarios[0].tipo_documento,
-        numero_documento: propietarios[0].numero_documento,
+        primer_apellido: propietariosFormateados[0].primer_apellido,
+        segundo_apellido: propietariosFormateados[0].segundo_apellido,
+        primer_nombre: propietariosFormateados[0].primer_nombre,
+        segundo_nombre: propietariosFormateados[0].segundo_nombre,
+        nombre_propietario: propietariosFormateados[0].nombre_propietario,
+        estado: propietariosFormateados[0].estado,
+        tipo_documento: propietariosFormateados[0].tipo_documento,
+        numero_documento: propietariosFormateados[0].numero_documento,
         // Lista completa de propietarios
-        propietarios: propietarios.filter(p => p.nombre_propietario && p.numero_documento),
+        propietarios: propietariosFormateados,
         // Información del predio
         direccion: formData.direccion,
         destino_economico: formData.destino_economico,
         matricula_inmobiliaria: formData.matricula_inmobiliaria,
-        area_terreno: parseFloat(formData.area_terreno) || 0,
-        area_construida: parseFloat(formData.area_construida) || 0,
+        // Áreas calculadas del R2
+        area_terreno: areaTerrenoTotal,
+        area_construida: areaConstruidaTotal,
         avaluo: parseFloat(formData.avaluo) || 0,
         // Zonas físicas múltiples
         zonas_fisicas: zonasFisicas.map(z => ({
