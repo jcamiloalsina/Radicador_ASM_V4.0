@@ -18754,6 +18754,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Importar sistema de migraciones
+from migrations import ejecutar_migraciones
+
+@app.on_event("startup")
+async def ejecutar_migraciones_automaticas():
+    """
+    Ejecuta las migraciones automáticas al iniciar el servidor.
+    Las migraciones solo se ejecutan una vez (se registran en la colección 'migraciones').
+    """
+    try:
+        logger.info("=" * 60)
+        logger.info("🔄 VERIFICANDO MIGRACIONES PENDIENTES...")
+        logger.info("=" * 60)
+        
+        # Ejecutar migraciones en un hilo separado para no bloquear el servidor
+        import threading
+        migration_thread = threading.Thread(target=ejecutar_migraciones)
+        migration_thread.start()
+        
+        # No esperamos a que termine para no bloquear el inicio del servidor
+        # Las migraciones se ejecutan en segundo plano
+        logger.info("📋 Migraciones iniciadas en segundo plano")
+        
+    except Exception as e:
+        logger.error(f"Error al iniciar migraciones: {str(e)}")
+
+
 @app.on_event("startup")
 async def create_default_admin():
     """
