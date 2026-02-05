@@ -1886,7 +1886,7 @@ export default function Predios() {
             }]);
           }
           
-          // Configurar zonas físicas si existen
+          // Configurar zonas físicas si existen (formato antiguo)
           if (predioNuevo.zonas_fisicas && predioNuevo.zonas_fisicas.length > 0) {
             setZonasFisicas(predioNuevo.zonas_fisicas);
           } else {
@@ -1901,6 +1901,90 @@ export default function Predios() {
               pisos: predioNuevo.pisos_1 || r2Data.pisos_1 || '1',
               puntaje: predioNuevo.puntaje_1 || r2Data.puntaje_1 || '0',
               area_construida: predioNuevo.area_construida_1 || r2Data.area_construida_1 || '0'
+            }]);
+          }
+          
+          // Configurar nuevo formato R2: zonas de terreno y construcciones separadas
+          if (predioNuevo.zonas && predioNuevo.zonas.length > 0) {
+            // Tiene nuevo formato - cargar zonas
+            setZonasTerreno(predioNuevo.zonas.map(z => ({
+              zona_fisica: z.zona_fisica || '',
+              zona_economica: z.zona_economica || '',
+              area_terreno: String(z.area_terreno || 0)
+            })));
+          } else if (predioNuevo.zonas_fisicas && predioNuevo.zonas_fisicas.length > 0) {
+            // Convertir formato antiguo a nuevo
+            setZonasTerreno(predioNuevo.zonas_fisicas.map(z => ({
+              zona_fisica: z.zona_fisica || '',
+              zona_economica: z.zona_economica || '',
+              area_terreno: String(z.area_terreno || 0)
+            })));
+          } else {
+            // Cargar desde campos planos
+            setZonasTerreno([{
+              zona_fisica: r2Data.zona_fisica_1 || '',
+              zona_economica: r2Data.zona_economica_1 || '',
+              area_terreno: String(r2Data.area_terreno_1 || 0)
+            }]);
+          }
+          
+          if (predioNuevo.construcciones && predioNuevo.construcciones.length > 0) {
+            // Tiene nuevo formato - cargar construcciones
+            setConstrucciones(predioNuevo.construcciones.map(c => ({
+              id: c.id || 'A',
+              piso: String(c.piso || 1),
+              habitaciones: String(c.habitaciones || 0),
+              banos: String(c.banos || 0),
+              locales: String(c.locales || 0),
+              tipificacion: c.tipificacion || '',
+              uso: c.uso || '',
+              puntaje: String(c.puntaje || 0),
+              area_construida: String(c.area_construida || 0)
+            })));
+          } else if (predioNuevo.zonas_fisicas && predioNuevo.zonas_fisicas.length > 0) {
+            // Convertir formato antiguo a nuevo - cada zona tiene datos de construcción
+            const construccionesConvertidas = predioNuevo.zonas_fisicas
+              .filter(z => parseFloat(z.area_construida || 0) > 0 || parseInt(z.habitaciones || 0) > 0)
+              .map((z, idx) => ({
+                id: String.fromCharCode(65 + idx), // A, B, C...
+                piso: String(z.pisos || 1),
+                habitaciones: String(z.habitaciones || 0),
+                banos: String(z.banos || 0),
+                locales: String(z.locales || 0),
+                tipificacion: z.tipificacion || '',
+                uso: z.uso || '',
+                puntaje: String(z.puntaje || 0),
+                area_construida: String(z.area_construida || 0)
+              }));
+            
+            if (construccionesConvertidas.length > 0) {
+              setConstrucciones(construccionesConvertidas);
+            } else {
+              // Si no hay construcciones válidas, crear una vacía
+              setConstrucciones([{
+                id: 'A',
+                piso: '1',
+                habitaciones: '0',
+                banos: '0',
+                locales: '0',
+                tipificacion: '',
+                uso: '',
+                puntaje: '0',
+                area_construida: '0'
+              }]);
+            }
+          } else {
+            // Cargar desde campos planos
+            setConstrucciones([{
+              id: 'A',
+              piso: String(r2Data.pisos_1 || 1),
+              habitaciones: String(r2Data.habitaciones_1 || 0),
+              banos: String(r2Data.banos_1 || 0),
+              locales: String(r2Data.locales_1 || 0),
+              tipificacion: r2Data.tipificacion_1 || '',
+              uso: r2Data.uso_1 || '',
+              puntaje: String(r2Data.puntaje_1 || 0),
+              area_construida: String(r2Data.area_construida_1 || 0)
             }]);
           }
           
