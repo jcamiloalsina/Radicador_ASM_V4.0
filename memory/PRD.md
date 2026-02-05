@@ -114,6 +114,47 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 (Fork 3) - Simplificación de Navegación
+
+#### 25. COMPLETADO: Simplificación de "Mis Peticiones" y "Mis Asignaciones/Pendientes"
+
+**Problema reportado:** Redundancia de información - "Mis Asignaciones" y "Predios Nuevos" mostraban casi la misma información para gestores. La navegación era confusa.
+
+**Solución implementada:**
+
+**1. MyPetitions.js - Simplificado:**
+- Ahora muestra **SOLO radicados** que el usuario creó
+- Eliminadas las pestañas de "Asignadas a Mí" y "Predios Creados"
+- Si un radicado se vincula a un predio, se muestra el enlace pero no se duplica
+
+**2. Pendientes.js - Reestructurado según rol:**
+
+| Rol | Vista | Tabs |
+|-----|-------|------|
+| **Gestor** (sin permiso aprobar) | "Mis Asignaciones" | Mis Asignaciones (centralizado), Historial |
+| **Coordinador/Admin** o con `aprobar_cambios` | "Pendientes" | Modificaciones, Predios Nuevos, Reapariciones, Historial |
+
+**Para Gestores (Mis Asignaciones):**
+- Sección "Predios Nuevos que Creé" (con botones Editar, Enviar a Revisión, Eliminar)
+- Sección "Predios Nuevos Asignados" (con botones Editar, Enviar a Revisión, Rechazar)
+- Sección "Modificaciones Asignadas" (con botón Completar y Enviar)
+
+**Para Coordinadores/Aprobadores (Pendientes):**
+- Tab "Modificaciones": Lista de cambios pendientes de aprobar
+- Tab "Predios Nuevos": Lista simplificada de predios en revisión con botones Aprobar/Devolver
+- Tab "Reapariciones": Lista de reapariciones
+- Tab "Historial": Cambios procesados
+
+**Lógica de visibilidad:**
+```javascript
+const puedeAprobar = ['coordinador', 'administrador'].includes(user.role) || 
+                     user.permissions?.includes('approve_changes');
+```
+
+**Verificación:** ✅ Screenshots muestran ambas vistas funcionando correctamente
+
+---
+
 ### Sesión 5 Febrero 2026 (Fork 2) - Reestructuración Modal y Eliminación de Solicitudes
 
 #### 23. COMPLETADO: Reestructuración Modal de Edición con 3 Pestañas
