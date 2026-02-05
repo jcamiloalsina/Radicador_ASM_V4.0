@@ -494,32 +494,146 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId]);
   
-  // Cargar geometrías del proyecto
-  const fetchGeometrias = async () => {
+  // Cargar geometrías - Primero desde caché, luego del servidor con descarga progresiva
+  const fetchGeometrias = async (forceRefresh = false) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { zona: filterZona !== 'todos' ? filterZona : undefined }
-      });
+      // 1. Primero intentar cargar desde caché (instantáneo)
+      if (!forceRefresh) {
+        try {
+          const cachedGeometrias = await getGeometriasOffline(proyectoId);
+          if (cachedGeometrias && cachedGeometrias.length > 0) {
+            console.log(`[Cache] Cargando ${cachedGeometrias.length} geometrías desde caché...`);
+            const geojson = {
+              type: 'FeatureCollection',
+              features: cachedGeometrias.map(g => ({
+                type: g.type || 'Feature',
+                geometry: g.geometry,
+                properties: g.properties
+              }))
+            };
+            setGeometrias(geojson);
+            setLoadedFromCache(true);
+            setOfflineReady(true);
+            
+            const bounds = L.geoJSON(geojson).getBounds();
+            if (bounds.isValid()) {
+              setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
+            }
+            
+            toast.success(`${cachedGeometrias.length} geometrías cargadas desde caché`);
+            return; // No necesita descargar del servidor
+          }
+        } catch (cacheError) {
+          console.log('[Cache] No hay datos en caché, descargando del servidor...');
+        }
+      }
       
-      if (response.data.geometrias?.features?.length > 0) {
-        setGeometrias(response.data.geometrias);
+      // 2. Si no hay caché o se forzó refresh, descargar del servidor
+      if (!navigator.onLine) {
+        toast.warning('Sin conexión - No hay datos en caché para este proyecto');
+        return;
+      }
+      
+      setIsDownloading(true);
+      setDownloadProgress({ current: 0, total: 0, phase: 'Obteniendo información...' });
+      
+      const token = localStorage.getItem('token');
+      
+      // Obtener total de geometrías primero
+      const infoResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias/info`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => null);
+      
+      const totalGeometrias = infoResponse?.data?.total || 0;
+      const batchSize = 500; // Descargar en lotes de 500
+      
+      if (totalGeometrias === 0) {
+        // Fallback: descargar todo de una vez (método anterior)
+        setDownloadProgress({ current: 0, total: 1, phase: 'Descargando geometrías...' });
+        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { zona: filterZona !== 'todos' ? filterZona : undefined }
+        });
         
-        const bounds = L.geoJSON(response.data.geometrias).getBounds();
+        if (response.data.geometrias?.features?.length > 0) {
+          setGeometrias(response.data.geometrias);
+          setDownloadProgress({ current: 1, total: 1, phase: 'Guardando en caché...' });
+          
+          // Guardar en caché
+          await saveGeometriasOffline(proyectoId, response.data.geometrias.features);
+          setOfflineReady(true);
+          
+          const bounds = L.geoJSON(response.data.geometrias).getBounds();
+          if (bounds.isValid()) {
+            setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
+          }
+          
+          toast.success(`${response.data.geometrias.features.length} geometrías descargadas y listas para offline`);
+        }
+        
+        if (response.data.construcciones?.features?.length > 0) {
+          setConstrucciones(response.data.construcciones);
+        }
+      } else {
+        // Descarga progresiva por lotes
+        const totalBatches = Math.ceil(totalGeometrias / batchSize);
+        let allFeatures = [];
+        
+        for (let batch = 0; batch < totalBatches; batch++) {
+          setDownloadProgress({ 
+            current: batch * batchSize, 
+            total: totalGeometrias, 
+            phase: `Descargando geometrías (${Math.min((batch + 1) * batchSize, totalGeometrias)}/${totalGeometrias})...` 
+          });
+          
+          const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { 
+              zona: filterZona !== 'todos' ? filterZona : undefined,
+              offset: batch * batchSize,
+              limit: batchSize
+            }
+          });
+          
+          if (response.data.geometrias?.features?.length > 0) {
+            allFeatures = [...allFeatures, ...response.data.geometrias.features];
+          }
+          
+          // Actualizar UI parcialmente cada 1000 geometrías
+          if (allFeatures.length % 1000 === 0 || batch === totalBatches - 1) {
+            const partialGeojson = {
+              type: 'FeatureCollection',
+              features: allFeatures
+            };
+            setGeometrias(partialGeojson);
+          }
+        }
+        
+        // Guardar todo en caché
+        setDownloadProgress({ current: totalGeometrias, total: totalGeometrias, phase: 'Guardando en caché local...' });
+        await saveGeometriasOffline(proyectoId, allFeatures);
+        
+        const finalGeojson = {
+          type: 'FeatureCollection',
+          features: allFeatures
+        };
+        setGeometrias(finalGeojson);
+        setOfflineReady(true);
+        
+        const bounds = L.geoJSON(finalGeojson).getBounds();
         if (bounds.isValid()) {
           setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
         }
         
-        // Guardar geometrías para modo offline
-        downloadForOffline(null, response.data.geometrias.features, proyecto?.municipio);
+        toast.success(`${allFeatures.length} geometrías descargadas - Listo para trabajo offline`);
       }
       
-      if (response.data.construcciones?.features?.length > 0) {
-        setConstrucciones(response.data.construcciones);
-      }
+      setIsDownloading(false);
+      setDownloadProgress({ current: 0, total: 0, phase: '' });
+      
     } catch (error) {
       console.error('Error cargando geometrías:', error);
+      setIsDownloading(false);
       
       // Si está offline, intentar cargar desde IndexedDB
       if (!navigator.onLine) {
@@ -531,11 +645,14 @@ export default function VisorActualizacion() {
               features: offlineGeom
             };
             setGeometrias(geojson);
+            setLoadedFromCache(true);
             toast.info('Geometrías cargadas desde caché offline');
           }
         } catch (offlineError) {
           console.error('Error cargando geometrías offline:', offlineError);
         }
+      } else {
+        toast.error('Error al descargar geometrías');
       }
     }
   };
