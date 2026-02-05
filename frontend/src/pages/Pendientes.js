@@ -112,11 +112,16 @@ export default function Pendientes() {
   // Estado para modo edición del modal de detalle
   const [isEditingPredio, setIsEditingPredio] = useState(false);
   const [editingPredioData, setEditingPredioData] = useState({});
-  const [editingR1, setEditingR1] = useState({});
-  const [editingR2, setEditingR2] = useState({});
   const [editingPropietarios, setEditingPropietarios] = useState([]);
-  const [editTabActive, setEditTabActive] = useState('basico');
+  const [editingZonasFisicas, setEditingZonasFisicas] = useState([]);
+  const [editTabActive, setEditTabActive] = useState('propietario');
   const [savingPredio, setSavingPredio] = useState(false);
+  
+  // Estado para eliminar solicitud
+  const [showEliminarSolicitudModal, setShowEliminarSolicitudModal] = useState(false);
+  const [solicitudAEliminar, setSolicitudAEliminar] = useState(null);
+  const [motivoEliminacion, setMotivoEliminacion] = useState('');
+  const [eliminandoSolicitud, setEliminandoSolicitud] = useState(false);
   
   // Función para abrir el modal en modo edición
   const openPredioEditor = (predio) => {
