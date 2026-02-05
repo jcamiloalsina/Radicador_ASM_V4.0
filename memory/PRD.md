@@ -114,6 +114,37 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 (Fork 4) - Dashboard con Contadores
+
+#### 26. COMPLETADO: Dashboard Personalizado con Métricas por Rol
+
+**Implementación Backend (server.py líneas 3207-3340):**
+- Endpoint `/api/petitions/stats/dashboard` ampliado con:
+  - `predios_creados`, `predios_asignados`, `modificaciones_asignadas` (para gestores)
+  - `predios_revision`, `modificaciones_pendientes`, `reapariciones_pendientes` (para aprobadores)
+  - `aprobados_mes`, `rechazados_mes` (estadísticas del mes)
+  - `es_aprobador` (flag para determinar vista)
+
+**Implementación Frontend (DashboardHome.js - reescrito completo):**
+
+| Rol | Secciones del Dashboard |
+|-----|------------------------|
+| **Usuario Ciudadano** | Mis Radicados + En Proceso |
+| **Gestor** | Mis Asignaciones (Creados/Asignados/Modificaciones) + Mis Radicados |
+| **Atención al Usuario** | Trámites Radicados (totales por estado) + Mis Radicados |
+| **Coordinador/Admin** | Pendientes por Aprobar + Trámites Radicados (totales) + Estadísticas del Mes |
+
+**Características:**
+- Tarjetas clickeables que navegan a la sección correspondiente
+- Badge "Urgente" cuando hay predios nuevos en revisión
+- Saludo personalizado según hora del día
+- Descripción del rol específica
+- Acciones rápidas contextuales
+
+**Verificación:** ✅ Screenshots muestran vistas correctas para Gestor, Coordinador y Admin
+
+---
+
 ### Sesión 5 Febrero 2026 (Fork 3) - Simplificación de Navegación
 
 #### 25. COMPLETADO: Simplificación de "Mis Peticiones" y "Mis Asignaciones/Pendientes"
