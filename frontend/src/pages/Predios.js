@@ -2518,14 +2518,20 @@ export default function Predios() {
       if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
       if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
       
+      console.log('[Predios] Consultando servidor con params:', params.toString());
+      
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       const prediosRecibidos = res.data.predios || [];
+      console.log('[Predios] Recibidos del servidor:', prediosRecibidos.length, 'predios');
+      
       const prediosFiltrados = filterMunicipio 
         ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
         : prediosRecibidos;
+      
+      console.log('[Predios] Después de filtrar por municipio:', prediosFiltrados.length, 'predios');
       
       // Ordenar por CNP antes de guardar
       const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
