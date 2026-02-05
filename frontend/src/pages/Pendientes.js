@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { 
   Clock, CheckCircle, XCircle, Building, User, MapPin, 
-  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink
+  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink, Plus, Trash2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
