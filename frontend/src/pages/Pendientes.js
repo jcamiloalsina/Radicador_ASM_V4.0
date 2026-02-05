@@ -1327,87 +1327,8 @@ export default function Pendientes() {
               </div>
             )}
           </TabsContent>
-                              {getTipoCambioLabel(cambio.tipo_cambio)}
-                            </Badge>
-                            {cambio.radicado_numero && (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                                <FileText className="w-3 h-3 mr-1" />
-                                {cambio.radicado_numero}
-                              </Badge>
-                            )}
-                            <span className="font-mono text-sm text-slate-600 break-all">
-                              {cambio.datos_propuestos?.codigo_predial_nacional || 
-                               cambio.predio_actual?.codigo_predial_nacional || 
-                               'Código no disponible'}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500 mt-1">
-                            {cambio.datos_propuestos?.municipio || 
-                             cambio.predio_actual?.municipio || 
-                             'Municipio no especificado'} · 
-                            Solicitado por: {cambio.propuesto_por_nombre || 'No especificado'}
-                          </p>
-                          {!cambio.radicado_numero && cambio.tipo_cambio === 'modificacion' && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-amber-600">⚠️ Sin radicado asociado</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedCambio(cambio);
-                                  setShowVincularRadicadoModal(true);
-                                }}
-                              >
-                                <Link2 className="w-3 h-3 mr-1" />
-                                Vincular radicado
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedCambio(cambio)}
-                          data-testid={`view-cambio-${cambio.id}`}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Ver Detalle
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => openRechazarModal(cambio)}
-                          disabled={procesando}
-                          data-testid={`reject-cambio-${cambio.id}`}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Rechazar
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          onClick={() => handleAprobar(cambio.id)}
-                          disabled={procesando}
-                          data-testid={`approve-cambio-${cambio.id}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Aprobar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
 
-        {/* Tab: Predios Nuevos */}
+          {/* Tab: Predios Nuevos */}
         <TabsContent value="predios-nuevos">
           {loadingPredios ? (
             <div className="flex items-center justify-center h-64">
