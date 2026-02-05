@@ -2894,9 +2894,9 @@ export default function Predios() {
       return;
     }
 
-    // Validar que haya al menos un propietario con datos
-    if (!propietarios[0].nombre_propietario || !propietarios[0].numero_documento) {
-      toast.error('Debe ingresar al menos un propietario con nombre y número de documento');
+    // Validar que haya al menos un propietario con datos (nuevo formato)
+    if (!propietarios[0].primer_apellido || !propietarios[0].primer_nombre || !propietarios[0].numero_documento) {
+      toast.error('Debe ingresar al menos un propietario con primer apellido, primer nombre y número de documento');
       return;
     }
 
@@ -2905,6 +2905,23 @@ export default function Predios() {
       toast.error('Debe seleccionar un Gestor de Apoyo para el flujo de trabajo');
       return;
     }
+    
+    // Calcular áreas desde R2
+    const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
+    
+    // Preparar propietarios con formato correcto y documento con padding
+    const propietariosFormateados = propietarios
+      .filter(p => p.primer_apellido && p.primer_nombre && p.numero_documento)
+      .map(p => ({
+        primer_apellido: p.primer_apellido,
+        segundo_apellido: p.segundo_apellido || '',
+        primer_nombre: p.primer_nombre,
+        segundo_nombre: p.segundo_nombre || '',
+        nombre_propietario: generarNombreCompleto(p), // Campo de compatibilidad
+        estado: p.estado || '',
+        tipo_documento: p.tipo_documento,
+        numero_documento: formatearNumeroDocumento(p.numero_documento)
+      }));
 
     try {
       const token = localStorage.getItem('token');
@@ -2922,14 +2939,20 @@ export default function Predios() {
             terreno: codigoManual.terreno,
             condicion_predio: codigoManual.condicion,
             predio_horizontal: `${codigoManual.edificio}${codigoManual.piso}${codigoManual.unidad}`.padEnd(5, '0'),
-            nombre_propietario: propietarios[0].nombre_propietario,
-            tipo_documento: propietarios[0].tipo_documento,
-            numero_documento: propietarios[0].numero_documento,
-            estado_civil: propietarios[0].estado_civil || null,
+            // Nuevo formato de propietario
+            primer_apellido: propietariosFormateados[0].primer_apellido,
+            segundo_apellido: propietariosFormateados[0].segundo_apellido,
+            primer_nombre: propietariosFormateados[0].primer_nombre,
+            segundo_nombre: propietariosFormateados[0].segundo_nombre,
+            nombre_propietario: propietariosFormateados[0].nombre_propietario,
+            estado: propietariosFormateados[0].estado,
+            tipo_documento: propietariosFormateados[0].tipo_documento,
+            numero_documento: propietariosFormateados[0].numero_documento,
             direccion: formData.direccion,
             destino_economico: formData.destino_economico,
-            area_terreno: parseFloat(formData.area_terreno) || 0,
-            area_construida: parseFloat(formData.area_construida) || 0,
+            // Áreas calculadas del R2
+            area_terreno: areaTerrenoTotal,
+            area_construida: areaConstruidaTotal,
             avaluo: parseFloat(formData.avaluo) || 0,
           },
           r2: {
@@ -2944,6 +2967,7 @@ export default function Predios() {
             puntaje_1: parseFloat(zonasFisicas[0]?.puntaje) || 0,
             area_construida_1: parseFloat(zonasFisicas[0]?.area_construida) || 0,
           },
+          propietarios: propietariosFormateados,
           gestor_apoyo_id: gestorAsignado,
           radicado_numero: radicadoNumero || null,
           peticiones_ids: peticionesRelacionadas,
