@@ -6328,6 +6328,10 @@ async def crear_predio_con_workflow(
             "tiene_geometria_gdb": geometria is not None,
             "area_gdb": geometria.get("area_m2") if geometria else None,
             "propietarios": request.get("propietarios", []),
+            # Soporte para nuevo formato R2 separado (zonas + construcciones)
+            "zonas": request.get("zonas", []),
+            "construcciones": request.get("construcciones", []),
+            # Campo legacy para compatibilidad
             "zonas_fisicas": request.get("zonas_fisicas", []),
             "matricula_inmobiliaria": request.get("matricula_inmobiliaria", "")
         },
