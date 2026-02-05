@@ -904,55 +904,326 @@ export default function Pendientes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 font-outfit">Pendientes de Aprobación</h1>
-          <p className="text-slate-600 mt-1">Cambios, predios nuevos y reapariciones que requieren aprobación</p>
+          <h1 className="text-2xl font-bold text-slate-900 font-outfit">{pageTitle}</h1>
+          <p className="text-slate-600 mt-1">{pageDescription}</p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
-          {totalPendientes} pendientes
+          {totalBadge} {puedeAprobar ? 'pendientes' : 'asignaciones'}
         </Badge>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-4">
-          <TabsTrigger value="mis-asignaciones" className="flex items-center gap-2">
-            <User className="w-4 h-4" />
-            Mis Asignaciones
-            {(misAsignacionesApoyo.length + asignadosAMi.length) > 0 && (
-              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{misAsignacionesApoyo.length + asignadosAMi.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="modificaciones" className="flex items-center gap-2">
-            <Edit className="w-4 h-4" />
-            Modificaciones
-            {cambiosPendientes.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{cambiosPendientes.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="predios-nuevos" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Predios Nuevos
-            {prediosBadgeCount > 0 && (
-              <Badge variant="secondary" className="ml-1">{prediosBadgeCount}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="reapariciones" className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Reapariciones
-            {reaparicionesPendientes > 0 && (
-              <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{reaparicionesPendientes}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="historial" className="flex items-center gap-2">
-            <History className="w-4 h-4" />
-            Historial
-            {historialStats.total > 0 && (
-              <Badge variant="outline" className="ml-1">{historialStats.total}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Vista para GESTORES (sin permiso de aprobar) */}
+      {!puedeAprobar ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="mis-asignaciones" className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Mis Asignaciones
+              {totalMisAsignaciones > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{totalMisAsignaciones}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="historial" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Historial
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Tab: Mis Asignaciones de Apoyo */}
-        <TabsContent value="mis-asignaciones">
+          {/* Tab: Mis Asignaciones (Todo centralizado para gestores) */}
+          <TabsContent value="mis-asignaciones">
+            {(loadingAsignacionesApoyo || loadingPredios) ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
+                  <p className="text-slate-500 mt-4">Cargando asignaciones...</p>
+                </CardContent>
+              </Card>
+            ) : (totalMisAsignaciones === 0) ? (
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <CheckCircle className="w-12 h-12 mx-auto text-emerald-500 mb-4" />
+                  <h3 className="text-lg font-medium text-slate-900">¡Sin asignaciones pendientes!</h3>
+                  <p className="text-slate-500 mt-2">No tienes predios ni modificaciones asignadas</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {/* Sección: Predios Nuevos que creé */}
+                {misCreaciones.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      Predios Nuevos que Creé ({misCreaciones.length})
+                    </h3>
+                    <div className="grid gap-3">
+                      {misCreaciones.map(predio => {
+                        const estadoConfig = estadoPredioConfig[predio.estado_flujo] || estadoPredioConfig['creado'];
+                        const IconoEstado = estadoConfig.icon;
+                        const esCreador = predio.gestor_creador_id === user?.id;
+                        const esApoyo = predio.gestor_apoyo_id === user?.id;
+                        
+                        return (
+                          <Card key={predio.id} className="border-blue-200 bg-blue-50/30">
+                            <CardContent className="py-4">
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="font-mono text-sm text-slate-700">{predio.codigo_predial_nacional}</div>
+                                  <div className="text-sm text-slate-600">
+                                    <MapPin className="w-4 h-4 inline mr-1" />
+                                    {predio.municipio} - {predio.direccion || 'Sin dirección'}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Badge className={`${estadoConfig.color} border`}>
+                                      <IconoEstado className="w-3 h-3 mr-1" />
+                                      {estadoConfig.label}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-blue-600 border-blue-300">Creador</Badge>
+                                    {predio.gestor_apoyo_nombre && (
+                                      <Badge variant="outline" className="text-purple-600 border-purple-300">
+                                        <User className="w-3 h-3 mr-1" />
+                                        Apoyo: {predio.gestor_apoyo_nombre}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPredioNuevo(predio);
+                                      setShowPredioDetailDialog(true);
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    Ver Detalle
+                                  </Button>
+                                  {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-blue-700 border-blue-300"
+                                      onClick={() => openPredioEditor(predio)}
+                                      data-testid={`edit-predio-${predio.id}`}
+                                    >
+                                      <Edit className="w-4 h-4 mr-1" />
+                                      Editar
+                                    </Button>
+                                  )}
+                                  {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                   esCreador && !predio.gestor_apoyo_id && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                                      onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
+                                    >
+                                      <ArrowRight className="w-4 h-4 mr-1" />
+                                      Enviar a Revisión
+                                    </Button>
+                                  )}
+                                  {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                   esCreador && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 border-red-200 hover:bg-red-50"
+                                      onClick={() => openEliminarSolicitudModal(predio)}
+                                      data-testid={`eliminar-solicitud-${predio.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-1" />
+                                      Eliminar
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección: Predios Nuevos Asignados (soy apoyo) */}
+                {asignadosAMi.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
+                      Predios Nuevos Asignados ({asignadosAMi.length})
+                    </h3>
+                    <div className="grid gap-3">
+                      {asignadosAMi.map(predio => {
+                        const estadoConfig = estadoPredioConfig[predio.estado_flujo] || estadoPredioConfig['creado'];
+                        const IconoEstado = estadoConfig.icon;
+                        
+                        return (
+                          <Card key={predio.id} className="border-purple-200 bg-purple-50/30">
+                            <CardContent className="py-4">
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="font-mono text-sm text-slate-700">{predio.codigo_predial_nacional}</div>
+                                  <div className="text-sm text-slate-600">
+                                    <MapPin className="w-4 h-4 inline mr-1" />
+                                    {predio.municipio} - {predio.direccion || 'Sin dirección'}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Badge className={`${estadoConfig.color} border`}>
+                                      <IconoEstado className="w-3 h-3 mr-1" />
+                                      {estadoConfig.label}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-purple-600 border-purple-300">Asignado a mí</Badge>
+                                    {predio.gestor_creador_nombre && (
+                                      <span className="text-xs text-slate-500">Creador: {predio.gestor_creador_nombre}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPredioNuevo(predio);
+                                      setShowPredioDetailDialog(true);
+                                    }}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    Ver Detalle
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-blue-700 border-blue-300"
+                                    onClick={() => openPredioEditor(predio)}
+                                    data-testid={`edit-predio-asignado-${predio.id}`}
+                                  >
+                                    <Edit className="w-4 h-4 mr-1" />
+                                    Editar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                    onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
+                                  >
+                                    <ArrowRight className="w-4 h-4 mr-1" />
+                                    Enviar a Revisión
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => openPredioActionDialog(predio, 'rechazar_asignacion')}
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Rechazar
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección: Modificaciones Asignadas */}
+                {misAsignacionesApoyo.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <Edit className="w-5 h-5 text-amber-600" />
+                      Modificaciones Asignadas ({misAsignacionesApoyo.length})
+                    </h3>
+                    <div className="grid gap-3">
+                      {misAsignacionesApoyo.map(cambio => (
+                        <Card key={cambio.id} className="border-amber-200 bg-amber-50/30">
+                          <CardContent className="py-4">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="font-mono text-sm text-slate-700">
+                                  {cambio.codigo_predial || cambio.datos_propuestos?.codigo_predial}
+                                </div>
+                                <div className="text-sm text-slate-600">
+                                  <MapPin className="w-4 h-4 inline mr-1" />
+                                  {cambio.municipio || 'Sin municipio'} - Tipo: {cambio.tipo_cambio}
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                    Modificación Asignada
+                                  </Badge>
+                                  {cambio.radicado_numero && (
+                                    <Badge variant="outline" className="text-blue-600">
+                                      Radicado: {cambio.radicado_numero}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedCambio(cambio)}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Ver Cambios
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  onClick={() => {
+                                    setSelectedAsignacionApoyo(cambio);
+                                    setShowCompletarApoyoModal(true);
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Completar y Enviar
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tab: Historial */}
+          <TabsContent value="historial">
+            {renderHistorialContent()}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Vista para COORDINADORES / APROBADORES */
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="modificaciones" className="flex items-center gap-2">
+              <Edit className="w-4 h-4" />
+              Modificaciones
+              {cambiosPendientes.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{cambiosPendientes.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="predios-nuevos" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Predios Nuevos
+              {prediosEnRevision > 0 && (
+                <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="reapariciones" className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Reapariciones
+              {reaparicionesPendientes > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{reaparicionesPendientes}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="historial" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Historial
+            </TabsTrigger>
+          </TabsList>
           {loadingAsignacionesApoyo || loadingPredios ? (
             <Card>
               <CardContent className="py-16 text-center">
