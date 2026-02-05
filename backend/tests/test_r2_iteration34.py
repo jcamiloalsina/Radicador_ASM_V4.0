@@ -105,8 +105,8 @@ class TestPrediosAPI:
         response = requests.get(f"{BASE_URL}/api/predios/catalogos", headers=headers)
         assert response.status_code == 200
         data = response.json()
-        assert "destinos_economicos" in data
-        print(f"✅ Catalogos loaded: {len(data.get('destinos_economicos', []))} destinos económicos")
+        assert "destino_economico" in data
+        print(f"✅ Catalogos loaded: {len(data.get('destino_economico', {}))} destinos económicos")
     
     def test_06_get_predios_stats_summary(self, auth_token):
         """Test getting predios stats summary"""
