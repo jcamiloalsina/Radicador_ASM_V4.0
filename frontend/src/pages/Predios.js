@@ -2554,26 +2554,16 @@ export default function Predios() {
       const vigenciaActual = String(new Date().getFullYear());
       const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
       
-      // OPTIMIZACIÓN: Solo usar caché para la VIGENCIA ACTUAL
+      // OPTIMIZACIÓN: Solo usar caché para la VIGENCIA ACTUAL y cuando NO hay búsqueda activa
       // Las vigencias anteriores SIEMPRE se consultan del servidor
-      if (filterMunicipio && esVigenciaActual) {
+      // Las búsquedas activas también van al servidor para garantizar resultados frescos
+      if (filterMunicipio && esVigenciaActual && !search) {
         try {
           const cachedPredios = await getPrediosOffline(filterMunicipio);
           if (cachedPredios && cachedPredios.length > 0) {
             // Filtrar solo predios de la vigencia actual en el caché
             let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
             
-            if (search) {
-              const searchLower = search.toLowerCase();
-              filtered = filtered.filter(p => 
-                p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
-                p.codigo_homologado?.toLowerCase().includes(searchLower) ||
-                p.direccion?.toLowerCase().includes(searchLower) ||
-                p.propietarios?.some(prop => prop.nombre_propietario?.toLowerCase().includes(searchLower)) ||
-                p.propietarios?.some(prop => prop.numero_documento?.toLowerCase().includes(searchLower)) ||
-                p.r2_registros?.some(r2 => r2.matricula_inmobiliaria?.toLowerCase().includes(searchLower))
-              );
-            }
             if (filterGeometria === 'con') {
               filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
             } else if (filterGeometria === 'sin') {
