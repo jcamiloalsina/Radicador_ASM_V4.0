@@ -5128,6 +5128,133 @@ export default function VisorActualizacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Diálogo de Sincronización e Historial */}
+      <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-emerald-600" />
+              Sincronización de Datos
+            </DialogTitle>
+            <DialogDescription>
+              Estado de conexión y cambios pendientes
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Estado actual */}
+            <div className="p-4 rounded-lg bg-slate-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Estado de conexión:</span>
+                <Badge variant={isOnline ? "default" : "secondary"} className={isOnline ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>
+                  {isOnline ? "✓ Online" : "✕ Offline"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Cambios pendientes:</span>
+                <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                  {offlineStats.cambiosPendientes || 0}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Datos offline:</span>
+                <Badge variant="outline" className={offlineReady ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}>
+                  {offlineReady ? "✓ Listos" : "No descargados"}
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Barra de progreso de descarga */}
+            {isDownloading && (
+              <div className="p-4 rounded-lg bg-blue-50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">{downloadProgress.phase}</span>
+                </div>
+                {downloadProgress.total > 0 && (
+                  <>
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${(downloadProgress.current / downloadProgress.total) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-blue-600 text-center">
+                      {downloadProgress.current.toLocaleString()} / {downloadProgress.total.toLocaleString()}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Botones de acción */}
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => fetchGeometrias(true)} 
+                disabled={!isOnline || isDownloading}
+                variant="outline"
+                className="flex-1"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {offlineReady ? "Actualizar datos" : "Descargar para offline"}
+              </Button>
+              <Button 
+                onClick={handleSyncWithHistory} 
+                disabled={!isOnline || isSyncing || offlineStats.cambiosPendientes === 0}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sincronizar ({offlineStats.cambiosPendientes})
+              </Button>
+            </div>
+            
+            {/* Historial de sincronización */}
+            {syncHistory.length > 0 && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Historial de sincronización
+                </h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {syncHistory.map((item, idx) => (
+                    <div 
+                      key={item.id || idx} 
+                      className={`text-xs p-2 rounded flex items-start gap-2 ${
+                        item.estado === 'completado' ? 'bg-green-50' :
+                        item.estado === 'error' ? 'bg-red-50' :
+                        'bg-blue-50'
+                      }`}
+                    >
+                      {item.estado === 'completado' && <CheckCircle2 className="w-3 h-3 text-green-600 mt-0.5 shrink-0" />}
+                      {item.estado === 'error' && <XCircle className="w-3 h-3 text-red-600 mt-0.5 shrink-0" />}
+                      {item.estado === 'sincronizando' && <Loader2 className="w-3 h-3 text-blue-600 animate-spin mt-0.5 shrink-0" />}
+                      <div>
+                        <p className={
+                          item.estado === 'completado' ? 'text-green-700' :
+                          item.estado === 'error' ? 'text-red-700' :
+                          'text-blue-700'
+                        }>
+                          {item.mensaje}
+                        </p>
+                        <p className="text-slate-400">
+                          {new Date(item.fecha).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSyncDialog(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
