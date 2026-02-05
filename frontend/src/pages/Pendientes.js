@@ -1224,59 +1224,9 @@ export default function Pendientes() {
               Historial
             </TabsTrigger>
           </TabsList>
-          {loadingAsignacionesApoyo || loadingPredios ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
-                <p className="mt-4 text-slate-500">Cargando asignaciones...</p>
-              </CardContent>
-            </Card>
-          ) : (misAsignacionesApoyo.length === 0 && asignadosAMi.length === 0) ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-700">Sin asignaciones pendientes</h3>
-                <p className="text-slate-500 mt-2">No tienes predios nuevos ni modificaciones asignadas para completar</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {/* Sección 1: Predios Nuevos Asignados */}
-              {asignadosAMi.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-emerald-600" />
-                    Predios Nuevos Asignados ({asignadosAMi.length})
-                  </h3>
-                  <div className="grid gap-4">
-                    {asignadosAMi.map((predio) => {
-                      const estadoKey = predio.estado_flujo || predio.estado || 'creado';
-                      const config = estadoPredioConfig[estadoKey] || estadoPredioConfig.creado;
-                      const IconComponent = config.icon;
-                      
-                      return (
-                        <Card key={predio.id} className="hover:border-emerald-300 transition-colors border-emerald-200 bg-emerald-50/30">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="p-2 bg-emerald-100 rounded-lg">
-                                  <FileText className="w-5 h-5 text-emerald-600" />
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge className={config.color}>
-                                      <IconComponent className="w-3 h-3 mr-1" />
-                                      {config.label}
-                                    </Badge>
-                                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">
-                                      Predio Nuevo
-                                    </Badge>
-                                    {predio.radicado_numero && (
-                                      <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                                        <FileText className="w-3 h-3 mr-1" />
-                                        {predio.radicado_numero}
-                                      </Badge>
-                                    )}
+
+          {/* Tab: Modificaciones (para aprobadores) */}
+          <TabsContent value="modificaciones">
                                   </div>
                                   <p className="text-lg font-semibold text-slate-800 mt-1">
                                     {predio.codigo_predial_nacional || 'Código no disponible'}
