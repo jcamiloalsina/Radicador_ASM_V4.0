@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   WifiOff, Wifi, Download, X, RefreshCw, CheckCircle, AlertTriangle, 
   CloudOff, Database, Trash2, HardDrive, Loader2, MapPin, FolderKanban,
