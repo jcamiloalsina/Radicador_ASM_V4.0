@@ -388,6 +388,81 @@ def corregir_codigo_homologado_predio_especifico(db):
     return True
 
 
+def corregir_matricula_predio_especifico(db):
+    """
+    Migración única: Corregir matrícula inmobiliaria del predio 541280002000000030236000000000
+    Extrae la matrícula del campo r2 y la coloca a nivel superior del predio
+    """
+    nombre_migracion = 'corregir_matricula_541280002000000030236000000000'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    codigo_predial = "541280002000000030236000000000"
+    
+    # Buscar el predio
+    predio = db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+    
+    if not predio:
+        logger.info(f"   Predio {codigo_predial} no encontrado en la base de datos")
+        registrar_migracion(db, nombre_migracion, {'mensaje': 'Predio no encontrado', 'corregido': False})
+        return True
+    
+    # Buscar la matrícula en diferentes ubicaciones
+    matricula = predio.get('matricula_inmobiliaria', '')
+    
+    if not matricula:
+        # Buscar en r2
+        r2 = predio.get('r2', {})
+        if r2:
+            matricula = r2.get('matricula_inmobiliaria', '')
+    
+    if not matricula:
+        # Buscar en r2_registros
+        r2_registros = predio.get('r2_registros', [])
+        if r2_registros:
+            matricula = r2_registros[0].get('matricula_inmobiliaria', '')
+    
+    if not matricula:
+        logger.info(f"   No se encontró matrícula en el predio {codigo_predial}")
+        registrar_migracion(db, nombre_migracion, {
+            'mensaje': 'No se encontró matrícula en ninguna ubicación',
+            'corregido': False
+        })
+        return True
+    
+    logger.info(f"   Predio: {codigo_predial}")
+    logger.info(f"   Matrícula encontrada: {matricula}")
+    
+    # Actualizar el predio con la matrícula a nivel superior
+    update_data = {"matricula_inmobiliaria": matricula}
+    
+    # También actualizar r2_registros si existe
+    r2_registros = predio.get('r2_registros', [])
+    if r2_registros:
+        for r2 in r2_registros:
+            r2['matricula_inmobiliaria'] = matricula
+        update_data['r2_registros'] = r2_registros
+    
+    db.predios.update_one(
+        {"codigo_predial_nacional": codigo_predial},
+        {"$set": update_data}
+    )
+    
+    logger.info(f"   ✅ Matrícula {matricula} asignada al predio")
+    
+    registrar_migracion(db, nombre_migracion, {
+        'codigo_predial': codigo_predial,
+        'matricula': matricula,
+        'corregido': True
+    })
+    
+    return True
+
+
 def ejecutar_migraciones():
     """
     Ejecuta todas las migraciones pendientes.
