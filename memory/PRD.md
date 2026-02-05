@@ -114,28 +114,63 @@ FRONTEND_URL="https://certificados.asomunicipios.gov.co"
 
 ## Cambios Recientes
 
+### Sesión 5 Febrero 2026 (Fork 2) - Reestructuración Modal y Eliminación de Solicitudes
+
+#### 23. COMPLETADO: Reestructuración Modal de Edición con 3 Pestañas
+**Problema reportado:** El modal de edición tenía 4 pestañas (Básico, R1, R2, Propietarios) pero debía ser idéntico al formulario de creación en Predios.js que tiene 3 pestañas.
+
+**Solución Frontend (Pendientes.js líneas 2426-2691):**
+- Reestructurado a 3 pestañas:
+  - **Código Nacional:** Muestra el código predial (solo lectura) con municipio y estado
+  - **Propietario (R1):** Lista dinámica de propietarios (agregar/eliminar) + Información del predio (Dirección, Destino Económico, Matrícula, Áreas, Avalúo)
+  - **Físico (R2):** Lista dinámica de zonas físicas (agregar/eliminar) con campos: Zona Física, Zona Económica, Áreas, Habitaciones, Baños, Locales, Pisos, Puntaje
+
+**Nuevas funciones (líneas 228-252):**
+- `addZonaFisica()`, `removeZonaFisica()`, `updateZonaFisica()`: Gestión de zonas físicas múltiples
+- Estado `editingZonasFisicas` para manejar la lista de zonas
+
+**Verificación:** ✅ Testing agent iteration_31.json - 100% features passed
+
+#### 24. COMPLETADO: Funcionalidad "Eliminar Solicitud" para Gestor Creador
+**Problema reportado:** El gestor creador no podía eliminar su propia solicitud de creación de predio nuevo.
+
+**Implementación Backend (server.py líneas 10929-10985):**
+- Nuevo endpoint `DELETE /api/predios-nuevos/{predio_id}`
+- Validaciones:
+  - Solo el gestor creador puede eliminar su solicitud
+  - Solo en estados editables: creado, digitalizacion, devuelto
+  - Motivo obligatorio para auditoría
+- Se guarda registro en colección `predios_nuevos_eliminados` para auditoría
+- Log de eliminación con motivo
+
+**Implementación Frontend (Pendientes.js líneas 2944-3006):**
+- Botón "Eliminar" (rojo) en lista de "Mis Creaciones"
+- Modal de confirmación con:
+  - Información del predio (código, municipio, dirección)
+  - Advertencia de acción irreversible
+  - Campo obligatorio "Motivo de la eliminación"
+- Botón "Eliminar Solicitud" deshabilitado sin motivo
+- Toast de éxito al eliminar
+
+**Estado nuevo en frontend (líneas 120-125):**
+- `showEliminarSolicitudModal`, `solicitudAEliminar`, `motivoEliminacion`, `eliminandoSolicitud`
+
+**Verificación:** ✅ Testing agent iteration_31.json - 100% features passed
+
+---
+
 ### Sesión 5 Febrero 2026 (Fork) - Modal de Edición Multi-Pestaña Completo
 
 #### 22. COMPLETADO: Modal de Edición Multi-Pestaña en Pendientes.js
 **Problema reportado:** El usuario requería un modal de edición completo sin navegar a otra página. Las soluciones anteriores (navegación, iframe, modal simple) fueron rechazadas.
 
-**Solución Frontend (Pendientes.js líneas 2306-2820):**
-- Modal completo "Editar Predio Nuevo" con 4 pestañas:
-  - **Básico:** Dirección, Área Terreno, Área Construida, Avalúo, Destino Económico, Observaciones
-  - **R1 - Jurídico:** Número Orden, Calificación No Certificada, Tipo Predio, Número Predial Anterior, Complemento Nombre, Área Total Terreno, Valor Referencia, Tipo Avalúo
-  - **R2 - Físico:** Matrícula Inmobiliaria, Tipo Construcción, Año, Pisos, Habitaciones, Baños, Locales, Áreas, Puntaje, Valores m², Zonas
-  - **Propietarios:** Lista dinámica con agregar/eliminar. Cada propietario tiene: Nombre, Tipo Documento, Número, Estado Civil, Porcentaje
-
-**Funciones implementadas (líneas 122-268):**
-- `openPredioEditor(predio)`: Extrae y carga datos de predio, R1, R2 y propietarios
-- `handleSavePredioChanges()`: Envía PATCH a `/api/predios-nuevos/{id}` con todos los datos
-- `addPropietario()`, `removePropietario()`, `updatePropietario()`: Gestión de propietarios
+**Solución:** Implementado modal con estructura idéntica a Predios.js (ahora reestructurado en Fork 2)
 
 **Protecciones Backend (server.py líneas 10899-10902):**
 - Campos protegidos: `id`, `codigo_predial_nacional`, `gestor_creador_id`, `created_at`, `historial_flujo`
 - El código predial NO puede modificarse (fix de corrupción de CPN)
 
-**Verificación:** ✅ Testing agent iteration_30.json - 100% features passed
+**Verificación:** ✅ Testing agent iteration_30.json, iteration_31.json
 
 ---
 
