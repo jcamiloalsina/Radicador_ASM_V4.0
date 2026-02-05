@@ -4304,7 +4304,7 @@ export default function Predios() {
             </TabsContent>
             
             <TabsContent value="propietario" className="space-y-4 mt-4">
-              {/* Sección de Propietarios - Múltiples */}
+              {/* Sección de Propietarios - Múltiples (Formato XTF) */}
               <div className="flex justify-between items-center">
                 <h4 className="font-semibold text-slate-800">Propietarios</h4>
                 <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
@@ -4323,14 +4323,51 @@ export default function Predios() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <Label className="text-xs">Nombre Completo *</Label>
+                    {/* Nombres según formato XTF */}
+                    <div>
+                      <Label className="text-xs">Primer Apellido *</Label>
                       <Input 
-                        value={prop.nombre_propietario} 
-                        onChange={(e) => actualizarPropietario(index, 'nombre_propietario', e.target.value.toUpperCase())}
-                        placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
+                        value={prop.primer_apellido || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())}
+                        placeholder="PÉREZ"
                       />
                     </div>
+                    <div>
+                      <Label className="text-xs">Segundo Apellido</Label>
+                      <Input 
+                        value={prop.segundo_apellido || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())}
+                        placeholder="GARCÍA"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Primer Nombre *</Label>
+                      <Input 
+                        value={prop.primer_nombre || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())}
+                        placeholder="JUAN"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Segundo Nombre</Label>
+                      <Input 
+                        value={prop.segundo_nombre || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())}
+                        placeholder="CARLOS"
+                      />
+                    </div>
+                    
+                    {/* Estado (campo libre) */}
+                    <div className="col-span-2">
+                      <Label className="text-xs">Estado</Label>
+                      <Input 
+                        value={prop.estado || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'estado', e.target.value.toUpperCase())}
+                        placeholder="Ej: CASADO, SOLTERO, VIUDO, E (Estado), etc."
+                      />
+                    </div>
+                    
+                    {/* Tipo y Número de Documento */}
                     <div>
                       <Label className="text-xs mb-2 block">Tipo Documento *</Label>
                       <RadioGroup 
@@ -4347,31 +4384,31 @@ export default function Predios() {
                       </RadioGroup>
                     </div>
                     <div>
-                      <Label className="text-xs">Número Documento *</Label>
+                      <Label className="text-xs">Número Documento * (máx 12 dígitos)</Label>
                       <Input 
-                        value={prop.numero_documento} 
-                        onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value)}
+                        value={prop.numero_documento || ''} 
+                        onChange={(e) => {
+                          // Solo permitir números y máximo 12 dígitos
+                          const valor = e.target.value.replace(/\D/g, '').slice(0, 12);
+                          actualizarPropietario(index, 'numero_documento', valor);
+                        }}
+                        placeholder="Se rellenará con 0s (ej: 001091672736)"
                       />
+                      {prop.numero_documento && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Formato final: {formatearNumeroDocumento(prop.numero_documento)}
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-xs mb-2 block">Estado Civil</Label>
-                      <RadioGroup 
-                        value={prop.estado_civil || ""} 
-                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
-                        className="flex flex-wrap gap-3"
-                      >
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="" id={`estado_civil_${index}_none`} />
-                          <Label htmlFor={`estado_civil_${index}_none`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
-                        </div>
-                        {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
-                          <div key={k} className="flex items-center space-x-1">
-                            <RadioGroupItem value={k} id={`estado_civil_${index}_${k}`} />
-                            <Label htmlFor={`estado_civil_${index}_${k}`} className="text-xs cursor-pointer">{v}</Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </div>
+                    
+                    {/* Preview del nombre completo */}
+                    {(prop.primer_apellido || prop.primer_nombre) && (
+                      <div className="col-span-2 bg-emerald-50 p-2 rounded border border-emerald-200">
+                        <p className="text-xs text-emerald-700">
+                          <strong>Nombre completo:</strong> {generarNombreCompleto(prop) || 'Complete los campos'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -4403,14 +4440,38 @@ export default function Predios() {
                     <Label>Matrícula Inmobiliaria</Label>
                     <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} placeholder="Ej: 270-8920" />
                   </div>
-                  <div>
-                    <Label>Área Terreno (m²) *</Label>
-                    <Input type="number" value={formData.area_terreno} onChange={(e) => setFormData({...formData, area_terreno: e.target.value})} />
+                  
+                  {/* Áreas calculadas del R2 */}
+                  <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-medium text-blue-800">Áreas (calculadas del R2)</span>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Automático</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-blue-700">Área Terreno Total (m²)</Label>
+                        <Input 
+                          type="number" 
+                          value={calcularAreasTotales().areaTerrenoTotal.toFixed(2)} 
+                          readOnly 
+                          className="bg-blue-100 border-blue-300 text-blue-800 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-blue-700">Área Construida Total (m²)</Label>
+                        <Input 
+                          type="number" 
+                          value={calcularAreasTotales().areaConstruidaTotal.toFixed(2)} 
+                          readOnly 
+                          className="bg-blue-100 border-blue-300 text-blue-800 font-medium"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      💡 Estas áreas se calculan automáticamente sumando las zonas del R2. Modifique los valores en la pestaña "Físico (R2)".
+                    </p>
                   </div>
-                  <div>
-                    <Label>Área Construida (m²)</Label>
-                    <Input type="number" value={formData.area_construida} onChange={(e) => setFormData({...formData, area_construida: e.target.value})} />
-                  </div>
+                  
                   <div className="col-span-2">
                     <Label>Avalúo (COP) *</Label>
                     <Input type="number" value={formData.avaluo} onChange={(e) => setFormData({...formData, avaluo: e.target.value})} />
