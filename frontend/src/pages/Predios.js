@@ -3343,15 +3343,9 @@ export default function Predios() {
       manzana_vereda: '0000',
       condicion_predio: '0000',
       predio_horizontal: '0000',
-      nombre_propietario: '',
-      tipo_documento: 'C',
-      numero_documento: '',
-      estado_civil: '',
       direccion: '',
       comuna: '0',
       destino_economico: 'A',
-      area_terreno: '',
-      area_construida: '0',
       avaluo: '',
       tipo_mutacion: '',
       numero_resolucion: '',
@@ -3380,10 +3374,13 @@ export default function Predios() {
       unidad: '0000'
     });
     setPropietarios([{
-      nombre_propietario: '',
+      primer_apellido: '',
+      segundo_apellido: '',
+      primer_nombre: '',
+      segundo_nombre: '',
+      estado: '',
       tipo_documento: 'C',
-      numero_documento: '',
-      estado_civil: ''
+      numero_documento: ''
     }]);
     setZonasFisicas([{
       zona_fisica: '0',
