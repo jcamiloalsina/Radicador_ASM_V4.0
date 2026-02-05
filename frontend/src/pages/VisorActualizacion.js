@@ -186,6 +186,14 @@ export default function VisorActualizacion() {
   const [construcciones, setConstrucciones] = useState(null);
   const [prediosR1R2, setPrediosR1R2] = useState([]);
   
+  // Estados de descarga offline y progreso
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0, phase: '' });
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [loadedFromCache, setLoadedFromCache] = useState(false);
+  const [syncHistory, setSyncHistory] = useState([]);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  
   // Estados del mapa
   const [currentZoom, setCurrentZoom] = useState(14);
   const [mapType, setMapType] = useState('satellite');
