@@ -8158,13 +8158,14 @@ async def export_predios_excel(
     ws_r1 = wb.active
     ws_r1.title = "REGISTRO_R1"
     
-    # Headers R1 - EXACTO al original
+    # Headers R1 - Formato actualizado con campos XTF
     headers_r1 = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL", 
         "CODIGO_HOMOLOGADO", "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS",
-        "NOMBRE", "ESTADO_CIVIL", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
+        "PRIMER_APELLIDO", "SEGUNDO_APELLIDO", "PRIMER_NOMBRE", "SEGUNDO_NOMBRE",
+        "NOMBRE", "ESTADO", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
         "COMUNA", "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", "AVALUO",
-        "VIGENCIA", "TIPO_MUTACIÓN", "NO. RESOLUCIÓN", "FECHA_RESOLUCIÓN"
+        "VIGENCIA", "TIPO_MUTACION", "NO_RESOLUCION", "FECHA_RESOLUCION"
     ]
     
     for col, header in enumerate(headers_r1, 1):
@@ -8174,15 +8175,42 @@ async def export_predios_excel(
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
     
+    # Función para formatear número de documento con padding de 0s (12 dígitos)
+    def formatear_documento(numero):
+        if not numero:
+            return ''
+        # Eliminar caracteres no numéricos
+        solo_numeros = ''.join(filter(str.isdigit, str(numero)))
+        # Rellenar con ceros a la izquierda hasta 12 dígitos
+        return solo_numeros.zfill(12) if solo_numeros else ''
+    
+    # Función para generar nombre completo desde campos separados
+    def generar_nombre_completo(prop):
+        partes = [
+            prop.get('primer_apellido', ''),
+            prop.get('segundo_apellido', ''),
+            prop.get('primer_nombre', ''),
+            prop.get('segundo_nombre', '')
+        ]
+        nombre = ' '.join(p for p in partes if p and p.strip())
+        # Si no hay campos separados, usar nombre_propietario
+        return nombre if nombre else prop.get('nombre_propietario', '')
+    
     # Escribir datos R1
     row = 2
     for predio in predios:
         propietarios = predio.get('propietarios', [])
         if not propietarios:
-            propietarios = [{'nombre_propietario': predio.get('nombre_propietario', ''),
-                           'tipo_documento': predio.get('tipo_documento', ''),
-                           'numero_documento': predio.get('numero_documento', ''),
-                           'estado_civil': predio.get('estado_civil', '')}]
+            propietarios = [{
+                'primer_apellido': predio.get('primer_apellido', ''),
+                'segundo_apellido': predio.get('segundo_apellido', ''),
+                'primer_nombre': predio.get('primer_nombre', ''),
+                'segundo_nombre': predio.get('segundo_nombre', ''),
+                'nombre_propietario': predio.get('nombre_propietario', ''),
+                'estado': predio.get('estado', predio.get('estado_civil', '')),
+                'tipo_documento': predio.get('tipo_documento', ''),
+                'numero_documento': predio.get('numero_documento', '')
+            }]
         
         total_props = len(propietarios)
         for idx, prop in enumerate(propietarios, 1):
@@ -8191,23 +8219,34 @@ async def export_predios_excel(
             ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', ''))
             ws_r1.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', ''))
             ws_r1.cell(row=row, column=5, value=predio.get('codigo_homologado', ''))
-            ws_r1.cell(row=row, column=6, value='1')
-            ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))
-            ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))
-            ws_r1.cell(row=row, column=9, value=prop.get('nombre_propietario', ''))
-            ws_r1.cell(row=row, column=10, value=prop.get('estado_civil', ''))
-            ws_r1.cell(row=row, column=11, value=prop.get('tipo_documento', ''))
-            ws_r1.cell(row=row, column=12, value=prop.get('numero_documento', ''))
-            ws_r1.cell(row=row, column=13, value=predio.get('direccion', ''))
-            ws_r1.cell(row=row, column=14, value=predio.get('comuna', ''))
-            ws_r1.cell(row=row, column=15, value=predio.get('destino_economico', ''))
-            ws_r1.cell(row=row, column=16, value=predio.get('area_terreno', 0))
-            ws_r1.cell(row=row, column=17, value=predio.get('area_construida', 0))
-            ws_r1.cell(row=row, column=18, value=predio.get('avaluo', 0))
-            ws_r1.cell(row=row, column=19, value=predio.get('vigencia', datetime.now().year))
-            ws_r1.cell(row=row, column=20, value=predio.get('tipo_mutacion', ''))
-            ws_r1.cell(row=row, column=21, value=predio.get('numero_resolucion', ''))
-            ws_r1.cell(row=row, column=22, value=predio.get('fecha_resolucion', ''))
+            ws_r1.cell(row=row, column=6, value='1')  # Tipo de registro R1
+            ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))  # Número de orden
+            ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))  # Total registros
+            # Campos de nombre (formato XTF)
+            ws_r1.cell(row=row, column=9, value=prop.get('primer_apellido', ''))
+            ws_r1.cell(row=row, column=10, value=prop.get('segundo_apellido', ''))
+            ws_r1.cell(row=row, column=11, value=prop.get('primer_nombre', ''))
+            ws_r1.cell(row=row, column=12, value=prop.get('segundo_nombre', ''))
+            ws_r1.cell(row=row, column=13, value=generar_nombre_completo(prop))  # Nombre completo
+            ws_r1.cell(row=row, column=14, value=prop.get('estado', prop.get('estado_civil', '')))  # Estado
+            ws_r1.cell(row=row, column=15, value=prop.get('tipo_documento', ''))
+            ws_r1.cell(row=row, column=16, value=formatear_documento(prop.get('numero_documento', '')))  # Documento con padding
+            ws_r1.cell(row=row, column=17, value=predio.get('direccion', ''))
+            ws_r1.cell(row=row, column=18, value=predio.get('comuna', ''))
+            ws_r1.cell(row=row, column=19, value=predio.get('destino_economico', ''))
+            ws_r1.cell(row=row, column=20, value=predio.get('area_terreno', 0))
+            ws_r1.cell(row=row, column=21, value=predio.get('area_construida', 0))
+            ws_r1.cell(row=row, column=22, value=predio.get('avaluo', 0))
+            # Vigencia: extraer solo el año si viene en formato largo
+            vigencia_raw = predio.get('vigencia', datetime.now().year)
+            if isinstance(vigencia_raw, str) and len(vigencia_raw) >= 4:
+                vigencia = vigencia_raw[-4:]  # Tomar últimos 4 dígitos (año)
+            else:
+                vigencia = vigencia_raw
+            ws_r1.cell(row=row, column=23, value=vigencia)
+            ws_r1.cell(row=row, column=24, value=predio.get('tipo_mutacion', ''))
+            ws_r1.cell(row=row, column=25, value=predio.get('numero_resolucion', ''))
+            ws_r1.cell(row=row, column=26, value=predio.get('fecha_resolucion', ''))
             row += 1
     
     # === HOJA REGISTRO_R2 (Físico - con zonas en columnas horizontales) ===
