@@ -1850,7 +1850,7 @@ export default function Pendientes() {
                                           <span className="text-slate-500"> por {item.usuario_nombre}</span>
                                         )}
                                         {item.observaciones && (
-                                          <p className="text-slate-500 italic mt-1">"{item.observaciones}"</p>
+                                          <p className="text-slate-500 italic mt-1">&quot;{item.observaciones}&quot;</p>
                                         )}
                                       </div>
                                     ))}
