@@ -1694,15 +1694,16 @@ export default function Predios() {
           if (predioNuevo.codigo_predial_nacional) {
             const partes = getCodigoPartes(predioNuevo.codigo_predial_nacional);
             setCodigoManual({
-              zona: partes.zona || '',
-              sector: partes.sector || '',
-              comuna: partes.comuna || '',
-              barrio: partes.barrio || '',
-              manzana_vereda: partes.manzana_vereda || '',
-              terreno: partes.terreno || '',
-              condicion_ph: partes.condicion_ph || '',
-              edificio_torre: partes.edificio_torre || '',
-              unidad: partes.unidad || ''
+              zona: partes.zona || '00',
+              sector: partes.sector || '00',
+              comuna: partes.comuna || '00',
+              barrio: partes.barrio || '00',
+              manzana_vereda: partes.manzana_vereda || '0000',
+              terreno: partes.terreno || '0001',
+              condicion: partes.condicion || '0',
+              edificio: partes.edificio || '00',
+              piso: partes.piso || '00',
+              unidad: partes.unidad || '0000'
             });
           }
           
