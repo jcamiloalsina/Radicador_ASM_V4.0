@@ -1448,6 +1448,22 @@ export default function Pendientes() {
                                   </Button>
                                 )}
                                 
+                                {/* Botón Eliminar Solicitud - solo visible para el gestor creador en estados editables */}
+                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
+                                 esCreador && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => openEliminarSolicitudModal(predio)}
+                                    disabled={procesando || eliminandoSolicitud}
+                                    data-testid={`eliminar-solicitud-${predio.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    Eliminar
+                                  </Button>
+                                )}
+                                
                                 {/* Acciones de coordinador para predios en revisión */}
                                 {(predio.estado_flujo === 'revision' || predio.estado === 'revision') && isCoordinador && (
                                   <>
