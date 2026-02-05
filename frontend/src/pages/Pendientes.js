@@ -2518,50 +2518,6 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-                          <p>{selectedPredioNuevo.matricula_inmobiliaria || selectedPredioNuevo.r2?.matricula_inmobiliaria}</p>
-                        </div>
-                      )}
-                      {(selectedPredioNuevo.r2?.zona_fisica_1 || selectedPredioNuevo.r2?.area_construida_1) && (
-                        <>
-                          <div>
-                            <span className="text-slate-500">Zona Física:</span>
-                            <p>{selectedPredioNuevo.r2?.zona_fisica_1 || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">Área Construida:</span>
-                            <p>{selectedPredioNuevo.r2?.area_construida_1?.toLocaleString() || '0'} m²</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {selectedPredioNuevo.radicado && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>Radicado asociado:</strong> {selectedPredioNuevo.radicado}
-                  </p>
-                </div>
-              )}
-              
-              {selectedPredioNuevo.observaciones && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <p className="text-sm font-medium text-amber-800 mb-1">Observaciones:</p>
-                  <p className="text-sm text-amber-700">{selectedPredioNuevo.observaciones}</p>
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowPredioDetailDialog(false)}>
-                  Cerrar
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Modal de Acción para Predio Nuevo */}
       <Dialog open={showPredioActionDialog} onOpenChange={setShowPredioActionDialog}>
