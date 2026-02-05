@@ -41,7 +41,7 @@ const getZonaFromCodigo = (codigoPredial) => {
   return { codigo: zonaCodigo, texto };
 };
 
-// Helper para obtener sector, manzana/vereda, terreno del código predial
+// Helper para obtener todas las partes del código predial
 const getCodigoPartes = (codigoPredial) => {
   if (!codigoPredial || codigoPredial.length < 21) return {};
   return {
@@ -53,6 +53,11 @@ const getCodigoPartes = (codigoPredial) => {
     barrio: codigoPredial.substring(11, 13),
     manzana_vereda: codigoPredial.substring(13, 17),
     terreno: codigoPredial.substring(17, 21),
+    // Partes adicionales para códigos completos (30 caracteres)
+    condicion: codigoPredial.length >= 22 ? codigoPredial.substring(21, 22) : '0',
+    edificio: codigoPredial.length >= 24 ? codigoPredial.substring(22, 24) : '00',
+    piso: codigoPredial.length >= 26 ? codigoPredial.substring(24, 26) : '00',
+    unidad: codigoPredial.length >= 30 ? codigoPredial.substring(26, 30) : '0000'
   };
 };
 
