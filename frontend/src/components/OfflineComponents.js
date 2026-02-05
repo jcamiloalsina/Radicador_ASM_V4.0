@@ -332,7 +332,7 @@ export function OfflineReadyBadge() {
   
   return (
     <>
-      <div className="relative">
+      <div className="relative" ref={dropdownRef}>
         <button
           onClick={handleExpand}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
