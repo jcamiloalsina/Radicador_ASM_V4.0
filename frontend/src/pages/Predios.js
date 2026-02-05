@@ -1635,6 +1635,24 @@ export default function Predios() {
     }
   }, [filterMunicipio, filterVigencia, filterGeometria]);
 
+  // Debounce para búsqueda: cuando el usuario escribe, buscar del servidor después de 500ms
+  useEffect(() => {
+    if (!filterMunicipio || !filterVigencia) return;
+    
+    // Debounce de 500ms para evitar llamadas excesivas
+    const timeoutId = setTimeout(() => {
+      // Si hay búsqueda activa, consultar del servidor para obtener resultados frescos
+      if (search && search.length >= 3) {
+        fetchPrediosFromServer();
+      } else if (!search) {
+        // Si se borró la búsqueda, recargar todos los predios
+        fetchPredios();
+      }
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [search]);
+
   // Manejar parámetro predio_nuevo de la URL para abrir un predio nuevo en modo edición
   useEffect(() => {
     const params = new URLSearchParams(location.search);
