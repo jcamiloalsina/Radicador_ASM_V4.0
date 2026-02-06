@@ -1,0 +1,96 @@
+================================================================================
+INSTRUCCIONES PARA APLICAR CAMBIOS EN TU SERVIDOR
+================================================================================
+
+ARCHIVOS INCLUIDOS:
+1. migrations.py - Sistema de migraciones automáticas (NUEVO)
+2. CAMBIOS_SERVER_PY.txt - Código a agregar en server.py
+3. CAMBIOS_OFFLINEDB.txt - Cambios para offlineDB.js (frontend)
+4. CAMBIOS_VISOR.txt - Cambios para VisorActualizacion.js (frontend)
+
+================================================================================
+PASO 1: CREAR ARCHIVO migrations.py
+================================================================================
+
+Copia el archivo "migrations.py" a tu servidor en:
+/app/backend/migrations.py
+
+Este archivo contiene:
+- Migración de propietarios R1 (separar nombres)
+- Migración de estructura R2 (zonas y construcciones)
+- Corrección de vigencias incorrectas
+- Corrección del código homologado del predio 541280002000000030236000000000
+- Corrección de matrícula del mismo predio
+
+================================================================================
+PASO 2: MODIFICAR server.py
+================================================================================
+
+Agrega al FINAL de tu archivo /app/backend/server.py (antes de cualquier 
+otro @app.on_event("startup") existente) el siguiente código:
+
+---INICIO DEL CÓDIGO---
+# Importar sistema de migraciones
+from migrations import ejecutar_migraciones
+
+@app.on_event("startup")
+async def ejecutar_migraciones_automaticas():
+    """
+    Ejecuta las migraciones automáticas al iniciar el servidor.
+    Las migraciones solo se ejecutan una vez (se registran en la colección 'migraciones').
+    """
+    try:
+        logger.info("=" * 60)
+        logger.info("🔄 VERIFICANDO MIGRACIONES PENDIENTES...")
+        logger.info("=" * 60)
+        
+        # Ejecutar migraciones en un hilo separado para no bloquear el servidor
+        import threading
+        migration_thread = threading.Thread(target=ejecutar_migraciones)
+        migration_thread.start()
+        
+        logger.info("📋 Migraciones iniciadas en segundo plano")
+        
+    except Exception as e:
+        logger.error(f"Error al iniciar migraciones: {str(e)}")
+---FIN DEL CÓDIGO---
+
+================================================================================
+PASO 3: REINICIAR SERVIDOR
+================================================================================
+
+Después de copiar los archivos:
+1. Reinicia el servidor backend
+2. Revisa los logs para confirmar que las migraciones se ejecutaron:
+   - Busca "SISTEMA DE MIGRACIONES AUTOMÁTICAS"
+   - Busca "✅ PROCESO DE MIGRACIONES COMPLETADO"
+
+================================================================================
+VERIFICACIÓN
+================================================================================
+
+En MongoDB, revisa la colección "migraciones" para ver el estado:
+db.migraciones.find().pretty()
+
+Deberías ver registros como:
+{
+  "nombre": "corregir_homologado_541280002000000030236000000000",
+  "completada": true,
+  "fecha_ejecucion": "2026-02-06T...",
+  "estadisticas": { "corregido": true, ... }
+}
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+1. Las migraciones solo se ejecutan UNA VEZ. Si ya se ejecutaron, no se 
+   volverán a ejecutar (se registran en la colección "migraciones").
+
+2. Si necesitas re-ejecutar una migración específica, elimina su registro:
+   db.migraciones.deleteOne({nombre: "nombre_de_la_migracion"})
+
+3. El Excel R2 ya debería funcionar con el formato horizontal si tienes
+   el código actualizado del endpoint /predios/export-excel
+
+================================================================================
