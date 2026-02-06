@@ -5768,7 +5768,7 @@ export default function Predios() {
                     <div>
                       <p className="text-xs text-slate-500">Matrícula Inmobiliaria</p>
                       <p className="font-medium text-slate-700">
-                        {selectedPredio.r2_registros?.[0]?.matricula_inmobiliaria || (
+                        {selectedPredio.matricula_inmobiliaria || selectedPredio.r2_registros?.[0]?.matricula_inmobiliaria || (
                           <span className="text-slate-400 italic">Sin información de matrícula</span>
                         )}
                       </p>
