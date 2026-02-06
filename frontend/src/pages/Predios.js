@@ -3306,6 +3306,12 @@ export default function Predios() {
         matricula_inmobiliaria: formData.matricula_inmobiliaria || null
       };
       
+      // Si es coordinador/admin y modificó el código predial, agregarlo
+      if (canEditCodigoPredial && formData.codigo_predial_nacional && 
+          formData.codigo_predial_nacional !== selectedPredio?.codigo_predial_nacional) {
+        updateData.codigo_predial_nacional = formData.codigo_predial_nacional;
+      }
+      
       // Agregar zonas R2 si hay datos válidos
       if (zonasValidas.length > 0) {
         updateData.r2 = {
