@@ -388,13 +388,21 @@ export default function VisorActualizacion() {
   });
   const [generandoPdf, setGenerandoPdf] = useState(false);
   
+  // Helper para ejecutar función con timeout
+  const withTimeout = (promise, timeoutMs, fallbackValue = null) => {
+    return Promise.race([
+      promise,
+      new Promise(resolve => setTimeout(() => resolve(fallbackValue), timeoutMs))
+    ]);
+  };
+
   // Cargar datos del proyecto
   const fetchProyecto = useCallback(async () => {
     try {
-      // Si está offline, intentar cargar desde IndexedDB primero
+      // Si está offline, intentar cargar desde IndexedDB primero (con timeout)
       if (!navigator.onLine) {
         console.log('[Offline] Intentando cargar proyecto desde IndexedDB...');
-        const proyectoOffline = await getProyectoOffline(proyectoId);
+        const proyectoOffline = await withTimeout(getProyectoOffline(proyectoId), 5000, null);
         
         if (proyectoOffline) {
           console.log('[Offline] Proyecto encontrado en IndexedDB:', proyectoOffline.nombre);
@@ -402,9 +410,9 @@ export default function VisorActualizacion() {
           setLoading(false);
           toast.info('Proyecto cargado desde datos offline');
           
-          // Intentar cargar geometrías offline también
+          // Intentar cargar geometrías offline también (con timeout)
           try {
-            const geometriasOffline = await getGeometriasOffline(proyectoId);
+            const geometriasOffline = await withTimeout(getGeometriasOffline(proyectoId), 10000, []);
             if (geometriasOffline && geometriasOffline.length > 0) {
               const geojson = {
                 type: 'FeatureCollection',
@@ -415,6 +423,8 @@ export default function VisorActualizacion() {
                 }))
               };
               setGeometrias(geojson);
+              setLoadedFromCache(true);
+              setOfflineReady(true);
               
               const bounds = L.geoJSON(geojson).getBounds();
               if (bounds.isValid()) {
@@ -441,13 +451,12 @@ export default function VisorActualizacion() {
       });
       setProyecto(response.data);
       
-      // Guardar proyecto para uso offline
-      try {
-        await saveProyectoOffline(response.data);
+      // Guardar proyecto para uso offline (sin bloquear la UI)
+      saveProyectoOffline(response.data).then(() => {
         console.log('[Online] Proyecto guardado para uso offline');
-      } catch (saveError) {
+      }).catch(saveError => {
         console.warn('No se pudo guardar el proyecto offline:', saveError);
-      }
+      });
       
       if (response.data.gdb_procesado) {
         fetchGeometrias();
@@ -462,17 +471,17 @@ export default function VisorActualizacion() {
     } catch (error) {
       console.error('Error al cargar el proyecto:', error);
       
-      // Si falla la conexión, intentar cargar desde IndexedDB como fallback
+      // Si falla la conexión, intentar cargar desde IndexedDB como fallback (con timeout)
       try {
         console.log('[Fallback] Intentando cargar proyecto desde IndexedDB...');
-        const proyectoOffline = await getProyectoOffline(proyectoId);
+        const proyectoOffline = await withTimeout(getProyectoOffline(proyectoId), 5000, null);
         
         if (proyectoOffline) {
           setProyecto(proyectoOffline);
           toast.info('Proyecto cargado desde datos offline (sin conexión)');
           
-          // Intentar cargar geometrías offline
-          const geometriasOffline = await getGeometriasOffline(proyectoId);
+          // Intentar cargar geometrías offline (con timeout)
+          const geometriasOffline = await withTimeout(getGeometriasOffline(proyectoId), 10000, []);
           if (geometriasOffline && geometriasOffline.length > 0) {
             const geojson = {
               type: 'FeatureCollection',
@@ -483,6 +492,7 @@ export default function VisorActualizacion() {
               }))
             };
             setGeometrias(geojson);
+            setLoadedFromCache(true);
           }
         } else {
           toast.error('Proyecto no disponible offline');
