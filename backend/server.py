@@ -18800,6 +18800,20 @@ async def drop_collection(
     }
 
 
+# Endpoint para descargar archivos de cambios del servidor
+@api_router.get("/descargas/{filename}")
+async def descargar_archivo_servidor(filename: str):
+    """Endpoint para descargar archivos de cambios"""
+    filepath = Path(f"/app/backend/static/descargas/{filename}")
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    return FileResponse(
+        path=str(filepath),
+        filename=filename,
+        media_type="application/octet-stream"
+    )
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
