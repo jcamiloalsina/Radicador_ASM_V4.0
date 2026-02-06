@@ -5052,6 +5052,29 @@ export default function Predios() {
                   <strong>Matrícula Inmobiliaria:</strong> {selectedPredio?.r2_registros?.[0]?.matricula_inmobiliaria || selectedPredio?.matricula_inmobiliaria}
                 </p>
               )}
+              
+              {/* Campo editable del código predial - Solo para coordinadores y administradores */}
+              {canEditCodigoPredial && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Label className="text-xs text-blue-700 font-semibold flex items-center gap-2">
+                    <FileText className="w-3 h-3" />
+                    Modificar Código Predial Nacional (Solo Coordinadores)
+                  </Label>
+                  <Input 
+                    value={formData.codigo_predial_nacional || selectedPredio?.codigo_predial_nacional || ''} 
+                    onChange={(e) => {
+                      const valor = e.target.value.replace(/\D/g, '').slice(0, 30);
+                      setFormData({...formData, codigo_predial_nacional: valor});
+                    }}
+                    maxLength={30}
+                    className="font-mono mt-2"
+                    placeholder="30 dígitos"
+                  />
+                  <p className="text-xs text-blue-600 mt-1">
+                    {(formData.codigo_predial_nacional || selectedPredio?.codigo_predial_nacional || '').length}/30 dígitos
+                  </p>
+                </div>
+              )}
             </div>
             
             {/* Sección de Propietarios */}
