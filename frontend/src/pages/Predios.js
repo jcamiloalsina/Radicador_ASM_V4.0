@@ -4286,6 +4286,7 @@ export default function Predios() {
                         maxLength={2}
                         className="font-mono text-center"
                         placeholder="00"
+                        disabled={editingPredioNuevoId && !canEditCodigoPredial}
                       />
                     </div>
                     <div>
@@ -4296,6 +4297,7 @@ export default function Predios() {
                         maxLength={2}
                         className="font-mono text-center"
                         placeholder="00"
+                        disabled={editingPredioNuevoId && !canEditCodigoPredial}
                       />
                     </div>
                     <div>
@@ -4306,6 +4308,7 @@ export default function Predios() {
                         maxLength={4}
                         className="font-mono text-center"
                         placeholder="0000"
+                        disabled={editingPredioNuevoId && !canEditCodigoPredial}
                       />
                     </div>
                   </div>
