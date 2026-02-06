@@ -4045,8 +4045,8 @@ export default function Predios() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            {predio.r2_registros?.[0]?.matricula_inmobiliaria ? (
-                              <span className="font-medium text-slate-800">{predio.r2_registros[0].matricula_inmobiliaria}</span>
+                            {(predio.matricula_inmobiliaria || predio.r2_registros?.[0]?.matricula_inmobiliaria) ? (
+                              <span className="font-medium text-slate-800">{predio.matricula_inmobiliaria || predio.r2_registros[0].matricula_inmobiliaria}</span>
                             ) : (
                               <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
                             )}
