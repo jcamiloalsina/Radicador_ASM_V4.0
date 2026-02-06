@@ -4221,6 +4221,11 @@ export default function Predios() {
                   <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     Código Predial Nacional (30 dígitos)
+                    {editingPredioNuevoId && !canEditCodigoPredial && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full ml-2">
+                        🔒 Solo lectura - Solo coordinadores pueden modificar
+                      </span>
+                    )}
                   </h4>
                   
                   {/* Visualización del código completo */}
