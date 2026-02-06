@@ -4253,6 +4253,7 @@ export default function Predios() {
                         maxLength={2}
                         className="font-mono text-center"
                         placeholder="00"
+                        disabled={editingPredioNuevoId && !canEditCodigoPredial}
                       />
                       <span className="text-xs text-slate-400">00=Rural, 01=Urbano, 02-99=Correg.</span>
                     </div>
@@ -4264,6 +4265,7 @@ export default function Predios() {
                         maxLength={2}
                         className="font-mono text-center"
                         placeholder="00"
+                        disabled={editingPredioNuevoId && !canEditCodigoPredial}
                       />
                       {ultimaManzanaInfo && ultimaManzanaInfo.ultima_manzana && (
                         <div className="mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded text-xs">
