@@ -577,3 +577,11 @@ backups/backup_20260205_155645/asomunicipios_db/predios.bson
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
+-e 
+# Environment files
+*.env
+*.env.*
