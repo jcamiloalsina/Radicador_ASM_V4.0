@@ -71,23 +71,46 @@ export async function initOfflineDB() {
     return db;
   }
   
-  // Si hay una inicialización en progreso, esperar a que termine
+  // Si hay una inicialización en progreso, esperar a que termine (con timeout)
   if (dbInitPromise) {
-    return dbInitPromise;
+    // Añadir timeout de 10 segundos para evitar bloqueos indefinidos
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('IndexedDB initialization timeout')), 10000)
+    );
+    try {
+      return await Promise.race([dbInitPromise, timeoutPromise]);
+    } catch (e) {
+      console.warn('[OfflineDB] Timeout esperando inicialización, reintentando...');
+      dbInitPromise = null;
+    }
   }
   
-  // Crear promesa de inicialización
+  // Crear promesa de inicialización con timeout
   dbInitPromise = (async () => {
     try {
-      // Solo verificar versión una vez
+      // Solo verificar versión una vez (con timeout para evitar bloqueo)
       if (!dbInitialized) {
-        await checkAndCleanOldData();
+        try {
+          await Promise.race([
+            checkAndCleanOldData(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
+        } catch (e) {
+          console.warn('[OfflineDB] Timeout verificando versión, continuando...');
+        }
       }
       
       return new Promise((resolve, reject) => {
+        // Timeout para la apertura de la base de datos
+        const timeout = setTimeout(() => {
+          console.error('[OfflineDB] Timeout al abrir la base de datos');
+          reject(new Error('IndexedDB open timeout'));
+        }, 10000);
+        
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
         request.onerror = async (event) => {
+          clearTimeout(timeout);
           const error = event.target.error;
           console.error('[OfflineDB] Error al abrir la base de datos:', error?.message);
           
@@ -109,6 +132,7 @@ export async function initOfflineDB() {
         };
 
         request.onsuccess = () => {
+          clearTimeout(timeout);
           db = request.result;
           dbInitialized = true;
           localStorage.setItem('asomunicipios_app_version', APP_VERSION);
