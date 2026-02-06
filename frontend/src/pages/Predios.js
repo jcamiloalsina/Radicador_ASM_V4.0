@@ -827,6 +827,9 @@ function SubsanacionesPendientes({ municipio = null, onUpdate }) {
   const [activeTab, setActiveTab] = useState('pendientes');
 
   const isCoordinador = user && ['coordinador', 'administrador'].includes(user.role);
+  
+  // Solo coordinador y administrador pueden editar el código predial nacional
+  const canEditCodigoPredial = isCoordinador;
 
   useEffect(() => {
     fetchSubsanaciones();
