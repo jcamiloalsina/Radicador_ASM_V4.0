@@ -1,0 +1,59 @@
+================================================================================
+CORRECCIÓN DE VISUALIZACIÓN DE MATRÍCULA EN LISTA Y DETALLE
+================================================================================
+
+PROBLEMA:
+La matrícula aparece al editar el predio pero NO en la lista ni en la vista 
+de detalle (ojo) porque el código solo buscaba en r2_registros[0].matricula_inmobiliaria
+pero no en el campo de nivel superior predio.matricula_inmobiliaria
+
+SOLUCIÓN:
+Buscar la matrícula en AMBOS lugares con prioridad al nivel superior.
+
+================================================================================
+ARCHIVO: /app/frontend/src/pages/Predios.js
+================================================================================
+
+CAMBIO 1 - Lista de predios (alrededor de línea 4048):
+---------------------------------------------------------
+
+ANTES:
+{predio.r2_registros?.[0]?.matricula_inmobiliaria ? (
+  <span className="font-medium text-slate-800">{predio.r2_registros[0].matricula_inmobiliaria}</span>
+) : (
+  <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
+)}
+
+DESPUÉS:
+{(predio.matricula_inmobiliaria || predio.r2_registros?.[0]?.matricula_inmobiliaria) ? (
+  <span className="font-medium text-slate-800">{predio.matricula_inmobiliaria || predio.r2_registros[0].matricula_inmobiliaria}</span>
+) : (
+  <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
+)}
+
+
+CAMBIO 2 - Vista de detalle/ojo (alrededor de línea 5771):
+---------------------------------------------------------
+
+ANTES:
+{selectedPredio.r2_registros?.[0]?.matricula_inmobiliaria || (
+  <span className="text-slate-400 italic">Sin información de matrícula</span>
+)}
+
+DESPUÉS:
+{selectedPredio.matricula_inmobiliaria || selectedPredio.r2_registros?.[0]?.matricula_inmobiliaria || (
+  <span className="text-slate-400 italic">Sin información de matrícula</span>
+)}
+
+================================================================================
+RESUMEN
+================================================================================
+
+El cambio es simple: en lugar de buscar SOLO en r2_registros[0].matricula_inmobiliaria,
+ahora busca PRIMERO en predio.matricula_inmobiliaria y si no existe, busca en 
+r2_registros[0].matricula_inmobiliaria
+
+Esto asegura que la matrícula se muestre correctamente sin importar dónde esté 
+guardada en el documento.
+
+================================================================================
