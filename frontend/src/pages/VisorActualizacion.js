@@ -494,6 +494,17 @@ export default function VisorActualizacion() {
             setGeometrias(geojson);
             setLoadedFromCache(true);
           }
+          
+          // Intentar cargar predios R1/R2 offline
+          try {
+            const prediosOffline = await withTimeout(getPrediosOffline(proyectoId), 5000, []);
+            if (prediosOffline && prediosOffline.length > 0) {
+              setPrediosR1R2(prediosOffline);
+              console.log('[Offline] Predios R1/R2 cargados desde offline:', prediosOffline.length);
+            }
+          } catch (prediosError) {
+            console.warn('[Offline] No se pudieron cargar predios R1/R2 offline');
+          }
         } else {
           toast.error('Proyecto no disponible offline');
         }
