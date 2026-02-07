@@ -15326,7 +15326,18 @@ async def upload_base_grafica_proyecto(
             content = await file.read()
             buffer.write(content)
         
-        # Procesar GDB en background
+        # Actualizar campo base_grafica_archivo ANTES de procesar
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {"$set": {
+                "base_grafica_archivo": str(gdb_path),
+                "base_grafica_cargado_en": datetime.now(timezone.utc),
+                "gdb_procesado": False,  # Marcamos como no procesado hasta que termine
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        # Procesar GDB
         await procesar_gdb_actualizacion(proyecto_id, str(gdb_path), proyecto["municipio"])
         
         return {
@@ -15336,6 +15347,7 @@ async def upload_base_grafica_proyecto(
         }
         
     except Exception as e:
+        logger.error(f"Error al cargar Base Gráfica: {str(e)}")
         if gdb_path.exists():
             gdb_path.unlink()
         raise HTTPException(status_code=500, detail=f"Error al cargar el archivo: {str(e)}")
