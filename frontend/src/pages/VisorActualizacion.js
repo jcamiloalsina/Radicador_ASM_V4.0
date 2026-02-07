@@ -680,8 +680,13 @@ export default function VisorActualizacion() {
       setPrediosR1R2(predios);
       
       // Guardar automáticamente para modo offline
-      if (predios.length > 0 && proyecto) {
-        downloadForOffline(predios, null, proyecto.municipio);
+      if (predios.length > 0) {
+        try {
+          await savePrediosOffline(proyectoId, predios, proyecto?.municipio);
+          console.log('[Offline] Predios R1/R2 guardados para offline:', predios.length);
+        } catch (saveError) {
+          console.warn('[Offline] No se pudieron guardar predios offline:', saveError);
+        }
       }
     } catch (error) {
       console.error('Error cargando predios R1/R2:', error);
@@ -689,10 +694,12 @@ export default function VisorActualizacion() {
       // Si está offline, intentar cargar desde IndexedDB
       if (!navigator.onLine) {
         try {
-          const { predios } = await getOfflineData();
-          if (predios.length > 0) {
-            setPrediosR1R2(predios);
-            toast.info('Datos cargados desde caché offline');
+          const prediosOffline = await getPrediosOffline(proyectoId);
+          if (prediosOffline && prediosOffline.length > 0) {
+            setPrediosR1R2(prediosOffline);
+            toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
+          } else {
+            console.log('[Offline] No hay predios R1/R2 guardados offline');
           }
         } catch (offlineError) {
           console.error('Error cargando datos offline:', offlineError);
