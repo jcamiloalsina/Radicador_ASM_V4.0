@@ -15595,14 +15595,16 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             })
                             geometrias_guardadas += 1
                 except Exception as e:
-                    print(f"Error procesando capa {layer_name}: {e}")
+                    logger.error(f"[GDB Actualizacion] Error procesando capa rural {layer_name}: {e}")
         
         # Procesar terrenos urbanos
         for layer_name in urban_layers:
             if layer_name in layer_names:
                 try:
+                    logger.info(f"[GDB Actualizacion] Procesando capa urbana: {layer_name}")
                     gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
                     if len(gdf) > 0:
+                        logger.info(f"[GDB Actualizacion] Convirtiendo CRS de {len(gdf)} registros...")
                         gdf = gdf.to_crs(epsg=4326)
                         for idx, row in gdf.iterrows():
                             geom = row.geometry.__geo_interface__
