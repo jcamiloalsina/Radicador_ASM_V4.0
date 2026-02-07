@@ -15517,9 +15517,13 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
     import tempfile
     import shutil
     
+    logger.info(f"[GDB Actualizacion] Iniciando procesamiento para proyecto {proyecto_id}")
+    logger.info(f"[GDB Actualizacion] Archivo: {zip_path}, Municipio: {municipio}")
+    
     temp_dir = tempfile.mkdtemp()
     try:
         # Extraer ZIP
+        logger.info(f"[GDB Actualizacion] Extrayendo ZIP...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
         
