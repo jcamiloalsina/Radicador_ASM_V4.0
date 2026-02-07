@@ -89,39 +89,55 @@ export function DownloadProgressBar({
 // ==================== INDICADOR OFFLINE FLOTANTE ====================
 export function OfflineIndicator() {
   const { isOnline, offlineData, cacheStatus } = useOffline();
+  const [collapsed, setCollapsed] = useState(true);
   
   if (isOnline) return null;
   
+  // Versión colapsada - solo icono pequeño
+  if (collapsed) {
+    return (
+      <div className="fixed bottom-4 left-4 z-50">
+        <button 
+          onClick={() => setCollapsed(false)}
+          className={`${cacheStatus.ready ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'} text-white p-2 rounded-full shadow-lg transition-all`}
+          title="Ver estado offline"
+        >
+          <WifiOff className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+  
+  // Versión expandida
   return (
-    <div className="fixed bottom-4 left-4 z-50 max-w-sm">
-      <div className={`${cacheStatus.ready ? 'bg-amber-500' : 'bg-red-500'} text-white px-4 py-3 rounded-lg shadow-lg`}>
-        <div className="flex items-center gap-2 mb-2">
-          <WifiOff className="w-5 h-5" />
-          <span className="font-semibold">Sin conexión a Internet</span>
+    <div className="fixed bottom-4 left-4 z-50 max-w-xs">
+      <div className={`${cacheStatus.ready ? 'bg-amber-500' : 'bg-red-500'} text-white px-3 py-2 rounded-lg shadow-lg`}>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            <span className="font-medium text-sm">Modo offline</span>
+          </div>
+          <button 
+            onClick={() => setCollapsed(true)}
+            className="text-white/70 hover:text-white p-0.5"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
         
         {offlineData.prediosCount > 0 || offlineData.petitionsCount > 0 ? (
-          <div className="text-sm text-amber-100">
+          <div className="text-xs text-amber-100">
             <div className="flex items-center gap-1">
-              <CheckCircle className="w-4 h-4" />
-              <span>Datos offline disponibles</span>
+              <CheckCircle className="w-3 h-3" />
+              <span>{offlineData.prediosCount.toLocaleString()} predios disponibles</span>
             </div>
-            {offlineData.prediosCount > 0 && (
-              <div className="flex items-center gap-1 mt-1">
-                <Database className="w-4 h-4" />
-                <span>{offlineData.prediosCount.toLocaleString()} predios guardados</span>
-              </div>
-            )}
           </div>
         ) : (
-          <div className="text-sm text-red-100">
+          <div className="text-xs text-red-100">
             <div className="flex items-center gap-1">
-              <AlertTriangle className="w-4 h-4" />
-              <span>No hay datos descargados</span>
+              <AlertTriangle className="w-3 h-3" />
+              <span>Sin datos descargados</span>
             </div>
-            <p className="mt-1 text-xs">
-              Conéctese a internet y visite los módulos para descargar datos.
-            </p>
           </div>
         )}
       </div>
