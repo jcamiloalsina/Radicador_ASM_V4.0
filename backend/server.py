@@ -15684,9 +15684,14 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
             }}
         )
         
-        print(f"GDB procesado: {geometrias_guardadas} geometrías, {construcciones_guardadas} construcciones")
-        print(f"Capas encontradas - Rural: {capas_info['rural_encontradas']}, Urbano: {capas_info['urbano_encontradas']}")
+        logger.info(f"[GDB Actualizacion] ✅ COMPLETADO: {geometrias_guardadas} geometrías, {construcciones_guardadas} construcciones")
+        logger.info(f"[GDB Actualizacion] Capas - Rural: {capas_info['rural_encontradas']}, Urbano: {capas_info['urbano_encontradas']}")
         
+    except Exception as e:
+        logger.error(f"[GDB Actualizacion] ❌ ERROR GENERAL: {str(e)}")
+        import traceback
+        logger.error(f"[GDB Actualizacion] Traceback: {traceback.format_exc()}")
+        raise
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
