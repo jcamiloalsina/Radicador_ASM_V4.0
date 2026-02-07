@@ -22,6 +22,14 @@ export default function DashboardHome() {
 
   useEffect(() => {
     fetchStats();
+    
+    // Listener para actualizar cuando se aprueba/rechaza un pendiente
+    const handlePendientesUpdated = () => {
+      fetchStats();
+    };
+    
+    window.addEventListener('pendientesUpdated', handlePendientesUpdated);
+    return () => window.removeEventListener('pendientesUpdated', handlePendientesUpdated);
   }, []);
 
   const fetchStats = async () => {
