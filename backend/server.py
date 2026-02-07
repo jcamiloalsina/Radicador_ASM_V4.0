@@ -15538,22 +15538,33 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 break
         
         if not gdb_path:
+            logger.error("[GDB Actualizacion] No se encontró archivo .gdb en el ZIP")
             raise Exception("No se encontró archivo .gdb en el ZIP")
+        
+        logger.info(f"[GDB Actualizacion] GDB encontrado: {gdb_path}")
         
         # Leer capas con pyogrio
         import pyogrio
         layers = pyogrio.list_layers(gdb_path)
         layer_names = [l[0] for l in layers]
+        logger.info(f"[GDB Actualizacion] Capas encontradas: {len(layer_names)}")
         
         # Buscar capas de terreno (usar mismos estándares que Conservación)
         rural_layers = ['R_TERRENO', 'R_TERRENO_1', 'r_terreno', 'TERRENO']
         urban_layers = ['U_TERRENO', 'U_TERRENO_1', 'u_terreno']
         construccion_layers = ['U_CONSTRUCCION', 'R_CONSTRUCCION', 'CONSTRUCCION', 'U_UNIDAD', 'R_UNIDAD']
         
+        # Verificar qué capas están presentes
+        rural_found = [l for l in rural_layers if l in layer_names]
+        urban_found = [l for l in urban_layers if l in layer_names]
+        logger.info(f"[GDB Actualizacion] Capas rurales: {rural_found}")
+        logger.info(f"[GDB Actualizacion] Capas urbanas: {urban_found}")
+        
         geometrias_guardadas = 0
         construcciones_guardadas = 0
         
         # Eliminar geometrías anteriores del proyecto
+        logger.info(f"[GDB Actualizacion] Eliminando geometrías anteriores...")
         await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
         await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
         
@@ -15561,6 +15572,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         for layer_name in rural_layers:
             if layer_name in layer_names:
                 try:
+                    logger.info(f"[GDB Actualizacion] Procesando capa rural: {layer_name}")
                     gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
                     if len(gdf) > 0:
                         gdf = gdf.to_crs(epsg=4326)
