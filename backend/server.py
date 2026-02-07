@@ -15625,12 +15625,15 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             })
                             geometrias_guardadas += 1
                 except Exception as e:
-                    print(f"Error procesando capa {layer_name}: {e}")
+                    logger.error(f"[GDB Actualizacion] Error procesando capa urbana {layer_name}: {e}")
+        
+        logger.info(f"[GDB Actualizacion] Geometrías guardadas hasta ahora: {geometrias_guardadas}")
         
         # Procesar construcciones
         for layer_name in construccion_layers:
             if layer_name in layer_names:
                 try:
+                    logger.info(f"[GDB Actualizacion] Procesando construcciones: {layer_name}")
                     gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
                     if len(gdf) > 0:
                         gdf = gdf.to_crs(epsg=4326)
