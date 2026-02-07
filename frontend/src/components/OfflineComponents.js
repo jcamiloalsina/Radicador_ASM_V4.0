@@ -12,26 +12,35 @@ import { clearAllOfflineData } from '../utils/offlineDB';
 // ==================== BANNER DE MODO OFFLINE ====================
 export function OfflineBanner({ onViewData }) {
   const { isOnline, offlineData } = useOffline();
+  const [dismissed, setDismissed] = useState(false);
   
-  if (isOnline) return null;
+  if (isOnline || dismissed) return null;
   
   return (
-    <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
+    <div className="bg-amber-500/90 text-white px-3 py-1.5 flex items-center justify-between text-sm">
       <div className="flex items-center gap-2">
-        <WifiOff className="w-4 h-4" />
-        <span className="font-medium">Sin conexión</span>
-        <span className="text-amber-100 text-sm">
-          - Solo datos previamente descargados están disponibles
+        <WifiOff className="w-3.5 h-3.5" />
+        <span className="font-medium">Modo offline</span>
+        <span className="text-amber-100 text-xs hidden sm:inline">
+          - Solo datos previamente descargados
         </span>
       </div>
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="text-white hover:bg-amber-600"
-        onClick={onViewData}
-      >
-        Ver datos disponibles
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-white hover:bg-amber-600 h-6 px-2 text-xs"
+          onClick={onViewData}
+        >
+          Ver datos
+        </Button>
+        <button 
+          onClick={() => setDismissed(true)}
+          className="text-amber-200 hover:text-white p-1"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
