@@ -5421,6 +5421,33 @@ export default function VisorActualizacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Modal Crear Predio Nuevo */}
+      <CrearPredioNuevoModal
+        isOpen={showCrearPredioModal}
+        onClose={() => setShowCrearPredioModal(false)}
+        proyectoId={proyectoId}
+        municipio={proyecto?.municipio}
+        token={token}
+        onSuccess={(data) => {
+          // Recargar predios del proyecto
+          cargarPrediosProyecto();
+          toast.success(`Predio ${data.codigo_homologado} creado exitosamente`);
+        }}
+      />
+      
+      {/* Modal Finalizar Proyecto */}
+      <FinalizarProyectoModal
+        isOpen={showFinalizarProyectoModal}
+        onClose={() => setShowFinalizarProyectoModal(false)}
+        proyectoId={proyectoId}
+        proyectoNombre={proyecto?.nombre}
+        token={token}
+        onSuccess={() => {
+          // Actualizar estado del proyecto
+          setProyecto(prev => ({ ...prev, estado: 'completado' }));
+        }}
+      />
     </div>
   );
 }
