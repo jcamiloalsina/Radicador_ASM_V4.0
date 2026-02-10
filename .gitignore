@@ -614,3 +614,7 @@ backups/backup_20260205_155645/asomunicipios_db/predios.bson
 *.env
 *.env.*
 xtf_analysis/prevalidador.zip
+-e 
+# Environment files
+*.env
+*.env.*
