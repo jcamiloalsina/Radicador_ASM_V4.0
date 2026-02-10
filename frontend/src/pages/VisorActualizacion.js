@@ -5428,7 +5428,7 @@ export default function VisorActualizacion() {
         onClose={() => setShowCrearPredioModal(false)}
         proyectoId={proyectoId}
         municipio={proyecto?.municipio}
-        token={token}
+        token={localStorage.getItem('token')}
         onSuccess={(data) => {
           // Recargar predios del proyecto
           fetchPrediosR1R2();
@@ -5442,7 +5442,7 @@ export default function VisorActualizacion() {
         onClose={() => setShowFinalizarProyectoModal(false)}
         proyectoId={proyectoId}
         proyectoNombre={proyecto?.nombre}
-        token={token}
+        token={localStorage.getItem('token')}
         onSuccess={() => {
           // Actualizar estado del proyecto
           setProyecto(prev => ({ ...prev, estado: 'completado' }));
