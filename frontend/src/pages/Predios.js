@@ -25,6 +25,7 @@ import { clearAllOfflineData } from '../utils/offlineDB';
 
 // Componentes de Conservación refactorizados
 import MunicipioCard from '../components/conservacion/MunicipioCard';
+import StatsPanel from '../components/conservacion/StatsPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
