@@ -47,6 +47,48 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (10 Febrero 2026 - Sesión Actual)
 
+### ✅ COMPLETADO: Flujo de Articulación Actualización → Conservación
+
+**Funcionalidad:** Permitir crear predios nuevos en campo desde el módulo de Actualización y migrarlos automáticamente al módulo de Conservación al finalizar el proyecto.
+
+**Componentes implementados:**
+
+1. **Modal "Crear Predio Nuevo"** (`/app/frontend/src/components/actualizacion/CrearPredioNuevoModal.jsx`)
+   - Código Predial Nacional de 30 dígitos con visualización colorida y campos editables
+   - 4 tabs: Ubicación, Propietarios, Construcciones, Visita
+   - Validación de datos requeridos
+   - Generación automática de `codigo_homologado`
+
+2. **Modal "Finalizar Proyecto"** (`/app/frontend/src/components/actualizacion/FinalizarProyectoModal.jsx`)
+   - Resumen de predios: Total, Nuevos, Existentes, Visitados, Pendientes
+   - Resumen de propuestas: Total, Aprobadas, Pendientes, Subsanación, Rechazadas
+   - Validaciones antes de finalizar
+   - Opción "Forzar finalización" para casos especiales
+   - Vista previa de migración: predios nuevos a crear + cambios a aplicar
+
+3. **Endpoints Backend** (`/app/backend/server.py`)
+   - `POST /api/actualizacion/proyectos/{id}/predios-nuevos` - Crea predio con `es_nuevo: true`
+   - `GET /api/actualizacion/proyectos/{id}/resumen-finalizacion` - Retorna resumen completo
+   - `POST /api/actualizacion/proyectos/{id}/finalizar` - Ejecuta migración a Conservación
+
+**Testing:** ✅ Verificado con testing agent (iteration_37.json) - 100% backend, 100% frontend
+
+---
+
+### ✅ COMPLETADO: Barra de Progreso Multi-Upload GDB
+
+**Problema:** Cuando se suben múltiples archivos GDB simultáneamente, la barra de progreso solo mostraba el último, confundiendo al usuario.
+
+**Solución implementada:**
+- Backend (`server.py`): Agregada variable `municipio_para_progreso` que se actualiza cuando se detecta el municipio
+- El mensaje WebSocket `gdb_upload_progress` ahora incluye `upload_id` y `municipio`
+- Frontend (`VisorPredios.js`): Estado `allUploadsProgress` maneja múltiples progresos simultáneos
+- UI muestra una barra de progreso individual por cada upload activo
+
+**Testing:** ✅ Verificado con testing agent
+
+---
+
 ### ✅ COMPLETADO: Bug Fix - Construcciones no aparecían en Visor de Actualización
 
 **Problema reportado:** Las construcciones del GDB no se mostraban en el mapa del Visor de Actualización después de reemplazar un archivo GDB.
