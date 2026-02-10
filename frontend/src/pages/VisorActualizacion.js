@@ -237,6 +237,10 @@ export default function VisorActualizacion() {
   const [tipoRevision, setTipoRevision] = useState(null); // 'campo', 'juridico', 'calidad'
   const [predioParaAbrir, setPredioParaAbrir] = useState(null);
   
+  // Estados para crear predio nuevo y finalizar proyecto
+  const [showCrearPredioModal, setShowCrearPredioModal] = useState(false);
+  const [showFinalizarProyectoModal, setShowFinalizarProyectoModal] = useState(false);
+  
   // Estados de edición
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
