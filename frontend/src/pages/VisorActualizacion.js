@@ -5431,7 +5431,7 @@ export default function VisorActualizacion() {
         token={token}
         onSuccess={(data) => {
           // Recargar predios del proyecto
-          cargarPrediosProyecto();
+          fetchPrediosR1R2();
           toast.success(`Predio ${data.codigo_homologado} creado exitosamente`);
         }}
       />
