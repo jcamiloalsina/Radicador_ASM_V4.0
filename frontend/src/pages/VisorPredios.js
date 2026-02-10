@@ -235,7 +235,8 @@ export default function VisorPredios() {
   const [mapType, setMapType] = useState('satellite'); // Esri Satélite por defecto (cambia a Google en zoom alto)
   const [showUploadGdb, setShowUploadGdb] = useState(false);
   const [uploadingGdb, setUploadingGdb] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(null); // Estado del progreso de carga
+  const [uploadProgress, setUploadProgress] = useState(null); // Estado del progreso de carga actual
+  const [allUploadsProgress, setAllUploadsProgress] = useState({}); // Progreso de todas las cargas activas
   const [gdbAnalisis, setGdbAnalisis] = useState(null); // Resultado del análisis de GDB antes de cargar
   const [gdbArchivoPendiente, setGdbArchivoPendiente] = useState(null); // Archivo pendiente de confirmación
   const [filterMunicipio, setFilterMunicipio] = useState('');
