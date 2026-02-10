@@ -1859,34 +1859,50 @@ export default function VisorActualizacion() {
       x = (e.clientX - rect.left) * scaleX;
       y = (e.clientY - rect.top) * scaleY;
     }
+    lastPointModal.current = { x, y };
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
 
   const drawModal = (e) => {
     if (!isDrawingModal) return;
-    const canvas = canvasFirmaModalRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    let x, y;
-    if (e.type.includes('touch')) {
-      e.preventDefault();
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    if (e.type.includes('touch')) e.preventDefault();
+    
+    if (rafModalRef.current) cancelAnimationFrame(rafModalRef.current);
+    
+    rafModalRef.current = requestAnimationFrame(() => {
+      const canvas = canvasFirmaModalRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      let x, y;
+      if (e.type.includes('touch')) {
+        x = (e.touches[0].clientX - rect.left) * scaleX;
+        y = (e.touches[0].clientY - rect.top) * scaleY;
+      } else {
+        x = (e.clientX - rect.left) * scaleX;
+        y = (e.clientY - rect.top) * scaleY;
+      }
+      
+      if (lastPointModal.current) {
+        ctx.beginPath();
+        ctx.moveTo(lastPointModal.current.x, lastPointModal.current.y);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      lastPointModal.current = { x, y };
+    });
   };
 
-  const stopDrawingModal = () => setIsDrawingModal(false);
+  const stopDrawingModal = () => {
+    setIsDrawingModal(false);
+    lastPointModal.current = null;
+  };
 
   const limpiarFirmaModal = () => {
     const canvas = canvasFirmaModalRef.current;
