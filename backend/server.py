@@ -3382,27 +3382,28 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
         }}
     )
     
-    # Notificar al staff que devolvió el trámite
+    # Notificar al staff que devolvió el trámite (SOLO en plataforma, sin correo para evitar spam)
     devuelto_por_id = petition.get('devuelto_por_id')
     if devuelto_por_id:
         await crear_notificacion(
             usuario_id=devuelto_por_id,
-            titulo="Trámite Reenviado para Revisión",
-            mensaje=f"El usuario {current_user['full_name']} ha reenviado el trámite {petition['radicado']} para revisión después de realizar las correcciones solicitadas.",
-            tipo="info",
+            titulo="📋 Subsanación Recibida",
+            mensaje=f"El usuario {current_user['full_name']} ha enviado la subsanación del trámite {petition['radicado']}. Requiere su revisión.",
+            tipo="warning",
             enlace=f"/dashboard/peticion/{petition_id}",
-            enviar_email=True
+            enviar_email=False  # Solo notificación en plataforma
         )
-    else:
-        # Si no hay registro de quién devolvió, notificar a los gestores asignados
-        for gestor_id in petition.get('gestores_asignados', []):
+    
+    # También notificar a los gestores asignados (si los hay y son diferentes)
+    for gestor_id in petition.get('gestores_asignados', []):
+        if gestor_id != devuelto_por_id:  # Evitar duplicados
             await crear_notificacion(
                 usuario_id=gestor_id,
-                titulo="Trámite Reenviado para Revisión",
-                mensaje=f"El usuario ha reenviado el trámite {petition['radicado']} para revisión.",
-                tipo="info",
+                titulo="📋 Subsanación Recibida",
+                mensaje=f"El trámite {petition['radicado']} ha sido reenviado para revisión después de subsanación.",
+                tipo="warning",
                 enlace=f"/dashboard/peticion/{petition_id}",
-                enviar_email=True
+                enviar_email=False  # Solo notificación en plataforma
             )
     
     return {"message": "Petición reenviada exitosamente para revisión"}
