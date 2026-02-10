@@ -17849,6 +17849,416 @@ async def municipios_disponibles_para_proyecto(current_user: dict = Depends(get_
 
 
 # ==========================================
+# ACTUALIZACIÓN - PREDIOS NUEVOS Y FINALIZAR PROYECTO
+# ==========================================
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios-nuevos")
+async def crear_predio_nuevo_actualizacion(
+    proyecto_id: str,
+    predio_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un predio nuevo dentro de un proyecto de actualización.
+    Asigna código homologado automáticamente.
+    El predio queda en predios_actualizacion con es_nuevo=true hasta que se finalice el proyecto.
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
+    
+    # Verificar que el proyecto existe y está activo
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto.get('estado') not in [ProyectoActualizacionEstado.ACTIVO, ProyectoActualizacionEstado.PAUSADO]:
+        raise HTTPException(status_code=400, detail="El proyecto no está activo")
+    
+    municipio = proyecto.get('municipio')
+    
+    # Obtener datos del formulario
+    r1 = predio_data.get('r1', {})
+    r2 = predio_data.get('r2', {})
+    propietarios = predio_data.get('propietarios', [])
+    zonas_fisicas = predio_data.get('zonas_fisicas', [])
+    formato_visita = predio_data.get('formato_visita', {})
+    
+    # Construir código predial nacional
+    divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
+    if not divipola:
+        raise HTTPException(status_code=400, detail=f"Municipio {municipio} no válido")
+    
+    prefijo = divipola["departamento"] + divipola["municipio"]
+    
+    # Construir el código completo de 30 dígitos
+    codigo_predial = (
+        f"{prefijo}"
+        f"{str(r1.get('zona', '0')).zfill(2)}"
+        f"{str(r1.get('sector', '0')).zfill(2)}"
+        f"{str(r1.get('comuna', '0')).zfill(2)}"
+        f"{str(r1.get('barrio', '0')).zfill(2)}"
+        f"{str(r1.get('manzana_vereda', '0')).zfill(4)}"
+        f"{str(r1.get('terreno', '0')).zfill(4)}"
+        f"{str(r1.get('condicion_predio', '0')).zfill(4)}"
+        f"{str(r1.get('predio_horizontal', '0')).zfill(5)}"
+    )
+    codigo_predial = codigo_predial[:30].ljust(30, '0')
+    
+    # Verificar que no exista en predios principal
+    existing = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial en conservación")
+    
+    # Verificar que no exista en el proyecto actual
+    existing_proyecto = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial
+    })
+    if existing_proyecto:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código en el proyecto")
+    
+    # Asignar código homologado automáticamente
+    codigo_homologado = await asignar_codigo_homologado(municipio, None)
+    if not codigo_homologado:
+        # Fallback: generar código si no hay disponibles
+        codigo_homologado, _ = await generate_codigo_homologado(municipio)
+    
+    # Crear el predio nuevo
+    predio_id = str(uuid.uuid4())
+    ahora = datetime.now(timezone.utc).isoformat()
+    
+    predio_nuevo = {
+        "id": predio_id,
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "codigo_homologado": codigo_homologado,
+        "municipio": municipio,
+        "es_nuevo": True,  # Marca que es un predio nuevo creado en actualización
+        
+        # Datos R1
+        "direccion": r1.get('direccion', ''),
+        "destino_economico": r1.get('destino_economico', ''),
+        "area_terreno": float(r1.get('area_terreno', 0)),
+        "area_construida": float(r1.get('area_construida', 0)),
+        "avaluo": float(r1.get('avaluo', 0)),
+        "matricula_inmobiliaria": r2.get('matricula_inmobiliaria', ''),
+        
+        # Propietarios
+        "propietarios": propietarios,
+        
+        # Zonas físicas y construcciones (R2)
+        "zonas_fisicas": zonas_fisicas,
+        "r2": r2,
+        
+        # Formato de visita
+        "formato_visita": formato_visita,
+        "estado_visita": "visitado",
+        
+        # Metadatos
+        "creado_por": current_user.get('email'),
+        "creado_por_nombre": current_user.get('full_name'),
+        "created_at": ahora,
+        "updated_at": ahora,
+        
+        # Historial
+        "historial_cambios": [{
+            "fecha": ahora,
+            "usuario": current_user.get('email'),
+            "accion": "predio_nuevo_creado",
+            "descripcion": f"Predio nuevo creado en campo. Código homologado asignado: {codigo_homologado}"
+        }]
+    }
+    
+    await db.predios_actualizacion.insert_one(predio_nuevo)
+    
+    # Actualizar contador del proyecto
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {"$inc": {"predios_nuevos_count": 1}}
+    )
+    
+    return {
+        "message": "Predio nuevo creado exitosamente",
+        "predio_id": predio_id,
+        "codigo_predial": codigo_predial,
+        "codigo_homologado": codigo_homologado
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/resumen-finalizacion")
+async def get_resumen_finalizacion(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene un resumen de lo que se migrará a conservación al finalizar el proyecto.
+    Incluye validaciones de requisitos.
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden finalizar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Contar predios por estado
+    predios = await db.predios_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
+    
+    total_predios = len(predios)
+    predios_nuevos = [p for p in predios if p.get('es_nuevo')]
+    predios_existentes = [p for p in predios if not p.get('es_nuevo')]
+    predios_visitados = [p for p in predios if p.get('estado_visita') in ['visitado', 'actualizado']]
+    predios_pendientes = [p for p in predios if p.get('estado_visita') == 'pendiente']
+    
+    # Contar propuestas por estado
+    propuestas = await db.propuestas_cambio_actualizacion.find(
+        {"proyecto_id": proyecto_id},
+        {"_id": 0, "estado": 1, "codigo_predial": 1}
+    ).to_list(50000)
+    
+    propuestas_pendientes = [p for p in propuestas if p.get('estado') == 'pendiente']
+    propuestas_aprobadas = [p for p in propuestas if p.get('estado') == 'aprobada']
+    propuestas_subsanacion = [p for p in propuestas if p.get('estado') == 'subsanacion']
+    propuestas_rechazadas = [p for p in propuestas if p.get('estado') in ['rechazada', 'rechazada_definitiva']]
+    
+    # Validaciones
+    validaciones = {
+        "predios_pendientes": len(predios_pendientes) == 0,
+        "propuestas_pendientes": len(propuestas_pendientes) == 0,
+        "propuestas_subsanacion": len(propuestas_subsanacion) == 0,
+        "puede_finalizar": len(predios_pendientes) == 0 and len(propuestas_pendientes) == 0 and len(propuestas_subsanacion) == 0
+    }
+    
+    return {
+        "proyecto": {
+            "id": proyecto_id,
+            "nombre": proyecto.get('nombre'),
+            "municipio": proyecto.get('municipio'),
+            "estado": proyecto.get('estado')
+        },
+        "resumen": {
+            "total_predios": total_predios,
+            "predios_nuevos": len(predios_nuevos),
+            "predios_existentes": len(predios_existentes),
+            "predios_visitados": len(predios_visitados),
+            "predios_pendientes": len(predios_pendientes)
+        },
+        "propuestas": {
+            "total": len(propuestas),
+            "aprobadas": len(propuestas_aprobadas),
+            "pendientes": len(propuestas_pendientes),
+            "subsanacion": len(propuestas_subsanacion),
+            "rechazadas": len(propuestas_rechazadas)
+        },
+        "migracion": {
+            "predios_nuevos_a_crear": len(predios_nuevos),
+            "cambios_a_aplicar": len(propuestas_aprobadas)
+        },
+        "validaciones": validaciones
+    }
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/finalizar")
+async def finalizar_proyecto_actualizacion(
+    proyecto_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Finaliza un proyecto de actualización y migra los datos a conservación.
+    1. Crea los predios nuevos en la colección 'predios'
+    2. Aplica los cambios aprobados a los predios existentes
+    3. Marca el proyecto como COMPLETADO
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden finalizar proyectos")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto.get('estado') == ProyectoActualizacionEstado.COMPLETADO:
+        raise HTTPException(status_code=400, detail="El proyecto ya está finalizado")
+    
+    if proyecto.get('estado') == ProyectoActualizacionEstado.ARCHIVADO:
+        raise HTTPException(status_code=400, detail="El proyecto está archivado")
+    
+    municipio = proyecto.get('municipio')
+    ahora = datetime.now(timezone.utc).isoformat()
+    vigencia_actual = datetime.now(timezone.utc).year
+    
+    # Obtener resumen para validaciones
+    predios = await db.predios_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
+    propuestas = await db.propuestas_cambio_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
+    
+    predios_pendientes = [p for p in predios if p.get('estado_visita') == 'pendiente']
+    propuestas_pendientes = [p for p in propuestas if p.get('estado') == 'pendiente']
+    propuestas_subsanacion = [p for p in propuestas if p.get('estado') == 'subsanacion']
+    
+    # Validar que se puede finalizar (a menos que se fuerce)
+    forzar = data.get('forzar', False)
+    if not forzar:
+        if predios_pendientes:
+            raise HTTPException(status_code=400, detail=f"Hay {len(predios_pendientes)} predios sin visitar")
+        if propuestas_pendientes:
+            raise HTTPException(status_code=400, detail=f"Hay {len(propuestas_pendientes)} propuestas pendientes de revisión")
+        if propuestas_subsanacion:
+            raise HTTPException(status_code=400, detail=f"Hay {len(propuestas_subsanacion)} propuestas en subsanación")
+    
+    resultados = {
+        "predios_nuevos_creados": 0,
+        "cambios_aplicados": 0,
+        "errores": []
+    }
+    
+    # 1. Migrar predios NUEVOS a la colección principal
+    predios_nuevos = [p for p in predios if p.get('es_nuevo')]
+    for predio in predios_nuevos:
+        try:
+            # Preparar predio para colección principal
+            predio_principal = {
+                "id": predio.get('id'),
+                "codigo_predial_nacional": predio.get('codigo_predial'),
+                "codigo_homologado": predio.get('codigo_homologado'),
+                "municipio": municipio,
+                "departamento": "Norte de Santander",
+                "direccion": predio.get('direccion', ''),
+                "destino_economico": predio.get('destino_economico', ''),
+                "area_terreno": predio.get('area_terreno', 0),
+                "area_construida": predio.get('area_construida', 0),
+                "avaluo": predio.get('avaluo', 0),
+                "matricula_inmobiliaria": predio.get('matricula_inmobiliaria', ''),
+                "vigencia": vigencia_actual,
+                "propietarios": predio.get('propietarios', []),
+                
+                # R1 format
+                "r1": {
+                    "numero_orden": "1",
+                    "area_total_terreno": predio.get('area_terreno', 0),
+                    "valor_referencia": predio.get('avaluo', 0)
+                },
+                
+                # R2 registros
+                "r2_registros": [],
+                
+                # Formato de visita
+                "formato_visita": predio.get('formato_visita', {}),
+                
+                # Historial
+                "historial": [{
+                    "accion": "Migrado desde proyecto de actualización",
+                    "usuario": current_user.get('full_name'),
+                    "fecha": ahora,
+                    "proyecto_id": proyecto_id,
+                    "proyecto_nombre": proyecto.get('nombre')
+                }],
+                
+                # Metadatos
+                "created_at": predio.get('created_at', ahora),
+                "updated_at": ahora,
+                "origen": "actualizacion",
+                "proyecto_origen_id": proyecto_id
+            }
+            
+            # Convertir zonas físicas a r2_registros
+            zonas = predio.get('zonas_fisicas', [])
+            if zonas:
+                for i, zona in enumerate(zonas):
+                    r2_registro = {
+                        "numero_orden": str(i + 1),
+                        "tipo_construccion": zona.get('tipo_construccion', 'C'),
+                        "numero_pisos": zona.get('pisos', 0),
+                        "numero_habitaciones": zona.get('habitaciones', 0),
+                        "numero_banios": zona.get('banos', 0),
+                        "numero_locales": zona.get('locales', 0),
+                        "anio_construccion": zona.get('anio_construccion', ''),
+                        "area_construida": zona.get('area_construida', 0),
+                        "puntaje": zona.get('puntaje', 0),
+                        "matricula_inmobiliaria": predio.get('matricula_inmobiliaria', '')
+                    }
+                    predio_principal["r2_registros"].append(r2_registro)
+            
+            # Insertar en colección principal
+            await db.predios.insert_one(predio_principal)
+            resultados["predios_nuevos_creados"] += 1
+            
+        except Exception as e:
+            resultados["errores"].append({
+                "tipo": "predio_nuevo",
+                "codigo": predio.get('codigo_predial'),
+                "error": str(e)
+            })
+    
+    # 2. Aplicar cambios APROBADOS a predios existentes
+    propuestas_aprobadas = [p for p in propuestas if p.get('estado') == 'aprobada']
+    for propuesta in propuestas_aprobadas:
+        try:
+            codigo_predial = propuesta.get('codigo_predial')
+            datos_propuestos = propuesta.get('datos_propuestos', {})
+            
+            # Buscar el predio en la colección principal
+            predio_existente = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+            if not predio_existente:
+                resultados["errores"].append({
+                    "tipo": "cambio_aprobado",
+                    "codigo": codigo_predial,
+                    "error": "Predio no encontrado en conservación"
+                })
+                continue
+            
+            # Preparar actualización
+            update_data = {
+                **datos_propuestos,
+                "updated_at": ahora
+            }
+            
+            # Agregar al historial
+            historial_entry = {
+                "accion": "Cambios aplicados desde proyecto de actualización",
+                "usuario": current_user.get('full_name'),
+                "fecha": ahora,
+                "proyecto_id": proyecto_id,
+                "propuesta_id": propuesta.get('id'),
+                "cambios": datos_propuestos
+            }
+            
+            await db.predios.update_one(
+                {"codigo_predial_nacional": codigo_predial},
+                {
+                    "$set": update_data,
+                    "$push": {"historial": historial_entry}
+                }
+            )
+            resultados["cambios_aplicados"] += 1
+            
+        except Exception as e:
+            resultados["errores"].append({
+                "tipo": "cambio_aprobado",
+                "codigo": propuesta.get('codigo_predial'),
+                "error": str(e)
+            })
+    
+    # 3. Marcar proyecto como COMPLETADO
+    await db.proyectos_actualizacion.update_one(
+        {"id": proyecto_id},
+        {
+            "$set": {
+                "estado": ProyectoActualizacionEstado.COMPLETADO,
+                "finalizado_por": current_user.get('email'),
+                "finalizado_por_nombre": current_user.get('full_name'),
+                "fecha_finalizacion": ahora,
+                "resultados_finalizacion": resultados
+            }
+        }
+    )
+    
+    return {
+        "message": "Proyecto finalizado exitosamente",
+        "resultados": resultados
+    }
+
+
+# ==========================================
 # GESTOR DE BASE DE DATOS
 # ==========================================
 
