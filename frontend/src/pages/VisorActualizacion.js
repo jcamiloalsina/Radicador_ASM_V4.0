@@ -1765,14 +1765,16 @@ export default function VisorActualizacion() {
 
   // Funciones optimizadas para firma del reconocedor (Sección 12)
   const startDrawingReconocedor = (e) => {
-    setIsDrawingReconocedor(true);
+    isDrawingReconocedorRef.current = true;
     const canvas = canvasReconocedorRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     let x, y;
     if (e.type.includes('touch')) {
+      e.preventDefault();
       x = (e.touches[0].clientX - rect.left) * scaleX;
       y = (e.touches[0].clientY - rect.top) * scaleY;
     } else {
@@ -1785,42 +1787,39 @@ export default function VisorActualizacion() {
   };
 
   const drawReconocedor = (e) => {
-    if (!isDrawingReconocedor) return;
+    if (!isDrawingReconocedorRef.current) return;
     if (e.type.includes('touch')) e.preventDefault();
     
-    if (rafReconocedorRef.current) cancelAnimationFrame(rafReconocedorRef.current);
+    const canvas = canvasReconocedorRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
     
-    rafReconocedorRef.current = requestAnimationFrame(() => {
-      const canvas = canvasReconocedorRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      let x, y;
-      if (e.type.includes('touch')) {
-        x = (e.touches[0].clientX - rect.left) * scaleX;
-        y = (e.touches[0].clientY - rect.top) * scaleY;
-      } else {
-        x = (e.clientX - rect.left) * scaleX;
-        y = (e.clientY - rect.top) * scaleY;
-      }
-      
-      if (lastPointReconocedor.current) {
-        ctx.beginPath();
-        ctx.moveTo(lastPointReconocedor.current.x, lastPointReconocedor.current.y);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-      }
-      lastPointReconocedor.current = { x, y };
-    });
+    if (lastPointReconocedor.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPointReconocedor.current.x, lastPointReconocedor.current.y);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+    lastPointReconocedor.current = { x, y };
   };
 
   const stopDrawingReconocedor = () => {
-    setIsDrawingReconocedor(false);
+    isDrawingReconocedorRef.current = false;
     lastPointReconocedor.current = null;
   };
 
