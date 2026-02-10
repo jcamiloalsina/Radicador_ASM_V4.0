@@ -15651,7 +15651,11 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             })
                             construcciones_guardadas += 1
                 except Exception as e:
-                    print(f"Error procesando capa {layer_name}: {e}")
+                    logger.error(f"[GDB Actualizacion] Error procesando construcciones {layer_name}: {e}")
+                    import traceback
+                    logger.error(f"[GDB Actualizacion] Traceback: {traceback.format_exc()}")
+        
+        logger.info(f"[GDB Actualizacion] Total construcciones guardadas: {construcciones_guardadas}")
         
         # Actualizar proyecto con información detallada de capas procesadas
         capas_info = {
