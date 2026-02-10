@@ -23,6 +23,9 @@ import useOfflineSync from '../hooks/useOfflineSync';
 import { DownloadProgressBar } from '../components/OfflineComponents';
 import { clearAllOfflineData } from '../utils/offlineDB';
 
+// Componentes de Conservación refactorizados
+import MunicipioCard from '../components/conservacion/MunicipioCard';
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
