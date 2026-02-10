@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, GeoJSON, Marker, CircleMarker, useMap, useMapEvents, ImageOverlay } from 'react-leaflet';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,10 @@ import 'leaflet/dist/leaflet.css';
 // Offline sync
 import useOfflineSync from '../hooks/useOfflineSync';
 import { getProyectoOffline, getGeometriasOffline, saveProyectoOffline, saveGeometriasOffline, getPrediosOffline, savePrediosOffline } from '../utils/offlineDB';
+
+// Componentes optimizados
+import FirmaCanvas from '../components/FirmaCanvas';
+import ListaPrediosPaginada from '../components/ListaPrediosPaginada';
 
 // UI Components
 import { Button } from '../components/ui/button';
