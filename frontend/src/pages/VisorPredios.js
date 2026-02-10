@@ -389,31 +389,69 @@ export default function VisorPredios() {
         const progress = message.data;
         console.log('[VisorPredios] Progreso GDB vía WebSocket:', progress);
         
-        // Actualizar el estado del progreso
+        // Actualizar el estado del progreso actual
         setUploadProgress({
           status: progress.status,
           progress: progress.progress,
-          message: progress.message
+          message: progress.message,
+          upload_id: progress.upload_id,
+          municipio: progress.municipio
         });
+        
+        // Actualizar el diccionario de todos los progresos activos
+        setAllUploadsProgress(prev => ({
+          ...prev,
+          [progress.upload_id]: {
+            status: progress.status,
+            progress: progress.progress,
+            message: progress.message,
+            municipio: progress.municipio || 'Desconocido',
+            upload_id: progress.upload_id
+          }
+        }));
         
         // Si se completó, mostrar toast y actualizar datos
         if (progress.status === 'completado') {
-          toast.success('✅ ' + progress.message, { duration: 5000 });
+          toast.success(`✅ ${progress.municipio || 'GDB'}: ${progress.message}`, { duration: 5000 });
           fetchGdbStats();
           verificarCargasMensuales();
           setGdbCargadaEsteMes(true);
           
-          // Cerrar modal después de un momento
+          // Remover del diccionario de progresos activos después de un momento
           setTimeout(() => {
-            setShowUploadGdb(false);
-            setMostrarPreguntaGdb(false);
-            setUploadProgress(null);
-            setUploadingGdb(false);
+            setAllUploadsProgress(prev => {
+              const newState = { ...prev };
+              delete newState[progress.upload_id];
+              return newState;
+            });
+          }, 3000);
+          
+          // Solo cerrar modal si no hay más cargas activas
+          setTimeout(() => {
+            setAllUploadsProgress(prev => {
+              const activeUploads = Object.values(prev).filter(p => 
+                p.status !== 'completado' && p.status !== 'error'
+              );
+              if (activeUploads.length === 0) {
+                setShowUploadGdb(false);
+                setMostrarPreguntaGdb(false);
+                setUploadProgress(null);
+                setUploadingGdb(false);
+              }
+              return prev;
+            });
           }, 2000);
         } else if (progress.status === 'error') {
-          toast.error('❌ ' + progress.message);
-          setUploadingGdb(false);
-          setTimeout(() => setUploadProgress(null), 3000);
+          toast.error(`❌ ${progress.municipio || 'GDB'}: ${progress.message}`);
+          // Remover del diccionario después de un momento
+          setTimeout(() => {
+            setAllUploadsProgress(prev => {
+              const newState = { ...prev };
+              delete newState[progress.upload_id];
+              return newState;
+            });
+            setUploadingGdb(false);
+          }, 3000);
         }
       }
     };
