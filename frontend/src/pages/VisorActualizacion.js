@@ -4805,8 +4805,21 @@ export default function VisorActualizacion() {
                           <Input value={visitaData.nombre_visitado} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_visitado: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO DEL VISITADO" className="uppercase mb-2" />
                         </div>
                         <div className="flex gap-2 items-center">
-                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden">
-                            <canvas ref={canvasVisitadoRef} width={500} height={80} className="w-full h-full" style={{ backgroundColor: '#ffffff' }} />
+                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden touch-none">
+                            <canvas 
+                              ref={canvasVisitadoRef} 
+                              width={500} 
+                              height={80} 
+                              className="w-full h-full cursor-crosshair touch-none" 
+                              style={{ backgroundColor: '#ffffff' }}
+                              onMouseDown={startDrawingVisitado}
+                              onMouseMove={drawVisitado}
+                              onMouseUp={stopDrawingVisitado}
+                              onMouseLeave={stopDrawingVisitado}
+                              onTouchStart={startDrawingVisitado}
+                              onTouchMove={drawVisitado}
+                              onTouchEnd={stopDrawingVisitado}
+                            />
                           </div>
                           <Button type="button" variant="outline" onClick={() => abrirModalFirma('visitado')} className="border-purple-500 text-purple-700 hover:bg-purple-50">
                             <Pen className="w-4 h-4 mr-1" /> Firmar
@@ -4825,8 +4838,21 @@ export default function VisorActualizacion() {
                           <Input value={visitaData.nombre_reconocedor} onChange={(e) => setVisitaData(prev => ({ ...prev, nombre_reconocedor: e.target.value.toUpperCase() }))} placeholder="NOMBRE DEL RECONOCEDOR" className="uppercase mb-2" />
                         </div>
                         <div className="flex gap-2 items-center">
-                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden">
-                            <canvas ref={canvasReconocedorRef} width={500} height={80} className="w-full h-full" style={{ backgroundColor: '#ffffff' }} />
+                          <div className="flex-1 border-2 border-slate-300 rounded-lg bg-white h-20 overflow-hidden touch-none">
+                            <canvas 
+                              ref={canvasReconocedorRef} 
+                              width={500} 
+                              height={80} 
+                              className="w-full h-full cursor-crosshair touch-none" 
+                              style={{ backgroundColor: '#ffffff' }}
+                              onMouseDown={startDrawingReconocedor}
+                              onMouseMove={drawReconocedor}
+                              onMouseUp={stopDrawingReconocedor}
+                              onMouseLeave={stopDrawingReconocedor}
+                              onTouchStart={startDrawingReconocedor}
+                              onTouchMove={drawReconocedor}
+                              onTouchEnd={stopDrawingReconocedor}
+                            />
                           </div>
                           <Button type="button" variant="outline" onClick={() => abrirModalFirma('reconocedor')} className="border-purple-500 text-purple-700 hover:bg-purple-50">
                             <Pen className="w-4 h-4 mr-1" /> Firmar
