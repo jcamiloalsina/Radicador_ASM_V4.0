@@ -203,6 +203,7 @@ export default function AllPetitions() {
     setGestorFilter('todos');
     setFechaDesde('');
     setFechaHasta('');
+    setSoloMisAsignadas(false);
     searchParams.delete('estado');
     setSearchParams(searchParams);
   };
