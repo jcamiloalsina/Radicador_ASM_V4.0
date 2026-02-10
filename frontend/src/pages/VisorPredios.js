@@ -2621,8 +2621,72 @@ export default function VisorPredios() {
                   </div>
                 )}
                 
-                {/* Indicador de Progreso */}
-                {uploadProgress && (
+                {/* Indicador de Progreso - Muestra todas las cargas activas */}
+                {Object.keys(allUploadsProgress).length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cargas en Progreso ({Object.keys(allUploadsProgress).length})
+                    </div>
+                    
+                    {Object.values(allUploadsProgress).map((progress) => (
+                      <div key={progress.upload_id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        {/* Header con municipio y porcentaje */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {progress.status === 'completado' ? (
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            ) : progress.status === 'error' ? (
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            ) : (
+                              <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+                            )}
+                            <span className={`font-semibold text-sm ${
+                              progress.status === 'error' ? 'text-red-700' : 
+                              progress.status === 'completado' ? 'text-emerald-700' : 
+                              'text-slate-700'
+                            }`}>
+                              {progress.municipio || 'GDB'}
+                            </span>
+                          </div>
+                          <Badge variant={
+                            progress.status === 'completado' ? 'default' : 
+                            progress.status === 'error' ? 'destructive' : 
+                            'secondary'
+                          } className="text-xs">
+                            {progress.progress}%
+                          </Badge>
+                        </div>
+                        
+                        {/* Barra de progreso */}
+                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mb-2">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-300 ease-out ${
+                              progress.status === 'error' ? 'bg-red-500' : 
+                              progress.status === 'completado' ? 'bg-emerald-500' : 
+                              'bg-gradient-to-r from-amber-400 to-amber-500'
+                            }`}
+                            style={{ width: `${progress.progress}%` }}
+                          />
+                        </div>
+                        
+                        {/* Mensaje detallado */}
+                        <div className="flex items-center gap-2 text-xs text-slate-600">
+                          {progress.status === 'leyendo' && <span>📖</span>}
+                          {progress.status === 'guardando_geometrias' && <span>💾</span>}
+                          {progress.status === 'completado' && <span>✅</span>}
+                          {progress.status === 'error' && <span>❌</span>}
+                          {progress.status === 'procesando' && <span>⏳</span>}
+                          {!['leyendo', 'guardando_geometrias', 'completado', 'error', 'procesando'].includes(progress.status) && <span>⚙️</span>}
+                          <span className="truncate">{progress.message}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Indicador de Progreso Legacy (solo si no hay múltiples) */}
+                {uploadProgress && Object.keys(allUploadsProgress).length === 0 && (
                   <div className="mt-4 space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
                     {/* Header con estado y porcentaje */}
                     <div className="flex items-center justify-between">
