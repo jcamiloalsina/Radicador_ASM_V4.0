@@ -4,6 +4,10 @@
 export { default as MunicipioCard } from './MunicipioCard';
 export { default as StatsPanel, StatCard, formatCurrency, formatAreaHectareas } from './StatsPanel';
 export { default as Pagination } from './Pagination';
+export { default as ImportR1R2Form } from './ImportR1R2Form';
+export { default as PrediosEliminadosView } from './PrediosEliminadosView';
+export { default as ReaparicionesPendientes } from './ReaparicionesPendientes';
+export { default as SubsanacionesPendientes } from './SubsanacionesPendientes';
 
 // Componentes pendientes de refactorización:
 // - PredioCard: Tarjeta individual de predio
