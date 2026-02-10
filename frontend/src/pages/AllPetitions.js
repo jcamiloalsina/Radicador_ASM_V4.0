@@ -374,7 +374,7 @@ export default function AllPetitions() {
       <Card className="border-slate-200">
         <CardContent className="pt-6">
           {/* Basic Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
               <Input
@@ -403,6 +403,19 @@ export default function AllPetitions() {
                   <SelectItem value="finalizado">Finalizado</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            {/* Checkbox Solo mis asignadas */}
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 hover:bg-amber-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={soloMisAsignadas}
+                  onChange={(e) => setSoloMisAsignadas(e.target.checked)}
+                  className="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                  data-testid="solo-mis-asignadas"
+                />
+                <span className="text-sm font-medium text-amber-700">Solo mis asignadas</span>
+              </label>
             </div>
           </div>
 
