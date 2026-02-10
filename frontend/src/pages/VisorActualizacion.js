@@ -3635,8 +3635,8 @@ export default function VisorActualizacion() {
                         <textarea 
                           className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder="Ej: Colinda con predio de Juan Pérez, código 540030001..."
-                          value={editFormData.lindero_norte || ''}
-                          onChange={(e) => setEditFormData({...editFormData, lindero_norte: e.target.value})}
+                          value={editData.lindero_norte || ''}
+                          onChange={(e) => setEditFormData({...editData, lindero_norte: e.target.value})}
                         />
                       </div>
                       <div>
@@ -3644,8 +3644,8 @@ export default function VisorActualizacion() {
                         <textarea 
                           className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder="Ej: Colinda con vía pública, calle 5..."
-                          value={editFormData.lindero_sur || ''}
-                          onChange={(e) => setEditFormData({...editFormData, lindero_sur: e.target.value})}
+                          value={editData.lindero_sur || ''}
+                          onChange={(e) => setEditFormData({...editData, lindero_sur: e.target.value})}
                         />
                       </div>
                       <div>
@@ -3653,8 +3653,8 @@ export default function VisorActualizacion() {
                         <textarea 
                           className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder="Ej: Colinda con quebrada La Honda..."
-                          value={editFormData.lindero_este || ''}
-                          onChange={(e) => setEditFormData({...editFormData, lindero_este: e.target.value})}
+                          value={editData.lindero_este || ''}
+                          onChange={(e) => setEditFormData({...editData, lindero_este: e.target.value})}
                         />
                       </div>
                       <div>
@@ -3662,8 +3662,8 @@ export default function VisorActualizacion() {
                         <textarea 
                           className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                           placeholder="Ej: Colinda con predio de María García..."
-                          value={editFormData.lindero_oeste || ''}
-                          onChange={(e) => setEditFormData({...editFormData, lindero_oeste: e.target.value})}
+                          value={editData.lindero_oeste || ''}
+                          onChange={(e) => setEditFormData({...editData, lindero_oeste: e.target.value})}
                         />
                       </div>
                     </div>
@@ -3673,8 +3673,8 @@ export default function VisorActualizacion() {
                       <textarea 
                         className="w-full min-h-[60px] p-2 text-sm border rounded-md resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         placeholder="Notas adicionales sobre los límites del predio..."
-                        value={editFormData.observaciones_linderos || ''}
-                        onChange={(e) => setEditFormData({...editFormData, observaciones_linderos: e.target.value})}
+                        value={editData.observaciones_linderos || ''}
+                        onChange={(e) => setEditFormData({...editData, observaciones_linderos: e.target.value})}
                       />
                     </div>
                     
@@ -3683,20 +3683,20 @@ export default function VisorActualizacion() {
                         <input 
                           type="checkbox" 
                           className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          checked={editFormData.linderos_verificados || false}
-                          onChange={(e) => setEditFormData({...editFormData, linderos_verificados: e.target.checked})}
+                          checked={editData.linderos_verificados || false}
+                          onChange={(e) => setEditFormData({...editData, linderos_verificados: e.target.checked})}
                         />
                         <span className="text-sm text-slate-700">Linderos verificados en campo</span>
                       </label>
                       
-                      {editFormData.linderos_verificados && (
+                      {editData.linderos_verificados && (
                         <div>
                           <Label className="text-xs">Fecha verificación</Label>
                           <Input 
                             type="date" 
                             className="w-40"
-                            value={editFormData.fecha_verificacion_linderos || ''}
-                            onChange={(e) => setEditFormData({...editFormData, fecha_verificacion_linderos: e.target.value})}
+                            value={editData.fecha_verificacion_linderos || ''}
+                            onChange={(e) => setEditFormData({...editData, fecha_verificacion_linderos: e.target.value})}
                           />
                         </div>
                       )}
@@ -3713,8 +3713,8 @@ export default function VisorActualizacion() {
                         <Label className="text-xs">Sistema de Referencia</Label>
                         <select 
                           className="w-full h-10 px-3 py-2 text-sm border rounded-md bg-background focus:ring-2 focus:ring-emerald-500"
-                          value={editFormData.sistema_referencia || 'MAGNA-SIRGAS'}
-                          onChange={(e) => setEditFormData({...editFormData, sistema_referencia: e.target.value})}
+                          value={editData.sistema_referencia || 'MAGNA-SIRGAS'}
+                          onChange={(e) => setEditFormData({...editData, sistema_referencia: e.target.value})}
                         >
                           <option value="MAGNA-SIRGAS">MAGNA-SIRGAS</option>
                           <option value="WGS84">WGS84</option>
@@ -3724,8 +3724,8 @@ export default function VisorActualizacion() {
                         <Label className="text-xs">Precisión GPS</Label>
                         <select 
                           className="w-full h-10 px-3 py-2 text-sm border rounded-md bg-background focus:ring-2 focus:ring-emerald-500"
-                          value={editFormData.precision_gps || ''}
-                          onChange={(e) => setEditFormData({...editFormData, precision_gps: e.target.value})}
+                          value={editData.precision_gps || ''}
+                          onChange={(e) => setEditFormData({...editData, precision_gps: e.target.value})}
                         >
                           <option value="">Seleccione...</option>
                           <option value="alta">Alta (±1m)</option>
@@ -3744,7 +3744,7 @@ export default function VisorActualizacion() {
                             variant="outline" 
                             size="sm"
                             onClick={() => setEditFormData({
-                              ...editFormData, 
+                              ...editData, 
                               latitud_centroide: userPosition[0].toFixed(6),
                               longitud_centroide: userPosition[1].toFixed(6),
                               fecha_captura_coordenadas: new Date().toISOString().split('T')[0]
@@ -3763,8 +3763,8 @@ export default function VisorActualizacion() {
                             type="number" 
                             step="0.000001"
                             placeholder="Ej: 8.123456"
-                            value={editFormData.latitud_centroide || ''}
-                            onChange={(e) => setEditFormData({...editFormData, latitud_centroide: e.target.value})}
+                            value={editData.latitud_centroide || ''}
+                            onChange={(e) => setEditFormData({...editData, latitud_centroide: e.target.value})}
                           />
                         </div>
                         <div>
@@ -3773,8 +3773,8 @@ export default function VisorActualizacion() {
                             type="number" 
                             step="0.000001"
                             placeholder="Ej: -73.123456"
-                            value={editFormData.longitud_centroide || ''}
-                            onChange={(e) => setEditFormData({...editFormData, longitud_centroide: e.target.value})}
+                            value={editData.longitud_centroide || ''}
+                            onChange={(e) => setEditFormData({...editData, longitud_centroide: e.target.value})}
                           />
                         </div>
                       </div>
@@ -3786,16 +3786,16 @@ export default function VisorActualizacion() {
                         <Input 
                           type="number" 
                           placeholder="Área según medición GPS"
-                          value={editFormData.area_calculada || ''}
-                          onChange={(e) => setEditFormData({...editFormData, area_calculada: e.target.value})}
+                          value={editData.area_calculada || ''}
+                          onChange={(e) => setEditFormData({...editData, area_calculada: e.target.value})}
                         />
                       </div>
                       <div>
                         <Label className="text-xs">Equipo GPS Utilizado</Label>
                         <Input 
                           placeholder="Ej: GPS Garmin 64s"
-                          value={editFormData.equipo_gps || ''}
-                          onChange={(e) => setEditFormData({...editFormData, equipo_gps: e.target.value})}
+                          value={editData.equipo_gps || ''}
+                          onChange={(e) => setEditFormData({...editData, equipo_gps: e.target.value})}
                         />
                       </div>
                     </div>
@@ -3805,8 +3805,8 @@ export default function VisorActualizacion() {
                       <Input 
                         type="date" 
                         className="w-48"
-                        value={editFormData.fecha_captura_coordenadas || ''}
-                        onChange={(e) => setEditFormData({...editFormData, fecha_captura_coordenadas: e.target.value})}
+                        value={editData.fecha_captura_coordenadas || ''}
+                        onChange={(e) => setEditFormData({...editData, fecha_captura_coordenadas: e.target.value})}
                       />
                     </div>
                     
