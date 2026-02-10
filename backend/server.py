@@ -2528,8 +2528,9 @@ async def upload_petition_files(
         }}
     )
     
-    # Notify based on who uploaded - SOLO notificación en plataforma, NO correo
-    if current_user['role'] == UserRole.USUARIO:
+    # Notificar SOLO si NO está en estado devuelto (evitar spam de notificaciones)
+    # Si está devuelto, el usuario debe usar el botón "Reenviar" para notificar al staff
+    if current_user['role'] == UserRole.USUARIO and petition.get('estado') != PetitionStatus.DEVUELTO:
         # Crear notificación en plataforma para gestores asignados o atención al usuario
         if petition.get('gestores_asignados'):
             for gestor_id in petition['gestores_asignados']:
