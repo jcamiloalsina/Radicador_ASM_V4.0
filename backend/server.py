@@ -13208,6 +13208,9 @@ async def process_gdb_upload_background(
         # Usar el municipio detectado desde códigos si está disponible, sino el del nombre del archivo
         municipio_nombre = municipio_detectado_desde_codigos or municipio_nombre_inicial or gdb_name
         
+        # Actualizar el nombre del municipio para el progreso
+        municipio_para_progreso["nombre"] = municipio_nombre
+        
         await update_progress("relacionando_capas", 50, f"Relacionando capas del GDB ({len(codigos_gdb)} geometrías)...")
         
         # Guardar geometrías en colección para búsquedas posteriores
