@@ -286,12 +286,26 @@ export default function PetitionDetail() {
                     <p className="text-sm text-slate-900 whitespace-pre-line">{petition.observaciones_devolucion}</p>
                   </div>
                 )}
+                
+                {/* Instrucciones claras para el usuario */}
+                {petition.user_id === user?.id && (
+                  <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 mb-4">
+                    <p className="text-sm font-medium text-amber-800">
+                      📌 <strong>Pasos para subsanar:</strong>
+                    </p>
+                    <ol className="text-sm text-amber-700 mt-1 ml-4 list-decimal">
+                      <li>Cargue los documentos corregidos usando el botón "Cargar Documentos"</li>
+                      <li>Una vez cargados, haga clic en <strong>"Enviar Subsanación"</strong> para notificar al equipo</li>
+                    </ol>
+                  </div>
+                )}
+                
                 <div className="flex flex-wrap gap-3">
                   <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100" data-testid="upload-correccion-button">
                         <Upload className="w-4 h-4 mr-2" />
-                        Cargar Documentos
+                        1. Cargar Documentos
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -325,15 +339,15 @@ export default function PetitionDetail() {
                     </DialogContent>
                   </Dialog>
                   
-                  {/* Botón Reenviar para el ciudadano */}
+                  {/* Botón Reenviar para el ciudadano - MÁS DESTACADO */}
                   {petition.user_id === user?.id && (
                     <Button 
                       onClick={handleReenviar}
-                      className="bg-orange-600 hover:bg-orange-700 text-white" 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md" 
                       data-testid="reenviar-button"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      Reenviar para Revisión
+                      2. Enviar Subsanación
                     </Button>
                   )}
                   
