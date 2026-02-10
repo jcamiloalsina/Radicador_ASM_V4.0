@@ -3789,40 +3789,25 @@ export default function Predios() {
                     const vigenciaReciente = vigenciasValidas.length > 0 
                       ? vigenciasValidas.sort((a, b) => b.vigencia - a.vigencia)[0].vigencia 
                       : new Date().getFullYear();
-                    // Extraer el año de la vigencia
-                    const vigenciaYear = vigenciaReciente;
                     // Conteo de reapariciones para este municipio
                     const reaparicionesCount = reaparicionesConteo[item.municipio] || 0;
                     
                     return (
-                      <div key={item.municipio} className="relative">
-                        <Button
-                          variant="outline"
-                          className="w-full h-auto min-h-[80px] py-3 px-3 flex flex-col items-start justify-center text-left hover:bg-emerald-50 hover:border-emerald-300 overflow-hidden"
-                          onClick={() => {
-                            setFilterMunicipio(item.municipio);
-                            setFilterVigencia(String(vigenciaReciente || '2025'));
-                          }}
-                        >
-                          <span className="font-medium text-slate-900 text-sm leading-tight truncate w-full">{item.municipio}</span>
-                          <span className="text-lg md:text-xl font-bold text-emerald-700">{item.count?.toLocaleString()}</span>
-                          <span className="text-[10px] md:text-xs text-slate-500 leading-tight">predios</span>
-                        </Button>
-                        {/* Badge de reapariciones pendientes */}
-                        {reaparicionesCount > 0 && user && ['coordinador', 'administrador'].includes(user.role) && (
-                          <button
-                            className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center hover:bg-amber-600 shadow-md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFilterMunicipio(item.municipio);
-                              setShowReaparicionesDialog(true);
-                            }}
-                            title={`${reaparicionesCount} reapariciones pendientes`}
-                          >
-                            {reaparicionesCount}
-                          </button>
-                        )}
-                      </div>
+                      <MunicipioCard
+                        key={item.municipio}
+                        municipio={item.municipio}
+                        count={item.count}
+                        reaparicionesCount={reaparicionesCount}
+                        showReapariciones={user && ['coordinador', 'administrador'].includes(user.role)}
+                        onSelect={() => {
+                          setFilterMunicipio(item.municipio);
+                          setFilterVigencia(String(vigenciaReciente || '2025'));
+                        }}
+                        onReaparicionesClick={() => {
+                          setFilterMunicipio(item.municipio);
+                          setShowReaparicionesDialog(true);
+                        }}
+                      />
                     );
                   })}
                 </div>
