@@ -352,9 +352,6 @@ export default function VisorActualizacion() {
   const canvasVisitadoRef = useRef(null);
   const canvasReconocedorRef = useRef(null);
   const canvasFirmaModalRef = useRef(null);
-  const [isDrawingVisitado, setIsDrawingVisitado] = useState(false);
-  const [isDrawingReconocedor, setIsDrawingReconocedor] = useState(false);
-  const [isDrawingModal, setIsDrawingModal] = useState(false);
   // Modal de firma grande
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [firmaModalTipo, setFirmaModalTipo] = useState('visitado'); // 'visitado' o 'reconocedor'
