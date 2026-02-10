@@ -116,12 +116,14 @@ const CrearPredioNuevoModal = ({
   useEffect(() => {
     const cargarPrefijo = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/estructura-codigo/${municipio}`, {
+        const response = await fetch(`${API_URL}/api/predios/estructura-codigo/${municipio}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
           const data = await response.json();
           setPrefijo(data.prefijo_fijo || '00000');
+        } else {
+          console.error('Error cargando prefijo, status:', response.status);
         }
       } catch (error) {
         console.error('Error cargando prefijo:', error);
