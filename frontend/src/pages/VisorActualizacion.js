@@ -372,6 +372,7 @@ export default function VisorActualizacion() {
     nombre: '',
     primer_apellido: '',
     segundo_apellido: '',
+    estado: '', // Estado civil o E
     genero: '', // masculino, femenino, lgbtq, otro
     genero_otro: '',
     grupo_etnico: ''
