@@ -637,6 +637,12 @@ export default function VisorActualizacion() {
             allFeatures = [...allFeatures, ...response.data.geometrias.features];
           }
           
+          // Capturar construcciones del primer lote (solo vienen con offset=0)
+          if (batch === 0 && response.data.construcciones?.features?.length > 0) {
+            setConstrucciones(response.data.construcciones);
+            console.log(`[Visor] Construcciones cargadas: ${response.data.construcciones.features.length}`);
+          }
+          
           // Actualizar UI parcialmente cada 1000 geometrías
           if (allFeatures.length % 1000 === 0 || batch === totalBatches - 1) {
             const partialGeojson = {
