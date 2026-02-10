@@ -128,6 +128,13 @@ export default function AllPetitions() {
       );
     }
 
+    // Solo mis asignadas filter
+    if (soloMisAsignadas && user?.id) {
+      filtered = filtered.filter((p) => 
+        p.gestores_asignados && p.gestores_asignados.includes(user.id)
+      );
+    }
+
     // Date filters
     if (fechaDesde) {
       const desde = new Date(fechaDesde);
@@ -140,7 +147,7 @@ export default function AllPetitions() {
     }
 
     setFilteredPetitions(filtered);
-  }, [searchTerm, statusFilter, municipioFilter, gestorFilter, fechaDesde, fechaHasta, petitions]);
+  }, [searchTerm, statusFilter, municipioFilter, gestorFilter, fechaDesde, fechaHasta, petitions, soloMisAsignadas, user?.id]);
 
   const fetchPetitions = async () => {
     try {
