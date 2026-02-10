@@ -31,7 +31,16 @@ import {
   ImportR1R2Form,
   PrediosEliminadosView,
   ReaparicionesPendientes,
-  SubsanacionesPendientes
+  SubsanacionesPendientes,
+  CodigoPredialBuilder,
+  PropietariosList,
+  usePropietarios,
+  useZonasTerreno,
+  useZonasFisicas,
+  useConstrucciones,
+  generarIdConstruccion,
+  calcularAreasTotales as calcularAreasTotalesUtil,
+  calcularTotalRegistrosR2 as calcularTotalRegistrosR2Util
 } from '../components/conservacion';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
