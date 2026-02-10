@@ -24,7 +24,28 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (5 Febrero 2026 - Sesión Actual)
+## 🔧 Cambios Recientes (10 Febrero 2026 - Sesión Actual)
+
+### ✅ COMPLETADO: Bug Fix - Construcciones no aparecían en Visor de Actualización
+
+**Problema reportado:** Las construcciones del GDB no se mostraban en el mapa del Visor de Actualización después de reemplazar un archivo GDB.
+
+**Causa raíz identificada:** El backend envía las construcciones solo con el primer lote (offset=0), pero el frontend no las capturaba cuando usaba la descarga progresiva por lotes. Solo se procesaban las geometrías, ignorando `response.data.construcciones`.
+
+**Solución implementada:**
+- Archivo: `/app/frontend/src/pages/VisorActualizacion.js` líneas 640-644
+- Se añadió la captura de construcciones cuando `batch === 0`
+- Las construcciones ahora se muestran en rojo en el mapa
+
+**Testing:** ✅ Verificado con testing agent (iteration_35.json)
+- 6912 construcciones cargadas correctamente
+- 3361 geometrías cargadas correctamente
+- 3225 predios R1/R2 mostrados
+- Contadores funcionando: Total: 3225, Pendientes: 3220, Visitados: 2, Actualizados: 3
+
+---
+
+## 🔧 Cambios Previos (5 Febrero 2026)
 
 ### ✅ COMPLETADO: Refactor R2 - Zonas y Construcciones Separadas
 
