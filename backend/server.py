@@ -15809,6 +15809,27 @@ async def get_predios_proyecto(
         {"_id": 0}
     ).to_list(50000)
     
+    # Enriquecer con codigo_homologado de la colección principal de predios
+    if predios:
+        codigos_prediales = [p.get('codigo_predial') for p in predios if p.get('codigo_predial')]
+        # Buscar códigos homologados en la colección principal
+        predios_principales = await db.predios.find(
+            {"codigo_predial_nacional": {"$in": codigos_prediales}},
+            {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1}
+        ).to_list(len(codigos_prediales))
+        
+        # Crear mapa de código -> código_homologado
+        codigo_homologado_map = {
+            p.get('codigo_predial_nacional'): p.get('codigo_homologado')
+            for p in predios_principales if p.get('codigo_homologado')
+        }
+        
+        # Agregar codigo_homologado a cada predio
+        for predio in predios:
+            codigo = predio.get('codigo_predial')
+            if codigo and codigo in codigo_homologado_map:
+                predio['codigo_homologado'] = codigo_homologado_map[codigo]
+    
     return {
         "predios": predios,
         "total": len(predios)
