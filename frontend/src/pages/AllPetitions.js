@@ -34,6 +34,7 @@ export default function AllPetitions() {
   const [gestores, setGestores] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [offlineMode, setOfflineMode] = useState(false);
+  const [soloMisAsignadas, setSoloMisAsignadas] = useState(false);
 
   // Check if user is coordinator or admin (can see advanced filters)
   const isCoordinatorOrAdmin = ['coordinador', 'administrador'].includes(user?.role);
