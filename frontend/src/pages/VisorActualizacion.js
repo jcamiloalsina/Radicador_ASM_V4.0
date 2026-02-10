@@ -2648,6 +2648,32 @@ export default function VisorActualizacion() {
             <Navigation className={`w-4 h-4 ${watchingPosition ? 'animate-pulse' : ''}`} />
             <span className="hidden sm:inline ml-1 text-xs">{watchingPosition ? 'GPS On' : 'GPS'}</span>
           </Button>
+          
+          {/* Botón Crear Predio Nuevo */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCrearPredioModal(true)}
+            className="bg-emerald-50 border-emerald-500 text-emerald-700 hover:bg-emerald-100"
+            title="Crear predio nuevo detectado en campo"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden md:inline ml-1 text-xs">Nuevo Predio</span>
+          </Button>
+          
+          {/* Botón Finalizar Proyecto (solo coordinadores) */}
+          {(user?.role === 'administrador' || user?.role === 'coordinador') && proyecto?.estado !== 'completado' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFinalizarProyectoModal(true)}
+              className="bg-purple-50 border-purple-500 text-purple-700 hover:bg-purple-100"
+              title="Finalizar proyecto y migrar a conservación"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span className="hidden md:inline ml-1 text-xs">Finalizar</span>
+            </Button>
+          )}
         </div>
       </div>
       
