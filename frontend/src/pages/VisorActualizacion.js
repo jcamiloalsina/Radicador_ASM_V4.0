@@ -1563,6 +1563,7 @@ export default function VisorActualizacion() {
       nombre: '',
       primer_apellido: '',
       segundo_apellido: '',
+      estado: '',
       genero: '',
       genero_otro: '',
       grupo_etnico: ''
