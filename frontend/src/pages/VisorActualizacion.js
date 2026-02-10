@@ -1373,7 +1373,7 @@ export default function VisorActualizacion() {
       if (visitaExistente.propietarios_visita && visitaExistente.propietarios_visita.length > 0) {
         setVisitaPropietarios(visitaExistente.propietarios_visita);
       } else {
-        setVisitaPropietarios([{ tipo_documento: '', numero_documento: '', nombre: '', primer_apellido: '', segundo_apellido: '', genero: '', genero_otro: '', grupo_etnico: '' }]);
+        setVisitaPropietarios([{ tipo_documento: '', numero_documento: '', nombre: '', primer_apellido: '', segundo_apellido: '', estado: '', genero: '', genero_otro: '', grupo_etnico: '' }]);
       }
       
       // Cargar construcciones
