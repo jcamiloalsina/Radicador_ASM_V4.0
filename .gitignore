@@ -619,3 +619,7 @@ xtf_analysis/prevalidador.zip
 *.env
 *.env.*
 frontend/node_modules/.cache/default-development/3.pack_
+-e 
+# Environment files
+*.env
+*.env.*
