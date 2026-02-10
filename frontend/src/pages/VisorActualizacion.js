@@ -1489,6 +1489,7 @@ export default function VisorActualizacion() {
         nombre: p.nombre_propietario?.split(' ')[0] || p.nombre || '',
         primer_apellido: p.nombre_propietario?.split(' ')[1] || p.primer_apellido || '',
         segundo_apellido: p.nombre_propietario?.split(' ')[2] || p.segundo_apellido || '',
+        estado: p.estado || '',
         genero: '',
         genero_otro: '',
         grupo_etnico: ''
