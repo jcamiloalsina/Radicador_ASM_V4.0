@@ -1501,6 +1501,7 @@ export default function VisorActualizacion() {
         nombre: partes[0] || '',
         primer_apellido: partes[1] || '',
         segundo_apellido: partes.slice(2).join(' ') || '',
+        estado: selectedPredio.estado || '',
         genero: '',
         genero_otro: '',
         grupo_etnico: ''
@@ -1512,6 +1513,7 @@ export default function VisorActualizacion() {
         nombre: '',
         primer_apellido: '',
         segundo_apellido: '',
+        estado: '',
         genero: '',
         genero_otro: '',
         grupo_etnico: ''
