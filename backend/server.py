@@ -12859,6 +12859,9 @@ async def process_gdb_upload_background(
     from pyproj import CRS, Transformer
     from shapely.ops import transform
     
+    # Variable para almacenar el municipio detectado (se actualiza durante el proceso)
+    municipio_para_progreso = {"nombre": municipio or "Procesando..."}
+    
     async def update_progress(status: str, progress: int, message: str, **extra):
         """Actualiza el progreso y envía notificación WebSocket al usuario"""
         progress_data = {
@@ -12866,6 +12869,7 @@ async def process_gdb_upload_background(
             "progress": progress,
             "message": message,
             "upload_id": upload_id,
+            "municipio": municipio_para_progreso["nombre"],
             **extra
         }
         gdb_upload_progress[upload_id] = progress_data
