@@ -3,6 +3,27 @@
 ## Descripción General
 Sistema web para gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (Asomunicipios).
 
+---
+
+## 🔄 TAREA PENDIENTE: Generación de Archivos XTF
+
+**Estado:** EN ESPERA - Análisis completado, requiere definiciones del usuario
+**Documento de análisis:** `/app/memory/XTF_ANALISIS_COMPLETO.md`
+**Archivos de ejemplo:** `/app/xtf_analysis/ejemplo_real.xtf`, `/app/xtf_analysis/prevalidador.zip`
+
+### Datos Faltantes Críticos (Bloqueantes):
+1. **Tipo de Predio:** ¿Cómo identificar si es Privado o Público?
+2. **Condicion_Predio:** ¿Cómo identificar NPH, PH o Mejora?
+3. **Numero_Predial_Anterior:** El campo `numero_predio` tiene 15 dígitos, se necesitan 20
+
+### Preguntas Pendientes para el Usuario:
+- ¿La mayoría de predios son privados? ¿Cómo identificar los públicos?
+- ¿Cómo saber si un predio es Propiedad Horizontal?
+- ¿De dónde sale el código predial anterior de 20 dígitos?
+- Hacarí tiene 0 geometrías GDB cargadas, ¿hay que cargarlas primero?
+
+---
+
 ## Stack Tecnológico
 - **Backend:** FastAPI (Python) + MongoDB (asomunicipios_db)
 - **Frontend:** React + Tailwind CSS + shadcn/ui
