@@ -310,7 +310,7 @@ export default function AllPetitions() {
   }
 
   const hasActiveFilters = statusFilter !== 'todos' || municipioFilter !== 'todos' || 
-    gestorFilter !== 'todos' || fechaDesde || fechaHasta || searchTerm;
+    gestorFilter !== 'todos' || fechaDesde || fechaHasta || searchTerm || soloMisAsignadas;
 
   return (
     <div className="space-y-6" data-testid="all-petitions-page">
