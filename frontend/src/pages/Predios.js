@@ -4057,50 +4057,13 @@ export default function Predios() {
               </div>
               
               {/* Controles de Paginación */}
-              {predios.length > pageSize && (
-                <div className="flex items-center justify-between mt-4 px-4 py-3 bg-slate-50 rounded-lg">
-                  <div className="text-sm text-slate-600">
-                    Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, predios.length)} de {predios.length.toLocaleString()} predios
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                    >
-                      Primera
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    <span className="px-3 py-1 bg-white border rounded text-sm">
-                      Página {currentPage} de {Math.ceil(predios.length / pageSize)}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(predios.length / pageSize), p + 1))}
-                      disabled={currentPage >= Math.ceil(predios.length / pageSize)}
-                    >
-                      Siguiente
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.ceil(predios.length / pageSize))}
-                      disabled={currentPage >= Math.ceil(predios.length / pageSize)}
-                    >
-                      Última
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Pagination
+                currentPage={currentPage}
+                totalItems={predios.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemLabel="predios"
+              />
             </>
           )}
         </CardContent>
