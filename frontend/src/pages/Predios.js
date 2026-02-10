@@ -24,9 +24,7 @@ import { DownloadProgressBar } from '../components/OfflineComponents';
 import { clearAllOfflineData } from '../utils/offlineDB';
 
 // Componentes de Conservación refactorizados
-import MunicipioCard from '../components/conservacion/MunicipioCard';
-import StatsPanel from '../components/conservacion/StatsPanel';
-import Pagination from '../components/conservacion/Pagination';
+import { MunicipioCard, StatsPanel, Pagination } from '../components/conservacion';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
