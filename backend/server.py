@@ -13078,6 +13078,10 @@ async def process_gdb_upload_background(
         # Intentar detectar municipio desde el nombre del archivo primero
         municipio_nombre_inicial = municipio or CODIGO_TO_MUNICIPIO.get(gdb_name, None)
         
+        # Actualizar el nombre del municipio temprano si ya lo sabemos
+        if municipio_nombre_inicial:
+            municipio_para_progreso["nombre"] = municipio_nombre_inicial
+        
         await update_progress("leyendo", 25, f"Leyendo capas de {gdb_name}...")
         
         # Leer capas del GDB para obtener estadísticas y relacionar con predios
