@@ -1675,13 +1675,17 @@ export default function VisorActualizacion() {
     return null;
   };
 
-  // Referencias para throttling de firmas
+  // Referencias para throttling de firmas (usando refs para evitar re-renders)
   const rafVisitadoRef = useRef(null);
   const rafReconocedorRef = useRef(null);
   const rafModalRef = useRef(null);
   const lastPointVisitado = useRef(null);
   const lastPointReconocedor = useRef(null);
   const lastPointModal = useRef(null);
+  // Estados de dibujo como refs para mejor rendimiento
+  const isDrawingVisitadoRef = useRef(false);
+  const isDrawingReconocedorRef = useRef(false);
+  const isDrawingModalRef = useRef(false);
 
   // Funciones optimizadas para firma del visitado (Sección 12)
   const startDrawingVisitado = (e) => {
