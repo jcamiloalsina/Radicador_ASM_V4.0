@@ -1853,14 +1853,16 @@ export default function VisorActualizacion() {
   };
 
   const startDrawingModal = (e) => {
-    setIsDrawingModal(true);
+    isDrawingModalRef.current = true;
     const canvas = canvasFirmaModalRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     let x, y;
     if (e.type.includes('touch')) {
+      e.preventDefault();
       x = (e.touches[0].clientX - rect.left) * scaleX;
       y = (e.touches[0].clientY - rect.top) * scaleY;
     } else {
@@ -1873,42 +1875,39 @@ export default function VisorActualizacion() {
   };
 
   const drawModal = (e) => {
-    if (!isDrawingModal) return;
+    if (!isDrawingModalRef.current) return;
     if (e.type.includes('touch')) e.preventDefault();
     
-    if (rafModalRef.current) cancelAnimationFrame(rafModalRef.current);
+    const canvas = canvasFirmaModalRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let x, y;
+    if (e.type.includes('touch')) {
+      x = (e.touches[0].clientX - rect.left) * scaleX;
+      y = (e.touches[0].clientY - rect.top) * scaleY;
+    } else {
+      x = (e.clientX - rect.left) * scaleX;
+      y = (e.clientY - rect.top) * scaleY;
+    }
     
-    rafModalRef.current = requestAnimationFrame(() => {
-      const canvas = canvasFirmaModalRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      let x, y;
-      if (e.type.includes('touch')) {
-        x = (e.touches[0].clientX - rect.left) * scaleX;
-        y = (e.touches[0].clientY - rect.top) * scaleY;
-      } else {
-        x = (e.clientX - rect.left) * scaleX;
-        y = (e.clientY - rect.top) * scaleY;
-      }
-      
-      if (lastPointModal.current) {
-        ctx.beginPath();
-        ctx.moveTo(lastPointModal.current.x, lastPointModal.current.y);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-      }
-      lastPointModal.current = { x, y };
-    });
+    if (lastPointModal.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPointModal.current.x, lastPointModal.current.y);
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+    lastPointModal.current = { x, y };
   };
 
   const stopDrawingModal = () => {
-    setIsDrawingModal(false);
+    isDrawingModalRef.current = false;
     lastPointModal.current = null;
   };
 
