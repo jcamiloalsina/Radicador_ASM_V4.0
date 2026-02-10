@@ -4324,7 +4324,7 @@ export default function VisorActualizacion() {
                                 <Input value={prop.numero_documento} onChange={(e) => actualizarPropietarioVisita(idx, 'numero_documento', e.target.value)} className="h-8 text-sm" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-3 mb-2">
+                            <div className="grid grid-cols-4 gap-3 mb-2">
                               <div>
                                 <Label className="text-xs text-slate-500">Nombre</Label>
                                 <Input value={prop.nombre} onChange={(e) => actualizarPropietarioVisita(idx, 'nombre', e.target.value.toUpperCase())} className="h-8 text-sm uppercase" />
@@ -4336,6 +4336,10 @@ export default function VisorActualizacion() {
                               <div>
                                 <Label className="text-xs text-slate-500">Segundo Apellido</Label>
                                 <Input value={prop.segundo_apellido} onChange={(e) => actualizarPropietarioVisita(idx, 'segundo_apellido', e.target.value.toUpperCase())} className="h-8 text-sm uppercase" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-slate-500">Estado</Label>
+                                <Input value={prop.estado || ''} onChange={(e) => actualizarPropietarioVisita(idx, 'estado', e.target.value.toUpperCase())} placeholder="Ej: E, CASADO" className="h-8 text-sm uppercase" />
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
