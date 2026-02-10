@@ -89,7 +89,9 @@ import {
   ChevronRight,
   AlertTriangle,
   Scale,
-  Loader2
+  Loader2,
+  Building2,
+  FileCheck
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
