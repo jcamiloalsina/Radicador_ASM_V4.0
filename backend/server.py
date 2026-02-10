@@ -15809,28 +15809,39 @@ async def get_predios_proyecto(
         {"_id": 0}
     ).to_list(50000)
     
-    # Enriquecer con codigo_homologado de la colección principal de predios
+    # Enriquecer con datos de la colección principal de predios
     if predios:
         codigos_prediales = [p.get('codigo_predial') for p in predios if p.get('codigo_predial')]
-        # Buscar códigos homologados en la colección principal (puede haber múltiples vigencias)
+        # Buscar datos adicionales en la colección principal (puede haber múltiples vigencias)
         predios_principales = await db.predios.find(
             {"codigo_predial_nacional": {"$in": codigos_prediales}},
-            {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1}
+            {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1, "r2_registros": 1}
         ).to_list(None)  # Sin límite para asegurar que traiga todos
         
-        # Crear mapa de código -> código_homologado (toma el primero encontrado)
+        # Crear mapas de código -> datos (toma el primero encontrado)
         codigo_homologado_map = {}
+        matricula_map = {}
         for p in predios_principales:
             cpn = p.get('codigo_predial_nacional')
-            ch = p.get('codigo_homologado')
-            if cpn and ch and cpn not in codigo_homologado_map:
-                codigo_homologado_map[cpn] = ch
+            if cpn and cpn not in codigo_homologado_map:
+                ch = p.get('codigo_homologado')
+                if ch:
+                    codigo_homologado_map[cpn] = ch
+                # Obtener matrícula del r2_registros
+                r2_registros = p.get('r2_registros', [])
+                if r2_registros and len(r2_registros) > 0:
+                    matricula = r2_registros[0].get('matricula_inmobiliaria')
+                    if matricula:
+                        matricula_map[cpn] = matricula
         
-        # Agregar codigo_homologado a cada predio
+        # Agregar datos a cada predio
         for predio in predios:
             codigo = predio.get('codigo_predial')
-            if codigo and codigo in codigo_homologado_map:
-                predio['codigo_homologado'] = codigo_homologado_map[codigo]
+            if codigo:
+                if codigo in codigo_homologado_map:
+                    predio['codigo_homologado'] = codigo_homologado_map[codigo]
+                if codigo in matricula_map:
+                    predio['matricula_inmobiliaria'] = matricula_map[codigo]
     
     return {
         "predios": predios,
