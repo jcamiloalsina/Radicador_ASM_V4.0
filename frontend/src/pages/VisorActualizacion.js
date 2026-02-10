@@ -1669,7 +1669,15 @@ export default function VisorActualizacion() {
     return null;
   };
 
-  // Funciones para firma del visitado (Sección 12)
+  // Referencias para throttling de firmas
+  const rafVisitadoRef = useRef(null);
+  const rafReconocedorRef = useRef(null);
+  const rafModalRef = useRef(null);
+  const lastPointVisitado = useRef(null);
+  const lastPointReconocedor = useRef(null);
+  const lastPointModal = useRef(null);
+
+  // Funciones optimizadas para firma del visitado (Sección 12)
   const startDrawingVisitado = (e) => {
     setIsDrawingVisitado(true);
     const canvas = canvasVisitadoRef.current;
@@ -1685,34 +1693,51 @@ export default function VisorActualizacion() {
       x = (e.clientX - rect.left) * scaleX;
       y = (e.clientY - rect.top) * scaleY;
     }
+    lastPointVisitado.current = { x, y };
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
 
   const drawVisitado = (e) => {
     if (!isDrawingVisitado) return;
-    const canvas = canvasVisitadoRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    let x, y;
-    if (e.type.includes('touch')) {
-      e.preventDefault();
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    if (e.type.includes('touch')) e.preventDefault();
+    
+    // Cancelar frame anterior
+    if (rafVisitadoRef.current) cancelAnimationFrame(rafVisitadoRef.current);
+    
+    rafVisitadoRef.current = requestAnimationFrame(() => {
+      const canvas = canvasVisitadoRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      let x, y;
+      if (e.type.includes('touch')) {
+        x = (e.touches[0].clientX - rect.left) * scaleX;
+        y = (e.touches[0].clientY - rect.top) * scaleY;
+      } else {
+        x = (e.clientX - rect.left) * scaleX;
+        y = (e.clientY - rect.top) * scaleY;
+      }
+      
+      if (lastPointVisitado.current) {
+        ctx.beginPath();
+        ctx.moveTo(lastPointVisitado.current.x, lastPointVisitado.current.y);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      lastPointVisitado.current = { x, y };
+    });
   };
 
-  const stopDrawingVisitado = () => setIsDrawingVisitado(false);
+  const stopDrawingVisitado = () => {
+    setIsDrawingVisitado(false);
+    lastPointVisitado.current = null;
+  };
 
   const limpiarFirmaVisitado = () => {
     const canvas = canvasVisitadoRef.current;
