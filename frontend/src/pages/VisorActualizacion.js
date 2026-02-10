@@ -2658,7 +2658,7 @@ export default function VisorActualizacion() {
             title="Crear predio nuevo detectado en campo"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden md:inline ml-1 text-xs">Nuevo Predio</span>
+            <span className="ml-1 text-xs">Nuevo Predio</span>
           </Button>
           
           {/* Botón Finalizar Proyecto (solo coordinadores) */}
@@ -2671,7 +2671,7 @@ export default function VisorActualizacion() {
               title="Finalizar proyecto y migrar a conservación"
             >
               <FileCheck className="w-4 h-4" />
-              <span className="hidden md:inline ml-1 text-xs">Finalizar</span>
+              <span className="ml-1 text-xs">Finalizar</span>
             </Button>
           )}
         </div>
