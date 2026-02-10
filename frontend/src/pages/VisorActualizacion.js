@@ -15,6 +15,10 @@ import { getProyectoOffline, getGeometriasOffline, saveProyectoOffline, saveGeom
 import FirmaCanvas from '../components/FirmaCanvas';
 import ListaPrediosPaginada from '../components/ListaPrediosPaginada';
 
+// Componentes de Actualización
+import CrearPredioNuevoModal from '../components/actualizacion/CrearPredioNuevoModal';
+import FinalizarProyectoModal from '../components/actualizacion/FinalizarProyectoModal';
+
 // UI Components
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
