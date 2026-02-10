@@ -1754,7 +1754,7 @@ export default function VisorActualizacion() {
     return null;
   };
 
-  // Funciones para firma del reconocedor (Sección 12)
+  // Funciones optimizadas para firma del reconocedor (Sección 12)
   const startDrawingReconocedor = (e) => {
     setIsDrawingReconocedor(true);
     const canvas = canvasReconocedorRef.current;
@@ -1770,34 +1770,50 @@ export default function VisorActualizacion() {
       x = (e.clientX - rect.left) * scaleX;
       y = (e.clientY - rect.top) * scaleY;
     }
+    lastPointReconocedor.current = { x, y };
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
 
   const drawReconocedor = (e) => {
     if (!isDrawingReconocedor) return;
-    const canvas = canvasReconocedorRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    let x, y;
-    if (e.type.includes('touch')) {
-      e.preventDefault();
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    if (e.type.includes('touch')) e.preventDefault();
+    
+    if (rafReconocedorRef.current) cancelAnimationFrame(rafReconocedorRef.current);
+    
+    rafReconocedorRef.current = requestAnimationFrame(() => {
+      const canvas = canvasReconocedorRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      let x, y;
+      if (e.type.includes('touch')) {
+        x = (e.touches[0].clientX - rect.left) * scaleX;
+        y = (e.touches[0].clientY - rect.top) * scaleY;
+      } else {
+        x = (e.clientX - rect.left) * scaleX;
+        y = (e.clientY - rect.top) * scaleY;
+      }
+      
+      if (lastPointReconocedor.current) {
+        ctx.beginPath();
+        ctx.moveTo(lastPointReconocedor.current.x, lastPointReconocedor.current.y);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      lastPointReconocedor.current = { x, y };
+    });
   };
 
-  const stopDrawingReconocedor = () => setIsDrawingReconocedor(false);
+  const stopDrawingReconocedor = () => {
+    setIsDrawingReconocedor(false);
+    lastPointReconocedor.current = null;
+  };
 
   const limpiarFirmaReconocedor = () => {
     const canvas = canvasReconocedorRef.current;
