@@ -2659,69 +2659,90 @@ export default function VisorActualizacion() {
     );
   }
   
-  // Pantalla de sincronización obligatoria
+  // Pantalla de sincronización obligatoria (cuando hay cambios pendientes y hay conexión)
   if (showSyncScreen && isOnline) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-6 p-4 bg-gradient-to-b from-slate-100 to-slate-200">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
           <div className="text-center mb-6">
             <RefreshCw className={`w-16 h-16 mx-auto mb-4 text-amber-500 ${isSyncing ? 'animate-spin' : ''}`} />
-            <h2 className="text-xl font-semibold text-slate-800">Sincronización Requerida</h2>
+            <h2 className="text-xl font-semibold text-slate-800">
+              {isSyncing ? 'Sincronizando...' : 'Sincronización Requerida'}
+            </h2>
             <p className="text-slate-600 mt-2">
-              Es necesario sincronizar los datos con el servidor antes de continuar.
+              {offlineStats.cambiosPendientes > 0 
+                ? `Hay ${offlineStats.cambiosPendientes} cambio(s) realizados en campo que deben subirse al servidor.`
+                : 'Es necesario sincronizar los datos con el servidor antes de continuar.'
+              }
             </p>
           </div>
           
           {isSyncing ? (
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm text-amber-800 font-medium mb-2">{syncProgress.message}</p>
-                <div className="w-full bg-amber-200 rounded-full h-2">
+                <p className="text-sm text-amber-800 font-medium mb-2">{syncProgress.message || 'Procesando...'}</p>
+                <div className="w-full bg-amber-200 rounded-full h-3">
                   <div 
-                    className="bg-amber-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-amber-500 h-3 rounded-full transition-all duration-300"
                     style={{ width: syncProgress.total > 0 ? `${(syncProgress.current / syncProgress.total) * 100}%` : '0%' }}
                   />
                 </div>
-                <p className="text-xs text-amber-600 mt-1 text-right">
-                  {syncProgress.current}/{syncProgress.total}
-                </p>
+                <div className="flex justify-between mt-2">
+                  <p className="text-xs text-amber-600">
+                    {syncProgress.current}/{syncProgress.total} completados
+                  </p>
+                  <p className="text-xs text-amber-600">
+                    {syncProgress.total > 0 ? Math.round((syncProgress.current / syncProgress.total) * 100) : 0}%
+                  </p>
+                </div>
               </div>
+              <p className="text-xs text-slate-500 text-center animate-pulse">
+                Por favor espere, no cierre esta ventana...
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
+              {offlineStats.cambiosPendientes > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-blue-800">
+                    📤 <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> listos para subir al servidor
+                  </p>
+                </div>
+              )}
+              
               <Button 
                 onClick={handlePerformFullSync}
-                className="w-full bg-amber-500 hover:bg-amber-600"
+                className="w-full bg-amber-500 hover:bg-amber-600 h-12 text-base"
                 disabled={isSyncing}
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Sincronizar Ahora
+                <RefreshCw className="w-5 h-5 mr-2" />
+                {offlineStats.cambiosPendientes > 0 ? 'Subir Cambios al Servidor' : 'Sincronizar Ahora'}
               </Button>
               
-              <Button 
-                variant="outline" 
-                onClick={handleSkipSync}
-                className="w-full"
-                disabled={isSyncing}
-              >
-                Omitir y usar datos locales
-              </Button>
+              {offlineStats.cambiosPendientes === 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleSkipSync}
+                  className="w-full"
+                  disabled={isSyncing}
+                >
+                  Continuar sin sincronizar
+                </Button>
+              )}
               
-              <p className="text-xs text-slate-500 text-center mt-2">
-                ⚠️ Si omite la sincronización, trabajará con los datos almacenados localmente
-              </p>
+              {offlineStats.cambiosPendientes > 0 && (
+                <p className="text-xs text-red-500 text-center mt-2 font-medium">
+                  ⚠️ Debe subir los cambios antes de continuar trabajando
+                </p>
+              )}
             </div>
           )}
         </div>
         
-        {/* Info de última sincronización */}
+        {/* Info del proyecto */}
         <div className="text-center text-sm text-slate-500">
           <p>Proyecto: <span className="font-medium">{proyecto.nombre}</span></p>
-          {offlineStats.cambiosPendientes > 0 && (
-            <p className="text-amber-600 mt-1">
-              ⚠️ {offlineStats.cambiosPendientes} cambio(s) pendiente(s) por subir
-            </p>
-          )}
+          <p className="text-xs mt-1">Municipio: {proyecto.municipio}</p>
         </div>
       </div>
     );
