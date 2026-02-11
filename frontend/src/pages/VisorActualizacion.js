@@ -3333,12 +3333,44 @@ export default function VisorActualizacion() {
           <CheckSquare className="w-3 h-3 text-purple-500" />
           <span>Actualizados: {estadisticas.actualizados}</span>
         </button>
+        
+        {/* Separador */}
+        <div className="border-l border-slate-300 mx-1"></div>
+        
+        {/* Botón filtro MEJORAS */}
+        <button 
+          onClick={() => setFilterEstado('mejoras')}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            filterEstado === 'mejoras' ? 'bg-cyan-200 font-medium' : 'hover:bg-cyan-50'
+          }`}
+          title="Filtrar solo predios con mejoras"
+        >
+          <Building className="w-3 h-3 text-cyan-600" />
+          <span className="text-cyan-700">Mejoras: {contarMejoras}</span>
+        </button>
+        
+        {/* Toggle Construcciones */}
+        <button 
+          onClick={() => setShowConstrucciones(!showConstrucciones)}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            showConstrucciones ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'
+          }`}
+          title={showConstrucciones ? 'Ocultar construcciones' : 'Mostrar construcciones'}
+        >
+          <Building2 className="w-3 h-3" />
+          <span>{showConstrucciones ? 'Const. ON' : 'Const. OFF'}</span>
+          {construcciones?.features?.length > 0 && (
+            <span className="text-[10px] opacity-70">({construcciones.features.length})</span>
+          )}
+        </button>
+        
         {filterEstado !== 'todos' && (
           <span className="text-slate-500 ml-auto flex items-center gap-1 text-[10px]">
             <span className="bg-slate-100 px-2 py-0.5 rounded">
               {filterEstado === 'pendiente' && `${estadisticas.pendientes} predios`}
               {filterEstado === 'visitado' && `${estadisticas.visitados} predios`}
               {filterEstado === 'actualizado' && `${estadisticas.actualizados} predios`}
+              {filterEstado === 'mejoras' && `${contarMejoras} mejoras`}
               {' → '}
               <strong className="text-slate-700">{geometriasFiltradas?.features?.length || 0} con GDB</strong>
             </span>
