@@ -1256,6 +1256,7 @@ export default function ProyectosActualizacion() {
                         setShowDetalleModal(false);
                         navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}?modo=gestion`);
                       }}
+                      data-testid="btn-gestion-predios"
                     >
                       <CardContent className="p-6 text-center">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center group-hover:bg-amber-200 transition-colors">
