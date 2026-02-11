@@ -75,6 +75,12 @@ export const TIPOS_TRAMITE = [
     nombre: 'Certificado plano',
     descripcion: 'Certificado de plano catastral',
     subOpciones: null
+  },
+  {
+    id: 'copia_ficha_predial',
+    nombre: 'Solicitud copia de ficha predial',
+    descripcion: 'Solicitud de copia de la ficha predial del predio',
+    subOpciones: null
   }
 ];
 
