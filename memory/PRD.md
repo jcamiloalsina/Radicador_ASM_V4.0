@@ -105,13 +105,27 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-### ✅ COMPLETADO: Corrección de Campo Avalúo en Panel de Detalles
+### ✅ CORREGIDO: Campo Avalúo en Panel de Detalles
 
 **Archivo:** `/app/frontend/src/components/actualizacion/DetallePredioActualizacion.jsx`
 
 **Problema:** El campo "Avalúo Catastral" no mostraba datos porque buscaba `predio.avaluo` pero el backend retorna `avaluo_catastral`.
 
-**Solución:** Se corrigió para usar `predio.avaluo_catastral || predio.avaluo` (línea 258)
+**Solución:** Se corrigió para usar `predio.avaluo_catastral || predio.avaluo`
+
+---
+
+### ⚠️ PENDIENTE: Unificar flujos "Crear/Editar Predio"
+
+**Estado:** Parcialmente implementado
+- El botón "Nuevo Predio" existe en el tab "Predios"
+- El modal de "Editar Predio" existe en el visor
+- Falta verificar que sean idénticos a Conservación
+
+### ⚠️ PENDIENTE: Selección de Vigencia al Finalizar
+
+**Estado:** Por implementar
+- Al hacer clic en "Finalizar Proyecto", debe aparecer opción para seleccionar la vigencia destino
 
 ---
 
