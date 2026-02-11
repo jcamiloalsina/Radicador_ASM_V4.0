@@ -5538,6 +5538,16 @@ export default function VisorActualizacion() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Explicación del proceso */}
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800">
+              <p className="font-medium mb-1">📋 Al sincronizar:</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>Primero <strong>SUBE</strong> su trabajo de campo al servidor</li>
+                <li>Después <strong>DESCARGA</strong> datos actualizados (GDB nueva)</li>
+              </ol>
+              <p className="mt-1 text-blue-600">✅ Su trabajo de campo NO se perderá</p>
+            </div>
+            
             {/* Estado actual */}
             <div className="p-4 rounded-lg bg-slate-50 space-y-3">
               <div className="flex items-center justify-between">
