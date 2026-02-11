@@ -47,6 +47,50 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 3)
 
+### ✅ COMPLETADO: Identificación Visual de Predios con MEJORAS + Toggle Construcciones (P0)
+
+**Problema reportado:** 
+1. Los predios con mejoras eran difíciles de ubicar - había que buscarlos manualmente
+2. Las construcciones en el visor no se veían o no estaban bien configuradas
+
+**Solución implementada:**
+
+1. **Identificación visual de MEJORAS:**
+   - Las mejoras se identifican por el código predial: últimos 4 dígitos (posiciones 27-30) diferentes de "0000"
+   - **Color distintivo en el mapa:** Cyan (#06b6d4) con borde punteado
+   - **Badge "MEJORA"** visible en:
+     - Panel de detalles del predio
+     - Lista de Gestión de Predios
+   - **Filtro "Mejoras"** en la barra de estadísticas del visor y en Gestión de Predios
+
+2. **Toggle de construcciones:**
+   - Botón visible **"Const. ON/OFF"** en la barra de filtros
+   - Muestra el conteo de construcciones cargadas
+   - Permite activar/desactivar la visualización sin recargar
+
+3. **Mejoras visuales:**
+   - Tarjeta de predio mejora: borde izquierdo cyan
+   - Header del detalle: color cyan si es mejora
+   - Badge de estado incluye icono de edificio para mejoras
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js` - Filtro mejoras, toggle construcciones, estilos
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js` - Filtro mejoras, badges
+- `/app/frontend/src/components/actualizacion/DetallePredioActualizacion.jsx` - Badge mejora en detalle
+
+**Código de identificación de mejora:**
+```javascript
+const esMejora = (codigoPredial) => {
+  if (!codigoPredial || codigoPredial.length < 30) return false;
+  const ultimosCuatro = codigoPredial.substring(26, 30);
+  return ultimosCuatro !== '0000';
+};
+```
+
+**Testing:** ✅ Código compila sin errores
+
+---
+
 ### ✅ COMPLETADO: Sistema de Sincronización Inteligente Revisado (P0)
 
 **Requerimiento:** El usuario solicitó:
