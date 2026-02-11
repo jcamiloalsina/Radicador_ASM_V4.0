@@ -591,36 +591,34 @@ export default function GestionPrediosActualizacion() {
       matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
     });
     
-    // Cargar propietarios - mapear diferentes formatos
+    // Cargar propietarios - el modal de editar usa nombre_propietario (nombre completo)
     if (predio.propietarios?.length > 0) {
       setPropietarios(predio.propietarios.map(p => {
-        // Si viene con campos separados (nuevo formato)
-        if (p.primer_nombre || p.primer_apellido) {
+        // Si ya tiene nombre_propietario, usarlo directamente
+        if (p.nombre_propietario) {
           return {
-            primer_apellido: p.primer_apellido || '',
-            segundo_apellido: p.segundo_apellido || '',
-            primer_nombre: p.primer_nombre || '',
-            segundo_nombre: p.segundo_nombre || '',
-            estado: p.estado || p.estado_civil || '',
+            nombre_propietario: p.nombre_propietario || '',
             tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
-            numero_documento: p.numero_documento || p.documento || ''
+            numero_documento: p.numero_documento || p.documento || '',
+            estado_civil: p.estado_civil || p.estado || ''
           };
         }
-        // Si viene con nombre_propietario (formato antiguo R1/R2)
-        const nombreCompleto = p.nombre_propietario || '';
-        const partes = nombreCompleto.split(' ').filter(x => x);
+        // Si tiene campos separados, combinarlos
+        const nombreCompleto = [
+          p.primer_apellido,
+          p.segundo_apellido,
+          p.primer_nombre,
+          p.segundo_nombre
+        ].filter(x => x).join(' ');
         return {
-          primer_apellido: partes[0] || '',
-          segundo_apellido: partes[1] || '',
-          primer_nombre: partes[2] || '',
-          segundo_nombre: partes.slice(3).join(' ') || '',
-          estado: p.estado || p.estado_civil || '',
+          nombre_propietario: nombreCompleto || '',
           tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
-          numero_documento: p.numero_documento || p.documento || ''
+          numero_documento: p.numero_documento || p.documento || '',
+          estado_civil: p.estado_civil || p.estado || ''
         };
       }));
     } else {
-      setPropietarios([{ primer_apellido: '', segundo_apellido: '', primer_nombre: '', segundo_nombre: '', estado: '', tipo_documento: 'C', numero_documento: '' }]);
+      setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
     }
     
     // Cargar zonas de terreno
