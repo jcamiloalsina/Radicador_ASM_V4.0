@@ -2626,6 +2626,74 @@ export default function VisorActualizacion() {
     );
   }
   
+  // Pantalla de sincronización obligatoria
+  if (showSyncScreen && isOnline) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-6 p-4 bg-gradient-to-b from-slate-100 to-slate-200">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+          <div className="text-center mb-6">
+            <RefreshCw className={`w-16 h-16 mx-auto mb-4 text-amber-500 ${isSyncing ? 'animate-spin' : ''}`} />
+            <h2 className="text-xl font-semibold text-slate-800">Sincronización Requerida</h2>
+            <p className="text-slate-600 mt-2">
+              Es necesario sincronizar los datos con el servidor antes de continuar.
+            </p>
+          </div>
+          
+          {isSyncing ? (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800 font-medium mb-2">{syncProgress.message}</p>
+                <div className="w-full bg-amber-200 rounded-full h-2">
+                  <div 
+                    className="bg-amber-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: syncProgress.total > 0 ? `${(syncProgress.current / syncProgress.total) * 100}%` : '0%' }}
+                  />
+                </div>
+                <p className="text-xs text-amber-600 mt-1 text-right">
+                  {syncProgress.current}/{syncProgress.total}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Button 
+                onClick={handlePerformFullSync}
+                className="w-full bg-amber-500 hover:bg-amber-600"
+                disabled={isSyncing}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Sincronizar Ahora
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={handleSkipSync}
+                className="w-full"
+                disabled={isSyncing}
+              >
+                Omitir y usar datos locales
+              </Button>
+              
+              <p className="text-xs text-slate-500 text-center mt-2">
+                ⚠️ Si omite la sincronización, trabajará con los datos almacenados localmente
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Info de última sincronización */}
+        <div className="text-center text-sm text-slate-500">
+          <p>Proyecto: <span className="font-medium">{proyecto.nombre}</span></p>
+          {offlineStats.cambiosPendientes > 0 && (
+            <p className="text-amber-600 mt-1">
+              ⚠️ {offlineStats.cambiosPendientes} cambio(s) pendiente(s) por subir
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-slate-100">
       {/* Header */}
