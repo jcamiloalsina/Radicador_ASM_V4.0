@@ -126,15 +126,38 @@ export default function GestionPrediosActualizacion() {
     matricula_inmobiliaria: ''
   });
   
-  // Estado para múltiples propietarios (igual que Conservación)
+  // Estado para múltiples propietarios (formato XTF) - IGUAL A CONSERVACIÓN
   const [propietarios, setPropietarios] = useState([{
-    nombre_propietario: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    primer_nombre: '',
+    segundo_nombre: '',
+    estado: '',  // Campo libre: casado, viudo, soltero, etc.
     tipo_documento: 'C',
-    numero_documento: '',
-    estado_civil: ''
+    numero_documento: ''
   }]);
   
-  // Estado para zonas físicas R2 (igual que Conservación)
+  // Estado para zonas de terreno (R2) - SEPARADO - IGUAL A CONSERVACIÓN
+  const [zonasTerreno, setZonasTerreno] = useState([{
+    zona_fisica: '',
+    zona_economica: '',
+    area_terreno: '0'
+  }]);
+  
+  // Estado para construcciones (R2) - SEPARADO - IGUAL A CONSERVACIÓN
+  const [construcciones, setConstrucciones] = useState([{
+    id: 'A',
+    piso: '1',
+    habitaciones: '0',
+    banos: '0',
+    locales: '0',
+    tipificacion: '',
+    uso: '',
+    puntaje: '0',
+    area_construida: '0'
+  }]);
+  
+  // Estado para zonas físicas (usado en modal de edición - formato antiguo para compatibilidad)
   const [zonasFisicas, setZonasFisicas] = useState([{
     zona_fisica: '0',
     zona_economica: '0',
@@ -147,31 +170,7 @@ export default function GestionPrediosActualizacion() {
     area_construida: '0'
   }]);
   
-  // Funciones para manejar propietarios
-  const agregarPropietario = () => {
-    setPropietarios([...propietarios, {
-      nombre_propietario: '',
-      tipo_documento: 'C',
-      numero_documento: '',
-      estado_civil: ''
-    }]);
-  };
-  
-  const eliminarPropietario = (index) => {
-    if (propietarios.length > 1) {
-      setPropietarios(propietarios.filter((_, i) => i !== index));
-    }
-  };
-  
-  const actualizarPropietario = (index, campo, valor) => {
-    setPropietarios(prev => {
-      const nuevos = [...prev];
-      nuevos[index] = { ...nuevos[index], [campo]: valor };
-      return nuevos;
-    });
-  };
-  
-  // Funciones para zonas físicas
+  // Funciones para manejar zonas físicas (modal de edición)
   const agregarZonaFisica = () => {
     setZonasFisicas([...zonasFisicas, {
       zona_fisica: '0',
@@ -194,6 +193,137 @@ export default function GestionPrediosActualizacion() {
   
   const actualizarZonaFisica = (index, campo, valor) => {
     setZonasFisicas(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+  
+  // Función para generar ID de construcción (A, B, C... Z, AA, AB...)
+  const generarIdConstruccion = (index) => {
+    if (index < 26) {
+      return String.fromCharCode(65 + index); // A-Z
+    } else {
+      const firstChar = String.fromCharCode(65 + Math.floor((index - 26) / 26));
+      const secondChar = String.fromCharCode(65 + ((index - 26) % 26));
+      return firstChar + secondChar; // AA, AB, AC...
+    }
+  };
+  
+  // Funciones para manejar múltiples propietarios - IGUAL A CONSERVACIÓN
+  const agregarPropietario = () => {
+    setPropietarios([...propietarios, {
+      primer_apellido: '',
+      segundo_apellido: '',
+      primer_nombre: '',
+      segundo_nombre: '',
+      estado: '',
+      tipo_documento: 'C',
+      numero_documento: ''
+    }]);
+  };
+  
+  const eliminarPropietario = (index) => {
+    if (propietarios.length > 1) {
+      setPropietarios(propietarios.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarPropietario = (index, campo, valor) => {
+    setPropietarios(prev => {
+      const nuevos = [...prev];
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      return nuevos;
+    });
+  };
+  
+  // Función para formatear número de documento con padding de 0s (12 dígitos)
+  const formatearNumeroDocumento = (numero) => {
+    if (!numero) return '';
+    const soloNumeros = numero.replace(/\D/g, '');
+    return soloNumeros.padStart(12, '0');
+  };
+  
+  // Función para generar nombre completo desde campos separados
+  const generarNombreCompleto = (prop) => {
+    const partes = [
+      prop.primer_apellido,
+      prop.segundo_apellido,
+      prop.primer_nombre,
+      prop.segundo_nombre
+    ].filter(p => p && p.trim());
+    return partes.join(' ');
+  };
+  
+  // Calcular áreas totales desde zonas y construcciones (SEPARADOS)
+  const calcularAreasTotales = () => {
+    const areaTerrenoTotal = zonasTerreno.reduce((sum, zona) => {
+      return sum + (parseFloat(zona.area_terreno) || 0);
+    }, 0);
+    const areaConstruidaTotal = construcciones.reduce((sum, const_) => {
+      return sum + (parseFloat(const_.area_construida) || 0);
+    }, 0);
+    return { areaTerrenoTotal, areaConstruidaTotal };
+  };
+  
+  // Calcular total de registros R2
+  const calcularTotalRegistrosR2 = () => {
+    return Math.max(zonasTerreno.length, construcciones.length);
+  };
+  
+  // Funciones para manejar zonas de terreno
+  const agregarZonaTerreno = () => {
+    setZonasTerreno([...zonasTerreno, {
+      zona_fisica: '',
+      zona_economica: '',
+      area_terreno: '0'
+    }]);
+  };
+  
+  const eliminarZonaTerreno = (index) => {
+    if (zonasTerreno.length > 1) {
+      setZonasTerreno(zonasTerreno.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaTerreno = (index, campo, valor) => {
+    setZonasTerreno(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+  
+  // Funciones para manejar construcciones
+  const agregarConstruccion = () => {
+    const nuevoId = generarIdConstruccion(construcciones.length);
+    setConstrucciones([...construcciones, {
+      id: nuevoId,
+      piso: '1',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      tipificacion: '',
+      uso: '',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
+  };
+  
+  const eliminarConstruccion = (index) => {
+    if (construcciones.length > 1) {
+      const nuevas = construcciones.filter((_, i) => i !== index);
+      // Reasignar IDs
+      const reasignadas = nuevas.map((c, i) => ({
+        ...c,
+        id: generarIdConstruccion(i)
+      }));
+      setConstrucciones(reasignadas);
+    }
+  };
+  
+  const actualizarConstruccion = (index, campo, valor) => {
+    setConstrucciones(prev => {
       const nuevas = [...prev];
       nuevas[index] = { ...nuevas[index], [campo]: valor };
       return nuevas;
