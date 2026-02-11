@@ -1677,6 +1677,95 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para asignar municipios a usuarios empresa */}
+      <Dialog open={showMunicipiosModal} onOpenChange={setShowMunicipiosModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-600" />
+              Asignar Municipios
+            </DialogTitle>
+            <DialogDescription>
+              Selecciona los municipios a los que <strong>{selectedUser?.full_name}</strong> tendrá acceso para ver Gestión de Predios y Visor de Predios.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-sm font-medium">Municipios Disponibles</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMunicipiosAsignados([...municipiosDisponibles])}
+                >
+                  Seleccionar todos
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMunicipiosAsignados([])}
+                >
+                  Limpiar
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto border rounded-lg p-3">
+              {municipiosDisponibles.map((municipio) => (
+                <div
+                  key={municipio}
+                  onClick={() => toggleMunicipio(municipio)}
+                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                    municipiosAsignados.includes(municipio)
+                      ? 'bg-emerald-100 border border-emerald-300'
+                      : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Checkbox 
+                    checked={municipiosAsignados.includes(municipio)}
+                    className="pointer-events-none"
+                  />
+                  <span className={`text-sm ${
+                    municipiosAsignados.includes(municipio) ? 'text-emerald-700 font-medium' : 'text-slate-700'
+                  }`}>
+                    {municipio}
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-3 text-sm text-slate-600">
+              <MapPin className="w-4 h-4 inline mr-1" />
+              {municipiosAsignados.length} municipio(s) seleccionado(s)
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMunicipiosModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={guardarMunicipios} 
+              disabled={savingMunicipios}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {savingMunicipios ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Guardar Municipios
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
