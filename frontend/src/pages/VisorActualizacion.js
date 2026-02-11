@@ -2931,16 +2931,16 @@ export default function VisorActualizacion() {
       p.numero_predial === feature.properties?.numero_predial
     );
     
-    // Verificar si es una mejora (últimos 4 dígitos del código != 0000)
+    // Verificar si el TERRENO tiene mejoras asociadas (basado en construcciones)
     const codigoFeature = feature.properties?.codigo_predial || feature.properties?.numero_predial || feature.properties?.codigo;
-    const esMejoraFeature = esMejora(codigoFeature);
+    const tieneMejoras = terrenoTieneMejora(codigoFeature);
     
     let fillColor = isUrban ? '#3b82f6' : '#22c55e'; // Azul urbano, verde rural
     let borderColor = '#1e40af'; // Borde azul por defecto
     
-    // Si es mejora, usar color cyan distintivo
-    if (esMejoraFeature) {
-      fillColor = '#06b6d4'; // Cyan para mejoras
+    // Si el terreno tiene mejoras, usar color cyan distintivo
+    if (tieneMejoras) {
+      fillColor = '#06b6d4'; // Cyan para terrenos con mejoras
       borderColor = '#0891b2';
     }
     
@@ -2957,7 +2957,7 @@ export default function VisorActualizacion() {
     
     return {
       fillColor,
-      weight: isSelected ? 3 : (esMejoraFeature ? 2 : 1),
+      weight: isSelected ? 3 : (tieneMejoras ? 2 : 1),
       opacity: 1,
       color: isSelected ? '#ef4444' : borderColor,
       fillOpacity: isSelected ? 0.6 : (esMejoraFeature ? 0.5 : 0.35),
