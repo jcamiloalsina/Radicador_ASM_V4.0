@@ -17176,7 +17176,7 @@ async def aprobar_propuesta(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Aprueba una propuesta de cambio (solo coordinador/admin)"""
+    """Aprueba una propuesta de cambio o cancelación (solo coordinador/admin)"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo coordinadores pueden aprobar propuestas")
     
@@ -17200,7 +17200,42 @@ async def aprobar_propuesta(
         }
     )
     
-    # Aplicar los cambios propuestos al predio
+    # Si es propuesta de CANCELACIÓN, aplicar la cancelación
+    if propuesta.get('tipo') == 'cancelacion':
+        historial_entry = {
+            "accion": "Cancelación aprobada",
+            "motivo": propuesta.get('motivo', ''),
+            "propuesto_por": propuesta.get('propuesto_por_nombre'),
+            "aprobado_por": current_user['full_name'],
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.predios_actualizacion.update_one(
+            {
+                "proyecto_id": propuesta['proyecto_id'],
+                "$or": [
+                    {"codigo_predial": propuesta['codigo_predial']},
+                    {"numero_predial": propuesta['codigo_predial']}
+                ]
+            },
+            {
+                "$set": {
+                    "cancelado": True,
+                    "deleted": True,
+                    "cancelacion_pendiente": False,
+                    "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                    "cancelado_por": current_user['id'],
+                    "cancelado_por_nombre": current_user['full_name'],
+                    "motivo_cancelacion": propuesta.get('motivo', ''),
+                    "estado_visita": "cancelado"
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        return {"message": "Cancelación aprobada. Predio cancelado exitosamente."}
+    
+    # Si es propuesta de CAMBIO, aplicar los cambios propuestos
     datos_propuestos = propuesta.get('datos_propuestos', {})
     
     # Preparar los datos a actualizar
