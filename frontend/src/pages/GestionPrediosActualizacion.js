@@ -953,61 +953,217 @@ export default function GestionPrediosActualizacion() {
         </DialogContent>
       </Dialog>
       
-      {/* Modal Editar Predio - Completo para R1/R2 */}
+      {/* Modal Editar Predio - IDÉNTICO A CONSERVACIÓN */}
       <Dialog open={showEditarModal} onOpenChange={setShowEditarModal}>
-        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-visible">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
           <div className="max-h-[80vh] overflow-y-auto pr-2">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Edit className="w-5 h-5 text-amber-600" />
-              Editar Predio - {formData.codigo_predial}
-            </DialogTitle>
+            <DialogTitle className="text-xl font-outfit">Editar Predio - {predioSeleccionado?.codigo_predial || predioSeleccionado?.numero_predial}</DialogTitle>
           </DialogHeader>
           
-          <Tabs defaultValue="r1" className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="r1">R1 - Jurídico</TabsTrigger>
-              <TabsTrigger value="r2">R2 - Físico</TabsTrigger>
-              <TabsTrigger value="estado">Estado</TabsTrigger>
-            </TabsList>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm text-slate-600">
+                <strong>Código Predial Nacional:</strong> {predioSeleccionado?.codigo_predial || predioSeleccionado?.numero_predial}
+              </p>
+              {formData.matricula_inmobiliaria && (
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Matrícula Inmobiliaria:</strong> {formData.matricula_inmobiliaria}
+                </p>
+              )}
+              {formData.codigo_homologado && (
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>Código Homologado:</strong> {formData.codigo_homologado}
+                </p>
+              )}
+            </div>
             
-            {/* TAB R1 - Datos Jurídicos */}
-            <TabsContent value="r1" className="space-y-4 mt-4">
-              {/* Código Predial - Solo lectura */}
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-600 uppercase font-medium">Código Predial Nacional</p>
-                    <p className="font-mono text-lg font-bold text-slate-800 break-all mt-1">
-                      {formData.codigo_predial}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-600 uppercase font-medium">Código Homologado</p>
-                    <p className="font-mono text-lg font-bold text-amber-700 mt-1">
-                      {formData.codigo_homologado || 'Sin asignar'}
-                    </p>
-                  </div>
-                </div>
+            {/* Sección de Propietarios - IGUAL QUE CONSERVACIÓN */}
+            <div className="border border-slate-200 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-slate-800">Propietarios</h4>
+                <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
+                </Button>
               </div>
               
-              {/* Sección de Propietarios con estado civil */}
-              <div className="border border-slate-200 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-semibold text-slate-800 flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Propietarios (R1)
-                  </h4>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setFormData({
-                      ...formData,
-                      propietarios: [...formData.propietarios, { nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }]
-                    })}
-                    className="text-emerald-700"
+              {propietarios.map((prop, index) => (
+                <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50 mb-3">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                    {propietarios.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietario(index)} className="text-red-600 hover:text-red-700">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">Nombre Completo *</Label>
+                      <Input 
+                        value={prop.nombre_propietario} 
+                        onChange={(e) => actualizarPropietario(index, 'nombre_propietario', e.target.value.toUpperCase())}
+                        placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-2 block">Tipo Documento *</Label>
+                      <RadioGroup 
+                        value={prop.tipo_documento} 
+                        onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`tipo_doc_edit_${index}_${k}`} />
+                            <Label htmlFor={`tipo_doc_edit_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Número Documento *</Label>
+                      <Input 
+                        value={prop.numero_documento} 
+                        onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-2 block">Estado Civil</Label>
+                      <RadioGroup 
+                        value={prop.estado_civil || ""} 
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        className="flex flex-wrap gap-3"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="" id={`estado_civil_edit_${index}_none`} />
+                          <Label htmlFor={`estado_civil_edit_${index}_none`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
+                        </div>
+                        {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
+                          <div key={k} className="flex items-center space-x-1">
+                            <RadioGroupItem value={k} id={`estado_civil_edit_${index}_${k}`} />
+                            <Label htmlFor={`estado_civil_edit_${index}_${k}`} className="text-xs cursor-pointer">{v}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Información del Predio - IGUAL QUE CONSERVACIÓN */}
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h4 className="font-semibold text-slate-800 mb-3">Información del Predio</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Dirección *</Label>
+                  <Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="mb-2 block">Destino Económico *</Label>
+                  <RadioGroup 
+                    value={formData.destino_economico} 
+                    onValueChange={(v) => setFormData({...formData, destino_economico: v})}
+                    className="flex flex-wrap gap-3"
                   >
+                    {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
+                      <div key={k} className="flex items-center space-x-1">
+                        <RadioGroupItem value={k} id={`destino_edit_${k}`} />
+                        <Label htmlFor={`destino_edit_${k}`} className="text-xs cursor-pointer">{k} - {v}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+                <div>
+                  <Label>Avalúo (COP) *</Label>
+                  <Input type="number" value={formData.avaluo_catastral} onChange={(e) => setFormData({...formData, avaluo_catastral: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Área Terreno (m²)</Label>
+                  <Input type="number" value={formData.area_terreno} onChange={(e) => setFormData({...formData, area_terreno: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Área Construida (m²)</Label>
+                  <Input type="number" value={formData.area_construida} onChange={(e) => setFormData({...formData, area_construida: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Matrícula Inmobiliaria</Label>
+                  <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} />
+                </div>
+              </div>
+            </div>
+            
+            {/* Zonas Físicas R2 - IGUAL QUE CONSERVACIÓN */}
+            <div className="border border-slate-200 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-slate-800">Zonas Físicas (R2)</h4>
+                <Button type="button" variant="outline" size="sm" onClick={agregarZonaFisica} className="text-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                </Button>
+              </div>
+              
+              {zonasFisicas.map((zona, index) => (
+                <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
+                    {zonasFisicas.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaFisica(index)} className="text-red-600 hover:text-red-700">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">Zona Física</Label>
+                      <Input type="text" className="h-8 text-xs" value={zona.zona_fisica} onChange={(e) => actualizarZonaFisica(index, 'zona_fisica', e.target.value)} placeholder="Ej: 01, 02..." />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Zona Económica</Label>
+                      <Input type="text" className="h-8 text-xs" value={zona.zona_economica} onChange={(e) => actualizarZonaFisica(index, 'zona_economica', e.target.value)} placeholder="Ej: A, B, C..." />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Área Terreno</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.area_terreno} onChange={(e) => actualizarZonaFisica(index, 'area_terreno', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Habitaciones</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.habitaciones} onChange={(e) => actualizarZonaFisica(index, 'habitaciones', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Baños</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.banos} onChange={(e) => actualizarZonaFisica(index, 'banos', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Pisos</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.pisos} onChange={(e) => actualizarZonaFisica(index, 'pisos', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Área Construida</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.area_construida} onChange={(e) => actualizarZonaFisica(index, 'area_construida', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Puntaje</Label>
+                      <Input type="number" className="h-8 text-xs" value={zona.puntaje} onChange={(e) => actualizarZonaFisica(index, 'puntaje', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowEditarModal(false)}>Cancelar</Button>
+            <Button 
+              onClick={() => guardarPredio(false)} 
+              className="bg-emerald-700 hover:bg-emerald-800"
+            >
+              Guardar Cambios
+            </Button>
+          </div>
+          </div>
+        </DialogContent>
+      </Dialog>
                     <Plus className="w-4 h-4 mr-1" /> Agregar
                   </Button>
                 </div>
