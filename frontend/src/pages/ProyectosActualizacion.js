@@ -1465,6 +1465,282 @@ export default function ProyectosActualizacion() {
                   </div>
                 </TabsContent>
                 
+                {/* Tab Gestión de Predios */}
+                <TabsContent value="predios" className="space-y-4 mt-4">
+                  {/* Header con estadísticas y botones */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => setPrediosFiltroEstado('todos')}
+                      >
+                        Total: {prediosStats.total}
+                      </Badge>
+                      <Badge 
+                        className="bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200"
+                        onClick={() => setPrediosFiltroEstado('pendiente')}
+                      >
+                        Pendientes: {prediosStats.pendientes}
+                      </Badge>
+                      <Badge 
+                        className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
+                        onClick={() => setPrediosFiltroEstado('visitado')}
+                      >
+                        Visitados: {prediosStats.visitados}
+                      </Badge>
+                      <Badge 
+                        className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200"
+                        onClick={() => setPrediosFiltroEstado('actualizado')}
+                      >
+                        Actualizados: {prediosStats.actualizados}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => fetchPrediosProyecto(proyectoSeleccionado.id)}
+                        disabled={loadingPredios}
+                      >
+                        {loadingPredios ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="bg-amber-600 hover:bg-amber-700"
+                        onClick={() => setShowCrearPredioModal(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Nuevo Predio
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Filtros */}
+                  <div className="flex flex-wrap gap-2">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        placeholder="Buscar por código, dirección..."
+                        value={prediosBusqueda}
+                        onChange={(e) => setPrediosBusqueda(e.target.value)}
+                        className="pl-8 h-9"
+                      />
+                    </div>
+                    <Select value={prediosFiltroZona} onValueChange={setPrediosFiltroZona}>
+                      <SelectTrigger className="w-32 h-9">
+                        <SelectValue placeholder="Zona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todas</SelectItem>
+                        <SelectItem value="rural">Rural</SelectItem>
+                        <SelectItem value="urbano">Urbano</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Lista de Predios */}
+                  {loadingPredios ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                    </div>
+                  ) : prediosFiltrados.length === 0 ? (
+                    <Card className="bg-slate-50">
+                      <CardContent className="p-6 text-center">
+                        <Building2 className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="text-slate-500">
+                          {prediosBusqueda ? 'No se encontraron predios' : 'Cargue predios para este proyecto'}
+                        </p>
+                        {!prediosBusqueda && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="mt-3"
+                            onClick={() => fetchPrediosProyecto(proyectoSeleccionado.id)}
+                          >
+                            Cargar Predios
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <div className="text-xs text-slate-500 mb-2">
+                        Mostrando {prediosPaginados.length} de {prediosFiltrados.length} predios
+                      </div>
+                      <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                        {prediosPaginados.map((predio, idx) => {
+                          const codigo = predio.codigo_predial || predio.numero_predial || 'Sin código';
+                          return (
+                            <Card key={predio._id || idx} className="hover:border-amber-300 transition-colors">
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-mono text-xs font-medium truncate">{codigo}</p>
+                                      {renderEstadoVisitaBadge(predio.estado_visita)}
+                                      <Badge variant="outline" className="text-xs">{getZonaFromCodigo(codigo)}</Badge>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500 space-y-0.5">
+                                      {predio.direccion && (
+                                        <p className="flex items-center gap-1 truncate">
+                                          <MapPin className="w-3 h-3 flex-shrink-0" />{predio.direccion}
+                                        </p>
+                                      )}
+                                      {predio.propietarios?.[0]?.nombre_propietario && (
+                                        <p className="flex items-center gap-1 truncate">
+                                          <User className="w-3 h-3 flex-shrink-0" />{predio.propietarios[0].nombre_propietario}
+                                        </p>
+                                      )}
+                                      <div className="flex gap-3">
+                                        {predio.matricula_inmobiliaria && (
+                                          <span className="flex items-center gap-1">
+                                            <FileSpreadsheet className="w-3 h-3" />Mat: {predio.matricula_inmobiliaria}
+                                          </span>
+                                        )}
+                                        {predio.area_terreno && (
+                                          <span>{formatArea(predio.area_terreno)}</span>
+                                        )}
+                                        {(predio.avaluo_catastral || predio.avaluo) && (
+                                          <span className="text-emerald-600 font-medium">
+                                            {formatCurrency(predio.avaluo_catastral || predio.avaluo)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                          <MoreVertical className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => {
+                                          setPredioSeleccionadoEditar(predio);
+                                          setShowEditarPredioModal(true);
+                                        }}>
+                                          <Pencil className="w-4 h-4 mr-2" />
+                                          Editar Predio
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                          setShowDetalleModal(false);
+                                          navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}?codigo=${encodeURIComponent(codigo)}`);
+                                        }}>
+                                          <Map className="w-4 h-4 mr-2" />
+                                          Ver en Mapa
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        {predio.estado_visita !== 'visitado' && (
+                                          <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'visitado')}>
+                                            <ClipboardList className="w-4 h-4 mr-2 text-blue-600" />
+                                            Marcar Visitado
+                                          </DropdownMenuItem>
+                                        )}
+                                        {predio.estado_visita !== 'actualizado' && (
+                                          <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'actualizado')}>
+                                            <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                                            Marcar Actualizado
+                                          </DropdownMenuItem>
+                                        )}
+                                        {predio.estado_visita && predio.estado_visita !== 'pendiente' && (
+                                          <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'pendiente')}>
+                                            <AlertCircle className="w-4 h-4 mr-2 text-yellow-600" />
+                                            Marcar Pendiente
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Paginación */}
+                      {totalPaginasPredios > 1 && (
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPrediosPagina(1)}
+                            disabled={prediosPagina === 1}
+                          >
+                            ««
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPrediosPagina(p => Math.max(1, p - 1))}
+                            disabled={prediosPagina === 1}
+                          >
+                            «
+                          </Button>
+                          <span className="text-sm text-slate-600 px-2">
+                            {prediosPagina} / {totalPaginasPredios}
+                          </span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPrediosPagina(p => Math.min(totalPaginasPredios, p + 1))}
+                            disabled={prediosPagina === totalPaginasPredios}
+                          >
+                            »
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setPrediosPagina(totalPaginasPredios)}
+                            disabled={prediosPagina === totalPaginasPredios}
+                          >
+                            »»
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* Tab Visor de Predios */}
+                <TabsContent value="visor" className="space-y-4 mt-4">
+                  {proyectoSeleccionado?.gdb_procesado ? (
+                    <div className="text-center py-6">
+                      <Map className="w-16 h-16 mx-auto text-amber-500 mb-4" />
+                      <h3 className="text-lg font-medium text-slate-700 mb-2">Visor de Campo</h3>
+                      <p className="text-sm text-slate-500 mb-4">
+                        {proyectoSeleccionado.base_grafica_total_predios?.toLocaleString() || 0} predios en Base Gráfica
+                        {proyectoSeleccionado.info_alfanumerica_total_registros > 0 && 
+                          ` • ${proyectoSeleccionado.info_alfanumerica_total_registros.toLocaleString()} registros R1/R2`
+                        }
+                      </p>
+                      <Button 
+                        size="lg"
+                        className="bg-amber-600 hover:bg-amber-700"
+                        onClick={() => {
+                          setShowDetalleModal(false);
+                          navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}`);
+                        }}
+                      >
+                        <MapPin className="w-5 h-5 mr-2" />
+                        Abrir Visor de Campo
+                      </Button>
+                    </div>
+                  ) : (
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="p-6 text-center">
+                        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                        <p className="text-slate-700 font-medium">Visor no disponible</p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Debe cargar la Base Gráfica (GDB) en la pestaña "Archivos" para habilitar el visor.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+                
                 {/* Tab Cronograma - Solo para admin/coordinador */}
                 {canCreate && (
                 <TabsContent value="cronograma" className="space-y-4 mt-4">
