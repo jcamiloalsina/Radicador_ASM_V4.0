@@ -882,10 +882,32 @@ export default function VisorActualizacion() {
       return { type: 'FeatureCollection', features: [] };
     }
     
+    // Crear índice de terrenos base (primeros 21 dígitos) para matching de mejoras
+    const terrenosBase = new Set();
+    for (const cod of codigosValidos) {
+      if (cod && cod.length >= 21) {
+        terrenosBase.add(cod.substring(0, 21)); // Código hasta predio (sin edificio/piso/unidad/mejora)
+      }
+    }
+    
     // Filtrar las geometrías usando el índice
     const featuresFiltradas = geometrias.features.filter(feature => {
-      const codigo = feature.properties?.codigo_predial || feature.properties?.numero_predial;
-      return codigosValidos.has(codigo);
+      const props = feature.properties || {};
+      // El GDB puede usar 'codigo', 'codigo_predial', o 'CODIGO'
+      const codigo = props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO;
+      if (!codigo) return false;
+      
+      // Match exacto primero
+      if (codigosValidos.has(codigo)) return true;
+      
+      // Match parcial para mejoras: el terreno GDB (primeros 21 dígitos) debe coincidir
+      // con algún predio/mejora en la lista (ignorando edificio/piso/unidad/mejora)
+      if (codigo.length >= 21) {
+        const terrenoGDB = codigo.substring(0, 21);
+        if (terrenosBase.has(terrenoGDB)) return true;
+      }
+      
+      return false;
     });
     
     return {
