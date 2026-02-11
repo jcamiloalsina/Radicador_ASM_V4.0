@@ -2987,8 +2987,14 @@ export default function VisorActualizacion() {
           <span>Actualizados: {estadisticas.actualizados}</span>
         </button>
         {filterEstado !== 'todos' && (
-          <span className="text-slate-400 ml-auto flex items-center gap-1">
-            <span>Mostrando: {geometriasFiltradas?.features?.length || 0} polígonos</span>
+          <span className="text-slate-500 ml-auto flex items-center gap-1 text-[10px]">
+            <span className="bg-slate-100 px-2 py-0.5 rounded">
+              {filterEstado === 'pendiente' && `${estadisticas.pendientes} predios`}
+              {filterEstado === 'visitado' && `${estadisticas.visitados} predios`}
+              {filterEstado === 'actualizado' && `${estadisticas.actualizados} predios`}
+              {' → '}
+              <strong className="text-slate-700">{geometriasFiltradas?.features?.length || 0} con GDB</strong>
+            </span>
             <button 
               onClick={() => setFilterEstado('todos')}
               className="text-red-500 hover:text-red-700 ml-1"
