@@ -12960,9 +12960,19 @@ async def upload_gdb_file(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     municipio: Optional[str] = Form(None),
+    modo_carga: Optional[str] = Form("reemplazar"),  # "reemplazar" = borra todo, "incremental" = solo añade/actualiza
+    capa_especifica: Optional[str] = Form(None),  # Si se especifica, solo carga esa capa (ej: "PERIMETRO_URBANO", "U_TERRENO")
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload GDB files (ZIP or multiple files from a GDB folder). Only authorized gestors can do this."""
+    """Upload GDB files (ZIP or multiple files from a GDB folder). Only authorized gestors can do this.
+    
+    Modos de carga:
+    - reemplazar: Elimina todas las geometrías del municipio antes de cargar (comportamiento por defecto)
+    - incremental: Solo añade/actualiza geometrías, manteniendo las existentes de otras capas
+    
+    Capa específica:
+    - Si se especifica, solo se procesará esa capa del GDB (ej: PERIMETRO_URBANO, U_CONSTRUCCION)
+    """
     import zipfile
     import shutil
     
@@ -12974,7 +12984,9 @@ async def upload_gdb_file(
         "status": "iniciando",
         "progress": 0,
         "message": "Iniciando carga de archivos...",
-        "upload_id": upload_id
+        "upload_id": upload_id,
+        "modo_carga": modo_carga,
+        "capa_especifica": capa_especifica
     }
     
     # Check if user is an authorized gestor
@@ -13007,14 +13019,18 @@ async def upload_gdb_file(
         user_id,
         current_user,
         temp_files,
-        municipio
+        municipio,
+        modo_carga,
+        capa_especifica
     )
     
     # Responder inmediatamente con el upload_id para que el frontend pueda hacer polling
     return {
         "upload_id": upload_id,
         "status": "processing",
-        "message": "Carga iniciada. Use el endpoint /api/gdb/upload-progress/{upload_id} para consultar el progreso."
+        "message": "Carga iniciada. Use el endpoint /api/gdb/upload-progress/{upload_id} para consultar el progreso.",
+        "modo_carga": modo_carga,
+        "capa_especifica": capa_especifica
     }
 
 
