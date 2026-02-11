@@ -12247,6 +12247,14 @@ async def get_geometrias_filtradas(
     if not municipio:
         raise HTTPException(status_code=400, detail="Debe especificar un municipio")
     
+    # Si es usuario empresa, verificar que el municipio esté en sus asignados
+    if current_user['role'] == UserRole.EMPRESA:
+        municipios_asignados = current_user.get('municipios_asignados', [])
+        if not municipios_asignados:
+            raise HTTPException(status_code=403, detail="No tiene municipios asignados. Contacte al coordinador.")
+        if municipio not in municipios_asignados:
+            raise HTTPException(status_code=403, detail=f"No tiene acceso al municipio {municipio}")
+    
     # Construir query
     query = {"municipio": municipio}
     if zona == 'urbano':
