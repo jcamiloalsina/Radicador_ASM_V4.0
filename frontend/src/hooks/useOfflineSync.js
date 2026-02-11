@@ -363,7 +363,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
   }, [proyectoId, refreshStats]);
 
-  // Verificar si necesita sincronización (hay cambios pendientes)
+  // Verificar si necesita sincronización - SIEMPRE mostrar pantalla al inicio cuando hay conexión
   const checkInitialSync = useCallback(async () => {
     if (!proyectoId) {
       setIsInitialSyncComplete(true);
@@ -379,16 +379,17 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     try {
       // Verificar si hay cambios pendientes de subir
       const cambiosPendientes = await getCambiosPendientes(proyectoId);
+      
       if (cambiosPendientes.length > 0) {
         console.log('[Offline] Hay cambios pendientes por sincronizar:', cambiosPendientes.length);
-        setRequiresSync(true);
         setSyncProgress({ current: 0, total: cambiosPendientes.length, message: `${cambiosPendientes.length} cambio(s) pendiente(s) por subir` });
-        return true;
+      } else {
+        setSyncProgress({ current: 0, total: 0, message: 'Verificar datos del servidor' });
       }
       
-      setRequiresSync(false);
-      setIsInitialSyncComplete(true);
-      return false;
+      // SIEMPRE mostrar pantalla de sincronización al inicio cuando hay conexión
+      setRequiresSync(true);
+      return true;
     } catch (error) {
       console.error('[Offline] Error verificando sync:', error);
       setIsInitialSyncComplete(true);
