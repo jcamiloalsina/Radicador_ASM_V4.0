@@ -307,33 +307,44 @@ export default function GestionPrediosActualizacion() {
       codigo_homologado: predio.codigo_homologado || '',
       direccion: predio.direccion || '',
       comuna: predio.comuna || '',
-      destino_economico: predio.destino_economico || '',
+      destino_economico: predio.destino_economico || 'A',
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo_catastral: predio.avaluo_catastral || predio.avaluo || '',
-      matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
-      // Propietarios con estado civil
-      propietarios: predio.propietarios?.length > 0 
-        ? predio.propietarios.map(p => ({
-            nombre_propietario: p.nombre_propietario || p.nombre || '',
-            tipo_documento: p.tipo_documento || 'CC',
-            numero_documento: p.numero_documento || '',
-            estado_civil: p.estado_civil || ''
-          }))
-        : [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
-      // Zonas físicas para R2
-      zonas_fisicas: predio.zonas_fisicas?.length > 0 
-        ? predio.zonas_fisicas 
-        : predio.r2_registros?.length > 0 
-          ? predio.r2_registros 
-          : [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
-      // Datos de construcción
-      habitaciones: predio.habitaciones || '',
-      banos: predio.banos || '',
-      locales: predio.locales || '',
-      pisos: predio.pisos || '',
-      uso: predio.uso || predio.destino_economico || ''
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
     });
+    
+    // Cargar propietarios
+    if (predio.propietarios?.length > 0) {
+      setPropietarios(predio.propietarios.map(p => ({
+        nombre_propietario: p.nombre_propietario || p.nombre || '',
+        tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
+        numero_documento: p.numero_documento || p.documento || '',
+        estado_civil: p.estado_civil || ''
+      })));
+    } else {
+      setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+    }
+    
+    // Cargar zonas físicas
+    if (predio.zonas_fisicas?.length > 0) {
+      setZonasFisicas(predio.zonas_fisicas);
+    } else if (predio.r2_registros?.length > 0) {
+      setZonasFisicas(predio.r2_registros);
+    } else {
+      setZonasFisicas([{
+        zona_fisica: '0',
+        zona_economica: '0',
+        area_terreno: predio.area_terreno || '0',
+        habitaciones: predio.habitaciones || '0',
+        banos: predio.banos || '0',
+        locales: predio.locales || '0',
+        pisos: predio.pisos || '1',
+        puntaje: '0',
+        area_construida: predio.area_construida || '0'
+      }]);
+    }
+    
     setShowEditarModal(true);
   };
   
@@ -344,19 +355,24 @@ export default function GestionPrediosActualizacion() {
       codigo_homologado: '',
       direccion: '',
       comuna: '',
-      destino_economico: '',
+      destino_economico: 'A',
       area_terreno: '',
       area_construida: '',
       avaluo_catastral: '',
-      matricula_inmobiliaria: '',
-      propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
-      zonas_fisicas: [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
-      habitaciones: '',
-      banos: '',
-      locales: '',
-      pisos: '',
-      uso: ''
+      matricula_inmobiliaria: ''
     });
+    setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+    setZonasFisicas([{
+      zona_fisica: '0',
+      zona_economica: '0',
+      area_terreno: '0',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      pisos: '1',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
     setShowCrearModal(true);
   };
   
@@ -368,6 +384,8 @@ export default function GestionPrediosActualizacion() {
       // Preparar datos completos para R1/R2
       const datosCompletos = {
         ...formData,
+        propietarios: propietarios,
+        zonas_fisicas: zonasFisicas,
         // Asegurar que avaluo tenga el nombre correcto
         avaluo: formData.avaluo_catastral,
         avaluo_catastral: formData.avaluo_catastral
