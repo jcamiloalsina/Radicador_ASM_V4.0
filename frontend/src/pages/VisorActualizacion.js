@@ -622,22 +622,24 @@ export default function VisorActualizacion() {
       if (totalGeometrias === 0) {
         // Fallback: descargar todo de una vez (método anterior)
         setDownloadProgress({ current: 0, total: 1, phase: 'Descargando geometrías...' });
-        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { zona: filterZona !== 'todos' ? filterZona : undefined }
-        });
-        
-        if (response.data.geometrias?.features?.length > 0) {
-          setGeometrias(response.data.geometrias);
-          setDownloadProgress({ current: 1, total: 1, phase: 'Guardando en caché...' });
+        try {
+          const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { zona: filterZona !== 'todos' ? filterZona : undefined },
+            timeout: 60000 // 60 segundos timeout
+          });
           
-          // Guardar en caché
-          await saveGeometriasOffline(proyectoId, response.data.geometrias.features);
-          setOfflineReady(true);
-          
-          const bounds = L.geoJSON(response.data.geometrias).getBounds();
-          if (bounds.isValid()) {
-            setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
+          if (response.data?.geometrias?.features?.length > 0) {
+            setGeometrias(response.data.geometrias);
+            setDownloadProgress({ current: 1, total: 1, phase: 'Guardando en caché...' });
+            
+            // Guardar en caché
+            await saveGeometriasOffline(proyectoId, response.data.geometrias.features);
+            setOfflineReady(true);
+            
+            const bounds = L.geoJSON(response.data.geometrias).getBounds();
+            if (bounds.isValid()) {
+              setMapCenter([bounds.getCenter().lat, bounds.getCenter().lng]);
           }
           
           toast.success(`${response.data.geometrias.features.length} geometrías descargadas y listas para offline`);
