@@ -1425,24 +1425,18 @@ export default function GestionPrediosActualizacion() {
                       <Input value={estructuraCodigo.prefijo_fijo} disabled className="font-mono bg-blue-50 text-blue-800 font-bold text-center" />
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-600">Zona (6-7)</Label>
-                      <Select value={codigoManual.zona} onValueChange={(v) => handleCodigoChange('zona', v, 2)}>
-                        <SelectTrigger className="font-mono text-center">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="00">00 - Rural</SelectItem>
-                          <SelectItem value="01">01 - Urbano</SelectItem>
-                          {[...Array(98)].map((_, i) => (
-                            <SelectItem key={i+2} value={String(i+2).padStart(2, '0')}>
-                              {String(i+2).padStart(2, '0')} - Corr.
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs text-emerald-700">Zona (6-7)</Label>
+                      <Input 
+                        value={codigoManual.zona} 
+                        onChange={(e) => handleCodigoChange('zona', e.target.value, 2)}
+                        maxLength={2}
+                        className="font-mono text-center"
+                        placeholder="00"
+                      />
+                      <span className="text-xs text-slate-400">00=Rural, 01=Urbano, 02-99=Correg.</span>
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-600">Sector (8-9)</Label>
+                      <Label className="text-xs text-amber-700">Sector (8-9)</Label>
                       <Input 
                         value={codigoManual.sector} 
                         onChange={(e) => handleCodigoChange('sector', e.target.value, 2)}
@@ -1452,7 +1446,7 @@ export default function GestionPrediosActualizacion() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-600">Comuna (10-11)</Label>
+                      <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
                       <Input 
                         value={codigoManual.comuna} 
                         onChange={(e) => handleCodigoChange('comuna', e.target.value, 2)}
@@ -1462,7 +1456,7 @@ export default function GestionPrediosActualizacion() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-600">Barrio (12-13)</Label>
+                      <Label className="text-xs text-pink-700">Barrio (12-13)</Label>
                       <Input 
                         value={codigoManual.barrio} 
                         onChange={(e) => handleCodigoChange('barrio', e.target.value, 2)}
@@ -1472,7 +1466,7 @@ export default function GestionPrediosActualizacion() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-600">Manzana (14-17)</Label>
+                      <Label className="text-xs text-cyan-700">Manzana (14-17)</Label>
                       <Input 
                         value={codigoManual.manzana_vereda} 
                         onChange={(e) => handleCodigoChange('manzana_vereda', e.target.value, 4)}
@@ -1482,6 +1476,48 @@ export default function GestionPrediosActualizacion() {
                       />
                     </div>
                   </div>
+                  
+                  {/* Mostrar últimos predios existentes en la manzana - IGUAL A CONSERVACIÓN */}
+                  {codigoManual.manzana_vereda !== '0000' && (
+                    <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          Terrenos existentes en manzana {codigoManual.manzana_vereda}
+                        </p>
+                        {buscandoPrediosManzana && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
+                      </div>
+                      {prediosEnManzana.length > 0 ? (
+                        <div className="space-y-1">
+                          {prediosEnManzana.map((p, idx) => (
+                            <div 
+                              key={idx} 
+                              className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100"
+                            >
+                              <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
+                              <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
+                              {p.area_terreno && (
+                                <span className="text-slate-500 text-[10px] w-16 text-right">{Number(p.area_terreno).toLocaleString()}m²</span>
+                              )}
+                              <span className="text-cyan-600 text-[10px] bg-cyan-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                {p.registros} {p.registros === 1 ? 'reg' : 'regs'}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
+                            <p className="text-[10px] text-cyan-600">
+                              Mostrando últimos {prediosEnManzana.length} terrenos únicos (Base R1/R2)
+                            </p>
+                            <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                              💡 Siguiente: <span className="font-mono font-bold">{siguienteTerrenoSugerido}</span>
+                            </p>
+                          </div>
+                        </div>
+                      ) : !buscandoPrediosManzana ? (
+                        <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
+                      ) : null}
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-5 gap-2">
                     <div>
