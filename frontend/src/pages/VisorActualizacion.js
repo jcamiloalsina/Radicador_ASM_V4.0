@@ -244,6 +244,12 @@ export default function VisorActualizacion() {
   const [flyToPosition, setFlyToPosition] = useState(null);
   const [showPredioDetail, setShowPredioDetail] = useState(false);
   
+  // Estados para nuevo flujo simplificado
+  const [showFormularioVisita, setShowFormularioVisita] = useState(false);
+  const [showDetalleSimplificado, setShowDetalleSimplificado] = useState(false);
+  const [visitaExistente, setVisitaExistente] = useState(null);
+  const [savingVisita, setSavingVisita] = useState(false);
+  
   // Estados de tipo de revisión
   const [showTipoRevisionModal, setShowTipoRevisionModal] = useState(false);
   const [tipoRevision, setTipoRevision] = useState(null); // 'campo', 'juridico', 'calidad'
@@ -257,6 +263,12 @@ export default function VisorActualizacion() {
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
+  
+  // Estados para construcciones (como en Conservación)
+  const [tieneConstrucciones, setTieneConstrucciones] = useState(false);
+  const [construccionesPredio, setConstruccionesPredio] = useState([]);
+  const [mostrarConstruccionesPredio, setMostrarConstruccionesPredio] = useState(false);
+  const [cargandoConstrucciones, setCargandoConstrucciones] = useState(false);
   
   // Estados para edición de propietarios y zonas (igual que Conservación)
   const [propietarios, setPropietarios] = useState([{
