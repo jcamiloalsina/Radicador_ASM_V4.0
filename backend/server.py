@@ -13039,9 +13039,16 @@ async def process_gdb_upload_background(
     user_id: str,
     current_user: dict,
     temp_files: list,
-    municipio: Optional[str]
+    municipio: Optional[str],
+    modo_carga: str = "reemplazar",
+    capa_especifica: Optional[str] = None
 ):
-    """Procesa la carga de GDB en background"""
+    """Procesa la carga de GDB en background
+    
+    Args:
+        modo_carga: "reemplazar" borra todo, "incremental" solo añade/actualiza
+        capa_especifica: Si se especifica, solo procesa esa capa
+    """
     import zipfile
     import shutil
     import geopandas as gpd
