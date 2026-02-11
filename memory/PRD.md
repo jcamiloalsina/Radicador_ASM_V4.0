@@ -49,20 +49,23 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ### ✅ COMPLETADO: Pantalla de Sincronización al Inicio
 
-**Problema reportado:** La pantalla de sincronización que aparecía antes de usar el visor ya no se mostraba.
+**Problema reportado:** La pantalla de sincronización que aparecía antes de usar el visor ya no se mostraba. Además, al hacer click en "Sincronizar Datos", la pantalla no se cerraba automáticamente.
 
-**Causa:** La función `checkInitialSync()` solo mostraba la pantalla si había cambios pendientes, no siempre al inicio.
+**Causa:** 
+1. La función `checkInitialSync()` solo mostraba la pantalla si había cambios pendientes
+2. El useEffect se ejecutaba múltiples veces después de `fetchProyecto()`, volviendo a mostrar la pantalla
 
 **Solución implementada:**
-1. Modificado `useOfflineSync.js`: La función `checkInitialSync()` ahora SIEMPRE muestra la pantalla de sincronización al entrar al visor cuando hay conexión a internet.
-2. El usuario puede:
-   - **"Sincronizar Datos"**: Descarga los datos más recientes del servidor
-   - **"Continuar sin sincronizar"**: Omite la sincronización y trabaja con datos locales
+1. Modificado `useOfflineSync.js`: `checkInitialSync()` ahora SIEMPRE muestra la pantalla cuando hay conexión
+2. Agregada bandera `syncChecked` para evitar múltiples verificaciones
+3. `handlePerformFullSync` ahora SIEMPRE cierra la pantalla después de sincronizar (éxito o error)
+4. `performFullSync` ahora maneja errores de IndexedDB silenciosamente sin bloquear
 
 **Archivos modificados:**
 - `/app/frontend/src/hooks/useOfflineSync.js`
+- `/app/frontend/src/pages/VisorActualizacion.js`
 
-**Testing:** ✅ Verificado con screenshot - La pantalla de sincronización aparece correctamente al entrar al visor.
+**Testing:** ✅ Verificado con screenshots - La sincronización completa correctamente y el mapa se muestra
 
 ---
 
