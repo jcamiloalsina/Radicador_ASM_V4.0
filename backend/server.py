@@ -16022,11 +16022,8 @@ async def actualizar_predio_proyecto(
 ):
     """Actualiza un predio del proyecto (trabajo de campo)
     
-    IMPORTANTE: 
-    - Gestores solo pueden marcar visita y agregar datos de visita
-    - Cambios a datos prediales (dirección, áreas, propietarios, etc.) 
-      requieren crear una PROPUESTA que el coordinador debe aprobar
-    - Coordinadores/Admins pueden aplicar cambios directamente
+    NOTA: En Actualización, gestores pueden editar datos prediales directamente
+    (igual que en Conservación) sin requerir propuesta de cambio.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para actualizar predios")
@@ -16047,54 +16044,21 @@ async def actualizar_predio_proyecto(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    es_coordinador = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]
-    
-    # Campos que SOLO gestores pueden modificar (datos de visita)
-    campos_visita = [
+    # Todos los campos permitidos (igual que Conservación)
+    campos_permitidos = [
         'estado_visita', 'observaciones_campo', 'ubicacion_gps',
-        'visitado_por', 'visitado_en',
-        'visita', 'datos_notificacion', 'fotos',
-        'sin_cambios'  # Marcar si el predio fue visitado sin modificaciones
-    ]
-    
-    # Campos que requieren aprobación del coordinador (datos prediales)
-    campos_prediales = [
-        'direccion', 'destino_economico', 'area_terreno', 'area_construida',
+        'visitado_por', 'visitado_en', 'visita', 'datos_notificacion', 'fotos',
+        'sin_cambios', 'direccion', 'destino_economico', 'area_terreno', 'area_construida',
         'matricula_inmobiliaria', 'avaluo_catastral', 'estrato', 'comuna',
-        'propietarios', 'zonas_fisicas',
-        'actualizado_por', 'actualizado_en',
+        'propietarios', 'zonas_fisicas', 'actualizado_por', 'actualizado_en',
         'informacion_construcciones', 'calificacion_construccion', 
         'resumen_areas', 'es_ph', 'datos_ph', 'datos_condominio',
-        # Campos adicionales para R1/R2
-        'avaluo', 'codigo_homologado', 'habitaciones', 'banos', 'locales', 'pisos', 'uso'
+        'avaluo', 'codigo_homologado', 'habitaciones', 'banos', 'locales', 'pisos', 'uso',
+        'codigo_predial'
     ]
     
-    # Verificar si el gestor está intentando modificar datos prediales
-    if not es_coordinador:
-        campos_prediales_modificados = [k for k in data.keys() if k in campos_prediales]
-        
-        # Si intenta marcar como 'actualizado' sin ser coordinador
-        if data.get('estado_visita') == 'actualizado':
-            raise HTTPException(
-                status_code=403, 
-                detail="Los gestores no pueden marcar como 'actualizado' directamente. Debe crear una propuesta de cambio que será revisada por el coordinador."
-            )
-        
-        # Si intenta modificar campos prediales
-        if campos_prediales_modificados:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Los cambios a datos prediales ({', '.join(campos_prediales_modificados)}) requieren crear una propuesta de cambio. Use el botón 'Proponer Cambios' para enviar una solicitud al coordinador."
-            )
-        
-        # Solo permitir campos de visita para gestores
-        update_data = {k: v for k, v in data.items() if k in campos_visita}
-        accion = "visita_registrada"
-    else:
-        # Coordinadores pueden modificar todo
-        campos_permitidos = campos_visita + campos_prediales
-        update_data = {k: v for k, v in data.items() if k in campos_permitidos}
-        accion = "actualizacion_directa" if data.get('estado_visita') == 'actualizado' else "visita"
+    update_data = {k: v for k, v in data.items() if k in campos_permitidos}
+    accion = "actualizacion" if data.get('estado_visita') == 'actualizado' else "visita"
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
