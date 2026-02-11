@@ -499,18 +499,41 @@ export default function GestionPrediosActualizacion() {
     try {
       const token = localStorage.getItem('token');
       
+      // Para nuevo predio, construir el código desde los campos manuales
+      let codigoFinal = formData.codigo_predial;
+      let codigoHomologadoFinal = formData.codigo_homologado;
+      
+      if (esNuevo) {
+        codigoFinal = construirCodigoCompleto();
+        
+        // Validar código de 30 dígitos
+        if (codigoFinal.length !== 30) {
+          toast.error('El código predial debe tener 30 dígitos');
+          return;
+        }
+        
+        // Verificar que el código esté disponible
+        if (!verificacionCodigo || verificacionCodigo.estado === 'existente') {
+          toast.error('Por favor verifique que el código predial esté disponible');
+          return;
+        }
+        
+        // Asignar código homologado
+        codigoHomologadoFinal = siguienteCodigoHomologado?.codigo || '';
+      }
+      
       // Preparar datos completos para R1/R2
       const datosCompletos = {
         ...formData,
+        codigo_predial: codigoFinal,
+        codigo_homologado: codigoHomologadoFinal,
         propietarios: propietarios,
         zonas_fisicas: zonasFisicas,
-        // Asegurar que avaluo tenga el nombre correcto
         avaluo: formData.avaluo_catastral,
         avaluo_catastral: formData.avaluo_catastral
       };
       
       if (esNuevo) {
-        // Crear nuevo predio
         await axios.post(
           `${API}/actualizacion/proyectos/${proyectoId}/predios`,
           datosCompletos,
@@ -519,7 +542,6 @@ export default function GestionPrediosActualizacion() {
         toast.success('Predio creado correctamente');
         setShowCrearModal(false);
       } else {
-        // Editar predio existente (usar PATCH)
         const codigo = predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial;
         await axios.patch(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}`,
