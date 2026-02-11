@@ -125,48 +125,44 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setIsOnline(true);
       
       if (wasOffline && proyectoId) {
-        // SE RECONECTÓ - Verificar si hay cambios pendientes
-        console.log('[Offline] Conexión restaurada. Verificando estado...');
+        // SE RECONECTÓ - SIEMPRE BLOQUEAR con modal para sincronizar
+        console.log('[Offline] Conexión restaurada - BLOQUEANDO para sincronizar');
         
         try {
           const cambios = await getCambiosPendientes(proyectoId);
           
-          // SOLO mostrar modal si hay cambios pendientes (críticos para subir)
+          // SIEMPRE mostrar modal bloqueante al reconectarse
+          setRequiresSync(true);
+          setIsInitialSyncComplete(false);
+          setWasOfflineWorking(true);
+          
           if (cambios.length > 0) {
-            console.log('[Offline] Hay cambios pendientes - mostrando modal');
-            setRequiresSync(true);
-            setIsInitialSyncComplete(false);
             setSyncProgress({ 
               current: 0, 
               total: cambios.length, 
-              message: `Conexión restaurada. ${cambios.length} cambio(s) pendiente(s) por subir.` 
+              message: `Conexión restaurada. Subiendo ${cambios.length} cambio(s) de trabajo de campo...` 
             });
           } else {
-            // Sin cambios pendientes - sincronizar silenciosamente en segundo plano
-            console.log('[Offline] Sin cambios pendientes - sincronizando en segundo plano');
-            toast.success('Conexión restaurada', { 
-              description: 'Sincronizando en segundo plano...', 
-              duration: 2000 
+            setSyncProgress({ 
+              current: 0, 
+              total: 0, 
+              message: 'Conexión restaurada. Actualizando datos del servidor...' 
             });
-            // Iniciar sincronización en segundo plano si no está activa
-            if (!backgroundSyncRef.current) {
-              setTimeout(() => {
-                if (navigator.onLine && !backgroundSyncRef.current) {
-                  performBackgroundSync();
-                }
-              }, 1000);
-            }
           }
         } catch (e) {
           console.error('[Offline] Error al verificar:', e);
-          toast.success('Conexión restaurada', { duration: 2000 });
+          // Aún así mostrar modal para sincronizar
+          setRequiresSync(true);
+          setIsInitialSyncComplete(false);
+          setSyncProgress({ current: 0, total: 0, message: 'Conexión restaurada. Sincronizando...' });
         }
       }
     };
 
     const handleOffline = () => {
       setIsOnline(false);
-      toast.warning('Sin conexión', { description: 'Trabajando en modo offline' });
+      setWasOfflineWorking(true);
+      toast.warning('Sin conexión', { description: 'Trabajando en modo offline. Los cambios se guardarán localmente.' });
     };
 
     window.addEventListener('online', handleOnline);
@@ -176,7 +172,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [proyectoId, refreshStats]);
+  }, [proyectoId, isOnline]);
   
   // Inicializar DB solo una vez
   useEffect(() => {
