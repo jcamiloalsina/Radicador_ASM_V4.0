@@ -1990,7 +1990,7 @@ export default function ProyectosActualizacion() {
             {!gdbFileSelected ? (
               <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
                 <Database className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-600 mb-3">Seleccione el archivo GDB a cargar</p>
+                <p className="text-sm text-slate-600 mb-3">Seleccione el archivo a cargar (GDB o Shapefile)</p>
                 <input
                   type="file"
                   id="gdb-modal-file"
@@ -2008,6 +2008,7 @@ export default function ProyectosActualizacion() {
                   <Upload className="w-4 h-4 mr-2" />
                   Seleccionar archivo ZIP
                 </Button>
+                <p className="text-xs text-slate-400 mt-2">ZIP con GDB (.gdb) o Shapefile (.shp + .shx + .dbf + .prj)</p>
               </div>
             ) : (
               <div className="bg-slate-50 p-3 rounded-lg flex items-center justify-between">
