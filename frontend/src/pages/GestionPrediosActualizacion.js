@@ -892,11 +892,11 @@ export default function GestionPrediosActualizacion() {
                       <Label className="text-xs mb-2 block">Estado Civil</Label>
                       <RadioGroup 
                         value={prop.estado_civil || ""} 
-                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v === 'none' ? '' : v)}
                         className="flex flex-wrap gap-3"
                       >
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="" id={`estado_civil_create_${index}_none`} />
+                          <RadioGroupItem value="none" id={`estado_civil_create_${index}_none`} />
                           <Label htmlFor={`estado_civil_create_${index}_none`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
                         </div>
                         {catalogos?.estado_civil && Object.entries(catalogos.estado_civil).map(([k, v]) => (
