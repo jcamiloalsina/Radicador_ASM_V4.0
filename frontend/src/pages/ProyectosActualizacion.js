@@ -45,7 +45,13 @@ import {
   CornerDownRight,
   Download,
   BarChart3,
-  WifiOff
+  WifiOff,
+  Building2,
+  Map,
+  Pencil,
+  ClipboardList,
+  DollarSign,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
