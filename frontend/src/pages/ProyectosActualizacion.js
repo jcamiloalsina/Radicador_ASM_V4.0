@@ -1549,15 +1549,20 @@ export default function ProyectosActualizacion() {
                 )}
                 
                 {/* Tab Cronograma - Solo para admin/coordinador */}
-                  {/* Header con estadísticas y botones */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex gap-2">
-                      <Badge 
-                        variant="outline" 
-                        className="cursor-pointer hover:bg-slate-100"
-                        onClick={() => setPrediosFiltroEstado('todos')}
-                      >
-                        Total: {prediosStats.total}
+                {canCreate && (
+                <TabsContent value="cronograma" className="space-y-4 mt-4">
+                  {etapas.length === 0 ? (
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="p-6 text-center">
+                        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
+                        <p className="text-slate-700 font-medium">Este proyecto no tiene etapas</p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Los proyectos creados antes del sistema de cronograma no tienen etapas.
+                          Puede crear un nuevo proyecto para usar esta funcionalidad.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
                       </Badge>
                       <Badge 
                         className="bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200"
