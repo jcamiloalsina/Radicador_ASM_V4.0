@@ -123,6 +123,19 @@ export default function ProyectosActualizacion() {
   // Tab del modal de detalle
   const [detalleTab, setDetalleTab] = useState('info');
 
+  // Estados para Gestión de Predios
+  const [prediosProyecto, setPrediosProyecto] = useState([]);
+  const [loadingPredios, setLoadingPredios] = useState(false);
+  const [prediosBusqueda, setPrediosBusqueda] = useState('');
+  const [prediosFiltroEstado, setPrediosFiltroEstado] = useState('todos');
+  const [prediosFiltroZona, setPrediosFiltroZona] = useState('todos');
+  const [prediosPagina, setPrediosPagina] = useState(1);
+  const [prediosStats, setPrediosStats] = useState({ total: 0, pendientes: 0, visitados: 0, actualizados: 0 });
+  const [showEditarPredioModal, setShowEditarPredioModal] = useState(false);
+  const [showCrearPredioModal, setShowCrearPredioModal] = useState(false);
+  const [predioSeleccionadoEditar, setPredioSeleccionadoEditar] = useState(null);
+  const prediosPorPagina = 20;
+
   // Detectar cambios de conexión
   useEffect(() => {
     const handleOnline = () => {
