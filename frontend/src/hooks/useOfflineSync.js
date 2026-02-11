@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import {
@@ -23,50 +23,16 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const [offlineStats, setOfflineStats] = useState({ predios: 0, geometrias: 0, cambiosPendientes: 0 });
   const [hasOffline, setHasOffline] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  
+  // Ref para evitar dependencias circulares
+  const syncingRef = useRef(false);
 
-  // Detectar cambios de conexión
-  useEffect(() => {
-    const handleOnline = async () => {
-      setIsOnline(true);
-      toast.success('Conexión restaurada', { 
-        description: 'Sincronizando cambios pendientes...',
-        duration: 3000 
-      });
-      
-      // Auto-sincronizar cambios pendientes al recuperar conexión
-      setTimeout(async () => {
-        try {
-          const cambios = await getCambiosPendientes(proyectoId);
-          if (cambios.length > 0) {
-            console.log(`[Offline] ${cambios.length} cambios pendientes encontrados, sincronizando...`);
-            // Llamar sincronización directamente (no usar syncPendingChanges porque puede estar stale)
-            await syncChangesDirectly(cambios);
-          }
-        } catch (e) {
-          console.error('[Offline] Error al auto-sincronizar:', e);
-        }
-      }, 1000); // Esperar 1 segundo para que la conexión se estabilice
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast.warning('Sin conexión', { description: 'Trabajando en modo offline' });
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [proyectoId]);
-
-  // Función interna para sincronizar cambios (usada por auto-sync)
-  const syncChangesDirectly = async (cambios) => {
-    if (cambios.length === 0) return;
+  // Función para sincronizar cambios directamente (usada internamente)
+  const syncChangesDirectly = async (cambios, setIsSyncingFn, refreshStatsFn) => {
+    if (cambios.length === 0 || syncingRef.current) return;
     
-    setIsSyncing(true);
+    syncingRef.current = true;
+    setIsSyncingFn(true);
     let sincronizados = 0;
     let errores = 0;
     const token = localStorage.getItem('token');
@@ -110,8 +76,14 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       }
     }
 
-    await refreshStats();
-    setIsSyncing(false);
+    try {
+      await refreshStatsFn();
+    } catch (e) {
+      console.log('[Sync] Error actualizando stats');
+    }
+    
+    setIsSyncingFn(false);
+    syncingRef.current = false;
 
     if (sincronizados > 0) {
       toast.success(`${sincronizados} cambio(s) sincronizado(s) exitosamente`);
@@ -119,9 +91,59 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     if (errores > 0) {
       toast.error(`${errores} cambio(s) no se pudieron sincronizar`);
     }
+    
+    return { sincronizados, errores };
   };
 
-  // Inicializar DB solo una vez (ya no llama refreshStats automáticamente)
+  // Refrescar estadísticas - solo cuando se llame explícitamente
+  const refreshStats = useCallback(async () => {
+    try {
+      const stats = await getOfflineStats();
+      setOfflineStats(stats);
+    } catch (e) {
+      console.log('[useOfflineSync] Error refreshStats:', e.message);
+    }
+  }, []);
+
+  // Detectar cambios de conexión
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      toast.success('Conexión restaurada', { 
+        description: 'Verificando cambios pendientes...',
+        duration: 3000 
+      });
+      
+      // Auto-sincronizar cambios pendientes al recuperar conexión
+      setTimeout(async () => {
+        try {
+          const cambios = await getCambiosPendientes(proyectoId);
+          if (cambios.length > 0) {
+            console.log(`[Offline] ${cambios.length} cambios pendientes encontrados, sincronizando...`);
+            toast.info(`Sincronizando ${cambios.length} cambio(s) pendiente(s)...`);
+            await syncChangesDirectly(cambios, setIsSyncing, refreshStats);
+          } else {
+            console.log('[Offline] No hay cambios pendientes');
+          }
+        } catch (e) {
+          console.error('[Offline] Error al auto-sincronizar:', e);
+        }
+      }, 1500); // Esperar para que la conexión se estabilice
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('Sin conexión', { description: 'Trabajando en modo offline' });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [proyectoId, refreshStats]);
   useEffect(() => {
     let mounted = true;
     const init = async () => {
