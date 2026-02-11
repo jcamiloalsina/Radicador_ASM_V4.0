@@ -12,7 +12,10 @@ import {
   marcarCambioSincronizado,
   eliminarCambioSincronizado,
   getOfflineStats,
-  hasOfflineData
+  hasOfflineData,
+  clearAllOfflineData,
+  getConfig,
+  saveConfig
 } from '../utils/offlineDB';
 
 const API = process.env.REACT_APP_BACKEND_URL;
