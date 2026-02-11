@@ -1821,6 +1821,80 @@ export default function ProyectosActualizacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Modal Finalizar Proyecto con Vigencia */}
+      <Dialog open={showFinalizarModal} onOpenChange={setShowFinalizarModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-600" />
+              Finalizar Proyecto
+            </DialogTitle>
+            <DialogDescription>
+              Al finalizar, los datos del proyecto serán migrados a Conservación con la vigencia seleccionada.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {proyectoSeleccionado && (
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm font-medium text-slate-800">{proyectoSeleccionado.nombre}</p>
+                <p className="text-xs text-slate-500">{proyectoSeleccionado.municipio}</p>
+              </div>
+            )}
+            
+            <div>
+              <Label className="text-sm font-medium">Vigencia de Destino *</Label>
+              <p className="text-xs text-slate-500 mb-2">Seleccione el año fiscal al que se migrarán los datos</p>
+              <Select value={vigenciaSeleccionada} onValueChange={setVigenciaSeleccionada}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione vigencia" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...Array(5)].map((_, i) => {
+                    const year = new Date().getFullYear() - 2 + i;
+                    return (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Importante:</strong> Esta acción migrará todos los predios actualizados 
+                y los nuevos al módulo de Conservación. Esta operación no se puede deshacer.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinalizarModal(false)} disabled={finalizando}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleFinalizarProyecto}
+              disabled={finalizando}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {finalizando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Finalizando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Finalizar y Migrar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
