@@ -16168,6 +16168,158 @@ async def aprobar_masivo_sin_cambios(
     }
 
 
+# ==================== VISITA DE CAMPO ====================
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/visita")
+async def obtener_visita_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene los datos de la visita de campo de un predio"""
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial},
+            {"codigo_predial_nacional": codigo_predial}
+        ]
+    }, {"_id": 0})
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Extraer datos de visita del formato_visita o campos separados
+    visita = predio.get('formato_visita', {})
+    
+    # Si hay datos de visita en otros campos, incluirlos
+    if predio.get('linderos'):
+        visita['linderos'] = predio.get('linderos')
+    if predio.get('coordenadas_visita'):
+        visita['coordenadas'] = predio.get('coordenadas_visita')
+    if predio.get('propietarios_visita'):
+        visita['propietarios_visita'] = predio.get('propietarios_visita')
+    if predio.get('construcciones_visita'):
+        visita['construcciones_visita'] = predio.get('construcciones_visita')
+    if predio.get('fotos_visita'):
+        visita['fotos'] = predio.get('fotos_visita')
+    if predio.get('firma_visita'):
+        visita['firma_base64'] = predio.get('firma_visita')
+    if predio.get('observaciones_generales'):
+        visita['observaciones'] = predio.get('observaciones_generales')
+    if predio.get('sin_cambios'):
+        visita['sin_cambios'] = predio.get('sin_cambios')
+    
+    return {
+        "visita": visita if visita else None,
+        "estado_visita": predio.get('estado_visita', 'pendiente')
+    }
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/visita")
+async def guardar_visita_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    visita_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Guarda los datos de la visita de campo de un predio"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para registrar visitas")
+    
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial},
+            {"codigo_predial_nacional": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    ahora = datetime.now(timezone.utc)
+    
+    # Preparar datos de actualización
+    update_data = {
+        "formato_visita": visita_data,
+        "estado_visita": "visitado",
+        "visitado_por": current_user.get('email'),
+        "visitado_en": ahora.isoformat(),
+        "updated_at": ahora,
+        # Campos separados para facilitar consultas
+        "linderos": visita_data.get('linderos'),
+        "coordenadas_visita": visita_data.get('coordenadas'),
+        "propietarios_visita": visita_data.get('propietarios_visita'),
+        "construcciones_visita": visita_data.get('construcciones_visita'),
+        "fotos_visita": visita_data.get('fotos'),
+        "firma_visita": visita_data.get('firma_base64'),
+        "observaciones_generales": visita_data.get('observaciones'),
+        "sin_cambios": visita_data.get('sin_cambios', False),
+        "fecha_visita": visita_data.get('fecha_visita'),
+        "hora_visita": visita_data.get('hora_visita'),
+        "persona_atiende": visita_data.get('persona_atiende'),
+        "relacion_predio": visita_data.get('relacion_predio'),
+        "acceso_predio": visita_data.get('acceso_predio')
+    }
+    
+    # Registrar en historial
+    historial_entry = {
+        "fecha": ahora.isoformat(),
+        "usuario": current_user.get('email'),
+        "rol": current_user['role'],
+        "accion": "visita_registrada",
+        "comentario": f"Visita de campo registrada. {'Sin cambios detectados.' if visita_data.get('sin_cambios') else 'Cambios por verificar.'}"
+    }
+    
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": update_data,
+            "$push": {"historial_cambios": historial_entry}
+        }
+    )
+    
+    return {
+        "message": "Visita guardada correctamente",
+        "estado_visita": "visitado",
+        "sin_cambios": visita_data.get('sin_cambios', False)
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/construcciones")
+async def obtener_construcciones_proyecto(
+    proyecto_id: str,
+    codigo: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene las construcciones del proyecto, opcionalmente filtradas por código de terreno"""
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    query = {"proyecto_id": proyecto_id, "tipo": "construccion"}
+    
+    if codigo:
+        # Buscar construcciones que coincidan con el código del terreno (primeros 21-22 dígitos)
+        codigo_base = codigo[:21] if len(codigo) >= 21 else codigo
+        query["properties.terreno_codigo"] = {"$regex": f"^{codigo_base}"}
+    
+    construcciones = await db.geometrias_actualizacion.find(query, {"_id": 0}).to_list(length=100)
+    
+    # Si no encuentra por terreno_codigo, buscar por codigo directamente
+    if not construcciones and codigo:
+        query["properties.codigo"] = {"$regex": f"^{codigo[:17]}"}  # Buscar por manzana
+        del query["properties.terreno_codigo"]
+        construcciones = await db.geometrias_actualizacion.find(query, {"_id": 0}).to_list(length=100)
+    
+    return {
+        "construcciones": construcciones,
+        "total": len(construcciones)
+    }
+
+
 # ==================== EXPORTACIÓN EXCEL R1/R2 - ACTUALIZACIÓN ====================
 
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/exportar-excel")
