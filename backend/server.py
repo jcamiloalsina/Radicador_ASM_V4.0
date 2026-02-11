@@ -13451,6 +13451,119 @@ async def process_gdb_upload_background(
         urbanos_en_archivo = 0
         rural_guardadas = 0
         urban_guardadas = 0
+        capas_especificas_guardadas = 0
+        
+        # Si se especificó una capa específica, procesarla primero
+        if capa_especifica:
+            await update_progress("capa_especifica", 53, f"Procesando capa específica: {capa_especifica}...")
+            logger.info(f"GDB {municipio_nombre}: Procesando capa específica '{capa_especifica}'")
+            
+            try:
+                # Intentar leer la capa específica
+                gdf_especifica = gpd.read_file(str(gdb_found), layer=capa_especifica)
+                
+                if len(gdf_especifica) > 0:
+                    project = get_transformer_for_gdf(gdf_especifica)
+                    logger.info(f"GDB {municipio_nombre}: Capa '{capa_especifica}' tiene {len(gdf_especifica)} registros, CRS: {gdf_especifica.crs}")
+                    
+                    # Determinar tipo basado en el nombre de la capa
+                    tipo_capa = "otro"
+                    if capa_especifica.upper().startswith("R_") or "RURAL" in capa_especifica.upper():
+                        tipo_capa = "rural"
+                    elif capa_especifica.upper().startswith("U_") or "URBAN" in capa_especifica.upper():
+                        tipo_capa = "urbano"
+                    elif "PERIMETRO" in capa_especifica.upper():
+                        tipo_capa = "perimetro_urbano"
+                    
+                    total_especifica = len(gdf_especifica)
+                    for idx, row in gdf_especifica.iterrows():
+                        if idx % 200 == 0:
+                            pct = 53 + int((idx / total_especifica) * 10)
+                            await update_progress("guardando_especifica", pct, f"Procesando {capa_especifica}: {idx}/{total_especifica}")
+                        
+                        # Obtener código
+                        codigo = None
+                        for col in ['CODIGO', 'codigo', 'CODIGO_PREDIAL', 'codigo_predial', 'COD_PREDIO', 'CODIGO_PRED', 'ID', 'OBJECTID']:
+                            if col in gdf_especifica.columns and pd.notna(row.get(col)):
+                                codigo = str(row[col]).strip()
+                                break
+                        
+                        if not codigo:
+                            codigo = f"{capa_especifica}_{idx}"  # Generar código si no existe
+                        
+                        try:
+                            geom = row.geometry
+                            if geom is None or geom.is_empty:
+                                continue
+                            
+                            # Transformar a WGS84
+                            if project:
+                                geom = transform(project, geom)
+                            
+                            # Calcular área
+                            try:
+                                area_m2 = geom.area if geom.area > 0 else 0
+                            except:
+                                area_m2 = 0
+                            
+                            geom_dict = mapping(geom)
+                            
+                            # Verificar que tenga coordenadas
+                            if 'coordinates' not in geom_dict or not geom_dict['coordinates']:
+                                continue
+                            
+                            # En modo incremental, usar upsert para actualizar si existe
+                            if modo_carga == "incremental":
+                                await db.gdb_geometrias.update_one(
+                                    {"codigo": codigo, "capa_origen": capa_especifica, "municipio": municipio_nombre},
+                                    {"$set": {
+                                        "tipo": tipo_capa,
+                                        "tipo_zona": tipo_capa,
+                                        "capa_origen": capa_especifica,
+                                        "gdb_source": gdb_name,
+                                        "municipio": municipio_nombre,
+                                        "area_m2": area_m2,
+                                        "geometry": geom_dict
+                                    }},
+                                    upsert=True
+                                )
+                            else:
+                                await db.gdb_geometrias.insert_one({
+                                    "codigo": codigo,
+                                    "tipo": tipo_capa,
+                                    "tipo_zona": tipo_capa,
+                                    "capa_origen": capa_especifica,
+                                    "gdb_source": gdb_name,
+                                    "municipio": municipio_nombre,
+                                    "area_m2": area_m2,
+                                    "geometry": geom_dict
+                                })
+                            
+                            capas_especificas_guardadas += 1
+                            geometrias_guardadas += 1
+                        except Exception as geom_error:
+                            logger.warning(f"Error procesando geometría de {capa_especifica}: {geom_error}")
+                    
+                    logger.info(f"GDB {municipio_nombre}: Guardadas {capas_especificas_guardadas} geometrías de capa '{capa_especifica}'")
+                    stats['capa_especifica'] = capa_especifica
+                    stats['geometrias_capa_especifica'] = capas_especificas_guardadas
+                else:
+                    logger.warning(f"GDB {municipio_nombre}: Capa '{capa_especifica}' está vacía")
+                    
+            except Exception as capa_error:
+                logger.error(f"GDB {municipio_nombre}: Error leyendo capa '{capa_especifica}': {capa_error}")
+                # Listar capas disponibles para ayudar al usuario
+                try:
+                    capas_disponibles = fiona.listlayers(str(gdb_found))
+                    logger.info(f"Capas disponibles en el GDB: {capas_disponibles}")
+                    await update_progress("error_capa", 55, f"Capa '{capa_especifica}' no encontrada. Disponibles: {', '.join(capas_disponibles[:10])}")
+                except:
+                    pass
+            
+            # Si solo se pidió capa específica y modo incremental, no procesar las capas estándar
+            if modo_carga == "incremental":
+                await update_progress("finalizando", 90, f"Carga incremental completada. {capas_especificas_guardadas} geometrías de '{capa_especifica}'")
+                # Saltar directamente a las estadísticas finales
         
         try:
             # Rural - usar lista de capas específicas (SIN buscar dinámicamente para evitar ZONA_HOMOGENEA)
