@@ -115,22 +115,59 @@ const DetallePredioActualizacion = ({
             {sinCambios && (
               <Badge variant="outline" className="text-xs bg-gray-50">Sin cambios</Badge>
             )}
-            {esMejora && (
+            {tieneMejoras && (
               <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-300">
                 <Building className="w-3 h-3 mr-1" />
-                Mejora
+                Con Mejoras
               </Badge>
             )}
           </div>
         </div>
 
         {/* Código Predial */}
-        <div className={`p-2 rounded ${esMejora ? 'bg-cyan-50' : 'bg-slate-50'}`}>
-          <p className="text-xs text-slate-500">Código Predial Nacional {esMejora && '(Mejora)'}</p>
+        <div className={`p-2 rounded ${tieneMejoras ? 'bg-cyan-50' : 'bg-slate-50'}`}>
+          <p className="text-xs text-slate-500">Código Predial Nacional (Terreno)</p>
           <p className="font-mono text-[10px] font-medium text-slate-800 break-all">
             {predio.codigo_predial || predio.codigo_predial_nacional}
           </p>
         </div>
+        
+        {/* Lista de Mejoras si las hay */}
+        {tieneMejoras && mejorasDelTerreno && mejorasDelTerreno.length > 0 && (
+          <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-cyan-800 text-xs flex items-center gap-1">
+                <Building className="w-4 h-4" />
+                Mejoras del Terreno ({numMejoras})
+              </span>
+            </div>
+            {mejorasDelTerreno.slice(0, 3).map((mejora, idx) => {
+              const props = mejora.properties || {};
+              const codigoMejora = props.codigo || '';
+              const numMejoraStr = codigoMejora.substring(27, 30);
+              return (
+                <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-cyan-200">
+                  <div>
+                    <Badge className="bg-cyan-500 text-white text-[10px]">Mejora #{numMejoraStr}</Badge>
+                    <p className="font-mono text-[9px] text-slate-600 mt-1">{codigoMejora}</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-6 text-xs border-cyan-300 text-cyan-700"
+                    onClick={() => onOpenVisitaMejora && onOpenVisitaMejora(mejora)}
+                  >
+                    <ClipboardList className="w-3 h-3 mr-1" />
+                    Visita
+                  </Button>
+                </div>
+              );
+            })}
+            {mejorasDelTerreno.length > 3 && (
+              <p className="text-xs text-cyan-600 text-center">+{mejorasDelTerreno.length - 3} más...</p>
+            )}
+          </div>
+        )}
 
         {/* Toggle Construcciones */}
         {tieneConstrucciones && (
