@@ -1400,8 +1400,8 @@ export default function GestionPrediosActualizacion() {
             {prediosPaginados.map((predio, index) => {
               const codigo = predio.codigo_predial || predio.numero_predial || 'Sin código';
               const zona = getZonaFromCodigo(codigo);
-              // Verificar si es una mejora (últimos 4 dígitos != 0000)
-              const esMejoraPredio = codigo.length >= 30 && codigo.substring(26, 30) !== '0000';
+              // Verificar si es una mejora (últimos 3 dígitos, posiciones 28-30, != "000")
+              const esMejoraPredio = codigo.length >= 30 && codigo.substring(27, 30) !== '000';
               
               return (
                 <Card 
