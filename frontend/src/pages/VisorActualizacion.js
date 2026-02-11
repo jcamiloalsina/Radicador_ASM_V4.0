@@ -3761,9 +3761,17 @@ export default function VisorActualizacion() {
               onToggleConstrucciones={toggleConstruccionesPredio}
               onClose={cerrarDetalleSimplificado}
               onOpenVisita={abrirFormularioVisita}
+              onOpenVisitaMejora={(mejora) => {
+                setMejoraSeleccionada(mejora);
+                setTipoVisita('mejora');
+                setShowVisitaForm(true);
+                setShowDetalleSimplificado(false);
+              }}
               onOpenEdicion={abrirEdicionPredio}
               onOpenHistorial={abrirHistorial}
               onOpenCancelar={abrirCancelarModal}
+              terrenoTieneMejoras={terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
+              mejorasDelTerreno={getMejorasDeTerreno(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
               user={user}
             />
           </div>
@@ -3781,10 +3789,10 @@ export default function VisorActualizacion() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Home className={`w-5 h-5 ${esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`} />
-                {editMode ? 'Editar Predio' : (esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'Detalle de Mejora' : 'Detalle del Predio')}
-                {esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) && (
-                  <Badge className="bg-cyan-500 text-white text-xs">MEJORA</Badge>
+                <Home className={`w-5 h-5 ${terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`} />
+                {editMode ? 'Editar Predio' : 'Detalle del Terreno'}
+                {terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) && (
+                  <Badge className="bg-cyan-500 text-white text-xs">CON MEJORAS</Badge>
                 )}
               </div>
               {selectedPredio?.estado_visita && (
