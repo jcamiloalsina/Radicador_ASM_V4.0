@@ -25,6 +25,7 @@ import VisorActualizacion from "./pages/VisorActualizacion";
 import GestionPropuestas from "./pages/GestionPropuestas";
 import CertificadosGestion from "./pages/CertificadosGestion";
 import PrediosEnProceso from "./pages/PrediosEnProceso";
+import GestionPrediosActualizacion from "./pages/GestionPrediosActualizacion";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
