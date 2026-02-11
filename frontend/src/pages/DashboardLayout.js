@@ -315,6 +315,7 @@ export default function DashboardLayout() {
     const actualizacionItems = [];
     if (canAccessActualizacion) {
       actualizacionItems.push({ path: '/dashboard/proyectos-actualizacion', label: 'Proyectos', icon: FolderKanban });
+      actualizacionItems.push({ path: '/dashboard/gestion-predios-actualizacion', label: 'Gestión de Predios', icon: Building2 });
     }
     // Gestión de Propuestas solo para coordinadores/admin
     if (isCoordAdmin) {
