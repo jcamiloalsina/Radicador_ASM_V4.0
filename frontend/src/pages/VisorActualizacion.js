@@ -4536,6 +4536,26 @@ export default function VisorActualizacion() {
                       <Edit className="w-4 h-4 mr-2" />
                       Editar
                     </Button>
+                    
+                    {/* Botón Cancelar Predio - Solo si NO está cancelado ni tiene propuesta pendiente */}
+                    {!selectedPredio.cancelado && !selectedPredio.deleted && !selectedPredio.propuesta_cancelacion_pendiente && (
+                      <Button 
+                        variant="outline"
+                        onClick={abrirCancelarModal}
+                        className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {user?.role === 'coordinador' || user?.role === 'administrador' ? 'Cancelar' : 'Proponer Cancelación'}
+                      </Button>
+                    )}
+                    
+                    {/* Indicador de propuesta de cancelación pendiente */}
+                    {selectedPredio.propuesta_cancelacion_pendiente && (
+                      <div className="flex-1 flex items-center justify-center text-amber-600 text-sm">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        Cancelación pendiente de aprobación
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
