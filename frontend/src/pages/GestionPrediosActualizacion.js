@@ -2230,6 +2230,212 @@ export default function GestionPrediosActualizacion() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Modal Proponer Cambios - Para Gestores */}
+      <Dialog open={showProponerCambiosModal} onOpenChange={setShowProponerCambiosModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+          <div className="max-h-[80vh] overflow-y-auto pr-2">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-outfit flex items-center gap-2">
+              <Edit className="w-5 h-5 text-amber-600" />
+              Proponer Cambios - {predioSeleccionado?.codigo_predial}
+            </DialogTitle>
+            <DialogDescription>
+              Complete los datos que desea modificar. La propuesta será enviada al coordinador para su aprobación.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Alerta informativa */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-amber-800">
+              <strong>⚠️ Importante:</strong> Los cambios que proponga no se aplicarán directamente. 
+              El coordinador revisará su propuesta y decidirá si aprobarla o solicitar correcciones.
+            </p>
+          </div>
+          
+          <Tabs defaultValue="propietario" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="propietario">Propietario (R1)</TabsTrigger>
+              <TabsTrigger value="fisico">Físico (R2)</TabsTrigger>
+            </TabsList>
+            
+            {/* TAB PROPIETARIO */}
+            <TabsContent value="propietario" className="space-y-4 mt-4">
+              {/* Propietarios */}
+              <div className="flex justify-between items-center">
+                <h4 className="font-semibold text-slate-800">Propietarios</h4>
+                <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Agregar
+                </Button>
+              </div>
+              
+              {propietarios.map((prop, index) => (
+                <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                    {propietarios.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietario(index)} className="text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Primer Apellido *</Label>
+                      <Input value={prop.primer_apellido || ''} onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Segundo Apellido</Label>
+                      <Input value={prop.segundo_apellido || ''} onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Primer Nombre *</Label>
+                      <Input value={prop.primer_nombre || ''} onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Segundo Nombre</Label>
+                      <Input value={prop.segundo_nombre || ''} onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Estado</Label>
+                      <Input value={prop.estado || ''} onChange={(e) => actualizarPropietario(index, 'estado', e.target.value.toUpperCase())} placeholder="CASADO, SOLTERO, etc." />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Número Documento *</Label>
+                      <Input value={prop.numero_documento || ''} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Información del predio */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold text-slate-800 mb-3">Información del Predio</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Dirección *</Label>
+                    <Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})} />
+                  </div>
+                  <div>
+                    <Label>Avalúo (COP) *</Label>
+                    <Input type="number" value={formData.avaluo_catastral} onChange={(e) => setFormData({...formData, avaluo_catastral: e.target.value})} />
+                  </div>
+                  <div>
+                    <Label>Matrícula Inmobiliaria</Label>
+                    <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* TAB FÍSICO */}
+            <TabsContent value="fisico" className="space-y-4 mt-4">
+              {/* Zonas de Terreno */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-slate-800">Zonas de Terreno</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={agregarZonaTerreno} className="text-emerald-700">
+                    <Plus className="w-4 h-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+                {zonasTerreno.map((zona, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Zona {index + 1}</span>
+                      {zonasTerreno.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaTerreno(index)} className="text-red-600 h-6 w-6 p-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Zona Física</Label>
+                        <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno(index, 'zona_fisica', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Zona Económica</Label>
+                        <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno(index, 'zona_economica', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área Terreno (m²)</Label>
+                        <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno(index, 'area_terreno', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Construcciones */}
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-slate-800">Construcciones</h4>
+                  <Button type="button" variant="outline" size="sm" onClick={agregarConstruccion} className="text-emerald-700">
+                    <Plus className="w-4 h-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+                {construcciones.map((const_, index) => (
+                  <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-amber-800">Construcción {const_.id}</span>
+                      {construcciones.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => eliminarConstruccion(index)} className="text-red-600 h-6 w-6 p-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <Label className="text-xs">Piso</Label>
+                        <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion(index, 'piso', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Habitaciones</Label>
+                        <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion(index, 'habitaciones', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Baños</Label>
+                        <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion(index, 'banos', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área Construida (m²)</Label>
+                        <Input type="number" value={const_.area_construida} onChange={(e) => actualizarConstruccion(index, 'area_construida', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Resumen de áreas */}
+              <div className="bg-slate-100 rounded-lg p-3">
+                <p className="text-sm"><strong>Área Terreno Total:</strong> {calcularAreasTotales().areaTerrenoTotal.toFixed(2)} m²</p>
+                <p className="text-sm"><strong>Área Construida Total:</strong> {calcularAreasTotales().areaConstruidaTotal.toFixed(2)} m²</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setShowProponerCambiosModal(false)} disabled={enviandoPropuesta}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={enviarPropuestaCambios}
+              disabled={enviandoPropuesta}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {enviandoPropuesta ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar Propuesta'
+              )}
+            </Button>
+          </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
