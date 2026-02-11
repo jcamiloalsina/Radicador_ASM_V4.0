@@ -1171,9 +1171,23 @@ export default function GestionPrediosActualizacion() {
             <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
               <Building2 className="w-6 h-6 text-amber-600" />
               Gestión de Predios
+              {/* Indicador de estado de conexión */}
+              {!isOnline && (
+                <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-700 border-amber-300">
+                  <WifiOff className="w-3 h-3 mr-1" />
+                  Modo Offline
+                </Badge>
+              )}
+              {usingOfflineData && isOnline && (
+                <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-700 border-blue-300">
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Sincronizando...
+                </Badge>
+              )}
             </h1>
             <p className="text-slate-500 mt-1">
               {proyecto?.nombre || 'Proyecto'} - {proyecto?.municipio || ''}
+              {usingOfflineData && <span className="text-amber-600 ml-2">(Datos locales)</span>}
             </p>
           </div>
         </div>
@@ -1184,6 +1198,7 @@ export default function GestionPrediosActualizacion() {
               variant="outline"
               onClick={exportarExcel}
               className="border-amber-500 text-amber-700 hover:bg-amber-50"
+              disabled={!isOnline}
             >
               <Download className="w-4 h-4 mr-2" />
               Exportar Excel
@@ -1201,6 +1216,7 @@ export default function GestionPrediosActualizacion() {
               className="bg-amber-600 hover:bg-amber-700"
               onClick={abrirCrear}
               data-testid="btn-nuevo-predio"
+              disabled={!isOnline}
             >
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Predio
