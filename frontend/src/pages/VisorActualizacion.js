@@ -380,7 +380,9 @@ export default function VisorActualizacion() {
     servicios_publicos: [],
     observaciones: '',
     firma_base64: null,
-    sin_cambios: false
+    sin_cambios: false,
+    // Sección 11: Coordenadas GPS
+    coordenadas_gps: { latitud: '', longitud: '', precision: null, fecha_captura: null }
   });
   // Canvas refs para las firmas
   const canvasVisitadoRef = useRef(null);
