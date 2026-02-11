@@ -103,8 +103,10 @@ export default function GestionPrediosActualizacion() {
       const response = await axios.get(`${API}/actualizacion/proyectos`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      // La respuesta puede ser un array o un objeto con {proyectos: [...]}
+      const proyectosData = response.data.proyectos || response.data || [];
       // Filtrar solo proyectos activos o pausados (no archivados/completados)
-      const proyectosActivos = (response.data || []).filter(p => 
+      const proyectosActivos = proyectosData.filter(p => 
         p.estado === 'activo' || p.estado === 'pausado'
       );
       setProyectos(proyectosActivos);
