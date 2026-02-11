@@ -856,20 +856,21 @@ export default function VisorActualizacion() {
     return index;
   }, [prediosR1R2]);
   
-  // Filtrar geometrías por estado (optimizado con índices pre-calculados)
-  useEffect(() => {
+  // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
+  const geometriasFiltradas = useMemo(() => {
     if (!geometrias?.features) {
-      setGeometriasFiltradas(null);
-      return;
+      return null;
     }
     
     if (filterEstado === 'todos') {
-      setGeometriasFiltradas(geometrias);
-      return;
+      return geometrias;
     }
     
     // Usar el índice pre-calculado
     const codigosValidos = codigosPorEstadoIndex[filterEstado];
+    if (!codigosValidos || codigosValidos.size === 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
     
     // Filtrar las geometrías usando el índice
     const featuresFiltradas = geometrias.features.filter(feature => {
@@ -877,12 +878,40 @@ export default function VisorActualizacion() {
       return codigosValidos.has(codigo);
     });
     
-    setGeometriasFiltradas({
+    return {
       type: 'FeatureCollection',
       features: featuresFiltradas
-    });
+    };
   }, [geometrias, filterEstado, codigosPorEstadoIndex]);
   
+  // Filtrar construcciones por estado
+  const construccionesFiltradas = useMemo(() => {
+    if (!construcciones?.features || filterEstado === 'todos') {
+      return construcciones;
+    }
+    
+    const codigosValidos = codigosPorEstadoIndex[filterEstado];
+    if (!codigosValidos || codigosValidos.size === 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+    
+    const featuresFiltradas = construcciones.features.filter(feature => {
+      const codigo = feature.properties?.codigo_predial || feature.properties?.numero_predial;
+      return codigosValidos.has(codigo);
+    });
+    
+    return {
+      type: 'FeatureCollection',
+      features: featuresFiltradas
+    };
+  }, [construcciones, filterEstado, codigosPorEstadoIndex]);
+  
+  // Limpiar selección cuando cambia el filtro
+  useEffect(() => {
+    setSelectedGeometry(null);
+    setSelectedPredio(null);
+  }, [filterEstado]);
+
   // Función de sincronización con historial
   const handleSyncWithHistory = async () => {
     if (!isOnline) {
