@@ -1672,12 +1672,86 @@ export default function ProyectosActualizacion() {
               </select>
             </div>
 
-                  {/* Filtros */}
-                  <div className="flex flex-wrap gap-2">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        placeholder="Buscar por código, dirección..."
+            <div className="space-y-2">
+              <Label>Nombre de la Actividad *</Label>
+              <Input
+                placeholder="Ej: Análisis del perímetro urbano"
+                value={nuevaActividad.nombre}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, nombre: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Actividad Padre (opcional)</Label>
+              <select
+                value={nuevaActividad.actividad_padre_id || ''}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, actividad_padre_id: e.target.value }))}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Ninguna - Es actividad principal</option>
+                {etapaSeleccionada && getActividadesPrincipales(etapaSeleccionada.id).map((act) => (
+                  <option key={act.id} value={act.id}>↳ {act.nombre}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Selecciona una actividad padre si esta es una sub-actividad
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Fase (opcional)</Label>
+              <Input
+                placeholder="Ej: Alistamiento, Planeación, etc."
+                value={nuevaActividad.fase}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, fase: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Descripción (opcional)</Label>
+              <Textarea
+                placeholder="Descripción de la actividad..."
+                value={nuevaActividad.descripcion}
+                onChange={(e) => setNuevaActividad(prev => ({ ...prev, descripcion: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fecha Inicio (opcional)</Label>
+                <Input
+                  type="date"
+                  value={nuevaActividad.fecha_inicio}
+                  onChange={(e) => setNuevaActividad(prev => ({ ...prev, fecha_inicio: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha Fin (opcional)</Label>
+                <Input
+                  type="date"
+                  value={nuevaActividad.fecha_fin}
+                  onChange={(e) => setNuevaActividad(prev => ({ ...prev, fecha_fin: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActividadModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAgregarActividad}
+              disabled={!nuevaActividad.nombre || !etapaSeleccionada}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Agregar Actividad
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Eliminar Proyecto */}
                         value={prediosBusqueda}
                         onChange={(e) => setPrediosBusqueda(e.target.value)}
                         className="pl-8 h-9"
