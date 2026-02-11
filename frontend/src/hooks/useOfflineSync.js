@@ -463,13 +463,20 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     offlineStats,
     hasOffline,
     lastSync,
+    requiresSync,
+    syncProgress,
+    isInitialSyncComplete,
     downloadForOffline,
     saveOfflineChange,
     syncPendingChanges,
     getOfflineData,
     forceSync,
     refreshStats,
-    getPrediosOffline  // Agregar para uso directo en componentes
+    clearOfflineCache,
+    checkInitialSync,
+    performFullSync,
+    skipInitialSync,
+    getPrediosOffline
   };
 }
 
