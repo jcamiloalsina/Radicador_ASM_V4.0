@@ -416,8 +416,12 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       
       // Paso 3: Descargar geometrías actualizadas
       setSyncProgress({ current: 3, total: 4, message: 'Descargando geometrías...' });
-      if (geometriasData && geometriasData.features) {
-        await saveGeometriasOffline(proyectoId, geometriasData);
+      if (geometriasData) {
+        // Soportar tanto GeoJSON como array de features
+        const features = geometriasData.features || geometriasData;
+        if (features && features.length > 0) {
+          await saveGeometriasOffline(proyectoId, features);
+        }
       }
       
       // Paso 4: Guardar fecha de sincronización
