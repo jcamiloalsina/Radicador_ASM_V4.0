@@ -381,20 +381,20 @@ export default function GestionPrediosActualizacion() {
     }
   };
   
-  // Construir código completo de 30 dígitos
+  // Construir código completo de 30 dígitos (con padding para que siempre tenga 30 caracteres)
   const construirCodigoCompleto = () => {
     if (!estructuraCodigo?.prefijo_fijo) return '';
     return estructuraCodigo.prefijo_fijo + 
-           codigoManual.zona + 
-           codigoManual.sector + 
-           codigoManual.comuna + 
-           codigoManual.barrio + 
-           codigoManual.manzana_vereda + 
-           codigoManual.terreno + 
-           codigoManual.condicion + 
-           codigoManual.edificio + 
-           codigoManual.piso + 
-           codigoManual.unidad;
+           (codigoManual.zona || '').padStart(2, '0') + 
+           (codigoManual.sector || '').padStart(2, '0') + 
+           (codigoManual.comuna || '').padStart(2, '0') + 
+           (codigoManual.barrio || '').padStart(2, '0') + 
+           (codigoManual.manzana_vereda || '').padStart(4, '0') + 
+           (codigoManual.terreno || '').padStart(4, '0') + 
+           (codigoManual.condicion || '').padStart(1, '0') + 
+           (codigoManual.edificio || '').padStart(2, '0') + 
+           (codigoManual.piso || '').padStart(2, '0') + 
+           (codigoManual.unidad || '').padStart(4, '0');
   };
   
   // Manejar cambios en código manual
