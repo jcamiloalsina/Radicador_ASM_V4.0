@@ -15962,7 +15962,9 @@ async def actualizar_predio_proyecto(
         'propietarios', 'zonas_fisicas',
         'actualizado_por', 'actualizado_en',
         'informacion_construcciones', 'calificacion_construccion', 
-        'resumen_areas', 'es_ph', 'datos_ph', 'datos_condominio'
+        'resumen_areas', 'es_ph', 'datos_ph', 'datos_condominio',
+        # Campos adicionales para R1/R2
+        'avaluo', 'codigo_homologado', 'habitaciones', 'banos', 'locales', 'pisos', 'uso'
     ]
     
     # Verificar si el gestor está intentando modificar datos prediales
