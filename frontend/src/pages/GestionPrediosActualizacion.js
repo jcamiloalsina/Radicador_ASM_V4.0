@@ -1252,29 +1252,29 @@ export default function GestionPrediosActualizacion() {
         </Card>
         
         <Card 
-          className={`cursor-pointer hover:border-yellow-400 transition-colors ${filterEstado === 'pendiente' ? 'border-yellow-400 bg-yellow-50' : ''}`}
-          onClick={() => setFilterEstado('pendiente')}
+          className={`cursor-pointer hover:border-yellow-400 transition-colors ${filterEstado === 'pendiente' ? 'border-yellow-400 border-2 bg-yellow-50' : ''}`}
+          onClick={() => setFilterEstado(filterEstado === 'pendiente' ? 'todos' : 'pendiente')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-100 text-yellow-600">
+              <div className={`p-2 rounded-lg ${filterEstado === 'pendiente' ? 'bg-yellow-200 text-yellow-700' : 'bg-yellow-100 text-yellow-600'}`}>
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.pendientes.toLocaleString()}</p>
-                <p className="text-sm text-slate-500">Pendientes</p>
+                <p className="text-sm text-slate-500">Pendientes {filterEstado === 'pendiente' && '✓'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card 
-          className={`cursor-pointer hover:border-blue-400 transition-colors ${filterEstado === 'visitado' ? 'border-blue-400 bg-blue-50' : ''}`}
-          onClick={() => setFilterEstado('visitado')}
+          className={`cursor-pointer hover:border-blue-400 transition-colors ${filterEstado === 'visitado' ? 'border-blue-400 border-2 bg-blue-50' : ''}`}
+          onClick={() => setFilterEstado(filterEstado === 'visitado' ? 'todos' : 'visitado')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+              <div className={`p-2 rounded-lg ${filterEstado === 'visitado' ? 'bg-blue-200 text-blue-700' : 'bg-blue-100 text-blue-600'}`}>
                 <Clock className="w-5 h-5" />
               </div>
               <div>
