@@ -122,6 +122,14 @@ export default function ProyectosActualizacion() {
   const baseGraficaRef = useRef(null);
   const infoAlfanumericaRef = useRef(null);
   const [uploading, setUploading] = useState({ base_grafica: false, info_alfanumerica: false });
+  
+  // Modal de carga de GDB con opciones avanzadas
+  const [showGdbUploadModal, setShowGdbUploadModal] = useState(false);
+  const [gdbUploadOptions, setGdbUploadOptions] = useState({
+    modo_carga: 'reemplazar', // 'reemplazar' o 'incremental'
+    capa_especifica: '' // vacío = todas las capas, o nombre de capa específica
+  });
+  const [gdbFileSelected, setGdbFileSelected] = useState(null);
 
   // Tab del modal de detalle
   const [detalleTab, setDetalleTab] = useState('acciones');
