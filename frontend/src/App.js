@@ -52,6 +52,7 @@ function App() {
             <Route path="pendientes" element={<Pendientes />} />
             <Route path="permisos" element={<PermissionsManagement />} />
             <Route path="proyectos-actualizacion" element={<ProyectosActualizacion />} />
+            <Route path="gestion-predios-actualizacion" element={<GestionPrediosActualizacion />} />
             <Route path="visor-actualizacion/:proyectoId" element={<VisorActualizacion />} />
             <Route path="gestion-propuestas" element={<GestionPropuestas />} />
             <Route path="certificados" element={<CertificadosGestion />} />
