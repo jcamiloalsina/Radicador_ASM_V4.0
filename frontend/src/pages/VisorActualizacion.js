@@ -2704,10 +2704,20 @@ export default function VisorActualizacion() {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Explicación del proceso */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                <p className="font-medium mb-1">📋 El proceso de sincronización:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Primero <strong>SUBE</strong> su trabajo de campo al servidor</li>
+                  <li>Después <strong>DESCARGA</strong> los datos actualizados (GDB)</li>
+                </ol>
+                <p className="mt-2 text-blue-600">✅ Su trabajo de campo NO se perderá</p>
+              </div>
+              
               {hasPendingChanges && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-800 font-medium">
-                    ⚠️ <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> pendientes que DEBEN subirse
+                    📤 <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> de trabajo de campo por subir
                   </p>
                 </div>
               )}
@@ -2718,7 +2728,7 @@ export default function VisorActualizacion() {
                 disabled={isSyncing}
               >
                 <RefreshCw className="w-5 h-5 mr-2" />
-                {hasPendingChanges ? 'Subir Cambios Ahora' : 'Sincronizar Datos'}
+                {hasPendingChanges ? `Subir ${offlineStats.cambiosPendientes} Cambio(s) y Actualizar` : 'Sincronizar Datos'}
               </Button>
               
               {!hasPendingChanges && (
