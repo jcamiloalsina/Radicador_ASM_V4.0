@@ -1514,7 +1514,7 @@ export default function ProyectosActualizacion() {
                                   ) : (
                                     <Upload className="w-4 h-4 mr-1" />
                                   )}
-                                  {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? 'Reemplazar' : 'Cargar GDB'}
+                                  {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? 'Reemplazar' : 'Cargar GDB/SHP'}
                                 </Button>
                                 {/* Botón para agregar capa adicional (solo si ya tiene GDB) */}
                                 {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) && (
