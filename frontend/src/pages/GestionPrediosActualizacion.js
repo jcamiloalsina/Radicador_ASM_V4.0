@@ -1279,24 +1279,24 @@ export default function GestionPrediosActualizacion() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.visitados.toLocaleString()}</p>
-                <p className="text-sm text-slate-500">Visitados</p>
+                <p className="text-sm text-slate-500">Visitados {filterEstado === 'visitado' && '✓'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card 
-          className={`cursor-pointer hover:border-green-400 transition-colors ${filterEstado === 'actualizado' ? 'border-green-400 bg-green-50' : ''}`}
-          onClick={() => setFilterEstado('actualizado')}
+          className={`cursor-pointer hover:border-green-400 transition-colors ${filterEstado === 'actualizado' ? 'border-green-400 border-2 bg-green-50' : ''}`}
+          onClick={() => setFilterEstado(filterEstado === 'actualizado' ? 'todos' : 'actualizado')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 text-green-600">
+              <div className={`p-2 rounded-lg ${filterEstado === 'actualizado' ? 'bg-green-200 text-green-700' : 'bg-green-100 text-green-600'}`}>
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.actualizados.toLocaleString()}</p>
-                <p className="text-sm text-slate-500">Actualizados</p>
+                <p className="text-sm text-slate-500">Actualizados {filterEstado === 'actualizado' && '✓'}</p>
               </div>
             </div>
           </CardContent>
