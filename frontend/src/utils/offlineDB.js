@@ -842,7 +842,7 @@ export async function clearProyectoOffline(proyectoId) {
 export async function getOfflineStats() {
   try {
     const database = await getDatabase();
-  if (!database) return [];
+    if (!database) return { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
     
     let prediosCount = 0;
     let geomCount = 0;
