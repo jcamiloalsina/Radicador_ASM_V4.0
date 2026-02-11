@@ -15911,6 +15911,108 @@ async def get_predios_proyecto(
     }
 
 
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios")
+async def crear_predio_actualizacion(
+    proyecto_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un nuevo predio dentro de un proyecto de actualización.
+    El predio queda en predios_actualizacion para ser procesado durante la actualización.
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
+    
+    # Verificar que el proyecto existe y está activo
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    if proyecto.get('estado') not in [ProyectoActualizacionEstado.ACTIVO, ProyectoActualizacionEstado.PAUSADO]:
+        raise HTTPException(status_code=400, detail="El proyecto no está activo")
+    
+    municipio = proyecto.get('municipio')
+    codigo_predial = data.get('codigo_predial', '')
+    
+    if not codigo_predial:
+        raise HTTPException(status_code=400, detail="El código predial es requerido")
+    
+    # Verificar que no exista en el proyecto actual
+    existing = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código en el proyecto")
+    
+    # Crear el predio
+    predio_id = str(uuid.uuid4())
+    ahora = datetime.now(timezone.utc).isoformat()
+    
+    predio_nuevo = {
+        "id": predio_id,
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "codigo_predial_nacional": codigo_predial,
+        "numero_predial": codigo_predial,
+        "municipio": municipio,
+        "es_nuevo": True,
+        
+        # Datos R1 - Jurídicos
+        "direccion": data.get('direccion', ''),
+        "comuna": data.get('comuna', ''),
+        "destino_economico": data.get('destino_economico', ''),
+        "area_terreno": float(data.get('area_terreno') or 0),
+        "area_construida": float(data.get('area_construida') or 0),
+        "avaluo": float(data.get('avaluo_catastral') or data.get('avaluo') or 0),
+        "avaluo_catastral": float(data.get('avaluo_catastral') or data.get('avaluo') or 0),
+        "matricula_inmobiliaria": data.get('matricula_inmobiliaria', ''),
+        "codigo_homologado": data.get('codigo_homologado', ''),
+        
+        # Propietarios con estado civil
+        "propietarios": data.get('propietarios', []),
+        
+        # Datos R2 - Físicos
+        "zonas_fisicas": data.get('zonas_fisicas', []),
+        "habitaciones": data.get('habitaciones', ''),
+        "banos": data.get('banos', ''),
+        "locales": data.get('locales', ''),
+        "pisos": data.get('pisos', ''),
+        "uso": data.get('uso', ''),
+        
+        # Estado
+        "estado_visita": "pendiente",
+        
+        # Metadatos
+        "creado_por": current_user.get('email'),
+        "creado_por_nombre": current_user.get('full_name'),
+        "created_at": ahora,
+        "updated_at": ahora,
+        
+        # Historial
+        "historial_cambios": [{
+            "fecha": ahora,
+            "usuario": current_user.get('email'),
+            "rol": current_user['role'],
+            "accion": "creacion",
+            "campos_modificados": list(data.keys())
+        }]
+    }
+    
+    await db.predios_actualizacion.insert_one(predio_nuevo)
+    
+    return {
+        "message": "Predio creado correctamente",
+        "id": predio_id,
+        "codigo_predial": codigo_predial
+    }
+
+
 @api_router.patch("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}")
 async def actualizar_predio_proyecto(
     proyecto_id: str,
