@@ -29,9 +29,17 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const [requiresSync, setRequiresSync] = useState(false); // Indica si necesita sincronización obligatoria
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, message: '' }); // Progreso de sincronización
   const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false); // Sincronización inicial completada
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false); // Sincronización en segundo plano
+  const [backgroundSyncMessage, setBackgroundSyncMessage] = useState(''); // Mensaje de sincronización en segundo plano
   
   // Ref para evitar dependencias circulares
   const syncingRef = useRef(false);
+  const backgroundSyncRef = useRef(false);
+  
+  // Constante para el intervalo de sincronización (24 horas en milisegundos)
+  const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
+  // Intervalo para sincronización automática en segundo plano (5 minutos)
+  const BACKGROUND_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
   // Función para sincronizar cambios directamente (usada internamente)
   const syncChangesDirectly = async (cambios, setIsSyncingFn, refreshStatsFn) => {
