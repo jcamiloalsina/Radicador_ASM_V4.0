@@ -1,0 +1,72 @@
+{
+  "summary": "Frontend testing completed for 'Crear/Editar Predio' modal in Actualización module. All 4 features verified: 1) Zona field is now an INPUT (not Select), 2) 'Terrenos existentes en manzana' section appears when manzana != '0000', 3) 30-digit code updates dynamically, 4) Condición dropdown z-index fixed - appears above modal.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_39.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A - Frontend only testing",
+    "frontend": "100% - All 4 features tested and working"
+  },
+  "test_credentials": {
+    "coordinador": {"email": "Camilo.alsina1@hotmail.com", "password": "Asm*123*"},
+    "proyecto_id": "32ba040f-ed50-45e2-a115-22ab3a351423"
+  },
+  "seed_data_creation": "None - used existing project data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Modal 'Crear Nuevo Predio' in Actualización module now matches Conservación module (Predios.js). All features working correctly.",
+  "features_tested": {
+    "1_zona_es_input": {
+      "status": "PASSED",
+      "details": "Zona (6-7) field is an INPUT element (not a Select/dropdown). Helper text '00=Rural, 01=Urbano, 02-99=Correg.' is displayed below the field.",
+      "code_location": "GestionPrediosActualizacion.js lines 1429-1436"
+    },
+    "2_predios_en_manzana": {
+      "status": "PASSED",
+      "details": "When manzana value is different from '0000', a cyan section appears showing 'Terrenos existentes en manzana X'. If no predios exist, shows 'No hay predios registrados en esta manzana'. Uses API '/predios/por-manzana/{municipio}'.",
+      "code_location": "GestionPrediosActualizacion.js lines 1481-1520"
+    },
+    "3_codigo_30_digitos_dinamico": {
+      "status": "PASSED",
+      "details": "The 30-digit code display updates dynamically when field values change. Tested by changing Zona from '00' to '01' - code updated from '54720000...' to '54720010...'.",
+      "code_location": "GestionPrediosActualizacion.js lines 1406-1418"
+    },
+    "4_dropdown_zindex": {
+      "status": "PASSED",
+      "details": "Condición (22) dropdown appears correctly above the modal (not behind it). SelectContent z-index set to 999999 with side='bottom' default.",
+      "code_location": "select.jsx line 55 - z-[999999]"
+    }
+  },
+  "ui_verification": {
+    "crear_predio_modal": {
+      "title": "Crear Nuevo Predio - Sardinata",
+      "tabs": ["Código Nacional (30 dígitos)", "Propietario (R1)", "Físico (R2)"],
+      "codigo_homologado_section": "Shows 'Código Homologado Asignado' with availability status",
+      "codigo_nacional_section": {
+        "display": "30-digit code with color-coded segments and (30/30) counter",
+        "fields_row_1": ["Dpto+Mpio (1-5) - disabled", "Zona (6-7) - INPUT", "Sector (8-9)", "Comuna (10-11)", "Barrio (12-13)", "Manzana (14-17)"],
+        "fields_row_2": ["Terreno (18-21)", "Condición (22) - SELECT", "Edificio (23-24)", "Piso (25-26)", "Unidad (27-30)"],
+        "predios_manzana_section": "Cyan background section showing existing terrenos when manzana != '0000'"
+      },
+      "buttons": ["Verificar Código", "Cancelar", "Crear Predio"]
+    }
+  },
+  "comparison_with_conservacion": {
+    "zona_field": "IDENTICAL - Both use Input with helper text",
+    "predios_en_manzana": "IDENTICAL - Both show cyan section with existing terrenos",
+    "codigo_dinamico": "IDENTICAL - Both update 30-digit code dynamically",
+    "dropdown_zindex": "IDENTICAL - Both use z-[999999] for SelectContent"
+  }
+}
