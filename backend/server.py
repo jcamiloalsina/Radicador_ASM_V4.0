@@ -1988,6 +1988,73 @@ async def update_user_role(role_update: UserRoleUpdate, current_user: dict = Dep
     return {"message": "Rol actualizado exitosamente", "new_role": role_update.new_role}
 
 
+# ==================== GESTIÓN DE MUNICIPIOS PARA USUARIOS EMPRESA ====================
+
+@api_router.get("/admin/municipios-disponibles")
+async def get_municipios_disponibles(current_user: dict = Depends(get_current_user)):
+    """Obtiene la lista de municipios disponibles para asignar a usuarios empresa"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver municipios")
+    
+    return {
+        "municipios": list(MUNICIPIOS_DIVIPOLA.keys())
+    }
+
+
+@api_router.get("/admin/users/{user_id}/municipios")
+async def get_user_municipios(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Obtiene los municipios asignados a un usuario empresa"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver municipios de usuarios")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return {
+        "user_id": user_id,
+        "email": user.get("email"),
+        "full_name": user.get("full_name"),
+        "role": user.get("role"),
+        "municipios_asignados": user.get("municipios_asignados", [])
+    }
+
+
+@api_router.patch("/admin/users/{user_id}/municipios")
+async def update_user_municipios(
+    user_id: str, 
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza los municipios asignados a un usuario empresa"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para asignar municipios")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Solo permitir asignar municipios a usuarios empresa
+    if user.get("role") != UserRole.EMPRESA:
+        raise HTTPException(status_code=400, detail="Solo se pueden asignar municipios a usuarios con rol 'Empresa'")
+    
+    municipios = data.get("municipios_asignados", [])
+    
+    # Validar que los municipios existan
+    municipios_validos = [m for m in municipios if m in MUNICIPIOS_DIVIPOLA]
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"municipios_asignados": municipios_validos}}
+    )
+    
+    return {
+        "message": "Municipios asignados correctamente",
+        "user_id": user_id,
+        "municipios_asignados": municipios_validos
+    }
+
+
 @api_router.post("/admin/migrate-ciudadano-to-usuario")
 async def migrate_ciudadano_to_usuario(current_user: dict = Depends(get_current_user)):
     """Migra usuarios con rol 'ciudadano' a 'usuario' (solo admin)"""
