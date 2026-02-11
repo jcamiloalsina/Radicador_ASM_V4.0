@@ -15292,12 +15292,18 @@ async def obtener_proyecto_actualizacion(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtiene los detalles de un proyecto de actualización con estadísticas de predios en tiempo real"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.EMPRESA]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver este proyecto")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Si es usuario empresa, verificar que el municipio esté en sus asignados
+    if current_user['role'] == UserRole.EMPRESA:
+        municipios_asignados = current_user.get('municipios_asignados', [])
+        if proyecto.get('municipio') not in municipios_asignados:
+            raise HTTPException(status_code=403, detail="No tiene acceso a este municipio")
     
     # Calcular estadísticas de predios en tiempo real desde predios_actualizacion
     pipeline = [
