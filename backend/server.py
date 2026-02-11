@@ -16288,6 +16288,78 @@ async def guardar_visita_predio(
     }
 
 
+@api_router.patch("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/estado")
+async def actualizar_estado_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    estado_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualiza solo el estado de visita de un predio (pendiente/visitado/actualizado)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para actualizar estado de predios")
+    
+    nuevo_estado = estado_data.get('estado_visita')
+    if nuevo_estado not in ['pendiente', 'visitado', 'actualizado']:
+        raise HTTPException(status_code=400, detail="Estado inválido. Debe ser: pendiente, visitado o actualizado")
+    
+    # Decodificar el código predial
+    from urllib.parse import unquote
+    codigo_predial = unquote(codigo_predial)
+    
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial},
+            {"codigo_predial_nacional": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    ahora = datetime.now(timezone.utc)
+    estado_anterior = predio.get('estado_visita', 'pendiente')
+    
+    # Preparar datos de actualización
+    update_data = {
+        "estado_visita": nuevo_estado,
+        "updated_at": ahora
+    }
+    
+    # Registrar quién hizo el cambio
+    if nuevo_estado == 'visitado':
+        update_data["visitado_por"] = current_user.get('email')
+        update_data["visitado_en"] = ahora.isoformat()
+    elif nuevo_estado == 'actualizado':
+        update_data["actualizado_por"] = current_user.get('email')
+        update_data["actualizado_en"] = ahora.isoformat()
+    
+    # Registrar en historial
+    historial_entry = {
+        "fecha": ahora.isoformat(),
+        "usuario": current_user.get('email'),
+        "rol": current_user['role'],
+        "accion": "cambio_estado",
+        "comentario": f"Estado cambiado de '{estado_anterior}' a '{nuevo_estado}'"
+    }
+    
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": update_data,
+            "$push": {"historial_cambios": historial_entry}
+        }
+    )
+    
+    return {
+        "message": f"Estado actualizado a '{nuevo_estado}'",
+        "estado_anterior": estado_anterior,
+        "estado_nuevo": nuevo_estado
+    }
+
+
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/construcciones")
 async def obtener_construcciones_proyecto(
     proyecto_id: str,
