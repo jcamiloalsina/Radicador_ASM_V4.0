@@ -707,9 +707,17 @@ export default function VisorActualizacion() {
           }
           
           // Capturar construcciones del primer lote (solo vienen con offset=0)
-          if (batch === 0 && response.data.construcciones?.features?.length > 0) {
-            setConstrucciones(response.data.construcciones);
-            console.log(`[Visor] Construcciones cargadas: ${response.data.construcciones.features.length}`);
+          if (batch === 0) {
+            console.log(`[Visor] Respuesta del batch 0:`, {
+              construcciones: response.data.construcciones?.features?.length || 0,
+              total_construcciones: response.data.total_construcciones || 0
+            });
+            if (response.data.construcciones?.features?.length > 0) {
+              setConstrucciones(response.data.construcciones);
+              console.log(`[Visor] ✓ Construcciones cargadas: ${response.data.construcciones.features.length}`);
+            } else {
+              console.warn(`[Visor] ✗ No se recibieron construcciones en el batch 0`);
+            }
           }
           
           // Actualizar UI parcialmente cada 1000 geometrías
