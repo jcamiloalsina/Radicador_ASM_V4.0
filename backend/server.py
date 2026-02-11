@@ -12943,6 +12943,108 @@ async def verificar_alerta_mensual(current_user: dict = Depends(get_current_user
 gdb_upload_progress = {}
 
 
+@api_router.post("/gdb/preview-layers")
+async def preview_gdb_layers(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Previsualiza las capas disponibles en un archivo GDB antes de cargarlo.
+    Útil para seleccionar qué capa específica cargar.
+    """
+    import zipfile
+    import shutil
+    
+    # Verificar permisos
+    user_db = await db.users.find_one({"id": current_user['id']}, {"_id": 0})
+    if not user_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    has_permission = await check_permission(user_db, Permission.UPLOAD_GDB)
+    if not has_permission:
+        raise HTTPException(status_code=403, detail="No tiene permiso para esta operación")
+    
+    temp_dir = None
+    try:
+        # Crear directorio temporal
+        temp_dir = UPLOAD_DIR / f"preview_{uuid.uuid4()}"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Guardar archivo
+        content = await file.read()
+        temp_file = temp_dir / file.filename
+        
+        with open(temp_file, 'wb') as f:
+            f.write(content)
+        
+        gdb_path = None
+        
+        # Si es ZIP, extraer
+        if file.filename.lower().endswith('.zip'):
+            with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            # Buscar carpeta .gdb
+            for item in temp_dir.rglob("*.gdb"):
+                if item.is_dir():
+                    gdb_path = item
+                    break
+        elif file.filename.lower().endswith('.gdb'):
+            gdb_path = temp_file
+        
+        if not gdb_path or not gdb_path.exists():
+            raise HTTPException(status_code=400, detail="No se encontró un archivo GDB válido")
+        
+        # Listar capas
+        capas = fiona.listlayers(str(gdb_path))
+        
+        # Obtener información de cada capa
+        capas_info = []
+        for capa in capas:
+            try:
+                with fiona.open(str(gdb_path), layer=capa) as src:
+                    capas_info.append({
+                        "nombre": capa,
+                        "registros": len(src),
+                        "tipo_geometria": src.schema.get('geometry', 'Unknown'),
+                        "campos": list(src.schema.get('properties', {}).keys())[:10]  # Primeros 10 campos
+                    })
+            except Exception as e:
+                capas_info.append({
+                    "nombre": capa,
+                    "registros": 0,
+                    "error": str(e)[:50]
+                })
+        
+        # Categorizar capas
+        capas_terreno = [c for c in capas_info if any(t in c['nombre'].upper() for t in ['TERRENO', 'PREDIO', 'PARCELA'])]
+        capas_construccion = [c for c in capas_info if any(t in c['nombre'].upper() for t in ['CONSTRUCCION', 'EDIFICACION', 'UNIDAD'])]
+        capas_perimetro = [c for c in capas_info if any(t in c['nombre'].upper() for t in ['PERIMETRO', 'LIMITE', 'URBANO'])]
+        capas_otras = [c for c in capas_info if c not in capas_terreno + capas_construccion + capas_perimetro]
+        
+        return {
+            "gdb_nombre": gdb_path.name,
+            "total_capas": len(capas),
+            "capas_terreno": capas_terreno,
+            "capas_construccion": capas_construccion,
+            "capas_perimetro": capas_perimetro,
+            "otras_capas": capas_otras,
+            "todas_las_capas": capas_info
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error previsualizando GDB: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al analizar el archivo: {str(e)}")
+    finally:
+        # Limpiar archivos temporales
+        if temp_dir and temp_dir.exists():
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass
+
+
 @api_router.get("/gdb/upload-progress/{upload_id}")
 async def get_gdb_upload_progress(
     upload_id: str,
