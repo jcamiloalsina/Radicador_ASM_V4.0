@@ -76,9 +76,6 @@ const DetallePredioActualizacion = ({
   const codigoPredial = predio.codigo_predial || predio.numero_predial || '';
   const ultimosTres = codigoPredial.length >= 30 ? codigoPredial.substring(27, 30) : '';
   const esMejora = ultimosTres !== '' && ultimosTres !== '000';
-  
-  // Debug log
-  console.log('[DetallePredio] Código:', codigoPredial, '| Últimos 3:', ultimosTres, '| Es mejora:', esMejora);
 
   return (
     <Card className={`shadow-md ${esMejora ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
