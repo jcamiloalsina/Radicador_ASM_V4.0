@@ -2960,8 +2960,8 @@ export default function VisorActualizacion() {
       weight: isSelected ? 3 : (tieneMejoras ? 2 : 1),
       opacity: 1,
       color: isSelected ? '#ef4444' : borderColor,
-      fillOpacity: isSelected ? 0.6 : (esMejoraFeature ? 0.5 : 0.35),
-      dashArray: esMejoraFeature && !isSelected ? '5, 5' : null // Borde punteado para mejoras
+      fillOpacity: isSelected ? 0.6 : (tieneMejoras ? 0.5 : 0.35),
+      dashArray: tieneMejoras && !isSelected ? '5, 5' : null // Borde punteado para terrenos con mejoras
     };
   };
   
