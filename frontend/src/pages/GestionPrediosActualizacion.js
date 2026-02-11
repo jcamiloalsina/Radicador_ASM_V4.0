@@ -514,31 +514,90 @@ export default function GestionPrediosActualizacion() {
   const fetchPredios = useCallback(async () => {
     if (!proyectoId) return;
     setLoadingPredios(true);
+    
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const prediosData = response.data.predios || response.data || [];
-      setPredios(prediosData);
-      
-      // Calcular estadísticas
-      const newStats = {
-        total: prediosData.length,
-        pendientes: prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
-        visitados: prediosData.filter(p => p.estado_visita === 'visitado').length,
-        actualizados: prediosData.filter(p => p.estado_visita === 'actualizado').length
-      };
-      setStats(newStats);
-      setCurrentPage(1);
+      // Si está online, cargar del servidor
+      if (isOnline) {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const prediosData = response.data.predios || response.data || [];
+        setPredios(prediosData);
+        setUsingOfflineData(false);
+        
+        // Guardar en caché para uso offline
+        if (prediosData.length > 0) {
+          await downloadForOffline(prediosData, null, proyecto?.municipio);
+        }
+        
+        // Calcular estadísticas
+        const newStats = {
+          total: prediosData.length,
+          pendientes: prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
+          visitados: prediosData.filter(p => p.estado_visita === 'visitado').length,
+          actualizados: prediosData.filter(p => p.estado_visita === 'actualizado').length
+        };
+        setStats(newStats);
+        setCurrentPage(1);
+      } else {
+        // Sin conexión - cargar desde IndexedDB
+        console.log('[Offline] Cargando predios desde caché local');
+        const prediosOffline = await getPrediosOffline(proyectoId);
+        
+        if (prediosOffline && prediosOffline.length > 0) {
+          setPredios(prediosOffline);
+          setUsingOfflineData(true);
+          toast.info('Datos cargados desde modo offline', { duration: 2000 });
+          
+          // Calcular estadísticas
+          const newStats = {
+            total: prediosOffline.length,
+            pendientes: prediosOffline.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
+            visitados: prediosOffline.filter(p => p.estado_visita === 'visitado').length,
+            actualizados: prediosOffline.filter(p => p.estado_visita === 'actualizado').length
+          };
+          setStats(newStats);
+          setCurrentPage(1);
+        } else {
+          toast.warning('Sin datos offline disponibles', {
+            description: 'Sincronice cuando tenga conexión'
+          });
+        }
+      }
     } catch (error) {
       console.error('Error cargando predios:', error);
-      toast.error('Error al cargar predios');
+      
+      // Si falla la conexión, intentar cargar desde offline
+      if (!isOnline || error.code === 'ERR_NETWORK') {
+        console.log('[Offline] Error de red - intentando cargar desde caché');
+        try {
+          const prediosOffline = await getPrediosOffline(proyectoId);
+          if (prediosOffline && prediosOffline.length > 0) {
+            setPredios(prediosOffline);
+            setUsingOfflineData(true);
+            toast.info('Usando datos offline', { duration: 2000 });
+            
+            const newStats = {
+              total: prediosOffline.length,
+              pendientes: prediosOffline.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
+              visitados: prediosOffline.filter(p => p.estado_visita === 'visitado').length,
+              actualizados: prediosOffline.filter(p => p.estado_visita === 'actualizado').length
+            };
+            setStats(newStats);
+          }
+        } catch (offlineError) {
+          console.error('Error cargando datos offline:', offlineError);
+          toast.error('Sin conexión y sin datos offline');
+        }
+      } else {
+        toast.error('Error al cargar predios');
+      }
     } finally {
       setLoadingPredios(false);
       setLoading(false);
     }
-  }, [proyectoId]);
+  }, [proyectoId, isOnline, getPrediosOffline, downloadForOffline, proyecto?.municipio]);
   
   useEffect(() => {
     fetchProyecto();
