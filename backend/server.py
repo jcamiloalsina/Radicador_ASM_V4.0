@@ -16027,21 +16027,40 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
         
-        # Buscar .gdb
+        # Buscar .gdb o .shp
         gdb_path = None
+        shp_files = []
+        is_shapefile = False
+        
         for root, dirs, files in os.walk(temp_dir):
+            # Primero buscar .gdb (tiene prioridad)
             for d in dirs:
                 if d.endswith('.gdb'):
                     gdb_path = os.path.join(root, d)
                     break
             if gdb_path:
                 break
+            
+            # Si no hay .gdb, buscar archivos .shp
+            for f in files:
+                if f.endswith('.shp'):
+                    shp_files.append(os.path.join(root, f))
         
-        if not gdb_path:
-            logger.error("[GDB Actualizacion] No se encontró archivo .gdb en el ZIP")
-            raise Exception("No se encontró archivo .gdb en el ZIP")
+        # Determinar qué tipo de archivo procesar
+        if gdb_path:
+            logger.info(f"[GDB Actualizacion] GDB encontrado: {gdb_path}")
+            data_source = gdb_path
+            is_shapefile = False
+        elif shp_files:
+            logger.info(f"[GDB Actualizacion] Shapefiles encontrados: {len(shp_files)}")
+            for shp in shp_files:
+                logger.info(f"  - {os.path.basename(shp)}")
+            data_source = shp_files  # Lista de shapefiles
+            is_shapefile = True
+        else:
+            logger.error("[GDB Actualizacion] No se encontró archivo .gdb ni .shp en el ZIP")
+            raise Exception("No se encontró archivo .gdb ni .shp en el ZIP. Asegúrese de que el ZIP contenga una geodatabase (.gdb) o archivos shapefile (.shp)")
         
-        logger.info(f"[GDB Actualizacion] GDB encontrado: {gdb_path}")
         
         # Leer capas con pyogrio
         import pyogrio
