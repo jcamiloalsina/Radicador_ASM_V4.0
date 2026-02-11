@@ -1741,7 +1741,7 @@ export default function ProyectosActualizacion() {
               Cancelar
             </Button>
             <Button 
-              onClick={handleAgregarActividad}
+              onClick={handleCrearActividad}
               disabled={!nuevaActividad.nombre || !etapaSeleccionada}
               className="bg-amber-600 hover:bg-amber-700"
             >
