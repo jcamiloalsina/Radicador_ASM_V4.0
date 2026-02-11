@@ -2718,16 +2718,38 @@ export default function VisorActualizacion() {
         <div className="flex items-center gap-2">
           {/* Indicador Offline Ready */}
           {offlineReady && (
-            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-green-100 text-green-700 border-green-300 cursor-pointer hover:bg-green-200"
+              onClick={() => setShowSyncDialog(true)}
+              title="Click para ver opciones de sincronización y caché"
+            >
               <CheckCircle2 className="w-3 h-3 mr-1" />
               Offline Ready
             </Badge>
           )}
           {/* Indicador cargado desde caché */}
           {loadedFromCache && (
-            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-purple-100 text-purple-700 border-purple-300 cursor-pointer hover:bg-purple-200"
+              onClick={() => setShowSyncDialog(true)}
+              title="Click para ver opciones de sincronización y caché"
+            >
               <Database className="w-3 h-3 mr-1" />
               Caché
+            </Badge>
+          )}
+          {/* Botón de configuración de sincronización (siempre visible) */}
+          {!offlineReady && !loadedFromCache && (
+            <Badge 
+              variant="outline" 
+              className="text-xs bg-slate-100 text-slate-600 border-slate-300 cursor-pointer hover:bg-slate-200"
+              onClick={() => setShowSyncDialog(true)}
+              title="Click para ver opciones de sincronización y caché"
+            >
+              <Database className="w-3 h-3 mr-1" />
+              Sin datos offline
             </Badge>
           )}
           {/* Indicador Offline */}
