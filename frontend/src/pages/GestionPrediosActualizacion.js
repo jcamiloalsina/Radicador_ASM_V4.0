@@ -820,6 +820,50 @@ export default function GestionPrediosActualizacion() {
     }
   };
   
+  // Abrir modal de cancelación
+  const abrirCancelarModal = (predio) => {
+    setPredioSeleccionado(predio);
+    setMotivoCancelacion('');
+    setShowCancelarModal(true);
+  };
+  
+  // Proponer/Ejecutar cancelación de predio
+  const cancelarPredio = async () => {
+    if (!predioSeleccionado) return;
+    if (!motivoCancelacion.trim()) {
+      toast.error('Debe especificar un motivo para la cancelación');
+      return;
+    }
+    
+    setCancelando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigoPredio = predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial;
+      
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigoPredio)}/proponer-cancelacion`,
+        { motivo: motivoCancelacion },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // El mensaje depende del rol (el backend responde diferente)
+      if (esCoordinador) {
+        toast.success('Predio cancelado exitosamente');
+      } else {
+        toast.success('Propuesta de cancelación enviada. El coordinador la revisará.');
+      }
+      
+      setShowCancelarModal(false);
+      setShowDetalleModal(false);
+      fetchPredios();
+    } catch (error) {
+      console.error('Error cancelando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al cancelar predio');
+    } finally {
+      setCancelando(false);
+    }
+  };
+  
   // Abrir modal de crear - Inicializar todos los campos
   const abrirCrear = async () => {
     // Resetear formulario
