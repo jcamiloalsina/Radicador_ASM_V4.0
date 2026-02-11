@@ -93,7 +93,8 @@ import {
   Scale,
   Loader2,
   Building2,
-  FileCheck
+  FileCheck,
+  ClipboardList
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
