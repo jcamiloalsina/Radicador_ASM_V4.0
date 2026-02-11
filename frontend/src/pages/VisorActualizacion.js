@@ -3593,14 +3593,19 @@ export default function VisorActualizacion() {
           {/* Construcciones - controladas por toggle */}
           {showConstrucciones && construccionesFiltradas && construccionesFiltradas.features?.length > 0 && (
             <GeoJSON
-              key={`const-${filterEstado}-${showConstrucciones}-${construccionesFiltradas.features.length}`}
+              key={`const-${filterEstado}-${showConstrucciones}-${construccionesFiltradas.features.length}-${Date.now()}`}
               data={construccionesFiltradas}
-              style={{
+              style={(feature) => ({
                 fillColor: '#ef4444',
                 weight: 2,
                 color: '#b91c1c',
                 fillOpacity: 0.6,
                 dashArray: '4, 4'
+              })}
+              onEachFeature={(feature, layer) => {
+                // Agregar tooltip con código para verificar que se renderiza
+                const codigo = feature.properties?.codigo || 'Sin código';
+                layer.bindTooltip(codigo, { permanent: false, direction: 'top' });
               }}
             />
           )}
