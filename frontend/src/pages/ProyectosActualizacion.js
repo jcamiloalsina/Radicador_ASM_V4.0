@@ -373,6 +373,15 @@ export default function ProyectosActualizacion() {
   };
 
   const handleCambiarEstado = async (proyectoId, nuevoEstado) => {
+    // Si es completado, mostrar modal de selección de vigencia
+    if (nuevoEstado === 'completado') {
+      const proyecto = proyectos.find(p => p.id === proyectoId);
+      setProyectoSeleccionado(proyecto);
+      setVigenciaSeleccionada(new Date().getFullYear().toString());
+      setShowFinalizarModal(true);
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       await axios.patch(`${API}/actualizacion/proyectos/${proyectoId}`, 
@@ -383,6 +392,27 @@ export default function ProyectosActualizacion() {
       await forceRefreshProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al cambiar el estado');
+    }
+  };
+  
+  // Función para finalizar proyecto con vigencia seleccionada
+  const handleFinalizarProyecto = async () => {
+    if (!proyectoSeleccionado) return;
+    
+    setFinalizando(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/finalizar`, 
+        { vigencia: parseInt(vigenciaSeleccionada), forzar: false },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Proyecto finalizado y migrado a vigencia ${vigenciaSeleccionada}`);
+      setShowFinalizarModal(false);
+      await forceRefreshProyectos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al finalizar proyecto');
+    } finally {
+      setFinalizando(false);
     }
   };
 
