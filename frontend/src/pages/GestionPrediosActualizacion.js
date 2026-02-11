@@ -217,6 +217,78 @@ export default function GestionPrediosActualizacion() {
     }
   };
   
+  // Obtener estructura de código para el municipio
+  const fetchEstructuraCodigo = async (municipio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/estructura-codigo/${encodeURIComponent(municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEstructuraCodigo(res.data);
+    } catch (error) {
+      console.log('Estructura de código no disponible');
+    }
+  };
+  
+  // Obtener siguiente código homologado
+  const fetchSiguienteCodigoHomologado = async (municipio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSiguienteCodigoHomologado(res.data);
+    } catch (error) {
+      console.log('Código homologado no disponible');
+      setSiguienteCodigoHomologado(null);
+    }
+  };
+  
+  // Construir código completo de 30 dígitos
+  const construirCodigoCompleto = () => {
+    if (!estructuraCodigo?.prefijo_fijo) return '';
+    return estructuraCodigo.prefijo_fijo + 
+           codigoManual.zona + 
+           codigoManual.sector + 
+           codigoManual.comuna + 
+           codigoManual.barrio + 
+           codigoManual.manzana_vereda + 
+           codigoManual.terreno + 
+           codigoManual.condicion + 
+           codigoManual.edificio + 
+           codigoManual.piso + 
+           codigoManual.unidad;
+  };
+  
+  // Manejar cambios en código manual
+  const handleCodigoChange = (campo, valor, maxLen) => {
+    const valorLimpio = valor.replace(/[^0-9]/g, '').slice(0, maxLen).padStart(maxLen, '0');
+    setCodigoManual(prev => ({ ...prev, [campo]: valorLimpio }));
+    setVerificacionCodigo(null); // Resetear verificación al cambiar
+  };
+  
+  // Verificar código completo
+  const verificarCodigoCompleto = async () => {
+    const codigo = construirCodigoCompleto();
+    if (codigo.length !== 30) {
+      toast.error('El código debe tener 30 dígitos');
+      return;
+    }
+    
+    setVerificandoCodigo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/verificar-codigo-completo/${codigo}?municipio=${encodeURIComponent(proyecto?.municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVerificacionCodigo(res.data);
+    } catch (error) {
+      toast.error('Error al verificar código');
+    } finally {
+      setVerificandoCodigo(false);
+    }
+  };
+  
   // Cargar proyecto
   const fetchProyecto = useCallback(async () => {
     try {
