@@ -623,7 +623,11 @@ export default function GestionPrediosActualizacion() {
       // Filtro especial para mejoras
       if (filterEstado === 'mejoras') {
         const cod = predio.codigo_predial || predio.numero_predial || '';
-        // Mejora = últimos 3 dígitos (posiciones 28-30) != "000"
+        // NOTA: Idealmente deberíamos verificar si el terreno tiene construcciones con código de mejora
+        // Por ahora, el filtro "mejoras" busca terrenos cuyo código termine en != "000"
+        // pero esto no aplica a terrenos - los terrenos siempre terminan en "000"
+        // Las mejoras están en las CONSTRUCCIONES, no en los terrenos
+        // TODO: Cargar construcciones para identificar terrenos con mejoras correctamente
         const esMejoraPredio = cod.length >= 30 && cod.substring(27, 30) !== '000';
         if (!esMejoraPredio) return false;
       } else {
