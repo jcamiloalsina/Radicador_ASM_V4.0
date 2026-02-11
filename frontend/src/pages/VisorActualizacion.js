@@ -863,18 +863,78 @@ export default function VisorActualizacion() {
     setShowSyncScreen(false);
   };
   
-  // Helper: Verificar si un código predial es una MEJORA
+  // Helper: Verificar si un código de CONSTRUCCIÓN es una MEJORA
   // Una mejora tiene los últimos 3 dígitos (posiciones 28-30) diferentes de "000"
-  const esMejora = (codigoPredial) => {
-    if (!codigoPredial || codigoPredial.length < 30) return false;
-    const ultimosTres = codigoPredial.substring(27, 30); // índice 27 = posición 28
+  const esMejoraCodigo = (codigo) => {
+    if (!codigo || codigo.length < 30) return false;
+    const ultimosTres = codigo.substring(27, 30);
     return ultimosTres !== '000';
   };
   
-  // Contar predios que son mejoras
+  // Crear índice de terrenos que TIENEN mejoras (basado en las construcciones)
+  // Un terreno tiene mejora si existe una construcción asociada con código de mejora
+  const terrenosConMejoras = useMemo(() => {
+    const index = new Set();
+    
+    if (construcciones?.features) {
+      for (const feature of construcciones.features) {
+        const props = feature.properties || {};
+        const codigoConstruccion = props.codigo || '';
+        const terrenoCodigo = props.terreno_codigo || '';
+        
+        // Si el código de construcción es una mejora, agregar el terreno asociado
+        if (esMejoraCodigo(codigoConstruccion)) {
+          // El terreno asociado es el terreno_codigo o los primeros 21 dígitos del código
+          if (terrenoCodigo) {
+            index.add(terrenoCodigo);
+          }
+          // También agregar versión base del código (primeros 21 dígitos)
+          if (codigoConstruccion.length >= 21) {
+            const terrenoBase = codigoConstruccion.substring(0, 21) + '000000000';
+            index.add(terrenoBase);
+          }
+        }
+      }
+    }
+    
+    console.log(`[Visor] Terrenos con mejoras identificados: ${index.size}`);
+    return index;
+  }, [construcciones]);
+  
+  // Helper: Verificar si un TERRENO tiene mejoras asociadas
+  const terrenoTieneMejora = (codigoTerreno) => {
+    if (!codigoTerreno) return false;
+    return terrenosConMejoras.has(codigoTerreno);
+  };
+  
+  // Contar terrenos que tienen mejoras
   const contarMejoras = useMemo(() => {
-    return prediosR1R2.filter(p => esMejora(p.codigo_predial || p.numero_predial)).length;
-  }, [prediosR1R2]);
+    // Contar construcciones que son mejoras
+    if (!construcciones?.features) return 0;
+    return construcciones.features.filter(f => esMejoraCodigo(f.properties?.codigo)).length;
+  }, [construcciones]);
+  
+  // Obtener las mejoras (construcciones) asociadas a un terreno
+  const getMejorasDeTerreno = useCallback((codigoTerreno) => {
+    if (!construcciones?.features || !codigoTerreno) return [];
+    
+    const terrenoBase = codigoTerreno.substring(0, 21);
+    
+    return construcciones.features.filter(f => {
+      const props = f.properties || {};
+      const codigoConstruccion = props.codigo || '';
+      const terrenoCodigo = props.terreno_codigo || '';
+      
+      // Verificar si es mejora
+      if (!esMejoraCodigo(codigoConstruccion)) return false;
+      
+      // Verificar si pertenece al terreno
+      if (terrenoCodigo === codigoTerreno) return true;
+      if (codigoConstruccion.substring(0, 21) === terrenoBase) return true;
+      
+      return false;
+    });
+  }, [construcciones]);
   
   useEffect(() => {
     if (proyecto?.gdb_procesado) {
@@ -889,7 +949,7 @@ export default function VisorActualizacion() {
       pendiente: new Set(),
       visitado: new Set(),
       actualizado: new Set(),
-      mejoras: new Set() // Nuevo: solo mejoras
+      mejoras: new Set() // Terrenos que tienen mejoras asociadas
     };
     
     for (const predio of prediosR1R2) {
@@ -903,8 +963,8 @@ export default function VisorActualizacion() {
       else if (estado === 'visitado') index.visitado.add(codigo);
       else if (estado === 'actualizado') index.actualizado.add(codigo);
       
-      // Agregar al índice de mejoras si es mejora
-      if (esMejora(codigo)) {
+      // Agregar al índice de mejoras si el terreno tiene mejoras asociadas
+      if (terrenoTieneMejora(codigo)) {
         index.mejoras.add(codigo);
       }
     }
