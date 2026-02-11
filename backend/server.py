@@ -16005,14 +16005,20 @@ async def get_ortofoto_file(proyecto_id: str):
     return FileResponse(str(ortofoto_path), media_type=media_type)
 
 
-async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio: str):
-    """Procesa el GDB de un proyecto de actualización y guarda las geometrías"""
+async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio: str, modo_carga: str = "reemplazar", capa_especifica: Optional[str] = None):
+    """Procesa el GDB de un proyecto de actualización y guarda las geometrías
+    
+    Args:
+        modo_carga: "reemplazar" elimina todo antes, "incremental" solo añade/actualiza
+        capa_especifica: Si se indica, solo procesa esa capa
+    """
     import zipfile
     import tempfile
     import shutil
     
     logger.info(f"[GDB Actualizacion] Iniciando procesamiento para proyecto {proyecto_id}")
     logger.info(f"[GDB Actualizacion] Archivo: {zip_path}, Municipio: {municipio}")
+    logger.info(f"[GDB Actualizacion] Modo: {modo_carga}, Capa específica: {capa_especifica}")
     
     temp_dir = tempfile.mkdtemp()
     try:
