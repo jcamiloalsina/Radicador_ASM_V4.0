@@ -591,17 +591,34 @@ export default function GestionPrediosActualizacion() {
       matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
     });
     
-    // Cargar propietarios
+    // Cargar propietarios - mapear diferentes formatos
     if (predio.propietarios?.length > 0) {
-      setPropietarios(predio.propietarios.map(p => ({
-        primer_apellido: p.primer_apellido || '',
-        segundo_apellido: p.segundo_apellido || '',
-        primer_nombre: p.primer_nombre || '',
-        segundo_nombre: p.segundo_nombre || '',
-        estado: p.estado || p.estado_civil || '',
-        tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
-        numero_documento: p.numero_documento || p.documento || ''
-      })));
+      setPropietarios(predio.propietarios.map(p => {
+        // Si viene con campos separados (nuevo formato)
+        if (p.primer_nombre || p.primer_apellido) {
+          return {
+            primer_apellido: p.primer_apellido || '',
+            segundo_apellido: p.segundo_apellido || '',
+            primer_nombre: p.primer_nombre || '',
+            segundo_nombre: p.segundo_nombre || '',
+            estado: p.estado || p.estado_civil || '',
+            tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
+            numero_documento: p.numero_documento || p.documento || ''
+          };
+        }
+        // Si viene con nombre_propietario (formato antiguo R1/R2)
+        const nombreCompleto = p.nombre_propietario || '';
+        const partes = nombreCompleto.split(' ').filter(x => x);
+        return {
+          primer_apellido: partes[0] || '',
+          segundo_apellido: partes[1] || '',
+          primer_nombre: partes[2] || '',
+          segundo_nombre: partes.slice(3).join(' ') || '',
+          estado: p.estado || p.estado_civil || '',
+          tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
+          numero_documento: p.numero_documento || p.documento || ''
+        };
+      }));
     } else {
       setPropietarios([{ primer_apellido: '', segundo_apellido: '', primer_nombre: '', segundo_nombre: '', estado: '', tipo_documento: 'C', numero_documento: '' }]);
     }
@@ -630,7 +647,7 @@ export default function GestionPrediosActualizacion() {
         banos: predio.banos || '0',
         locales: predio.locales || '0',
         tipificacion: '',
-        uso: '',
+        uso: predio.uso || '',
         puntaje: '0',
         area_construida: predio.area_construida || '0'
       }]);
