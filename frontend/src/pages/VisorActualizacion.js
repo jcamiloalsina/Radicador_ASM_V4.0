@@ -3432,15 +3432,17 @@ export default function VisorActualizacion() {
             />
           )}
           
-          {construccionesFiltradas && construccionesFiltradas.features?.length > 0 && (
+          {/* Construcciones - controladas por toggle */}
+          {showConstrucciones && construccionesFiltradas && construccionesFiltradas.features?.length > 0 && (
             <GeoJSON
-              key={`const-${filterEstado}`}
+              key={`const-${filterEstado}-${showConstrucciones}`}
               data={construccionesFiltradas}
               style={{
                 fillColor: '#ef4444',
-                weight: 1,
+                weight: 2,
                 color: '#991b1b',
-                fillOpacity: 0.4
+                fillOpacity: 0.5,
+                dashArray: '3, 3'
               }}
             />
           )}
