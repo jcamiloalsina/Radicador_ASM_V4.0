@@ -144,6 +144,8 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       window.removeEventListener('offline', handleOffline);
     };
   }, [proyectoId, refreshStats]);
+  
+  // Inicializar DB solo una vez
   useEffect(() => {
     let mounted = true;
     const init = async () => {
@@ -160,16 +162,6 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     init();
     return () => { mounted = false; };
   }, [proyectoId]);
-
-  // Refrescar estadísticas - solo cuando se llame explícitamente
-  const refreshStats = useCallback(async () => {
-    try {
-      const stats = await getOfflineStats();
-      setOfflineStats(stats);
-    } catch (e) {
-      console.log('[useOfflineSync] Error refreshStats:', e.message);
-    }
-  }, []);
 
   // Descargar datos para offline (se llama automáticamente al cargar el visor)
   const downloadForOffline = useCallback(async (predios, geometrias, municipio) => {
