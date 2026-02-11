@@ -13,10 +13,12 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import {
   Plus, Search, Edit, MapPin, Building, Building2, User, DollarSign, Eye, 
   Clock, CheckCircle, AlertCircle, Loader2, RefreshCw, ArrowLeft, Map, 
-  FileText, MoreVertical, ClipboardList, Trash2, Download, ChevronLeft, ChevronRight
+  FileText, MoreVertical, ClipboardList, Trash2, Download, ChevronLeft, ChevronRight,
+  WifiOff, Wifi
 } from 'lucide-react';
 import {
   DropdownMenu,
