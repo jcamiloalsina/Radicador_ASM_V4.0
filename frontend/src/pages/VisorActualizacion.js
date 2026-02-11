@@ -760,7 +760,31 @@ export default function VisorActualizacion() {
     }
   }, [filterZona]);
   
-  // Filtrar geometrías por estado
+  // Pre-calcular índices de códigos por estado (memoizado)
+  const codigosPorEstadoIndex = useMemo(() => {
+    const index = {
+      todos: new Set(),
+      pendiente: new Set(),
+      visitado: new Set(),
+      actualizado: new Set()
+    };
+    
+    for (const predio of prediosR1R2) {
+      const codigo = predio.codigo_predial || predio.numero_predial;
+      if (!codigo) continue;
+      
+      const estado = predio.estado_visita || 'pendiente';
+      index.todos.add(codigo);
+      
+      if (estado === 'pendiente') index.pendiente.add(codigo);
+      else if (estado === 'visitado') index.visitado.add(codigo);
+      else if (estado === 'actualizado') index.actualizado.add(codigo);
+    }
+    
+    return index;
+  }, [prediosR1R2]);
+  
+  // Filtrar geometrías por estado (optimizado con índices pre-calculados)
   useEffect(() => {
     if (!geometrias?.features) {
       setGeometriasFiltradas(null);
@@ -772,26 +796,20 @@ export default function VisorActualizacion() {
       return;
     }
     
-    // Obtener los códigos de predios según el estado
-    const codigosPorEstado = new Set();
-    prediosR1R2.forEach(predio => {
-      const estado = predio.estado_visita || 'pendiente';
-      if (estado === filterEstado) {
-        codigosPorEstado.add(predio.codigo_predial || predio.numero_predial);
-      }
-    });
+    // Usar el índice pre-calculado
+    const codigosValidos = codigosPorEstadoIndex[filterEstado];
     
-    // Filtrar las geometrías
+    // Filtrar las geometrías usando el índice
     const featuresFiltradas = geometrias.features.filter(feature => {
       const codigo = feature.properties?.codigo_predial || feature.properties?.numero_predial;
-      return codigosPorEstado.has(codigo);
+      return codigosValidos.has(codigo);
     });
     
     setGeometriasFiltradas({
       type: 'FeatureCollection',
       features: featuresFiltradas
     });
-  }, [geometrias, filterEstado, prediosR1R2]);
+  }, [geometrias, filterEstado, codigosPorEstadoIndex]);
   
   // Función de sincronización con historial
   const handleSyncWithHistory = async () => {
