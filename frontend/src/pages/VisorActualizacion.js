@@ -3605,16 +3605,16 @@ export default function VisorActualizacion() {
               key={`const-${filterEstado}-${construccionesVersion}-${construccionesFiltradas.features.length}`}
               data={construccionesFiltradas}
               style={(feature) => ({
-                fillColor: '#ef4444',
-                weight: 2,
-                color: '#b91c1c',
-                fillOpacity: 0.6,
-                dashArray: '4, 4'
+                fillColor: '#dc2626',
+                weight: 3,
+                color: '#7f1d1d',
+                fillOpacity: 0.7
               })}
               onEachFeature={(feature, layer) => {
                 // Agregar tooltip con código para verificar que se renderiza
                 const codigo = feature.properties?.codigo || 'Sin código';
-                layer.bindTooltip(codigo, { permanent: false, direction: 'top' });
+                const tipo = feature.properties?.tipo_construccion || 'Construcción';
+                layer.bindTooltip(`${tipo}: ${codigo}`, { permanent: false, direction: 'top' });
               }}
             />
           )}
