@@ -665,7 +665,8 @@ export default function VisorActualizacion() {
               zona: filterZona !== 'todos' ? filterZona : undefined,
               offset: batch * batchSize,
               limit: batchSize
-            }
+            },
+            timeout: 60000 // 60 segundos timeout
           });
           
           if (response.data.geometrias?.features?.length > 0) {
