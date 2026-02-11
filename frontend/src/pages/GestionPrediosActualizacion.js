@@ -2420,6 +2420,19 @@ export default function GestionPrediosActualizacion() {
                     Editar
                   </Button>
                 )}
+                {/* Botón de cancelar/proponer cancelación */}
+                {!predioSeleccionado?.cancelado && !predioSeleccionado?.deleted && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setShowDetalleModal(false);
+                      abrirCancelarModal(predioSeleccionado);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {esCoordinador ? 'Cancelar' : 'Proponer Cancelación'}
+                  </Button>
+                )}
               </div>
             </div>
           )}
