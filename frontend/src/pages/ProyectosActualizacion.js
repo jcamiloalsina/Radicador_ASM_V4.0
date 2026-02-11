@@ -624,7 +624,18 @@ export default function ProyectosActualizacion() {
   };
 
   const abrirDetalleProyecto = async (proyecto) => {
-    setProyectoSeleccionado(proyecto);
+    // Obtener datos actualizados del proyecto (incluye estadísticas de predios)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/actualizacion/proyectos/${proyecto.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProyectoSeleccionado(response.data);
+    } catch (error) {
+      // Si falla, usar los datos del proyecto de la lista
+      console.error('Error obteniendo proyecto actualizado:', error);
+      setProyectoSeleccionado(proyecto);
+    }
     setDetalleTab('acciones');
     await fetchEtapas(proyecto.id);
     setShowDetalleModal(true);
