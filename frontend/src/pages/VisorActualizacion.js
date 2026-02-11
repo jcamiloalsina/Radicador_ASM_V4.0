@@ -3475,7 +3475,37 @@ export default function VisorActualizacion() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Panel de Detalle Simplificado (como Conservación) - Overlay en el mapa */}
+        {selectedPredio && showDetalleSimplificado && !showPredioDetail && (
+          <div className="absolute top-4 left-48 z-[500] max-w-xs">
+            <DetallePredioActualizacion
+              predio={selectedPredio}
+              geometry={selectedGeometry}
+              construcciones={construccionesPredio}
+              tieneConstrucciones={tieneConstrucciones}
+              mostrarConstrucciones={mostrarConstruccionesPredio}
+              cargandoConstrucciones={cargandoConstrucciones}
+              onToggleConstrucciones={toggleConstruccionesPredio}
+              onClose={cerrarDetalleSimplificado}
+              onOpenVisita={abrirFormularioVisita}
+              onOpenEdicion={abrirEdicionPredio}
+              onOpenHistorial={abrirHistorial}
+              user={user}
+            />
+          </div>
+        )}
       </div>
+      
+      {/* Modal de Formulario de Visita */}
+      <FormularioVisitaModal
+        open={showFormularioVisita}
+        onOpenChange={setShowFormularioVisita}
+        predio={selectedPredio}
+        visitaExistente={visitaExistente}
+        onGuardar={guardarFormularioVisita}
+        isSaving={savingVisita}
+      />
       
       {/* Modal de detalle/edición de predio */}
       <Dialog open={showPredioDetail} onOpenChange={(open) => {
