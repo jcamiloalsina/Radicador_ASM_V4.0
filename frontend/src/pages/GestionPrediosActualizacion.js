@@ -623,7 +623,8 @@ export default function GestionPrediosActualizacion() {
       // Filtro especial para mejoras
       if (filterEstado === 'mejoras') {
         const cod = predio.codigo_predial || predio.numero_predial || '';
-        const esMejoraPredio = cod.length >= 30 && cod.substring(26, 30) !== '0000';
+        // Mejora = últimos 3 dígitos (posiciones 28-30) != "000"
+        const esMejoraPredio = cod.length >= 30 && cod.substring(27, 30) !== '000';
         if (!esMejoraPredio) return false;
       } else {
         const estadoPredio = predio.estado_visita || 'pendiente';
