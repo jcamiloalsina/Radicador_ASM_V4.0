@@ -5451,12 +5451,12 @@ export default function VisorActualizacion() {
                     </div>
                   </div>
 
-                  {/* Sección 12: Firmas */}
+                  {/* Sección 13: Firmas */}
                   <div className="border border-purple-200 rounded-lg overflow-hidden">
                     <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
                       <h3 className="font-semibold text-purple-800 flex items-center gap-2">
                         <Pen className="w-4 h-4" />
-                        12. FIRMAS
+                        13. FIRMAS
                       </h3>
                     </div>
                     <div className="p-4 space-y-6">
