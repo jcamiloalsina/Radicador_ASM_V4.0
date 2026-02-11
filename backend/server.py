@@ -13417,10 +13417,24 @@ async def process_gdb_upload_background(
         # Guardar geometrías en colección para búsquedas posteriores
         geometrias_guardadas = 0
         
-        # REEMPLAZAR COMPLETAMENTE: Limpiar TODAS las geometrías anteriores de este municipio
-        deleted = await db.gdb_geometrias.delete_many({"municipio": municipio_nombre})
-        logger.info(f"GDB {municipio_nombre}: Eliminadas {deleted.deleted_count} geometrías anteriores")
-        await update_progress("limpiando", 52, f"Reemplazando geometrías anteriores ({deleted.deleted_count} eliminadas)")
+        # Lógica de eliminación según el modo de carga
+        if modo_carga == "reemplazar":
+            # REEMPLAZAR COMPLETAMENTE: Limpiar TODAS las geometrías anteriores de este municipio
+            deleted = await db.gdb_geometrias.delete_many({"municipio": municipio_nombre})
+            logger.info(f"GDB {municipio_nombre}: Eliminadas {deleted.deleted_count} geometrías anteriores (modo: reemplazar)")
+            await update_progress("limpiando", 52, f"Reemplazando geometrías anteriores ({deleted.deleted_count} eliminadas)")
+        elif modo_carga == "incremental" and capa_especifica:
+            # INCREMENTAL con capa específica: Solo eliminar geometrías de la misma capa
+            deleted = await db.gdb_geometrias.delete_many({
+                "municipio": municipio_nombre,
+                "capa_origen": capa_especifica
+            })
+            logger.info(f"GDB {municipio_nombre}: Eliminadas {deleted.deleted_count} geometrías de capa '{capa_especifica}' (modo: incremental)")
+            await update_progress("limpiando", 52, f"Actualizando capa '{capa_especifica}' ({deleted.deleted_count} reemplazadas)")
+        else:
+            # INCREMENTAL sin capa específica: No eliminar nada, solo añadir/actualizar
+            logger.info(f"GDB {municipio_nombre}: Modo incremental - añadiendo sin eliminar existentes")
+            await update_progress("limpiando", 52, f"Modo incremental: añadiendo nuevas geometrías...")
         
         # Guardar las geometrías con sus códigos
         # Inicializar diccionario de errores para el reporte de calidad
