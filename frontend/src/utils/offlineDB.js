@@ -222,11 +222,22 @@ function createAllStores(database) {
   console.log('[OfflineDB] Estructura de base de datos actualizada');
 }
 
+// Helper para verificar si la base de datos está disponible
+async function getDatabase() {
+  const database = await initOfflineDB();
+  if (!database) {
+    console.warn('[OfflineDB] Base de datos no disponible');
+    return null;
+  }
+  return database;
+}
+
 // ==================== PREDIOS ====================
 
 // Guardar predios para offline
 export async function savePrediosOffline(proyectoId, predios, municipio) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return 0;
   
   // SIEMPRE limpiar predios anteriores del mismo municipio primero
   if (municipio) {
