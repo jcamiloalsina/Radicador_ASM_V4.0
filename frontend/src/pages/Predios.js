@@ -2472,7 +2472,8 @@ export default function Predios() {
       {showDashboard ? (
         <div className="space-y-6">
           {/* Estadísticas Generales - Solo 4 tarjetas: Total Predios, Avalúo Total, Área R1, Geometrías GDB */}
-          {prediosStats && (
+          {/* Ocultar para rol empresa */}
+          {prediosStats && !isEmpresaRole && (
             <StatsPanel stats={prediosStats} />
           )}
 
