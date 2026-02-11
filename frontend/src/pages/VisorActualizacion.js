@@ -1692,6 +1692,74 @@ export default function VisorActualizacion() {
     }
   };
   
+  // ========== FUNCIONES PARA CANCELAR PREDIO ==========
+  
+  // Abrir modal de cancelación
+  const abrirCancelarModal = () => {
+    if (!selectedPredio) return;
+    setMotivoCancelacion('');
+    setShowCancelarModal(true);
+  };
+  
+  // Cancelar o proponer cancelación de predio
+  const handleCancelarPredio = async () => {
+    if (!selectedPredio || !motivoCancelacion.trim()) {
+      toast.error('Debe ingresar un motivo para la cancelación');
+      return;
+    }
+    
+    const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
+    const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+    
+    setCancelando(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (esCoordinador) {
+        // Coordinador: Cancelar directamente
+        await axios.delete(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            data: { motivo: motivoCancelacion }
+          }
+        );
+        
+        toast.success('Predio cancelado exitosamente');
+        
+        // Remover de la lista local
+        setPrediosProyecto(prev => prev.filter(p => 
+          (p.codigo_predial || p.numero_predial) !== codigoPredial
+        ));
+        
+        // Cerrar modales
+        setShowCancelarModal(false);
+        setShowPredioDetail(false);
+        setSelectedPredio(null);
+        
+      } else {
+        // Gestor: Proponer cancelación
+        await axios.post(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/proponer-cancelacion`,
+          { motivo: motivoCancelacion },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        toast.success('Propuesta de cancelación enviada al coordinador');
+        
+        // Actualizar estado local
+        setSelectedPredio(prev => ({ ...prev, propuesta_cancelacion_pendiente: true }));
+        setShowCancelarModal(false);
+      }
+      
+    } catch (error) {
+      console.error('Error al cancelar predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al procesar la cancelación');
+    } finally {
+      setCancelando(false);
+    }
+  };
+  
   // ========== FUNCIONES PARA FORMATO DE VISITA ==========
   
   // Abrir modal de visita - PERMITE REABRIR si ya tiene visita guardada
