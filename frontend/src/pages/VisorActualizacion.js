@@ -1513,15 +1513,26 @@ export default function VisorActualizacion() {
 
   // Abrir modal de edición (estilo Conservación)
   const abrirEdicionPredio = () => {
+    if (selectedPredio) {
+      cargarDatosParaEdicion(selectedPredio);
+    }
     setEditMode(true);
     setShowPredioDetail(true);
+    setShowDetalleSimplificado(false);
   };
 
-  // Abrir historial
+  // Abrir historial en el modal
   const abrirHistorial = () => {
-    // Por ahora mostrar el tab de historial en el modal actual
+    if (selectedPredio) {
+      cargarDatosParaEdicion(selectedPredio);
+      const codigo = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+      if (codigo) {
+        fetchHistorial(codigo);
+      }
+    }
+    setEditMode(false);
     setShowPredioDetail(true);
-    // Podríamos agregar un estado para ir directo al tab de historial
+    setShowDetalleSimplificado(false);
   };
 
   // Cerrar detalle simplificado
