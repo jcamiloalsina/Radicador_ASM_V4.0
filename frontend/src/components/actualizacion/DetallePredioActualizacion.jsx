@@ -71,14 +71,25 @@ const DetallePredioActualizacion = ({
   const sinCambios = predio.sin_cambios;
   const esGestor = user?.role === 'gestor' || user?.role === 'gestor_auxiliar';
   const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
+  
+  // Verificar si es una mejora (últimos 4 dígitos != 0000)
+  const codigoPredial = predio.codigo_predial || predio.numero_predial || '';
+  const esMejora = codigoPredial.length >= 30 && codigoPredial.substring(26, 30) !== '0000';
 
   return (
-    <Card className="border-amber-300 shadow-md" data-testid="detalle-predio-actualizacion">
-      <CardHeader className="py-3 bg-amber-100">
+    <Card className={`shadow-md ${esMejora ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
+      <CardHeader className={`py-3 ${esMejora ? 'bg-cyan-100' : 'bg-amber-100'}`}>
         <CardTitle className="text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-amber-700" />
-            <span className="text-amber-800 font-semibold">Predio Seleccionado</span>
+            <MapPin className={`w-4 h-4 ${esMejora ? 'text-cyan-700' : 'text-amber-700'}`} />
+            <span className={`font-semibold ${esMejora ? 'text-cyan-800' : 'text-amber-800'}`}>
+              {esMejora ? 'Mejora Seleccionada' : 'Predio Seleccionado'}
+            </span>
+            {esMejora && (
+              <Badge className="bg-cyan-500 text-white text-[10px] px-1.5 py-0">
+                MEJORA
+              </Badge>
+            )}
           </div>
           <Button 
             variant="ghost" 
@@ -100,12 +111,18 @@ const DetallePredioActualizacion = ({
             {sinCambios && (
               <Badge variant="outline" className="text-xs bg-gray-50">Sin cambios</Badge>
             )}
+            {esMejora && (
+              <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-300">
+                <Building className="w-3 h-3 mr-1" />
+                Mejora
+              </Badge>
+            )}
           </div>
         </div>
 
         {/* Código Predial */}
-        <div className="bg-slate-50 p-2 rounded">
-          <p className="text-xs text-slate-500">Código Predial Nacional</p>
+        <div className={`p-2 rounded ${esMejora ? 'bg-cyan-50' : 'bg-slate-50'}`}>
+          <p className="text-xs text-slate-500">Código Predial Nacional {esMejora && '(Mejora)'}</p>
           <p className="font-mono text-[10px] font-medium text-slate-800 break-all">
             {predio.codigo_predial || predio.codigo_predial_nacional}
           </p>
