@@ -3467,17 +3467,42 @@ export default function VisorActualizacion() {
         
         {/* Toggle Construcciones */}
         <button 
-          onClick={() => {
-            console.log('[Visor] Toggle construcciones:', !showConstrucciones);
-            console.log('[Visor] Construcciones disponibles:', construccionesFiltradas?.features?.length || 0);
-            setShowConstrucciones(!showConstrucciones);
+          onClick={async () => {
+            if (construcciones?.features?.length > 0) {
+              // Toggle mostrar/ocultar
+              console.log('[Visor] Toggle construcciones:', !showConstrucciones);
+              setShowConstrucciones(!showConstrucciones);
+            } else {
+              // Intentar cargar construcciones del servidor
+              console.log('[Visor] Intentando cargar construcciones del servidor...');
+              try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: { offset: 0, limit: 10 }
+                });
+                if (response.data.construcciones?.features?.length > 0) {
+                  setConstrucciones(response.data.construcciones);
+                  setShowConstrucciones(true);
+                  toast.success(`${response.data.construcciones.features.length} construcciones cargadas`);
+                } else {
+                  toast.info('Este proyecto no tiene construcciones en la GDB');
+                }
+              } catch (e) {
+                console.error('[Visor] Error cargando construcciones:', e);
+                toast.error('Error cargando construcciones');
+              }
+            }
           }}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
             showConstrucciones 
               ? (construccionesFiltradas?.features?.length > 0 ? 'bg-red-200 text-red-800 font-medium' : 'bg-red-100 text-red-600')
               : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
-          title={showConstrucciones ? 'Ocultar construcciones' : 'Mostrar construcciones'}
+          title={construcciones?.features?.length > 0 
+            ? (showConstrucciones ? 'Ocultar construcciones' : 'Mostrar construcciones')
+            : 'Clic para cargar construcciones del servidor'
+          }
         >
           <Building2 className="w-3 h-3" />
           <span>{showConstrucciones ? 'Const. ✓' : 'Const.'}</span>
