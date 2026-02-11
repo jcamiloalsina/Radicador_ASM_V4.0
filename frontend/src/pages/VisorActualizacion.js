@@ -863,6 +863,19 @@ export default function VisorActualizacion() {
     setShowSyncScreen(false);
   };
   
+  // Helper: Verificar si un código predial es una MEJORA
+  // Una mejora tiene los últimos 4 dígitos diferentes de "0000"
+  const esMejora = (codigoPredial) => {
+    if (!codigoPredial || codigoPredial.length < 30) return false;
+    const ultimosCuatro = codigoPredial.substring(26, 30); // Posiciones 27-30 (índice 26-29)
+    return ultimosCuatro !== '0000';
+  };
+  
+  // Contar predios que son mejoras
+  const contarMejoras = useMemo(() => {
+    return prediosR1R2.filter(p => esMejora(p.codigo_predial || p.numero_predial)).length;
+  }, [prediosR1R2]);
+  
   useEffect(() => {
     if (proyecto?.gdb_procesado) {
       fetchGeometrias();
@@ -875,7 +888,8 @@ export default function VisorActualizacion() {
       todos: new Set(),
       pendiente: new Set(),
       visitado: new Set(),
-      actualizado: new Set()
+      actualizado: new Set(),
+      mejoras: new Set() // Nuevo: solo mejoras
     };
     
     for (const predio of prediosR1R2) {
@@ -888,6 +902,11 @@ export default function VisorActualizacion() {
       if (estado === 'pendiente') index.pendiente.add(codigo);
       else if (estado === 'visitado') index.visitado.add(codigo);
       else if (estado === 'actualizado') index.actualizado.add(codigo);
+      
+      // Agregar al índice de mejoras si es mejora
+      if (esMejora(codigo)) {
+        index.mejoras.add(codigo);
+      }
     }
     
     return index;
