@@ -62,6 +62,65 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     };
   }, [proyectoId]);
 
+  // Función interna para sincronizar cambios (usada por auto-sync)
+  const syncChangesDirectly = async (cambios) => {
+    if (cambios.length === 0) return;
+    
+    setIsSyncing(true);
+    let sincronizados = 0;
+    let errores = 0;
+    const token = localStorage.getItem('token');
+
+    for (const cambio of cambios) {
+      try {
+        switch (cambio.tipo) {
+          case 'visita':
+            await axios.patch(
+              `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}`,
+              cambio.datos,
+              { headers: { Authorization: `Bearer ${token}` }}
+            );
+            break;
+          
+          case 'propuesta':
+            await axios.post(
+              `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}/propuesta`,
+              cambio.datos,
+              { headers: { Authorization: `Bearer ${token}` }}
+            );
+            break;
+          
+          case 'actualizacion_predio':
+            await axios.patch(
+              `${API}/api/predios/${cambio.datos.codigo_predial}`,
+              cambio.datos,
+              { headers: { Authorization: `Bearer ${token}` }}
+            );
+            break;
+
+          default:
+            console.warn(`[Sync] Tipo de cambio no reconocido: ${cambio.tipo}`);
+        }
+
+        await eliminarCambioSincronizado(cambio.id);
+        sincronizados++;
+      } catch (error) {
+        console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
+        errores++;
+      }
+    }
+
+    await refreshStats();
+    setIsSyncing(false);
+
+    if (sincronizados > 0) {
+      toast.success(`${sincronizados} cambio(s) sincronizado(s) exitosamente`);
+    }
+    if (errores > 0) {
+      toast.error(`${errores} cambio(s) no se pudieron sincronizar`);
+    }
+  };
+
   // Inicializar DB solo una vez (ya no llama refreshStats automáticamente)
   useEffect(() => {
     let mounted = true;
