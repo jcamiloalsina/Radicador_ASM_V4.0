@@ -5332,7 +5332,7 @@ export default function VisorActualizacion() {
                       <div className="flex flex-col sm:flex-row gap-3">
                         <Button 
                           type="button" 
-                          onClick={activateGPS}
+                          onClick={startWatchingPosition}
                           disabled={gpsActive}
                           className="bg-blue-600 hover:bg-blue-700 flex-1"
                         >
