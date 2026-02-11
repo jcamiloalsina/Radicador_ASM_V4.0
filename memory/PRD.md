@@ -45,7 +45,47 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
+## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 2)
+
+### ✅ COMPLETADO: Modal "Crear Predio" Idéntico a Conservación (P0)
+
+**Problema reportado:** El modal de "Crear Predio" en el módulo de Actualización no era idéntico al módulo de Conservación:
+1. El campo "Zona" era un dropdown `<Select>` en lugar de un input de texto manual
+2. No mostraba la lista de predios existentes en la manzana al digitar el número de manzana
+3. Los dropdowns aparecían detrás del modal (problema de z-index)
+
+**Solución implementada:**
+
+1. **Campo "Zona" convertido a Input de texto:**
+   - Reemplazado el `<Select>` por `<Input type="text">`
+   - Agregada descripción: "00=Rural, 01=Urbano, 02-99=Correg."
+   - El usuario puede escribir manualmente el código de zona
+
+2. **Lista de predios en manzana:**
+   - Agregados estados: `prediosEnManzana`, `buscandoPrediosManzana`, `siguienteTerrenoSugerido`
+   - Función `fetchPrediosEnManzana()` que consulta API `/predios/por-manzana/{municipio}`
+   - Effect que detecta cambios en la manzana con debounce de 500ms
+   - Sección cyan que muestra los últimos 5 terrenos únicos cuando manzana ≠ "0000"
+   - Mensaje "Siguiente: XXXX" sugiriendo el próximo número de terreno disponible
+
+3. **Fix de z-index para dropdowns:**
+   - Modificado `/app/frontend/src/components/ui/select.jsx`
+   - `SelectContent` ahora tiene `z-[999999]` y `side="bottom"` por defecto
+   - Los dropdowns ahora aparecen correctamente encima de los modales
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js` - Modal de crear predio
+- `/app/frontend/src/components/ui/select.jsx` - z-index del SelectContent
+
+**Testing:** ✅ Verificado con testing agent (iteration_39.json) - 100% features passed
+- Zona es INPUT ✓
+- Predios en manzana aparece ✓
+- Código 30 dígitos dinámico ✓
+- Dropdown z-index corregido ✓
+
+---
+
+## 🔧 Cambios Previos (11 Febrero 2026 - Fork 1)
 
 ### ✅ COMPLETADO: Paridad de Datos R1/R2 para Exportación Excel
 
