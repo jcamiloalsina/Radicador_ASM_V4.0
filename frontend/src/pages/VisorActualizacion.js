@@ -3515,15 +3515,7 @@ export default function VisorActualizacion() {
         )}
       </div>
       
-      {/* Modal de Formulario de Visita */}
-      <FormularioVisitaModal
-        open={showFormularioVisita}
-        onOpenChange={setShowFormularioVisita}
-        predio={selectedPredio}
-        visitaExistente={visitaExistente}
-        onGuardar={guardarFormularioVisita}
-        isSaving={savingVisita}
-      />
+      {/* El formulario de visita original se usa desde showVisitaModal más abajo */}
       
       {/* Modal de detalle/edición de predio */}
       <Dialog open={showPredioDetail} onOpenChange={(open) => {
