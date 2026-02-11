@@ -1393,6 +1393,19 @@ export default function GestionPrediosActualizacion() {
                                   Marcar Pendiente
                                 </DropdownMenuItem>
                               )}
+                              
+                              <DropdownMenuSeparator />
+                              
+                              {/* Cancelar predio - Coordinadores cancelan directamente, gestores proponen */}
+                              {!predio.cancelado && !predio.deleted && (
+                                <DropdownMenuItem 
+                                  onClick={() => abrirCancelarModal(predio)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  {esCoordinador ? 'Cancelar Predio' : 'Proponer Cancelación'}
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
