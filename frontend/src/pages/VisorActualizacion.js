@@ -299,7 +299,8 @@ export default function VisorActualizacion() {
   
   // Estados de filtro
   const [filterZona, setFilterZona] = useState('todos');
-  const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado
+  const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado, mejoras
+  const [showConstrucciones, setShowConstrucciones] = useState(true); // Toggle para mostrar construcciones
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
