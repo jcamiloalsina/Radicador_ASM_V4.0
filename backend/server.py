@@ -5416,9 +5416,23 @@ async def get_predios(
     
     query = {"deleted": {"$ne": True}}
     
-    if municipio:
+    # Si es usuario empresa, filtrar por municipios asignados
+    if current_user['role'] == UserRole.EMPRESA:
+        municipios_asignados = current_user.get('municipios_asignados', [])
+        if not municipios_asignados:
+            return {"total": 0, "predios": [], "mensaje": "No tiene municipios asignados. Contacte al coordinador."}
+        # Si se especifica un municipio, verificar que esté en los asignados
+        if municipio:
+            if municipio not in municipios_asignados:
+                raise HTTPException(status_code=403, detail=f"No tiene acceso al municipio {municipio}")
+            query["municipio"] = {"$regex": f"^{municipio}$", "$options": "i"}
+        else:
+            # Si no se especifica municipio, filtrar por todos los asignados
+            query["municipio"] = {"$in": municipios_asignados}
+    elif municipio:
         # Búsqueda case-insensitive para soportar variaciones de acentos
         query["municipio"] = {"$regex": f"^{municipio}$", "$options": "i"}
+    
     if vigencia:
         query["vigencia"] = vigencia
     if destino_economico:
