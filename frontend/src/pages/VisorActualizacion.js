@@ -6152,6 +6152,24 @@ export default function VisorActualizacion() {
                   {isOnline ? "✓ Online" : "✕ Offline"}
                 </Badge>
               </div>
+              {/* Indicador de sincronización en segundo plano */}
+              {isBackgroundSyncing && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Sincronización:</span>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 animate-pulse">
+                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                    {backgroundSyncMessage || 'Sincronizando...'}
+                  </Badge>
+                </div>
+              )}
+              {backgroundSyncMessage && !isBackgroundSyncing && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Última sincronización:</span>
+                  <Badge variant="outline" className="bg-green-50 text-green-700">
+                    {backgroundSyncMessage}
+                  </Badge>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Cambios pendientes:</span>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700">
