@@ -1118,6 +1118,17 @@ export default function VisorActualizacion() {
     setSelectedGeometry(null);
     setSelectedPredio(null);
   }, [filterEstado]);
+  
+  // Debug: Log cuando cambian las construcciones filtradas
+  useEffect(() => {
+    console.log('[Visor DEBUG] construccionesFiltradas actualizadas:', {
+      showConstrucciones,
+      construccionesRaw: construcciones?.features?.length || 0,
+      construccionesFiltradas: construccionesFiltradas?.features?.length || 0,
+      filterEstado,
+      shouldRender: showConstrucciones && construccionesFiltradas && (construccionesFiltradas?.features?.length > 0)
+    });
+  }, [showConstrucciones, construcciones, construccionesFiltradas, filterEstado]);
 
   // Función de sincronización con historial
   const handleSyncWithHistory = async () => {
