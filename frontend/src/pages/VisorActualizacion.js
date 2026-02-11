@@ -3337,16 +3337,17 @@ export default function VisorActualizacion() {
         {/* Separador */}
         <div className="border-l border-slate-300 mx-1"></div>
         
-        {/* Botón filtro MEJORAS */}
+        {/* Botón filtro MEJORAS - Toggle */}
         <button 
-          onClick={() => setFilterEstado('mejoras')}
+          onClick={() => setFilterEstado(filterEstado === 'mejoras' ? 'todos' : 'mejoras')}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
             filterEstado === 'mejoras' ? 'bg-cyan-200 font-medium' : 'hover:bg-cyan-50'
           }`}
-          title="Filtrar solo predios con mejoras"
+          title={filterEstado === 'mejoras' ? 'Quitar filtro de mejoras' : 'Filtrar solo predios con mejoras'}
         >
           <Building className="w-3 h-3 text-cyan-600" />
           <span className="text-cyan-700">Mejoras: {contarMejoras}</span>
+          {filterEstado === 'mejoras' && <X className="w-3 h-3 text-cyan-600" />}
         </button>
         
         {/* Toggle Construcciones */}
