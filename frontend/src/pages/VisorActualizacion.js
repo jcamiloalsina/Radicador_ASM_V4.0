@@ -765,9 +765,13 @@ export default function VisorActualizacion() {
   }, [proyectoId, fetchProyecto]);
   
   // Verificar sincronización inicial al cargar el proyecto
+  const [syncChecked, setSyncChecked] = useState(false); // Bandera para evitar múltiples checks
+  
   useEffect(() => {
     const verificarSincronizacion = async () => {
-      if (proyecto && isOnline && !loading) {
+      // Solo verificar UNA vez por sesión
+      if (proyecto && isOnline && !loading && !syncChecked) {
+        setSyncChecked(true); // Marcar como verificado
         const necesitaSync = await checkInitialSync();
         if (necesitaSync) {
           setShowSyncScreen(true);
@@ -775,7 +779,7 @@ export default function VisorActualizacion() {
       }
     };
     verificarSincronizacion();
-  }, [proyecto, isOnline, loading, checkInitialSync]);
+  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked]);
   
   // Ejecutar sincronización completa cuando se muestra la pantalla de sync
   const handlePerformFullSync = async () => {
