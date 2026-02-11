@@ -275,7 +275,7 @@ export default function DashboardLayout() {
     const canSeeAllPetitions = isStaff && user.role !== 'empresa';
     const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
     const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
-    const canAccessActualizacion = ['administrador', 'coordinador', 'gestor', 'empresa'].includes(user.role);
+    const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);
     
     // Verificar si el usuario tiene permiso de aprobar cambios (gestores con este permiso pueden ver Pendientes)
     const userPermissions = user.permissions || [];
