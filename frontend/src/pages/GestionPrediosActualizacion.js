@@ -2631,6 +2631,86 @@ export default function GestionPrediosActualizacion() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Cancelación de Predio */}
+      <Dialog open={showCancelarModal} onOpenChange={setShowCancelarModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              {esCoordinador ? 'Cancelar Predio' : 'Proponer Cancelación'}
+            </DialogTitle>
+            <DialogDescription>
+              {esCoordinador 
+                ? 'Esta acción cancelará el predio permanentemente.'
+                : 'Esta propuesta será revisada por un coordinador antes de aplicarse.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            {/* Información del predio */}
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <p className="text-sm text-slate-600">
+                <strong>Código:</strong> {predioSeleccionado?.codigo_predial || predioSeleccionado?.numero_predial}
+              </p>
+              <p className="text-sm text-slate-600">
+                <strong>Dirección:</strong> {predioSeleccionado?.direccion || 'Sin dirección'}
+              </p>
+              {predioSeleccionado?.propietarios?.[0] && (
+                <p className="text-sm text-slate-600">
+                  <strong>Propietario:</strong> {predioSeleccionado.propietarios[0].nombre_propietario || 
+                    `${predioSeleccionado.propietarios[0].primer_nombre || ''} ${predioSeleccionado.propietarios[0].primer_apellido || ''}`}
+                </p>
+              )}
+            </div>
+            
+            {/* Motivo de cancelación */}
+            <div>
+              <Label className="text-sm font-medium text-red-700">
+                Motivo de cancelación *
+              </Label>
+              <Textarea
+                value={motivoCancelacion}
+                onChange={(e) => setMotivoCancelacion(e.target.value)}
+                placeholder="Ej: Predio duplicado, error de digitación, predio fusionado con otro..."
+                className="mt-1 min-h-[100px]"
+              />
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-700">
+                <AlertCircle className="w-4 h-4 inline mr-1" />
+                {esCoordinador 
+                  ? 'Los predios cancelados no se eliminarán físicamente, solo se marcarán como cancelados y no aparecerán en las listas.'
+                  : 'Su propuesta de cancelación será revisada por un coordinador antes de ser aprobada.'}
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelarModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={cancelarPredio}
+              disabled={cancelando || !motivoCancelacion.trim()}
+            >
+              {cancelando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {esCoordinador ? 'Cancelando...' : 'Enviando...'}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {esCoordinador ? 'Confirmar Cancelación' : 'Enviar Propuesta'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
