@@ -26,6 +26,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const [offlineStats, setOfflineStats] = useState({ predios: 0, geometrias: 0, cambiosPendientes: 0 });
   const [hasOffline, setHasOffline] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [requiresSync, setRequiresSync] = useState(false); // Indica si necesita sincronización obligatoria
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, message: '' }); // Progreso de sincronización
+  const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false); // Sincronización inicial completada
   
   // Ref para evitar dependencias circulares
   const syncingRef = useRef(false);
