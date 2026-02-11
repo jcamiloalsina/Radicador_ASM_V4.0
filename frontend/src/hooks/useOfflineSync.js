@@ -650,10 +650,18 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const skipInitialSync = useCallback(() => {
     setRequiresSync(false);
     setIsInitialSyncComplete(true);
-    toast.warning('Sincronización omitida', {
-      description: 'Trabajando con datos locales'
+    
+    // Guardar fecha del modal para no mostrar por 24 horas
+    const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
+    localStorage.setItem(lastSyncModalKey, new Date().toISOString());
+    
+    // Iniciar sincronización en segundo plano
+    startBackgroundSync();
+    
+    toast.info('Sincronización en segundo plano', {
+      description: 'Los datos se sincronizarán automáticamente'
     });
-  }, []);
+  }, [proyectoId, startBackgroundSync]);
 
   return {
     isOnline,
@@ -664,6 +672,8 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     requiresSync,
     syncProgress,
     isInitialSyncComplete,
+    isBackgroundSyncing,
+    backgroundSyncMessage,
     downloadForOffline,
     saveOfflineChange,
     syncPendingChanges,
@@ -674,6 +684,8 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     checkInitialSync,
     performFullSync,
     skipInitialSync,
+    startBackgroundSync,
+    performBackgroundSync,
     getPrediosOffline
   };
 }
