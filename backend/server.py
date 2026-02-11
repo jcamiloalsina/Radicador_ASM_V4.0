@@ -1910,7 +1910,7 @@ async def reset_password(request: ResetPasswordRequest):
 
 # ===== USER MANAGEMENT ROUTES =====
 
-@api_router.get("/users", response_model=List[User])
+@api_router.get("/users")
 async def get_users(current_user: dict = Depends(get_current_user)):
     # Only admin, coordinador, and atencion can view users
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.ATENCION_USUARIO]:
@@ -1921,6 +1921,9 @@ async def get_users(current_user: dict = Depends(get_current_user)):
     for user in users:
         if isinstance(user.get('created_at'), str):
             user['created_at'] = datetime.fromisoformat(user['created_at'])
+        # Asegurar que municipios_asignados siempre esté presente para usuarios empresa
+        if user.get('role') == 'empresa' and 'municipios_asignados' not in user:
+            user['municipios_asignados'] = []
     
     return users
 
