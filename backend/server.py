@@ -16319,43 +16319,36 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 logger.info(f"[GDB/SHP Actualizacion] Procesando construcciones: {layer_name}")
                 gdf = read_layer(layer_name)
                 if gdf is not None and len(gdf) > 0:
-                        gdf = gdf.to_crs(epsg=4326)
-                        for idx, row in gdf.iterrows():
-                            geom = row.geometry.__geo_interface__
-                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
-                            
-                            await db.construcciones_actualizacion.insert_one({
-                                "proyecto_id": proyecto_id,
-                                "municipio": municipio,
-                                "codigo_predial": props.get('CODIGO', props.get('codigo', '')),
-                                "geometry": geom,
-                                "properties": props,
-                                "created_at": datetime.now(timezone.utc)
-                            })
-                            construcciones_guardadas += 1
-                except Exception as e:
-                    logger.error(f"[GDB Actualizacion] Error procesando construcciones {layer_name}: {e}")
-                    import traceback
-                    logger.error(f"[GDB Actualizacion] Traceback: {traceback.format_exc()}")
+                    gdf = gdf.to_crs(epsg=4326)
+                    for idx, row in gdf.iterrows():
+                        geom = row.geometry.__geo_interface__
+                        props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                        
+                        await db.construcciones_actualizacion.insert_one({
+                            "proyecto_id": proyecto_id,
+                            "municipio": municipio,
+                            "capa_origen": layer_name,
+                            "codigo_predial": props.get('CODIGO', props.get('codigo', '')),
+                            "geometry": geom,
+                            "properties": props,
+                            "created_at": datetime.now(timezone.utc)
+                        })
+                        construcciones_guardadas += 1
+            except Exception as e:
+                logger.error(f"[GDB/SHP Actualizacion] Error procesando construcciones {layer_name}: {e}")
+                import traceback
+                logger.error(f"[GDB/SHP Actualizacion] Traceback: {traceback.format_exc()}")
         
-        logger.info(f"[GDB Actualizacion] Total construcciones guardadas: {construcciones_guardadas}")
+        logger.info(f"[GDB/SHP Actualizacion] Total construcciones guardadas: {construcciones_guardadas}")
         
         # Actualizar proyecto con información detallada de capas procesadas
         capas_info = {
-            "rural_encontradas": [],
-            "urbano_encontradas": [],
-            "construccion_encontradas": []
+            "rural_encontradas": rural_found,
+            "urbano_encontradas": urban_found,
+            "perimetro_encontradas": perimetro_found,
+            "construccion_encontradas": construccion_found,
+            "es_shapefile": is_shapefile
         }
-        
-        for layer_name in rural_layers:
-            if layer_name in layer_names:
-                capas_info["rural_encontradas"].append(layer_name)
-        for layer_name in urban_layers:
-            if layer_name in layer_names:
-                capas_info["urbano_encontradas"].append(layer_name)
-        for layer_name in construccion_layers:
-            if layer_name in layer_names:
-                capas_info["construccion_encontradas"].append(layer_name)
         
         await db.proyectos_actualizacion.update_one(
             {"id": proyecto_id},
