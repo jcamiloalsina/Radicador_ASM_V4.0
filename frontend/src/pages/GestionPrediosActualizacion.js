@@ -1452,16 +1452,16 @@ export default function GestionPrediosActualizacion() {
                   {/* Visualización del código completo */}
                   <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
                     <span className="text-blue-600 font-bold" title="Departamento + Municipio">{estructuraCodigo.prefijo_fijo}</span>
-                    <span className="text-emerald-600" title="Zona">{codigoManual.zona}</span>
-                    <span className="text-amber-600" title="Sector">{codigoManual.sector}</span>
-                    <span className="text-purple-600" title="Comuna">{codigoManual.comuna}</span>
-                    <span className="text-pink-600" title="Barrio">{codigoManual.barrio}</span>
-                    <span className="text-cyan-600" title="Manzana/Vereda">{codigoManual.manzana_vereda}</span>
-                    <span className="text-red-600 font-bold" title="Terreno">{codigoManual.terreno}</span>
-                    <span className="text-orange-600" title="Condición">{codigoManual.condicion}</span>
-                    <span className="text-slate-500" title="Edificio">{codigoManual.edificio}</span>
-                    <span className="text-slate-500" title="Piso">{codigoManual.piso}</span>
-                    <span className="text-slate-500" title="Unidad">{codigoManual.unidad}</span>
+                    <span className="text-emerald-600" title="Zona">{(codigoManual.zona || '').padStart(2, '0')}</span>
+                    <span className="text-amber-600" title="Sector">{(codigoManual.sector || '').padStart(2, '0')}</span>
+                    <span className="text-purple-600" title="Comuna">{(codigoManual.comuna || '').padStart(2, '0')}</span>
+                    <span className="text-pink-600" title="Barrio">{(codigoManual.barrio || '').padStart(2, '0')}</span>
+                    <span className="text-cyan-600" title="Manzana/Vereda">{(codigoManual.manzana_vereda || '').padStart(4, '0')}</span>
+                    <span className="text-red-600 font-bold" title="Terreno">{(codigoManual.terreno || '').padStart(4, '0')}</span>
+                    <span className="text-orange-600" title="Condición">{(codigoManual.condicion || '').padStart(1, '0')}</span>
+                    <span className="text-slate-500" title="Edificio">{(codigoManual.edificio || '').padStart(2, '0')}</span>
+                    <span className="text-slate-500" title="Piso">{(codigoManual.piso || '').padStart(2, '0')}</span>
+                    <span className="text-slate-500" title="Unidad">{(codigoManual.unidad || '').padStart(4, '0')}</span>
                     <span className="text-xs text-slate-500 ml-2">({construirCodigoCompleto().length}/30)</span>
                   </div>
                   
