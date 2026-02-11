@@ -204,7 +204,7 @@ export default function VisorActualizacion() {
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [geometrias, setGeometrias] = useState(null);
-  const [geometriasFiltradas, setGeometriasFiltradas] = useState(null);
+  // geometriasFiltradas ahora es un useMemo
   const [construcciones, setConstrucciones] = useState(null);
   const [prediosR1R2, setPrediosR1R2] = useState([]);
   
