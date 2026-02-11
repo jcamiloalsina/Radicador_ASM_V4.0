@@ -5313,12 +5313,121 @@ export default function VisorActualizacion() {
               {/* ========== PÁGINA 5: Observaciones, Firmas e Información de la Visita ========== */}
               {visitaPagina === 5 && (
                 <>
-                  {/* Sección 11: Observaciones */}
+                  {/* Sección 11: Coordenadas GPS del Predio */}
+                  <div className="border border-blue-200 rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
+                      <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        11. COORDENADAS GPS DEL PREDIO
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <p className="text-sm text-slate-600">
+                        Capture las coordenadas de ubicación del predio utilizando el GPS del dispositivo.
+                      </p>
+                      
+                      {/* Botón para capturar GPS */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button 
+                          type="button" 
+                          onClick={activateGPS}
+                          disabled={gpsActive}
+                          className="bg-blue-600 hover:bg-blue-700 flex-1"
+                        >
+                          {gpsActive ? (
+                            <>
+                              <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                              Obteniendo ubicación...
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="w-4 h-4 mr-2" />
+                              📍 Capturar Mi Ubicación GPS
+                            </>
+                          )}
+                        </Button>
+                        
+                        {userPosition && (
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={() => {
+                              setVisitaData(prev => ({
+                                ...prev,
+                                coordenadas_gps: {
+                                  latitud: userPosition[0].toFixed(6),
+                                  longitud: userPosition[1].toFixed(6),
+                                  precision: gpsAccuracy,
+                                  fecha_captura: new Date().toISOString()
+                                }
+                              }));
+                              toast.success('Coordenadas guardadas en el formulario');
+                            }}
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Usar esta ubicación
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* Indicador de GPS activo */}
+                      {userPosition && gpsAccuracy && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <div>
+                            <span className="text-green-700 text-sm font-medium">
+                              Ubicación capturada con precisión de {Math.round(gpsAccuracy)} metros
+                            </span>
+                            <p className="text-green-600 text-xs">
+                              Lat: {userPosition[0].toFixed(6)}, Lng: {userPosition[1].toFixed(6)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Campos de coordenadas */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs font-medium text-slate-600">Latitud (Y)</Label>
+                          <Input
+                            type="text"
+                            placeholder="Ej: 7.123456"
+                            value={visitaData.coordenadas_gps?.latitud || ''}
+                            onChange={(e) => setVisitaData(prev => ({
+                              ...prev,
+                              coordenadas_gps: { ...prev.coordenadas_gps, latitud: e.target.value }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-slate-600">Longitud (X)</Label>
+                          <Input
+                            type="text"
+                            placeholder="Ej: -72.654321"
+                            value={visitaData.coordenadas_gps?.longitud || ''}
+                            onChange={(e) => setVisitaData(prev => ({
+                              ...prev,
+                              coordenadas_gps: { ...prev.coordenadas_gps, longitud: e.target.value }
+                            }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      {visitaData.coordenadas_gps?.fecha_captura && (
+                        <p className="text-xs text-slate-500">
+                          Coordenadas capturadas el: {new Date(visitaData.coordenadas_gps.fecha_captura).toLocaleString('es-CO')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Sección 12: Observaciones */}
                   <div className="border border-amber-200 rounded-lg overflow-hidden">
                     <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
                       <h3 className="font-semibold text-amber-800 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        11. OBSERVACIONES
+                        12. OBSERVACIONES
                       </h3>
                     </div>
                     <div className="p-4">
