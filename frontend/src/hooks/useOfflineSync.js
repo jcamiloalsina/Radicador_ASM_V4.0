@@ -371,7 +371,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
   }, [proyectoId, refreshStats]);
 
-  // Verificar si necesita sincronización - SIEMPRE mostrar pantalla al inicio cuando hay conexión
+  // Verificar si necesita sincronización - Solo mostrar pantalla una vez al día
   const checkInitialSync = useCallback(async () => {
     if (!proyectoId) {
       setIsInitialSyncComplete(true);
@@ -385,6 +385,19 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
     
     try {
+      // Verificar última vez que se mostró el modal de sincronización
+      const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
+      const lastSyncModalStr = localStorage.getItem(lastSyncModalKey);
+      const lastSyncModal = lastSyncModalStr ? new Date(lastSyncModalStr) : null;
+      const now = new Date();
+      
+      // Calcular si han pasado 24 horas desde la última vez que se mostró
+      const hoursSinceLastModal = lastSyncModal 
+        ? (now.getTime() - lastSyncModal.getTime()) / (1000 * 60 * 60)
+        : 999; // Si nunca se ha mostrado, forzar mostrar
+      
+      console.log(`[Offline] Horas desde último modal: ${hoursSinceLastModal.toFixed(1)}h`);
+      
       // Inicializar DB primero (con timeout de 5 segundos)
       const initPromise = initOfflineDB();
       const timeoutPromise = new Promise((_, reject) => 
@@ -395,33 +408,154 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         await Promise.race([initPromise, timeoutPromise]);
       } catch (dbError) {
         console.warn('[Offline] IndexedDB no disponible, continuando sin modo offline:', dbError.message);
-        // Si IndexedDB falla, simplemente mostrar pantalla de sync para descargar datos frescos
-        setSyncProgress({ current: 0, total: 0, message: 'Sincronizar datos del servidor' });
-        setRequiresSync(true);
-        return true;
       }
       
       // Verificar si hay cambios pendientes de subir
       const cambiosPendientes = await getCambiosPendientes(proyectoId);
       
+      // Si hay cambios pendientes, SIEMPRE mostrar el modal (es crítico subirlos)
       if (cambiosPendientes.length > 0) {
-        console.log('[Offline] Hay cambios pendientes por sincronizar:', cambiosPendientes.length);
+        console.log('[Offline] Hay cambios pendientes - mostrando modal obligatorio:', cambiosPendientes.length);
         setSyncProgress({ current: 0, total: cambiosPendientes.length, message: `${cambiosPendientes.length} cambio(s) pendiente(s) por subir` });
-      } else {
-        setSyncProgress({ current: 0, total: 0, message: 'Verificar datos del servidor' });
+        setRequiresSync(true);
+        // NO actualizar la fecha del modal porque es obligatorio
+        return true;
       }
       
-      // SIEMPRE mostrar pantalla de sincronización al inicio cuando hay conexión
+      // Si NO han pasado 24 horas, NO mostrar modal y sincronizar en segundo plano
+      if (hoursSinceLastModal < 24) {
+        console.log('[Offline] Sincronización reciente - trabajando sin interrumpir');
+        setIsInitialSyncComplete(true);
+        setRequiresSync(false);
+        // Programar sincronización en segundo plano
+        startBackgroundSync();
+        return false;
+      }
+      
+      // Han pasado más de 24 horas - mostrar modal
+      console.log('[Offline] Han pasado 24h+ - mostrando modal de sincronización');
+      setSyncProgress({ current: 0, total: 0, message: 'Verificar datos del servidor' });
       setRequiresSync(true);
       return true;
     } catch (error) {
       console.error('[Offline] Error verificando sync:', error);
-      // En caso de error, permitir continuar pero mostrar pantalla de sync
-      setSyncProgress({ current: 0, total: 0, message: 'Sincronizar datos del servidor' });
-      setRequiresSync(true);
-      return true;
+      // En caso de error, permitir continuar sin mostrar modal
+      setIsInitialSyncComplete(true);
+      setRequiresSync(false);
+      return false;
     }
   }, [proyectoId, isOnline]);
+  
+  // Sincronización en segundo plano (sin interrumpir al usuario)
+  const performBackgroundSync = useCallback(async () => {
+    if (!proyectoId || !isOnline || backgroundSyncRef.current || syncingRef.current) {
+      return;
+    }
+    
+    backgroundSyncRef.current = true;
+    setIsBackgroundSyncing(true);
+    
+    try {
+      // Verificar cambios pendientes
+      const cambiosPendientes = await getCambiosPendientes(proyectoId);
+      
+      if (cambiosPendientes.length > 0) {
+        setBackgroundSyncMessage(`Subiendo ${cambiosPendientes.length} cambio(s)...`);
+        
+        // Sincronizar cambios silenciosamente
+        const token = localStorage.getItem('token');
+        let sincronizados = 0;
+        
+        for (const cambio of cambiosPendientes) {
+          try {
+            switch (cambio.tipo) {
+              case 'visita':
+                await axios.patch(
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}`,
+                  cambio.datos,
+                  { headers: { Authorization: `Bearer ${token}` }}
+                );
+                break;
+              
+              case 'propuesta':
+                await axios.post(
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}/propuesta`,
+                  cambio.datos,
+                  { headers: { Authorization: `Bearer ${token}` }}
+                );
+                break;
+              
+              case 'actualizacion_predio':
+                await axios.patch(
+                  `${API}/api/predios/${cambio.datos.codigo_predial}`,
+                  cambio.datos,
+                  { headers: { Authorization: `Bearer ${token}` }}
+                );
+                break;
+            }
+            
+            await eliminarCambioSincronizado(cambio.id);
+            sincronizados++;
+          } catch (error) {
+            console.warn(`[BackgroundSync] Error con cambio ${cambio.id}:`, error.message);
+          }
+        }
+        
+        if (sincronizados > 0) {
+          setBackgroundSyncMessage(`✓ ${sincronizados} cambio(s) sincronizado(s)`);
+          toast.success(`${sincronizados} cambio(s) sincronizado(s) en segundo plano`, { duration: 3000 });
+          await refreshStats();
+        }
+      } else {
+        setBackgroundSyncMessage('Datos sincronizados');
+      }
+      
+      // Actualizar timestamp de última sincronización exitosa
+      const now = new Date().toISOString();
+      await saveConfig(`lastSync_${proyectoId}`, now);
+      setLastSync(now);
+      
+    } catch (error) {
+      console.warn('[BackgroundSync] Error:', error.message);
+      setBackgroundSyncMessage('');
+    } finally {
+      backgroundSyncRef.current = false;
+      setIsBackgroundSyncing(false);
+      // Limpiar mensaje después de 3 segundos
+      setTimeout(() => setBackgroundSyncMessage(''), 3000);
+    }
+  }, [proyectoId, isOnline, refreshStats]);
+  
+  // Iniciar sincronización en segundo plano periódica
+  const backgroundSyncIntervalRef = useRef(null);
+  
+  const startBackgroundSync = useCallback(() => {
+    // Limpiar intervalo anterior si existe
+    if (backgroundSyncIntervalRef.current) {
+      clearInterval(backgroundSyncIntervalRef.current);
+    }
+    
+    // Ejecutar inmediatamente una vez
+    setTimeout(() => performBackgroundSync(), 2000);
+    
+    // Configurar intervalo periódico (cada 5 minutos)
+    backgroundSyncIntervalRef.current = setInterval(() => {
+      if (navigator.onLine) {
+        performBackgroundSync();
+      }
+    }, BACKGROUND_SYNC_INTERVAL_MS);
+    
+    console.log('[BackgroundSync] Sincronización automática activada (cada 5 min)');
+  }, [performBackgroundSync]);
+  
+  // Limpiar intervalo al desmontar
+  useEffect(() => {
+    return () => {
+      if (backgroundSyncIntervalRef.current) {
+        clearInterval(backgroundSyncIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Ejecutar sincronización completa (descarga + subida)
   const performFullSync = useCallback(async (prediosData, geometriasData) => {
