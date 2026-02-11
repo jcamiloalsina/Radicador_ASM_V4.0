@@ -377,6 +377,22 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
     
     try {
+      // Inicializar DB primero (con timeout de 5 segundos)
+      const initPromise = initOfflineDB();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('DB init timeout')), 5000)
+      );
+      
+      try {
+        await Promise.race([initPromise, timeoutPromise]);
+      } catch (dbError) {
+        console.warn('[Offline] IndexedDB no disponible, continuando sin modo offline:', dbError.message);
+        // Si IndexedDB falla, simplemente mostrar pantalla de sync para descargar datos frescos
+        setSyncProgress({ current: 0, total: 0, message: 'Sincronizar datos del servidor' });
+        setRequiresSync(true);
+        return true;
+      }
+      
       // Verificar si hay cambios pendientes de subir
       const cambiosPendientes = await getCambiosPendientes(proyectoId);
       
@@ -392,8 +408,10 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       return true;
     } catch (error) {
       console.error('[Offline] Error verificando sync:', error);
-      setIsInitialSyncComplete(true);
-      return false;
+      // En caso de error, permitir continuar pero mostrar pantalla de sync
+      setSyncProgress({ current: 0, total: 0, message: 'Sincronizar datos del servidor' });
+      setRequiresSync(true);
+      return true;
     }
   }, [proyectoId, isOnline]);
 
