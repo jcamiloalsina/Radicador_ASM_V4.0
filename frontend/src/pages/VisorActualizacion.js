@@ -302,9 +302,13 @@ export default function VisorActualizacion() {
   const [filterEstado, setFilterEstado] = useState('todos'); // todos, pendiente, visitado, actualizado, mejoras
   const [showConstrucciones, setShowConstrucciones] = useState(true); // Toggle para mostrar construcciones
   
+  // Estado para mejora seleccionada (para visita de mejora específica)
+  const [mejoraSeleccionada, setMejoraSeleccionada] = useState(null);
+  
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
   const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-5)
+  const [tipoVisita, setTipoVisita] = useState('terreno'); // 'terreno' o 'mejora'
   const [visitaData, setVisitaData] = useState({
     // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
