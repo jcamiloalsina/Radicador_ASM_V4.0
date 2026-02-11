@@ -88,16 +88,27 @@ export default function GestionPrediosActualizacion() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [predioSeleccionado, setPredioSeleccionado] = useState(null);
   
-  // Formulario de nuevo/editar predio
+  // Formulario de nuevo/editar predio - Campos completos para R1/R2
   const [formData, setFormData] = useState({
     codigo_predial: '',
+    codigo_homologado: '',
     direccion: '',
+    comuna: '',
+    destino_economico: '',
     area_terreno: '',
     area_construida: '',
     avaluo_catastral: '',
-    destino_economico: '',
     matricula_inmobiliaria: '',
-    propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '' }]
+    // Propietarios con estado civil para R1
+    propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
+    // Zonas físicas para R2
+    zonas_fisicas: [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
+    // Datos de construcción para R2
+    habitaciones: '',
+    banos: '',
+    locales: '',
+    pisos: '',
+    uso: ''
   });
   
   // Permisos
