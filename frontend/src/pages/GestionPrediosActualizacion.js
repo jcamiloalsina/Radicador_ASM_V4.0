@@ -242,6 +242,7 @@ export default function GestionPrediosActualizacion() {
   useEffect(() => {
     fetchProyecto();
     fetchPredios();
+    fetchCatalogos();
   }, [fetchProyecto, fetchPredios]);
   
   // Filtrar predios
