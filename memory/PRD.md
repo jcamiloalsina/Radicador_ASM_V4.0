@@ -166,16 +166,16 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-### ⚠️ PENDIENTE: Unificar flujos "Crear/Editar Predio"
+### ✅ COMPLETADO: Unificar flujos "Crear/Editar Predio"
 
-**Estado:** Parcialmente implementado
-- El botón "Nuevo Predio" existe en el tab "Predios"
-- El modal de "Editar Predio" existe en el visor
-- Falta verificar que sean idénticos a Conservación
+**Estado:** Implementado
+- Formulario completo con todos los campos R1/R2 en `GestionPrediosActualizacion.js`
+- Tabs: R1-Jurídico, R2-Físico, Estado
+- Backend actualizado con nuevo endpoint POST y campos permitidos en PATCH
 
 ### ⚠️ PENDIENTE: Selección de Vigencia al Finalizar
 
-**Estado:** Por implementar
+**Estado:** Por implementar (P1)
 - Al hacer clic en "Finalizar Proyecto", debe aparecer opción para seleccionar la vigencia destino
 
 ---
