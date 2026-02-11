@@ -554,7 +554,7 @@ export async function countGeometriasMunicipioOffline(municipio) {
 // Limpiar TODAS las geometrías offline
 export async function clearAllGeometriasOffline() {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return false;
   
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
@@ -574,7 +574,7 @@ export async function clearAllGeometriasOffline() {
 // Guardar cambio pendiente de sincronizar
 export async function saveCambioPendiente(proyectoId, tipo, datos) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return null;
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
