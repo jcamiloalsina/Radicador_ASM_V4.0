@@ -1063,29 +1063,6 @@ export default function GestionPrediosActualizacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-                        ...formData,
-                        propietarios: [{ ...formData.propietarios[0], numero_documento: e.target.value }]
-                      })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditarModal(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => guardarPredio(false)}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       {/* Modal Detalle Predio */}
       <Dialog open={showDetalleModal} onOpenChange={setShowDetalleModal}>
