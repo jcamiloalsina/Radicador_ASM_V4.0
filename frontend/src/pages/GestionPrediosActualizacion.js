@@ -62,12 +62,23 @@ export default function GestionPrediosActualizacion() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
+  // Hook de sincronización offline
+  const {
+    isOnline,
+    isSyncing,
+    offlineStats,
+    getPrediosOffline,
+    saveOfflineChange,
+    downloadForOffline
+  } = useOfflineSync(proyectoId, 'actualizacion');
+  
   // Estados
   const [proyecto, setProyecto] = useState(null);
   const [predios, setPredios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPredios, setLoadingPredios] = useState(false);
   const [catalogos, setCatalogos] = useState(null);
+  const [usingOfflineData, setUsingOfflineData] = useState(false);
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
