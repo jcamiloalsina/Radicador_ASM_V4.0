@@ -3370,17 +3370,23 @@ export default function VisorActualizacion() {
         
         {/* Toggle Construcciones */}
         <button 
-          onClick={() => setShowConstrucciones(!showConstrucciones)}
+          onClick={() => {
+            console.log('[Visor] Toggle construcciones:', !showConstrucciones);
+            console.log('[Visor] Construcciones disponibles:', construccionesFiltradas?.features?.length || 0);
+            setShowConstrucciones(!showConstrucciones);
+          }}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
-            showConstrucciones ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'
+            showConstrucciones 
+              ? (construccionesFiltradas?.features?.length > 0 ? 'bg-red-200 text-red-800 font-medium' : 'bg-red-100 text-red-600')
+              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
           title={showConstrucciones ? 'Ocultar construcciones' : 'Mostrar construcciones'}
         >
           <Building2 className="w-3 h-3" />
-          <span>{showConstrucciones ? 'Const. ON' : 'Const. OFF'}</span>
-          {construcciones?.features?.length > 0 && (
-            <span className="text-[10px] opacity-70">({construcciones.features.length})</span>
-          )}
+          <span>{showConstrucciones ? 'Const. ✓' : 'Const.'}</span>
+          <span className={`text-[10px] px-1 rounded ${construccionesFiltradas?.features?.length > 0 ? 'bg-red-300' : 'bg-slate-200'}`}>
+            {construccionesFiltradas?.features?.length || construcciones?.features?.length || 0}
+          </span>
         </button>
         
         {filterEstado !== 'todos' && (
