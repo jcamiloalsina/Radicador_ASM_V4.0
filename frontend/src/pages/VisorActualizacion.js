@@ -3806,11 +3806,11 @@ export default function VisorActualizacion() {
           {selectedPredio && (
             <div className="space-y-4">
               {/* Código predial */}
-              <div className={`p-3 rounded-lg ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'bg-cyan-50' : 'bg-amber-50'}`}>
-                <p className={`text-xs uppercase font-medium ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`}>
-                  {esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'Código Predial (Mejora)' : 'Código Predial'}
+              <div className={`p-3 rounded-lg ${terrenoTieneMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'bg-cyan-50' : 'bg-amber-50'}`}>
+                <p className={`text-xs uppercase font-medium ${terrenoTieneMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`}>
+                  Código Predial (Terreno)
                 </p>
-                <p className={`font-mono text-lg font-bold ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-800' : 'text-amber-800'}`}>
+                <p className={`font-mono text-lg font-bold ${terrenoTieneMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-800' : 'text-amber-800'}`}>
                   {selectedPredio.codigo_predial || selectedPredio.numero_predial || 'N/A'}
                 </p>
               </div>
@@ -3818,7 +3818,7 @@ export default function VisorActualizacion() {
               {!editMode ? (
                 // Modo visualización (igual que antes pero con tabs de zonas)
                 <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid grid-cols-7 w-full">
+                  <TabsList className="grid grid-cols-8 w-full">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
                     <TabsTrigger value="fisico">Físico</TabsTrigger>
