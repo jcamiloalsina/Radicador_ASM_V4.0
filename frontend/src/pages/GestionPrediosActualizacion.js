@@ -1294,6 +1294,29 @@ export default function GestionPrediosActualizacion() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Tarjeta de Mejoras */}
+        <Card 
+          className={`cursor-pointer hover:border-cyan-400 transition-colors ${filterEstado === 'mejoras' ? 'border-cyan-400 bg-cyan-50' : ''}`}
+          onClick={() => setFilterEstado('mejoras')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-cyan-100 text-cyan-600">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {predios.filter(p => {
+                    const cod = p.codigo_predial || p.numero_predial || '';
+                    return cod.length >= 30 && cod.substring(26, 30) !== '0000';
+                  }).length.toLocaleString()}
+                </p>
+                <p className="text-sm text-slate-500">Con Mejoras</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       {/* Filtros */}
