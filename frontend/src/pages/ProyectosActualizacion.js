@@ -1653,30 +1653,24 @@ export default function ProyectosActualizacion() {
               Agregar actividad al cronograma
             </DialogDescription>
           </DialogHeader>
-                        onClick={() => setPrediosFiltroEstado('actualizado')}
-                      >
-                        Actualizados: {prediosStats.actualizados}
-                      </Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => fetchPrediosProyecto(proyectoSeleccionado.id)}
-                        disabled={loadingPredios}
-                      >
-                        {loadingPredios ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-amber-600 hover:bg-amber-700"
-                        onClick={() => setShowCrearPredioModal(true)}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Nuevo Predio
-                      </Button>
-                    </div>
-                  </div>
+          
+          <div className="space-y-4 py-4">
+            {/* Selector de Etapa */}
+            <div className="space-y-2">
+              <Label>Etapa *</Label>
+              <select
+                value={etapaSeleccionada?.id || ''}
+                onChange={(e) => {
+                  const etapa = etapas.find(et => et.id === e.target.value);
+                  setEtapaSeleccionada(etapa);
+                }}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {etapas.map((etapa) => (
+                  <option key={etapa.id} value={etapa.id}>{etapa.nombre}</option>
+                ))}
+              </select>
+            </div>
 
                   {/* Filtros */}
                   <div className="flex flex-wrap gap-2">
