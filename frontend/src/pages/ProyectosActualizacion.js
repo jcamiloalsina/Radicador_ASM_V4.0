@@ -1546,9 +1546,9 @@ export default function ProyectosActualizacion() {
                     )}
                   </div>
                 </TabsContent>
+                )}
                 
-                {/* Tab Gestión de Predios */}
-                <TabsContent value="predios" className="space-y-4 mt-4">
+                {/* Tab Cronograma - Solo para admin/coordinador */}
                   {/* Header con estadísticas y botones */}
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex gap-2">
