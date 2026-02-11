@@ -2444,8 +2444,24 @@ async def get_petitions(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/petitions/mis-peticiones")
 async def get_my_petitions(current_user: dict = Depends(get_current_user)):
-    """Obtener peticiones creadas por el usuario actual (para todos los roles)"""
-    query = {"user_id": current_user['id']}
+    """Obtener peticiones del usuario actual.
+    
+    Para ciudadanos y empresa: solo peticiones creadas por ellos.
+    Para staff (atencion_usuario, gestor, coordinador, etc.): peticiones creadas Y asignadas.
+    """
+    user_role = current_user['role']
+    
+    # Ciudadanos y empresa solo ven peticiones que ellos crearon
+    if user_role in [UserRole.USUARIO, UserRole.EMPRESA]:
+        query = {"user_id": current_user['id']}
+    # Staff (gestores, atencion_usuario, coordinadores, admin) ven peticiones creadas Y asignadas
+    else:
+        query = {
+            "$or": [
+                {"user_id": current_user['id']},               # Creadas por él
+                {"gestores_asignados": current_user['id']}     # Asignadas a él
+            ]
+        }
     
     petitions = await db.petitions.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
