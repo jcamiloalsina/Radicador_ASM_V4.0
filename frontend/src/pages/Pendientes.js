@@ -2637,24 +2637,26 @@ export default function Pendientes() {
                           onChange={(e) => setEditingPredioData({...editingPredioData, destino_economico: e.target.value})}
                         >
                           <option value="">Seleccione...</option>
-                          <option value="A">A - Agrícola</option>
-                          <option value="B">B - Comercial</option>
-                          <option value="C">C - Industrial</option>
-                          <option value="D">D - Servicios</option>
-                          <option value="E">E - Educativo</option>
-                          <option value="F">F - Recreacional</option>
-                          <option value="G">G - Salubridad</option>
-                          <option value="H">H - Habitacional</option>
+                          <option value="A">A - Habitacional</option>
+                          <option value="B">B - Industrial</option>
+                          <option value="C">C - Comercial</option>
+                          <option value="D">D - Agropecuario</option>
+                          <option value="E">E - Minero</option>
+                          <option value="F">F - Cultural</option>
+                          <option value="G">G - Recreacional</option>
+                          <option value="H">H - Salubridad</option>
                           <option value="I">I - Institucional</option>
-                          <option value="J">J - Uso Público</option>
-                          <option value="K">K - Lote</option>
-                          <option value="L">L - Minero</option>
-                          <option value="M">M - Cultural</option>
-                          <option value="N">N - Pecuario</option>
+                          <option value="J">J - Educativo</option>
+                          <option value="K">K - Religioso</option>
+                          <option value="L">L - Agrícola</option>
+                          <option value="M">M - Pecuario</option>
+                          <option value="N">N - Agroindustrial</option>
                           <option value="O">O - Forestal</option>
-                          <option value="P">P - Agropecuario</option>
-                          <option value="Q">Q - Agroindustrial</option>
-                          <option value="R">R - Religioso</option>
+                          <option value="P">P - Uso Público</option>
+                          <option value="Q">Q - Lote Urbanizable No Urbanizado</option>
+                          <option value="R">R - Lote Urbanizado No Edificado</option>
+                          <option value="S">S - Lote No Urbanizable</option>
+                          <option value="T">T - Servicios Especiales</option>
                         </select>
                       </div>
                       <div>
