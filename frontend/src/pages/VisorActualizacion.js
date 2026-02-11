@@ -5516,6 +5516,23 @@ export default function VisorActualizacion() {
               </Button>
             </div>
             
+            {/* Botón de limpiar caché */}
+            <Button 
+              onClick={async () => {
+                const cleared = await clearOfflineCache();
+                if (cleared) {
+                  setOfflineReady(false);
+                  setLoadedFromCache(false);
+                }
+              }}
+              disabled={isSyncing}
+              variant="outline"
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Limpiar Caché y Empezar de Nuevo
+            </Button>
+            
             {/* Historial de sincronización */}
             {syncHistory.length > 0 && (
               <div className="border-t pt-4">
