@@ -779,11 +779,44 @@ export default function VisorActualizacion() {
   
   // Ejecutar sincronización completa cuando se muestra la pantalla de sync
   const handlePerformFullSync = async () => {
-    const success = await performFullSync(prediosR1R2, geometrias);
-    if (success) {
-      setShowSyncScreen(false);
-      // Recargar datos del servidor
-      fetchProyecto();
+    try {
+      // Primero descargar datos frescos del servidor
+      const token = localStorage.getItem('token');
+      
+      // Descargar predios
+      let prediosDescargados = [];
+      try {
+        const prediosResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        prediosDescargados = prediosResponse.data.predios || prediosResponse.data || [];
+      } catch (e) {
+        console.warn('[Sync] Error descargando predios:', e.message);
+      }
+      
+      // Descargar geometrías
+      let geometriasDescargadas = null;
+      try {
+        const geomResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { zona: 'todas' }
+        });
+        geometriasDescargadas = geomResponse.data;
+      } catch (e) {
+        console.warn('[Sync] Error descargando geometrías:', e.message);
+      }
+      
+      // Ejecutar sincronización completa con los datos descargados
+      const success = await performFullSync(prediosDescargados, geometriasDescargadas);
+      
+      if (success) {
+        setShowSyncScreen(false);
+        // Recargar datos del servidor en el componente
+        fetchProyecto();
+      }
+    } catch (error) {
+      console.error('[Sync] Error en sincronización completa:', error);
+      toast.error('Error durante la sincronización', { description: error.message });
     }
   };
   
