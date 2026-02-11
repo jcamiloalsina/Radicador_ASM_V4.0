@@ -47,6 +47,61 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 3)
 
+### ✅ COMPLETADO: Sincronización inteligente - Modal una vez al día + Sincronización en segundo plano (P0)
+
+**Problema reportado:** El modal de sincronización aparecía cada vez que el usuario entraba al visor, interrumpiendo el trabajo. El usuario solicitó que aparezca solo una vez al día y que durante el día sincronice automáticamente en segundo plano sin interrumpir.
+
+**Solución implementada:**
+
+1. **Modal de sincronización una vez al día:**
+   - Se guarda en `localStorage` la última fecha en que se mostró el modal (`lastSyncModal_{proyectoId}`)
+   - Solo se muestra el modal si han pasado más de 24 horas desde la última vez
+   - **Excepción:** Si hay cambios pendientes de subir (críticos), el modal SIEMPRE aparece
+
+2. **Sincronización automática en segundo plano:**
+   - Cuando no se muestra el modal, se inicia `startBackgroundSync()` automáticamente
+   - Sincroniza cada 5 minutos mientras haya conexión
+   - Indicador discreto en la UI: barra azul flotante en el mapa mostrando estado
+   - Toast discreto al sincronizar cambios exitosamente
+
+3. **Reconexión inteligente:**
+   - Al reconectarse después de estar offline:
+     - **Con cambios pendientes:** Muestra modal obligatorio para subir datos
+     - **Sin cambios pendientes:** Sincroniza silenciosamente en segundo plano, solo muestra toast
+
+4. **Nuevos estados en `useOfflineSync.js`:**
+   - `isBackgroundSyncing`: Indica si está sincronizando en segundo plano
+   - `backgroundSyncMessage`: Mensaje del estado de sincronización
+   - `startBackgroundSync()`: Inicia sincronización periódica cada 5 min
+   - `performBackgroundSync()`: Ejecuta sincronización silenciosa
+
+**Archivos modificados:**
+- `/app/frontend/src/hooks/useOfflineSync.js` - Lógica de sincronización inteligente
+- `/app/frontend/src/pages/VisorActualizacion.js` - Indicadores visuales de sincronización
+
+**Comportamiento:**
+```
+Primera vez del día:
+  → Modal de sincronización aparece
+  → Usuario sincroniza
+  → Se guarda fecha en localStorage
+  → Se inicia sincronización automática cada 5 min
+
+Siguiente vez (mismo día):
+  → No aparece modal
+  → Sincronización en segundo plano automática
+  → Usuario puede trabajar sin interrupciones
+  → Indicador discreto cuando sincroniza
+
+Al día siguiente:
+  → Modal aparece nuevamente
+  → Ciclo se repite
+```
+
+**Testing:** ✅ Código compila sin errores, lógica implementada
+
+---
+
 ### ✅ COMPLETADO: Bug "Atención al Usuario" no veía peticiones asignadas (P1 - Recurrente)
 
 **Problema reportado:** Los usuarios con rol "Atención al Usuario" no podían ver las peticiones que les habían sido asignadas en la página "Mis Peticiones". Solo veían peticiones que ellos mismos habían creado.
