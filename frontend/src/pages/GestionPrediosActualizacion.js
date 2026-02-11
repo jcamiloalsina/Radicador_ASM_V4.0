@@ -1388,22 +1388,50 @@ export default function GestionPrediosActualizacion() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
           <div className="max-h-[80vh] overflow-y-auto pr-2">
           <DialogHeader>
-            <DialogTitle className="text-xl font-outfit">Editar Predio - {predioSeleccionado?.codigo_predial || predioSeleccionado?.numero_predial}</DialogTitle>
+            <DialogTitle className="text-xl font-outfit">Editar Predio</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Código Predial Nacional - Editable para coordinadores */}
             <div className="bg-slate-50 p-4 rounded-lg">
-              <p className="text-sm text-slate-600">
-                <strong>Código Predial Nacional:</strong> {predioSeleccionado?.codigo_predial || predioSeleccionado?.numero_predial}
-              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-700">Código Predial Nacional *</Label>
+                  {canEditCodigoPredial ? (
+                    <Input 
+                      value={formData.codigo_predial}
+                      onChange={(e) => setFormData({...formData, codigo_predial: e.target.value})}
+                      className="font-mono mt-1"
+                      placeholder="30 dígitos"
+                    />
+                  ) : (
+                    <p className="font-mono text-lg font-bold text-slate-800 break-all mt-1">
+                      {formData.codigo_predial}
+                    </p>
+                  )}
+                  {!canEditCodigoPredial && (
+                    <p className="text-xs text-amber-600 mt-1">Solo coordinadores pueden modificar el CPN</p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-slate-700">Código Homologado</Label>
+                  {canEditCodigoPredial ? (
+                    <Input 
+                      value={formData.codigo_homologado || ''}
+                      onChange={(e) => setFormData({...formData, codigo_homologado: e.target.value})}
+                      className="font-mono mt-1"
+                      placeholder="Código homologado"
+                    />
+                  ) : (
+                    <p className="font-mono text-lg font-bold text-amber-700 mt-1">
+                      {formData.codigo_homologado || 'Sin asignar'}
+                    </p>
+                  )}
+                </div>
+              </div>
               {formData.matricula_inmobiliaria && (
-                <p className="text-sm text-slate-600 mt-1">
+                <p className="text-sm text-slate-600 mt-2">
                   <strong>Matrícula Inmobiliaria:</strong> {formData.matricula_inmobiliaria}
-                </p>
-              )}
-              {formData.codigo_homologado && (
-                <p className="text-sm text-slate-600 mt-1">
-                  <strong>Código Homologado:</strong> {formData.codigo_homologado}
                 </p>
               )}
             </div>
