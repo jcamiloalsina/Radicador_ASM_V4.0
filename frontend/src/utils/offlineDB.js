@@ -657,13 +657,13 @@ export async function eliminarCambioSincronizado(id) {
 // Guardar configuración
 export async function saveConfig(key, value) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return false;
   const tx = database.transaction(STORES.CONFIG, 'readwrite');
   const store = tx.objectStore(STORES.CONFIG);
 
   return new Promise((resolve, reject) => {
     const request = store.put({ key, value, updated_at: new Date().toISOString() });
-    request.onsuccess = () => resolve();
+    request.onsuccess = () => resolve(true);
     request.onerror = () => reject(request.error);
   });
 }
@@ -671,7 +671,7 @@ export async function saveConfig(key, value) {
 // Obtener configuración
 export async function getConfig(key) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return null;
   const tx = database.transaction(STORES.CONFIG, 'readonly');
   const store = tx.objectStore(STORES.CONFIG);
 
@@ -687,7 +687,7 @@ export async function getConfig(key) {
 // Guardar proyectos para offline
 export async function saveProyectosOffline(proyectos) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return 0;
   const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
   const store = tx.objectStore(STORES.PROYECTOS);
 
