@@ -65,7 +65,14 @@ async function deleteDatabase() {
 }
 
 // Inicializar la base de datos (singleton - solo se ejecuta una vez)
+// Retorna null si IndexedDB no está disponible (no lanza excepciones)
 export async function initOfflineDB() {
+  // Si IndexedDB no está disponible en este navegador, retornar null
+  if (typeof indexedDB === 'undefined') {
+    console.warn('[OfflineDB] IndexedDB no disponible en este navegador');
+    return null;
+  }
+  
   // Si ya está inicializada, retornar inmediatamente
   if (db && dbInitialized) {
     return db;
@@ -74,14 +81,19 @@ export async function initOfflineDB() {
   // Si hay una inicialización en progreso, esperar a que termine (con timeout)
   if (dbInitPromise) {
     // Añadir timeout de 10 segundos para evitar bloqueos indefinidos
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('IndexedDB initialization timeout')), 10000)
+    const timeoutPromise = new Promise((resolve) => 
+      setTimeout(() => resolve(null), 10000) // Resolver con null en lugar de rechazar
     );
     try {
-      return await Promise.race([dbInitPromise, timeoutPromise]);
-    } catch (e) {
-      console.warn('[OfflineDB] Timeout esperando inicialización, reintentando...');
+      const result = await Promise.race([dbInitPromise, timeoutPromise]);
+      if (result) return result;
+      console.warn('[OfflineDB] Timeout esperando inicialización');
       dbInitPromise = null;
+      return null;
+    } catch (e) {
+      console.warn('[OfflineDB] Error esperando inicialización:', e.message);
+      dbInitPromise = null;
+      return null;
     }
   }
   
@@ -93,18 +105,18 @@ export async function initOfflineDB() {
         try {
           await Promise.race([
             checkAndCleanOldData(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+            new Promise((resolve) => setTimeout(() => resolve(false), 5000))
           ]);
         } catch (e) {
-          console.warn('[OfflineDB] Timeout verificando versión, continuando...');
+          console.warn('[OfflineDB] Error verificando versión:', e.message);
         }
       }
       
-      return new Promise((resolve, reject) => {
-        // Timeout para la apertura de la base de datos
+      return new Promise((resolve) => {
+        // Timeout para la apertura de la base de datos - resolver con null en lugar de rechazar
         const timeout = setTimeout(() => {
-          console.error('[OfflineDB] Timeout al abrir la base de datos');
-          reject(new Error('IndexedDB open timeout'));
+          console.warn('[OfflineDB] Timeout al abrir la base de datos');
+          resolve(null);
         }, 10000);
         
         const request = indexedDB.open(DB_NAME, DB_VERSION);
