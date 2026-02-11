@@ -130,7 +130,16 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 ### ⚠️ PENDIENTE: Selección de Vigencia al Finalizar
 
 **Estado:** Por implementar
-- Al hacer clic en "Finalizar Proyecto", debe aparecer selector de vigencia
+- Al hacer clic en "Finalizar Proyecto", debe aparecer selector de vigencia para migración a Conservación
+
+---
+
+### ⚠️ PENDIENTE: Verificación End-to-End de Crear/Editar Predio
+
+**Estado:** Backend verificado, falta testing frontend completo
+- El formulario tiene todos los campos R1/R2
+- Los endpoints POST y PATCH funcionan correctamente
+- Falta verificar visualmente el flujo completo
 
 ---
 - Botón "Exportar Excel" para coordinadores
