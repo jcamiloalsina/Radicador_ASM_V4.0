@@ -106,6 +106,13 @@ export default function UserManagement() {
     notificar_email: true
   });
 
+  // Estados para modal de asignación de municipios a empresas
+  const [showMunicipiosModal, setShowMunicipiosModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [municipiosDisponibles, setMunicipiosDisponibles] = useState([]);
+  const [municipiosAsignados, setMunicipiosAsignados] = useState([]);
+  const [savingMunicipios, setSavingMunicipios] = useState(false);
+
   useEffect(() => {
     fetchUsers();
   }, []);
