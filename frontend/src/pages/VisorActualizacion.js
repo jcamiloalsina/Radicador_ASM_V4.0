@@ -965,11 +965,15 @@ export default function VisorActualizacion() {
   // Filtrar construcciones por estado
   const construccionesFiltradas = useMemo(() => {
     if (!construcciones?.features) {
+      console.log('[Visor] No hay construcciones cargadas');
       return null;
     }
     
-    // Si el filtro es "todos", mostrar todas las construcciones
-    if (filterEstado === 'todos') {
+    console.log(`[Visor] Procesando ${construcciones.features.length} construcciones, filtro: ${filterEstado}`);
+    
+    // Si el filtro es "todos" o "mejoras", mostrar TODAS las construcciones
+    // Las construcciones son relevantes para todos los predios
+    if (filterEstado === 'todos' || filterEstado === 'mejoras') {
       return construcciones;
     }
     
@@ -978,21 +982,35 @@ export default function VisorActualizacion() {
       return { type: 'FeatureCollection', features: [] };
     }
     
+    // Crear índice de terrenos base para matching
+    const terrenosBase = new Set();
+    for (const cod of codigosValidos) {
+      if (cod && cod.length >= 21) {
+        terrenosBase.add(cod.substring(0, 21));
+      }
+    }
+    
     // Las construcciones usan 'codigo' o 'terreno_codigo', no 'codigo_predial'
     const featuresFiltradas = construcciones.features.filter(feature => {
       const props = feature.properties || {};
       // Intentar varios campos que pueden contener el código del predio
-      const codigo = props.codigo_predial || props.numero_predial || props.terreno_codigo || props.codigo;
-      if (!codigo) return false;
+      const codigo = props.codigo_predial || props.numero_predial || props.terreno_codigo || props.codigo || '';
+      if (!codigo) return true; // Si no tiene código, mostrar de todos modos
       
-      // El código de construcción puede ser más corto (solo terreno), intentar match parcial
-      // Los códigos de predios tienen 30 dígitos, los de terreno pueden tener 21
+      // Match exacto
+      if (codigosValidos.has(codigo)) return true;
+      
+      // Match por terreno base (primeros 21 dígitos)
+      if (codigo.length >= 21 && terrenosBase.has(codigo.substring(0, 21))) return true;
+      
+      // Match parcial para construcciones con código más corto
       for (const codigoValido of codigosValidos) {
-        if (codigoValido.startsWith(codigo) || codigo.startsWith(codigoValido.substring(0, 21))) {
+        if (codigoValido.startsWith(codigo) || codigo.startsWith(codigoValido.substring(0, Math.min(21, codigo.length)))) {
           return true;
         }
       }
-      return codigosValidos.has(codigo);
+      
+      return false;
     });
     
     return {
