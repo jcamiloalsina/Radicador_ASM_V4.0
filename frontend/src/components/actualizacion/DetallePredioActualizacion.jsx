@@ -297,6 +297,28 @@ const DetallePredioActualizacion = ({
           </Button>
         )}
 
+        {/* Cancelar Predio - Solo si no está cancelado ni tiene propuesta pendiente */}
+        {(esGestor || esCoordinador) && !predio.cancelado && !predio.deleted && !predio.propuesta_cancelacion_pendiente && onOpenCancelar && (
+          <Button
+            className="w-full border-red-300 text-red-700 hover:bg-red-50"
+            variant="outline"
+            size="sm"
+            onClick={onOpenCancelar}
+            data-testid="open-cancelar-btn"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {esCoordinador ? 'Cancelar Predio' : 'Proponer Cancelación'}
+          </Button>
+        )}
+        
+        {/* Indicador de propuesta de cancelación pendiente */}
+        {predio.propuesta_cancelacion_pendiente && (
+          <div className="w-full flex items-center justify-center text-amber-600 text-xs p-2 bg-amber-50 rounded border border-amber-200">
+            <AlertCircle className="w-4 h-4 mr-1" />
+            Cancelación pendiente de aprobación
+          </div>
+        )}
+
         {/* Historial */}
         <Button
           className="w-full"
