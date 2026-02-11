@@ -507,34 +507,73 @@ export default function ProyectosActualizacion() {
     }
   };
 
-  const handleUploadBaseGrafica = async (event) => {
+  // Manejar selección de archivo GDB
+  const handleGdbFileSelect = (event) => {
     const file = event.target.files?.[0];
+    if (file) {
+      setGdbFileSelected(file);
+      // Si ya tiene GDB cargado, mostrar modal con opciones
+      if (proyectoSeleccionado?.gdb_procesado || proyectoSeleccionado?.base_grafica_archivo) {
+        setShowGdbUploadModal(true);
+      } else {
+        // Primera carga: subir directamente en modo reemplazar
+        uploadGdbFile(file, 'reemplazar', '');
+      }
+    }
+    if (baseGraficaRef.current) baseGraficaRef.current.value = '';
+  };
+  
+  // Subir archivo GDB con opciones
+  const uploadGdbFile = async (file, modo_carga, capa_especifica) => {
     if (!file || !proyectoSeleccionado) return;
 
     setUploading(prev => ({ ...prev, base_grafica: true }));
+    setShowGdbUploadModal(false);
+    
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('modo_carga', modo_carga);
+    if (capa_especifica) {
+      formData.append('capa_especifica', capa_especifica);
+    }
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/upload-base-grafica`,
         formData,
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
       );
-      toast.success('Base Gráfica cargada exitosamente');
+      
+      const mensaje = capa_especifica 
+        ? `Capa '${capa_especifica}' cargada exitosamente`
+        : 'Base Gráfica cargada exitosamente';
+      toast.success(mensaje);
+      
       // Refrescar proyecto
-      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}`, {
+      const projectResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoSeleccionado.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProyectoSeleccionado(response.data);
+      setProyectoSeleccionado(projectResponse.data);
       fetchProyectos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al cargar el archivo');
     } finally {
       setUploading(prev => ({ ...prev, base_grafica: false }));
-      if (baseGraficaRef.current) baseGraficaRef.current.value = '';
+      setGdbFileSelected(null);
+      setGdbUploadOptions({ modo_carga: 'reemplazar', capa_especifica: '' });
     }
+  };
+  
+  // Confirmar carga desde modal
+  const handleConfirmGdbUpload = () => {
+    if (gdbFileSelected) {
+      uploadGdbFile(gdbFileSelected, gdbUploadOptions.modo_carga, gdbUploadOptions.capa_especifica);
+    }
+  };
+
+  const handleUploadBaseGrafica = async (event) => {
+    handleGdbFileSelect(event);
   };
 
   const handleUploadInfoAlfanumerica = async (event) => {
