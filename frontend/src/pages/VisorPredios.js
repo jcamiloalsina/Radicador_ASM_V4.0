@@ -2184,7 +2184,46 @@ export default function VisorPredios() {
           </Card>
 
           {/* Detalle del Predio Seleccionado - Aparece justo después de la búsqueda */}
-          {selectedPredio && (
+          {selectedPredio && sinAcceso ? (
+            // Mostrar mensaje de sin acceso para rol empresa
+            <Card className="border-red-300 shadow-md bg-red-50">
+              <CardHeader className="py-3 bg-red-100">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-700" />
+                    <span className="text-red-800 font-semibold">Acceso Restringido</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs text-slate-500"
+                    onClick={() => { setSelectedPredio(null); setGeometry(null); setSinAcceso(false); }}
+                  >
+                    ✕ Cerrar
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-3 text-sm">
+                {/* Código Predial */}
+                <div className="bg-white/70 p-2 rounded">
+                  <p className="text-xs text-slate-500">Código Predial Buscado</p>
+                  <p className="font-mono text-xs font-medium text-slate-800">{selectedPredio.codigo_predial_nacional}</p>
+                </div>
+                
+                {/* Mensaje de sin acceso */}
+                <div className="bg-red-100 border border-red-300 rounded-lg p-4 text-center">
+                  <AlertCircle className="w-10 h-10 text-red-600 mx-auto mb-2" />
+                  <p className="font-semibold text-red-800">No tiene acceso a este predio</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    El predio buscado no pertenece a los municipios asignados a su usuario.
+                  </p>
+                  <p className="text-xs text-red-500 mt-2">
+                    Contacte al coordinador si necesita acceso a este municipio.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : selectedPredio && (
             <Card className="border-emerald-300 shadow-md">
               <CardHeader className="py-3 bg-emerald-100">
                 <CardTitle className="text-sm flex items-center justify-between">
