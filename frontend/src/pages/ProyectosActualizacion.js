@@ -1563,21 +1563,96 @@ export default function ProyectosActualizacion() {
                       </CardContent>
                     </Card>
                   ) : (
+                    <>
+                      {/* Botón para agregar actividad */}
+                      <div className="flex justify-end">
+                        <Button 
+                          size="sm" 
+                          className="bg-amber-600 hover:bg-amber-700"
+                          onClick={() => setShowActividadModal(true)}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Agregar Actividad
+                        </Button>
+                      </div>
+                      
+                      <CronogramaGantt 
+                        etapas={etapas} 
+                        onUpdate={() => fetchEtapas(proyectoSeleccionado?.id)}
+                        gestoresDisponibles={[]}
+                      />
+                    </>
+                  )}
+                </TabsContent>
+                )}
+                
+                {/* Tab Información - Última pestaña */}
+                <TabsContent value="info" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Municipio</p>
+                      <p className="font-medium">{proyectoSeleccionado.municipio}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Estado</p>
+                      <Badge className={`${estadoConfig[proyectoSeleccionado.estado]?.color} border`}>
+                        {estadoConfig[proyectoSeleccionado.estado]?.label}
                       </Badge>
-                      <Badge 
-                        className="bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200"
-                        onClick={() => setPrediosFiltroEstado('pendiente')}
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Creado por</p>
+                      <p className="font-medium">{proyectoSeleccionado.creado_por_nombre}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Fecha creación</p>
+                      <p className="font-medium">{formatDate(proyectoSeleccionado.created_at)}</p>
+                    </div>
+                  </div>
+                  
+                  {proyectoSeleccionado.descripcion && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase mb-1">Descripción</p>
+                      <p className="text-slate-700">{proyectoSeleccionado.descripcion}</p>
+                    </div>
+                  )}
+
+                  {/* Botón eliminar en info */}
+                  {canDelete && (
+                    <div className="pt-4 border-t">
+                      <Button 
+                        variant="destructive"
+                        onClick={() => setShowEliminarModal(true)}
                       >
-                        Pendientes: {prediosStats.pendientes}
-                      </Badge>
-                      <Badge 
-                        className="bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                        onClick={() => setPrediosFiltroEstado('visitado')}
-                      >
-                        Visitados: {prediosStats.visitados}
-                      </Badge>
-                      <Badge 
-                        className="bg-green-100 text-green-800 cursor-pointer hover:bg-green-200"
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar Proyecto
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDetalleModal(false)}>
+                  Cerrar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Crear Actividad */}
+      <Dialog open={showActividadModal} onOpenChange={setShowActividadModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-amber-600" />
+              Nueva Actividad
+            </DialogTitle>
+            <DialogDescription>
+              Agregar actividad al cronograma
+            </DialogDescription>
+          </DialogHeader>
                         onClick={() => setPrediosFiltroEstado('actualizado')}
                       >
                         Actualizados: {prediosStats.actualizados}
