@@ -2569,8 +2569,6 @@ export default function VisorActualizacion() {
     );
   }
   
-  const estadisticas = contarPrediosPorEstado();
-  
   return (
     <div className="h-screen flex flex-col bg-slate-100">
       {/* Header */}
