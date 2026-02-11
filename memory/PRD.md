@@ -45,7 +45,34 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (10 Febrero 2026 - Sesión Actual)
+## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
+
+### ⚠️ PENDIENTE: Verificación de Corrección de Filtros
+
+**Problema reportado:** 
+- Filtros lentos al cambiar entre "Visitados", "Pendientes", etc.
+- Estado anterior persiste incorrectamente
+- Capa de construcciones no desaparece al cambiar filtro
+
+**Corrección implementada (sesión anterior, NO verificada):**
+- Se corrigió el hook `construccionesFiltradas` en `VisorActualizacion.js`
+- Ahora usa `codigo` o `terreno_codigo` en lugar de `codigo_predial` para filtrar construcciones
+
+**Estado:** ⚠️ REQUIERE TESTING - La corrección fue implementada pero NO fue probada
+
+---
+
+### ⚠️ PENDIENTE: Discrepancia Polígonos Visitados
+
+**Problema:** UI muestra 10 predios visitados pero solo 2 aparecen en el mapa
+
+**Causa probable:** Diferencias de formato en `codigo_predial` entre datos de predios y geometrías GDB
+
+**Estado:** ⚠️ REQUIERE INVESTIGACIÓN
+
+---
+
+## 🔧 Cambios Previos (10 Febrero 2026)
 
 ### ✅ COMPLETADO: Flujo de Articulación Actualización → Conservación
 
