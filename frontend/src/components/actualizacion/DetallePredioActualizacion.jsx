@@ -72,9 +72,9 @@ const DetallePredioActualizacion = ({
   const esGestor = user?.role === 'gestor' || user?.role === 'gestor_auxiliar';
   const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
   
-  // Verificar si es una mejora (últimos 4 dígitos != 0000)
+  // Verificar si es una mejora (últimos 3 dígitos, posiciones 28-30, != 000)
   const codigoPredial = predio.codigo_predial || predio.numero_predial || '';
-  const esMejora = codigoPredial.length >= 30 && codigoPredial.substring(26, 30) !== '0000';
+  const esMejora = codigoPredial.length >= 30 && codigoPredial.substring(27, 30) !== '000';
 
   return (
     <Card className={`shadow-md ${esMejora ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
