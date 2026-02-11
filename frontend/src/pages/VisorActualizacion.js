@@ -794,7 +794,7 @@ export default function VisorActualizacion() {
         console.warn('[Sync] Error descargando predios:', e.message);
       }
       
-      // Descargar geometrías
+      // Descargar geometrías (no bloquear si falla)
       let geometriasDescargadas = null;
       try {
         const geomResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
@@ -803,20 +803,26 @@ export default function VisorActualizacion() {
         });
         geometriasDescargadas = geomResponse.data;
       } catch (e) {
-        console.warn('[Sync] Error descargando geometrías:', e.message);
+        console.warn('[Sync] Error descargando geometrías (continuando sin ellas):', e.message);
+        // No es crítico, las geometrías se cargarán después normalmente
       }
       
       // Ejecutar sincronización completa con los datos descargados
-      const success = await performFullSync(prediosDescargados, geometriasDescargadas);
+      await performFullSync(prediosDescargados, geometriasDescargadas);
       
-      if (success) {
-        setShowSyncScreen(false);
-        // Recargar datos del servidor en el componente
-        fetchProyecto();
-      }
+      // SIEMPRE cerrar la pantalla de sync después de intentar sincronizar
+      // Los datos se recargarán desde el servidor en fetchProyecto/fetchGeometrias
+      setShowSyncScreen(false);
+      
+      // Recargar datos del servidor en el componente
+      fetchProyecto();
+      
     } catch (error) {
       console.error('[Sync] Error en sincronización completa:', error);
       toast.error('Error durante la sincronización', { description: error.message });
+      // Incluso con error, permitir continuar
+      setShowSyncScreen(false);
+      fetchProyecto();
     }
   };
   
