@@ -47,6 +47,41 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
+### ✅ COMPLETADO: Nueva Página "Gestión de Predios - Actualización"
+
+**Archivo creado:** `/app/frontend/src/pages/GestionPrediosActualizacion.js`
+
+**Funcionalidades implementadas:**
+- Selector de proyecto de actualización (solo proyectos activos/pausados)
+- Estadísticas: Total, Pendientes, Visitados, Actualizados (cards clicables para filtrar)
+- Lista paginada de predios (50 por página)
+- Filtros: búsqueda por código/dirección/propietario, estado, zona
+- Modal de detalle con información completa del predio
+- Botón "Ver en Mapa" que navega al Visor con el predio seleccionado
+- Botón "Exportar Excel" para coordinadores
+
+**Cambios en navegación:**
+- Nuevo enlace en menú lateral: Actualización → "Gestión de Predios"
+- Ruta: `/dashboard/gestion-predios-actualizacion`
+
+**Archivos modificados:**
+- `/app/frontend/src/App.js` - Nueva ruta
+- `/app/frontend/src/pages/DashboardLayout.js` - Nuevo enlace en menú
+
+**Testing:** ✅ Verificado con testing agent (iteration_38.json) - 100% frontend
+
+---
+
+### ✅ COMPLETADO: Corrección de Campo Avalúo en Panel de Detalles
+
+**Archivo:** `/app/frontend/src/components/actualizacion/DetallePredioActualizacion.jsx`
+
+**Problema:** El campo "Avalúo Catastral" no mostraba datos porque buscaba `predio.avaluo` pero el backend retorna `avaluo_catastral`.
+
+**Solución:** Se corrigió para usar `predio.avaluo_catastral || predio.avaluo` (línea 258)
+
+---
+
 ### ✅ COMPLETADO: Refactorización Mayor del Módulo de Actualización
 
 **Objetivo:** Hacer que Actualización funcione igual que Conservación + Formulario de Visita
