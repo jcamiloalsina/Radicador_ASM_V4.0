@@ -196,7 +196,10 @@ export default function VisorActualizacion() {
     skipInitialSync,
     requiresSync,
     syncProgress,
-    isInitialSyncComplete
+    isInitialSyncComplete,
+    isBackgroundSyncing,
+    backgroundSyncMessage,
+    startBackgroundSync
   } = useOfflineSync(proyectoId, 'actualizacion');
   
   // Estado para la pantalla de sincronización inicial
