@@ -908,6 +908,8 @@ export default function VisorActualizacion() {
   const terrenosConMejoras = useMemo(() => {
     const index = new Set();
     
+    console.log(`[Visor] Calculando terrenosConMejoras. Construcciones disponibles: ${construcciones?.features?.length || 0}`);
+    
     if (construcciones?.features) {
       for (const feature of construcciones.features) {
         const props = feature.properties || {};
