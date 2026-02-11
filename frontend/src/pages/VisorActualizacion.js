@@ -1396,6 +1396,7 @@ export default function VisorActualizacion() {
     setTipoRevision(tipo);
     cargarDatosParaEdicion(predio);
     setShowPredioDetail(true);
+    setShowDetalleSimplificado(true);
     setEditMode(false);
     
     // Cargar propuestas e historial
@@ -1403,7 +1404,129 @@ export default function VisorActualizacion() {
     if (codigo) {
       fetchPropuestas(codigo);
       fetchHistorial(codigo);
+      verificarConstrucciones(predio);
+      cargarVisitaExistente(predio);
     }
+  };
+
+  // Verificar si el predio tiene construcciones en la GDB
+  const verificarConstrucciones = async (predio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const codigoParaBuscar = predio.codigo_predial || predio.codigo_predial_nacional;
+      
+      // Buscar en las construcciones del proyecto
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/construcciones?codigo=${codigoParaBuscar}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data?.construcciones?.length > 0) {
+        setTieneConstrucciones(true);
+        setConstruccionesPredio(response.data.construcciones);
+      } else {
+        setTieneConstrucciones(false);
+        setConstruccionesPredio([]);
+      }
+    } catch (error) {
+      console.log('No se encontraron construcciones:', error);
+      setTieneConstrucciones(false);
+      setConstruccionesPredio([]);
+    }
+  };
+
+  // Toggle para mostrar/ocultar construcciones en el mapa
+  const toggleConstruccionesPredio = () => {
+    setMostrarConstruccionesPredio(!mostrarConstruccionesPredio);
+  };
+
+  // Cargar visita existente si hay
+  const cargarVisitaExistente = async (predio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const codigo = predio.codigo_predial || predio.codigo_predial_nacional;
+      
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigo}/visita`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data?.visita) {
+        setVisitaExistente(response.data.visita);
+      } else {
+        setVisitaExistente(null);
+      }
+    } catch (error) {
+      setVisitaExistente(null);
+    }
+  };
+
+  // Abrir el formulario de visita
+  const abrirFormularioVisita = () => {
+    setShowFormularioVisita(true);
+  };
+
+  // Guardar formulario de visita
+  const guardarFormularioVisita = async (datosVisita) => {
+    if (!selectedPredio) return;
+    
+    setSavingVisita(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigo = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+      
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigo}/visita`,
+        datosVisita,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success('Formulario de visita guardado correctamente');
+      
+      // Actualizar el estado del predio localmente
+      const nuevoEstado = datosVisita.sin_cambios ? 'visitado' : 'visitado';
+      setPrediosR1R2(prev => prev.map(p => 
+        (p.codigo_predial === codigo) 
+          ? { ...p, estado_visita: nuevoEstado, sin_cambios: datosVisita.sin_cambios } 
+          : p
+      ));
+      setSelectedPredio(prev => ({ ...prev, estado_visita: nuevoEstado, sin_cambios: datosVisita.sin_cambios }));
+      
+      setShowFormularioVisita(false);
+      setVisitaExistente(datosVisita);
+      
+      // Refrescar datos
+      fetchProyecto();
+    } catch (error) {
+      console.error('Error guardando visita:', error);
+      toast.error(error.response?.data?.detail || 'Error al guardar el formulario de visita');
+    } finally {
+      setSavingVisita(false);
+    }
+  };
+
+  // Abrir modal de edición (estilo Conservación)
+  const abrirEdicionPredio = () => {
+    setEditMode(true);
+    setShowPredioDetail(true);
+  };
+
+  // Abrir historial
+  const abrirHistorial = () => {
+    // Por ahora mostrar el tab de historial en el modal actual
+    setShowPredioDetail(true);
+    // Podríamos agregar un estado para ir directo al tab de historial
+  };
+
+  // Cerrar detalle simplificado
+  const cerrarDetalleSimplificado = () => {
+    setShowDetalleSimplificado(false);
+    setSelectedPredio(null);
+    setSelectedGeometry(null);
+    setTieneConstrucciones(false);
+    setConstruccionesPredio([]);
+    setMostrarConstruccionesPredio(false);
+    setVisitaExistente(null);
   };
   
   // Confirmar tipo de revisión y abrir predio
