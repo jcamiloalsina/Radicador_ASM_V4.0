@@ -90,6 +90,29 @@ export default function GestionPrediosActualizacion() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [predioSeleccionado, setPredioSeleccionado] = useState(null);
   
+  // Estado para código manual (30 dígitos) - IGUAL A CONSERVACIÓN
+  const [codigoManual, setCodigoManual] = useState({
+    zona: '00',          // Posición 6-7 (2 dígitos)
+    sector: '00',        // Posición 8-9 (2 dígitos)
+    comuna: '00',        // Posición 10-11 (2 dígitos)
+    barrio: '00',        // Posición 12-13 (2 dígitos)
+    manzana_vereda: '0000', // Posición 14-17 (4 dígitos)
+    terreno: '0001',     // Posición 18-21 (4 dígitos)
+    condicion: '0',      // Posición 22 (1 dígito)
+    edificio: '00',      // Posición 23-24 (2 dígitos)
+    piso: '00',          // Posición 25-26 (2 dígitos)
+    unidad: '0000'       // Posición 27-30 (4 dígitos)
+  });
+  
+  // Verificación de código y código homologado
+  const [verificacionCodigo, setVerificacionCodigo] = useState(null);
+  const [verificandoCodigo, setVerificandoCodigo] = useState(false);
+  const [siguienteCodigoHomologado, setSiguienteCodigoHomologado] = useState(null);
+  const [estructuraCodigo, setEstructuraCodigo] = useState(null);
+  
+  // Permitir edición de CPN solo a coordinadores
+  const canEditCodigoPredial = ['administrador', 'coordinador'].includes(user?.role);
+  
   // Formulario de nuevo/editar predio - Campos completos para R1/R2
   const [formData, setFormData] = useState({
     codigo_predial: '',
