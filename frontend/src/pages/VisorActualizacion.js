@@ -2515,13 +2515,22 @@ export default function VisorActualizacion() {
     }
   };
   
-  // Contar predios por estado
-  const contarPrediosPorEstado = () => {
-    const pendientes = prediosR1R2.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length;
-    const visitados = prediosR1R2.filter(p => p.estado_visita === 'visitado').length;
-    const actualizados = prediosR1R2.filter(p => p.estado_visita === 'actualizado').length;
+  // Contar predios por estado (memoizado para evitar recálculos innecesarios)
+  const estadisticas = useMemo(() => {
+    let pendientes = 0;
+    let visitados = 0;
+    let actualizados = 0;
+    
+    // Un solo recorrido en lugar de 3 filter separados
+    for (const p of prediosR1R2) {
+      const estado = p.estado_visita || 'pendiente';
+      if (estado === 'pendiente') pendientes++;
+      else if (estado === 'visitado') visitados++;
+      else if (estado === 'actualizado') actualizados++;
+    }
+    
     return { pendientes, visitados, actualizados, total: prediosR1R2.length };
-  };
+  }, [prediosR1R2]);
   
   if (loading) {
     return (
