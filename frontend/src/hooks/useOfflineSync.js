@@ -26,11 +26,26 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
 
   // Detectar cambios de conexión
   useEffect(() => {
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setIsOnline(true);
-      // Solo mostrar toast si estaba offline
-      if (!navigator.onLine) return;
-      toast.success('Conexión restaurada');
+      toast.success('Conexión restaurada', { 
+        description: 'Sincronizando cambios pendientes...',
+        duration: 3000 
+      });
+      
+      // Auto-sincronizar cambios pendientes al recuperar conexión
+      setTimeout(async () => {
+        try {
+          const cambios = await getCambiosPendientes(proyectoId);
+          if (cambios.length > 0) {
+            console.log(`[Offline] ${cambios.length} cambios pendientes encontrados, sincronizando...`);
+            // Llamar sincronización directamente (no usar syncPendingChanges porque puede estar stale)
+            await syncChangesDirectly(cambios);
+          }
+        } catch (e) {
+          console.error('[Offline] Error al auto-sincronizar:', e);
+        }
+      }, 1000); // Esperar 1 segundo para que la conexión se estabilice
     };
 
     const handleOffline = () => {
@@ -45,7 +60,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [proyectoId]);
 
   // Inicializar DB solo una vez (ya no llama refreshStats automáticamente)
   useEffect(() => {
