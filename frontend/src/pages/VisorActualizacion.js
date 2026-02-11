@@ -1467,9 +1467,9 @@ export default function VisorActualizacion() {
     }
   };
 
-  // Abrir el formulario de visita
+  // Abrir el formulario de visita original
   const abrirFormularioVisita = () => {
-    setShowFormularioVisita(true);
+    abrirFormatoVisita();
   };
 
   // Guardar formulario de visita
