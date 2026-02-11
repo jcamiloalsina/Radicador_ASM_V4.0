@@ -18,6 +18,8 @@ import ListaPrediosPaginada from '../components/ListaPrediosPaginada';
 // Componentes de Actualización
 import CrearPredioNuevoModal from '../components/actualizacion/CrearPredioNuevoModal';
 import FinalizarProyectoModal from '../components/actualizacion/FinalizarProyectoModal';
+import DetallePredioActualizacion from '../components/actualizacion/DetallePredioActualizacion';
+import FormularioVisitaModal from '../components/actualizacion/FormularioVisitaModal';
 
 // UI Components
 import { Button } from '../components/ui/button';
