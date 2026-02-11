@@ -16129,12 +16129,25 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         # Si hay capa específica, procesar solo esa capa
         if capa_especifica:
             try:
-                logger.info(f"[GDB Actualizacion] Procesando capa específica: {capa_especifica}")
-                gdf = pyogrio.read_dataframe(gdb_path, layer=capa_especifica)
+                logger.info(f"[GDB/SHP Actualizacion] Procesando capa específica: {capa_especifica}")
+                
+                # Determinar la fuente de datos según el tipo
+                if is_shapefile:
+                    # Buscar el shapefile que coincide con la capa específica
+                    shp_path = None
+                    for shp in shp_files:
+                        if os.path.splitext(os.path.basename(shp))[0].upper() == capa_especifica.upper():
+                            shp_path = shp
+                            break
+                    if not shp_path:
+                        raise Exception(f"Shapefile '{capa_especifica}' no encontrado")
+                    gdf = pyogrio.read_dataframe(shp_path)
+                else:
+                    gdf = pyogrio.read_dataframe(data_source, layer=capa_especifica)
                 
                 if len(gdf) > 0:
                     gdf = gdf.to_crs(epsg=4326)
-                    logger.info(f"[GDB Actualizacion] Capa '{capa_especifica}' tiene {len(gdf)} registros")
+                    logger.info(f"[GDB/SHP Actualizacion] Capa '{capa_especifica}' tiene {len(gdf)} registros")
                     
                     # Determinar tipo de zona basado en el nombre de la capa
                     tipo_zona = "otro"
