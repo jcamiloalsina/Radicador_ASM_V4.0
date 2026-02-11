@@ -2763,66 +2763,67 @@ export default function VisorActualizacion() {
       click: () => {
         setSelectedGeometry(feature);
         
-        // Buscar predio en datos R1/R2
-        const predio = prediosR1R2.find(p => 
-          p.codigo_predial === feature.properties?.codigo_predial ||
-          p.numero_predial === feature.properties?.numero_predial
-        );
+        // Buscar código en las propiedades del feature
+        const codigoFeature = feature.properties?.codigo || 
+                             feature.properties?.codigo_predial || 
+                             feature.properties?.numero_predial ||
+                             feature.properties?.CODIGO;
+        
+        // Buscar predio en datos R1/R2 con matching mejorado (incluye mejoras)
+        let predio = prediosR1R2.find(p => {
+          const codigoPredio = p.codigo_predial || p.numero_predial;
+          // Match exacto
+          if (codigoPredio === codigoFeature) return true;
+          // Match parcial para mejoras (primeros 21 dígitos)
+          if (codigoPredio && codigoFeature && codigoPredio.length >= 21 && codigoFeature.length >= 21) {
+            if (codigoPredio.substring(0, 21) === codigoFeature.substring(0, 21)) return true;
+          }
+          return false;
+        });
         
         if (predio) {
-          // Si existe en R1/R2, usar esos datos
-          // Si es gestor, mostrar modal de tipo de revisión primero
-          const esGestor = user?.role === 'gestor';
-          if (esGestor) {
-            setPredioParaAbrir(predio);
-            setShowTipoRevisionModal(true);
-          } else {
-            setSelectedPredio(predio);
-            cargarDatosParaEdicion(predio);
-            setShowPredioDetail(true);
-            setEditMode(false);
+          // Mostrar panel simplificado directamente (sin modal de tipo revisión)
+          setSelectedPredio(predio);
+          setShowDetalleSimplificado(true);
+          setShowPredioDetail(false);
+          setEditMode(false);
+          
+          // Cargar datos adicionales
+          const codigo = predio.codigo_predial || predio.numero_predial;
+          if (codigo) {
+            fetchPropuestas(codigo);
+            fetchHistorial(codigo);
+            verificarConstrucciones(predio);
+            cargarVisitaExistente(predio);
           }
         } else {
           // Si no existe en R1/R2, crear objeto básico desde la geometría
           const predioBasico = {
-            codigo_predial: feature.properties?.codigo_predial || feature.properties?.numero_predial || 'Sin código',
-            numero_predial: feature.properties?.numero_predial || feature.properties?.codigo_predial || '',
+            codigo_predial: codigoFeature || 'Sin código',
+            numero_predial: feature.properties?.numero_predial || codigoFeature || '',
             direccion: feature.properties?.direccion || '',
             destino_economico: feature.properties?.destino_economico || '',
-            area_terreno: feature.properties?.area_terreno || feature.properties?.AREA || '',
+            area_terreno: feature.properties?.area_terreno || feature.properties?.AREA || feature.properties?.Shape_Area || '',
             area_construida: feature.properties?.area_construida || '',
             estado_visita: 'pendiente',
             propietarios: [],
             zonas_fisicas: []
           };
           
-          const esGestor = user?.role === 'gestor';
-          if (esGestor) {
-            setPredioParaAbrir(predioBasico);
-            setShowTipoRevisionModal(true);
-          } else {
-            setSelectedPredio(predioBasico);
-            cargarDatosParaEdicion(predioBasico);
-            setShowPredioDetail(true);
-            setEditMode(false);
-          }
-        }
-        
-        // Cargar propuestas e historial del predio
-        const codigo = predio?.codigo_predial || predio?.numero_predial || 
-                       feature.properties?.codigo_predial || feature.properties?.numero_predial;
-        if (codigo) {
-          fetchPropuestas(codigo);
-          fetchHistorial(codigo);
+          setSelectedPredio(predioBasico);
+          setShowDetalleSimplificado(true);
+          setShowPredioDetail(false);
+          setEditMode(false);
         }
       }
     });
     
-    if (feature.properties?.codigo_predial || feature.properties?.numero_predial) {
-      layer.bindTooltip(
-        feature.properties.codigo_predial || feature.properties.numero_predial,
-        { permanent: false, direction: 'top' }
-      );
+    // Tooltip con el código del predio
+    const codigoTooltip = feature.properties?.codigo || 
+                         feature.properties?.codigo_predial || 
+                         feature.properties?.numero_predial;
+    if (codigoTooltip) {
+      layer.bindTooltip(codigoTooltip, { permanent: false, direction: 'top' });
     }
   };
   
