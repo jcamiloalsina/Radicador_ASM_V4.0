@@ -1193,85 +1193,167 @@ export default function ProyectosActualizacion() {
               
               <Tabs value={detalleTab} onValueChange={(tab) => {
                 setDetalleTab(tab);
-                // Cargar predios cuando se selecciona el tab de gestión
-                if (tab === 'predios' && prediosProyecto.length === 0) {
-                  fetchPrediosProyecto(proyectoSeleccionado.id);
-                }
               }} className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className={`grid w-full ${canCreate ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                  <TabsTrigger value="acciones" className="flex items-center gap-1 text-xs">
+                    <FolderOpen className="w-3 h-3" />
+                    Proyecto
+                  </TabsTrigger>
+                  {canCreate && (
+                    <TabsTrigger value="archivos" className="flex items-center gap-1 text-xs">
+                      <Database className="w-3 h-3" />
+                      Archivos
+                    </TabsTrigger>
+                  )}
+                  {canCreate && (
+                    <TabsTrigger value="cronograma" className="flex items-center gap-1 text-xs">
+                      <CalendarDays className="w-3 h-3" />
+                      Cronograma
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="info" className="flex items-center gap-1 text-xs">
                     <FileSpreadsheet className="w-3 h-3" />
                     Info
                   </TabsTrigger>
-                  <TabsTrigger value="archivos" className="flex items-center gap-1 text-xs">
-                    <Database className="w-3 h-3" />
-                    Archivos
-                  </TabsTrigger>
-                  <TabsTrigger value="predios" className="flex items-center gap-1 text-xs">
-                    <Building2 className="w-3 h-3" />
-                    Predios
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="visor" 
-                    className="flex items-center gap-1 text-xs"
-                    disabled={!proyectoSeleccionado?.gdb_procesado}
-                  >
-                    <Map className="w-3 h-3" />
-                    Visor
-                  </TabsTrigger>
-                  {canCreate && (
-                    <TabsTrigger value="cronograma" className="flex items-center gap-1 text-xs">
-                      <CalendarDays className="w-3 h-3" />
-                      Crono
-                    </TabsTrigger>
-                  )}
                 </TabsList>
                 
-                {/* Tab Información */}
-                <TabsContent value="info" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Municipio</p>
-                      <p className="font-medium">{proyectoSeleccionado.municipio}</p>
+                {/* Tab Acciones Principal - Gestión y Visor */}
+                <TabsContent value="acciones" className="space-y-4 mt-4">
+                  {/* Estadísticas del Proyecto */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-slate-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-slate-700">
+                        {proyectoSeleccionado?.base_grafica_total_predios?.toLocaleString() || 0}
+                      </p>
+                      <p className="text-xs text-slate-500">Predios GDB</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Estado</p>
-                      <Badge className={`${estadoConfig[proyectoSeleccionado.estado]?.color} border`}>
-                        {estadoConfig[proyectoSeleccionado.estado]?.label}
-                      </Badge>
+                    <div className="bg-blue-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-blue-700">
+                        {proyectoSeleccionado?.info_alfanumerica_total_registros?.toLocaleString() || 0}
+                      </p>
+                      <p className="text-xs text-slate-500">Registros R1/R2</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Creado por</p>
-                      <p className="font-medium">{proyectoSeleccionado.creado_por_nombre}</p>
+                    <div className="bg-amber-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-amber-700">
+                        {proyectoSeleccionado?.predios_visitados || 0}
+                      </p>
+                      <p className="text-xs text-slate-500">Visitados</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Fecha creación</p>
-                      <p className="font-medium">{formatDate(proyectoSeleccionado.created_at)}</p>
+                    <div className="bg-green-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-green-700">
+                        {proyectoSeleccionado?.predios_actualizados || 0}
+                      </p>
+                      <p className="text-xs text-slate-500">Actualizados</p>
                     </div>
                   </div>
-                  
-                  {proyectoSeleccionado.descripcion && (
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase mb-1">Descripción</p>
-                      <p className="text-slate-700">{proyectoSeleccionado.descripcion}</p>
-                    </div>
+
+                  {/* Botones de Acceso Principal */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Botón Gestión de Predios */}
+                    <Card 
+                      className="cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group"
+                      onClick={() => {
+                        setShowDetalleModal(false);
+                        navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}?modo=gestion`);
+                      }}
+                    >
+                      <CardContent className="p-6 text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+                          <Building2 className="w-8 h-8 text-amber-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Gestión de Predios</h3>
+                        <p className="text-sm text-slate-500">
+                          Crear, editar y gestionar los predios del proyecto
+                        </p>
+                        <Badge variant="outline" className="mt-3">
+                          {proyectoSeleccionado?.info_alfanumerica_total_registros?.toLocaleString() || 0} predios cargados
+                        </Badge>
+                      </CardContent>
+                    </Card>
+
+                    {/* Botón Visor de Predios */}
+                    <Card 
+                      className={`cursor-pointer transition-all group ${
+                        proyectoSeleccionado?.gdb_procesado 
+                          ? 'hover:border-emerald-400 hover:shadow-md' 
+                          : 'opacity-60 cursor-not-allowed'
+                      }`}
+                      onClick={() => {
+                        if (proyectoSeleccionado?.gdb_procesado) {
+                          setShowDetalleModal(false);
+                          navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}`);
+                        } else {
+                          toast.warning('Debe cargar la Base Gráfica (GDB) primero');
+                        }
+                      }}
+                    >
+                      <CardContent className="p-6 text-center">
+                        <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-colors ${
+                          proyectoSeleccionado?.gdb_procesado 
+                            ? 'bg-emerald-100 group-hover:bg-emerald-200' 
+                            : 'bg-slate-100'
+                        }`}>
+                          <Map className={`w-8 h-8 ${proyectoSeleccionado?.gdb_procesado ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Visor de Predios</h3>
+                        <p className="text-sm text-slate-500">
+                          {proyectoSeleccionado?.gdb_procesado 
+                            ? 'Ver predios en el mapa y realizar visitas de campo'
+                            : 'Cargue la Base Gráfica (GDB) para habilitar'}
+                        </p>
+                        <Badge variant="outline" className="mt-3">
+                          {proyectoSeleccionado?.gdb_procesado 
+                            ? `${proyectoSeleccionado?.base_grafica_total_predios?.toLocaleString() || 0} geometrías`
+                            : 'GDB no cargada'}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Mensaje si no hay datos cargados */}
+                  {!proyectoSeleccionado?.gdb_procesado && !proyectoSeleccionado?.info_alfanumerica_total_registros && (
+                    <Card className="bg-amber-50 border-amber-200">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-amber-800">Proyecto sin datos</p>
+                            <p className="text-sm text-amber-600">
+                              {canCreate 
+                                ? 'Vaya a la pestaña "Archivos" para cargar la Base Gráfica (GDB) y la información R1/R2.'
+                                : 'El coordinador debe cargar los archivos del proyecto.'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
 
-                  {/* Botón eliminar en info */}
-                  {canDelete && (
-                    <div className="pt-4 border-t">
+                  {/* Acciones rápidas para coordinadores */}
+                  {canCreate && (
+                    <div className="flex flex-wrap gap-2 pt-4 border-t">
                       <Button 
-                        variant="destructive"
-                        onClick={() => setShowEliminarModal(true)}
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setDetalleTab('archivos')}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar Proyecto
+                        <Upload className="w-4 h-4 mr-2" />
+                        Cargar Archivos
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setDetalleTab('cronograma')}
+                      >
+                        <CalendarDays className="w-4 h-4 mr-2" />
+                        Ver Cronograma
                       </Button>
                     </div>
                   )}
                 </TabsContent>
                 
-                {/* Tab Archivos - Solo archivos propios del proyecto */}
+                {/* Tab Archivos - Solo coordinadores */}
+                {canCreate && (
                 <TabsContent value="archivos" className="space-y-4 mt-4">
                   <h4 className="font-semibold text-slate-900">Archivos del Proyecto</h4>
                   <p className="text-sm text-slate-500 mb-4">
