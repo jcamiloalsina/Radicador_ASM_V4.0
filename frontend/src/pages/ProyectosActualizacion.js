@@ -121,7 +121,7 @@ export default function ProyectosActualizacion() {
   const [uploading, setUploading] = useState({ base_grafica: false, info_alfanumerica: false });
 
   // Tab del modal de detalle
-  const [detalleTab, setDetalleTab] = useState('info');
+  const [detalleTab, setDetalleTab] = useState('acciones');
 
   // Estados para Gestión de Predios
   const [prediosProyecto, setPrediosProyecto] = useState([]);
