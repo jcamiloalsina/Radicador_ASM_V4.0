@@ -16204,60 +16204,73 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                     "updated_at": datetime.now(timezone.utc)
                 }}
             )
-            logger.info(f"[GDB Actualizacion] Carga de capa '{capa_especifica}' completada: {geometrias_guardadas} geometrías")
+            logger.info(f"[GDB/SHP Actualizacion] Carga de capa '{capa_especifica}' completada: {geometrias_guardadas} geometrías")
             return
+        
+        # Función auxiliar para leer un dataframe según el tipo de fuente
+        def read_layer(layer_name):
+            if is_shapefile:
+                # Buscar el shapefile que coincide
+                for shp in shp_files:
+                    if os.path.splitext(os.path.basename(shp))[0].upper() == layer_name.upper():
+                        return pyogrio.read_dataframe(shp)
+                return None
+            else:
+                return pyogrio.read_dataframe(data_source, layer=layer_name)
         
         # Procesar capas estándar (comportamiento original)
         # Procesar terrenos rurales
-        for layer_name in rural_layers:
-            if layer_name in layer_names:
-                try:
-                    logger.info(f"[GDB Actualizacion] Procesando capa rural: {layer_name}")
-                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
-                    if len(gdf) > 0:
-                        gdf = gdf.to_crs(epsg=4326)
-                        for idx, row in gdf.iterrows():
-                            geom = row.geometry.__geo_interface__
-                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
-                            props['zona'] = 'rural'
-                            props['proyecto_id'] = proyecto_id
-                            props['municipio'] = municipio
-                            
-                            await db.geometrias_actualizacion.insert_one({
-                                "proyecto_id": proyecto_id,
-                                "municipio": municipio,
-                                "zona": "rural",
-                                "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
-                                "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
-                                "geometry": geom,
-                                "properties": props,
-                                "created_at": datetime.now(timezone.utc)
-                            })
-                            geometrias_guardadas += 1
-                except Exception as e:
-                    logger.error(f"[GDB Actualizacion] Error procesando capa rural {layer_name}: {e}")
+        for layer_name in rural_found:
+            try:
+                logger.info(f"[GDB/SHP Actualizacion] Procesando capa rural: {layer_name}")
+                gdf = read_layer(layer_name)
+                if gdf is not None and len(gdf) > 0:
+                    gdf = gdf.to_crs(epsg=4326)
+                    for idx, row in gdf.iterrows():
+                        geom = row.geometry.__geo_interface__
+                        props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                        props['zona'] = 'rural'
+                        props['proyecto_id'] = proyecto_id
+                        props['municipio'] = municipio
+                        props['capa_origen'] = layer_name
+                        
+                        await db.geometrias_actualizacion.insert_one({
+                            "proyecto_id": proyecto_id,
+                            "municipio": municipio,
+                            "zona": "rural",
+                            "capa_origen": layer_name,
+                            "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
+                            "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
+                            "geometry": geom,
+                            "properties": props,
+                            "created_at": datetime.now(timezone.utc)
+                        })
+                        geometrias_guardadas += 1
+            except Exception as e:
+                logger.error(f"[GDB/SHP Actualizacion] Error procesando capa rural {layer_name}: {e}")
         
         # Procesar terrenos urbanos
-        for layer_name in urban_layers:
-            if layer_name in layer_names:
-                try:
-                    logger.info(f"[GDB Actualizacion] Procesando capa urbana: {layer_name}")
-                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
-                    if len(gdf) > 0:
-                        logger.info(f"[GDB Actualizacion] Convirtiendo CRS de {len(gdf)} registros...")
-                        gdf = gdf.to_crs(epsg=4326)
-                        for idx, row in gdf.iterrows():
-                            geom = row.geometry.__geo_interface__
-                            props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
-                            props['zona'] = 'urbano'
-                            props['proyecto_id'] = proyecto_id
-                            props['municipio'] = municipio
-                            
-                            await db.geometrias_actualizacion.insert_one({
-                                "proyecto_id": proyecto_id,
-                                "municipio": municipio,
-                                "zona": "urbano",
-                                "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
+        for layer_name in urban_found:
+            try:
+                logger.info(f"[GDB/SHP Actualizacion] Procesando capa urbana: {layer_name}")
+                gdf = read_layer(layer_name)
+                if gdf is not None and len(gdf) > 0:
+                    logger.info(f"[GDB/SHP Actualizacion] Convirtiendo CRS de {len(gdf)} registros...")
+                    gdf = gdf.to_crs(epsg=4326)
+                    for idx, row in gdf.iterrows():
+                        geom = row.geometry.__geo_interface__
+                        props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                        props['zona'] = 'urbano'
+                        props['proyecto_id'] = proyecto_id
+                        props['municipio'] = municipio
+                        props['capa_origen'] = layer_name
+                        
+                        await db.geometrias_actualizacion.insert_one({
+                            "proyecto_id": proyecto_id,
+                            "municipio": municipio,
+                            "zona": "urbano",
+                            "capa_origen": layer_name,
+                            "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
                                 "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
                                 "geometry": geom,
                                 "properties": props,
