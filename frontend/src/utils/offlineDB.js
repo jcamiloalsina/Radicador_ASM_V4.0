@@ -224,8 +224,7 @@ function createAllStores(database) {
 
 // Helper para verificar si la base de datos está disponible
 async function getDatabase() {
-  const database = await getDatabase();
-  if (!database) return [];
+  const database = await initOfflineDB();
   if (!database) {
     console.warn('[OfflineDB] Base de datos no disponible');
     return null;
