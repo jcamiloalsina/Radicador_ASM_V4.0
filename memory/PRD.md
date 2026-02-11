@@ -47,6 +47,34 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 2)
 
+### ✅ COMPLETADO: Contadores "Visitados/Actualizados" en Modal de Proyecto (P0)
+
+**Problema reportado:** El modal del proyecto mostraba "Visitados: 0" y "Actualizados: 0" cuando dentro del visor sí había predios con esos estados.
+
+**Causa raíz:** 
+- El endpoint `GET /actualizacion/proyectos/{proyecto_id}` solo devolvía los datos guardados en el documento del proyecto
+- No calculaba las estadísticas en tiempo real desde la colección `predios_actualizacion`
+- El frontend simplemente asignaba el proyecto de la lista sin llamar al servidor
+
+**Solución implementada:**
+
+1. **Backend modificado (`server.py`):**
+   - Endpoint `GET /actualizacion/proyectos/{proyecto_id}` ahora calcula estadísticas usando agregación de MongoDB
+   - Pipeline que agrupa por `estado_visita` y cuenta predios
+   - Devuelve: `predios_total`, `predios_pendientes`, `predios_visitados`, `predios_actualizados`
+
+2. **Frontend modificado (`ProyectosActualizacion.js`):**
+   - Función `abrirDetalleProyecto` ahora hace llamada al servidor para obtener datos actualizados
+   - El modal muestra los datos frescos del backend en lugar de los datos cacheados de la lista
+
+**Resultado:**
+- Antes: Visitados: 0, Actualizados: 0
+- Después: Visitados: 10, Actualizados: 4 ✅
+
+**Testing:** ✅ Verificado con curl y screenshot
+
+---
+
 ### ✅ COMPLETADO: Modal "Crear Predio" Idéntico a Conservación (P0)
 
 **Problema reportado:** El modal de "Crear Predio" en el módulo de Actualización no era idéntico al módulo de Conservación:
