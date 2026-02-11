@@ -587,18 +587,39 @@ export default function GestionPrediosActualizacion() {
       avaluo_catastral: '',
       matricula_inmobiliaria: ''
     });
-    setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
-    setZonasFisicas([{
-      zona_fisica: '0',
-      zona_economica: '0',
-      area_terreno: '0',
+    
+    // Resetear propietarios (formato XTF)
+    setPropietarios([{
+      primer_apellido: '',
+      segundo_apellido: '',
+      primer_nombre: '',
+      segundo_nombre: '',
+      estado: '',
+      tipo_documento: 'C',
+      numero_documento: ''
+    }]);
+    
+    // Resetear zonas de terreno
+    setZonasTerreno([{
+      zona_fisica: '',
+      zona_economica: '',
+      area_terreno: '0'
+    }]);
+    
+    // Resetear construcciones
+    setConstrucciones([{
+      id: 'A',
+      piso: '1',
       habitaciones: '0',
       banos: '0',
       locales: '0',
-      pisos: '1',
+      tipificacion: '',
+      uso: '',
       puntaje: '0',
       area_construida: '0'
     }]);
+    
+    // Resetear zonas físicas (compatibilidad)
     
     // Resetear código manual
     setCodigoManual({
