@@ -1976,31 +1976,56 @@ export default function ProyectosActualizacion() {
               </div>
             )}
             
-            {/* Modo de carga */}
+            {/* Modo de carga - usando botones en lugar de Select */}
             <div className="space-y-2">
               <Label>Modo de Carga</Label>
-              <Select 
-                value={gdbUploadOptions.modo_carga}
-                onValueChange={(v) => setGdbUploadOptions(prev => ({ ...prev, modo_carga: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="reemplazar">
-                    <div className="flex flex-col">
-                      <span className="font-medium">Reemplazar todo</span>
-                      <span className="text-xs text-slate-500">Elimina las geometrías existentes y carga las nuevas</span>
+              <div className="grid grid-cols-1 gap-2">
+                <div 
+                  className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    gdbUploadOptions.modo_carga === 'reemplazar' 
+                      ? 'border-emerald-500 bg-emerald-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setGdbUploadOptions(prev => ({ ...prev, modo_carga: 'reemplazar' }))}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      gdbUploadOptions.modo_carga === 'reemplazar' ? 'border-emerald-500' : 'border-slate-300'
+                    }`}>
+                      {gdbUploadOptions.modo_carga === 'reemplazar' && (
+                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      )}
                     </div>
-                  </SelectItem>
-                  <SelectItem value="incremental">
-                    <div className="flex flex-col">
-                      <span className="font-medium">Carga incremental</span>
-                      <span className="text-xs text-slate-500">Añade sin eliminar lo existente (ideal para capas adicionales)</span>
+                    <div>
+                      <p className="font-medium text-sm">Reemplazar todo</p>
+                      <p className="text-xs text-slate-500">Elimina las geometrías existentes y carga las nuevas</p>
                     </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                  </div>
+                </div>
+                
+                <div 
+                  className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    gdbUploadOptions.modo_carga === 'incremental' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setGdbUploadOptions(prev => ({ ...prev, modo_carga: 'incremental' }))}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      gdbUploadOptions.modo_carga === 'incremental' ? 'border-blue-500' : 'border-slate-300'
+                    }`}>
+                      {gdbUploadOptions.modo_carga === 'incremental' && (
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Carga incremental</p>
+                      <p className="text-xs text-slate-500">Añade sin eliminar lo existente (ideal para perímetro urbano)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             {/* Capa específica (solo en modo incremental) */}
