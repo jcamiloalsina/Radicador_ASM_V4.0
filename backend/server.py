@@ -15216,13 +15216,47 @@ async def obtener_proyecto_actualizacion(
     proyecto_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtiene los detalles de un proyecto de actualización"""
+    """Obtiene los detalles de un proyecto de actualización con estadísticas de predios en tiempo real"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver este proyecto")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Calcular estadísticas de predios en tiempo real desde predios_actualizacion
+    pipeline = [
+        {"$match": {"proyecto_id": proyecto_id}},
+        {"$group": {
+            "_id": "$estado_visita",
+            "count": {"$sum": 1}
+        }}
+    ]
+    stats_cursor = db.predios_actualizacion.aggregate(pipeline)
+    stats_list = await stats_cursor.to_list(length=100)
+    
+    # Calcular totales
+    predios_total = 0
+    predios_pendientes = 0
+    predios_visitados = 0
+    predios_actualizados = 0
+    
+    for stat in stats_list:
+        estado = stat.get("_id") or "pendiente"
+        count = stat.get("count", 0)
+        predios_total += count
+        if estado == "pendiente" or estado is None:
+            predios_pendientes += count
+        elif estado == "visitado":
+            predios_visitados += count
+        elif estado == "actualizado":
+            predios_actualizados += count
+    
+    # Agregar estadísticas al proyecto
+    proyecto["predios_total"] = predios_total
+    proyecto["predios_pendientes"] = predios_pendientes
+    proyecto["predios_visitados"] = predios_visitados
+    proyecto["predios_actualizados"] = predios_actualizados
     
     return proyecto
 
