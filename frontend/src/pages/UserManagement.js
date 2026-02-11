@@ -150,6 +150,69 @@ export default function UserManagement() {
     }
   };
 
+  // Funciones para gestión de municipios de usuarios empresa
+  const fetchMunicipiosDisponibles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/admin/municipios-disponibles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMunicipiosDisponibles(response.data.municipios || []);
+    } catch (error) {
+      console.error('Error cargando municipios:', error);
+    }
+  };
+
+  const abrirModalMunicipios = async (user) => {
+    setSelectedUser(user);
+    await fetchMunicipiosDisponibles();
+    
+    // Obtener municipios actuales del usuario
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/admin/users/${user.id}/municipios`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMunicipiosAsignados(response.data.municipios_asignados || []);
+    } catch (error) {
+      setMunicipiosAsignados([]);
+    }
+    
+    setShowMunicipiosModal(true);
+  };
+
+  const toggleMunicipio = (municipio) => {
+    setMunicipiosAsignados(prev => {
+      if (prev.includes(municipio)) {
+        return prev.filter(m => m !== municipio);
+      } else {
+        return [...prev, municipio];
+      }
+    });
+  };
+
+  const guardarMunicipios = async () => {
+    if (!selectedUser) return;
+    
+    setSavingMunicipios(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${API}/admin/users/${selectedUser.id}/municipios`, {
+        municipios_asignados: municipiosAsignados
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Municipios asignados a ${selectedUser.full_name}`);
+      setShowMunicipiosModal(false);
+      fetchUsers(); // Recargar usuarios para mostrar cambios
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al asignar municipios');
+    } finally {
+      setSavingMunicipios(false);
+    }
+  };
+
   const fetchDbStatus = async () => {
     setLoadingDb(true);
     try {
