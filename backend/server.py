@@ -16049,6 +16049,20 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         layer_names = [l[0] for l in layers]
         logger.info(f"[GDB Actualizacion] Capas encontradas: {len(layer_names)}")
         
+        # Si se especificó una capa específica, verificar que exista
+        if capa_especifica:
+            if capa_especifica not in layer_names:
+                # Buscar con case-insensitive
+                capa_encontrada = None
+                for ln in layer_names:
+                    if ln.upper() == capa_especifica.upper():
+                        capa_encontrada = ln
+                        break
+                if not capa_encontrada:
+                    raise Exception(f"Capa '{capa_especifica}' no encontrada. Capas disponibles: {', '.join(layer_names[:15])}")
+                capa_especifica = capa_encontrada
+            logger.info(f"[GDB Actualizacion] Procesando solo capa específica: {capa_especifica}")
+        
         # Buscar capas de terreno (usar mismos estándares que Conservación)
         rural_layers = ['R_TERRENO', 'R_TERRENO_1', 'r_terreno', 'TERRENO']
         urban_layers = ['U_TERRENO', 'U_TERRENO_1', 'u_terreno']
@@ -16063,11 +16077,94 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         geometrias_guardadas = 0
         construcciones_guardadas = 0
         
-        # Eliminar geometrías anteriores del proyecto
-        logger.info(f"[GDB Actualizacion] Eliminando geometrías anteriores...")
-        await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
-        await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
+        # Lógica de eliminación según modo de carga
+        if modo_carga == "reemplazar":
+            # Eliminar TODAS las geometrías anteriores del proyecto
+            logger.info(f"[GDB Actualizacion] Modo REEMPLAZAR: Eliminando todas las geometrías anteriores...")
+            deleted_geom = await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
+            deleted_const = await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
+            logger.info(f"[GDB Actualizacion] Eliminadas {deleted_geom.deleted_count} geometrías y {deleted_const.deleted_count} construcciones")
+        elif modo_carga == "incremental" and capa_especifica:
+            # Solo eliminar geometrías de la capa específica
+            logger.info(f"[GDB Actualizacion] Modo INCREMENTAL: Eliminando solo geometrías de capa '{capa_especifica}'...")
+            deleted = await db.geometrias_actualizacion.delete_many({
+                "proyecto_id": proyecto_id,
+                "capa_origen": capa_especifica
+            })
+            logger.info(f"[GDB Actualizacion] Eliminadas {deleted.deleted_count} geometrías de capa '{capa_especifica}'")
+        else:
+            # Incremental sin capa específica: no eliminar nada
+            logger.info(f"[GDB Actualizacion] Modo INCREMENTAL: Añadiendo sin eliminar...")
         
+        # Si hay capa específica, procesar solo esa capa
+        if capa_especifica:
+            try:
+                logger.info(f"[GDB Actualizacion] Procesando capa específica: {capa_especifica}")
+                gdf = pyogrio.read_dataframe(gdb_path, layer=capa_especifica)
+                
+                if len(gdf) > 0:
+                    gdf = gdf.to_crs(epsg=4326)
+                    logger.info(f"[GDB Actualizacion] Capa '{capa_especifica}' tiene {len(gdf)} registros")
+                    
+                    # Determinar tipo de zona basado en el nombre de la capa
+                    tipo_zona = "otro"
+                    if capa_especifica.upper().startswith("R_") or "RURAL" in capa_especifica.upper():
+                        tipo_zona = "rural"
+                    elif capa_especifica.upper().startswith("U_") or "URBAN" in capa_especifica.upper():
+                        tipo_zona = "urbano"
+                    elif "PERIMETRO" in capa_especifica.upper():
+                        tipo_zona = "perimetro_urbano"
+                    elif "MANZANA" in capa_especifica.upper():
+                        tipo_zona = "manzana"
+                    elif "SECTOR" in capa_especifica.upper():
+                        tipo_zona = "sector"
+                    
+                    for idx, row in gdf.iterrows():
+                        geom = row.geometry.__geo_interface__
+                        props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                        props['zona'] = tipo_zona
+                        props['proyecto_id'] = proyecto_id
+                        props['municipio'] = municipio
+                        props['capa_origen'] = capa_especifica
+                        
+                        # Obtener código si existe
+                        codigo = props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', f"{capa_especifica}_{idx}")))
+                        
+                        await db.geometrias_actualizacion.insert_one({
+                            "proyecto_id": proyecto_id,
+                            "municipio": municipio,
+                            "zona": tipo_zona,
+                            "capa_origen": capa_especifica,
+                            "codigo_predial": codigo,
+                            "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
+                            "geometry": geom,
+                            "properties": props,
+                            "created_at": datetime.now(timezone.utc)
+                        })
+                        geometrias_guardadas += 1
+                    
+                    logger.info(f"[GDB Actualizacion] Guardadas {geometrias_guardadas} geometrías de capa '{capa_especifica}'")
+                else:
+                    logger.warning(f"[GDB Actualizacion] Capa '{capa_especifica}' está vacía")
+                    
+            except Exception as e:
+                logger.error(f"[GDB Actualizacion] Error procesando capa específica '{capa_especifica}': {e}")
+                raise
+            
+            # Actualizar proyecto y finalizar
+            await db.proyectos_actualizacion.update_one(
+                {"id": proyecto_id},
+                {"$set": {
+                    "gdb_procesado": True,
+                    "gdb_total_geometrias": geometrias_guardadas,
+                    f"capa_{capa_especifica.lower()}_cargada": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            logger.info(f"[GDB Actualizacion] Carga de capa '{capa_especifica}' completada: {geometrias_guardadas} geometrías")
+            return
+        
+        # Procesar capas estándar (comportamiento original)
         # Procesar terrenos rurales
         for layer_name in rural_layers:
             if layer_name in layer_names:
