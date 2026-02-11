@@ -96,6 +96,9 @@ export default function ProyectosActualizacion() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [showEliminarModal, setShowEliminarModal] = useState(false);
   const [showActividadModal, setShowActividadModal] = useState(false);
+  const [showFinalizarModal, setShowFinalizarModal] = useState(false);
+  const [vigenciaSeleccionada, setVigenciaSeleccionada] = useState(new Date().getFullYear().toString());
+  const [finalizando, setFinalizando] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [etapas, setEtapas] = useState([]);
   const [etapasAbiertas, setEtapasAbiertas] = useState({});
