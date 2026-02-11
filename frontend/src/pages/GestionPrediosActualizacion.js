@@ -88,7 +88,9 @@ export default function GestionPrediosActualizacion() {
   const [showCrearModal, setShowCrearModal] = useState(false);
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [showProponerCambiosModal, setShowProponerCambiosModal] = useState(false);
   const [predioSeleccionado, setPredioSeleccionado] = useState(null);
+  const [enviandoPropuesta, setEnviandoPropuesta] = useState(false);
   
   // Estado para código manual (30 dígitos) - IGUAL A CONSERVACIÓN
   const [codigoManual, setCodigoManual] = useState({
