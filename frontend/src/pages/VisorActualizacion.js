@@ -864,11 +864,11 @@ export default function VisorActualizacion() {
   };
   
   // Helper: Verificar si un código predial es una MEJORA
-  // Una mejora tiene los últimos 4 dígitos diferentes de "0000"
+  // Una mejora tiene los últimos 3 dígitos (posiciones 28-30) diferentes de "000"
   const esMejora = (codigoPredial) => {
     if (!codigoPredial || codigoPredial.length < 30) return false;
-    const ultimosCuatro = codigoPredial.substring(26, 30); // Posiciones 27-30 (índice 26-29)
-    return ultimosCuatro !== '0000';
+    const ultimosTres = codigoPredial.substring(27, 30); // índice 27 = posición 28
+    return ultimosTres !== '000';
   };
   
   // Contar predios que son mejoras
