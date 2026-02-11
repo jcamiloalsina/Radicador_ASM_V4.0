@@ -2837,13 +2837,17 @@ export default function VisorActualizacion() {
       }
     });
     
-    // Tooltip con el código del predio
+    // Tooltip con el código del predio - DESACTIVADO para mejor rendimiento
+    // Los usuarios pueden hacer clic en el polígono para ver detalles
+    // Si necesita ver el código, puede habilitarse el tooltip hover más adelante
+    /*
     const codigoTooltip = feature.properties?.codigo || 
                          feature.properties?.codigo_predial || 
                          feature.properties?.numero_predial;
     if (codigoTooltip) {
       layer.bindTooltip(codigoTooltip, { permanent: false, direction: 'top' });
     }
+    */
   };
   
   // Configuración de capas de tiles
