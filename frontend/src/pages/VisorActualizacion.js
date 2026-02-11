@@ -1317,16 +1317,38 @@ export default function VisorActualizacion() {
   const handleSearch = async () => {
     if (!searchCode.trim()) return;
     
+    // Buscar la geometría del predio o su terreno padre (para mejoras)
     if (geometrias?.features) {
-      const feature = geometrias.features.find(f => 
-        f.properties?.codigo_predial?.includes(searchCode) ||
-        f.properties?.numero_predial?.includes(searchCode)
-      );
+      // Primero buscar match exacto
+      let feature = geometrias.features.find(f => {
+        const props = f.properties || {};
+        const codigo = props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO || '';
+        return codigo.includes(searchCode) || searchCode.includes(codigo);
+      });
+      
+      // Si no se encontró y es una mejora (últimos 8 dígitos != 00000000), buscar terreno padre
+      if (!feature && searchCode.length >= 21) {
+        const terrenoBase = searchCode.substring(0, 21); // Primeros 21 dígitos (hasta predio)
+        feature = geometrias.features.find(f => {
+          const props = f.properties || {};
+          const codigo = props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO || '';
+          return codigo.length >= 21 && codigo.substring(0, 21) === terrenoBase;
+        });
+        
+        if (feature) {
+          toast.info('Mejora encontrada - mostrando terreno asociado', {
+            description: `Terreno: ${feature.properties?.codigo || feature.properties?.codigo_predial}`
+          });
+        }
+      }
       
       if (feature) {
         setSelectedGeometry(feature);
         const bounds = L.geoJSON(feature).getBounds();
         setFlyToPosition([bounds.getCenter().lat, bounds.getCenter().lng]);
+        if (mapRef.current) {
+          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+        }
         toast.success('Predio encontrado en mapa');
       }
     }
@@ -1345,7 +1367,11 @@ export default function VisorActualizacion() {
       } else {
         abrirDetallePredio(predio);
       }
-    } else if (!geometrias?.features?.find(f => f.properties?.codigo_predial?.includes(searchCode))) {
+    } else if (!geometrias?.features?.find(f => {
+      const props = f.properties || {};
+      const codigo = props.codigo || props.codigo_predial || '';
+      return codigo.includes(searchCode);
+    })) {
       toast.warning('Predio no encontrado');
     }
   };
