@@ -65,6 +65,7 @@ export default function GestionPrediosActualizacion() {
   const [predios, setPredios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPredios, setLoadingPredios] = useState(false);
+  const [catalogos, setCatalogos] = useState(null);
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,26 +96,103 @@ export default function GestionPrediosActualizacion() {
     codigo_homologado: '',
     direccion: '',
     comuna: '',
-    destino_economico: '',
+    destino_economico: 'A',
     area_terreno: '',
     area_construida: '',
     avaluo_catastral: '',
-    matricula_inmobiliaria: '',
-    // Propietarios con estado civil para R1
-    propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
-    // Zonas físicas para R2
-    zonas_fisicas: [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
-    // Datos de construcción para R2
-    habitaciones: '',
-    banos: '',
-    locales: '',
-    pisos: '',
-    uso: ''
+    matricula_inmobiliaria: ''
   });
+  
+  // Estado para múltiples propietarios (igual que Conservación)
+  const [propietarios, setPropietarios] = useState([{
+    nombre_propietario: '',
+    tipo_documento: 'C',
+    numero_documento: '',
+    estado_civil: ''
+  }]);
+  
+  // Estado para zonas físicas R2 (igual que Conservación)
+  const [zonasFisicas, setZonasFisicas] = useState([{
+    zona_fisica: '0',
+    zona_economica: '0',
+    area_terreno: '0',
+    habitaciones: '0',
+    banos: '0',
+    locales: '0',
+    pisos: '1',
+    puntaje: '0',
+    area_construida: '0'
+  }]);
+  
+  // Funciones para manejar propietarios
+  const agregarPropietario = () => {
+    setPropietarios([...propietarios, {
+      nombre_propietario: '',
+      tipo_documento: 'C',
+      numero_documento: '',
+      estado_civil: ''
+    }]);
+  };
+  
+  const eliminarPropietario = (index) => {
+    if (propietarios.length > 1) {
+      setPropietarios(propietarios.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarPropietario = (index, campo, valor) => {
+    setPropietarios(prev => {
+      const nuevos = [...prev];
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      return nuevos;
+    });
+  };
+  
+  // Funciones para zonas físicas
+  const agregarZonaFisica = () => {
+    setZonasFisicas([...zonasFisicas, {
+      zona_fisica: '0',
+      zona_economica: '0',
+      area_terreno: '0',
+      habitaciones: '0',
+      banos: '0',
+      locales: '0',
+      pisos: '1',
+      puntaje: '0',
+      area_construida: '0'
+    }]);
+  };
+  
+  const eliminarZonaFisica = (index) => {
+    if (zonasFisicas.length > 1) {
+      setZonasFisicas(zonasFisicas.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaFisica = (index, campo, valor) => {
+    setZonasFisicas(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
   
   // Permisos
   const canModify = ['administrador', 'coordinador', 'gestor', 'gestor_auxiliar'].includes(user?.role);
   const esCoordinador = ['administrador', 'coordinador'].includes(user?.role);
+  
+  // Cargar catálogos
+  const fetchCatalogos = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/catalogos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCatalogos(res.data);
+    } catch (error) {
+      console.log('Catálogos no disponibles');
+    }
+  };
   
   // Cargar proyecto
   const fetchProyecto = useCallback(async () => {
