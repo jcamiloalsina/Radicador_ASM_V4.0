@@ -114,24 +114,37 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   // Detectar cambios de conexión
   useEffect(() => {
     const handleOnline = async () => {
+      const wasOffline = !isOnline; // Estaba offline antes?
       setIsOnline(true);
       
-      // Verificar cambios pendientes
-      try {
-        const cambios = await getCambiosPendientes(proyectoId);
-        if (cambios.length > 0) {
-          // HAY CAMBIOS PENDIENTES - Activar sincronización obligatoria
-          console.log(`[Offline] Conexión restaurada. ${cambios.length} cambios pendientes.`);
+      if (wasOffline) {
+        // SE RECONECTÓ - Verificar y forzar sincronización
+        console.log('[Offline] Conexión restaurada. Verificando estado...');
+        
+        try {
+          const cambios = await getCambiosPendientes(proyectoId);
+          
+          // Siempre mostrar pantalla de sincronización cuando se reconecta
           setRequiresSync(true);
           setIsInitialSyncComplete(false);
-          setSyncProgress({ current: 0, total: cambios.length, message: 'Conexión restaurada. Sincronizando cambios...' });
-        } else {
-          console.log('[Offline] Conexión restaurada. Sin cambios pendientes.');
+          
+          if (cambios.length > 0) {
+            setSyncProgress({ 
+              current: 0, 
+              total: cambios.length, 
+              message: `Conexión restaurada. ${cambios.length} cambio(s) pendiente(s) por subir.` 
+            });
+          } else {
+            setSyncProgress({ 
+              current: 0, 
+              total: 0, 
+              message: 'Conexión restaurada. Verificando datos del servidor...' 
+            });
+          }
+        } catch (e) {
+          console.error('[Offline] Error al verificar:', e);
           toast.success('Conexión restaurada', { duration: 2000 });
         }
-      } catch (e) {
-        console.error('[Offline] Error verificando cambios:', e);
-        toast.success('Conexión restaurada', { duration: 2000 });
       }
     };
 
