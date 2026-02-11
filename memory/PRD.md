@@ -47,6 +47,41 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 2)
 
+### ✅ COMPLETADO: Asignación de Municipios a Usuarios Empresa (P0)
+
+**Requerimiento:** Los coordinadores necesitan poder asignar municipios específicos a usuarios con rol "Empresa" para que solo puedan ver los proyectos y predios de esos municipios autorizados.
+
+**Solución implementada:**
+
+1. **Backend - Nuevos endpoints en `server.py`:**
+   - `GET /admin/municipios-disponibles` - Lista todos los municipios del catálogo
+   - `GET /admin/users/{user_id}/municipios` - Obtiene municipios asignados a un usuario
+   - `PATCH /admin/users/{user_id}/municipios` - Actualiza municipios asignados
+
+2. **Backend - Filtrado por municipios:**
+   - `GET /actualizacion/proyectos` - Ahora filtra por `municipios_asignados` para usuarios empresa
+   - `GET /actualizacion/proyectos/{id}` - Verifica acceso al municipio del proyecto
+   - `GET /actualizacion/proyectos/{id}/predios` - Verifica acceso antes de mostrar predios
+
+3. **Frontend - Modal de asignación (`UserManagement.js`):**
+   - Botón "Municipios" en tarjeta de usuarios empresa
+   - Muestra municipios asignados en badges verdes
+   - Modal con lista de municipios seleccionables
+   - Botones "Seleccionar todos" y "Limpiar"
+
+4. **Frontend - Menú lateral (`DashboardLayout.js`):**
+   - Usuarios empresa ahora ven la sección "Actualización" en el menú
+
+**Funcionalidad:**
+- Coordinador abre Gestión de Usuarios → Sección "Empresas"
+- Click en botón "Municipios" del usuario
+- Selecciona los municipios autorizados
+- El usuario empresa solo ve proyectos/predios de esos municipios
+
+**Testing:** ✅ Verificado con screenshots
+
+---
+
 ### ✅ COMPLETADO: Contadores "Visitados/Actualizados" en Modal de Proyecto (P0)
 
 **Problema reportado:** El modal del proyecto mostraba "Visitados: 0" y "Actualizados: 0" cuando dentro del visor sí había predios con esos estados.
