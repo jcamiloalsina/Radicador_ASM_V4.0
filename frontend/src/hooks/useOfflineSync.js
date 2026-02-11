@@ -350,31 +350,26 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
   }, [proyectoId, refreshStats]);
 
-  // Verificar si necesita sincronización inicial (al abrir el proyecto)
+  // Verificar si necesita sincronización (hay cambios pendientes)
   const checkInitialSync = useCallback(async () => {
-    if (!proyectoId || !isOnline) {
+    if (!proyectoId) {
       setIsInitialSyncComplete(true);
-      return;
+      return false;
+    }
+    
+    // Si está offline, permitir trabajar sin bloquear
+    if (!isOnline) {
+      setIsInitialSyncComplete(true);
+      return false;
     }
     
     try {
-      // Obtener la fecha de última sincronización
-      const lastSyncDate = await getConfig(`lastSync_${proyectoId}`);
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      
-      // Si nunca se ha sincronizado o fue en un día anterior, requiere sincronización
-      if (!lastSyncDate || lastSyncDate.split('T')[0] !== today) {
-        console.log('[Offline] Requiere sincronización inicial. Última sync:', lastSyncDate);
-        setRequiresSync(true);
-        return true;
-      }
-      
       // Verificar si hay cambios pendientes de subir
       const cambiosPendientes = await getCambiosPendientes(proyectoId);
       if (cambiosPendientes.length > 0) {
         console.log('[Offline] Hay cambios pendientes por sincronizar:', cambiosPendientes.length);
         setRequiresSync(true);
+        setSyncProgress({ current: 0, total: cambiosPendientes.length, message: `${cambiosPendientes.length} cambio(s) pendiente(s) por subir` });
         return true;
       }
       
@@ -382,7 +377,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setIsInitialSyncComplete(true);
       return false;
     } catch (error) {
-      console.error('[Offline] Error verificando sync inicial:', error);
+      console.error('[Offline] Error verificando sync:', error);
       setIsInitialSyncComplete(true);
       return false;
     }
