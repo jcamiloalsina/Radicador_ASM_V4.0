@@ -681,10 +681,38 @@ export default function UserManagement() {
                                   <p className="text-sm text-slate-500 truncate" data-testid={`user-email-${user.id}`}>
                                     {user.email}
                                   </p>
+                                  {/* Mostrar municipios asignados si es usuario empresa */}
+                                  {user.role === 'empresa' && (
+                                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                      <MapPin className="w-3 h-3 text-slate-400" />
+                                      {user.municipios_asignados?.length > 0 ? (
+                                        user.municipios_asignados.map((m, idx) => (
+                                          <Badge key={idx} variant="secondary" className="text-[10px] py-0 px-1.5 bg-emerald-100 text-emerald-700">
+                                            {m}
+                                          </Badge>
+                                        ))
+                                      ) : (
+                                        <span className="text-xs text-amber-600">Sin municipios asignados</span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                                 
                                 {user.id !== currentUser.id ? (
                                   <div className="flex items-center gap-2 flex-shrink-0">
+                                    {/* Botón para asignar municipios (solo para empresas) */}
+                                    {user.role === 'empresa' && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => abrirModalMunicipios(user)}
+                                        className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                        data-testid={`municipios-btn-${user.id}`}
+                                      >
+                                        <MapPin className="w-3.5 h-3.5 mr-1" />
+                                        Municipios
+                                      </Button>
+                                    )}
                                     <span className="text-xs text-slate-500 hidden sm:inline">Cambiar a:</span>
                                     <select
                                       value={user.role}
