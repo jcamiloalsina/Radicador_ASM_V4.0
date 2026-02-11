@@ -211,6 +211,7 @@ export default function VisorActualizacion() {
   const [geometrias, setGeometrias] = useState(null);
   // geometriasFiltradas ahora es un useMemo
   const [construcciones, setConstrucciones] = useState(null);
+  const [construccionesVersion, setConstruccionesVersion] = useState(0); // Para forzar re-render del GeoJSON
   const [prediosR1R2, setPrediosR1R2] = useState([]);
   
   // Estados de descarga offline y progreso
