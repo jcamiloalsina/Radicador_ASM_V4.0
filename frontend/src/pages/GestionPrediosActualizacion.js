@@ -1632,55 +1632,6 @@ export default function GestionPrediosActualizacion() {
                 </div>
               </div>
             </TabsContent>
-                
-                {zonasFisicas.map((zona, index) => (
-                  <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
-                      {zonasFisicas.length > 1 && (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaFisica(index)} className="text-red-600 hover:text-red-700">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label className="text-xs">Zona Física</Label>
-                        <Input type="text" className="h-8 text-xs" value={zona.zona_fisica} onChange={(e) => actualizarZonaFisica(index, 'zona_fisica', e.target.value)} placeholder="Ej: 01, 02..." />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Zona Económica</Label>
-                        <Input type="text" className="h-8 text-xs" value={zona.zona_economica} onChange={(e) => actualizarZonaFisica(index, 'zona_economica', e.target.value)} placeholder="Ej: A, B, C..." />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Área Terreno</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.area_terreno} onChange={(e) => actualizarZonaFisica(index, 'area_terreno', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Habitaciones</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.habitaciones} onChange={(e) => actualizarZonaFisica(index, 'habitaciones', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Baños</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.banos} onChange={(e) => actualizarZonaFisica(index, 'banos', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Pisos</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.pisos} onChange={(e) => actualizarZonaFisica(index, 'pisos', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Área Construida</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.area_construida} onChange={(e) => actualizarZonaFisica(index, 'area_construida', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Puntaje</Label>
-                        <Input type="number" className="h-8 text-xs" value={zona.puntaje} onChange={(e) => actualizarZonaFisica(index, 'puntaje', e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
           </Tabs>
           
           <div className="flex justify-end gap-3 mt-6">
