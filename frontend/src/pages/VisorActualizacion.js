@@ -5714,16 +5714,58 @@ export default function VisorActualizacion() {
                       {/* Fotografías adicionales */}
                       <div>
                         <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2"><Camera className="w-4 h-4" />Fotografías Adicionales</Label>
-                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFotoChange} className="hidden" />
+                        
+                        {/* Input oculto para cámara (Android/iOS) */}
+                        <input 
+                          ref={fileInputRef} 
+                          type="file" 
+                          accept="image/*" 
+                          capture="environment"
+                          onChange={handleFotoChange} 
+                          className="hidden" 
+                          id="camera-input"
+                        />
+                        
+                        {/* Input oculto para galería */}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          multiple 
+                          onChange={handleFotoChange} 
+                          className="hidden" 
+                          id="gallery-input"
+                        />
+                        
                         <div className="grid grid-cols-4 gap-2 mb-2">
                           {fotos.map((f, i) => (
                             <div key={i} className="relative aspect-square rounded overflow-hidden border">
-                              <img src={f.preview || f} alt={`Foto ${i+1}`} className="w-full h-full object-cover" />
+                              <img src={f.preview || f.data || f} alt={`Foto ${i+1}`} className="w-full h-full object-cover" />
                               <button type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"><X className="w-3 h-3" /></button>
                             </div>
                           ))}
                         </div>
-                        <Button type="button" variant="outline" onClick={handleCapturarFoto} className="w-full border-dashed"><Camera className="w-4 h-4 mr-2" />Tomar / Seleccionar Fotos</Button>
+                        
+                        {/* Botones separados para cámara y galería */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => document.getElementById('camera-input')?.click()} 
+                            className="border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <Camera className="w-4 h-4 mr-2" />
+                            Tomar Foto
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => document.getElementById('gallery-input')?.click()} 
+                            className="border-dashed"
+                          >
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            Galería
+                          </Button>
+                        </div>
                       </div>
                       
                       {userPosition && (
