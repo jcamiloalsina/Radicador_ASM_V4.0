@@ -3313,7 +3313,7 @@ export default function VisorActualizacion() {
         </Button>
       </div>
       
-      {/* Estadísticas rápidas - clickeables para filtrar */}
+      {/* Estadísticas rápidas - clickeables para filtrar (toggle) */}
       <div className="bg-white border-b px-4 py-2 flex gap-4 text-xs overflow-x-auto">
         <button 
           onClick={() => setFilterEstado('todos')}
@@ -3325,18 +3325,19 @@ export default function VisorActualizacion() {
           <span>Total: {estadisticas.pendientes + estadisticas.visitados + estadisticas.actualizados}</span>
         </button>
         <button 
-          onClick={() => setFilterEstado('pendiente')}
+          onClick={() => setFilterEstado(filterEstado === 'pendiente' ? 'todos' : 'pendiente')}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
-            filterEstado === 'pendiente' ? 'bg-slate-200 font-medium' : 'hover:bg-slate-100'
+            filterEstado === 'pendiente' ? 'bg-slate-300 font-medium' : 'hover:bg-slate-100'
           }`}
         >
           <Square className="w-3 h-3 text-slate-400" />
           <span>Pendientes: {estadisticas.pendientes}</span>
+          {filterEstado === 'pendiente' && <X className="w-3 h-3 text-slate-500" />}
         </button>
         <button 
-          onClick={() => setFilterEstado('visitado')}
+          onClick={() => setFilterEstado(filterEstado === 'visitado' ? 'todos' : 'visitado')}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
-            filterEstado === 'visitado' ? 'bg-amber-200 font-medium' : 'hover:bg-amber-50'
+            filterEstado === 'visitado' ? 'bg-amber-300 font-medium' : 'hover:bg-amber-50'
           }`}
         >
           <Eye className="w-3 h-3 text-amber-500" />
