@@ -47,6 +47,41 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
+### ✅ COMPLETADO: Refactorización Mayor del Módulo de Actualización
+
+**Objetivo:** Hacer que Actualización funcione igual que Conservación + Formulario de Visita
+
+#### Componentes Nuevos Creados:
+
+1. **`DetallePredioActualizacion.jsx`** - Panel simplificado de detalle
+   - Estado de visita (Pendiente/Visitado/Actualizado)
+   - Información básica del predio (como Conservación)
+   - Áreas R1/R2 vs GDB
+   - Botones: Registrar Visita, Editar Predio, Ver Historial
+
+2. **`FormularioVisitaModal.jsx`** - Modal separado para formulario de visita
+   - Tabs: General, Propietarios, Linderos, Coordenadas, Construcciones
+   - **Función GPS** para capturar ubicación del dispositivo
+   - Fotos y firma digital
+   - Checkbox "Predio sin cambios"
+
+#### Endpoints Backend Nuevos:
+
+1. `GET /api/actualizacion/proyectos/{id}/predios/{codigo}/visita`
+2. `POST /api/actualizacion/proyectos/{id}/predios/{codigo}/visita`
+3. `GET /api/actualizacion/proyectos/{id}/construcciones`
+
+#### Cambios en el Flujo:
+
+1. **Click en polígono** → Muestra panel simplificado (no modal con 7 tabs)
+2. **Botón "Registrar Visita"** → Abre FormularioVisitaModal
+3. **Botón "Editar Predio"** → Abre modal de edición (como Conservación)
+4. **Matching mejorado** → Encuentra mejoras asociadas a terrenos (por primeros 21 dígitos)
+
+**Testing:** ✅ Verificado con screenshots
+
+---
+
 ### ✅ COMPLETADO: Pantalla de Sincronización al Inicio
 
 **Problema reportado:** La pantalla de sincronización que aparecía antes de usar el visor ya no se mostraba. Además, al hacer click en "Sincronizar Datos", la pantalla no se cerraba automáticamente.
