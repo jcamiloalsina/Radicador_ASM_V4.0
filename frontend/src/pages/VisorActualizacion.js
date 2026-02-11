@@ -3591,6 +3591,7 @@ export default function VisorActualizacion() {
               onOpenVisita={abrirFormularioVisita}
               onOpenEdicion={abrirEdicionPredio}
               onOpenHistorial={abrirHistorial}
+              onOpenCancelar={abrirCancelarModal}
               user={user}
             />
           </div>
