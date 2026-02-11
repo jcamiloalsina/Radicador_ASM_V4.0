@@ -305,6 +305,158 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     await syncPendingChanges();
   }, [isOnline, syncPendingChanges]);
 
+  // Limpiar todo el caché offline del proyecto
+  const clearOfflineCache = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      setSyncProgress({ current: 0, total: 1, message: 'Limpiando caché...' });
+      
+      // Primero verificar si hay cambios pendientes sin sincronizar
+      const cambiosPendientes = await getCambiosPendientes(proyectoId);
+      if (cambiosPendientes.length > 0) {
+        const confirmacion = window.confirm(
+          `Hay ${cambiosPendientes.length} cambio(s) pendiente(s) sin sincronizar. ` +
+          'Si limpia el caché, estos cambios se perderán. ¿Desea continuar?'
+        );
+        if (!confirmacion) {
+          setIsSyncing(false);
+          return false;
+        }
+      }
+      
+      // Limpiar todos los datos offline
+      await clearAllOfflineData();
+      
+      // Limpiar la fecha de última sincronización
+      await saveConfig(`lastSync_${proyectoId}`, null);
+      
+      setHasOffline(false);
+      setLastSync(null);
+      setIsInitialSyncComplete(false);
+      setRequiresSync(true);
+      
+      await refreshStats();
+      
+      toast.success('Caché limpiado correctamente', {
+        description: 'Debe descargar los datos nuevamente para trabajar offline'
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('[Offline] Error limpiando caché:', error);
+      toast.error('Error al limpiar el caché');
+      return false;
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress({ current: 0, total: 0, message: '' });
+    }
+  }, [proyectoId, refreshStats]);
+
+  // Verificar si necesita sincronización inicial (al abrir el proyecto)
+  const checkInitialSync = useCallback(async () => {
+    if (!proyectoId || !isOnline) {
+      setIsInitialSyncComplete(true);
+      return;
+    }
+    
+    try {
+      // Obtener la fecha de última sincronización
+      const lastSyncDate = await getConfig(`lastSync_${proyectoId}`);
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      // Si nunca se ha sincronizado o fue en un día anterior, requiere sincronización
+      if (!lastSyncDate || lastSyncDate.split('T')[0] !== today) {
+        console.log('[Offline] Requiere sincronización inicial. Última sync:', lastSyncDate);
+        setRequiresSync(true);
+        return true;
+      }
+      
+      // Verificar si hay cambios pendientes de subir
+      const cambiosPendientes = await getCambiosPendientes(proyectoId);
+      if (cambiosPendientes.length > 0) {
+        console.log('[Offline] Hay cambios pendientes por sincronizar:', cambiosPendientes.length);
+        setRequiresSync(true);
+        return true;
+      }
+      
+      setRequiresSync(false);
+      setIsInitialSyncComplete(true);
+      return false;
+    } catch (error) {
+      console.error('[Offline] Error verificando sync inicial:', error);
+      setIsInitialSyncComplete(true);
+      return false;
+    }
+  }, [proyectoId, isOnline]);
+
+  // Ejecutar sincronización completa (descarga + subida)
+  const performFullSync = useCallback(async (prediosData, geometriasData) => {
+    if (!proyectoId || !isOnline) {
+      toast.error('Sin conexión a internet');
+      return false;
+    }
+    
+    setIsSyncing(true);
+    setSyncProgress({ current: 0, total: 4, message: 'Iniciando sincronización...' });
+    
+    try {
+      // Paso 1: Subir cambios pendientes al servidor
+      setSyncProgress({ current: 1, total: 4, message: 'Subiendo cambios pendientes...' });
+      const cambiosPendientes = await getCambiosPendientes(proyectoId);
+      if (cambiosPendientes.length > 0) {
+        await syncChangesDirectly(cambiosPendientes, setIsSyncing, refreshStats);
+      }
+      
+      // Paso 2: Descargar predios actualizados
+      setSyncProgress({ current: 2, total: 4, message: 'Descargando predios del servidor...' });
+      if (prediosData && prediosData.length > 0) {
+        await savePrediosOffline(proyectoId, prediosData);
+      }
+      
+      // Paso 3: Descargar geometrías actualizadas
+      setSyncProgress({ current: 3, total: 4, message: 'Descargando geometrías...' });
+      if (geometriasData && geometriasData.features) {
+        await saveGeometriasOffline(proyectoId, geometriasData);
+      }
+      
+      // Paso 4: Guardar fecha de sincronización
+      setSyncProgress({ current: 4, total: 4, message: 'Finalizando...' });
+      const now = new Date().toISOString();
+      await saveConfig(`lastSync_${proyectoId}`, now);
+      setLastSync(now);
+      
+      await refreshStats();
+      
+      setRequiresSync(false);
+      setIsInitialSyncComplete(true);
+      
+      toast.success('Sincronización completada', {
+        description: `${prediosData?.length || 0} predios actualizados`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('[Offline] Error en sincronización completa:', error);
+      toast.error('Error durante la sincronización', {
+        description: error.message
+      });
+      return false;
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress({ current: 0, total: 0, message: '' });
+    }
+  }, [proyectoId, isOnline, refreshStats]);
+
+  // Marcar sincronización como completada manualmente
+  const skipInitialSync = useCallback(() => {
+    setRequiresSync(false);
+    setIsInitialSyncComplete(true);
+    toast.warning('Sincronización omitida', {
+      description: 'Trabajando con datos locales'
+    });
+  }, []);
+
   return {
     isOnline,
     isSyncing,
