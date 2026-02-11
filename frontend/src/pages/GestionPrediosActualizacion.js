@@ -652,13 +652,35 @@ export default function GestionPrediosActualizacion() {
         codigoHomologadoFinal = siguienteCodigoHomologado?.codigo || '';
       }
       
+      // Calcular áreas desde R2
+      const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
+      
+      // Preparar propietarios en formato para exportación R1/R2
+      const propietariosExport = propietarios.map(p => ({
+        ...p,
+        nombre_propietario: generarNombreCompleto(p),
+        numero_documento: formatearNumeroDocumento(p.numero_documento),
+        estado_civil: p.estado || ''
+      }));
+      
       // Preparar datos completos para R1/R2
       const datosCompletos = {
         ...formData,
         codigo_predial: codigoFinal,
         codigo_homologado: codigoHomologadoFinal,
-        propietarios: propietarios,
-        zonas_fisicas: zonasFisicas,
+        // Propietarios en formato XTF
+        propietarios: propietariosExport,
+        // Zonas separadas (formato Conservación)
+        zonas_terreno: zonasTerreno,
+        construcciones: construcciones,
+        // También enviar zonasFisicas para compatibilidad
+        zonas_fisicas: zonasTerreno.map((zt, i) => ({
+          ...zt,
+          ...(construcciones[i] || {})
+        })),
+        // Áreas calculadas
+        area_terreno: areaTerrenoTotal,
+        area_construida: areaConstruidaTotal,
         avaluo: formData.avaluo_catastral,
         avaluo_catastral: formData.avaluo_catastral
       };
