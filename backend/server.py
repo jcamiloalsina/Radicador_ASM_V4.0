@@ -18475,7 +18475,9 @@ async def finalizar_proyecto_actualizacion(
     
     municipio = proyecto.get('municipio')
     ahora = datetime.now(timezone.utc).isoformat()
-    vigencia_actual = datetime.now(timezone.utc).year
+    # Permitir seleccionar vigencia, por defecto año actual
+    vigencia_seleccionada = data.get('vigencia')
+    vigencia_actual = int(vigencia_seleccionada) if vigencia_seleccionada else datetime.now(timezone.utc).year
     
     # Obtener resumen para validaciones
     predios = await db.predios_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
