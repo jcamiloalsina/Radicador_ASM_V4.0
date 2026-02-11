@@ -60,9 +60,12 @@ const DetallePredioActualizacion = ({
   onToggleConstrucciones,
   onClose,
   onOpenVisita,
+  onOpenVisitaMejora, // Nueva: para visita de mejora específica
   onOpenEdicion,
   onOpenHistorial,
   onOpenCancelar,
+  terrenoTieneMejoras, // Nueva: indica si el terreno tiene mejoras
+  mejorasDelTerreno, // Nueva: lista de mejoras del terreno
   user
 }) => {
   if (!predio) return null;
@@ -72,23 +75,23 @@ const DetallePredioActualizacion = ({
   const esGestor = user?.role === 'gestor' || user?.role === 'gestor_auxiliar';
   const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
   
-  // Verificar si es una mejora (últimos 3 dígitos, posiciones 28-30, != 000)
-  const codigoPredial = predio.codigo_predial || predio.numero_predial || '';
-  const ultimosTres = codigoPredial.length >= 30 ? codigoPredial.substring(27, 30) : '';
-  const esMejora = ultimosTres !== '' && ultimosTres !== '000';
+  // Ya no usamos esMejora basado en el código del terreno
+  // Ahora usamos terrenoTieneMejoras que viene de las construcciones
+  const tieneMejoras = terrenoTieneMejoras || false;
+  const numMejoras = mejorasDelTerreno?.length || 0;
 
   return (
-    <Card className={`shadow-md ${esMejora ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
-      <CardHeader className={`py-3 ${esMejora ? 'bg-cyan-100' : 'bg-amber-100'}`}>
+    <Card className={`shadow-md ${tieneMejoras ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
+      <CardHeader className={`py-3 ${tieneMejoras ? 'bg-cyan-100' : 'bg-amber-100'}`}>
         <CardTitle className="text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MapPin className={`w-4 h-4 ${esMejora ? 'text-cyan-700' : 'text-amber-700'}`} />
-            <span className={`font-semibold ${esMejora ? 'text-cyan-800' : 'text-amber-800'}`}>
-              {esMejora ? 'Mejora Seleccionada' : 'Predio Seleccionado'}
+            <MapPin className={`w-4 h-4 ${tieneMejoras ? 'text-cyan-700' : 'text-amber-700'}`} />
+            <span className={`font-semibold ${tieneMejoras ? 'text-cyan-800' : 'text-amber-800'}`}>
+              Terreno Seleccionado
             </span>
-            {esMejora && (
+            {tieneMejoras && (
               <Badge className="bg-cyan-500 text-white text-[10px] px-1.5 py-0">
-                MEJORA
+                {numMejoras} MEJORA{numMejoras > 1 ? 'S' : ''}
               </Badge>
             )}
           </div>
