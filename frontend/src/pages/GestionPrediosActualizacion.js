@@ -399,9 +399,15 @@ export default function GestionPrediosActualizacion() {
   
   // Manejar cambios en código manual
   const handleCodigoChange = (campo, valor, maxLen) => {
-    const valorLimpio = valor.replace(/[^0-9]/g, '').slice(0, maxLen).padStart(maxLen, '0');
+    // Solo permitir dígitos y limitar la longitud
+    const valorLimpio = valor.replace(/[^0-9]/g, '').slice(0, maxLen);
     setCodigoManual(prev => ({ ...prev, [campo]: valorLimpio }));
     setVerificacionCodigo(null); // Resetear verificación al cambiar
+  };
+  
+  // Función para obtener el valor formateado con padding (solo para mostrar el código completo)
+  const getValorConPadding = (valor, len) => {
+    return (valor || '').padStart(len, '0');
   };
   
   // Verificar código completo
