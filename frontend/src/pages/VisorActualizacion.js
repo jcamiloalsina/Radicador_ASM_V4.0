@@ -764,6 +764,35 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId, fetchProyecto]);
   
+  // Verificar sincronización inicial al cargar el proyecto
+  useEffect(() => {
+    const verificarSincronizacion = async () => {
+      if (proyecto && isOnline && !loading) {
+        const necesitaSync = await checkInitialSync();
+        if (necesitaSync) {
+          setShowSyncScreen(true);
+        }
+      }
+    };
+    verificarSincronizacion();
+  }, [proyecto, isOnline, loading, checkInitialSync]);
+  
+  // Ejecutar sincronización completa cuando se muestra la pantalla de sync
+  const handlePerformFullSync = async () => {
+    const success = await performFullSync(prediosR1R2, geometrias);
+    if (success) {
+      setShowSyncScreen(false);
+      // Recargar datos del servidor
+      fetchProyecto();
+    }
+  };
+  
+  // Omitir sincronización y trabajar offline
+  const handleSkipSync = () => {
+    skipInitialSync();
+    setShowSyncScreen(false);
+  };
+  
   useEffect(() => {
     if (proyecto?.gdb_procesado) {
       fetchGeometrias();
