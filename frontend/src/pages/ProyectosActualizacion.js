@@ -592,7 +592,7 @@ export default function ProyectosActualizacion() {
 
   const abrirDetalleProyecto = async (proyecto) => {
     setProyectoSeleccionado(proyecto);
-    setDetalleTab('info');
+    setDetalleTab('acciones');
     await fetchEtapas(proyecto.id);
     setShowDetalleModal(true);
   };
