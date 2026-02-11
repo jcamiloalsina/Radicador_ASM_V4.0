@@ -47,6 +47,39 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
+### ✅ COMPLETADO: Paridad de Datos R1/R2 para Exportación Excel
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js`
+- `/app/backend/server.py`
+
+**Problema resuelto:** El formulario de Editar/Crear Predio en Actualización no capturaba todos los campos necesarios para la exportación R1/R2.
+
+**Campos agregados al formulario (R1 - Jurídico):**
+- `estado_civil` en propietarios
+- `comuna`
+- `codigo_homologado` (solo lectura)
+
+**Campos agregados al formulario (R2 - Físico):**
+- `zonas_fisicas[]` con `zona_fisica`, `zona_economica`, `area_terreno`
+- `habitaciones`
+- `banos`
+- `locales`
+- `pisos`
+- `uso`
+- `matricula_inmobiliaria`
+
+**Nuevo endpoint creado:**
+- `POST /api/actualizacion/proyectos/{id}/predios` - Crear predio nuevo con todos los campos R1/R2
+
+**Mejoras en backend:**
+- Agregados campos R1/R2 adicionales a `campos_prediales` permitidos para coordinadores
+- El endpoint PATCH ahora acepta todos los campos para R1/R2
+
+**Testing:** ✅ Verificado con curl - Los campos se guardan y exportan correctamente
+
+---
+
 ### ✅ COMPLETADO: Nuevo Diseño del Modal de Proyecto
 
 **Archivo modificado:** `/app/frontend/src/pages/ProyectosActualizacion.js`
