@@ -51,7 +51,8 @@ import {
   Pencil,
   ClipboardList,
   DollarSign,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 import {
   DropdownMenu,
