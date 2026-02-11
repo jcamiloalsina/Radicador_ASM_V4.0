@@ -47,58 +47,61 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 3)
 
-### ✅ COMPLETADO: Sincronización inteligente - Modal una vez al día + Sincronización en segundo plano (P0)
+### ✅ COMPLETADO: Sistema de Sincronización Inteligente Revisado (P0)
 
-**Problema reportado:** El modal de sincronización aparecía cada vez que el usuario entraba al visor, interrumpiendo el trabajo. El usuario solicitó que aparezca solo una vez al día y que durante el día sincronice automáticamente en segundo plano sin interrumpir.
+**Requerimiento:** El usuario solicitó:
+1. Sincronización automática cada 1 hora (no 5 minutos)
+2. Modal bloqueante OBLIGATORIO al reconectarse (siempre subir trabajo + descargar datos)
+3. Botón manual para preparar modo offline
+4. Gestión de Predios de Actualización también disponible offline
 
 **Solución implementada:**
 
-1. **Modal de sincronización una vez al día:**
-   - Se guarda en `localStorage` la última fecha en que se mostró el modal (`lastSyncModal_{proyectoId}`)
-   - Solo se muestra el modal si han pasado más de 24 horas desde la última vez
-   - **Excepción:** Si hay cambios pendientes de subir (críticos), el modal SIEMPRE aparece
+1. **Intervalo de sincronización: 1 hora**
+   - `BACKGROUND_SYNC_INTERVAL_MS = 60 * 60 * 1000` (1 hora)
+   - Sincronización automática en segundo plano sin interrumpir
 
-2. **Sincronización automática en segundo plano:**
-   - Cuando no se muestra el modal, se inicia `startBackgroundSync()` automáticamente
-   - Sincroniza cada 5 minutos mientras haya conexión
-   - Indicador discreto en la UI: barra azul flotante en el mapa mostrando estado
-   - Toast discreto al sincronizar cambios exitosamente
+2. **Reconexión: SIEMPRE bloquear con modal**
+   - Al detectar que se reconecta (`online` event), SIEMPRE mostrar modal bloqueante
+   - Subir automáticamente trabajo de campo pendiente
+   - Descargar datos actualizados del servidor
+   - No permitir continuar hasta completar sincronización
 
-3. **Reconexión inteligente:**
-   - Al reconectarse después de estar offline:
-     - **Con cambios pendientes:** Muestra modal obligatorio para subir datos
-     - **Sin cambios pendientes:** Sincroniza silenciosamente en segundo plano, solo muestra toast
-
-4. **Nuevos estados en `useOfflineSync.js`:**
-   - `isBackgroundSyncing`: Indica si está sincronizando en segundo plano
-   - `backgroundSyncMessage`: Mensaje del estado de sincronización
-   - `startBackgroundSync()`: Inicia sincronización periódica cada 5 min
-   - `performBackgroundSync()`: Ejecuta sincronización silenciosa
+3. **Gestión de Predios Actualización - Modo Offline:**
+   - Integrado `useOfflineSync` hook
+   - Si está offline: carga predios desde IndexedDB
+   - Si está online: carga del servidor y guarda en caché
+   - Indicador visual "Modo Offline" en el header
+   - Botones de crear/exportar deshabilitados sin conexión
 
 **Archivos modificados:**
-- `/app/frontend/src/hooks/useOfflineSync.js` - Lógica de sincronización inteligente
-- `/app/frontend/src/pages/VisorActualizacion.js` - Indicadores visuales de sincronización
+- `/app/frontend/src/hooks/useOfflineSync.js` - Lógica revisada
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js` - Soporte offline
+- `/app/frontend/src/pages/VisorActualizacion.js` - Indicadores visuales
 
-**Comportamiento:**
+**Flujo completo:**
 ```
-Primera vez del día:
-  → Modal de sincronización aparece
-  → Usuario sincroniza
-  → Se guarda fecha en localStorage
-  → Se inicia sincronización automática cada 5 min
+ENTRA al visor/gestión (con conexión):
+  → Sin cambios pendientes: entra directo, sync cada 1 hora
+  → Con cambios pendientes: modal bloqueante
 
-Siguiente vez (mismo día):
-  → No aparece modal
-  → Sincronización en segundo plano automática
-  → Usuario puede trabajar sin interrupciones
-  → Indicador discreto cuando sincroniza
+TRABAJA OFFLINE:
+  → Gestión de Predios: muestra datos desde IndexedDB
+  → Visor: muestra mapa desde caché
+  → Cambios se guardan localmente
 
-Al día siguiente:
-  → Modal aparece nuevamente
-  → Ciclo se repite
+SE RECONECTA:
+  → MODAL BLOQUEANTE obligatorio
+  → Sube trabajo de campo automáticamente  
+  → Descarga datos actualizados
+  → Permite continuar
+
+BOTÓN MANUAL "Sincronizar":
+  → Fuerza sincronización completa
+  → Prepara dispositivo para modo offline
 ```
 
-**Testing:** ✅ Código compila sin errores, lógica implementada
+**Testing:** ✅ Código compila sin errores
 
 ---
 
