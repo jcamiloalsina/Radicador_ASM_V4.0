@@ -5421,6 +5421,39 @@ async def get_predios(
         municipios_asignados = current_user.get('municipios_asignados', [])
         if not municipios_asignados:
             return {"total": 0, "predios": [], "mensaje": "No tiene municipios asignados. Contacte al coordinador."}
+        
+        # Si hay búsqueda activa, primero buscar sin restricción de municipio para determinar si existe
+        if search:
+            # Buscar el predio sin restricción de municipio
+            search_query_general = {"deleted": {"$ne": True}}
+            is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
+            
+            if is_matricula_search:
+                search_query_general["r2_registros.matricula_inmobiliaria"] = search.strip()
+            else:
+                search_query_general["$or"] = [
+                    {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
+                    {"codigo_homologado": {"$regex": search, "$options": "i"}},
+                    {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
+                    {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
+                    {"direccion": {"$regex": search, "$options": "i"}},
+                    {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
+                ]
+            
+            predio_encontrado = await db.predios.find_one(search_query_general, {"_id": 0, "municipio": 1, "codigo_predial_nacional": 1})
+            
+            if predio_encontrado:
+                # Verificar si el municipio del predio está en los asignados
+                municipio_predio = predio_encontrado.get('municipio')
+                if municipio_predio and municipio_predio not in municipios_asignados:
+                    # El predio existe pero el usuario no tiene acceso
+                    return {
+                        "total": 0, 
+                        "predios": [], 
+                        "sin_acceso": True,
+                        "mensaje": f"No tiene acceso al municipio {municipio_predio}"
+                    }
+        
         # Si se especifica un municipio, verificar que esté en los asignados
         if municipio:
             if municipio not in municipios_asignados:
