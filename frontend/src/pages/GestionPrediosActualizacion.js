@@ -620,8 +620,15 @@ export default function GestionPrediosActualizacion() {
     
     // Filtro de estado
     if (filterEstado !== 'todos') {
-      const estadoPredio = predio.estado_visita || 'pendiente';
-      if (estadoPredio !== filterEstado) return false;
+      // Filtro especial para mejoras
+      if (filterEstado === 'mejoras') {
+        const cod = predio.codigo_predial || predio.numero_predial || '';
+        const esMejoraPredio = cod.length >= 30 && cod.substring(26, 30) !== '0000';
+        if (!esMejoraPredio) return false;
+      } else {
+        const estadoPredio = predio.estado_visita || 'pendiente';
+        if (estadoPredio !== filterEstado) return false;
+      }
     }
     
     // Filtro de zona
