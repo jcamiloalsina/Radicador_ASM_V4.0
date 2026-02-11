@@ -45,6 +45,51 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 4)
+
+### ✅ COMPLETADO: Bug Crítico P0 - Construcciones no se mostraban en el mapa (RESUELTO)
+
+**Problema reportado:** Las construcciones (6,912 registros) no se renderizaban en el mapa del "Visor de Actualización" aunque el backend las enviaba correctamente. El UI mostraba "Const. ✓ 6912" pero los polígonos rojos no aparecían.
+
+**Causa raíz:** Faltaba el import de `ClipboardList` de `lucide-react` en el archivo `VisorActualizacion.js`. Esto causaba un error de JavaScript "ClipboardList is not defined" que bloqueaba el rendering del componente cuando se interactuaba con él.
+
+**Solución implementada:**
+
+1. **Import agregado (línea 97):**
+   ```javascript
+   import { ..., ClipboardList } from 'lucide-react';
+   ```
+
+2. **Estado para forzar re-render (línea 215):**
+   ```javascript
+   const [construccionesVersion, setConstruccionesVersion] = useState(0);
+   ```
+
+3. **useEffect para incrementar versión:**
+   ```javascript
+   useEffect(() => {
+     if (construcciones?.features?.length > 0) {
+       setConstruccionesVersion(prev => prev + 1);
+     }
+   }, [construcciones]);
+   ```
+
+4. **Key del GeoJSON actualizada:**
+   ```javascript
+   key={`const-${filterEstado}-${construccionesVersion}-${construccionesFiltradas.features.length}`}
+   ```
+
+**Testing:** ✅ 100% de tests pasaron
+- Visor carga y muestra geometrías correctamente
+- 6,912 construcciones se cargan y procesan
+- Badge "Const. ✓ 6912" visible
+- Badge "Mejoras: 1969" visible
+- Sin errores de JavaScript
+
+**Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
+
+---
+
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 3)
 
 ### ✅ COMPLETADO: Identificación Visual de Predios con MEJORAS + Toggle Construcciones (P0)
