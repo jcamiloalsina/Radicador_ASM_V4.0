@@ -855,9 +855,9 @@ export default function GestionPrediosActualizacion() {
         </DialogContent>
       </Dialog>
       
-      {/* Modal Editar Predio - Igual a Conservación */}
+      {/* Modal Editar Predio - Completo para R1/R2 */}
       <Dialog open={showEditarModal} onOpenChange={setShowEditarModal}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-visible">
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-visible">
           <div className="max-h-[80vh] overflow-y-auto pr-2">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
@@ -866,235 +866,484 @@ export default function GestionPrediosActualizacion() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            {/* Código Predial - Solo lectura pero visible */}
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <p className="text-sm text-slate-600">
-                <strong>Código Predial Nacional:</strong>
-              </p>
-              <p className="font-mono text-lg font-bold text-slate-800 break-all mt-1">
-                {formData.codigo_predial}
-              </p>
-              {formData.matricula_inmobiliaria && (
-                <p className="text-sm text-slate-600 mt-2">
-                  <strong>Matrícula Inmobiliaria:</strong> {formData.matricula_inmobiliaria}
-                </p>
-              )}
-            </div>
+          <Tabs defaultValue="r1" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="r1">R1 - Jurídico</TabsTrigger>
+              <TabsTrigger value="r2">R2 - Físico</TabsTrigger>
+              <TabsTrigger value="estado">Estado</TabsTrigger>
+            </TabsList>
             
-            {/* Sección de Propietarios */}
-            <div className="border border-slate-200 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="font-semibold text-slate-800 flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Propietarios
-                </h4>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setFormData({
-                    ...formData,
-                    propietarios: [...formData.propietarios, { nombre_propietario: '', tipo_documento: 'CC', numero_documento: '' }]
-                  })}
-                  className="text-emerald-700"
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
-                </Button>
+            {/* TAB R1 - Datos Jurídicos */}
+            <TabsContent value="r1" className="space-y-4 mt-4">
+              {/* Código Predial - Solo lectura */}
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-600 uppercase font-medium">Código Predial Nacional</p>
+                    <p className="font-mono text-lg font-bold text-slate-800 break-all mt-1">
+                      {formData.codigo_predial}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-600 uppercase font-medium">Código Homologado</p>
+                    <p className="font-mono text-lg font-bold text-amber-700 mt-1">
+                      {formData.codigo_homologado || 'Sin asignar'}
+                    </p>
+                  </div>
+                </div>
               </div>
               
-              {formData.propietarios.map((prop, index) => (
-                <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50 mb-3">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
-                    {formData.propietarios.length > 1 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => {
-                          const newProps = formData.propietarios.filter((_, i) => i !== index);
-                          setFormData({ ...formData, propietarios: newProps });
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+              {/* Sección de Propietarios con estado civil */}
+              <div className="border border-slate-200 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Propietarios (R1)
+                  </h4>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setFormData({
+                      ...formData,
+                      propietarios: [...formData.propietarios, { nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }]
+                    })}
+                    className="text-emerald-700"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+                
+                {formData.propietarios.map((prop, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50 mb-3">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                      {formData.propietarios.length > 1 && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            const newProps = formData.propietarios.filter((_, i) => i !== index);
+                            setFormData({ ...formData, propietarios: newProps });
+                          }}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="col-span-4">
+                        <Label className="text-xs">Nombre Completo *</Label>
+                        <Input 
+                          value={prop.nombre_propietario || ''} 
+                          onChange={(e) => {
+                            const newProps = [...formData.propietarios];
+                            newProps[index] = { ...newProps[index], nombre_propietario: e.target.value.toUpperCase() };
+                            setFormData({ ...formData, propietarios: newProps });
+                          }}
+                          placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tipo Doc.</Label>
+                        <Select 
+                          value={prop.tipo_documento || 'CC'}
+                          onValueChange={(v) => {
+                            const newProps = [...formData.propietarios];
+                            newProps[index] = { ...newProps[index], tipo_documento: v };
+                            setFormData({ ...formData, propietarios: newProps });
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CC">CC</SelectItem>
+                            <SelectItem value="CE">CE</SelectItem>
+                            <SelectItem value="NIT">NIT</SelectItem>
+                            <SelectItem value="TI">TI</SelectItem>
+                            <SelectItem value="PA">PA</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Número Documento *</Label>
+                        <Input 
+                          value={prop.numero_documento || ''} 
+                          onChange={(e) => {
+                            const newProps = [...formData.propietarios];
+                            newProps[index] = { ...newProps[index], numero_documento: e.target.value };
+                            setFormData({ ...formData, propietarios: newProps });
+                          }}
+                          placeholder="123456789"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Estado Civil</Label>
+                        <Select 
+                          value={prop.estado_civil || ''}
+                          onValueChange={(v) => {
+                            const newProps = [...formData.propietarios];
+                            newProps[index] = { ...newProps[index], estado_civil: v };
+                            setFormData({ ...formData, propietarios: newProps });
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Seleccionar..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sin especificar</SelectItem>
+                            <SelectItem value="soltero">Soltero(a)</SelectItem>
+                            <SelectItem value="casado">Casado(a)</SelectItem>
+                            <SelectItem value="union_libre">Unión Libre</SelectItem>
+                            <SelectItem value="viudo">Viudo(a)</SelectItem>
+                            <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Información básica del Predio */}
+              <div className="border border-slate-200 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Información del Predio (R1)
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-3">
+                    <Label>Dirección *</Label>
+                    <Input 
+                      value={formData.direccion || ''} 
+                      onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})}
+                      placeholder="DIRECCIÓN DEL PREDIO"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Comuna</Label>
+                    <Input 
+                      value={formData.comuna || ''} 
+                      onChange={(e) => setFormData({...formData, comuna: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Área Terreno (m²)</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.area_terreno || ''} 
+                      onChange={(e) => setFormData({...formData, area_terreno: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Área Construida (m²)</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.area_construida || ''} 
+                      onChange={(e) => setFormData({...formData, area_construida: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Avalúo Catastral (COP) *</Label>
+                    <Input 
+                      type="number" 
+                      value={formData.avaluo_catastral || ''} 
+                      onChange={(e) => setFormData({...formData, avaluo_catastral: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label className="mb-2 block">Destino Económico *</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { value: 'A', label: 'A-Habit.' },
+                        { value: 'B', label: 'B-Ind.' },
+                        { value: 'C', label: 'C-Com.' },
+                        { value: 'D', label: 'D-Agro.' },
+                        { value: 'E', label: 'E-Min.' },
+                        { value: 'F', label: 'F-Cult.' },
+                        { value: 'G', label: 'G-Recr.' },
+                        { value: 'H', label: 'H-Salub.' },
+                        { value: 'I', label: 'I-Inst.' },
+                        { value: 'J', label: 'J-Educ.' },
+                        { value: 'K', label: 'K-Relig.' },
+                        { value: 'L', label: 'L-Agríc.' },
+                        { value: 'M', label: 'M-Forest.' },
+                        { value: 'N', label: 'N-Pec.' },
+                        { value: 'O', label: 'O-Agroind.' },
+                        { value: 'P', label: 'P-Lote' },
+                      ].map(opt => (
+                        <Badge 
+                          key={opt.value}
+                          variant={formData.destino_economico === opt.value ? 'default' : 'outline'}
+                          className={`cursor-pointer text-xs ${formData.destino_economico === opt.value ? 'bg-amber-600' : 'hover:bg-amber-50'}`}
+                          onClick={() => setFormData({...formData, destino_economico: opt.value})}
+                        >
+                          {opt.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* TAB R2 - Datos Físicos */}
+            <TabsContent value="r2" className="space-y-4 mt-4">
+              {/* Matrícula Inmobiliaria */}
+              <div className="border border-slate-200 rounded-lg p-4">
+                <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Identificación
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Matrícula Inmobiliaria</Label>
+                    <Input 
+                      value={formData.matricula_inmobiliaria || ''} 
+                      onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})}
+                      placeholder="XXX-XXXXXX"
+                    />
+                  </div>
+                  <div>
+                    <Label>Uso</Label>
+                    <Select 
+                      value={formData.uso || ''}
+                      onValueChange={(v) => setFormData({...formData, uso: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar uso..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A">A - Habitacional</SelectItem>
+                        <SelectItem value="B">B - Industrial</SelectItem>
+                        <SelectItem value="C">C - Comercial</SelectItem>
+                        <SelectItem value="D">D - Agropecuario</SelectItem>
+                        <SelectItem value="I">I - Institucional</SelectItem>
+                        <SelectItem value="M">M - Mixto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Zonas Físicas */}
+              <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-blue-800 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Zonas Físicas (R2)
+                  </h4>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setFormData({
+                      ...formData,
+                      zonas_fisicas: [...(formData.zonas_fisicas || []), { zona_fisica: '', zona_economica: '', area_terreno: '' }]
+                    })}
+                    className="text-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                  </Button>
+                </div>
+                
+                {(formData.zonas_fisicas || []).map((zona, index) => (
+                  <div key={index} className="border border-blue-200 rounded-lg p-3 bg-white mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-blue-700">Zona {index + 1}</span>
+                      {(formData.zonas_fisicas || []).length > 1 && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            const newZonas = (formData.zonas_fisicas || []).filter((_, i) => i !== index);
+                            setFormData({ ...formData, zonas_fisicas: newZonas });
+                          }}
+                          className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Zona Física</Label>
+                        <Input 
+                          value={zona.zona_fisica || ''} 
+                          onChange={(e) => {
+                            const newZonas = [...(formData.zonas_fisicas || [])];
+                            newZonas[index] = { ...newZonas[index], zona_fisica: e.target.value };
+                            setFormData({ ...formData, zonas_fisicas: newZonas });
+                          }}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Zona Económica</Label>
+                        <Input 
+                          value={zona.zona_economica || ''} 
+                          onChange={(e) => {
+                            const newZonas = [...(formData.zonas_fisicas || [])];
+                            newZonas[index] = { ...newZonas[index], zona_economica: e.target.value };
+                            setFormData({ ...formData, zonas_fisicas: newZonas });
+                          }}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área Terreno (m²)</Label>
+                        <Input 
+                          type="number"
+                          value={zona.area_terreno || ''} 
+                          onChange={(e) => {
+                            const newZonas = [...(formData.zonas_fisicas || [])];
+                            newZonas[index] = { ...newZonas[index], area_terreno: e.target.value };
+                            setFormData({ ...formData, zonas_fisicas: newZonas });
+                          }}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Datos de Construcción */}
+              <div className="border border-emerald-200 rounded-lg p-4 bg-emerald-50">
+                <h4 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Datos de Construcción
+                </h4>
+                <div className="grid grid-cols-5 gap-4">
+                  <div>
+                    <Label className="text-xs">Habitaciones</Label>
+                    <Input 
+                      type="number"
+                      value={formData.habitaciones || ''} 
+                      onChange={(e) => setFormData({...formData, habitaciones: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Baños</Label>
+                    <Input 
+                      type="number"
+                      value={formData.banos || ''} 
+                      onChange={(e) => setFormData({...formData, banos: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Locales</Label>
+                    <Input 
+                      type="number"
+                      value={formData.locales || ''} 
+                      onChange={(e) => setFormData({...formData, locales: e.target.value})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Pisos</Label>
+                    <Input 
+                      type="number"
+                      value={formData.pisos || ''} 
+                      onChange={(e) => setFormData({...formData, pisos: e.target.value})}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Área Const. (m²)</Label>
+                    <Input 
+                      type="number"
+                      value={formData.area_construida || ''} 
+                      onChange={(e) => setFormData({...formData, area_construida: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* TAB Estado */}
+            <TabsContent value="estado" className="space-y-4 mt-4">
+              {/* Estado de Visita */}
+              <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Estado de Visita
+                </h4>
+                <div className="flex flex-wrap gap-3">
+                  <Badge 
+                    variant={predioSeleccionado?.estado_visita === 'pendiente' || !predioSeleccionado?.estado_visita ? 'default' : 'outline'}
+                    className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'pendiente' || !predioSeleccionado?.estado_visita ? 'bg-yellow-500' : ''}`}
+                    onClick={() => marcarEstadoPredio(predioSeleccionado, 'pendiente')}
+                  >
+                    <AlertCircle className="w-3 h-3 mr-1" /> Pendiente
+                  </Badge>
+                  <Badge 
+                    variant={predioSeleccionado?.estado_visita === 'visitado' ? 'default' : 'outline'}
+                    className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'visitado' ? 'bg-blue-500' : ''}`}
+                    onClick={() => marcarEstadoPredio(predioSeleccionado, 'visitado')}
+                  >
+                    <Clock className="w-3 h-3 mr-1" /> Visitado
+                  </Badge>
+                  <Badge 
+                    variant={predioSeleccionado?.estado_visita === 'actualizado' ? 'default' : 'outline'}
+                    className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'actualizado' ? 'bg-green-500' : ''}`}
+                    onClick={() => marcarEstadoPredio(predioSeleccionado, 'actualizado')}
+                  >
+                    <CheckCircle className="w-3 h-3 mr-1" /> Actualizado
+                  </Badge>
+                </div>
+              </div>
+              
+              {/* Información de auditoría */}
+              {predioSeleccionado && (
+                <div className="border border-slate-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-slate-800 mb-3">Información de Auditoría</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {predioSeleccionado.actualizado_por && (
+                      <div>
+                        <p className="text-slate-500">Actualizado por:</p>
+                        <p className="font-medium">{predioSeleccionado.actualizado_por}</p>
+                      </div>
+                    )}
+                    {predioSeleccionado.actualizado_en && (
+                      <div>
+                        <p className="text-slate-500">Fecha actualización:</p>
+                        <p className="font-medium">{new Date(predioSeleccionado.actualizado_en).toLocaleString('es-CO')}</p>
+                      </div>
+                    )}
+                    {predioSeleccionado.visitado_por && (
+                      <div>
+                        <p className="text-slate-500">Visitado por:</p>
+                        <p className="font-medium">{predioSeleccionado.visitado_por}</p>
+                      </div>
+                    )}
+                    {predioSeleccionado.visitado_en && (
+                      <div>
+                        <p className="text-slate-500">Fecha visita:</p>
+                        <p className="font-medium">{new Date(predioSeleccionado.visitado_en).toLocaleString('es-CO')}</p>
+                      </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <Label className="text-xs">Nombre Completo *</Label>
-                      <Input 
-                        value={prop.nombre_propietario || ''} 
-                        onChange={(e) => {
-                          const newProps = [...formData.propietarios];
-                          newProps[index] = { ...newProps[index], nombre_propietario: e.target.value.toUpperCase() };
-                          setFormData({ ...formData, propietarios: newProps });
-                        }}
-                        placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Tipo Documento</Label>
-                      <Select 
-                        value={prop.tipo_documento || 'CC'}
-                        onValueChange={(v) => {
-                          const newProps = [...formData.propietarios];
-                          newProps[index] = { ...newProps[index], tipo_documento: v };
-                          setFormData({ ...formData, propietarios: newProps });
-                        }}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CC">CC - Cédula</SelectItem>
-                          <SelectItem value="CE">CE - Cédula Extranjería</SelectItem>
-                          <SelectItem value="NIT">NIT</SelectItem>
-                          <SelectItem value="TI">TI - Tarjeta Identidad</SelectItem>
-                          <SelectItem value="PA">PA - Pasaporte</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Número Documento *</Label>
-                      <Input 
-                        value={prop.numero_documento || ''} 
-                        onChange={(e) => {
-                          const newProps = [...formData.propietarios];
-                          newProps[index] = { ...newProps[index], numero_documento: e.target.value };
-                          setFormData({ ...formData, propietarios: newProps });
-                        }}
-                        placeholder="123456789"
-                      />
-                    </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-            
-            {/* Información del Predio */}
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <Building className="w-4 h-4" />
-                Información del Predio
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label>Dirección *</Label>
-                  <Input 
-                    value={formData.direccion || ''} 
-                    onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})}
-                    placeholder="DIRECCIÓN DEL PREDIO"
-                  />
-                </div>
-                
-                <div className="col-span-2">
-                  <Label className="mb-2 block">Destino Económico *</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: 'A', label: 'A - Habitacional' },
-                      { value: 'B', label: 'B - Industrial' },
-                      { value: 'C', label: 'C - Comercial' },
-                      { value: 'D', label: 'D - Agropecuario' },
-                      { value: 'E', label: 'E - Minero' },
-                      { value: 'F', label: 'F - Cultural' },
-                      { value: 'G', label: 'G - Recreacional' },
-                      { value: 'H', label: 'H - Salubridad' },
-                      { value: 'I', label: 'I - Institucional' },
-                      { value: 'J', label: 'J - Educativo' },
-                      { value: 'K', label: 'K - Religioso' },
-                      { value: 'L', label: 'L - Agrícola' },
-                      { value: 'M', label: 'M - Forestal' },
-                      { value: 'N', label: 'N - Pecuario' },
-                      { value: 'O', label: 'O - Agroindustrial' },
-                      { value: 'P', label: 'P - Lote' },
-                    ].map(opt => (
-                      <Badge 
-                        key={opt.value}
-                        variant={formData.destino_economico === opt.value ? 'default' : 'outline'}
-                        className={`cursor-pointer text-xs ${formData.destino_economico === opt.value ? 'bg-amber-600' : 'hover:bg-amber-50'}`}
-                        onClick={() => setFormData({...formData, destino_economico: opt.value})}
-                      >
-                        {opt.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <Label>Avalúo Catastral (COP) *</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.avaluo_catastral || ''} 
-                    onChange={(e) => setFormData({...formData, avaluo_catastral: e.target.value})}
-                    placeholder="0"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Matrícula Inmobiliaria</Label>
-                  <Input 
-                    value={formData.matricula_inmobiliaria || ''} 
-                    onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})}
-                    placeholder="XXX-XXXXXX"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Área Terreno (m²)</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.area_terreno || ''} 
-                    onChange={(e) => setFormData({...formData, area_terreno: e.target.value})}
-                    placeholder="0.00"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Área Construida (m²)</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.area_construida || ''} 
-                    onChange={(e) => setFormData({...formData, area_construida: e.target.value})}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Estado de Visita */}
-            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-              <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                <ClipboardList className="w-4 h-4" />
-                Estado de Visita
-              </h4>
-              <div className="flex flex-wrap gap-3">
-                <Badge 
-                  variant={predioSeleccionado?.estado_visita === 'pendiente' || !predioSeleccionado?.estado_visita ? 'default' : 'outline'}
-                  className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'pendiente' || !predioSeleccionado?.estado_visita ? 'bg-yellow-500' : ''}`}
-                  onClick={() => marcarEstadoPredio(predioSeleccionado, 'pendiente')}
-                >
-                  <AlertCircle className="w-3 h-3 mr-1" /> Pendiente
-                </Badge>
-                <Badge 
-                  variant={predioSeleccionado?.estado_visita === 'visitado' ? 'default' : 'outline'}
-                  className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'visitado' ? 'bg-blue-500' : ''}`}
-                  onClick={() => marcarEstadoPredio(predioSeleccionado, 'visitado')}
-                >
-                  <Clock className="w-3 h-3 mr-1" /> Visitado
-                </Badge>
-                <Badge 
-                  variant={predioSeleccionado?.estado_visita === 'actualizado' ? 'default' : 'outline'}
-                  className={`cursor-pointer ${predioSeleccionado?.estado_visita === 'actualizado' ? 'bg-green-500' : ''}`}
-                  onClick={() => marcarEstadoPredio(predioSeleccionado, 'actualizado')}
-                >
-                  <CheckCircle className="w-3 h-3 mr-1" /> Actualizado
-                </Badge>
-              </div>
-            </div>
-          </div>
+              )}
+            </TabsContent>
+          </Tabs>
           </div>
           
           <DialogFooter className="pt-4 border-t">
