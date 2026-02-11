@@ -45,7 +45,44 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 2)
+## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 3)
+
+### ✅ COMPLETADO: Bug "Atención al Usuario" no veía peticiones asignadas (P1 - Recurrente)
+
+**Problema reportado:** Los usuarios con rol "Atención al Usuario" no podían ver las peticiones que les habían sido asignadas en la página "Mis Peticiones". Solo veían peticiones que ellos mismos habían creado.
+
+**Causa raíz:** El endpoint `/api/petitions/mis-peticiones` solo filtraba por `user_id` (creador de la petición), ignorando completamente el campo `gestores_asignados` que contiene los IDs de usuarios asignados a cada petición.
+
+**Solución implementada:**
+
+1. **Backend modificado (`server.py` líneas 2445-2473):**
+   - Modificada la función `get_my_petitions()` para diferenciar por rol
+   - Ciudadanos y Empresa: solo ven peticiones creadas por ellos (`user_id`)
+   - Staff (atencion_usuario, gestor, coordinador, admin): ven peticiones creadas por ellos **Y** peticiones asignadas a ellos (`gestores_asignados`)
+   - Query modificado con `$or` para incluir ambos criterios
+
+**Código corregido:**
+```python
+if user_role in [UserRole.USUARIO, UserRole.EMPRESA]:
+    query = {"user_id": current_user['id']}
+else:
+    query = {
+        "$or": [
+            {"user_id": current_user['id']},
+            {"gestores_asignados": current_user['id']}
+        ]
+    }
+```
+
+**Testing:** ✅ Verificado con curl y screenshot
+- Usuario de prueba: `atencion@test.com` / `Atencion123!`
+- El usuario ahora ve correctamente la petición RAD-TEST-002 que le fue asignada
+
+**Estado:** ✅ Bug recurrente RESUELTO
+
+---
+
+## 🔧 Cambios Anteriores (11 Febrero 2026 - Fork 2)
 
 ### ✅ COMPLETADO: Asignación de Municipios a Usuarios Empresa (P0)
 
