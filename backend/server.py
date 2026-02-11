@@ -15105,8 +15105,8 @@ async def listar_proyectos_actualizacion(
     current_user: dict = Depends(get_current_user)
 ):
     """Lista todos los proyectos de actualización"""
-    # Admin, Coordinador y Gestor siempre tienen acceso a proyectos de actualización
-    tiene_acceso = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]
+    # Admin, Coordinador, Gestor y Empresa tienen acceso
+    tiene_acceso = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.EMPRESA]
     
     if not tiene_acceso:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver proyectos de actualización")
@@ -15117,8 +15117,13 @@ async def listar_proyectos_actualizacion(
     if municipio:
         query["municipio"] = municipio
     
-    # Si es gestor, solo ver proyectos activos o de su municipio
-    # Por ahora, todos los usuarios autorizados pueden ver todos los proyectos
+    # Si es usuario empresa, filtrar por municipios asignados
+    if current_user['role'] == UserRole.EMPRESA:
+        municipios_asignados = current_user.get('municipios_asignados', [])
+        if not municipios_asignados:
+            # Sin municipios asignados, no mostrar ningún proyecto
+            return {"proyectos": [], "mensaje": "No tiene municipios asignados. Contacte al coordinador."}
+        query["municipio"] = {"$in": municipios_asignados}
     
     proyectos = await db.proyectos_actualizacion.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
