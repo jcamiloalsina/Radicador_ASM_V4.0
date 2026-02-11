@@ -4053,10 +4053,11 @@ export default function VisorActualizacion() {
                             <SelectItem value="M">M - Pecuario</SelectItem>
                             <SelectItem value="N">N - Agroindustrial</SelectItem>
                             <SelectItem value="O">O - Forestal</SelectItem>
-                            <SelectItem value="P">P - Uso público</SelectItem>
-                            <SelectItem value="Q">Q - Servicios</SelectItem>
-                            <SelectItem value="R">R - Lote urbanizado</SelectItem>
-                            <SelectItem value="S">S - Lote no urbanizable</SelectItem>
+                            <SelectItem value="P">P - Uso Público</SelectItem>
+                            <SelectItem value="Q">Q - Lote Urbanizable No Urbanizado</SelectItem>
+                            <SelectItem value="R">R - Lote Urbanizado No Edificado</SelectItem>
+                            <SelectItem value="S">S - Lote No Urbanizable</SelectItem>
+                            <SelectItem value="T">T - Servicios Especiales</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
