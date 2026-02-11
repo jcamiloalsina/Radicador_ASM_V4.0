@@ -3027,9 +3027,9 @@ export default function VisorActualizacion() {
             />
           )}
           
-          {geometriasFiltradas && (
+          {geometriasFiltradas && geometriasFiltradas.features?.length > 0 && (
             <GeoJSON
-              key={`geom-${filterZona}-${filterEstado}-${selectedGeometry?.properties?.codigo_predial}-${estadisticas.total}`}
+              key={`geom-${filterZona}-${filterEstado}-${geometriasFiltradas.features.length}`}
               data={geometriasFiltradas}
               style={getGeometryStyle}
               onEachFeature={onEachFeature}
