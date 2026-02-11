@@ -891,7 +891,7 @@ export default function GestionPrediosActualizacion() {
                     <div>
                       <Label className="text-xs mb-2 block">Estado Civil</Label>
                       <RadioGroup 
-                        value={prop.estado_civil || ""} 
+                        value={prop.estado_civil || "none"} 
                         onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v === 'none' ? '' : v)}
                         className="flex flex-wrap gap-3"
                       >
