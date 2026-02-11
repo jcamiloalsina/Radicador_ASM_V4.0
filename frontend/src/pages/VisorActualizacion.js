@@ -2853,7 +2853,18 @@ export default function VisorActualizacion() {
       p.numero_predial === feature.properties?.numero_predial
     );
     
+    // Verificar si es una mejora (últimos 4 dígitos del código != 0000)
+    const codigoFeature = feature.properties?.codigo_predial || feature.properties?.numero_predial || feature.properties?.codigo;
+    const esMejoraFeature = esMejora(codigoFeature);
+    
     let fillColor = isUrban ? '#3b82f6' : '#22c55e'; // Azul urbano, verde rural
+    let borderColor = '#1e40af'; // Borde azul por defecto
+    
+    // Si es mejora, usar color cyan distintivo
+    if (esMejoraFeature) {
+      fillColor = '#06b6d4'; // Cyan para mejoras
+      borderColor = '#0891b2';
+    }
     
     if (predio?.estado_visita === 'visitado') {
       fillColor = '#f59e0b'; // Naranja si visitado
@@ -2863,14 +2874,16 @@ export default function VisorActualizacion() {
     
     if (isSelected) {
       fillColor = '#ef4444'; // Rojo si seleccionado
+      borderColor = '#ef4444';
     }
     
     return {
       fillColor,
-      weight: isSelected ? 3 : 1,
+      weight: isSelected ? 3 : (esMejoraFeature ? 2 : 1),
       opacity: 1,
-      color: isSelected ? '#ef4444' : '#1e40af',
-      fillOpacity: isSelected ? 0.6 : 0.35
+      color: isSelected ? '#ef4444' : borderColor,
+      fillOpacity: isSelected ? 0.6 : (esMejoraFeature ? 0.5 : 0.35),
+      dashArray: esMejoraFeature && !isSelected ? '5, 5' : null // Borde punteado para mejoras
     };
   };
   
