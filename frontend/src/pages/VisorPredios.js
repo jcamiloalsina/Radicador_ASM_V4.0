@@ -898,6 +898,10 @@ export default function VisorPredios() {
     }
 
     setLoading(true);
+    setSinAcceso(false); // Reset del estado de sin acceso
+    setSelectedPredio(null);
+    setGeometry(null);
+    
     try {
       const token = localStorage.getItem('token');
       
@@ -905,6 +909,15 @@ export default function VisorPredios() {
       const predioResponse = await axios.get(`${API}/predios?search=${searchCode}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Verificar si la respuesta indica acceso denegado (para rol empresa)
+      if (predioResponse.data.sin_acceso) {
+        setSinAcceso(true);
+        setSelectedPredio({ codigo_predial_nacional: searchCode }); // Solo mostrar el código buscado
+        toast.warning('No tiene acceso a este predio');
+        setLoading(false);
+        return;
+      }
       
       if (predioResponse.data.predios.length === 0) {
         toast.error('Predio no encontrado en la base de datos');
@@ -957,7 +970,12 @@ export default function VisorPredios() {
       
       toast.success('Predio encontrado');
     } catch (error) {
-      if (error.response?.status === 404) {
+      // Verificar si es error de acceso denegado (403)
+      if (error.response?.status === 403) {
+        setSinAcceso(true);
+        setSelectedPredio({ codigo_predial_nacional: searchCode });
+        toast.warning('No tiene acceso a este predio');
+      } else if (error.response?.status === 404) {
         toast.warning('Predio encontrado pero sin Base Gráfica disponible');
       } else {
         toast.error('Error al buscar el predio');
