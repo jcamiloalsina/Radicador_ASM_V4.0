@@ -1254,7 +1254,7 @@ export default function ProyectosActualizacion() {
                       className="cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group"
                       onClick={() => {
                         setShowDetalleModal(false);
-                        navigate(`/dashboard/visor-actualizacion/${proyectoSeleccionado.id}?modo=gestion`);
+                        navigate(`/dashboard/gestion-predios-actualizacion/${proyectoSeleccionado.id}`);
                       }}
                       data-testid="btn-gestion-predios"
                     >
