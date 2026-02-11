@@ -1366,11 +1366,13 @@ export default function GestionPrediosActualizacion() {
             {prediosPaginados.map((predio, index) => {
               const codigo = predio.codigo_predial || predio.numero_predial || 'Sin código';
               const zona = getZonaFromCodigo(codigo);
+              // Verificar si es una mejora (últimos 4 dígitos != 0000)
+              const esMejoraPredio = codigo.length >= 30 && codigo.substring(26, 30) !== '0000';
               
               return (
                 <Card 
                   key={predio._id || predio.id || index}
-                  className="hover:shadow-md transition-shadow"
+                  className={`hover:shadow-md transition-shadow ${esMejoraPredio ? 'border-cyan-400 border-l-4' : ''}`}
                   data-testid={`predio-card-${index}`}
                 >
                   <CardContent className="p-4">
@@ -1384,6 +1386,13 @@ export default function GestionPrediosActualizacion() {
                           <Badge variant="outline" className="text-xs">
                             {zona.texto}
                           </Badge>
+                          {/* Badge de MEJORA */}
+                          {esMejoraPredio && (
+                            <Badge className="bg-cyan-500 text-white text-xs">
+                              <Building2 className="w-3 h-3 mr-1" />
+                              MEJORA
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
