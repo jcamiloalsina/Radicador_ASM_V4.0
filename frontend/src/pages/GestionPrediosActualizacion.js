@@ -280,26 +280,34 @@ export default function GestionPrediosActualizacion() {
     setShowCrearModal(true);
   };
   
-  // Guardar predio (crear o editar)
+  // Guardar predio (crear o editar) - Enviar todos los campos para R1/R2
   const guardarPredio = async (esNuevo = false) => {
     try {
       const token = localStorage.getItem('token');
+      
+      // Preparar datos completos para R1/R2
+      const datosCompletos = {
+        ...formData,
+        // Asegurar que avaluo tenga el nombre correcto
+        avaluo: formData.avaluo_catastral,
+        avaluo_catastral: formData.avaluo_catastral
+      };
       
       if (esNuevo) {
         // Crear nuevo predio
         await axios.post(
           `${API}/actualizacion/proyectos/${proyectoId}/predios`,
-          formData,
+          datosCompletos,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success('Predio creado correctamente');
         setShowCrearModal(false);
       } else {
-        // Editar predio existente
+        // Editar predio existente (usar PATCH)
         const codigo = predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial;
-        await axios.put(
+        await axios.patch(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}`,
-          formData,
+          datosCompletos,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success('Predio actualizado correctamente');
