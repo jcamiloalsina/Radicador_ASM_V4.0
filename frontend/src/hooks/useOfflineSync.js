@@ -115,26 +115,24 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   useEffect(() => {
     const handleOnline = async () => {
       setIsOnline(true);
-      toast.success('Conexión restaurada', { 
-        description: 'Verificando cambios pendientes...',
-        duration: 3000 
-      });
       
-      // Auto-sincronizar cambios pendientes al recuperar conexión
-      setTimeout(async () => {
-        try {
-          const cambios = await getCambiosPendientes(proyectoId);
-          if (cambios.length > 0) {
-            console.log(`[Offline] ${cambios.length} cambios pendientes encontrados, sincronizando...`);
-            toast.info(`Sincronizando ${cambios.length} cambio(s) pendiente(s)...`);
-            await syncChangesDirectly(cambios, setIsSyncing, refreshStats);
-          } else {
-            console.log('[Offline] No hay cambios pendientes');
-          }
-        } catch (e) {
-          console.error('[Offline] Error al auto-sincronizar:', e);
+      // Verificar cambios pendientes
+      try {
+        const cambios = await getCambiosPendientes(proyectoId);
+        if (cambios.length > 0) {
+          // HAY CAMBIOS PENDIENTES - Activar sincronización obligatoria
+          console.log(`[Offline] Conexión restaurada. ${cambios.length} cambios pendientes.`);
+          setRequiresSync(true);
+          setIsInitialSyncComplete(false);
+          setSyncProgress({ current: 0, total: cambios.length, message: 'Conexión restaurada. Sincronizando cambios...' });
+        } else {
+          console.log('[Offline] Conexión restaurada. Sin cambios pendientes.');
+          toast.success('Conexión restaurada', { duration: 2000 });
         }
-      }, 1500); // Esperar para que la conexión se estabilice
+      } catch (e) {
+        console.error('[Offline] Error verificando cambios:', e);
+        toast.success('Conexión restaurada', { duration: 2000 });
+      }
     };
 
     const handleOffline = () => {
