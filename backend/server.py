@@ -11969,6 +11969,55 @@ async def get_gdb_geometry_async(codigo_predial: str) -> Optional[dict]:
                 }
             }
         
+        # Si no se encontró con código exacto, buscar el terreno base para mejoras
+        # Una mejora tiene los últimos 8 dígitos != "00000000"
+        # El terreno base es: primeros 21 dígitos + "000000000"
+        if len(codigo_predial) == 30:
+            ultimos_8 = codigo_predial[-8:]
+            es_mejora = ultimos_8 != "00000000"
+            
+            if es_mejora:
+                # Buscar el terreno base (mismo predio, sin edificio/piso/unidad/mejora)
+                codigo_terreno_base = codigo_predial[:21] + "000000000"
+                geometria = await db.gdb_geometrias.find_one(
+                    {"codigo": codigo_terreno_base},
+                    {"_id": 0}
+                )
+                
+                if geometria:
+                    return {
+                        "type": "Feature",
+                        "geometry": geometria.get("geometry"),
+                        "properties": {
+                            "codigo": codigo_predial,  # Mantener código original de la mejora
+                            "codigo_terreno": codigo_terreno_base,  # Indicar que es del terreno
+                            "tipo": geometria.get("tipo", "Rural"),
+                            "municipio": geometria.get("municipio", ""),
+                            "area_m2": geometria.get("area_m2", 0),
+                            "es_mejora": True
+                        }
+                    }
+                
+                # Buscar por predio (primeros 21 dígitos) con cualquier terminación
+                geometria = await db.gdb_geometrias.find_one(
+                    {"codigo": {"$regex": f"^{codigo_predial[:21]}"}},
+                    {"_id": 0}
+                )
+                
+                if geometria:
+                    return {
+                        "type": "Feature",
+                        "geometry": geometria.get("geometry"),
+                        "properties": {
+                            "codigo": codigo_predial,
+                            "codigo_terreno": geometria.get("codigo"),
+                            "tipo": geometria.get("tipo", "Rural"),
+                            "municipio": geometria.get("municipio", ""),
+                            "area_m2": geometria.get("area_m2", 0),
+                            "es_mejora": True
+                        }
+                    }
+        
         # Si no está en MongoDB, NO hacer búsqueda parcial
         # El predio simplemente no tiene geometría disponible
         return None
