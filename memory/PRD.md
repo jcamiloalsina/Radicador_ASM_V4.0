@@ -73,15 +73,47 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
    - `SelectContent` ahora tiene `z-[999999]` y `side="bottom"` por defecto
    - Los dropdowns ahora aparecen correctamente encima de los modales
 
-**Archivos modificados:**
-- `/app/frontend/src/pages/GestionPrediosActualizacion.js` - Modal de crear predio
-- `/app/frontend/src/components/ui/select.jsx` - z-index del SelectContent
-
 **Testing:** ✅ Verificado con testing agent (iteration_39.json) - 100% features passed
-- Zona es INPUT ✓
-- Predios en manzana aparece ✓
-- Código 30 dígitos dinámico ✓
-- Dropdown z-index corregido ✓
+
+---
+
+### ✅ COMPLETADO: Modales "Editar/Proponer Cambios" No Cargaban Datos (P0)
+
+**Problema reportado:** Al abrir los modales de "Editar Predio" (coordinadores) o "Proponer Cambios" (gestores), los campos aparecían vacíos a pesar de que el predio tenía información.
+
+**Causa raíz:** Incompatibilidad de formato de datos:
+- Backend devuelve: `nombre_propietario` (nombre completo)
+- Modal Editar esperaba: `nombre_propietario`  
+- Modal Proponer Cambios esperaba: `primer_apellido`, `segundo_apellido`, `primer_nombre`, `segundo_nombre`
+- La función `abrirEditar` no convertía correctamente el formato
+
+**Solución implementada:**
+
+1. **Función `abrirEditar` actualizada:**
+   - Si el predio tiene `nombre_propietario`, lo usa directamente
+   - Si tiene campos separados, los combina en `nombre_propietario`
+   - Mapea `estado_civil` y `estado` correctamente
+
+2. **Función `abrirProponerCambios` actualizada:**
+   - Divide `nombre_propietario` en partes: `primer_apellido`, `segundo_apellido`, `primer_nombre`, `segundo_nombre`
+   - Mapea zonas físicas desde `zonas_fisicas` a `zonasTerreno`
+   - Carga construcciones existentes o crea una por defecto con datos del predio
+
+**Campos que ahora se cargan correctamente:**
+- ✅ Código Predial Nacional
+- ✅ Código Homologado
+- ✅ Nombre del Propietario (completo o dividido según modal)
+- ✅ Tipo de Documento
+- ✅ Número de Documento
+- ✅ Estado Civil
+- ✅ Dirección
+- ✅ Destino Económico
+- ✅ Áreas de terreno y construcción
+- ✅ Avalúo Catastral
+- ✅ Zonas de Terreno
+- ✅ Construcciones
+
+**Testing:** ✅ Verificado con screenshots
 
 ---
 
