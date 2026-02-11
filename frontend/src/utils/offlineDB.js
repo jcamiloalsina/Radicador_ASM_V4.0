@@ -224,7 +224,8 @@ function createAllStores(database) {
 
 // Helper para verificar si la base de datos está disponible
 async function getDatabase() {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   if (!database) {
     console.warn('[OfflineDB] Base de datos no disponible');
     return null;
@@ -312,7 +313,8 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
 
 // Obtener predios offline de un proyecto
 export async function getPrediosOffline(proyectoId) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PREDIOS, 'readonly');
   const store = tx.objectStore(STORES.PREDIOS);
   const index = store.index('proyecto_id');
@@ -326,7 +328,8 @@ export async function getPrediosOffline(proyectoId) {
 
 // Obtener predios offline de un municipio (para Conservación)
 export async function getPrediosByMunicipioOffline(municipio) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PREDIOS, 'readonly');
   const store = tx.objectStore(STORES.PREDIOS);
   const index = store.index('municipio');
@@ -342,7 +345,8 @@ export async function getPrediosByMunicipioOffline(municipio) {
 
 // Guardar geometrías para offline
 export async function saveGeometriasOffline(proyectoId, geometrias) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
   const store = tx.objectStore(STORES.GEOMETRIAS);
 
@@ -370,7 +374,8 @@ export async function saveGeometriasOffline(proyectoId, geometrias) {
 
 // Obtener geometrías offline de un proyecto
 export async function getGeometriasOffline(proyectoId) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
   const store = tx.objectStore(STORES.GEOMETRIAS);
   const index = store.index('proyecto_id');
@@ -386,7 +391,8 @@ export async function getGeometriasOffline(proyectoId) {
 
 // Guardar geometrías del visor por municipio
 export async function saveGeometriasMunicipioOffline(municipio, geometriasData) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const municipioKey = `visor_${municipio}`;
   
   // Primero, eliminar TODOS los registros del municipio en una transacción separada
@@ -473,7 +479,8 @@ export async function saveGeometriasMunicipioOffline(municipio, geometriasData) 
 
 // Obtener geometrías del visor por municipio
 export async function getGeometriasMunicipioOffline(municipio) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
   const store = tx.objectStore(STORES.GEOMETRIAS);
   const municipioKey = `visor_${municipio}`;
@@ -514,7 +521,8 @@ export async function getGeometriasMunicipioOffline(municipio) {
 
 // Contar geometrías offline por municipio
 export async function countGeometriasMunicipioOffline(municipio) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
   const store = tx.objectStore(STORES.GEOMETRIAS);
   const municipioKey = `visor_${municipio}`;
@@ -545,7 +553,8 @@ export async function countGeometriasMunicipioOffline(municipio) {
 
 // Limpiar TODAS las geometrías offline
 export async function clearAllGeometriasOffline() {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
@@ -564,7 +573,8 @@ export async function clearAllGeometriasOffline() {
 
 // Guardar cambio pendiente de sincronizar
 export async function saveCambioPendiente(proyectoId, tipo, datos) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
@@ -588,7 +598,8 @@ export async function saveCambioPendiente(proyectoId, tipo, datos) {
 
 // Obtener todos los cambios pendientes
 export async function getCambiosPendientes(proyectoId = null) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readonly');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
@@ -607,7 +618,8 @@ export async function getCambiosPendientes(proyectoId = null) {
 
 // Marcar cambio como sincronizado
 export async function marcarCambioSincronizado(id) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
@@ -628,7 +640,8 @@ export async function marcarCambioSincronizado(id) {
 
 // Eliminar cambio sincronizado
 export async function eliminarCambioSincronizado(id) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
@@ -643,7 +656,8 @@ export async function eliminarCambioSincronizado(id) {
 
 // Guardar configuración
 export async function saveConfig(key, value) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CONFIG, 'readwrite');
   const store = tx.objectStore(STORES.CONFIG);
 
@@ -656,7 +670,8 @@ export async function saveConfig(key, value) {
 
 // Obtener configuración
 export async function getConfig(key) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.CONFIG, 'readonly');
   const store = tx.objectStore(STORES.CONFIG);
 
@@ -671,7 +686,8 @@ export async function getConfig(key) {
 
 // Guardar proyectos para offline
 export async function saveProyectosOffline(proyectos) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
   const store = tx.objectStore(STORES.PROYECTOS);
 
@@ -699,7 +715,8 @@ export async function saveProyectosOffline(proyectos) {
 
 // Obtener todos los proyectos offline
 export async function getProyectosOffline(filtroEstado = null) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PROYECTOS, 'readonly');
   const store = tx.objectStore(STORES.PROYECTOS);
 
@@ -718,7 +735,8 @@ export async function getProyectosOffline(filtroEstado = null) {
 
 // Obtener un proyecto específico offline
 export async function getProyectoOffline(proyectoId) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PROYECTOS, 'readonly');
   const store = tx.objectStore(STORES.PROYECTOS);
 
@@ -731,7 +749,8 @@ export async function getProyectoOffline(proyectoId) {
 
 // Guardar UN solo proyecto offline (sin borrar los demás)
 export async function saveProyectoOffline(proyecto) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
   const store = tx.objectStore(STORES.PROYECTOS);
 
@@ -753,7 +772,8 @@ export async function saveProyectoOffline(proyecto) {
 
 // Contar proyectos offline
 export async function countProyectosOffline() {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   const tx = database.transaction(STORES.PROYECTOS, 'readonly');
   const store = tx.objectStore(STORES.PROYECTOS);
 
@@ -768,7 +788,8 @@ export async function countProyectosOffline() {
 
 // Limpiar todos los datos offline de un proyecto
 export async function clearProyectoOffline(proyectoId) {
-  const database = await initOfflineDB();
+  const database = await getDatabase();
+  if (!database) return [];
   
   // Limpiar predios
   if (database.objectStoreNames.contains(STORES.PREDIOS)) {
@@ -820,7 +841,8 @@ export async function clearProyectoOffline(proyectoId) {
 // Obtener estadísticas de datos offline (optimizado)
 export async function getOfflineStats() {
   try {
-    const database = await initOfflineDB();
+    const database = await getDatabase();
+  if (!database) return [];
     
     let prediosCount = 0;
     let geomCount = 0;
@@ -898,7 +920,8 @@ export async function hasOfflineData(proyectoId) {
 // Limpiar TODOS los datos offline (reset completo)
 export async function clearAllOfflineData() {
   try {
-    const database = await initOfflineDB();
+    const database = await getDatabase();
+  if (!database) return [];
     
     const stores = [STORES.PREDIOS, STORES.GEOMETRIAS, STORES.PROYECTOS];
     
@@ -926,7 +949,8 @@ export async function clearAllOfflineData() {
 // Limpiar datos offline de un municipio específico
 export async function clearMunicipioOffline(municipio) {
   try {
-    const database = await initOfflineDB();
+    const database = await getDatabase();
+  if (!database) return [];
     
     if (database.objectStoreNames.contains(STORES.PREDIOS)) {
       const tx = database.transaction(STORES.PREDIOS, 'readwrite');
