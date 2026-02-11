@@ -131,8 +131,10 @@ export default function ProyectosActualizacion() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Inicializar IndexedDB
-    initOfflineDB();
+    // Inicializar IndexedDB (con manejo de errores silencioso)
+    initOfflineDB().catch(e => {
+      console.warn('[Offline] IndexedDB no disponible:', e.message);
+    });
 
     return () => {
       window.removeEventListener('online', handleOnline);
