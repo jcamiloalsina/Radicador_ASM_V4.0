@@ -444,7 +444,8 @@ export default function GestionPrediosActualizacion() {
   };
   
   // Abrir modal de crear - Inicializar todos los campos
-  const abrirCrear = () => {
+  const abrirCrear = async () => {
+    // Resetear formulario
     setFormData({
       codigo_predial: '',
       codigo_homologado: '',
@@ -468,6 +469,28 @@ export default function GestionPrediosActualizacion() {
       puntaje: '0',
       area_construida: '0'
     }]);
+    
+    // Resetear código manual
+    setCodigoManual({
+      zona: '00',
+      sector: '00',
+      comuna: '00',
+      barrio: '00',
+      manzana_vereda: '0000',
+      terreno: '0001',
+      condicion: '0',
+      edificio: '00',
+      piso: '00',
+      unidad: '0000'
+    });
+    setVerificacionCodigo(null);
+    
+    // Cargar estructura de código y código homologado
+    if (proyecto?.municipio) {
+      await fetchEstructuraCodigo(proyecto.municipio);
+      await fetchSiguienteCodigoHomologado(proyecto.municipio);
+    }
+    
     setShowCrearModal(true);
   };
   
