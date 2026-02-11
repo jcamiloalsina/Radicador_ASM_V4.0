@@ -13548,6 +13548,7 @@ async def process_gdb_upload_background(
                                 "codigo": codigo,
                                 "tipo": "rural",
                                 "tipo_zona": "rural",
+                                "capa_origen": rural_layer,  # Nombre de la capa de origen
                                 "gdb_source": gdb_name,
                                 "municipio": municipio_nombre,
                                 "area_m2": area_m2,
