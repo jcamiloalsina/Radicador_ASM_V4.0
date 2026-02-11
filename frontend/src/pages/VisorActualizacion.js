@@ -6195,6 +6195,95 @@ export default function VisorActualizacion() {
         </DialogContent>
       </Dialog>
       
+      {/* Modal Cancelar Predio */}
+      <Dialog open={showCancelarModal} onOpenChange={setShowCancelarModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" />
+              {user?.role === 'coordinador' || user?.role === 'administrador' 
+                ? 'Cancelar Predio' 
+                : 'Proponer Cancelación de Predio'}
+            </DialogTitle>
+            <DialogDescription>
+              {user?.role === 'coordinador' || user?.role === 'administrador'
+                ? 'Esta acción eliminará el predio del proyecto. No se puede deshacer.'
+                : 'La propuesta de cancelación será enviada al coordinador para su aprobación.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedPredio && (
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600">Predio a cancelar:</p>
+                <p className="font-mono font-medium">{selectedPredio.codigo_predial || selectedPredio.numero_predial}</p>
+                {selectedPredio.direccion && (
+                  <p className="text-sm text-slate-500">{selectedPredio.direccion}</p>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Motivo de la cancelación *</Label>
+              <textarea
+                value={motivoCancelacion}
+                onChange={(e) => setMotivoCancelacion(e.target.value)}
+                className="w-full p-3 border rounded-lg text-sm min-h-[100px] focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="Describa el motivo por el cual se debe cancelar este predio..."
+              />
+            </div>
+            
+            {/* Motivos comunes */}
+            <div className="space-y-2">
+              <Label className="text-xs text-slate-500">Motivos comunes:</Label>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  'Predio duplicado',
+                  'Predio inexistente',
+                  'Error en código predial',
+                  'Fusión con otro predio',
+                  'División/Segregación',
+                  'Predio fuera del alcance'
+                ].map(motivo => (
+                  <Badge 
+                    key={motivo}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-red-50 text-xs"
+                    onClick={() => setMotivoCancelacion(motivo)}
+                  >
+                    {motivo}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCancelarModal(false)}
+              disabled={cancelando}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCancelarPredio}
+              disabled={cancelando || !motivoCancelacion.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelando ? (
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              {user?.role === 'coordinador' || user?.role === 'administrador' 
+                ? 'Confirmar Cancelación' 
+                : 'Enviar Propuesta'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Modal Crear Predio Nuevo */}
       <CrearPredioNuevoModal
         isOpen={showCrearPredioModal}
