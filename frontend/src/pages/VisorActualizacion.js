@@ -187,8 +187,18 @@ export default function VisorActualizacion() {
     downloadForOffline, 
     saveOfflineChange,
     getOfflineData,
-    forceSync
+    forceSync,
+    clearOfflineCache,
+    checkInitialSync,
+    performFullSync,
+    skipInitialSync,
+    requiresSync,
+    syncProgress,
+    isInitialSyncComplete
   } = useOfflineSync(proyectoId, 'actualizacion');
+  
+  // Estado para la pantalla de sincronización inicial
+  const [showSyncScreen, setShowSyncScreen] = useState(false);
   
   // Estados del proyecto
   const [proyecto, setProyecto] = useState(null);
