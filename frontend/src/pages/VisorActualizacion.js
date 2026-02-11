@@ -3602,7 +3602,7 @@ export default function VisorActualizacion() {
           {/* Construcciones - controladas por toggle */}
           {showConstrucciones && construccionesFiltradas && construccionesFiltradas.features?.length > 0 && (
             <GeoJSON
-              key={`const-${filterEstado}-${showConstrucciones}-${construccionesFiltradas.features.length}-${Date.now()}`}
+              key={`const-${filterEstado}-${construccionesVersion}-${construccionesFiltradas.features.length}`}
               data={construccionesFiltradas}
               style={(feature) => ({
                 fillColor: '#ef4444',
