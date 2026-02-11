@@ -1130,6 +1130,14 @@ export default function VisorActualizacion() {
       shouldRender: showConstrucciones && construccionesFiltradas && (construccionesFiltradas?.features?.length > 0)
     });
   }, [showConstrucciones, construcciones, construccionesFiltradas, filterEstado]);
+  
+  // Incrementar versión de construcciones para forzar re-render del GeoJSON
+  useEffect(() => {
+    if (construcciones?.features?.length > 0) {
+      setConstruccionesVersion(prev => prev + 1);
+      console.log('[Visor] Incrementando versión de construcciones para re-render');
+    }
+  }, [construcciones]);
 
   // Función de sincronización con historial
   const handleSyncWithHistory = async () => {
