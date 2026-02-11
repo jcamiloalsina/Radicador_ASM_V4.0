@@ -634,15 +634,11 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     setRequiresSync(false);
     setIsInitialSyncComplete(true);
     
-    // Guardar fecha del modal para no mostrar por 24 horas
-    const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
-    localStorage.setItem(lastSyncModalKey, new Date().toISOString());
-    
-    // Iniciar sincronización en segundo plano
+    // Iniciar sincronización en segundo plano cada 1 hora
     startBackgroundSync();
     
-    toast.info('Sincronización en segundo plano', {
-      description: 'Los datos se sincronizarán automáticamente'
+    toast.info('Modo offline activado', {
+      description: 'Sincronización automática cada 1 hora'
     });
   }, [proyectoId, startBackgroundSync]);
 
@@ -657,6 +653,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     isInitialSyncComplete,
     isBackgroundSyncing,
     backgroundSyncMessage,
+    wasOfflineWorking,
     downloadForOffline,
     saveOfflineChange,
     syncPendingChanges,
