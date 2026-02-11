@@ -1053,23 +1053,49 @@ export default function GestionPrediosActualizacion() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => abrirEditar(predio)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Editar Predio
-                              </DropdownMenuItem>
+                              {/* Coordinadores pueden editar directamente */}
+                              {esCoordinador && (
+                                <DropdownMenuItem onClick={() => abrirEditar(predio)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Editar Predio
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {/* Gestores pueden proponer cambios (solo si está visitado) */}
+                              {!esCoordinador && predio.estado_visita === 'visitado' && (
+                                <DropdownMenuItem onClick={() => abrirProponerCambios(predio)}>
+                                  <Edit className="w-4 h-4 mr-2 text-amber-600" />
+                                  Proponer Cambios
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {/* Mensaje si no puede proponer cambios */}
+                              {!esCoordinador && predio.estado_visita !== 'visitado' && (
+                                <DropdownMenuItem disabled className="text-slate-400 text-xs">
+                                  <AlertCircle className="w-4 h-4 mr-2" />
+                                  Visite primero para proponer cambios
+                                </DropdownMenuItem>
+                              )}
+                              
                               <DropdownMenuSeparator />
+                              
+                              {/* Marcar como visitado - todos pueden */}
                               {predio.estado_visita !== 'visitado' && (
                                 <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'visitado')}>
                                   <ClipboardList className="w-4 h-4 mr-2 text-blue-600" />
                                   Marcar Visitado
                                 </DropdownMenuItem>
                               )}
-                              {predio.estado_visita !== 'actualizado' && (
+                              
+                              {/* Marcar como actualizado - SOLO coordinadores */}
+                              {esCoordinador && predio.estado_visita !== 'actualizado' && (
                                 <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'actualizado')}>
                                   <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
                                   Marcar Actualizado
                                 </DropdownMenuItem>
                               )}
+                              
+                              {/* Marcar como pendiente */}
                               {predio.estado_visita && predio.estado_visita !== 'pendiente' && (
                                 <DropdownMenuItem onClick={() => marcarEstadoPredio(predio, 'pendiente')}>
                                   <AlertCircle className="w-4 h-4 mr-2 text-yellow-600" />
