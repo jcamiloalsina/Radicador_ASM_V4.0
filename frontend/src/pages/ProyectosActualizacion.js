@@ -1752,52 +1752,43 @@ export default function ProyectosActualizacion() {
       </Dialog>
 
       {/* Modal Eliminar Proyecto */}
-                        value={prediosBusqueda}
-                        onChange={(e) => setPrediosBusqueda(e.target.value)}
-                        className="pl-8 h-9"
-                      />
-                    </div>
-                    <Select value={prediosFiltroZona} onValueChange={setPrediosFiltroZona}>
-                      <SelectTrigger className="w-32 h-9">
-                        <SelectValue placeholder="Zona" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todas</SelectItem>
-                        <SelectItem value="rural">Rural</SelectItem>
-                        <SelectItem value="urbano">Urbano</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Lista de Predios */}
-                  {loadingPredios ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                    </div>
-                  ) : prediosFiltrados.length === 0 ? (
-                    <Card className="bg-slate-50">
-                      <CardContent className="p-6 text-center">
-                        <Building2 className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                        <p className="text-slate-500">
-                          {prediosBusqueda ? 'No se encontraron predios' : 'Cargue predios para este proyecto'}
-                        </p>
-                        {!prediosBusqueda && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="mt-3"
-                            onClick={() => fetchPrediosProyecto(proyectoSeleccionado.id)}
-                          >
-                            Cargar Predios
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      <div className="text-xs text-slate-500 mb-2">
-                        Mostrando {prediosPaginados.length} de {prediosFiltrados.length} predios
-                      </div>
+      <Dialog open={showEliminarModal} onOpenChange={setShowEliminarModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="w-5 h-5" />
+              Eliminar Proyecto
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. Se eliminarán todos los archivos, etapas y actividades del proyecto.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {proyectoSeleccionado && (
+            <div className="py-4">
+              <p className="text-slate-700">
+                ¿Estás seguro de que deseas eliminar el proyecto <strong>&quot;{proyectoSeleccionado.nombre}&quot;</strong> del municipio <strong>{proyectoSeleccionado.municipio}</strong>?
+              </p>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEliminarModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleEliminar}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
                       <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                         {prediosPaginados.map((predio, idx) => {
                           const codigo = predio.codigo_predial || predio.numero_predial || 'Sin código';
