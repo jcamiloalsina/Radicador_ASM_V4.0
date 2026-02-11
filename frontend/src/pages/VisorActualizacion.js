@@ -3810,6 +3810,16 @@ export default function VisorActualizacion() {
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
                     <TabsTrigger value="fisico">Físico</TabsTrigger>
+                    <TabsTrigger 
+                      value="mejoras" 
+                      className={terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'data-[state=active]:bg-cyan-100 text-cyan-700' : ''}
+                    >
+                      Mejoras {terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) && 
+                        <Badge className="ml-1 bg-cyan-500 text-white text-[10px] px-1">
+                          {getMejorasDeTerreno(selectedPredio?.codigo_predial || selectedPredio?.numero_predial).length}
+                        </Badge>
+                      }
+                    </TabsTrigger>
                     <TabsTrigger value="linderos">Linderos</TabsTrigger>
                     <TabsTrigger value="coordenadas">Coordenadas</TabsTrigger>
                     <TabsTrigger value="propuestas">Propuestas</TabsTrigger>
