@@ -4437,14 +4437,17 @@ export default function VisorActualizacion() {
                     {selectedPredio.estado_visita !== 'actualizado' && (
                       <Button 
                         variant="outline" 
-                        onClick={abrirFormatoVisita}
+                        onClick={() => {
+                          setShowPredioDetail(false);
+                          setShowFormularioVisita(true);
+                        }}
                         disabled={saving}
                         className={`flex-1 ${selectedPredio.estado_visita === 'visitado' 
                           ? 'border-blue-500 text-blue-700 hover:bg-blue-50' 
                           : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'}`}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {selectedPredio.estado_visita === 'visitado' ? 'Editar Formato de Visita' : 'Formato de Visita'}
+                        {selectedPredio.estado_visita === 'visitado' ? 'Editar Visita' : 'Registrar Visita'}
                       </Button>
                     )}
                     
