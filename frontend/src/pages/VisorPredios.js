@@ -230,6 +230,7 @@ export default function VisorPredios() {
   const [loading, setLoading] = useState(false);
   const [searchCode, setSearchCode] = useState('');
   const [selectedPredio, setSelectedPredio] = useState(null);
+  const [sinAcceso, setSinAcceso] = useState(false); // Indica si el usuario no tiene acceso al predio buscado
   const [geometry, setGeometry] = useState(null);
   const [gdbStats, setGdbStats] = useState(null);
   const [mapType, setMapType] = useState('satellite'); // Esri Satélite por defecto (cambia a Google en zoom alto)
