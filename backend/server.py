@@ -16271,24 +16271,54 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "zona": "urbano",
                             "capa_origen": layer_name,
                             "codigo_predial": props.get('CODIGO', props.get('codigo', props.get('NUMERO_PREDIAL', ''))),
-                                "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
-                                "geometry": geom,
-                                "properties": props,
-                                "created_at": datetime.now(timezone.utc)
-                            })
-                            geometrias_guardadas += 1
-                except Exception as e:
-                    logger.error(f"[GDB Actualizacion] Error procesando capa urbana {layer_name}: {e}")
+                            "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
+                            "geometry": geom,
+                            "properties": props,
+                            "created_at": datetime.now(timezone.utc)
+                        })
+                        geometrias_guardadas += 1
+            except Exception as e:
+                logger.error(f"[GDB/SHP Actualizacion] Error procesando capa urbana {layer_name}: {e}")
         
-        logger.info(f"[GDB Actualizacion] Geometrías guardadas hasta ahora: {geometrias_guardadas}")
+        # Procesar capas de perímetro si existen
+        for layer_name in perimetro_found:
+            try:
+                logger.info(f"[GDB/SHP Actualizacion] Procesando capa perímetro: {layer_name}")
+                gdf = read_layer(layer_name)
+                if gdf is not None and len(gdf) > 0:
+                    gdf = gdf.to_crs(epsg=4326)
+                    for idx, row in gdf.iterrows():
+                        geom = row.geometry.__geo_interface__
+                        props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
+                        props['zona'] = 'perimetro_urbano'
+                        props['proyecto_id'] = proyecto_id
+                        props['municipio'] = municipio
+                        props['capa_origen'] = layer_name
+                        
+                        await db.geometrias_actualizacion.insert_one({
+                            "proyecto_id": proyecto_id,
+                            "municipio": municipio,
+                            "zona": "perimetro_urbano",
+                            "capa_origen": layer_name,
+                            "codigo_predial": props.get('CODIGO', props.get('codigo', f"PERIMETRO_{idx}")),
+                            "numero_predial": "",
+                            "geometry": geom,
+                            "properties": props,
+                            "created_at": datetime.now(timezone.utc)
+                        })
+                        geometrias_guardadas += 1
+            except Exception as e:
+                logger.error(f"[GDB/SHP Actualizacion] Error procesando capa perímetro {layer_name}: {e}")
         
-        # Procesar construcciones
-        for layer_name in construccion_layers:
-            if layer_name in layer_names:
-                try:
-                    logger.info(f"[GDB Actualizacion] Procesando construcciones: {layer_name}")
-                    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
-                    if len(gdf) > 0:
+        logger.info(f"[GDB/SHP Actualizacion] Geometrías guardadas hasta ahora: {geometrias_guardadas}")
+        
+        # Procesar construcciones (solo para GDB, shapefiles de construcción se procesan si existen)
+        construccion_found = [l for l in layer_names if any(c.upper() in l.upper() for c in construccion_layers)]
+        for layer_name in construccion_found:
+            try:
+                logger.info(f"[GDB/SHP Actualizacion] Procesando construcciones: {layer_name}")
+                gdf = read_layer(layer_name)
+                if gdf is not None and len(gdf) > 0:
                         gdf = gdf.to_crs(epsg=4326)
                         for idx, row in gdf.iterrows():
                             geom = row.geometry.__geo_interface__
