@@ -886,7 +886,12 @@ export default function VisorActualizacion() {
   
   // Filtrar construcciones por estado
   const construccionesFiltradas = useMemo(() => {
-    if (!construcciones?.features || filterEstado === 'todos') {
+    if (!construcciones?.features) {
+      return null;
+    }
+    
+    // Si el filtro es "todos", mostrar todas las construcciones
+    if (filterEstado === 'todos') {
       return construcciones;
     }
     
@@ -895,8 +900,20 @@ export default function VisorActualizacion() {
       return { type: 'FeatureCollection', features: [] };
     }
     
+    // Las construcciones usan 'codigo' o 'terreno_codigo', no 'codigo_predial'
     const featuresFiltradas = construcciones.features.filter(feature => {
-      const codigo = feature.properties?.codigo_predial || feature.properties?.numero_predial;
+      const props = feature.properties || {};
+      // Intentar varios campos que pueden contener el código del predio
+      const codigo = props.codigo_predial || props.numero_predial || props.terreno_codigo || props.codigo;
+      if (!codigo) return false;
+      
+      // El código de construcción puede ser más corto (solo terreno), intentar match parcial
+      // Los códigos de predios tienen 30 dígitos, los de terreno pueden tener 21
+      for (const codigoValido of codigosValidos) {
+        if (codigoValido.startsWith(codigo) || codigo.startsWith(codigoValido.substring(0, 21))) {
+          return true;
+        }
+      }
       return codigosValidos.has(codigo);
     });
     
