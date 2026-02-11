@@ -1287,6 +1287,7 @@ export default function ProyectosActualizacion() {
                           toast.warning('Debe cargar la Base Gráfica (GDB) primero');
                         }
                       }}
+                      data-testid="btn-visor-predios"
                     >
                       <CardContent className="p-6 text-center">
                         <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-colors ${
