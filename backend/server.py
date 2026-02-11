@@ -17005,6 +17005,171 @@ async def listar_propuestas_predio(
     }
 
 
+# ==================== CANCELACIÓN DE PREDIOS EN ACTUALIZACIÓN ====================
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/proponer-cancelacion")
+async def proponer_cancelacion_predio(
+    proyecto_id: str,
+    codigo_predial: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Propone la cancelación de un predio en actualización.
+    - Gestores: Solo pueden PROPONER (requiere aprobación de coordinador)
+    - Coordinadores/Admin: Pueden cancelar directamente
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para cancelar predios")
+    
+    # Buscar el predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Verificar que no esté ya cancelado
+    if predio.get('cancelado') or predio.get('deleted'):
+        raise HTTPException(status_code=400, detail="El predio ya está cancelado")
+    
+    # Obtener proyecto para el municipio
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
+    municipio = proyecto.get('municipio', '') if proyecto else ''
+    
+    motivo = data.get('motivo', 'Sin motivo especificado')
+    
+    # Si es coordinador/admin, cancelar directamente
+    if current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        historial_entry = {
+            "accion": "Predio cancelado",
+            "motivo": motivo,
+            "usuario": current_user['full_name'],
+            "usuario_id": current_user['id'],
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.predios_actualizacion.update_one(
+            {"_id": predio["_id"]},
+            {
+                "$set": {
+                    "cancelado": True,
+                    "deleted": True,
+                    "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                    "cancelado_por": current_user['id'],
+                    "cancelado_por_nombre": current_user['full_name'],
+                    "motivo_cancelacion": motivo,
+                    "estado_visita": "cancelado"
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        return {
+            "message": "Predio cancelado exitosamente",
+            "cancelado_por": current_user['full_name']
+        }
+    
+    # Si es gestor, crear propuesta de cancelación
+    propuesta = {
+        "id": str(uuid.uuid4()),
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "municipio": municipio,
+        "tipo": "cancelacion",  # Tipo de propuesta: cancelacion
+        "motivo": motivo,
+        "estado": "pendiente",
+        "propuesto_por": current_user['id'],
+        "propuesto_por_nombre": current_user['full_name'],
+        "creado_en": datetime.now(timezone.utc).isoformat(),
+        "datos_predio": {
+            "direccion": predio.get('direccion', ''),
+            "propietarios": predio.get('propietarios', []),
+            "area_terreno": predio.get('area_terreno', 0),
+            "estado_visita": predio.get('estado_visita', '')
+        }
+    }
+    
+    await db.propuestas_cambio_actualizacion.insert_one(propuesta)
+    
+    # Marcar el predio como "pendiente cancelación"
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": {"cancelacion_pendiente": True},
+            "$push": {"historial": {
+                "accion": "Cancelación propuesta",
+                "motivo": motivo,
+                "usuario": current_user['full_name'],
+                "fecha": datetime.now(timezone.utc).isoformat()
+            }}
+        }
+    )
+    
+    return {
+        "message": "Propuesta de cancelación enviada. El coordinador la revisará.",
+        "propuesta_id": propuesta["id"]
+    }
+
+
+@api_router.delete("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}")
+async def cancelar_predio_actualizacion(
+    proyecto_id: str,
+    codigo_predial: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Cancela un predio directamente (solo coordinador/admin).
+    Para gestores usar el endpoint de proponer-cancelacion.
+    """
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores pueden cancelar predios directamente")
+    
+    # Buscar el predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    if predio.get('cancelado') or predio.get('deleted'):
+        raise HTTPException(status_code=400, detail="El predio ya está cancelado")
+    
+    historial_entry = {
+        "accion": "Predio cancelado",
+        "usuario": current_user['full_name'],
+        "usuario_id": current_user['id'],
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": {
+                "cancelado": True,
+                "deleted": True,
+                "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                "cancelado_por": current_user['id'],
+                "cancelado_por_nombre": current_user['full_name'],
+                "estado_visita": "cancelado"
+            },
+            "$push": {"historial": historial_entry}
+        }
+    )
+    
+    return {"message": "Predio cancelado exitosamente"}
+
+
 @api_router.patch("/actualizacion/propuestas/{propuesta_id}/aprobar")
 async def aprobar_propuesta(
     propuesta_id: str,
