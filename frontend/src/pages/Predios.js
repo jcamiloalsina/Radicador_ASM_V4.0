@@ -111,6 +111,9 @@ export default function Predios() {
   // Comunicaciones y Empresa solo pueden ver, no pueden crear/editar/eliminar predios
   const canModifyPredios = user && !['usuario', 'comunicaciones', 'empresa'].includes(user.role);
   
+  // Rol empresa: no puede ver estadísticas generales (total predios, avalúo, área, base gráfica)
+  const isEmpresaRole = user?.role === 'empresa';
+  
   // Solo coordinador y administrador pueden editar el código predial nacional
   const isCoordinadorPredios = user && ['coordinador', 'administrador'].includes(user.role);
   const canEditCodigoPredial = isCoordinadorPredios;
