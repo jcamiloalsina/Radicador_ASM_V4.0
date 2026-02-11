@@ -1191,20 +1191,38 @@ export default function ProyectosActualizacion() {
                 </DialogDescription>
               </DialogHeader>
               
-              <Tabs value={detalleTab} onValueChange={setDetalleTab} className="w-full">
-                <TabsList className={`grid w-full ${canCreate ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                  <TabsTrigger value="info" className="flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4" />
-                    Información
+              <Tabs value={detalleTab} onValueChange={(tab) => {
+                setDetalleTab(tab);
+                // Cargar predios cuando se selecciona el tab de gestión
+                if (tab === 'predios' && prediosProyecto.length === 0) {
+                  fetchPrediosProyecto(proyectoSeleccionado.id);
+                }
+              }} className="w-full">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="info" className="flex items-center gap-1 text-xs">
+                    <FileSpreadsheet className="w-3 h-3" />
+                    Info
                   </TabsTrigger>
-                  <TabsTrigger value="archivos" className="flex items-center gap-2">
-                    <Database className="w-4 h-4" />
+                  <TabsTrigger value="archivos" className="flex items-center gap-1 text-xs">
+                    <Database className="w-3 h-3" />
                     Archivos
                   </TabsTrigger>
+                  <TabsTrigger value="predios" className="flex items-center gap-1 text-xs">
+                    <Building2 className="w-3 h-3" />
+                    Predios
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="visor" 
+                    className="flex items-center gap-1 text-xs"
+                    disabled={!proyectoSeleccionado?.gdb_procesado}
+                  >
+                    <Map className="w-3 h-3" />
+                    Visor
+                  </TabsTrigger>
                   {canCreate && (
-                    <TabsTrigger value="cronograma" className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4" />
-                      Cronograma
+                    <TabsTrigger value="cronograma" className="flex items-center gap-1 text-xs">
+                      <CalendarDays className="w-3 h-3" />
+                      Crono
                     </TabsTrigger>
                   )}
                 </TabsList>
