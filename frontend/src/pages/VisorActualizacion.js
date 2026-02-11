@@ -606,7 +606,27 @@ export default function VisorActualizacion() {
             }
             
             toast.success(`${cachedGeometrias.length} geometrías cargadas desde caché`);
-            return; // No necesita descargar del servidor
+            
+            // IMPORTANTE: Aunque las geometrías estén en caché, cargar construcciones del servidor
+            if (navigator.onLine) {
+              try {
+                const token = localStorage.getItem('token');
+                const constResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                  params: { offset: 0, limit: 1 }, // Solo necesitamos offset=0 para obtener construcciones
+                  timeout: 60000
+                });
+                
+                if (constResponse.data.construcciones?.features?.length > 0) {
+                  setConstrucciones(constResponse.data.construcciones);
+                  console.log(`[Visor] Construcciones cargadas del servidor: ${constResponse.data.construcciones.features.length}`);
+                }
+              } catch (constError) {
+                console.warn('[Visor] Error cargando construcciones:', constError.message);
+              }
+            }
+            
+            return; // Ya cargamos geometrías desde caché
           }
         } catch (cacheError) {
           console.log('[Cache] No hay datos en caché, descargando del servidor...');
