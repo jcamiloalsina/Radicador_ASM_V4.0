@@ -597,6 +597,124 @@ export default function ProyectosActualizacion() {
     setShowDetalleModal(true);
   };
 
+  // Función para cargar predios del proyecto
+  const fetchPrediosProyecto = async (proyectoId) => {
+    if (!proyectoId) return;
+    setLoadingPredios(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const prediosData = response.data.predios || response.data || [];
+      setPrediosProyecto(prediosData);
+      
+      // Calcular estadísticas
+      const newStats = {
+        total: prediosData.length,
+        pendientes: prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
+        visitados: prediosData.filter(p => p.estado_visita === 'visitado').length,
+        actualizados: prediosData.filter(p => p.estado_visita === 'actualizado').length
+      };
+      setPrediosStats(newStats);
+      setPrediosPagina(1);
+    } catch (error) {
+      console.error('Error cargando predios:', error);
+      toast.error('Error al cargar predios del proyecto');
+    } finally {
+      setLoadingPredios(false);
+    }
+  };
+
+  // Marcar predio como visitado/actualizado
+  const marcarEstadoPredio = async (predio, nuevoEstado) => {
+    try {
+      const token = localStorage.getItem('token');
+      const codigo = predio.codigo_predial || predio.numero_predial;
+      await axios.patch(
+        `${API}/actualizacion/proyectos/${proyectoSeleccionado.id}/predios/${encodeURIComponent(codigo)}/estado`,
+        { estado_visita: nuevoEstado },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Predio marcado como ${nuevoEstado}`);
+      fetchPrediosProyecto(proyectoSeleccionado.id);
+    } catch (error) {
+      console.error('Error actualizando estado:', error);
+      toast.error('Error al actualizar estado del predio');
+    }
+  };
+
+  // Filtrar predios
+  const prediosFiltrados = prediosProyecto.filter(predio => {
+    // Filtro de búsqueda
+    if (prediosBusqueda) {
+      const search = prediosBusqueda.toLowerCase();
+      const codigo = (predio.codigo_predial || predio.numero_predial || '').toLowerCase();
+      const direccion = (predio.direccion || '').toLowerCase();
+      const propietario = predio.propietarios?.[0]?.nombre_propietario?.toLowerCase() || '';
+      if (!codigo.includes(search) && !direccion.includes(search) && !propietario.includes(search)) {
+        return false;
+      }
+    }
+    // Filtro de estado
+    if (prediosFiltroEstado !== 'todos') {
+      const estadoPredio = predio.estado_visita || 'pendiente';
+      if (estadoPredio !== prediosFiltroEstado) return false;
+    }
+    // Filtro de zona
+    if (prediosFiltroZona !== 'todos') {
+      const codigo = predio.codigo_predial || predio.numero_predial || '';
+      const zonaCode = codigo.length >= 7 ? codigo.substring(5, 7) : '';
+      if (prediosFiltroZona === 'rural' && zonaCode !== '00') return false;
+      if (prediosFiltroZona === 'urbano' && zonaCode !== '01') return false;
+    }
+    return true;
+  });
+
+  // Paginación de predios
+  const totalPaginasPredios = Math.ceil(prediosFiltrados.length / prediosPorPagina);
+  const prediosPaginados = prediosFiltrados.slice(
+    (prediosPagina - 1) * prediosPorPagina,
+    prediosPagina * prediosPorPagina
+  );
+
+  // Helper para formatear área
+  const formatArea = (area) => {
+    if (!area && area !== 0) return 'N/A';
+    const num = parseFloat(area);
+    if (isNaN(num)) return 'N/A';
+    return `${num.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
+  };
+
+  // Helper para formatear moneda
+  const formatCurrency = (value) => {
+    if (!value && value !== 0) return 'N/A';
+    const num = parseFloat(value);
+    if (isNaN(num)) return 'N/A';
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(num);
+  };
+
+  // Helper para obtener zona del código
+  const getZonaFromCodigo = (codigo) => {
+    if (!codigo || codigo.length < 7) return 'Desconocido';
+    const zonaCode = codigo.substring(5, 7);
+    if (zonaCode === '00') return 'Rural';
+    if (zonaCode === '01') return 'Urbano';
+    return `Corr. (${zonaCode})`;
+  };
+
+  // Renderizar badge de estado de visita
+  const renderEstadoVisitaBadge = (estado) => {
+    switch (estado) {
+      case 'actualizado':
+        return <Badge className="bg-green-100 text-green-800 border-green-300"><CheckCircle className="w-3 h-3 mr-1" />Actualizado</Badge>;
+      case 'visitado':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-300"><Clock className="w-3 h-3 mr-1" />Visitado</Badge>;
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300"><AlertCircle className="w-3 h-3 mr-1" />Pendiente</Badge>;
+    }
+  };
+
   // Obtener actividades principales (sin padre) de una etapa para el selector
   const getActividadesPrincipales = (etapaId) => {
     const etapa = etapas.find(e => e.id === etapaId);
