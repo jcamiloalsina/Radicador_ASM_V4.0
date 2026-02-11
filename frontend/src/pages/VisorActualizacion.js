@@ -2661,18 +2661,20 @@ export default function VisorActualizacion() {
   
   // Pantalla de sincronización obligatoria (cuando hay cambios pendientes y hay conexión)
   if (showSyncScreen && isOnline) {
+    const hasPendingChanges = offlineStats.cambiosPendientes > 0;
+    
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-6 p-4 bg-gradient-to-b from-slate-100 to-slate-200">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
           <div className="text-center mb-6">
             <RefreshCw className={`w-16 h-16 mx-auto mb-4 text-amber-500 ${isSyncing ? 'animate-spin' : ''}`} />
             <h2 className="text-xl font-semibold text-slate-800">
-              {isSyncing ? 'Sincronizando...' : 'Sincronización Requerida'}
+              {isSyncing ? 'Sincronizando...' : (hasPendingChanges ? 'Subir Cambios al Servidor' : 'Conexión Restaurada')}
             </h2>
             <p className="text-slate-600 mt-2">
-              {offlineStats.cambiosPendientes > 0 
+              {hasPendingChanges 
                 ? `Hay ${offlineStats.cambiosPendientes} cambio(s) realizados en campo que deben subirse al servidor.`
-                : 'Es necesario sincronizar los datos con el servidor antes de continuar.'
+                : 'Puede sincronizar para obtener los datos más recientes del servidor.'
               }
             </p>
           </div>
@@ -2702,24 +2704,24 @@ export default function VisorActualizacion() {
             </div>
           ) : (
             <div className="space-y-3">
-              {offlineStats.cambiosPendientes > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-blue-800">
-                    📤 <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> listos para subir al servidor
+              {hasPendingChanges && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-red-800 font-medium">
+                    ⚠️ <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> pendientes que DEBEN subirse
                   </p>
                 </div>
               )}
               
               <Button 
                 onClick={handlePerformFullSync}
-                className="w-full bg-amber-500 hover:bg-amber-600 h-12 text-base"
+                className={`w-full h-12 text-base ${hasPendingChanges ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}
                 disabled={isSyncing}
               >
                 <RefreshCw className="w-5 h-5 mr-2" />
-                {offlineStats.cambiosPendientes > 0 ? 'Subir Cambios al Servidor' : 'Sincronizar Ahora'}
+                {hasPendingChanges ? 'Subir Cambios Ahora' : 'Sincronizar Datos'}
               </Button>
               
-              {offlineStats.cambiosPendientes === 0 && (
+              {!hasPendingChanges && (
                 <Button 
                   variant="outline" 
                   onClick={handleSkipSync}
@@ -2730,9 +2732,9 @@ export default function VisorActualizacion() {
                 </Button>
               )}
               
-              {offlineStats.cambiosPendientes > 0 && (
-                <p className="text-xs text-red-500 text-center mt-2 font-medium">
-                  ⚠️ Debe subir los cambios antes de continuar trabajando
+              {hasPendingChanges && (
+                <p className="text-xs text-red-600 text-center mt-2 font-medium">
+                  ⛔ No puede continuar hasta subir los cambios al servidor
                 </p>
               )}
             </div>
