@@ -1317,7 +1317,8 @@ export default function GestionPrediosActualizacion() {
                 <p className="text-2xl font-bold">
                   {predios.filter(p => {
                     const cod = p.codigo_predial || p.numero_predial || '';
-                    return cod.length >= 30 && cod.substring(26, 30) !== '0000';
+                    // Mejora = últimos 3 dígitos (posiciones 28-30) != "000"
+                    return cod.length >= 30 && cod.substring(27, 30) !== '000';
                   }).length.toLocaleString()}
                 </p>
                 <p className="text-sm text-slate-500">
