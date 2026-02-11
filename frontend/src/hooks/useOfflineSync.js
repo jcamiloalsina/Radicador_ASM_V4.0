@@ -595,13 +595,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         const now = new Date().toISOString();
         await saveConfig(`lastSync_${proyectoId}`, now);
         setLastSync(now);
+        setWasOfflineWorking(false);
         
-        // Guardar fecha del modal para no mostrar por 24 horas
-        const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
-        localStorage.setItem(lastSyncModalKey, now);
-        console.log('[Sync] Próximo modal de sincronización en 24 horas');
-        
-        // Iniciar sincronización en segundo plano para el resto del día
+        // Iniciar sincronización automática cada 1 hora
         startBackgroundSync();
       } catch (e) {
         console.warn('[Sync] Error guardando config (continuando):', e.message);
@@ -617,7 +613,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setIsInitialSyncComplete(true);
       
       toast.success('Sincronización completada', {
-        description: `${prediosData?.length || 0} predios sincronizados`
+        description: `${prediosData?.length || 0} predios listos para modo offline`
       });
       
       return true;
