@@ -92,6 +92,11 @@ export default function GestionPrediosActualizacion() {
   const [predioSeleccionado, setPredioSeleccionado] = useState(null);
   const [enviandoPropuesta, setEnviandoPropuesta] = useState(false);
   
+  // Modal de cancelación
+  const [showCancelarModal, setShowCancelarModal] = useState(false);
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+  
   // Estado para código manual (30 dígitos) - IGUAL A CONSERVACIÓN
   const [codigoManual, setCodigoManual] = useState({
     zona: '00',          // Posición 6-7 (2 dígitos)
