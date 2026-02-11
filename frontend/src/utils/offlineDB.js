@@ -124,22 +124,27 @@ export async function initOfflineDB() {
         request.onerror = async (event) => {
           clearTimeout(timeout);
           const error = event.target.error;
-          console.error('[OfflineDB] Error al abrir la base de datos:', error?.message);
+          console.warn('[OfflineDB] Error al abrir la base de datos:', error?.message);
           
           if (error?.name === 'VersionError' || error?.message?.includes('version')) {
             console.log('[OfflineDB] Conflicto de versión detectado, recreando DB...');
-            await deleteDatabase();
-            localStorage.setItem('asomunicipios_app_version', APP_VERSION);
-            const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
-            retryRequest.onsuccess = () => {
-              db = retryRequest.result;
-              dbInitialized = true;
-              resolve(db);
-            };
-            retryRequest.onerror = () => reject(retryRequest.error);
-            retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
+            try {
+              await deleteDatabase();
+              localStorage.setItem('asomunicipios_app_version', APP_VERSION);
+              const retryRequest = indexedDB.open(DB_NAME, DB_VERSION);
+              retryRequest.onsuccess = () => {
+                db = retryRequest.result;
+                dbInitialized = true;
+                resolve(db);
+              };
+              retryRequest.onerror = () => resolve(null); // No lanzar error
+              retryRequest.onupgradeneeded = (event) => createAllStores(event.target.result);
+            } catch (e) {
+              console.warn('[OfflineDB] Error recreando DB:', e.message);
+              resolve(null);
+            }
           } else {
-            reject(error);
+            resolve(null); // No lanzar error, simplemente resolver con null
           }
         };
 
@@ -161,9 +166,9 @@ export async function initOfflineDB() {
         };
       });
     } catch (error) {
-      console.error('[OfflineDB] Error crítico:', error);
+      console.warn('[OfflineDB] Error crítico:', error.message);
       dbInitPromise = null;
-      throw error;
+      return null; // No lanzar error
     }
   })();
   
