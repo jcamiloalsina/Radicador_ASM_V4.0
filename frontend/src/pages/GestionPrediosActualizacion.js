@@ -774,9 +774,11 @@ export default function GestionPrediosActualizacion() {
         numero_documento: formatearNumeroDocumento(p.numero_documento)
       }));
       
+      // Obtener el código del predio
+      const codigoPredio = predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial;
+      
       // Crear propuesta de cambio
       const propuesta = {
-        predio_codigo: predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial,
         datos_propuestos: {
           ...formData,
           propietarios: propietariosExport,
@@ -786,11 +788,12 @@ export default function GestionPrediosActualizacion() {
           area_construida: areaConstruidaTotal,
           avaluo: formData.avaluo_catastral
         },
-        justificacion: `Propuesta de actualización de datos del predio ${predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial}`
+        justificacion: `Propuesta de actualización de datos del predio ${codigoPredio}`
       };
       
+      // Usar la ruta correcta que incluye el código del predio
       await axios.post(
-        `${API}/actualizacion/proyectos/${proyectoId}/propuestas`,
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigoPredio)}/propuesta`,
         propuesta,
         { headers: { Authorization: `Bearer ${token}` } }
       );
