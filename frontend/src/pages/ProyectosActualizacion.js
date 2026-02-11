@@ -1979,16 +1979,49 @@ export default function ProyectosActualizacion() {
               Opciones de Carga GDB
             </DialogTitle>
             <DialogDescription>
-              El proyecto ya tiene una Base Gráfica cargada. Seleccione cómo desea proceder.
+              {gdbFileSelected 
+                ? 'Seleccione cómo desea cargar el archivo GDB.'
+                : 'Seleccione un archivo GDB y configure las opciones de carga.'}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {/* Archivo seleccionado */}
-            {gdbFileSelected && (
-              <div className="bg-slate-50 p-3 rounded-lg">
-                <p className="text-sm text-slate-600">Archivo seleccionado:</p>
-                <p className="font-medium text-slate-800">{gdbFileSelected.name}</p>
+            {/* Selección de archivo */}
+            {!gdbFileSelected ? (
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+                <Database className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm text-slate-600 mb-3">Seleccione el archivo GDB a cargar</p>
+                <input
+                  type="file"
+                  id="gdb-modal-file"
+                  accept=".zip"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setGdbFileSelected(file);
+                  }}
+                  className="hidden"
+                />
+                <Button 
+                  variant="outline"
+                  onClick={() => document.getElementById('gdb-modal-file')?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Seleccionar archivo ZIP
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-slate-50 p-3 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">Archivo seleccionado:</p>
+                  <p className="font-medium text-slate-800">{gdbFileSelected.name}</p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setGdbFileSelected(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               </div>
             )}
             
