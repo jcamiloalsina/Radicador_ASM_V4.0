@@ -15770,10 +15770,20 @@ async def restaurar_proyecto_actualizacion(
 async def upload_base_grafica_proyecto(
     proyecto_id: str,
     file: UploadFile = File(...),
+    modo_carga: Optional[str] = Form("reemplazar"),  # "reemplazar" o "incremental"
+    capa_especifica: Optional[str] = Form(None),  # ej: "PERIMETRO_URBANO"
     background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Sube un archivo de Base Gráfica (ZIP con GDB) para un proyecto de actualización y lo procesa"""
+    """Sube un archivo de Base Gráfica (ZIP con GDB) para un proyecto de actualización y lo procesa
+    
+    Modos de carga:
+    - reemplazar: Elimina todas las geometrías del proyecto antes de cargar (por defecto)
+    - incremental: Solo añade/actualiza sin eliminar, ideal para capas adicionales como perímetro urbano
+    
+    Capa específica:
+    - Si se indica, solo se procesará esa capa (ej: PERIMETRO_URBANO, U_MANZANA, etc.)
+    """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para cargar la Base Gráfica")
     
@@ -15790,8 +15800,9 @@ async def upload_base_grafica_proyecto(
     proyecto_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id
     proyecto_dir.mkdir(exist_ok=True)
     
-    # Guardar archivo
-    gdb_path = proyecto_dir / f"base_grafica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
+    # Guardar archivo con nombre que indique si es carga específica
+    suffix = f"_{capa_especifica}" if capa_especifica else ""
+    gdb_path = proyecto_dir / f"base_grafica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{suffix}.zip"
     
     try:
         with open(gdb_path, "wb") as buffer:
@@ -15799,23 +15810,34 @@ async def upload_base_grafica_proyecto(
             buffer.write(content)
         
         # Actualizar campo base_grafica_archivo ANTES de procesar
+        update_data = {
+            "base_grafica_archivo": str(gdb_path),
+            "base_grafica_cargado_en": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Solo marcar como no procesado si es reemplazo total
+        if modo_carga == "reemplazar":
+            update_data["gdb_procesado"] = False
+        
         await db.proyectos_actualizacion.update_one(
             {"id": proyecto_id},
-            {"$set": {
-                "base_grafica_archivo": str(gdb_path),
-                "base_grafica_cargado_en": datetime.now(timezone.utc),
-                "gdb_procesado": False,  # Marcamos como no procesado hasta que termine
-                "updated_at": datetime.now(timezone.utc)
-            }}
+            {"$set": update_data}
         )
         
-        # Procesar GDB
-        await procesar_gdb_actualizacion(proyecto_id, str(gdb_path), proyecto["municipio"])
+        # Procesar GDB con los nuevos parámetros
+        await procesar_gdb_actualizacion(proyecto_id, str(gdb_path), proyecto["municipio"], modo_carga, capa_especifica)
+        
+        mensaje = "Base Gráfica cargada y procesada exitosamente"
+        if capa_especifica:
+            mensaje = f"Capa '{capa_especifica}' cargada exitosamente (modo {modo_carga})"
         
         return {
-            "message": "Base Gráfica cargada y procesada exitosamente",
+            "message": mensaje,
             "archivo": str(gdb_path),
-            "nombre_archivo": file.filename
+            "nombre_archivo": file.filename,
+            "modo_carga": modo_carga,
+            "capa_especifica": capa_especifica
         }
         
     except Exception as e:
