@@ -1121,22 +1121,10 @@ export default function VisorActualizacion() {
     setSelectedPredio(null);
   }, [filterEstado]);
   
-  // Debug: Log cuando cambian las construcciones filtradas
-  useEffect(() => {
-    console.log('[Visor DEBUG] construccionesFiltradas actualizadas:', {
-      showConstrucciones,
-      construccionesRaw: construcciones?.features?.length || 0,
-      construccionesFiltradas: construccionesFiltradas?.features?.length || 0,
-      filterEstado,
-      shouldRender: showConstrucciones && construccionesFiltradas && (construccionesFiltradas?.features?.length > 0)
-    });
-  }, [showConstrucciones, construcciones, construccionesFiltradas, filterEstado]);
-  
   // Incrementar versión de construcciones para forzar re-render del GeoJSON
   useEffect(() => {
     if (construcciones?.features?.length > 0) {
       setConstruccionesVersion(prev => prev + 1);
-      console.log('[Visor] Incrementando versión de construcciones para re-render');
     }
   }, [construcciones]);
 
