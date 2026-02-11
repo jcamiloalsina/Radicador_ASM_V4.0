@@ -259,6 +259,11 @@ export default function VisorActualizacion() {
   const [showCrearPredioModal, setShowCrearPredioModal] = useState(false);
   const [showFinalizarProyectoModal, setShowFinalizarProyectoModal] = useState(false);
   
+  // Estados para cancelar predio
+  const [showCancelarModal, setShowCancelarModal] = useState(false);
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+  
   // Estados de edición
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
