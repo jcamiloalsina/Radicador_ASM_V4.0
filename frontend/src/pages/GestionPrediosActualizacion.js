@@ -112,6 +112,11 @@ export default function GestionPrediosActualizacion() {
   const [siguienteCodigoHomologado, setSiguienteCodigoHomologado] = useState(null);
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
   
+  // Estado para predios en manzana - IGUAL A CONSERVACIÓN
+  const [prediosEnManzana, setPrediosEnManzana] = useState([]);
+  const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
+  const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
+  
   // Permitir edición de CPN solo a coordinadores
   const canEditCodigoPredial = ['administrador', 'coordinador'].includes(user?.role);
   
@@ -420,6 +425,51 @@ export default function GestionPrediosActualizacion() {
       setVerificandoCodigo(false);
     }
   };
+  
+  // Función para buscar los últimos 5 predios existentes en la manzana - IGUAL A CONSERVACIÓN
+  const fetchPrediosEnManzana = async () => {
+    if (!proyecto?.municipio || !codigoManual.manzana_vereda || codigoManual.manzana_vereda === '0000') {
+      setPrediosEnManzana([]);
+      return;
+    }
+    
+    setBuscandoPrediosManzana(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManual.zona,
+        sector: codigoManual.sector,
+        comuna: codigoManual.comuna,
+        barrio: codigoManual.barrio,
+        manzana_vereda: codigoManual.manzana_vereda,
+        limit: 5
+      });
+      const res = await axios.get(`${API}/predios/por-manzana/${encodeURIComponent(proyecto.municipio)}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEnManzana(res.data.predios || []);
+      setSiguienteTerrenoSugerido(res.data.siguiente_terreno || '0001');
+    } catch (error) {
+      console.log('Error buscando predios en manzana:', error);
+      setPrediosEnManzana([]);
+      setSiguienteTerrenoSugerido('0001');
+    } finally {
+      setBuscandoPrediosManzana(false);
+    }
+  };
+  
+  // Effect para buscar predios cuando cambia la manzana - IGUAL A CONSERVACIÓN
+  useEffect(() => {
+    if (proyecto?.municipio && showCrearModal && codigoManual.manzana_vereda && codigoManual.manzana_vereda !== '0000') {
+      const timer = setTimeout(() => {
+        fetchPrediosEnManzana();
+      }, 500); // Debounce de 500ms
+      return () => clearTimeout(timer);
+    } else {
+      setPrediosEnManzana([]);
+      setSiguienteTerrenoSugerido('0001');
+    }
+  }, [codigoManual.zona, codigoManual.sector, codigoManual.comuna, codigoManual.barrio, codigoManual.manzana_vereda, proyecto?.municipio, showCrearModal]);
   
   // Cargar proyecto
   const fetchProyecto = useCallback(async () => {
