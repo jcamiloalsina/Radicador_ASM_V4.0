@@ -217,7 +217,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           switch (cambio.tipo) {
             case 'visita':
               await axios.patch(
-                `${API}/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}`,
+                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}`,
                 cambio.datos,
                 { headers: { Authorization: `Bearer ${token}` }}
               );
@@ -225,7 +225,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
             
             case 'propuesta':
               await axios.post(
-                `${API}/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}/propuesta`,
+                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${cambio.datos.codigo_predial}/propuesta`,
                 cambio.datos,
                 { headers: { Authorization: `Bearer ${token}` }}
               );
@@ -233,7 +233,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
             
             case 'actualizacion_predio':
               await axios.patch(
-                `${API}/predios/${cambio.datos.codigo_predial}`,
+                `${API}/api/predios/${cambio.datos.codigo_predial}`,
                 cambio.datos,
                 { headers: { Authorization: `Bearer ${token}` }}
               );
