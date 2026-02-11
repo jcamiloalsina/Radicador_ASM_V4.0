@@ -3934,6 +3934,78 @@ export default function VisorActualizacion() {
                     )}
                   </TabsContent>
                   
+                  {/* Tab Mejoras - Construcciones con código de mejora */}
+                  <TabsContent value="mejoras" className="mt-3 space-y-3">
+                    {(() => {
+                      const mejoras = getMejorasDeTerreno(selectedPredio?.codigo_predial || selectedPredio?.numero_predial);
+                      if (mejoras.length === 0) {
+                        return (
+                          <div className="text-center py-6 text-slate-400">
+                            <Building className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                            <p className="text-sm">Este terreno no tiene mejoras registradas</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-cyan-700">
+                              <Building className="w-4 h-4 inline mr-1" />
+                              {mejoras.length} Mejora(s) encontrada(s)
+                            </p>
+                          </div>
+                          {mejoras.map((mejora, idx) => {
+                            const props = mejora.properties || {};
+                            const codigoMejora = props.codigo || '';
+                            const numMejora = codigoMejora.substring(27, 30);
+                            return (
+                              <Card key={idx} className="border-cyan-200 bg-cyan-50/50">
+                                <CardContent className="p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <Badge className="bg-cyan-500 text-white">
+                                      Mejora #{numMejora}
+                                    </Badge>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="h-7 text-xs border-cyan-300 text-cyan-700"
+                                      onClick={() => {
+                                        // Abrir formulario de visita para esta mejora específica
+                                        setMejoraSeleccionada(mejora);
+                                        setShowVisitaForm(true);
+                                        setShowPredioDetail(false);
+                                      }}
+                                    >
+                                      <ClipboardList className="w-3 h-3 mr-1" />
+                                      Visita Mejora
+                                    </Button>
+                                  </div>
+                                  <p className="font-mono text-xs text-cyan-800 break-all mb-2">
+                                    {codigoMejora}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    {props.num_pisos && (
+                                      <span><strong>Pisos:</strong> {props.num_pisos}</span>
+                                    )}
+                                    {props.area_construida && (
+                                      <span><strong>Área:</strong> {Number(props.area_construida).toLocaleString()} m²</span>
+                                    )}
+                                    {props.tipo_construccion && (
+                                      <span><strong>Tipo:</strong> {props.tipo_construccion}</span>
+                                    )}
+                                    {props.uso && (
+                                      <span><strong>Uso:</strong> {props.uso}</span>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </TabsContent>
+                  
                   {/* Tab Linderos */}
                   <TabsContent value="linderos" className="mt-3 space-y-3">
                     <div className="grid grid-cols-2 gap-4">
