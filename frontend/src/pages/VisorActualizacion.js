@@ -5380,8 +5380,25 @@ export default function VisorActualizacion() {
                     <div className="p-4">
                       <p className="text-sm text-slate-600 mb-3">Cargue fotos del croquis del terreno y las construcciones. Incluya información de colindantes y cotas cuando aplique.</p>
                       
-                      {/* Input para fotos */}
-                      <input type="file" accept="image/*" multiple onChange={handleFotoCroquisChange} className="hidden" id="input-fotos-croquis" />
+                      {/* Input para cámara (Android/iOS) */}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        onChange={handleFotoCroquisChange} 
+                        className="hidden" 
+                        id="input-croquis-camera" 
+                      />
+                      
+                      {/* Input para galería */}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        onChange={handleFotoCroquisChange} 
+                        className="hidden" 
+                        id="input-croquis-gallery" 
+                      />
                       
                       {/* Grid de fotos cargadas */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
@@ -5398,11 +5415,27 @@ export default function VisorActualizacion() {
                         ))}
                       </div>
                       
-                      {/* Botón para agregar fotos */}
-                      <Button type="button" variant="outline" onClick={() => document.getElementById('input-fotos-croquis').click()} className="w-full border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Agregar Fotos del Croquis / Localización
-                      </Button>
+                      {/* Botones para agregar fotos */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => document.getElementById('input-croquis-camera')?.click()} 
+                          className="border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          Tomar Foto
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => document.getElementById('input-croquis-gallery')?.click()} 
+                          className="border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                        >
+                          <ImageIcon className="w-4 h-4 mr-2" />
+                          Galería
+                        </Button>
+                      </div>
                       
                       {/* Indicador de orientación Norte */}
                       <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
