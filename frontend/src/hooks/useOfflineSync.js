@@ -125,29 +125,38 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       const wasOffline = !isOnline; // Estaba offline antes?
       setIsOnline(true);
       
-      if (wasOffline) {
-        // SE RECONECTÓ - Verificar y forzar sincronización
+      if (wasOffline && proyectoId) {
+        // SE RECONECTÓ - Verificar si hay cambios pendientes
         console.log('[Offline] Conexión restaurada. Verificando estado...');
         
         try {
           const cambios = await getCambiosPendientes(proyectoId);
           
-          // Siempre mostrar pantalla de sincronización cuando se reconecta
-          setRequiresSync(true);
-          setIsInitialSyncComplete(false);
-          
+          // SOLO mostrar modal si hay cambios pendientes (críticos para subir)
           if (cambios.length > 0) {
+            console.log('[Offline] Hay cambios pendientes - mostrando modal');
+            setRequiresSync(true);
+            setIsInitialSyncComplete(false);
             setSyncProgress({ 
               current: 0, 
               total: cambios.length, 
               message: `Conexión restaurada. ${cambios.length} cambio(s) pendiente(s) por subir.` 
             });
           } else {
-            setSyncProgress({ 
-              current: 0, 
-              total: 0, 
-              message: 'Conexión restaurada. Verificando datos del servidor...' 
+            // Sin cambios pendientes - sincronizar silenciosamente en segundo plano
+            console.log('[Offline] Sin cambios pendientes - sincronizando en segundo plano');
+            toast.success('Conexión restaurada', { 
+              description: 'Sincronizando en segundo plano...', 
+              duration: 2000 
             });
+            // Iniciar sincronización en segundo plano si no está activa
+            if (!backgroundSyncRef.current) {
+              setTimeout(() => {
+                if (navigator.onLine && !backgroundSyncRef.current) {
+                  performBackgroundSync();
+                }
+              }, 1000);
+            }
           }
         } catch (e) {
           console.error('[Offline] Error al verificar:', e);
