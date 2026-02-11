@@ -90,7 +90,7 @@ const DetallePredioActualizacion = ({
           </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-3 text-sm max-h-[60vh] overflow-y-auto">
+      <CardContent className="space-y-2 pt-2 text-sm max-h-[55vh] overflow-y-auto">
         {/* Estado de Visita */}
         <div className={`flex items-center justify-between p-2 rounded border ${getEstadoColor(estado)}`}>
           <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ const DetallePredioActualizacion = ({
         {/* Código Predial */}
         <div className="bg-slate-50 p-2 rounded">
           <p className="text-xs text-slate-500">Código Predial Nacional</p>
-          <p className="font-mono text-xs font-medium text-slate-800">
+          <p className="font-mono text-[10px] font-medium text-slate-800 break-all">
             {predio.codigo_predial || predio.codigo_predial_nacional}
           </p>
         </div>
