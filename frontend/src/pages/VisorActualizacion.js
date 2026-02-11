@@ -3717,8 +3717,11 @@ export default function VisorActualizacion() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Home className="w-5 h-5 text-amber-600" />
-                {editMode ? 'Editar Predio' : 'Detalle del Predio'}
+                <Home className={`w-5 h-5 ${esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`} />
+                {editMode ? 'Editar Predio' : (esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) ? 'Detalle de Mejora' : 'Detalle del Predio')}
+                {esMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial) && (
+                  <Badge className="bg-cyan-500 text-white text-xs">MEJORA</Badge>
+                )}
               </div>
               {selectedPredio?.estado_visita && (
                 <Badge variant={selectedPredio.estado_visita === 'visitado' ? 'warning' : selectedPredio.estado_visita === 'actualizado' ? 'secondary' : 'outline'}>
@@ -3731,9 +3734,11 @@ export default function VisorActualizacion() {
           {selectedPredio && (
             <div className="space-y-4">
               {/* Código predial */}
-              <div className="bg-amber-50 p-3 rounded-lg">
-                <p className="text-xs text-amber-600 uppercase font-medium">Código Predial</p>
-                <p className="font-mono text-lg font-bold text-amber-800">
+              <div className={`p-3 rounded-lg ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'bg-cyan-50' : 'bg-amber-50'}`}>
+                <p className={`text-xs uppercase font-medium ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-600' : 'text-amber-600'}`}>
+                  {esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'Código Predial (Mejora)' : 'Código Predial'}
+                </p>
+                <p className={`font-mono text-lg font-bold ${esMejora(selectedPredio.codigo_predial || selectedPredio.numero_predial) ? 'text-cyan-800' : 'text-amber-800'}`}>
                   {selectedPredio.codigo_predial || selectedPredio.numero_predial || 'N/A'}
                 </p>
               </div>
