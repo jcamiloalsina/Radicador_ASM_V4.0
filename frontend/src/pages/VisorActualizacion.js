@@ -3342,15 +3342,17 @@ export default function VisorActualizacion() {
         >
           <Eye className="w-3 h-3 text-amber-500" />
           <span>Visitados: {estadisticas.visitados}</span>
+          {filterEstado === 'visitado' && <X className="w-3 h-3 text-amber-600" />}
         </button>
         <button 
-          onClick={() => setFilterEstado('actualizado')}
+          onClick={() => setFilterEstado(filterEstado === 'actualizado' ? 'todos' : 'actualizado')}
           className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
-            filterEstado === 'actualizado' ? 'bg-purple-200 font-medium' : 'hover:bg-purple-50'
+            filterEstado === 'actualizado' ? 'bg-purple-300 font-medium' : 'hover:bg-purple-50'
           }`}
         >
           <CheckSquare className="w-3 h-3 text-purple-500" />
           <span>Actualizados: {estadisticas.actualizados}</span>
+          {filterEstado === 'actualizado' && <X className="w-3 h-3 text-purple-600" />}
         </button>
         
         {/* Separador */}
