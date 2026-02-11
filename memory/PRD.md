@@ -47,17 +47,50 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
-### ✅ COMPLETADO: Nueva Página "Gestión de Predios - Actualización"
+### ✅ COMPLETADO: Tabs "Predios" y "Visor" dentro del Modal de Proyecto
 
-**Archivo creado:** `/app/frontend/src/pages/GestionPrediosActualizacion.js`
+**Archivos modificados:**
+- `/app/frontend/src/pages/ProyectosActualizacion.js`
+- `/app/backend/server.py`
 
 **Funcionalidades implementadas:**
-- Selector de proyecto de actualización (solo proyectos activos/pausados)
-- Estadísticas: Total, Pendientes, Visitados, Actualizados (cards clicables para filtrar)
-- Lista paginada de predios (50 por página)
-- Filtros: búsqueda por código/dirección/propietario, estado, zona
-- Modal de detalle con información completa del predio
-- Botón "Ver en Mapa" que navega al Visor con el predio seleccionado
+1. **Tab "Predios" dentro del modal del proyecto:**
+   - Estadísticas: Total, Pendientes, Visitados, Actualizados (clicables)
+   - Botón "Nuevo Predio" para crear predios
+   - Lista paginada de predios con código, estado, zona, dirección, área, avalúo
+   - Menú de acciones por predio:
+     - Editar Predio
+     - Ver en Mapa
+     - Marcar Visitado
+     - Marcar Actualizado
+     - Marcar Pendiente
+   - Filtros: búsqueda, zona (Rural/Urbano)
+   - Paginación (20 por página)
+
+2. **Tab "Visor" dentro del modal del proyecto:**
+   - Muestra estadísticas del proyecto (predios en GDB, registros R1/R2)
+   - Botón "Abrir Visor de Campo" que navega al visor completo
+
+3. **Nuevo endpoint API:**
+   - `PATCH /api/actualizacion/proyectos/{id}/predios/{codigo}/estado`
+   - Permite cambiar el estado de visita (pendiente/visitado/actualizado)
+
+---
+
+### ✅ COMPLETADO: Captura de Coordenadas GPS en Formulario de Visita
+
+**Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
+
+**Funcionalidades implementadas:**
+- Nueva **Sección 11: Coordenadas GPS del Predio** en página 5 del formulario
+- Botón "📍 Capturar Mi Ubicación GPS" usando geolocalización del dispositivo
+- Campos de Latitud y Longitud editables manualmente
+- Indicador de precisión cuando se captura GPS
+- Botón "Usar esta ubicación" para guardar las coordenadas
+
+---
+
+### ✅ CORREGIDO: Campo Avalúo en Panel de Detalles
 - Botón "Exportar Excel" para coordinadores
 
 **Cambios en navegación:**
