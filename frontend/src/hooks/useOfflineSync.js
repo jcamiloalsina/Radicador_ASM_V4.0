@@ -608,6 +608,14 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         const now = new Date().toISOString();
         await saveConfig(`lastSync_${proyectoId}`, now);
         setLastSync(now);
+        
+        // Guardar fecha del modal para no mostrar por 24 horas
+        const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
+        localStorage.setItem(lastSyncModalKey, now);
+        console.log('[Sync] Próximo modal de sincronización en 24 horas');
+        
+        // Iniciar sincronización en segundo plano para el resto del día
+        startBackgroundSync();
       } catch (e) {
         console.warn('[Sync] Error guardando config (continuando):', e.message);
       }
