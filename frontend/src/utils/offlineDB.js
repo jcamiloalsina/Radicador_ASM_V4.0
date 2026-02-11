@@ -921,7 +921,7 @@ export async function hasOfflineData(proyectoId) {
 export async function clearAllOfflineData() {
   try {
     const database = await getDatabase();
-  if (!database) return [];
+    if (!database) return false;
     
     const stores = [STORES.PREDIOS, STORES.GEOMETRIAS, STORES.PROYECTOS];
     
