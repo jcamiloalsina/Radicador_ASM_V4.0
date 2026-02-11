@@ -47,33 +47,22 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
-### ✅ COMPLETADO: Tabs "Predios" y "Visor" dentro del Modal de Proyecto
+### ✅ COMPLETADO: Nuevo Diseño del Modal de Proyecto
 
-**Archivos modificados:**
-- `/app/frontend/src/pages/ProyectosActualizacion.js`
-- `/app/backend/server.py`
+**Archivo modificado:** `/app/frontend/src/pages/ProyectosActualizacion.js`
 
-**Funcionalidades implementadas:**
-1. **Tab "Predios" dentro del modal del proyecto:**
-   - Estadísticas: Total, Pendientes, Visitados, Actualizados (clicables)
-   - Botón "Nuevo Predio" para crear predios
-   - Lista paginada de predios con código, estado, zona, dirección, área, avalúo
-   - Menú de acciones por predio:
-     - Editar Predio
-     - Ver en Mapa
-     - Marcar Visitado
-     - Marcar Actualizado
-     - Marcar Pendiente
-   - Filtros: búsqueda, zona (Rural/Urbano)
-   - Paginación (20 por página)
+**Nueva estructura del modal:**
+1. **Tab "Proyecto"** (primera pestaña, por defecto):
+   - Estadísticas: Predios GDB, Registros R1/R2, Visitados, Actualizados
+   - **Botón "Gestión de Predios"** → navega a `/dashboard/visor-actualizacion/{id}?modo=gestion`
+   - **Botón "Visor de Predios"** → navega a `/dashboard/visor-actualizacion/{id}`
+   - Botones rápidos: "Cargar Archivos", "Ver Cronograma"
 
-2. **Tab "Visor" dentro del modal del proyecto:**
-   - Muestra estadísticas del proyecto (predios en GDB, registros R1/R2)
-   - Botón "Abrir Visor de Campo" que navega al visor completo
+2. **Tab "Archivos"** (solo coordinadores): Carga de GDB y R1/R2
 
-3. **Nuevo endpoint API:**
-   - `PATCH /api/actualizacion/proyectos/{id}/predios/{codigo}/estado`
-   - Permite cambiar el estado de visita (pendiente/visitado/actualizado)
+3. **Tab "Cronograma"** (solo coordinadores): Gestión del cronograma
+
+4. **Tab "Info"** (última pestaña): Información del proyecto, botón eliminar
 
 ---
 
@@ -81,16 +70,36 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
 
-**Funcionalidades implementadas:**
-- Nueva **Sección 11: Coordenadas GPS del Predio** en página 5 del formulario
-- Botón "📍 Capturar Mi Ubicación GPS" usando geolocalización del dispositivo
-- Campos de Latitud y Longitud editables manualmente
-- Indicador de precisión cuando se captura GPS
-- Botón "Usar esta ubicación" para guardar las coordenadas
+**Nueva sección 11: COORDENADAS GPS DEL PREDIO** en página 5 del formulario:
+- Botón "📍 Capturar Mi Ubicación GPS"
+- Campos de Latitud (Y) y Longitud (X)
+- Indicador de precisión GPS
+- Botón "Usar esta ubicación"
 
 ---
 
-### ✅ CORREGIDO: Campo Avalúo en Panel de Detalles
+### ✅ COMPLETADO: Endpoint para Marcar Estado de Predio
+
+**Archivo modificado:** `/app/backend/server.py`
+
+**Nuevo endpoint:**
+- `PATCH /api/actualizacion/proyectos/{id}/predios/{codigo}/estado`
+- Permite cambiar estado: pendiente → visitado → actualizado
+
+---
+
+### ⚠️ PENDIENTE: Gestión de Predios idéntica a Conservación
+
+**Estado:** Por implementar en VisorActualizacion.js
+- El botón "Gestión de Predios" navega al visor con `?modo=gestion`
+- Necesita implementar la vista de gestión dentro del visor similar a Conservación
+
+### ⚠️ PENDIENTE: Selección de Vigencia al Finalizar
+
+**Estado:** Por implementar
+- Al hacer clic en "Finalizar Proyecto", debe aparecer selector de vigencia
+
+---
 - Botón "Exportar Excel" para coordinadores
 
 **Cambios en navegación:**
