@@ -1302,14 +1302,14 @@ export default function GestionPrediosActualizacion() {
           </CardContent>
         </Card>
         
-        {/* Tarjeta de Mejoras */}
+        {/* Tarjeta de Mejoras - Toggle */}
         <Card 
-          className={`cursor-pointer hover:border-cyan-400 transition-colors ${filterEstado === 'mejoras' ? 'border-cyan-400 bg-cyan-50' : ''}`}
-          onClick={() => setFilterEstado('mejoras')}
+          className={`cursor-pointer hover:border-cyan-400 transition-colors ${filterEstado === 'mejoras' ? 'border-cyan-400 border-2 bg-cyan-50' : ''}`}
+          onClick={() => setFilterEstado(filterEstado === 'mejoras' ? 'todos' : 'mejoras')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-cyan-100 text-cyan-600">
+              <div className={`p-2 rounded-lg ${filterEstado === 'mejoras' ? 'bg-cyan-200 text-cyan-700' : 'bg-cyan-100 text-cyan-600'}`}>
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
@@ -1319,7 +1319,9 @@ export default function GestionPrediosActualizacion() {
                     return cod.length >= 30 && cod.substring(26, 30) !== '0000';
                   }).length.toLocaleString()}
                 </p>
-                <p className="text-sm text-slate-500">Con Mejoras</p>
+                <p className="text-sm text-slate-500">
+                  Con Mejoras {filterEstado === 'mejoras' && '✓'}
+                </p>
               </div>
             </div>
           </CardContent>
