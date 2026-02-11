@@ -62,6 +62,7 @@ const DetallePredioActualizacion = ({
   onOpenVisita,
   onOpenEdicion,
   onOpenHistorial,
+  onOpenCancelar,
   user
 }) => {
   if (!predio) return null;
