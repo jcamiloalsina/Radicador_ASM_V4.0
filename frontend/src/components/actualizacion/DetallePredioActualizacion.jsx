@@ -265,49 +265,49 @@ const DetallePredioActualizacion = ({
             <p className="font-medium">{predio.destino_economico}</p>
           </div>
         )}
+      </CardContent>
+      
+      {/* Botones de Acción - Siempre visibles fuera del scroll */}
+      <div className="border-t p-3 space-y-2 bg-white">
+        {/* Formulario de Visita - Solo si está pendiente o visitado */}
+        {(estado === 'pendiente' || estado === 'visitado') && (esGestor || esCoordinador) && (
+          <Button
+            className="w-full bg-amber-600 hover:bg-amber-700"
+            size="sm"
+            onClick={onOpenVisita}
+            data-testid="open-visita-btn"
+          >
+            <ClipboardList className="w-4 h-4 mr-2" />
+            {estado === 'visitado' ? 'Ver/Editar Visita' : 'Registrar Visita'}
+          </Button>
+        )}
 
-        {/* Botones de Acción */}
-        <div className="border-t pt-3 space-y-2">
-          {/* Formulario de Visita - Solo si está pendiente o visitado */}
-          {(estado === 'pendiente' || estado === 'visitado') && (esGestor || esCoordinador) && (
-            <Button
-              className="w-full bg-amber-600 hover:bg-amber-700"
-              size="sm"
-              onClick={onOpenVisita}
-              data-testid="open-visita-btn"
-            >
-              <ClipboardList className="w-4 h-4 mr-2" />
-              {estado === 'visitado' ? 'Ver/Editar Formulario de Visita' : 'Registrar Visita de Campo'}
-            </Button>
-          )}
-
-          {/* Editar Predio */}
-          {(esGestor || esCoordinador) && (
-            <Button
-              className="w-full"
-              variant="outline"
-              size="sm"
-              onClick={onOpenEdicion}
-              data-testid="open-edicion-btn"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Editar Predio
-            </Button>
-          )}
-
-          {/* Historial */}
+        {/* Editar Predio */}
+        {(esGestor || esCoordinador) && (
           <Button
             className="w-full"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={onOpenHistorial}
-            data-testid="open-historial-btn"
+            onClick={onOpenEdicion}
+            data-testid="open-edicion-btn"
           >
-            <History className="w-4 h-4 mr-2" />
-            Ver Historial
+            <Edit className="w-4 h-4 mr-2" />
+            Editar Predio
           </Button>
-        </div>
-      </CardContent>
+        )}
+
+        {/* Historial */}
+        <Button
+          className="w-full"
+          variant="ghost"
+          size="sm"
+          onClick={onOpenHistorial}
+          data-testid="open-historial-btn"
+        >
+          <History className="w-4 h-4 mr-2" />
+          Ver Historial
+        </Button>
+      </div>
     </Card>
   );
 };
