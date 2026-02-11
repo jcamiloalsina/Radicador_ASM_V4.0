@@ -1953,6 +1953,106 @@ export default function ProyectosActualizacion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Modal de opciones de carga GDB */}
+      <Dialog open={showGdbUploadModal} onOpenChange={setShowGdbUploadModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-emerald-600" />
+              Opciones de Carga GDB
+            </DialogTitle>
+            <DialogDescription>
+              El proyecto ya tiene una Base Gráfica cargada. Seleccione cómo desea proceder.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Archivo seleccionado */}
+            {gdbFileSelected && (
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600">Archivo seleccionado:</p>
+                <p className="font-medium text-slate-800">{gdbFileSelected.name}</p>
+              </div>
+            )}
+            
+            {/* Modo de carga */}
+            <div className="space-y-2">
+              <Label>Modo de Carga</Label>
+              <Select 
+                value={gdbUploadOptions.modo_carga}
+                onValueChange={(v) => setGdbUploadOptions(prev => ({ ...prev, modo_carga: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reemplazar">
+                    <div className="flex flex-col">
+                      <span className="font-medium">Reemplazar todo</span>
+                      <span className="text-xs text-slate-500">Elimina las geometrías existentes y carga las nuevas</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="incremental">
+                    <div className="flex flex-col">
+                      <span className="font-medium">Carga incremental</span>
+                      <span className="text-xs text-slate-500">Añade sin eliminar lo existente (ideal para capas adicionales)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Capa específica (solo en modo incremental) */}
+            {gdbUploadOptions.modo_carga === 'incremental' && (
+              <div className="space-y-2">
+                <Label>Capa Específica (opcional)</Label>
+                <Input
+                  placeholder="Ej: PERIMETRO_URBANO, U_MANZANA"
+                  value={gdbUploadOptions.capa_especifica}
+                  onChange={(e) => setGdbUploadOptions(prev => ({ ...prev, capa_especifica: e.target.value.toUpperCase() }))}
+                />
+                <p className="text-xs text-slate-500">
+                  Si especifica una capa, solo se procesará esa capa del archivo GDB. 
+                  Deje vacío para procesar todas las capas.
+                </p>
+              </div>
+            )}
+            
+            {/* Ejemplos de capas comunes */}
+            {gdbUploadOptions.modo_carga === 'incremental' && (
+              <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                <p className="font-medium text-blue-800 mb-1">Capas comunes:</p>
+                <div className="flex flex-wrap gap-1">
+                  {['PERIMETRO_URBANO', 'U_MANZANA', 'U_SECTOR', 'R_VEREDA', 'LIMITE_MUNICIPIO'].map(capa => (
+                    <Badge 
+                      key={capa} 
+                      variant="outline" 
+                      className="cursor-pointer hover:bg-blue-100 text-xs"
+                      onClick={() => setGdbUploadOptions(prev => ({ ...prev, capa_especifica: capa }))}
+                    >
+                      {capa}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowGdbUploadModal(false);
+              setGdbFileSelected(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmGdbUpload} className="bg-emerald-600 hover:bg-emerald-700">
+              <Upload className="w-4 h-4 mr-2" />
+              Cargar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
