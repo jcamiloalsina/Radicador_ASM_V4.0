@@ -47,6 +47,40 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual)
 
+### ✅ COMPLETADO: Pantalla de Sincronización al Inicio
+
+**Problema reportado:** La pantalla de sincronización que aparecía antes de usar el visor ya no se mostraba.
+
+**Causa:** La función `checkInitialSync()` solo mostraba la pantalla si había cambios pendientes, no siempre al inicio.
+
+**Solución implementada:**
+1. Modificado `useOfflineSync.js`: La función `checkInitialSync()` ahora SIEMPRE muestra la pantalla de sincronización al entrar al visor cuando hay conexión a internet.
+2. El usuario puede:
+   - **"Sincronizar Datos"**: Descarga los datos más recientes del servidor
+   - **"Continuar sin sincronizar"**: Omite la sincronización y trabaja con datos locales
+
+**Archivos modificados:**
+- `/app/frontend/src/hooks/useOfflineSync.js`
+
+**Testing:** ✅ Verificado con screenshot - La pantalla de sincronización aparece correctamente al entrar al visor.
+
+---
+
+### ✅ COMPLETADO: Fix Error IndexedDB en Navegadores
+
+**Problema:** Al abrir el visor, aparecía un error "IndexedDB open timeout" que bloqueaba la aplicación.
+
+**Solución:**
+1. Modificado `offlineDB.js`: Todas las funciones ahora manejan errores de IndexedDB silenciosamente, retornando valores por defecto (arrays vacíos, null, false) en lugar de lanzar excepciones.
+2. Modificado `ProyectosActualizacion.js`: Agregado catch al llamar `initOfflineDB()`.
+3. La aplicación ahora funciona correctamente incluso si IndexedDB no está disponible.
+
+**Archivos modificados:**
+- `/app/frontend/src/utils/offlineDB.js`
+- `/app/frontend/src/pages/ProyectosActualizacion.js`
+
+---
+
 ### ⚠️ PENDIENTE: Verificación de Corrección de Filtros
 
 **Problema reportado:** 
