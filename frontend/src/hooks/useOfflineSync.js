@@ -375,7 +375,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
   }, [proyectoId, refreshStats]);
 
-  // Verificar si necesita sincronización - Solo mostrar pantalla una vez al día
+  // Verificar si necesita sincronización al inicio
+  // El modal aparece solo si hay cambios pendientes de subir
+  // Si no hay cambios, permite trabajar y sincroniza cada 1 hora en segundo plano
   const checkInitialSync = useCallback(async () => {
     if (!proyectoId) {
       setIsInitialSyncComplete(true);
@@ -384,24 +386,12 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     
     // Si está offline, permitir trabajar sin bloquear
     if (!isOnline) {
+      console.log('[Offline] Sin conexión - permitiendo trabajo offline');
       setIsInitialSyncComplete(true);
       return false;
     }
     
     try {
-      // Verificar última vez que se mostró el modal de sincronización
-      const lastSyncModalKey = `lastSyncModal_${proyectoId}`;
-      const lastSyncModalStr = localStorage.getItem(lastSyncModalKey);
-      const lastSyncModal = lastSyncModalStr ? new Date(lastSyncModalStr) : null;
-      const now = new Date();
-      
-      // Calcular si han pasado 24 horas desde la última vez que se mostró
-      const hoursSinceLastModal = lastSyncModal 
-        ? (now.getTime() - lastSyncModal.getTime()) / (1000 * 60 * 60)
-        : 999; // Si nunca se ha mostrado, forzar mostrar
-      
-      console.log(`[Offline] Horas desde último modal: ${hoursSinceLastModal.toFixed(1)}h`);
-      
       // Inicializar DB primero (con timeout de 5 segundos)
       const initPromise = initOfflineDB();
       const timeoutPromise = new Promise((_, reject) => 
@@ -411,39 +401,32 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       try {
         await Promise.race([initPromise, timeoutPromise]);
       } catch (dbError) {
-        console.warn('[Offline] IndexedDB no disponible, continuando sin modo offline:', dbError.message);
+        console.warn('[Offline] IndexedDB no disponible:', dbError.message);
       }
       
       // Verificar si hay cambios pendientes de subir
       const cambiosPendientes = await getCambiosPendientes(proyectoId);
       
-      // Si hay cambios pendientes, SIEMPRE mostrar el modal (es crítico subirlos)
+      // Si hay cambios pendientes, BLOQUEAR con modal (es crítico subirlos)
       if (cambiosPendientes.length > 0) {
-        console.log('[Offline] Hay cambios pendientes - mostrando modal obligatorio:', cambiosPendientes.length);
-        setSyncProgress({ current: 0, total: cambiosPendientes.length, message: `${cambiosPendientes.length} cambio(s) pendiente(s) por subir` });
+        console.log('[Offline] Hay cambios pendientes - BLOQUEANDO:', cambiosPendientes.length);
+        setSyncProgress({ 
+          current: 0, 
+          total: cambiosPendientes.length, 
+          message: `${cambiosPendientes.length} cambio(s) de trabajo de campo por subir` 
+        });
         setRequiresSync(true);
-        // NO actualizar la fecha del modal porque es obligatorio
         return true;
       }
       
-      // Si NO han pasado 24 horas, NO mostrar modal y sincronizar en segundo plano
-      if (hoursSinceLastModal < 24) {
-        console.log('[Offline] Sincronización reciente - trabajando sin interrumpir');
-        setIsInitialSyncComplete(true);
-        setRequiresSync(false);
-        // Programar sincronización en segundo plano
-        startBackgroundSync();
-        return false;
-      }
-      
-      // Han pasado más de 24 horas - mostrar modal
-      console.log('[Offline] Han pasado 24h+ - mostrando modal de sincronización');
-      setSyncProgress({ current: 0, total: 0, message: 'Verificar datos del servidor' });
-      setRequiresSync(true);
-      return true;
+      // Sin cambios pendientes - permitir trabajar e iniciar sync cada 1 hora
+      console.log('[Offline] Sin cambios pendientes - iniciando sync automático cada 1 hora');
+      setIsInitialSyncComplete(true);
+      setRequiresSync(false);
+      startBackgroundSync();
+      return false;
     } catch (error) {
       console.error('[Offline] Error verificando sync:', error);
-      // En caso de error, permitir continuar sin mostrar modal
       setIsInitialSyncComplete(true);
       setRequiresSync(false);
       return false;
