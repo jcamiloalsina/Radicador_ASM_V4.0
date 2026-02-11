@@ -1373,13 +1373,19 @@ export default function VisorActualizacion() {
     );
     
     if (predio) {
-      // Si es gestor, mostrar modal de tipo de revisión primero
-      const esGestor = user?.role === 'gestor';
-      if (esGestor) {
-        setPredioParaAbrir(predio);
-        setShowTipoRevisionModal(true);
-      } else {
-        abrirDetallePredio(predio);
+      // Mostrar panel simplificado directamente (sin modal de tipo revisión)
+      setSelectedPredio(predio);
+      setShowDetalleSimplificado(true);
+      setShowPredioDetail(false);
+      setEditMode(false);
+      
+      // Cargar datos adicionales
+      const codigo = predio.codigo_predial || predio.numero_predial;
+      if (codigo) {
+        fetchPropuestas(codigo);
+        fetchHistorial(codigo);
+        verificarConstrucciones(predio);
+        cargarVisitaExistente(predio);
       }
     } else if (!geometrias?.features?.find(f => {
       const props = f.properties || {};
@@ -1395,7 +1401,7 @@ export default function VisorActualizacion() {
     setSelectedPredio(predio);
     setTipoRevision(tipo);
     cargarDatosParaEdicion(predio);
-    setShowPredioDetail(true);
+    setShowPredioDetail(false);
     setShowDetalleSimplificado(true);
     setEditMode(false);
     
