@@ -619,7 +619,7 @@ export async function getCambiosPendientes(proyectoId = null) {
 // Marcar cambio como sincronizado
 export async function marcarCambioSincronizado(id) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return false;
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
@@ -632,7 +632,7 @@ export async function marcarCambioSincronizado(id) {
         record.sincronizado_en = new Date().toISOString();
         store.put(record);
       }
-      resolve();
+      resolve(true);
     };
     request.onerror = () => reject(request.error);
   });
@@ -641,13 +641,13 @@ export async function marcarCambioSincronizado(id) {
 // Eliminar cambio sincronizado
 export async function eliminarCambioSincronizado(id) {
   const database = await getDatabase();
-  if (!database) return [];
+  if (!database) return false;
   const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
   const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
 
   return new Promise((resolve, reject) => {
     const request = store.delete(id);
-    request.onsuccess = () => resolve();
+    request.onsuccess = () => resolve(true);
     request.onerror = () => reject(request.error);
   });
 }
