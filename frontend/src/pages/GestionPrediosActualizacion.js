@@ -526,7 +526,7 @@ export default function GestionPrediosActualizacion() {
     }
   };
   
-  // Abrir modal de editar - Cargar todos los campos para R1/R2
+  // Abrir modal de editar (SOLO COORDINADORES)
   const abrirEditar = (predio) => {
     setPredioSeleccionado(predio);
     setFormData({
@@ -544,20 +544,51 @@ export default function GestionPrediosActualizacion() {
     // Cargar propietarios
     if (predio.propietarios?.length > 0) {
       setPropietarios(predio.propietarios.map(p => ({
-        nombre_propietario: p.nombre_propietario || p.nombre || '',
+        primer_apellido: p.primer_apellido || '',
+        segundo_apellido: p.segundo_apellido || '',
+        primer_nombre: p.primer_nombre || '',
+        segundo_nombre: p.segundo_nombre || '',
+        estado: p.estado || p.estado_civil || '',
         tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
-        numero_documento: p.numero_documento || p.documento || '',
-        estado_civil: p.estado_civil || ''
+        numero_documento: p.numero_documento || p.documento || ''
       })));
     } else {
-      setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+      setPropietarios([{ primer_apellido: '', segundo_apellido: '', primer_nombre: '', segundo_nombre: '', estado: '', tipo_documento: 'C', numero_documento: '' }]);
     }
     
-    // Cargar zonas físicas
+    // Cargar zonas de terreno
+    if (predio.zonas_terreno?.length > 0) {
+      setZonasTerreno(predio.zonas_terreno);
+    } else if (predio.zonas_fisicas?.length > 0) {
+      setZonasTerreno(predio.zonas_fisicas.map(z => ({
+        zona_fisica: z.zona_fisica || '',
+        zona_economica: z.zona_economica || '',
+        area_terreno: z.area_terreno || '0'
+      })));
+    } else {
+      setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: predio.area_terreno || '0' }]);
+    }
+    
+    // Cargar construcciones
+    if (predio.construcciones?.length > 0) {
+      setConstrucciones(predio.construcciones);
+    } else {
+      setConstrucciones([{
+        id: 'A',
+        piso: '1',
+        habitaciones: predio.habitaciones || '0',
+        banos: predio.banos || '0',
+        locales: predio.locales || '0',
+        tipificacion: '',
+        uso: '',
+        puntaje: '0',
+        area_construida: predio.area_construida || '0'
+      }]);
+    }
+    
+    // Cargar zonas físicas (compatibilidad)
     if (predio.zonas_fisicas?.length > 0) {
       setZonasFisicas(predio.zonas_fisicas);
-    } else if (predio.r2_registros?.length > 0) {
-      setZonasFisicas(predio.r2_registros);
     } else {
       setZonasFisicas([{
         zona_fisica: '0',
@@ -573,6 +604,118 @@ export default function GestionPrediosActualizacion() {
     }
     
     setShowEditarModal(true);
+  };
+  
+  // Abrir modal para proponer cambios (GESTORES - predio debe estar visitado)
+  const abrirProponerCambios = (predio) => {
+    if (predio.estado_visita !== 'visitado') {
+      toast.error('El predio debe estar visitado para proponer cambios');
+      return;
+    }
+    
+    setPredioSeleccionado(predio);
+    setFormData({
+      codigo_predial: predio.codigo_predial || predio.numero_predial || '',
+      codigo_homologado: predio.codigo_homologado || '',
+      direccion: predio.direccion || '',
+      comuna: predio.comuna || '',
+      destino_economico: predio.destino_economico || 'A',
+      area_terreno: predio.area_terreno || '',
+      area_construida: predio.area_construida || '',
+      avaluo_catastral: predio.avaluo_catastral || predio.avaluo || '',
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
+    });
+    
+    // Cargar propietarios existentes
+    if (predio.propietarios?.length > 0) {
+      setPropietarios(predio.propietarios.map(p => ({
+        primer_apellido: p.primer_apellido || '',
+        segundo_apellido: p.segundo_apellido || '',
+        primer_nombre: p.primer_nombre || '',
+        segundo_nombre: p.segundo_nombre || '',
+        estado: p.estado || p.estado_civil || '',
+        tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
+        numero_documento: p.numero_documento || p.documento || ''
+      })));
+    } else {
+      setPropietarios([{ primer_apellido: '', segundo_apellido: '', primer_nombre: '', segundo_nombre: '', estado: '', tipo_documento: 'C', numero_documento: '' }]);
+    }
+    
+    // Cargar zonas de terreno
+    if (predio.zonas_terreno?.length > 0) {
+      setZonasTerreno(predio.zonas_terreno);
+    } else {
+      setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: predio.area_terreno || '0' }]);
+    }
+    
+    // Cargar construcciones
+    if (predio.construcciones?.length > 0) {
+      setConstrucciones(predio.construcciones);
+    } else {
+      setConstrucciones([{
+        id: 'A',
+        piso: '1',
+        habitaciones: predio.habitaciones || '0',
+        banos: predio.banos || '0',
+        locales: predio.locales || '0',
+        tipificacion: '',
+        uso: '',
+        puntaje: '0',
+        area_construida: predio.area_construida || '0'
+      }]);
+    }
+    
+    setShowProponerCambiosModal(true);
+  };
+  
+  // Enviar propuesta de cambios (para gestores)
+  const enviarPropuestaCambios = async () => {
+    if (!predioSeleccionado) return;
+    
+    setEnviandoPropuesta(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Calcular áreas
+      const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
+      
+      // Preparar propietarios
+      const propietariosExport = propietarios.map(p => ({
+        ...p,
+        nombre_propietario: generarNombreCompleto(p),
+        numero_documento: formatearNumeroDocumento(p.numero_documento)
+      }));
+      
+      // Crear propuesta de cambio
+      const propuesta = {
+        predio_codigo: predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial,
+        datos_propuestos: {
+          ...formData,
+          propietarios: propietariosExport,
+          zonas_terreno: zonasTerreno,
+          construcciones: construcciones,
+          area_terreno: areaTerrenoTotal,
+          area_construida: areaConstruidaTotal,
+          avaluo: formData.avaluo_catastral
+        },
+        justificacion: `Propuesta de actualización de datos del predio ${predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial}`
+      };
+      
+      await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/propuestas`,
+        propuesta,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success('Propuesta de cambios enviada correctamente. El coordinador la revisará.');
+      setShowProponerCambiosModal(false);
+      fetchPredios();
+    } catch (error) {
+      console.error('Error enviando propuesta:', error);
+      toast.error(error.response?.data?.detail || 'Error al enviar propuesta de cambios');
+    } finally {
+      setEnviandoPropuesta(false);
+    }
   };
   
   // Abrir modal de crear - Inicializar todos los campos
