@@ -1516,6 +1516,22 @@ export default function ProyectosActualizacion() {
                                   )}
                                   {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) ? 'Reemplazar' : 'Cargar GDB'}
                                 </Button>
+                                {/* Botón para agregar capa adicional (solo si ya tiene GDB) */}
+                                {(proyectoSeleccionado.gdb_procesado || proyectoSeleccionado.base_grafica_archivo) && (
+                                  <Button 
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                    onClick={() => {
+                                      setGdbUploadOptions({ modo_carga: 'incremental', capa_especifica: '' });
+                                      setShowGdbUploadModal(true);
+                                    }}
+                                    disabled={uploading.base_grafica}
+                                  >
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Agregar Capa
+                                  </Button>
+                                )}
                               </>
                             )}
                           </div>
