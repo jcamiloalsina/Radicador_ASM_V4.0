@@ -219,35 +219,63 @@ export default function GestionPrediosActualizacion() {
     }
   };
   
-  // Abrir modal de editar
+  // Abrir modal de editar - Cargar todos los campos para R1/R2
   const abrirEditar = (predio) => {
     setPredioSeleccionado(predio);
     setFormData({
       codigo_predial: predio.codigo_predial || predio.numero_predial || '',
+      codigo_homologado: predio.codigo_homologado || '',
       direccion: predio.direccion || '',
+      comuna: predio.comuna || '',
+      destino_economico: predio.destino_economico || '',
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo_catastral: predio.avaluo_catastral || predio.avaluo || '',
-      destino_economico: predio.destino_economico || '',
       matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      // Propietarios con estado civil
       propietarios: predio.propietarios?.length > 0 
-        ? predio.propietarios 
-        : [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '' }]
+        ? predio.propietarios.map(p => ({
+            nombre_propietario: p.nombre_propietario || p.nombre || '',
+            tipo_documento: p.tipo_documento || 'CC',
+            numero_documento: p.numero_documento || '',
+            estado_civil: p.estado_civil || ''
+          }))
+        : [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
+      // Zonas físicas para R2
+      zonas_fisicas: predio.zonas_fisicas?.length > 0 
+        ? predio.zonas_fisicas 
+        : predio.r2_registros?.length > 0 
+          ? predio.r2_registros 
+          : [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
+      // Datos de construcción
+      habitaciones: predio.habitaciones || '',
+      banos: predio.banos || '',
+      locales: predio.locales || '',
+      pisos: predio.pisos || '',
+      uso: predio.uso || predio.destino_economico || ''
     });
     setShowEditarModal(true);
   };
   
-  // Abrir modal de crear
+  // Abrir modal de crear - Inicializar todos los campos
   const abrirCrear = () => {
     setFormData({
       codigo_predial: '',
+      codigo_homologado: '',
       direccion: '',
+      comuna: '',
+      destino_economico: '',
       area_terreno: '',
       area_construida: '',
       avaluo_catastral: '',
-      destino_economico: '',
       matricula_inmobiliaria: '',
-      propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '' }]
+      propietarios: [{ nombre_propietario: '', tipo_documento: 'CC', numero_documento: '', estado_civil: '' }],
+      zonas_fisicas: [{ zona_fisica: '', zona_economica: '', area_terreno: '' }],
+      habitaciones: '',
+      banos: '',
+      locales: '',
+      pisos: '',
+      uso: ''
     });
     setShowCrearModal(true);
   };
