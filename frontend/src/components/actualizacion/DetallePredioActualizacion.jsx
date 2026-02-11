@@ -255,7 +255,7 @@ const DetallePredioActualizacion = ({
           <p className="text-xs text-slate-500 flex items-center gap-1">
             <DollarSign className="w-3 h-3" /> Avalúo Catastral
           </p>
-          <p className="text-lg font-bold text-emerald-700">{formatCurrency(predio.avaluo)}</p>
+          <p className="text-lg font-bold text-emerald-700">{formatCurrency(predio.avaluo_catastral || predio.avaluo)}</p>
         </div>
 
         {/* Destino Económico */}
