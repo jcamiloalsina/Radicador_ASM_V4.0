@@ -5743,8 +5743,22 @@ export default function VisorActualizacion() {
                         <SelectItem value="B">B - Industrial</SelectItem>
                         <SelectItem value="C">C - Comercial</SelectItem>
                         <SelectItem value="D">D - Agropecuario</SelectItem>
+                        <SelectItem value="E">E - Minero</SelectItem>
+                        <SelectItem value="F">F - Cultural</SelectItem>
+                        <SelectItem value="G">G - Recreacional</SelectItem>
+                        <SelectItem value="H">H - Salubridad</SelectItem>
                         <SelectItem value="I">I - Institucional</SelectItem>
-                        <SelectItem value="R">R - Lote urbanizado</SelectItem>
+                        <SelectItem value="J">J - Educativo</SelectItem>
+                        <SelectItem value="K">K - Religioso</SelectItem>
+                        <SelectItem value="L">L - Agrícola</SelectItem>
+                        <SelectItem value="M">M - Pecuario</SelectItem>
+                        <SelectItem value="N">N - Agroindustrial</SelectItem>
+                        <SelectItem value="O">O - Forestal</SelectItem>
+                        <SelectItem value="P">P - Uso Público</SelectItem>
+                        <SelectItem value="Q">Q - Lote Urbanizable No Urbanizado</SelectItem>
+                        <SelectItem value="R">R - Lote Urbanizado No Edificado</SelectItem>
+                        <SelectItem value="S">S - Lote No Urbanizable</SelectItem>
+                        <SelectItem value="T">T - Servicios Especiales</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
