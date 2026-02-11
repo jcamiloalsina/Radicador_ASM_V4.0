@@ -16062,11 +16062,18 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
             raise Exception("No se encontró archivo .gdb ni .shp en el ZIP. Asegúrese de que el ZIP contenga una geodatabase (.gdb) o archivos shapefile (.shp)")
         
         
-        # Leer capas con pyogrio
+        # Leer capas según el tipo de archivo
         import pyogrio
-        layers = pyogrio.list_layers(gdb_path)
-        layer_names = [l[0] for l in layers]
-        logger.info(f"[GDB Actualizacion] Capas encontradas: {len(layer_names)}")
+        
+        if is_shapefile:
+            # Para Shapefiles, cada archivo .shp es una "capa"
+            layer_names = [os.path.splitext(os.path.basename(shp))[0] for shp in shp_files]
+            logger.info(f"[GDB/SHP Actualizacion] Shapefiles como capas: {layer_names}")
+        else:
+            # Para GDB, usar pyogrio para listar capas
+            layers = pyogrio.list_layers(data_source)
+            layer_names = [l[0] for l in layers]
+            logger.info(f"[GDB Actualizacion] Capas encontradas: {len(layer_names)}")
         
         # Si se especificó una capa específica, verificar que exista
         if capa_especifica:
@@ -16080,18 +16087,22 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 if not capa_encontrada:
                     raise Exception(f"Capa '{capa_especifica}' no encontrada. Capas disponibles: {', '.join(layer_names[:15])}")
                 capa_especifica = capa_encontrada
-            logger.info(f"[GDB Actualizacion] Procesando solo capa específica: {capa_especifica}")
+            logger.info(f"[GDB/SHP Actualizacion] Procesando solo capa específica: {capa_especifica}")
         
         # Buscar capas de terreno (usar mismos estándares que Conservación)
-        rural_layers = ['R_TERRENO', 'R_TERRENO_1', 'r_terreno', 'TERRENO']
-        urban_layers = ['U_TERRENO', 'U_TERRENO_1', 'u_terreno']
+        rural_layers = ['R_TERRENO', 'R_TERRENO_1', 'r_terreno', 'TERRENO', 'terreno_rural', 'RURAL']
+        urban_layers = ['U_TERRENO', 'U_TERRENO_1', 'u_terreno', 'terreno_urbano', 'URBANO']
         construccion_layers = ['U_CONSTRUCCION', 'R_CONSTRUCCION', 'CONSTRUCCION', 'U_UNIDAD', 'R_UNIDAD']
+        perimetro_layers = ['PERIMETRO_URBANO', 'PERIMETRO', 'LIMITE_URBANO', 'perimetro_urbano']
         
         # Verificar qué capas están presentes
-        rural_found = [l for l in rural_layers if l in layer_names]
-        urban_found = [l for l in urban_layers if l in layer_names]
-        logger.info(f"[GDB Actualizacion] Capas rurales: {rural_found}")
-        logger.info(f"[GDB Actualizacion] Capas urbanas: {urban_found}")
+        rural_found = [l for l in layer_names if any(r.upper() in l.upper() for r in rural_layers)]
+        urban_found = [l for l in layer_names if any(u.upper() in l.upper() for u in urban_layers)]
+        perimetro_found = [l for l in layer_names if any(p.upper() in l.upper() for p in perimetro_layers)]
+        
+        logger.info(f"[GDB/SHP Actualizacion] Capas rurales detectadas: {rural_found}")
+        logger.info(f"[GDB/SHP Actualizacion] Capas urbanas detectadas: {urban_found}")
+        logger.info(f"[GDB/SHP Actualizacion] Capas perímetro detectadas: {perimetro_found}")
         
         geometrias_guardadas = 0
         construcciones_guardadas = 0
