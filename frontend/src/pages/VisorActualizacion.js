@@ -4749,7 +4749,7 @@ export default function VisorActualizacion() {
                                 {entry.accion === 'propuesta_rechazada' && 'Propuesta rechazada'}
                               </p>
                               <p className="text-xs text-slate-500">
-                                {entry.usuario} • {new Date(entry.fecha).toLocaleString('es-CO')}
+                                {entry.usuario_nombre || entry.usuario} • {new Date(entry.fecha).toLocaleString('es-CO')}
                               </p>
                             </div>
                           </div>
