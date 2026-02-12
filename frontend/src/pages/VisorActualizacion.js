@@ -1058,6 +1058,33 @@ export default function VisorActualizacion() {
     };
   }, [geometrias, filterEstado, codigosPorEstadoIndex]);
   
+  // Separar geometrías de perímetro de las geometrías normales
+  const { geometriasNormales, geometriasPerimetro } = useMemo(() => {
+    if (!geometriasFiltradas?.features) {
+      return { geometriasNormales: null, geometriasPerimetro: null };
+    }
+    
+    const normales = [];
+    const perimetro = [];
+    
+    for (const feature of geometriasFiltradas.features) {
+      const capaOrigen = feature.properties?.capa_origen?.toUpperCase() || '';
+      // Identificar capas de perímetro
+      if (capaOrigen.includes('PERIMETRO') || capaOrigen.includes('LIMITE')) {
+        perimetro.push(feature);
+      } else {
+        normales.push(feature);
+      }
+    }
+    
+    console.log(`[Visor] Separando geometrías: ${normales.length} normales, ${perimetro.length} perímetro`);
+    
+    return {
+      geometriasNormales: normales.length > 0 ? { type: 'FeatureCollection', features: normales } : null,
+      geometriasPerimetro: perimetro.length > 0 ? { type: 'FeatureCollection', features: perimetro } : null
+    };
+  }, [geometriasFiltradas]);
+  
   // Filtrar construcciones por estado
   const construccionesFiltradas = useMemo(() => {
     if (!construcciones?.features) {
