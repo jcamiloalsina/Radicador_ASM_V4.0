@@ -3828,7 +3828,7 @@ export default function VisorActualizacion() {
               onOpenVisitaMejora={(mejora) => {
                 setMejoraSeleccionada(mejora);
                 setTipoVisita('mejora');
-                setShowVisitaForm(true);
+                setShowVisitaModal(true);
                 setShowDetalleSimplificado(false);
               }}
               onOpenEdicion={abrirEdicionPredio}
