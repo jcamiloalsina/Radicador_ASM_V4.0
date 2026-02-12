@@ -1290,8 +1290,8 @@ export default function PetitionDetail() {
                   </DialogContent>
                 </Dialog>
               )}
-              {/* Botón para personal: subir archivos finales (solo en modo edición o siempre visible) */}
-              {user?.role !== 'usuario' && petition.user_id !== user?.id && petition.estado !== 'finalizado' && (
+              {/* Botón para Coordinador/Atención al Usuario: subir documento final y finalizar */}
+              {['coordinador', 'atencion_usuario', 'administrador'].includes(user?.role) && petition.estado !== 'finalizado' && (
                 <Dialog open={showUploadFinalDialog} onOpenChange={setShowUploadFinalDialog}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50" data-testid="staff-upload-button">
