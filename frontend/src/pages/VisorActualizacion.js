@@ -5788,158 +5788,293 @@ export default function VisorActualizacion() {
 
                   {/* Sección 8: Calificación */}
                   <div className="border border-orange-200 rounded-lg overflow-hidden">
-                    <div className="bg-orange-50 px-4 py-2 border-b border-orange-200">
+                    <div className="bg-orange-50 px-4 py-2 border-b border-orange-200 flex items-center justify-between">
                       <h3 className="font-semibold text-orange-800 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
                         8. CALIFICACIÓN
                       </h3>
+                      <Button type="button" variant="outline" size="sm" onClick={() => {
+                        setVisitaCalificaciones(prev => [...prev, { 
+                          id: prev.length + 1,
+                          estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+                          acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+                          bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+                          cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+                          industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+                          datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
+                        }]);
+                      }} className="text-orange-700 border-orange-300 hover:bg-orange-100">
+                        <Plus className="w-3 h-3 mr-1" /> Agregar Calificación
+                      </Button>
                     </div>
-                    <div className="p-4 space-y-4">
-                      {/* Estructura */}
-                      <div className="border rounded-lg p-3 bg-slate-50">
-                        <h4 className="font-medium text-slate-700 mb-3">8.1 ESTRUCTURA</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Armazón</Label>
-                            <Input value={visitaData.calif_estructura.armazon} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_estructura: { ...prev.calif_estructura, armazon: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
+                    <div className="p-4 space-y-6">
+                      <p className="text-xs text-slate-500">
+                        Registre la calificación de cada unidad de construcción. Use el botón "Agregar Calificación" para múltiples unidades.
+                      </p>
+                      
+                      {visitaCalificaciones.map((calif, califIdx) => (
+                        <div key={califIdx} className="border border-orange-300 rounded-lg overflow-hidden">
+                          <div className="bg-orange-100 px-4 py-2 flex items-center justify-between">
+                            <span className="font-semibold text-orange-800">Calificación #{calif.id}</span>
+                            {visitaCalificaciones.length > 1 && (
+                              <button type="button" onClick={() => setVisitaCalificaciones(prev => prev.filter((_, i) => i !== califIdx))} className="text-red-500 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Muros</Label>
-                            <Input value={visitaData.calif_estructura.muros} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_estructura: { ...prev.calif_estructura, muros: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Cubierta</Label>
-                            <Input value={visitaData.calif_estructura.cubierta} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_estructura: { ...prev.calif_estructura, cubierta: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Conservación</Label>
-                            <Input value={visitaData.calif_estructura.conservacion} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_estructura: { ...prev.calif_estructura, conservacion: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                        </div>
-                      </div>
+                          <div className="p-4 space-y-4">
+                            {/* Estructura */}
+                            <div className="border rounded-lg p-3 bg-slate-50">
+                              <h4 className="font-medium text-slate-700 mb-3">8.1 ESTRUCTURA</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Armazón</Label>
+                                  <Input value={calif.estructura.armazon} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].estructura.armazon = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Muros</Label>
+                                  <Input value={calif.estructura.muros} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].estructura.muros = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Cubierta</Label>
+                                  <Input value={calif.estructura.cubierta} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].estructura.cubierta = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Conservación</Label>
+                                  <Input value={calif.estructura.conservacion} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].estructura.conservacion = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
 
-                      {/* Acabados Principales */}
-                      <div className="border rounded-lg p-3 bg-slate-50">
-                        <h4 className="font-medium text-slate-700 mb-3">8.2 ACABADOS PRINCIPALES</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Fachadas</Label>
-                            <Input value={visitaData.calif_acabados.fachadas} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_acabados: { ...prev.calif_acabados, fachadas: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Cubrimiento Muros</Label>
-                            <Input value={visitaData.calif_acabados.cubrim_muros} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_acabados: { ...prev.calif_acabados, cubrim_muros: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Pisos</Label>
-                            <Input value={visitaData.calif_acabados.pisos} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_acabados: { ...prev.calif_acabados, pisos: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Conservación</Label>
-                            <Input value={visitaData.calif_acabados.conservacion} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_acabados: { ...prev.calif_acabados, conservacion: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                        </div>
-                      </div>
+                            {/* Acabados */}
+                            <div className="border rounded-lg p-3 bg-slate-50">
+                              <h4 className="font-medium text-slate-700 mb-3">8.2 ACABADOS PRINCIPALES</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Fachadas</Label>
+                                  <Input value={calif.acabados.fachadas} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].acabados.fachadas = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Cubrim. Muros</Label>
+                                  <Input value={calif.acabados.cubrim_muros} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].acabados.cubrim_muros = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Pisos</Label>
+                                  <Input value={calif.acabados.pisos} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].acabados.pisos = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Conservación</Label>
+                                  <Input value={calif.acabados.conservacion} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].acabados.conservacion = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
 
-                      {/* Baño */}
-                      <div className="border rounded-lg p-3 bg-slate-50">
-                        <h4 className="font-medium text-slate-700 mb-3">8.3 BAÑO</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Tamaño</Label>
-                            <Input value={visitaData.calif_bano.tamano} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_bano: { ...prev.calif_bano, tamano: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Enchape</Label>
-                            <Input value={visitaData.calif_bano.enchape} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_bano: { ...prev.calif_bano, enchape: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Mobiliario</Label>
-                            <Input value={visitaData.calif_bano.mobiliario} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_bano: { ...prev.calif_bano, mobiliario: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Conservación</Label>
-                            <Input value={visitaData.calif_bano.conservacion} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_bano: { ...prev.calif_bano, conservacion: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                        </div>
-                      </div>
+                            {/* Baño */}
+                            <div className="border rounded-lg p-3 bg-slate-50">
+                              <h4 className="font-medium text-slate-700 mb-3">8.3 BAÑO</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Tamaño</Label>
+                                  <Input value={calif.bano.tamano} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].bano.tamano = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Enchape</Label>
+                                  <Input value={calif.bano.enchape} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].bano.enchape = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Mobiliario</Label>
+                                  <Input value={calif.bano.mobiliario} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].bano.mobiliario = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Conservación</Label>
+                                  <Input value={calif.bano.conservacion} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].bano.conservacion = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
 
-                      {/* Cocina */}
-                      <div className="border rounded-lg p-3 bg-slate-50">
-                        <h4 className="font-medium text-slate-700 mb-3">8.4 COCINA</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Tamaño</Label>
-                            <Input value={visitaData.calif_cocina.tamano} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_cocina: { ...prev.calif_cocina, tamano: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Enchape</Label>
-                            <Input value={visitaData.calif_cocina.enchape} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_cocina: { ...prev.calif_cocina, enchape: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Mobiliario</Label>
-                            <Input value={visitaData.calif_cocina.mobiliario} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_cocina: { ...prev.calif_cocina, mobiliario: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Conservación</Label>
-                            <Input value={visitaData.calif_cocina.conservacion} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_cocina: { ...prev.calif_cocina, conservacion: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                        </div>
-                      </div>
+                            {/* Cocina */}
+                            <div className="border rounded-lg p-3 bg-slate-50">
+                              <h4 className="font-medium text-slate-700 mb-3">8.4 COCINA</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Tamaño</Label>
+                                  <Input value={calif.cocina.tamano} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].cocina.tamano = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Enchape</Label>
+                                  <Input value={calif.cocina.enchape} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].cocina.enchape = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Mobiliario</Label>
+                                  <Input value={calif.cocina.mobiliario} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].cocina.mobiliario = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Conservación</Label>
+                                  <Input value={calif.cocina.conservacion} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].cocina.conservacion = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
 
-                      {/* Complemento Industria */}
-                      <div className="border rounded-lg p-3 bg-slate-50">
-                        <h4 className="font-medium text-slate-700 mb-3">8.5 COMPLEMENTO INDUSTRIA (si aplica)</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Cercha Madera</Label>
-                            <Input value={visitaData.calif_industria.cercha_madera} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_industria: { ...prev.calif_industria, cercha_madera: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Cercha Met. Liviana</Label>
-                            <Input value={visitaData.calif_industria.cercha_metalica_liviana} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_industria: { ...prev.calif_industria, cercha_metalica_liviana: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Cercha Met. Mediana</Label>
-                            <Input value={visitaData.calif_industria.cercha_metalica_mediana} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_industria: { ...prev.calif_industria, cercha_metalica_mediana: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Cercha Met. Pesada</Label>
-                            <Input value={visitaData.calif_industria.cercha_metalica_pesada} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_industria: { ...prev.calif_industria, cercha_metalica_pesada: e.target.value } }))} placeholder="Código" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Altura</Label>
-                            <Input value={visitaData.calif_industria.altura} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_industria: { ...prev.calif_industria, altura: e.target.value } }))} placeholder="m" className="h-8 text-sm" />
-                          </div>
-                        </div>
-                      </div>
+                            {/* Industria */}
+                            <div className="border rounded-lg p-3 bg-slate-50">
+                              <h4 className="font-medium text-slate-700 mb-3">8.5 COMPLEMENTO INDUSTRIA (si aplica)</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Cercha Madera</Label>
+                                  <Input value={calif.industria.cercha_madera} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].industria.cercha_madera = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">C. Met. Liviana</Label>
+                                  <Input value={calif.industria.cercha_metalica_liviana} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].industria.cercha_metalica_liviana = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">C. Met. Mediana</Label>
+                                  <Input value={calif.industria.cercha_metalica_mediana} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].industria.cercha_metalica_mediana = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">C. Met. Pesada</Label>
+                                  <Input value={calif.industria.cercha_metalica_pesada} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].industria.cercha_metalica_pesada = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="Código" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Altura (m)</Label>
+                                  <Input value={calif.industria.altura} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].industria.altura = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
 
-                      {/* Datos Generales */}
-                      <div className="border rounded-lg p-3 bg-emerald-50 border-emerald-200">
-                        <h4 className="font-medium text-emerald-700 mb-3">8.6 DATOS GENERALES DE CONSTRUCCIÓN</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                          <div>
-                            <Label className="text-xs text-slate-500">Total Pisos</Label>
-                            <Input type="number" value={visitaData.calif_generales.total_pisos} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_generales: { ...prev.calif_generales, total_pisos: e.target.value } }))} placeholder="0" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Habitaciones</Label>
-                            <Input type="number" value={visitaData.calif_generales.total_habitaciones} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_generales: { ...prev.calif_generales, total_habitaciones: e.target.value } }))} placeholder="0" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Baños</Label>
-                            <Input type="number" value={visitaData.calif_generales.total_banos} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_generales: { ...prev.calif_generales, total_banos: e.target.value } }))} placeholder="0" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Locales</Label>
-                            <Input type="number" value={visitaData.calif_generales.total_locales} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_generales: { ...prev.calif_generales, total_locales: e.target.value } }))} placeholder="0" className="h-8 text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-slate-500">Área Total Const. (m²)</Label>
-                            <Input type="number" value={visitaData.calif_generales.area_total_construida} onChange={(e) => setVisitaData(prev => ({ ...prev, calif_generales: { ...prev.calif_generales, area_total_construida: e.target.value } }))} placeholder="0" className="h-8 text-sm" />
+                            {/* Datos Generales */}
+                            <div className="border rounded-lg p-3 bg-emerald-50 border-emerald-200">
+                              <h4 className="font-medium text-emerald-700 mb-3">8.6 DATOS GENERALES</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div>
+                                  <Label className="text-xs text-slate-500">Total Pisos</Label>
+                                  <Input type="number" value={calif.datos_generales.total_pisos} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].datos_generales.total_pisos = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Habitaciones</Label>
+                                  <Input type="number" value={calif.datos_generales.total_habitaciones} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].datos_generales.total_habitaciones = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Baños</Label>
+                                  <Input type="number" value={calif.datos_generales.total_banos} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].datos_generales.total_banos = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Locales</Label>
+                                  <Input type="number" value={calif.datos_generales.total_locales} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].datos_generales.total_locales = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-slate-500">Área Total (m²)</Label>
+                                  <Input type="number" value={calif.datos_generales.area_total_construida} onChange={(e) => {
+                                    const newCalifs = [...visitaCalificaciones];
+                                    newCalifs[califIdx].datos_generales.area_total_construida = e.target.value;
+                                    setVisitaCalificaciones(newCalifs);
+                                  }} placeholder="0" className="h-8 text-sm" />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </>
