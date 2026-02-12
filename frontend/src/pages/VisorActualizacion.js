@@ -4119,7 +4119,18 @@ export default function VisorActualizacion() {
                                       className="h-7 text-xs border-cyan-300 text-cyan-700"
                                       onClick={() => {
                                         // Abrir formulario de visita para esta mejora específica
+                                        const codigoMej = mejora?.properties?.codigo || '';
+                                        // Buscar predio R1/R2 de la mejora
+                                        const predioMej = prediosR1R2.find(p => {
+                                          const cod = p.codigo_predial || p.numero_predial;
+                                          if (cod === codigoMej) return true;
+                                          if (cod && codigoMej && cod.length >= 27 && codigoMej.length >= 27) {
+                                            if (cod.substring(0, 27) === codigoMej.substring(0, 27)) return true;
+                                          }
+                                          return false;
+                                        });
                                         setMejoraSeleccionada(mejora);
+                                        setPredioMejoraSeleccionada(predioMej || null);
                                         setTipoVisita('mejora');
                                         setShowVisitaModal(true);
                                         setShowPredioDetail(false);
