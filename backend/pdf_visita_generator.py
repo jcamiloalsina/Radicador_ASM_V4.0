@@ -480,109 +480,61 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     
     quarter_w = content_width / 4
     
-    # 8.1 ESTRUCTURA
-    c.setFillColor(GRIS_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.1 ESTRUCTURA")
-    
-    calif_est = visita.get('calif_estructura', {})
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Armazón", "armazon"), ("Muros", "muros"), ("Cubierta", "cubierta"), ("Conservación", "conservacion")]):
-        x = left + i * quarter_w
-        c.drawString(x + 3, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 3, y - 35, str(calif_est.get(key, '')) or "-")
+    # Helper para dibujar subsección de calificación (compacta)
+    def draw_calif_subsection(y_pos, title, data, fields):
+        # Solo mostrar si hay datos
+        has_data = any(data.get(key) for _, key in fields)
+        if not has_data:
+            return y_pos
+        
+        box_height = 35
+        c.setFillColor(GRIS_CLARO)
+        c.rect(left, y_pos - box_height, content_width, box_height, fill=1, stroke=1)
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColor(VERDE_PRINCIPAL)
+        c.drawString(left + 3, y_pos - 10, title)
+        
         c.setFont("Helvetica", 7)
         c.setFillColor(GRIS)
-    y -= 55
+        col_w = content_width / len(fields)
+        for i, (lbl, key) in enumerate(fields):
+            x = left + i * col_w
+            c.drawString(x + 3, y_pos - 20, lbl)
+            c.setFont("Helvetica", 8)
+            c.setFillColor(NEGRO)
+            c.drawString(x + 3, y_pos - 30, str(data.get(key, '')) or "-")
+            c.setFont("Helvetica", 7)
+            c.setFillColor(GRIS)
+        return y_pos - box_height - 3
+    
+    # 8.1 ESTRUCTURA
+    calif_est = visita.get('calif_estructura', {})
+    y = draw_calif_subsection(y, "8.1 ESTRUCTURA", calif_est, 
+        [("Armazón", "armazon"), ("Muros", "muros"), ("Cubierta", "cubierta"), ("Conservación", "conservacion")])
     
     # 8.2 ACABADOS
-    c.setFillColor(GRIS_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.2 ACABADOS PRINCIPALES")
-    
     calif_acab = visita.get('calif_acabados', {})
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Fachadas", "fachadas"), ("Cubrim. Muros", "cubrim_muros"), ("Pisos", "pisos"), ("Conservación", "conservacion")]):
-        x = left + i * quarter_w
-        c.drawString(x + 3, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 3, y - 35, str(calif_acab.get(key, '')) or "-")
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRIS)
-    y -= 55
+    y = draw_calif_subsection(y, "8.2 ACABADOS PRINCIPALES", calif_acab,
+        [("Fachadas", "fachadas"), ("Cubrim. Muros", "cubrim_muros"), ("Pisos", "pisos"), ("Conservación", "conservacion")])
     
     # 8.3 BAÑO
-    c.setFillColor(GRIS_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.3 BAÑO")
-    
     calif_bano = visita.get('calif_bano', {})
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")]):
-        x = left + i * quarter_w
-        c.drawString(x + 3, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 3, y - 35, str(calif_bano.get(key, '')) or "-")
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRIS)
-    y -= 55
+    y = draw_calif_subsection(y, "8.3 BAÑO", calif_bano,
+        [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
     
     # 8.4 COCINA
-    c.setFillColor(GRIS_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.4 COCINA")
-    
     calif_cocina = visita.get('calif_cocina', {})
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")]):
-        x = left + i * quarter_w
-        c.drawString(x + 3, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 3, y - 35, str(calif_cocina.get(key, '')) or "-")
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRIS)
-    y -= 55
+    y = draw_calif_subsection(y, "8.4 COCINA", calif_cocina,
+        [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
     
-    # 8.5 INDUSTRIA
-    c.setFillColor(GRIS_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.5 COMPLEMENTO INDUSTRIA (si aplica)")
-    
+    # 8.5 INDUSTRIA (solo si aplica)
     calif_ind = visita.get('calif_industria', {})
-    fifth_w = content_width / 5
-    c.setFont("Helvetica", 6)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Cercha Mad.", "cercha_madera"), ("C.Met.Liv.", "cercha_metalica_liviana"), 
-                                     ("C.Met.Med.", "cercha_metalica_mediana"), ("C.Met.Pes.", "cercha_metalica_pesada"), ("Altura", "altura")]):
-        x = left + i * fifth_w
-        c.drawString(x + 2, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 2, y - 35, str(calif_ind.get(key, '')) or "-")
-        c.setFont("Helvetica", 6)
-        c.setFillColor(GRIS)
-    y -= 55
+    y = draw_calif_subsection(y, "8.5 COMPLEMENTO INDUSTRIA", calif_ind,
+        [("Cercha Mad.", "cercha_madera"), ("C.Met.Liv.", "cercha_metalica_liviana"), 
+         ("C.Met.Med.", "cercha_metalica_mediana"), ("C.Met.Pes.", "cercha_metalica_pesada"), ("Altura", "altura")])
     
-    # 8.6 DATOS GENERALES
+    # 8.6 DATOS GENERALES (siempre mostrar)
+    fifth_w = content_width / 5
     c.setFillColor(VERDE_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
