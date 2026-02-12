@@ -329,10 +329,11 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
             ("Casa", visita.get('cond_casa', ''))
         ], [half_w, half_w])
     
-    # ==================== PÁGINA 2 ====================
-    y = new_page()
-    
     # === SECCIÓN 5: INFORMACIÓN JURÍDICA Y PROPIETARIOS ===
+    # Verificar si hay espacio suficiente para la sección 5, sino crear nueva página
+    if y < footer_limit + 150:  # Necesita espacio para header + algunos campos
+        y = new_page()
+    
     y = section_header(y, "5", "INFORMACIÓN JURÍDICA Y PROPIETARIOS")
     
     y = field_row(y, [
