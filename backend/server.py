@@ -16996,12 +16996,29 @@ async def guardar_visita_predio(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
+    # SEGURIDAD: Verificar si el predio ya está firmado (solo admin puede modificar)
+    if predio.get('estado_visita') == 'visitado_firmado':
+        if current_user['role'] not in [UserRole.ADMINISTRADOR]:
+            raise HTTPException(
+                status_code=403, 
+                detail="Este predio ya tiene una visita firmada y no puede ser modificado. El coordinador puede solicitar una revisita."
+            )
+    
     ahora = datetime.now(timezone.utc)
+    
+    # Determinar estado basado en si tiene ambas firmas
+    tiene_firma_visitado = bool(visita_data.get('firma_visitado_base64'))
+    tiene_firma_reconocedor = bool(visita_data.get('firma_reconocedor_base64'))
+    
+    if tiene_firma_visitado and tiene_firma_reconocedor:
+        estado_visita = "visitado_firmado"  # Bloqueado para edición
+    else:
+        estado_visita = "visitado"
     
     # Preparar datos de actualización
     update_data = {
         "formato_visita": visita_data,
-        "estado_visita": "visitado",
+        "estado_visita": estado_visita,
         "visitado_por": current_user.get('email'),
         "visitado_en": ahora.isoformat(),
         "updated_at": ahora,
@@ -17011,7 +17028,10 @@ async def guardar_visita_predio(
         "propietarios_visita": visita_data.get('propietarios_visita'),
         "construcciones_visita": visita_data.get('construcciones_visita'),
         "fotos_visita": visita_data.get('fotos'),
-        "firma_visita": visita_data.get('firma_base64'),
+        "firma_visitado_base64": visita_data.get('firma_visitado_base64'),
+        "firma_reconocedor_base64": visita_data.get('firma_reconocedor_base64'),
+        "nombre_visitado": visita_data.get('nombre_visitado'),
+        "nombre_reconocedor": visita_data.get('nombre_reconocedor'),
         "observaciones_generales": visita_data.get('observaciones'),
         "sin_cambios": visita_data.get('sin_cambios', False),
         "fecha_visita": visita_data.get('fecha_visita'),
@@ -17026,8 +17046,8 @@ async def guardar_visita_predio(
         "fecha": ahora.isoformat(),
         "usuario": current_user.get('email'),
         "rol": current_user['role'],
-        "accion": "visita_registrada",
-        "comentario": f"Visita de campo registrada. {'Sin cambios detectados.' if visita_data.get('sin_cambios') else 'Cambios por verificar.'}"
+        "accion": "visita_registrada" if estado_visita == "visitado" else "visita_firmada",
+        "comentario": f"Visita de campo {'firmada y bloqueada' if estado_visita == 'visitado_firmado' else 'registrada'}. {'Sin cambios detectados.' if visita_data.get('sin_cambios') else 'Cambios por verificar.'}"
     }
     
     await db.predios_actualizacion.update_one(
@@ -17039,9 +17059,10 @@ async def guardar_visita_predio(
     )
     
     return {
-        "message": "Visita guardada correctamente",
-        "estado_visita": "visitado",
-        "sin_cambios": visita_data.get('sin_cambios', False)
+        "message": "Visita guardada correctamente" + (" y firmada (bloqueada para edición)" if estado_visita == "visitado_firmado" else ""),
+        "estado_visita": estado_visita,
+        "sin_cambios": visita_data.get('sin_cambios', False),
+        "firmado": estado_visita == "visitado_firmado"
     }
 
 
