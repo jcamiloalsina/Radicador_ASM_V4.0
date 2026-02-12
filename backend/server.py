@@ -2654,11 +2654,15 @@ async def upload_documento_final(
 ):
     """
     Sube el documento final de respuesta y finaliza automáticamente el trámite.
-    Solo para staff (no ciudadanos). Envía correo con el documento adjunto.
+    Solo para Coordinador y Atención al Usuario. Envía correo con el documento adjunto.
     """
-    # Solo staff puede subir documento final
-    if current_user['role'] == UserRole.USUARIO:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el personal puede subir documentos finales")
+    # Solo Coordinador y Atención al Usuario pueden finalizar
+    roles_permitidos = [UserRole.COORDINADOR, UserRole.ATENCION_USUARIO, UserRole.ADMINISTRADOR]
+    if current_user['role'] not in roles_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Solo Coordinador o Atención al Usuario pueden subir documentos finales y finalizar trámites"
+        )
     
     petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
     if not petition:
