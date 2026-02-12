@@ -2325,7 +2325,7 @@ export default function VisorActualizacion() {
       firma_visitado_base64: null,
       firma_reconocedor_base64: null,
       nombre_visitado: '',
-      nombre_reconocedor: '',
+      nombre_reconocedor: (user?.full_name || '').toUpperCase(),
       // Datos de la visita
       fecha_visita: new Date().toISOString().split('T')[0],
       hora_visita: new Date().toTimeString().slice(0, 5),
