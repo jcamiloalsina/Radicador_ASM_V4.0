@@ -251,10 +251,8 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     
     # Código Homologado, Tipo, Ubicación
     zona = "Rural" if str(predio.get('codigo_predial', ''))[5:7] == '00' else "Urbano"
-    codigo_homologado = predio.get('codigo_homologado', '')
-    logger.info(f"[PDF] Código Homologado para predio: {codigo_homologado}")
     y = field_row(y, [
-        ("Código Homologado", codigo_homologado),
+        ("Código Homologado", predio.get('codigo_homologado', '')),
         ("Tipo (verificar)", visita.get('tipo_predio', 'NPH')),
         ("Ubicación", zona)
     ], [third_w, third_w, third_w])
