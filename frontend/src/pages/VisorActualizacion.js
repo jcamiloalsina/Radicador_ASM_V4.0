@@ -99,6 +99,18 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Helper para formatear áreas: "X ha X.XXX m²"
+const formatearArea = (m2) => {
+  if (!m2 || isNaN(parseFloat(m2))) return '-';
+  const metros = parseFloat(m2);
+  const hectareas = metros / 10000;
+  if (hectareas >= 1) {
+    return `${hectareas.toFixed(2)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 2 })} m²`;
+  } else {
+    return `${hectareas.toFixed(4)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 2 })} m²`;
+  }
+};
+
 // Componente para manejar eventos del mapa y ubicación GPS
 function MapController({ onLocationFound, setCurrentZoom, flyToPosition }) {
   const map = useMap();
