@@ -367,7 +367,7 @@ export default function VisorActualizacion() {
   const [showVisitaModal, setShowVisitaModal] = useState(false);
   const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-5)
   const [tipoVisita, setTipoVisita] = useState('terreno'); // 'terreno' o 'mejora'
-  const [visitaData, setVisitaData] = useState({
+  const [visitaData, setVisitaDataRaw] = useState({
     // Sección 2: Información Básica
     tipo_predio: '', // PH o NPH (editable)
     direccion_visita: '',
