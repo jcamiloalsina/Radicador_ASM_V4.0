@@ -629,9 +629,16 @@ export default function GestionPropuestas() {
                     <TableCell className="font-mono text-xs">{propuesta.codigo_predial}</TableCell>
                     <TableCell className="text-sm">{propuesta.municipio || proyectoActual?.municipio || '-'}</TableCell>
                     <TableCell className="max-w-xs">
-                      <p className="truncate text-sm text-slate-600">{propuesta.justificacion}</p>
+                      <p className="truncate text-sm text-slate-600">
+                        {propuesta.justificacion || propuesta.motivo || '-'}
+                      </p>
+                      {propuesta.tipo === 'cancelacion' && (
+                        <Badge className="mt-1 bg-red-100 text-red-600 text-xs">Eliminación</Badge>
+                      )}
                     </TableCell>
-                    <TableCell className="text-sm">{propuesta.creado_por_nombre || propuesta.creado_por}</TableCell>
+                    <TableCell className="text-sm">
+                      {propuesta.creado_por_nombre || propuesta.propuesto_por_nombre || propuesta.creado_por || '-'}
+                    </TableCell>
                     <TableCell className="text-sm text-slate-500">
                       {new Date(propuesta.creado_en).toLocaleDateString('es-CO')}
                     </TableCell>
