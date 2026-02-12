@@ -112,8 +112,15 @@ const formatearArea = (m2) => {
 };
 
 // Componente para manejar eventos del mapa y ubicación GPS
-function MapController({ onLocationFound, setCurrentZoom, flyToPosition }) {
+function MapController({ onLocationFound, setCurrentZoom, flyToPosition, fitToBounds, onMapReady }) {
   const map = useMap();
+  
+  // Notificar cuando el mapa está listo
+  useEffect(() => {
+    if (map && onMapReady) {
+      onMapReady(map);
+    }
+  }, [map, onMapReady]);
   
   useMapEvents({
     zoomend: () => {
@@ -133,6 +140,17 @@ function MapController({ onLocationFound, setCurrentZoom, flyToPosition }) {
       map.flyTo(flyToPosition, 18, { duration: 1.5 });
     }
   }, [flyToPosition, map]);
+  
+  // Ajustar a los bounds cuando se proporcionen
+  useEffect(() => {
+    if (fitToBounds && map) {
+      try {
+        map.fitBounds(fitToBounds, { padding: [50, 50], maxZoom: 18 });
+      } catch (error) {
+        console.error('Error ajustando bounds:', error);
+      }
+    }
+  }, [fitToBounds, map]);
   
   return null;
 }
