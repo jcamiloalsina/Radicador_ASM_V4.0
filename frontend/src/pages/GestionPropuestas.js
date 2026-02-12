@@ -1019,15 +1019,17 @@ export default function GestionPropuestas() {
                 </div>
               )}
               
-              {/* Justificación del gestor */}
+              {/* Justificación del gestor - solo para propuestas de modificación */}
+              {propuestaDetalle.tipo !== 'cancelacion' && (
               <div className="bg-slate-50 rounded-lg p-4">
                 <Label className="text-slate-600 text-sm">Justificación del Gestor</Label>
-                <p className="mt-2 text-sm text-slate-700 italic">&ldquo;{propuestaDetalle.justificacion}&rdquo;</p>
+                <p className="mt-2 text-sm text-slate-700 italic">&ldquo;{propuestaDetalle.justificacion || 'Sin justificación'}&rdquo;</p>
                 <div className="flex justify-between mt-3 text-xs text-slate-500">
-                  <span>Enviado por: <strong>{propuestaDetalle.creado_por_nombre || propuestaDetalle.creado_por}</strong></span>
-                  <span>{new Date(propuestaDetalle.creado_en).toLocaleString('es-CO')}</span>
+                  <span>Enviado por: <strong>{propuestaDetalle.creado_por_nombre || propuestaDetalle.propuesto_por_nombre || propuestaDetalle.creado_por || '-'}</strong></span>
+                  <span>{propuestaDetalle.creado_en ? new Date(propuestaDetalle.creado_en).toLocaleString('es-CO') : '-'}</span>
                 </div>
               </div>
+              )}
               
               {/* Si ya fue revisada (excluir pendiente y reenviada que aún pueden ser accionadas) */}
               {propuestaDetalle.estado !== 'pendiente' && propuestaDetalle.estado !== 'reenviada' && (
