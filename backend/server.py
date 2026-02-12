@@ -18189,9 +18189,9 @@ async def generar_pdf_informe_visita(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
     
-    # Guardar en disco
+    # Guardar en disco (crear directorios padres si no existen)
     pdf_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id / "pdfs"
-    pdf_dir.mkdir(exist_ok=True)
+    pdf_dir.mkdir(parents=True, exist_ok=True)
     # Sanitizar código predial para nombre de archivo
     codigo_safe = codigo_predial_decoded.replace('/', '_').replace('\\', '_')
     pdf_filename = f"informe_visita_{codigo_safe}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
