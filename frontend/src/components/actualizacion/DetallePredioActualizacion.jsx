@@ -141,31 +141,35 @@ const DetallePredioActualizacion = ({
                 Mejoras del Terreno ({numMejoras})
               </span>
             </div>
-            {mejorasDelTerreno.slice(0, 3).map((mejora, idx) => {
-              const props = mejora.properties || {};
-              const codigoMejora = props.codigo || '';
-              const numMejoraStr = codigoMejora.substring(27, 30);
-              return (
-                <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-cyan-200">
-                  <div>
-                    <Badge className="bg-cyan-500 text-white text-[10px]">Mejora #{numMejoraStr}</Badge>
-                    <p className="font-mono text-[9px] text-slate-600 mt-1">{codigoMejora}</p>
+            <div className="max-h-[200px] overflow-y-auto space-y-2">
+              {mejorasDelTerreno.map((mejora, idx) => {
+                const props = mejora.properties || {};
+                const codigoMejora = props.codigo || '';
+                const numMejoraStr = codigoMejora.substring(27, 30);
+                return (
+                  <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-cyan-200">
+                    <div>
+                      <Badge className="bg-cyan-500 text-white text-[10px]">Mejora #{numMejoraStr}</Badge>
+                      <p className="font-mono text-[9px] text-slate-600 mt-1">{codigoMejora}</p>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-6 text-xs border-cyan-300 text-cyan-700 hover:bg-cyan-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenVisitaMejora) {
+                          onOpenVisitaMejora(mejora);
+                        }
+                      }}
+                    >
+                      <ClipboardList className="w-3 h-3 mr-1" />
+                      Visita
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-6 text-xs border-cyan-300 text-cyan-700"
-                    onClick={() => onOpenVisitaMejora && onOpenVisitaMejora(mejora)}
-                  >
-                    <ClipboardList className="w-3 h-3 mr-1" />
-                    Visita
-                  </Button>
-                </div>
-              );
-            })}
-            {mejorasDelTerreno.length > 3 && (
-              <p className="text-xs text-cyan-600 text-center">+{mejorasDelTerreno.length - 3} más...</p>
-            )}
+                );
+              })}
+            </div>
           </div>
         )}
 
