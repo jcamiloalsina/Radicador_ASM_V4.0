@@ -16162,12 +16162,8 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                     gdf = pyogrio.read_dataframe(data_source, layer=capa_especifica)
                 
                 if len(gdf) > 0:
-                    # Manejar geometrías sin CRS definido
-                    if gdf.crs is None:
-                        logger.warning(f"[GDB/SHP] Capa '{capa_especifica}' no tiene CRS definido. Asignando EPSG:4326 por defecto.")
-                        gdf = gdf.set_crs(epsg=4326)
-                    else:
-                        gdf = gdf.to_crs(epsg=4326)
+                    # Convertir CRS de forma segura (asume MAGNA-SIRGAS si no hay CRS)
+                    gdf = safe_convert_crs(gdf, capa_especifica)
                     logger.info(f"[GDB/SHP Actualizacion] Capa '{capa_especifica}' tiene {len(gdf)} registros")
                     
                     # Determinar tipo de zona basado en el nombre de la capa
@@ -16254,7 +16250,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 logger.info(f"[GDB/SHP Actualizacion] Procesando capa rural: {layer_name}")
                 gdf = read_layer(layer_name)
                 if gdf is not None and len(gdf) > 0:
-                    gdf = gdf.to_crs(epsg=4326)
+                    gdf = safe_convert_crs(gdf, layer_name)
                     for idx, row in gdf.iterrows():
                         geom = row.geometry.__geo_interface__
                         props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
@@ -16285,7 +16281,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 gdf = read_layer(layer_name)
                 if gdf is not None and len(gdf) > 0:
                     logger.info(f"[GDB/SHP Actualizacion] Convirtiendo CRS de {len(gdf)} registros...")
-                    gdf = gdf.to_crs(epsg=4326)
+                    gdf = safe_convert_crs(gdf, layer_name)
                     for idx, row in gdf.iterrows():
                         geom = row.geometry.__geo_interface__
                         props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
@@ -16315,7 +16311,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 logger.info(f"[GDB/SHP Actualizacion] Procesando capa perímetro: {layer_name}")
                 gdf = read_layer(layer_name)
                 if gdf is not None and len(gdf) > 0:
-                    gdf = gdf.to_crs(epsg=4326)
+                    gdf = safe_convert_crs(gdf, layer_name)
                     for idx, row in gdf.iterrows():
                         geom = row.geometry.__geo_interface__
                         props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
@@ -16348,7 +16344,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 logger.info(f"[GDB/SHP Actualizacion] Procesando construcciones: {layer_name}")
                 gdf = read_layer(layer_name)
                 if gdf is not None and len(gdf) > 0:
-                    gdf = gdf.to_crs(epsg=4326)
+                    gdf = safe_convert_crs(gdf, layer_name)
                     for idx, row in gdf.iterrows():
                         geom = row.geometry.__geo_interface__
                         props = {k: (str(v) if v is not None else None) for k, v in row.items() if k != 'geometry'}
