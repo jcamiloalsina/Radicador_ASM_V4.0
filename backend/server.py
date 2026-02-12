@@ -18334,9 +18334,15 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
                         except:
                             predio_data[field] = None
                     elif field.startswith('propietario_'):
-                        # Datos del propietario
-                        prop_field = field.replace('propietario_', '')
-                        propietario[prop_field] = str(val).strip()
+                        # Datos del propietario - usar nombres consistentes
+                        if field == 'propietario_nombre':
+                            propietario['nombre_propietario'] = str(val).strip()
+                        elif field == 'propietario_tipo_doc':
+                            propietario['tipo_documento'] = str(val).strip()
+                        elif field == 'propietario_documento':
+                            propietario['numero_documento'] = str(val).strip()
+                        elif field == 'propietario_estado_civil':
+                            propietario['estado_civil'] = str(val).strip()
                     elif field == 'codigo_predial':
                         codigo_predial = str(val).strip()
                         predio_data[field] = codigo_predial
