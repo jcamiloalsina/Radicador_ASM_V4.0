@@ -812,9 +812,56 @@ export default function GestionPropuestas() {
                     <p className="font-medium text-slate-700">{propuestaDetalle.municipio || proyectoActual?.municipio}</p>
                   </div>
                 </div>
+                {/* Mostrar tipo de propuesta */}
+                <div className="mt-3 pt-3 border-t border-emerald-200">
+                  <Badge className={propuestaDetalle.tipo === 'cancelacion' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}>
+                    {propuestaDetalle.tipo === 'cancelacion' ? 'Solicitud de Eliminación' : 'Propuesta de Modificación'}
+                  </Badge>
+                </div>
               </div>
               
-              {/* Vista comparativa de campos */}
+              {/* Si es propuesta de cancelación, mostrar datos específicos */}
+              {propuestaDetalle.tipo === 'cancelacion' ? (
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                    <h4 className="font-semibold text-red-800 flex items-center gap-2 mb-3">
+                      <AlertCircle className="w-4 h-4" />
+                      Solicitud de Eliminación de Predio
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Motivo:</strong> {propuestaDetalle.motivo || 'No especificado'}</p>
+                      <p><strong>Solicitado por:</strong> {propuestaDetalle.propuesto_por_nombre || propuestaDetalle.creado_por_nombre || propuestaDetalle.creado_por || 'No especificado'}</p>
+                      <p><strong>Fecha:</strong> {propuestaDetalle.creado_en ? new Date(propuestaDetalle.creado_en).toLocaleString('es-CO') : 'No especificada'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Datos del predio a eliminar */}
+                  {propuestaDetalle.datos_predio && (
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-slate-700 mb-3">Datos del Predio</h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-slate-500">Dirección:</span>
+                          <p className="font-medium">{propuestaDetalle.datos_predio.direccion || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Área Terreno:</span>
+                          <p className="font-medium">{propuestaDetalle.datos_predio.area_terreno || 0} m²</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Estado Visita:</span>
+                          <p className="font-medium">{propuestaDetalle.datos_predio.estado_visita || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Propietarios:</span>
+                          <p className="font-medium">{propuestaDetalle.datos_predio.propietarios?.length || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+              /* Vista comparativa de campos para propuestas de modificación */
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-slate-700 flex items-center gap-2">
