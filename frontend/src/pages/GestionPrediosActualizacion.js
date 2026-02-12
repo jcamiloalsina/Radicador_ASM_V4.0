@@ -1174,20 +1174,32 @@ export default function GestionPrediosActualizacion() {
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}/generar-pdf`,
         {},
         {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob'
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
       
-      // Crear URL del blob y abrir en nueva pestaña
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      
-      // Limpiar URL después de un tiempo
-      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-      
-      toast.success('PDF generado correctamente');
+      // El backend devuelve el PDF como base64
+      if (response.data?.pdf_base64) {
+        // Convertir base64 a blob
+        const byteCharacters = atob(response.data.pdf_base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        // Crear URL del blob y abrir en nueva pestaña
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Limpiar URL después de un tiempo
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+        
+        toast.success('PDF generado correctamente');
+      } else {
+        toast.error('No se pudo generar el PDF');
+      }
     } catch (error) {
       console.error('Error generando PDF:', error);
       if (error.response?.status === 404) {
