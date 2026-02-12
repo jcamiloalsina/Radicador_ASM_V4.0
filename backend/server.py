@@ -18124,18 +18124,11 @@ async def generar_pdf_informe_visita(
     codigo_predial: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Genera el PDF del informe de visita de un predio - VERSIÓN COMPLETA"""
+    """Genera el PDF del informe de visita de un predio - VERSIÓN COMPLETA IGUAL AL FORMULARIO WEB"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para generar PDF")
     
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
-    from reportlab.lib.units import inch, cm
-    from reportlab.lib.utils import ImageReader
-    from reportlab.pdfgen import canvas
-    import io
+    from pdf_visita_generator import generar_pdf_visita_completo
     import base64
     
     # Importar imágenes del certificado
