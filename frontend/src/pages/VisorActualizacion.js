@@ -1671,48 +1671,67 @@ export default function VisorActualizacion() {
   // Efecto para abrir predio desde URL (cuando viene de "Ver en Mapa")
   useEffect(() => {
     if (codigoFromUrl && geometrias?.features?.length > 0 && prediosR1R2.length > 0) {
-      // Buscar el predio por código
-      const predio = prediosR1R2.find(p => 
-        p.codigo_predial === codigoFromUrl || 
-        p.numero_predial === codigoFromUrl ||
-        p.codigo_predial?.includes(codigoFromUrl)
-      );
+      console.log('[VisorActualizacion] Buscando predio desde URL:', codigoFromUrl);
+      
+      // Buscar el predio por código (búsqueda flexible)
+      const predio = prediosR1R2.find(p => {
+        const codigoP = p.codigo_predial || p.numero_predial || '';
+        // Match exacto o parcial
+        return codigoP === codigoFromUrl || 
+               codigoP.includes(codigoFromUrl) ||
+               codigoFromUrl.includes(codigoP);
+      });
       
       if (predio) {
+        console.log('[VisorActualizacion] Predio encontrado:', predio.codigo_predial || predio.numero_predial);
+        
         // Abrir el predio automáticamente
         setTimeout(() => {
           setSelectedPredio(predio);
           setShowDetalleSimplificado(true);
           
           // Buscar y hacer zoom a la geometría
+          const codigoBuscado = predio.codigo_predial || predio.numero_predial;
+          const codigoBase = codigoBuscado.substring(0, 21); // Primeros 21 dígitos para matching
+          
           const feature = geometrias.features.find(f => {
             const props = f.properties || {};
-            const codigo = props.codigo || props.codigo_predial || '';
-            return codigo === predio.codigo_predial || codigo === predio.numero_predial;
+            const codigo = props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO || '';
+            // Match exacto o por código base (para mejoras)
+            return codigo === codigoBuscado || 
+                   codigo.startsWith(codigoBase) ||
+                   codigoBuscado.startsWith(codigo);
           });
           
-          if (feature && mapRef.current) {
+          if (feature) {
+            console.log('[VisorActualizacion] Geometría encontrada, haciendo zoom');
             try {
               const layer = L.geoJSON(feature);
               const bounds = layer.getBounds();
               if (bounds.isValid()) {
-                mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+                setFitToBounds([
+                  [bounds.getSouth(), bounds.getWest()],
+                  [bounds.getNorth(), bounds.getEast()]
+                ]);
               }
             } catch (e) {
-              console.error('Error haciendo zoom a predio:', e);
+              console.error('[VisorActualizacion] Error haciendo zoom a predio:', e);
             }
+          } else {
+            console.log('[VisorActualizacion] Geometría no encontrada para el predio');
           }
           
-          toast.success(`Predio ${predio.codigo_predial || predio.numero_predial} encontrado`);
-        }, 500);
+          toast.success(`Predio ${codigoBuscado} encontrado`);
+        }, 800);
       } else {
+        console.log('[VisorActualizacion] Predio NO encontrado en prediosR1R2');
         toast.warning('Predio no encontrado en el mapa');
       }
       
-      // Limpiar el parámetro de URL
-      navigate(`/actualizacion/visor/${proyectoId}`, { replace: true });
+      // Limpiar el parámetro de URL para evitar re-ejecución
+      navigate(`/dashboard/visor-actualizacion/${proyectoId}`, { replace: true });
     }
-  }, [codigoFromUrl, geometrias?.features?.length, prediosR1R2.length]);
+  }, [codigoFromUrl, geometrias?.features?.length, prediosR1R2.length, proyectoId, navigate]);
   
   // Buscar predio
   const handleSearch = async () => {
