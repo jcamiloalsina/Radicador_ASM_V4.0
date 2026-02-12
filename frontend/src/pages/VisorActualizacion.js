@@ -1669,6 +1669,52 @@ export default function VisorActualizacion() {
     }
   }, [geometrias?.features?.length, zoomToGDBLayer]);
   
+  // Efecto para abrir predio desde URL (cuando viene de "Ver en Mapa")
+  useEffect(() => {
+    if (codigoFromUrl && geometrias?.features?.length > 0 && prediosR1R2.length > 0) {
+      // Buscar el predio por código
+      const predio = prediosR1R2.find(p => 
+        p.codigo_predial === codigoFromUrl || 
+        p.numero_predial === codigoFromUrl ||
+        p.codigo_predial?.includes(codigoFromUrl)
+      );
+      
+      if (predio) {
+        // Abrir el predio automáticamente
+        setTimeout(() => {
+          setSelectedPredio(predio);
+          setShowDetalleSimplificado(true);
+          
+          // Buscar y hacer zoom a la geometría
+          const feature = geometrias.features.find(f => {
+            const props = f.properties || {};
+            const codigo = props.codigo || props.codigo_predial || '';
+            return codigo === predio.codigo_predial || codigo === predio.numero_predial;
+          });
+          
+          if (feature && mapRef.current) {
+            try {
+              const layer = L.geoJSON(feature);
+              const bounds = layer.getBounds();
+              if (bounds.isValid()) {
+                mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+              }
+            } catch (e) {
+              console.error('Error haciendo zoom a predio:', e);
+            }
+          }
+          
+          toast.success(`Predio ${predio.codigo_predial || predio.numero_predial} encontrado`);
+        }, 500);
+      } else {
+        toast.warning('Predio no encontrado en el mapa');
+      }
+      
+      // Limpiar el parámetro de URL
+      navigate(`/actualizacion/visor/${proyectoId}`, { replace: true });
+    }
+  }, [codigoFromUrl, geometrias?.features?.length, prediosR1R2.length]);
+  
   // Buscar predio
   const handleSearch = async () => {
     if (!searchCode.trim()) return;
