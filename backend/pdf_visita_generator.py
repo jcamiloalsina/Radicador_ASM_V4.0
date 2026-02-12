@@ -24,7 +24,7 @@ GRIS_CLARO = colors.HexColor('#f1f5f9')
 NEGRO = colors.black
 BLANCO = colors.white
 
-def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construcciones, current_user_email):
+def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construcciones, current_user_email, current_user_name=None):
     """
     Genera el PDF del informe de visita EXACTO al formulario web
     
@@ -35,6 +35,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         propietarios: list de propietarios (visitaPropietarios del frontend)
         construcciones: list de construcciones (visitaConstrucciones del frontend)
         current_user_email: email del usuario actual
+        current_user_name: nombre del usuario actual (opcional)
     
     Returns:
         bytes: contenido del PDF
