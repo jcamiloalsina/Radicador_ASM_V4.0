@@ -160,27 +160,49 @@ export default function PetitionDetail() {
         },
       });
       
-      // Si es staff interno (no usuario), automáticamente finalizar el trámite
-      if (user?.role !== 'usuario') {
-        try {
-          await axios.patch(`${API}/petitions/${id}`, {
-            estado: 'finalizado',
-            enviar_archivos_finalizacion: true  // Enviar archivos adjuntos en el correo
-          });
-          toast.success('¡Documento subido y trámite finalizado! Se envió notificación con el archivo adjunto.');
-        } catch (finalizarError) {
-          toast.success('Archivos subidos exitosamente');
-          toast.error('No se pudo finalizar automáticamente. Por favor cambie el estado manualmente.');
-        }
-      } else {
-        toast.success('Archivos subidos exitosamente');
-      }
-      
+      toast.success('Archivos subidos exitosamente');
       setFiles([]);
       setShowUploadDialog(false);
       fetchPetition();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al subir archivos');
+    }
+  };
+
+  // Subir documento final - Finaliza automáticamente y envía correo
+  const handleUploadDocumentoFinal = async () => {
+    if (files.length === 0) {
+      toast.error('Selecciona al menos un archivo');
+      return;
+    }
+
+    setUploadingFinal(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await axios.post(`${API}/petitions/${id}/upload-documento-final`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      const emailEnviado = response.data.email_enviado;
+      if (emailEnviado) {
+        toast.success('¡Documento subido, trámite finalizado y correo enviado al solicitante!');
+      } else {
+        toast.success('¡Documento subido y trámite finalizado! (No se envió correo - sin email registrado)');
+      }
+      
+      setFiles([]);
+      setShowUploadFinalDialog(false);
+      fetchPetition();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al subir documento final');
+    } finally {
+      setUploadingFinal(false);
     }
   };
 
