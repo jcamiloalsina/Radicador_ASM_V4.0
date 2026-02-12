@@ -233,6 +233,11 @@ const userLocationIcon = L.divIcon({
 export default function VisorActualizacion() {
   const { proyectoId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Obtener código de predio de la URL (para "Ver en Mapa")
+  const searchParams = new URLSearchParams(location.search);
+  const codigoFromUrl = searchParams.get('codigo');
   const { user } = useAuth();
   const mapRef = useRef(null);
   
