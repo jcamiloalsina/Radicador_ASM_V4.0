@@ -2160,6 +2160,44 @@ export default function VisorActualizacion() {
     }, 100);
   };
   
+  // Efecto para cargar datos cuando se abre visita para una mejora
+  useEffect(() => {
+    if (showVisitaModal && tipoVisita === 'mejora' && mejoraSeleccionada) {
+      console.log('[Visor] Cargando datos para visita de mejora');
+      const predio = predioMejoraSeleccionada;
+      const codigoMejora = mejoraSeleccionada?.properties?.codigo || '';
+      
+      // Si encontramos el predio R1/R2 de la mejora, pre-llenar los datos
+      if (predio) {
+        console.log('[Visor] Predio R1/R2 de mejora encontrado:', predio.codigo_predial);
+        setVisitaData(prev => ({
+          ...prev,
+          direccion_visita: predio.direccion || prev.direccion_visita || '',
+          destino_economico_visita: predio.destino_economico || prev.destino_economico_visita || '',
+          area_terreno_visita: predio.area_terreno?.toString() || prev.area_terreno_visita || '',
+          area_construida_visita: predio.area_construida?.toString() || prev.area_construida_visita || ''
+        }));
+        
+        // Pre-llenar propietarios si existen
+        if (predio.propietarios && predio.propietarios.length > 0) {
+          setVisitaPropietarios(predio.propietarios.map(p => ({
+            tipo_documento: p.tipo_documento || '',
+            numero_documento: p.numero_documento || '',
+            nombre: p.nombre || '',
+            primer_apellido: p.primer_apellido || '',
+            segundo_apellido: p.segundo_apellido || '',
+            estado: p.estado || '',
+            genero: p.genero || '',
+            genero_otro: p.genero_otro || '',
+            grupo_etnico: p.grupo_etnico || ''
+          })));
+        }
+      } else {
+        console.log('[Visor] No se encontró predio R1/R2 para la mejora:', codigoMejora);
+      }
+    }
+  }, [showVisitaModal, tipoVisita, mejoraSeleccionada, predioMejoraSeleccionada]);
+  
   // Funciones para manejar propietarios en el formulario de visita
   const agregarPropietarioVisita = () => {
     setVisitaPropietarios(prev => [...prev, {
