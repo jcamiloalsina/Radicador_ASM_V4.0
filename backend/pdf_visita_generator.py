@@ -577,54 +577,56 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     has_areas = areas_terreno and any(a.get('hectareas') or a.get('metros') for a in areas_terreno)
     
     if has_areas or visita.get('area_terreno_visita') or predio.get('area_terreno'):
-        if y < footer_limit + 150:
+        if y < footer_limit + 120:
             y = new_page()
         
         y = section_header(y, "9", "RESUMEN ÁREAS DE TERRENO")
-    
-    # Tabla de áreas
-    area_cols = [170, 80, 80, 170]
-    area_headers = ["Área de terreno según:", "Ha", "m²", "Descripción"]
-    c.setFillColor(VERDE_CLARO)
-    c.rect(left, y - 14, sum(area_cols), 14, fill=1, stroke=0)
-    c.setStrokeColor(VERDE_MEDIO)
-    c.rect(left, y - 14, sum(area_cols), 14, stroke=1, fill=0)
-    c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(VERDE_PRINCIPAL)
-    x_pos = left
-    for col_w, header in zip(area_cols, area_headers):
-        c.drawString(x_pos + 3, y - 10, header)
-        x_pos += col_w
-    y -= 16
-    
-    areas_data = [
-        ("Área de título", visita.get('area_titulo_ha', ''), visita.get('area_titulo_m2', ''), visita.get('area_titulo_desc', ''), None),
-        ("Área base catastral (R1)", visita.get('area_base_catastral_ha', ''), visita.get('area_base_catastral_m2', predio.get('area_terreno', '')), "Datos del R1", VERDE_CLARO),
-        ("Área geográfica (GDB)", visita.get('area_geografica_ha', ''), visita.get('area_geografica_m2', ''), "Calculado del GDB", colors.HexColor('#dbeafe')),
-        ("Área levantamiento topográfico", visita.get('area_levantamiento_ha', ''), visita.get('area_levantamiento_m2', ''), visita.get('area_levantamiento_desc', ''), None),
-        ("Área identificación predial", visita.get('area_identificacion_ha', ''), visita.get('area_identificacion_m2', ''), visita.get('area_identificacion_desc', ''), None),
-    ]
-    
-    c.setFont("Helvetica", 8)
-    for concepto, ha, m2, desc, bg in areas_data:
-        if bg:
-            c.setFillColor(bg)
-            c.rect(left, y - 14, sum(area_cols), 14, fill=1, stroke=0)
+        
+        # Tabla de áreas
+        area_cols = [170, 80, 80, 170]
+        area_headers = ["Área de terreno según:", "Ha", "m²", "Descripción"]
+        c.setFillColor(VERDE_CLARO)
+        c.rect(left, y - 14, sum(area_cols), 14, fill=1, stroke=0)
         c.setStrokeColor(VERDE_MEDIO)
         c.rect(left, y - 14, sum(area_cols), 14, stroke=1, fill=0)
-        c.setFillColor(NEGRO)
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColor(VERDE_PRINCIPAL)
         x_pos = left
-        for col_w, val in zip(area_cols, [concepto, ha, m2, desc]):
-            c.drawString(x_pos + 3, y - 10, str(val)[:int(col_w/4.5)] if val else "-")
+        for col_w, header in zip(area_cols, area_headers):
+            c.drawString(x_pos + 3, y - 10, header)
             x_pos += col_w
-        y -= 14
-    y -= 15
+        y -= 16
+        
+        areas_data = [
+            ("Área de título", visita.get('area_titulo_ha', ''), visita.get('area_titulo_m2', ''), visita.get('area_titulo_desc', ''), None),
+            ("Área base catastral (R1)", visita.get('area_base_catastral_ha', ''), visita.get('area_base_catastral_m2', predio.get('area_terreno', '')), "Datos del R1", VERDE_CLARO),
+            ("Área geográfica (GDB)", visita.get('area_geografica_ha', ''), visita.get('area_geografica_m2', ''), "Calculado del GDB", colors.HexColor('#dbeafe')),
+            ("Área levantamiento topográfico", visita.get('area_levantamiento_ha', ''), visita.get('area_levantamiento_m2', ''), visita.get('area_levantamiento_desc', ''), None),
+            ("Área identificación predial", visita.get('area_identificacion_ha', ''), visita.get('area_identificacion_m2', ''), visita.get('area_identificacion_desc', ''), None),
+        ]
+        
+        c.setFont("Helvetica", 8)
+        for concepto, ha, m2, desc, bg in areas_data:
+            if bg:
+                c.setFillColor(bg)
+                c.rect(left, y - 14, sum(area_cols), 14, fill=1, stroke=0)
+            c.setStrokeColor(VERDE_MEDIO)
+            c.rect(left, y - 14, sum(area_cols), 14, stroke=1, fill=0)
+            c.setFillColor(NEGRO)
+            x_pos = left
+            for col_w, val in zip(area_cols, [concepto, ha, m2, desc]):
+                c.drawString(x_pos + 3, y - 10, str(val)[:int(col_w/4.5)] if val else "-")
+                x_pos += col_w
+            y -= 14
+        y -= 10
     
     # === SECCIÓN 10: INFORMACIÓN DE LOCALIZACIÓN ===
-    y = section_header(y, "10", "INFORMACIÓN DE LOCALIZACIÓN (Croquis del terreno y construcciones)")
-    
     fotos = visita.get('fotos_croquis', [])
     if fotos:
+        if y < footer_limit + 150:
+            y = new_page()
+        y = section_header(y, "10", "INFORMACIÓN DE LOCALIZACIÓN (Croquis del terreno y construcciones)")
+        
         c.setFont("Helvetica", 8)
         c.setFillColor(GRIS)
         c.drawString(left, y, f"Se adjuntan {len(fotos)} foto(s) del croquis:")
@@ -660,23 +662,18 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         
         if len(fotos) % 2 == 1:
             y -= foto_h + 20
-    else:
-        c.setFont("Helvetica-Oblique", 9)
-        c.setFillColor(GRIS)
-        c.drawString(left, y, "No se adjuntaron fotos del croquis.")
-        y -= 15
-    
-    # ==================== PÁGINA 5 ====================
-    y = new_page()
     
     # === SECCIÓN 11: COORDENADAS GPS ===
-    y = section_header(y, "11", "COORDENADAS GPS DEL PREDIO")
-    
     coords = visita.get('coordenadas_gps', {})
-    y = field_row(y, [
-        ("Latitud (Y)", coords.get('latitud', '')),
-        ("Longitud (X)", coords.get('longitud', ''))
-    ], [half_w, half_w])
+    if coords.get('latitud') or coords.get('longitud'):
+        if y < footer_limit + 50:
+            y = new_page()
+        y = section_header(y, "11", "COORDENADAS GPS DEL PREDIO")
+        
+        y = field_row(y, [
+            ("Latitud (Y)", coords.get('latitud', '')),
+            ("Longitud (X)", coords.get('longitud', ''))
+        ], [half_w, half_w])
     
     if coords.get('precision') or coords.get('fecha_captura'):
         c.setFont("Helvetica", 8)
