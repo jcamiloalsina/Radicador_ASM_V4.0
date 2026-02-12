@@ -455,6 +455,14 @@ export default function VisorActualizacion() {
     // Sección 11: Coordenadas GPS
     coordenadas_gps: { latitud: '', longitud: '', precision: null, fecha_captura: null }
   });
+  
+  // Setter optimizado que usa startTransition para evitar bloqueos de UI
+  const setVisitaData = useCallback((updater) => {
+    startTransition(() => {
+      setVisitaDataRaw(updater);
+    });
+  }, []);
+  
   // Canvas refs para las firmas
   const canvasVisitadoRef = useRef(null);
   const canvasReconocedorRef = useRef(null);
