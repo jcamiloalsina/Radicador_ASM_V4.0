@@ -1503,6 +1503,14 @@ export default function GestionPrediosActualizacion() {
                                 </DropdownMenuItem>
                               )}
                               
+                              {/* Ver PDF de visita - solo si tiene visita */}
+                              {(predio.estado_visita === 'visitado' || predio.estado_visita === 'actualizado') && (
+                                <DropdownMenuItem onClick={() => verPdfVisita(predio)}>
+                                  <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                                  Ver PDF de Visita
+                                </DropdownMenuItem>
+                              )}
+                              
                               <DropdownMenuSeparator />
                               
                               {/* Marcar como visitado - todos pueden */}
