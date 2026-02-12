@@ -739,8 +739,14 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.drawString(left + half_w + 8, y - 6, "Nombre")
     c.setFont("Helvetica", 9)
     c.setFillColor(NEGRO)
-    reconocedor = visita.get('nombre_reconocedor', '') or current_user_email
-    c.drawString(left + half_w + 50, y - 13, reconocedor[:30])
+    # Prioridad: nombre_reconocedor de visita > nombre de quien visitó > nombre actual > email actual
+    reconocedor = (
+        visita.get('nombre_reconocedor', '') or 
+        visita.get('visitado_por_nombre', '') or 
+        current_user_name or 
+        current_user_email
+    )
+    c.drawString(left + half_w + 50, y - 13, str(reconocedor)[:30])
     y -= 22
     
     # Áreas de firma
