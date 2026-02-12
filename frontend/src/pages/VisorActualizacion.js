@@ -5629,11 +5629,11 @@ export default function VisorActualizacion() {
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Teléfono</Label>
-                          <Input value={visitaData.not_telefono} onChange={(e) => setVisitaData(prev => ({ ...prev, not_telefono: e.target.value }))} placeholder="3001234567" />
+                          <DebouncedInput value={visitaData.not_telefono} onChange={(val) => setVisitaData(prev => ({ ...prev, not_telefono: val }))} placeholder="3001234567" />
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Correo Electrónico</Label>
-                          <Input type="email" value={visitaData.not_correo} onChange={(e) => setVisitaData(prev => ({ ...prev, not_correo: e.target.value.toLowerCase() }))} placeholder="correo@ejemplo.com" />
+                          <DebouncedInput type="email" value={visitaData.not_correo} onChange={(val) => setVisitaData(prev => ({ ...prev, not_correo: val.toLowerCase() }))} placeholder="correo@ejemplo.com" />
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">¿Autoriza notificación por correo?</Label>
@@ -5651,7 +5651,7 @@ export default function VisorActualizacion() {
                       </div>
                       <div>
                         <Label className="text-xs text-slate-500">Dirección de Notificación</Label>
-                        <Input value={visitaData.not_direccion} onChange={(e) => setVisitaData(prev => ({ ...prev, not_direccion: e.target.value.toUpperCase() }))} className="uppercase" />
+                        <DebouncedInput value={visitaData.not_direccion} onChange={(val) => setVisitaData(prev => ({ ...prev, not_direccion: val }))} uppercase={true} className="uppercase" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -5660,17 +5660,17 @@ export default function VisorActualizacion() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Municipio</Label>
-                          <Input value={visitaData.not_municipio} onChange={(e) => setVisitaData(prev => ({ ...prev, not_municipio: e.target.value.toUpperCase() }))} className="uppercase" />
+                          <DebouncedInput value={visitaData.not_municipio} onChange={(val) => setVisitaData(prev => ({ ...prev, not_municipio: val }))} uppercase={true} className="uppercase" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Vereda</Label>
-                          <Input value={visitaData.not_vereda} onChange={(e) => setVisitaData(prev => ({ ...prev, not_vereda: e.target.value.toUpperCase() }))} className="uppercase" />
+                          <DebouncedInput value={visitaData.not_vereda} onChange={(val) => setVisitaData(prev => ({ ...prev, not_vereda: val }))} uppercase={true} className="uppercase" />
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Corregimiento</Label>
-                          <Input value={visitaData.not_corregimiento} onChange={(e) => setVisitaData(prev => ({ ...prev, not_corregimiento: e.target.value.toUpperCase() }))} className="uppercase" />
+                          <DebouncedInput value={visitaData.not_corregimiento} onChange={(val) => setVisitaData(prev => ({ ...prev, not_corregimiento: val }))} uppercase={true} className="uppercase" />
                         </div>
                       </div>
                       <div>
