@@ -18124,16 +18124,29 @@ async def generar_pdf_informe_visita(
     codigo_predial: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Genera el PDF del informe de visita de un predio"""
+    """Genera el PDF del informe de visita de un predio - VERSIÓN COMPLETA"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para generar PDF")
     
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
     from reportlab.lib.units import inch, cm
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
     import io
+    import base64
+    
+    # Importar imágenes del certificado
+    try:
+        from certificado_images import get_encabezado_image, get_pie_pagina_image
+        encabezado_img = ImageReader(get_encabezado_image())
+        pie_pagina_img = ImageReader(get_pie_pagina_image())
+        imagenes_ok = True
+    except Exception as e:
+        logger.warning(f"No se pudieron cargar imágenes embebidas: {e}")
+        imagenes_ok = False
     
     # Obtener proyecto
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
@@ -18152,254 +18165,543 @@ async def generar_pdf_informe_visita(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    # Crear PDF
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=14,
-        alignment=1,  # Center
-        spaceAfter=12
-    )
-    subtitle_style = ParagraphStyle(
-        'CustomSubtitle',
-        parent=styles['Heading2'],
-        fontSize=11,
-        textColor=colors.darkblue,
-        spaceBefore=12,
-        spaceAfter=6
-    )
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=9
-    )
-    
-    elements = []
-    
-    # Encabezado con logo (placeholder - en producción usar logo real)
-    header_data = [
-        [
-            Paragraph("<b>ASOMUNICIPIOS G</b><br/>Gestión y Soluciones Territoriales", normal_style),
-            Paragraph(f"<b>INFORME DE VISITA</b><br/>ACTUALIZACIÓN MUNICIPIO DE {proyecto.get('municipio', '').upper()}", title_style),
-            Paragraph(f"FO-FAC-PC01-02<br/>v1", normal_style)
-        ]
-    ]
-    header_table = Table(header_data, colWidths=[2*inch, 4*inch, 1.5*inch])
-    header_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOX', (0, 0), (-1, -1), 1, colors.black),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
-    elements.append(header_table)
-    elements.append(Spacer(1, 0.3*inch))
-    
-    # Información Básica
-    elements.append(Paragraph("1. INFORMACIÓN BÁSICA", subtitle_style))
-    
-    info_basica = [
-        ["Departamento:", proyecto.get('departamento', 'Norte de Santander'), "Municipio:", proyecto.get('municipio', '')],
-        ["Código Predial:", predio.get('codigo_predial', ''), "Matrícula:", predio.get('matricula_inmobiliaria', '')],
-        ["Dirección:", predio.get('direccion', ''), "Destino Econ.:", predio.get('destino_economico', '')],
-        ["Área Terreno:", f"{predio.get('area_terreno', '')} m²", "Área Construida:", f"{predio.get('area_construida', '')} m²"],
-    ]
-    
-    info_table = Table(info_basica, colWidths=[1.5*inch, 2.5*inch, 1.5*inch, 2*inch])
-    info_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
-    ]))
-    elements.append(info_table)
-    elements.append(Spacer(1, 0.2*inch))
-    
-    # Propietarios
-    elements.append(Paragraph("2. INFORMACIÓN DE PROPIETARIOS", subtitle_style))
-    
-    propietarios = predio.get('propietarios', [])
-    if propietarios:
-        prop_data = [["#", "Nombre", "Tipo Doc.", "Documento", "Estado Civil"]]
-        for i, prop in enumerate(propietarios, 1):
-            prop_data.append([
-                str(i),
-                prop.get('nombre', ''),
-                prop.get('tipo_documento', ''),
-                prop.get('documento', ''),
-                prop.get('estado_civil', '')
-            ])
-        prop_table = Table(prop_data, colWidths=[0.4*inch, 3*inch, 0.8*inch, 1.5*inch, 1*inch])
-        prop_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ]))
-        elements.append(prop_table)
-    else:
-        elements.append(Paragraph("Sin información de propietarios", normal_style))
-    
-    elements.append(Spacer(1, 0.2*inch))
-    
-    # Datos de Notificación
-    datos_notif = predio.get('datos_notificacion', {})
-    if datos_notif:
-        elements.append(Paragraph("3. DATOS DE NOTIFICACIÓN", subtitle_style))
-        notif_data = [
-            ["Teléfono:", datos_notif.get('telefono', ''), "Correo:", datos_notif.get('correo', '')],
-            ["Dirección:", datos_notif.get('direccion', ''), "Autoriza notif.:", "Sí" if datos_notif.get('autoriza_notificacion') else "No"],
-        ]
-        notif_table = Table(notif_data, colWidths=[1.2*inch, 2.5*inch, 1.2*inch, 2.5*inch])
-        notif_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-            ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
-        ]))
-        elements.append(notif_table)
-        elements.append(Spacer(1, 0.2*inch))
-    
-    # Información de la Visita
+    # Datos de visita
     visita = predio.get('visita', {})
-    elements.append(Paragraph("4. INFORMACIÓN DE LA VISITA", subtitle_style))
     
-    visita_data = [
-        ["Fecha visita:", visita.get('fecha_visita', predio.get('visitado_en', '')[:10] if predio.get('visitado_en') else ''), 
-         "Hora:", visita.get('hora_visita', '')],
-        ["Persona que atiende:", visita.get('persona_atiende', ''), "Relación:", visita.get('relacion_predio', '')],
-        ["Estado predio:", visita.get('estado_predio', ''), "Acceso:", visita.get('acceso_predio', '')],
-        ["Servicios:", ", ".join(visita.get('servicios_publicos', [])), "", ""],
+    # Crear PDF con canvas para control preciso
+    buffer = io.BytesIO()
+    width, height = letter
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Colores institucionales
+    verde = colors.HexColor('#0d9488')
+    gris = colors.HexColor('#6b7280')
+    negro = colors.black
+    blanco = colors.white
+    
+    # Márgenes
+    left_margin = 1.5 * cm
+    right_margin = width - 1.5 * cm
+    content_width = right_margin - left_margin
+    top_margin = height - 3 * cm
+    footer_limit = 2.5 * cm
+    
+    def draw_header():
+        """Dibuja el encabezado"""
+        if imagenes_ok:
+            c.drawImage(encabezado_img, left_margin - 0.5*cm, height - 2.2*cm, 
+                       width=content_width + 1*cm, height=2*cm, 
+                       preserveAspectRatio=True, mask='auto')
+        else:
+            c.setFillColor(verde)
+            c.setFont("Helvetica-Bold", 14)
+            c.drawCentredString(width/2, height - 1.5*cm, "ASOMUNICIPIOS - Gestor Catastral")
+        return height - 3*cm
+    
+    def draw_footer():
+        """Dibuja el pie de página"""
+        if imagenes_ok:
+            c.drawImage(pie_pagina_img, 0, 0, width=width, height=2*cm, 
+                       preserveAspectRatio=False, mask='auto')
+        else:
+            c.setFillColor(verde)
+            c.rect(0, 0, width, 25, fill=1, stroke=0)
+            c.setFillColor(blanco)
+            c.setFont("Helvetica", 8)
+            c.drawCentredString(width/2, 8, "comunicaciones@asomunicipios.gov.co")
+    
+    def new_page():
+        """Nueva página con encabezado y pie"""
+        draw_footer()
+        c.showPage()
+        return draw_header()
+    
+    def draw_section_title(y, numero, titulo):
+        """Dibuja título de sección"""
+        c.setFillColor(verde)
+        c.rect(left_margin, y - 15, content_width, 18, fill=1, stroke=0)
+        c.setFillColor(blanco)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(left_margin + 5, y - 11, f"{numero}. {titulo}")
+        return y - 25
+    
+    def draw_field(y, label, value, x_start, x_width=None):
+        """Dibuja un campo label: value"""
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(gris)
+        c.drawString(x_start, y, label)
+        c.setFont("Helvetica", 9)
+        c.setFillColor(negro)
+        c.drawString(x_start + 80, y, str(value) if value else "-")
+        return y - 14
+    
+    # ========== PÁGINA 1 ==========
+    y = draw_header()
+    
+    # Título principal
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(negro)
+    c.drawCentredString(width/2, y, "INFORME DE VISITA DE CAMPO")
+    y -= 14
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(width/2, y, f"Actualización Catastral - Municipio de {proyecto.get('municipio', '').upper()}")
+    y -= 25
+    
+    # Código del documento
+    c.setFont("Helvetica", 8)
+    c.setFillColor(gris)
+    c.drawRightString(right_margin, y + 20, "FO-FAC-PC01-02 v2")
+    
+    # === SECCIÓN 1: INFORMACIÓN BÁSICA ===
+    y = draw_section_title(y, "1", "INFORMACIÓN BÁSICA DEL PREDIO")
+    
+    # Fila 1
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Código Predial:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 75, y, predio.get('codigo_predial', ''))
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 280, y, "Matrícula:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 340, y, predio.get('matricula_inmobiliaria', '') or '-')
+    y -= 14
+    
+    # Fila 2
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Dirección:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    direccion = visita.get('direccion_visita', predio.get('direccion', ''))
+    c.drawString(left_margin + 55, y, direccion[:60] if direccion else '-')
+    y -= 14
+    
+    # Fila 3
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Destino Económico:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 95, y, visita.get('destino_economico_visita', predio.get('destino_economico', '')) or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 200, y, "Tipo Predio:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 265, y, visita.get('tipo_predio', 'NPH') or 'NPH')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 350, y, "Zona:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    zona = "Rural" if predio.get('codigo_predial', '')[5:6] == '0' else "Urbano"
+    c.drawString(left_margin + 380, y, zona)
+    y -= 14
+    
+    # Fila 4: Áreas
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Área Terreno:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    area_t = visita.get('area_terreno_visita', predio.get('area_terreno', ''))
+    c.drawString(left_margin + 75, y, f"{area_t} m²" if area_t else '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 200, y, "Área Construida:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    area_c = visita.get('area_construida_visita', predio.get('area_construida', ''))
+    c.drawString(left_margin + 285, y, f"{area_c} m²" if area_c else '-')
+    y -= 20
+    
+    # === SECCIÓN 2: INFORMACIÓN DE PROPIETARIOS ===
+    y = draw_section_title(y, "2", "INFORMACIÓN DE PROPIETARIOS")
+    
+    propietarios = visita.get('propietarios', predio.get('propietarios', []))
+    if propietarios:
+        # Encabezado tabla
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(gris)
+        c.drawString(left_margin, y, "#")
+        c.drawString(left_margin + 20, y, "Nombre Completo")
+        c.drawString(left_margin + 200, y, "Tipo Doc")
+        c.drawString(left_margin + 260, y, "Documento")
+        c.drawString(left_margin + 350, y, "Estado")
+        y -= 12
+        c.line(left_margin, y + 5, right_margin, y + 5)
+        
+        c.setFont("Helvetica", 8)
+        c.setFillColor(negro)
+        for i, prop in enumerate(propietarios[:5], 1):
+            nombre = prop.get('nombre', '')
+            if not nombre and prop.get('primer_apellido'):
+                nombre = f"{prop.get('nombre', '')} {prop.get('primer_apellido', '')} {prop.get('segundo_apellido', '')}".strip()
+            c.drawString(left_margin, y, str(i))
+            c.drawString(left_margin + 20, y, nombre[:35] if nombre else '-')
+            c.drawString(left_margin + 200, y, prop.get('tipo_documento', '-'))
+            c.drawString(left_margin + 260, y, prop.get('documento', prop.get('numero_documento', '-')))
+            c.drawString(left_margin + 350, y, prop.get('estado_civil', prop.get('estado', '-')))
+            y -= 12
+            if y < footer_limit + 50:
+                y = new_page()
+    else:
+        c.setFont("Helvetica-Oblique", 9)
+        c.setFillColor(gris)
+        c.drawString(left_margin, y, "Sin información de propietarios")
+        y -= 15
+    
+    y -= 10
+    
+    # === SECCIÓN 3: INFORMACIÓN DE LA VISITA ===
+    y = draw_section_title(y, "3", "INFORMACIÓN DE LA VISITA")
+    
+    # Fecha y hora
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Fecha de Visita:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    fecha_v = visita.get('fecha_visita', predio.get('visitado_en', '')[:10] if predio.get('visitado_en') else '')
+    c.drawString(left_margin + 85, y, fecha_v or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 200, y, "Hora:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 235, y, visita.get('hora_visita', '-') or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 320, y, "Reconocedor:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    reconocedor = visita.get('nombre_reconocedor', predio.get('visitado_por', ''))
+    c.drawString(left_margin + 385, y, reconocedor[:25] if reconocedor else '-')
+    y -= 14
+    
+    # Persona que atiende
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Persona que Atendió:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 105, y, visita.get('persona_atiende', '-') or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 300, y, "Relación con el Predio:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 410, y, visita.get('relacion_predio', '-') or '-')
+    y -= 14
+    
+    # Estado y acceso
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Estado del Predio:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 95, y, visita.get('estado_predio', '-') or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 200, y, "Acceso:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    acceso = "Sí" if visita.get('acceso_predio') == 'si' else "No"
+    c.drawString(left_margin + 245, y, acceso)
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 300, y, "Servicios Públicos:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    servicios = visita.get('servicios_publicos', [])
+    servicios_str = ", ".join(servicios) if servicios else "-"
+    c.drawString(left_margin + 395, y, servicios_str[:25])
+    y -= 20
+    
+    # === SECCIÓN 4: DATOS DE NOTIFICACIÓN ===
+    if y < footer_limit + 80:
+        y = new_page()
+    y = draw_section_title(y, "4", "DATOS DE NOTIFICACIÓN")
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Teléfono:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 55, y, visita.get('not_telefono', '-') or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 180, y, "Correo Electrónico:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 275, y, visita.get('not_correo', '-') or '-')
+    y -= 14
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Dirección Notif.:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 85, y, visita.get('not_direccion', '-')[:50] if visita.get('not_direccion') else '-')
+    y -= 14
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Autoriza notif. correo:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 115, y, "Sí" if visita.get('not_autoriza_correo') == 'si' else "No")
+    y -= 20
+    
+    # === SECCIÓN 5: UNIDADES DE CONSTRUCCIÓN ===
+    construcciones = visita.get('construcciones', [])
+    if construcciones:
+        if y < footer_limit + 100:
+            y = new_page()
+        y = draw_section_title(y, "5", "UNIDADES DE CONSTRUCCIÓN")
+        
+        # Encabezado
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColor(gris)
+        c.drawString(left_margin, y, "Unidad")
+        c.drawString(left_margin + 40, y, "Código Uso")
+        c.drawString(left_margin + 110, y, "Área (m²)")
+        c.drawString(left_margin + 170, y, "Puntaje")
+        c.drawString(left_margin + 220, y, "Año Const.")
+        c.drawString(left_margin + 285, y, "Pisos")
+        y -= 12
+        c.line(left_margin, y + 5, right_margin, y + 5)
+        
+        c.setFont("Helvetica", 8)
+        c.setFillColor(negro)
+        for const in construcciones[:10]:
+            if const.get('codigo_uso') or const.get('area'):
+                c.drawString(left_margin, y, str(const.get('unidad', '-')))
+                c.drawString(left_margin + 40, y, str(const.get('codigo_uso', '-')))
+                c.drawString(left_margin + 110, y, str(const.get('area', '-')))
+                c.drawString(left_margin + 170, y, str(const.get('puntaje', '-')))
+                c.drawString(left_margin + 220, y, str(const.get('ano_construccion', '-')))
+                c.drawString(left_margin + 285, y, str(const.get('num_pisos', '-')))
+                y -= 11
+                if y < footer_limit + 20:
+                    y = new_page()
+        y -= 10
+    
+    # === SECCIÓN 6: RESUMEN DE ÁREAS ===
+    if y < footer_limit + 100:
+        y = new_page()
+    y = draw_section_title(y, "6", "RESUMEN DE ÁREAS DE TERRENO")
+    
+    # Tabla de áreas
+    areas = [
+        ("Área según Título (escritura)", visita.get('area_titulo_m2', '-'), visita.get('area_titulo_ha', '-')),
+        ("Área Base Catastral (R1)", visita.get('area_base_catastral_m2', predio.get('area_terreno', '-')), visita.get('area_base_catastral_ha', '-')),
+        ("Área Geográfica (GDB)", visita.get('area_geografica_m2', '-'), visita.get('area_geografica_ha', '-')),
+        ("Área Levantamiento Predial", visita.get('area_levantamiento_m2', '-'), visita.get('area_levantamiento_ha', '-')),
+        ("Área Identificación Predial", visita.get('area_identificacion_m2', '-'), visita.get('area_identificacion_ha', '-')),
     ]
-    visita_table = Table(visita_data, colWidths=[1.5*inch, 2.5*inch, 1*inch, 2.5*inch])
-    visita_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
-    ]))
-    elements.append(visita_table)
-    elements.append(Spacer(1, 0.2*inch))
     
-    # Zonas Físicas (Construcciones)
-    zonas_fisicas = predio.get('zonas_fisicas', [])
-    if zonas_fisicas:
-        elements.append(Paragraph("5. ZONAS FÍSICAS (CONSTRUCCIONES)", subtitle_style))
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Concepto")
+    c.drawString(left_margin + 250, y, "Área (m²)")
+    c.drawString(left_margin + 350, y, "Área (Ha)")
+    y -= 12
+    c.line(left_margin, y + 5, right_margin, y + 5)
+    
+    c.setFont("Helvetica", 8)
+    c.setFillColor(negro)
+    for concepto, m2, ha in areas:
+        c.drawString(left_margin, y, concepto)
+        c.drawString(left_margin + 250, y, str(m2) if m2 else '-')
+        c.drawString(left_margin + 350, y, str(ha) if ha else '-')
+        y -= 11
+    y -= 10
+    
+    # === SECCIÓN 7: GEORREFERENCIACIÓN ===
+    if y < footer_limit + 80:
+        y = new_page()
+    y = draw_section_title(y, "7", "GEORREFERENCIACIÓN")
+    
+    coords = visita.get('coordenadas_gps', {})
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Latitud:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 50, y, str(coords.get('latitud', '-')) or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 180, y, "Longitud:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 235, y, str(coords.get('longitud', '-')) or '-')
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin + 370, y, "Precisión:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    precision = coords.get('precision')
+    c.drawString(left_margin + 420, y, f"±{precision}m" if precision else '-')
+    y -= 14
+    
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, y, "Fecha Captura:")
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 80, y, str(coords.get('fecha_captura', '-'))[:19] if coords.get('fecha_captura') else '-')
+    y -= 20
+    
+    # === SECCIÓN 8: OBSERVACIONES ===
+    if y < footer_limit + 60:
+        y = new_page()
+    y = draw_section_title(y, "8", "OBSERVACIONES GENERALES")
+    
+    obs = visita.get('observaciones_generales', visita.get('observaciones', 'Sin observaciones'))
+    c.setFont("Helvetica", 9)
+    c.setFillColor(negro)
+    
+    # Dividir observaciones en líneas
+    if obs:
+        words = obs.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            test_line = current_line + " " + word if current_line else word
+            if c.stringWidth(test_line, "Helvetica", 9) < content_width - 20:
+                current_line = test_line
+            else:
+                lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
         
-        zonas_data = [["#", "Tipo Const.", "Uso", "Área (m²)", "Pisos", "Puntos", "Año", "Observaciones"]]
-        for i, zona in enumerate(zonas_fisicas, 1):
-            zonas_data.append([
-                str(i),
-                zona.get('tipo_construccion', ''),
-                zona.get('uso_construccion', ''),
-                str(zona.get('area_construida', '')),
-                str(zona.get('total_pisos', '')),
-                str(zona.get('puntos_construccion', '')),
-                str(zona.get('anio_construccion', '')),
-                zona.get('observaciones', '')[:30] + ('...' if len(zona.get('observaciones', '')) > 30 else '')
-            ])
+        for line in lines[:6]:
+            c.drawString(left_margin, y, line)
+            y -= 12
+    else:
+        c.drawString(left_margin, y, "Sin observaciones")
+        y -= 12
+    
+    y -= 10
+    
+    # === SECCIÓN 9: FOTOS DEL CROQUIS ===
+    fotos = visita.get('fotos_croquis', [])
+    if fotos:
+        if y < footer_limit + 150:
+            y = new_page()
+        y = draw_section_title(y, "9", "REGISTRO FOTOGRÁFICO / CROQUIS")
         
-        zonas_table = Table(zonas_data, colWidths=[0.3*inch, 1*inch, 0.8*inch, 0.7*inch, 0.5*inch, 0.6*inch, 0.5*inch, 2.1*inch])
-        zonas_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 7),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ]))
-        elements.append(zonas_table)
-        elements.append(Spacer(1, 0.2*inch))
+        for i, foto in enumerate(fotos[:4], 1):
+            if y < footer_limit + 120:
+                y = new_page()
+            
+            try:
+                foto_data = foto.get('data', '')
+                if foto_data and ',' in foto_data:
+                    foto_data = foto_data.split(',')[1]
+                if foto_data:
+                    img_bytes = base64.b64decode(foto_data)
+                    img_reader = ImageReader(io.BytesIO(img_bytes))
+                    
+                    # Dibujar imagen
+                    img_width = 200
+                    img_height = 120
+                    c.drawImage(img_reader, left_margin, y - img_height, 
+                               width=img_width, height=img_height, preserveAspectRatio=True)
+                    
+                    # Nombre y fecha de la foto
+                    c.setFont("Helvetica", 8)
+                    c.setFillColor(gris)
+                    c.drawString(left_margin + img_width + 10, y - 15, f"Foto {i}: {foto.get('nombre', 'Sin nombre')}")
+                    c.drawString(left_margin + img_width + 10, y - 28, f"Fecha: {foto.get('fecha', '-')[:10] if foto.get('fecha') else '-'}")
+                    
+                    y -= img_height + 15
+            except Exception as e:
+                logger.warning(f"Error procesando foto {i}: {e}")
+                c.setFont("Helvetica-Oblique", 9)
+                c.setFillColor(gris)
+                c.drawString(left_margin, y, f"[Foto {i} no disponible]")
+                y -= 15
     
-    # Georreferenciación (antes era sección 7, ahora es 6)
-    elements.append(Paragraph("6. GEORREFERENCIACIÓN", subtitle_style))
+    # === SECCIÓN 10: FIRMAS ===
+    if y < footer_limit + 180:
+        y = new_page()
+    y = draw_section_title(y, "10", "FIRMAS")
     
-    coord_data = [
-        ["Sistema Referencia:", predio.get('sistema_referencia', 'MAGNA-SIRGAS'), 
-         "Precisión GPS:", predio.get('precision_gps', '-').upper() if predio.get('precision_gps') else '-'],
-        ["Latitud (Y):", str(predio.get('latitud_centroide', '-')), 
-         "Longitud (X):", str(predio.get('longitud_centroide', '-'))],
-        ["Área Calculada:", f"{predio.get('area_calculada', '-')} m²" if predio.get('area_calculada') else '-', 
-         "Equipo GPS:", predio.get('equipo_gps', '-')],
-    ]
+    firma_y = y - 20
     
-    coord_table = Table(coord_data, colWidths=[1.5*inch, 2.25*inch, 1.5*inch, 2.25*inch])
-    coord_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('BACKGROUND', (2, 0), (2, -1), colors.lightgrey),
-    ]))
-    elements.append(coord_table)
+    # Firma del visitado (izquierda)
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin, firma_y, "PERSONA QUE ATENDIÓ LA VISITA")
+    firma_y_temp = firma_y - 15
     
-    # Vértices del polígono si existen
-    vertices = predio.get('vertices_poligono', [])
-    if vertices and len(vertices) > 0:
-        elements.append(Spacer(1, 0.1*inch))
-        elements.append(Paragraph(f"<b>Vértices del polígono ({len(vertices)} puntos):</b>", normal_style))
-        
-        # Mostrar máximo 8 vértices en el PDF para no hacerlo muy largo
-        vertices_data = [["#", "X (Longitud)", "Y (Latitud)"]]
-        for i, v in enumerate(vertices[:8], 1):
-            vertices_data.append([
-                str(i),
-                f"{float(v.get('x', 0)):.6f}",
-                f"{float(v.get('y', 0)):.6f}"
-            ])
-        if len(vertices) > 8:
-            vertices_data.append(["...", f"(+{len(vertices) - 8} vértices más)", ""])
-        
-        vert_table = Table(vertices_data, colWidths=[0.5*inch, 2*inch, 2*inch])
-        vert_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ]))
-        elements.append(vert_table)
+    firma_visitado = visita.get('firma_visitado_base64')
+    if firma_visitado:
+        try:
+            if ',' in firma_visitado:
+                firma_visitado = firma_visitado.split(',')[1]
+            img_bytes = base64.b64decode(firma_visitado)
+            img_reader = ImageReader(io.BytesIO(img_bytes))
+            c.drawImage(img_reader, left_margin, firma_y_temp - 60, width=150, height=50, preserveAspectRatio=True)
+        except Exception as e:
+            logger.warning(f"Error con firma visitado: {e}")
+            c.line(left_margin, firma_y_temp - 40, left_margin + 150, firma_y_temp - 40)
+    else:
+        c.line(left_margin, firma_y_temp - 40, left_margin + 150, firma_y_temp - 40)
     
-    if predio.get('fecha_captura_coordenadas'):
-        elements.append(Paragraph(f"<i>Fecha de captura: {predio.get('fecha_captura_coordenadas')}</i>", normal_style))
+    c.setFont("Helvetica", 8)
+    c.setFillColor(gris)
+    c.drawString(left_margin, firma_y_temp - 75, f"Nombre: {visita.get('nombre_visitado', visita.get('persona_atiende', '-'))}")
+    c.drawString(left_margin, firma_y_temp - 87, f"Doc: {visita.get('doc_visitado', '-')}")
     
-    elements.append(Spacer(1, 0.2*inch))
+    # Firma del reconocedor (derecha)
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(negro)
+    c.drawString(left_margin + 280, firma_y, "RECONOCEDOR DE CAMPO")
     
-    # Observaciones
-    elements.append(Paragraph("7. OBSERVACIONES GENERALES", subtitle_style))
-    obs_text = predio.get('observaciones_campo', visita.get('observaciones', 'Sin observaciones'))
-    elements.append(Paragraph(obs_text if obs_text else "Sin observaciones", normal_style))
-    elements.append(Spacer(1, 0.3*inch))
+    firma_reconocedor = visita.get('firma_reconocedor_base64')
+    if firma_reconocedor:
+        try:
+            if ',' in firma_reconocedor:
+                firma_reconocedor = firma_reconocedor.split(',')[1]
+            img_bytes = base64.b64decode(firma_reconocedor)
+            img_reader = ImageReader(io.BytesIO(img_bytes))
+            c.drawImage(img_reader, left_margin + 280, firma_y_temp - 60, width=150, height=50, preserveAspectRatio=True)
+        except Exception as e:
+            logger.warning(f"Error con firma reconocedor: {e}")
+            c.line(left_margin + 280, firma_y_temp - 40, left_margin + 430, firma_y_temp - 40)
+    else:
+        c.line(left_margin + 280, firma_y_temp - 40, left_margin + 430, firma_y_temp - 40)
     
-    # Firmas
-    elements.append(Paragraph("8. FIRMAS", subtitle_style))
+    c.setFont("Helvetica", 8)
+    c.setFillColor(gris)
+    reconocedor_nombre = visita.get('nombre_reconocedor', predio.get('visitado_por', current_user.get('email', '')))
+    c.drawString(left_margin + 280, firma_y_temp - 75, f"Nombre: {reconocedor_nombre}")
     
-    firma_visitado_text = "Firma: [FIRMA DIGITAL CAPTURADA]" if visita.get('firma_visitado_base64') else "Firma: ____________________"
-    firma_reconocedor_text = "Firma: [FIRMA DIGITAL CAPTURADA]" if visita.get('firma_reconocedor_base64') else "Firma: ____________________"
+    # Pie de página final
+    draw_footer()
     
-    firma_data = [
-        ["PERSONA QUE ATENDIÓ LA VISITA (VISITADO)", "RECONOCEDOR DE CAMPO"],
-        [Paragraph(f"Nombre: {visita.get('nombre_visitado', visita.get('persona_atiende', ''))}", normal_style),
-         Paragraph(f"Nombre: {visita.get('nombre_reconocedor', visita.get('realizada_por', current_user.get('email', '')))}", normal_style)],
-        [firma_visitado_text, firma_reconocedor_text],
-    ]
-    
-    firma_table = Table(firma_data, colWidths=[3.75*inch, 3.75*inch])
-    firma_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-    ]))
-    elements.append(firma_table)
-    
-    # Ubicación GPS si existe
-    if predio.get('ubicacion_gps'):
-        gps = predio['ubicacion_gps']
-        elements.append(Spacer(1, 0.2*inch))
-        elements.append(Paragraph(f"<i>Ubicación GPS: {gps.get('lat', '')}, {gps.get('lng', '')} (±{gps.get('accuracy', '')}m)</i>", normal_style))
-    
-    # Generar PDF
-    doc.build(elements)
-    
-    # Guardar PDF
+    # Guardar
+    c.save()
     pdf_content = buffer.getvalue()
     buffer.close()
     
@@ -18412,8 +18714,7 @@ async def generar_pdf_informe_visita(
     with open(pdf_path, 'wb') as f:
         f.write(pdf_content)
     
-    # Devolver como base64 para descarga
-    import base64
+    # Devolver como base64
     pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
     
     return {
