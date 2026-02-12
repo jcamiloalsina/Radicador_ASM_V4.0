@@ -1063,12 +1063,40 @@ export default function VisorActualizacion() {
     return index;
   }, [prediosR1R2]);
   
-  // Debug: mostrar índice de visitados
+  // Debug: mostrar índice de visitados CON DETALLE
   useEffect(() => {
     if (codigosPorEstadoIndex.visitado.size > 0) {
-      console.log('[Index] Códigos visitados:', Array.from(codigosPorEstadoIndex.visitado).slice(0, 5));
+      const visitados = Array.from(codigosPorEstadoIndex.visitado);
+      console.log('[Index] Total códigos visitados:', visitados.length);
+      console.log('[Index] Códigos visitados (todos):', visitados);
+      
+      // Verificar cuántas geometrías coinciden
+      if (geometrias?.features) {
+        let matches = 0;
+        const codigosGeom = geometrias.features.map(f => {
+          const props = f.properties || {};
+          return props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO;
+        }).filter(Boolean);
+        
+        for (const codVisitado of visitados) {
+          if (codigosGeom.includes(codVisitado)) {
+            matches++;
+            console.log('[Match] Visitado CON geometría:', codVisitado);
+          } else {
+            // Buscar coincidencia parcial
+            const prefix = codVisitado.substring(0, 21);
+            const parcial = codigosGeom.find(c => c && c.startsWith(prefix));
+            if (parcial) {
+              console.log('[Match Parcial] Visitado:', codVisitado, '-> Geom:', parcial);
+            } else {
+              console.log('[NO Match] Visitado SIN geometría:', codVisitado);
+            }
+          }
+        }
+        console.log('[Index] Geometrías que coinciden:', matches, 'de', visitados.length);
+      }
     }
-  }, [codigosPorEstadoIndex]);
+  }, [codigosPorEstadoIndex, geometrias]);
   
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
