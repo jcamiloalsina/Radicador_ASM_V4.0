@@ -261,28 +261,15 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     direccion = visita.get('direccion_visita', predio.get('direccion', ''))
     y = full_width_field(y, "Dirección (verificar)", direccion)
     
-    # Destino Económico
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    c.drawString(left, y, "Destino Económico (verificar):")
-    y -= 10
+    # Destino Económico - Solo mostrar el seleccionado
     destino = visita.get('destino_economico_visita', predio.get('destino_economico', ''))
-    destinos = [
-        ('A', 'Habitacional'), ('B', 'Industrial'), ('C', 'Comercial'), ('D', 'Agropecuario'),
-        ('E', 'Minero'), ('F', 'Cultural'), ('G', 'Recreacional'), ('H', 'Salubridad'),
-        ('I', 'Institucional'), ('J', 'Educativo'), ('K', 'Religioso'), ('L', 'Agrícola')
-    ]
-    c.setFont("Helvetica", 7)
-    c.setFillColor(NEGRO)
-    quarter_w = content_width / 4
-    for i, (cod, desc) in enumerate(destinos):
-        row = i // 4
-        col = i % 4
-        x = left + col * quarter_w
-        ypos = y - row * 10
-        marker = "●" if destino == cod else "○"
-        c.drawString(x, ypos, f"{marker} {cod}-{desc}")
-    y -= 35
+    destinos_map = {
+        'A': 'Habitacional', 'B': 'Industrial', 'C': 'Comercial', 'D': 'Agropecuario',
+        'E': 'Minero', 'F': 'Cultural', 'G': 'Recreacional', 'H': 'Salubridad',
+        'I': 'Institucional', 'J': 'Educativo', 'K': 'Religioso', 'L': 'Agrícola'
+    }
+    destino_texto = f"{destino} - {destinos_map.get(destino, 'No especificado')}" if destino else "No especificado"
+    y = full_width_field(y, "Destino Económico", destino_texto)
     
     # Áreas
     y = field_row(y, [
