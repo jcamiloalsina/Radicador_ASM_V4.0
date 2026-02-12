@@ -2054,9 +2054,10 @@ export default function VisorActualizacion() {
       area_base_catastral_ha: selectedPredio?.area_terreno ? (parseFloat(selectedPredio.area_terreno) / 10000).toFixed(4) : '',
       area_base_catastral_m2: selectedPredio?.area_terreno?.toString() || '', // del R1
       area_base_catastral_desc: 'Área del R1 (Excel cargado)',
-      area_geografica_ha: selectedPredio?.area_gdb ? (parseFloat(selectedPredio.area_gdb) / 10000).toFixed(4) : '',
-      area_geografica_m2: selectedPredio?.area_gdb?.toString() || '', // del GDB (corregido: era area_geografica)
-      area_geografica_desc: 'Área del GDB (geometría)',
+      // Área GDB se obtiene de selectedGeometry.properties.shape_Area
+      area_geografica_ha: selectedGeometry?.properties?.shape_Area ? (parseFloat(selectedGeometry.properties.shape_Area) / 10000).toFixed(4) : '',
+      area_geografica_m2: selectedGeometry?.properties?.shape_Area ? parseFloat(selectedGeometry.properties.shape_Area).toFixed(2) : '', // del GDB
+      area_geografica_desc: selectedGeometry?.properties?.shape_Area ? 'Área del GDB (geometría)' : 'Sin geometría GDB',
       area_levantamiento_ha: '',
       area_levantamiento_m2: '',
       area_levantamiento_desc: '',
