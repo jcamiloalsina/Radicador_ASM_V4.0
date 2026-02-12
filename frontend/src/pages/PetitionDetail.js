@@ -26,6 +26,7 @@ export default function PetitionDetail() {
   const [editData, setEditData] = useState({});
   const [files, setFiles] = useState([]);
   const [gestores, setGestores] = useState([]);
+  const [gestorSearch, setGestorSearch] = useState(''); // Búsqueda de gestores
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showFinalizarDialog, setShowFinalizarDialog] = useState(false);
   const [enviarArchivosFinalizacion, setEnviarArchivosFinalizacion] = useState(false);
