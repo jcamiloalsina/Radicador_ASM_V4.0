@@ -3257,8 +3257,14 @@ export default function VisorActualizacion() {
         });
         
         if (predio) {
+          // Asegurar que el predio tenga todos los campos de las propiedades del feature
+          const predioCompleto = {
+            ...predio,
+            codigo_homologado: predio.codigo_homologado || feature.properties?.codigo_homologado || feature.properties?.CODIGO_HOMOLOGADO || ''
+          };
+          
           // Mostrar panel simplificado directamente (sin modal de tipo revisión)
-          setSelectedPredio(predio);
+          setSelectedPredio(predioCompleto);
           setShowDetalleSimplificado(true);
           setShowPredioDetail(false);
           setEditMode(false);
@@ -3276,6 +3282,7 @@ export default function VisorActualizacion() {
           const predioBasico = {
             codigo_predial: codigoFeature || 'Sin código',
             numero_predial: feature.properties?.numero_predial || codigoFeature || '',
+            codigo_homologado: feature.properties?.codigo_homologado || feature.properties?.CODIGO_HOMOLOGADO || '',
             direccion: feature.properties?.direccion || '',
             destino_economico: feature.properties?.destino_economico || '',
             area_terreno: feature.properties?.area_terreno || feature.properties?.AREA || feature.properties?.Shape_Area || '',
