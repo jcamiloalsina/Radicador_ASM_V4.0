@@ -306,6 +306,7 @@ export default function VisorActualizacion() {
   
   // Estado para mejora seleccionada (para visita de mejora específica)
   const [mejoraSeleccionada, setMejoraSeleccionada] = useState(null);
+  const [predioMejoraSeleccionada, setPredioMejoraSeleccionada] = useState(null); // Datos R1/R2 de la mejora
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
