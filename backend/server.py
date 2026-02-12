@@ -18131,16 +18131,6 @@ async def generar_pdf_informe_visita(
     from pdf_visita_generator import generar_pdf_visita_completo
     import base64
     
-    # Importar imágenes del certificado
-    try:
-        from certificado_images import get_encabezado_image, get_pie_pagina_image
-        encabezado_img = ImageReader(get_encabezado_image())
-        pie_pagina_img = ImageReader(get_pie_pagina_image())
-        imagenes_ok = True
-    except Exception as e:
-        logger.warning(f"No se pudieron cargar imágenes embebidas: {e}")
-        imagenes_ok = False
-    
     # Obtener proyecto
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
     if not proyecto:
@@ -18161,23 +18151,41 @@ async def generar_pdf_informe_visita(
     # Datos de visita
     visita = predio.get('visita', {})
     
-    # Crear PDF con canvas para control preciso
-    buffer = io.BytesIO()
-    width, height = letter
-    c = canvas.Canvas(buffer, pagesize=letter)
+    # Propietarios y construcciones de la visita
+    propietarios = visita.get('propietarios', predio.get('propietarios', []))
+    construcciones = visita.get('construcciones', [])
     
-    # Colores institucionales
-    verde = colors.HexColor('#0d9488')
-    gris = colors.HexColor('#6b7280')
-    negro = colors.black
-    blanco = colors.white
+    # Generar PDF usando el nuevo módulo
+    try:
+        pdf_content = generar_pdf_visita_completo(
+            proyecto=proyecto,
+            predio=predio,
+            visita=visita,
+            propietarios=propietarios,
+            construcciones=construcciones,
+            current_user_email=current_user.get('email', '')
+        )
+    except Exception as e:
+        logger.error(f"Error generando PDF de visita: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
     
-    # Márgenes
-    left_margin = 1.5 * cm
-    right_margin = width - 1.5 * cm
-    content_width = right_margin - left_margin
-    top_margin = height - 3 * cm
-    footer_limit = 2.5 * cm
+    # Guardar en disco
+    pdf_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id / "pdfs"
+    pdf_dir.mkdir(exist_ok=True)
+    pdf_filename = f"informe_visita_{codigo_predial}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf_path = pdf_dir / pdf_filename
+    
+    with open(pdf_path, 'wb') as f:
+        f.write(pdf_content)
+    
+    # Devolver como base64
+    pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+    
+    return {
+        "message": "PDF generado exitosamente",
+        "filename": pdf_filename,
+        "pdf_base64": pdf_base64
+    }
     
     def draw_header():
         """Dibuja el encabezado"""
