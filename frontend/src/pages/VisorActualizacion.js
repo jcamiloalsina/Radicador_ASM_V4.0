@@ -483,7 +483,7 @@ export default function VisorActualizacion() {
     grupo_etnico: ''
   }]);
   // Sección 7: Unidades de Construcción (dinámico, permite agregar más de 5)
-  const [visitaConstrucciones, setVisitaConstrucciones] = useState([
+  const [visitaConstrucciones, setVisitaConstruccionesRaw] = useState([
     { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
     { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
     { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
@@ -491,8 +491,15 @@ export default function VisorActualizacion() {
     { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
   ]);
   
+  // Setter optimizado para construcciones
+  const setVisitaConstrucciones = useCallback((updater) => {
+    startTransition(() => {
+      setVisitaConstruccionesRaw(updater);
+    });
+  }, []);
+  
   // Estado para calificaciones múltiples (sección 8)
-  const [visitaCalificaciones, setVisitaCalificaciones] = useState([
+  const [visitaCalificaciones, setVisitaCalificacionesRaw] = useState([
     { 
       id: 1,
       estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
@@ -503,6 +510,13 @@ export default function VisorActualizacion() {
       datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
     }
   ]);
+  
+  // Setter optimizado para calificaciones
+  const setVisitaCalificaciones = useCallback((updater) => {
+    startTransition(() => {
+      setVisitaCalificacionesRaw(updater);
+    });
+  }, []);
   
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
