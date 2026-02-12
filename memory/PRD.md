@@ -7,6 +7,34 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (12 Febrero 2026 - Sesión Actual Fork 6)
 
+### ✅ COMPLETADO: Bug Fix - Datos R1/R2 y Exportación Excel
+
+**Problemas reportados:**
+1. El Visor de Predios requería limpiar caché para ver propietario, matrícula y avalúo
+2. Al exportar Excel, los códigos homologados y números de documento estaban vacíos
+
+**Soluciones implementadas:**
+
+1. **Carga de datos siempre desde servidor cuando online** ✅
+   - `fetchPrediosR1R2()` ahora prioriza datos del servidor sobre caché offline
+   - Solo usa IndexedDB cuando está offline o el servidor falla
+   - **Archivo:** `/app/frontend/src/pages/VisorActualizacion.js` líneas 893-930
+
+2. **Corregido mapeo de importación R1/R2** ✅
+   - Los campos `tipo_documento` y `numero_documento` de propietarios ahora se guardan correctamente
+   - Agregado mapeo para `CODIGO_HOMOLOGADO` en la importación
+   - **Archivo:** `/app/backend/server.py` líneas 18327-18360
+
+3. **Datos existentes corregidos** ✅
+   - Se re-procesó el archivo R1/R2 para actualizar 3,225 predios con datos correctos de propietarios
+   - Todos los campos de tipo y número de documento ahora están completos
+
+**Verificación:**
+- Excel exportado contiene: CODIGO_HOMOLOGADO, TIPO_DOCUMENTO, NUMERO_DOCUMENTO
+- Visor carga datos frescos del servidor sin necesidad de limpiar caché
+
+---
+
 ### ✅ COMPLETADO: 4 Nuevos Requisitos para "Gestión de Predios de Actualización"
 
 **Requisitos implementados:**
