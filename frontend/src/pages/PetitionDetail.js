@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter, DialogClose } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { ArrowLeft, Save, Mail, Phone, MapPin, FileText, Calendar, Upload, Download, UserPlus, X, XCircle, CheckCircle, Paperclip, Send, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Mail, Phone, MapPin, FileText, Calendar, Upload, Download, UserPlus, X, XCircle, CheckCircle, Paperclip, Send, RefreshCw, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
