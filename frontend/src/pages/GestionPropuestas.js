@@ -927,6 +927,7 @@ export default function GestionPropuestas() {
                   nuevos={modoEdicion ? (datosEditados.propietarios || []) : (propuestaDetalle.datos_propuestos?.propietarios || [])}
                 />
               </div>
+              )}
               
               {/* Formulario de edición (si está activo) */}
               {modoEdicion && (propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
