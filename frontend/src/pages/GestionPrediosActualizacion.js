@@ -1157,6 +1157,46 @@ export default function GestionPrediosActualizacion() {
       toast.error('Error al exportar Excel');
     }
   };
+  
+  // Ver PDF de visita
+  const verPdfVisita = async (predio) => {
+    const codigo = predio.codigo_predial || predio.numero_predial;
+    if (!codigo) {
+      toast.error('No se puede generar el PDF sin código predial');
+      return;
+    }
+    
+    try {
+      toast.info('Generando PDF de visita...', { duration: 2000 });
+      
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}/generar-pdf`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+      
+      // Crear URL del blob y abrir en nueva pestaña
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      
+      // Limpiar URL después de un tiempo
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      
+      toast.success('PDF generado correctamente');
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      if (error.response?.status === 404) {
+        toast.error('No se encontró información de visita para este predio');
+      } else {
+        toast.error(error.response?.data?.detail || 'Error al generar el PDF');
+      }
+    }
+  };
 
   if (loading) {
     return (
