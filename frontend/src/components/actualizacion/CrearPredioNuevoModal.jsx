@@ -538,6 +538,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.zona} 
                       onChange={(e) => handleCodigoChange('zona', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -548,6 +549,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.sector} 
                       onChange={(e) => handleCodigoChange('sector', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -557,6 +559,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.comuna} 
                       onChange={(e) => handleCodigoChange('comuna', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -566,6 +569,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.barrio} 
                       onChange={(e) => handleCodigoChange('barrio', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -575,6 +579,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.manzana_vereda} 
                       onChange={(e) => handleCodigoChange('manzana_vereda', e.target.value, 4)}
+                      onKeyDown={stopPropagation}
                       maxLength={4}
                       className="font-mono text-center"
                     />
