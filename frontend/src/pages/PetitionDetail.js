@@ -1291,23 +1291,28 @@ export default function PetitionDetail() {
                 </Dialog>
               )}
               {/* Botón para personal: subir archivos finales (solo en modo edición o siempre visible) */}
-              {user?.role !== 'usuario' && petition.user_id !== user?.id && (
-                <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+              {user?.role !== 'usuario' && petition.user_id !== user?.id && petition.estado !== 'finalizado' && (
+                <Dialog open={showUploadFinalDialog} onOpenChange={setShowUploadFinalDialog}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" data-testid="staff-upload-button">
+                    <Button variant="outline" size="sm" className="border-emerald-500 text-emerald-700 hover:bg-emerald-50" data-testid="staff-upload-button">
                       <Upload className="w-4 h-4 mr-2" />
                       Subir Documento Final
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Subir Documento Final</DialogTitle>
+                      <DialogTitle>Subir Documento Final de Respuesta</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                         <p className="text-sm text-emerald-800 font-medium">
-                          ⚠️ Al subir el documento, el trámite se finalizará automáticamente y se enviará una notificación por correo al solicitante con el archivo adjunto.
+                          ✅ Al subir el documento:
                         </p>
+                        <ul className="text-sm text-emerald-700 mt-2 space-y-1 list-disc list-inside">
+                          <li>El trámite se finalizará automáticamente</li>
+                          <li>Se enviará un correo al solicitante ({petition.correo || 'sin correo'})</li>
+                          <li>El documento se adjuntará al correo de finalización</li>
+                        </ul>
                       </div>
                       <Input
                         type="file"
@@ -1325,8 +1330,23 @@ export default function PetitionDetail() {
                           ))}
                         </div>
                       )}
-                      <Button onClick={handleFileUpload} className="w-full bg-emerald-700 hover:bg-emerald-800" data-testid="confirm-staff-upload">
-                        Subir y Finalizar Trámite
+                      <Button 
+                        onClick={handleUploadDocumentoFinal} 
+                        className="w-full bg-emerald-700 hover:bg-emerald-800" 
+                        disabled={uploadingFinal || files.length === 0}
+                        data-testid="confirm-staff-upload"
+                      >
+                        {uploadingFinal ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Procesando...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Subir y Finalizar Trámite
+                          </>
+                        )}
                       </Button>
                     </div>
                   </DialogContent>
