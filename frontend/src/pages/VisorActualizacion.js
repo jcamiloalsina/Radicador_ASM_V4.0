@@ -2783,23 +2783,39 @@ export default function VisorActualizacion() {
       if (isOnline) {
         // Modo online: guardar directamente
         const token = localStorage.getItem('token');
-        await axios.patch(
+        const response = await axios.patch(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}`,
           datosActualizacion,
           { headers: { Authorization: `Bearer ${token}` }}
         );
         
-        toast.success(visitaData.sin_cambios && !hayCambiosSugeridos
-          ? 'Visita guardada - Predio marcado como visitado sin cambios' 
-          : hayCambiosSugeridos 
-            ? `Formato guardado - Se detectaron ${Object.keys(cambiosSugeridos).length} cambio(s) sugerido(s) para revisión`
-            : 'Formato de visita guardado exitosamente'
-        );
+        const nuevoEstado = response.data?.estado_visita || 'visitado';
+        const estaFirmado = response.data?.firmado || nuevoEstado === 'visitado_firmado';
+        
+        if (estaFirmado) {
+          toast.success('✅ Visita firmada y guardada - Este predio ya no puede ser modificado', { duration: 5000 });
+        } else {
+          toast.success(visitaData.sin_cambios && !hayCambiosSugeridos
+            ? 'Visita guardada - Predio marcado como visitado sin cambios' 
+            : hayCambiosSugeridos 
+              ? `Formato guardado - Se detectaron ${Object.keys(cambiosSugeridos).length} cambio(s) sugerido(s) para revisión`
+              : 'Formato de visita guardado exitosamente'
+          );
+        }
         
         // Notificar si hay cambios jurídicos pendientes
         if (hayCambiosJuridicos) {
           toast.info('Se detectaron cambios jurídicos (matrícula/propietarios) que requieren revisión especial', { duration: 5000 });
         }
+        
+        setShowVisitaModal(false);
+        
+        // Actualizar estado local
+        setPrediosR1R2(prev => prev.map(p => 
+          (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
+            ? { ...p, estado_visita: nuevoEstado, sin_cambios: visitaData.sin_cambios }
+            : p
+        ));
       } else {
         // Modo offline: guardar para sincronizar después
         await saveOfflineChange('visita', {
@@ -2808,16 +2824,15 @@ export default function VisorActualizacion() {
         });
         
         toast.info('Visita guardada localmente - Se sincronizará al recuperar conexión');
-      }
-      
-      setShowVisitaModal(false);
-      
-      // Actualizar estado local
-      setPrediosR1R2(prev => prev.map(p => 
-        (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
-          ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
-          : p
-      ));
+        
+        setShowVisitaModal(false);
+        
+        // Actualizar estado local
+        setPrediosR1R2(prev => prev.map(p => 
+          (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
+            ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
+            : p
+        ));
       
       setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }));
       setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
