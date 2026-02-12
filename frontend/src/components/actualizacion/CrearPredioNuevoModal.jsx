@@ -202,6 +202,11 @@ const CrearPredioNuevoModal = ({
     setTerrenoInfo(null);
   };
   
+  // Prevenir que eventos de teclado se propaguen al mapa de Leaflet
+  const stopPropagation = (e) => {
+    e.stopPropagation();
+  };
+  
   // Verificar código completo
   const verificarCodigoCompleto = async () => {
     const codigo = construirCodigoCompleto();
