@@ -18285,37 +18285,8 @@ async def generar_pdf_informe_visita(
         elements.append(zonas_table)
         elements.append(Spacer(1, 0.2*inch))
     
-    # Linderos
-    elements.append(Paragraph("6. LINDEROS DEL PREDIO", subtitle_style))
-    
-    linderos_data = [
-        ["NORTE:", predio.get('lindero_norte', 'Sin información')],
-        ["SUR:", predio.get('lindero_sur', 'Sin información')],
-        ["ESTE:", predio.get('lindero_este', 'Sin información')],
-        ["OESTE:", predio.get('lindero_oeste', 'Sin información')],
-    ]
-    
-    linderos_table = Table(linderos_data, colWidths=[1*inch, 6.5*inch])
-    linderos_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    elements.append(linderos_table)
-    
-    if predio.get('observaciones_linderos'):
-        elements.append(Paragraph(f"<b>Observaciones linderos:</b> {predio.get('observaciones_linderos')}", normal_style))
-    
-    verificado_text = "Sí" if predio.get('linderos_verificados') else "No"
-    fecha_verif = predio.get('fecha_verificacion_linderos', '')
-    if fecha_verif:
-        verificado_text += f" (Fecha: {fecha_verif})"
-    elements.append(Paragraph(f"<b>Linderos verificados en campo:</b> {verificado_text}", normal_style))
-    elements.append(Spacer(1, 0.2*inch))
-    
-    # Coordenadas
-    elements.append(Paragraph("7. GEORREFERENCIACIÓN", subtitle_style))
+    # Georreferenciación (antes era sección 7, ahora es 6)
+    elements.append(Paragraph("6. GEORREFERENCIACIÓN", subtitle_style))
     
     coord_data = [
         ["Sistema Referencia:", predio.get('sistema_referencia', 'MAGNA-SIRGAS'), 
