@@ -3235,6 +3235,17 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
     update_dict = {}
     historial_entry = None
     
+    # Verificar si se está intentando finalizar
+    estado_solicitado = update_data.estado if update_data else None
+    if estado_solicitado == PetitionStatus.FINALIZADO:
+        # Solo Coordinador, Administrador y Atención al Usuario pueden finalizar
+        roles_pueden_finalizar = [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]
+        if current_user['role'] not in roles_pueden_finalizar:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Solo Coordinador o Atención al Usuario pueden finalizar trámites"
+            )
+    
     if current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
         # Coordinador and Admin can update all fields including approval
         update_dict = update_data.model_dump(exclude_none=True)
