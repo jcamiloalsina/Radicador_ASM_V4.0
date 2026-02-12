@@ -3606,16 +3606,23 @@ export default function VisorActualizacion() {
             />
           )}
           
-          {geometriasFiltradas && geometriasFiltradas.features?.length > 0 && (
+          {/* CAPA PERÍMETRO - Se renderiza primero (al fondo) */}
+          {geometriasPerimetro && geometriasPerimetro.features?.length > 0 && (
             <GeoJSON
-              key={`geom-${filterZona}-${filterEstado}-${geometriasFiltradas.features.length}`}
-              data={geometriasFiltradas}
-              style={getGeometryStyle}
-              onEachFeature={onEachFeature}
+              key={`perimetro-${filterZona}-${geometriasPerimetro.features.length}`}
+              data={geometriasPerimetro}
+              style={{
+                fillColor: '#f97316',  // Naranja
+                weight: 2,
+                color: '#ea580c',
+                fillOpacity: 0.15,     // Muy transparente
+                dashArray: '10, 5',    // Línea discontinua
+                interactive: false     // No bloquea interacción
+              }}
             />
           )}
           
-          {/* Construcciones - controladas por toggle */}
+          {/* CAPA CONSTRUCCIONES - Segunda capa (encima del perímetro) */}
           {showConstrucciones && construccionesFiltradas && construccionesFiltradas.features?.length > 0 && (
             <GeoJSON
               key={`const-${filterEstado}-${construccionesVersion}-${construccionesFiltradas.features.length}`}
@@ -3627,6 +3634,16 @@ export default function VisorActualizacion() {
                 fillOpacity: 0.4,
                 interactive: false  // No captura eventos - permite interacción con capas debajo
               })}
+            />
+          )}
+          
+          {/* CAPA GEOMETRÍAS (TERRENOS) - Tercera capa (encima de todo, interactiva) */}
+          {geometriasNormales && geometriasNormales.features?.length > 0 && (
+            <GeoJSON
+              key={`geom-${filterZona}-${filterEstado}-${geometriasNormales.features.length}`}
+              data={geometriasNormales}
+              style={getGeometryStyle}
+              onEachFeature={onEachFeature}
             />
           )}
           
