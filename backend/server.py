@@ -18181,7 +18181,8 @@ async def generar_pdf_informe_visita(
             visita=visita,
             propietarios=propietarios,
             construcciones=construcciones,
-            current_user_email=current_user.get('email', '')
+            current_user_email=current_user.get('email', ''),
+            current_user_name=current_user.get('full_name', '')
         )
     except Exception as e:
         logger.error(f"Error generando PDF de visita para {codigo_predial_decoded}: {e}")
