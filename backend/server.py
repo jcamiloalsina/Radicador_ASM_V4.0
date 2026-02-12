@@ -18338,7 +18338,7 @@ async def generar_pdf_informe_visita(
     elements.append(Spacer(1, 0.2*inch))
     
     # Observaciones
-    elements.append(Paragraph("8. OBSERVACIONES GENERALES", subtitle_style))
+    elements.append(Paragraph("7. OBSERVACIONES GENERALES", subtitle_style))
     obs_text = predio.get('observaciones_campo', visita.get('observaciones', 'Sin observaciones'))
     elements.append(Paragraph(obs_text if obs_text else "Sin observaciones", normal_style))
     elements.append(Spacer(1, 0.3*inch))
