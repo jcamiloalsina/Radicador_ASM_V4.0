@@ -7319,6 +7319,65 @@ export default function VisorActualizacion() {
         </DialogContent>
       </Dialog>
       
+      {/* Modal Confirmación Re-visita */}
+      <Dialog open={showConfirmRevisita} onOpenChange={setShowConfirmRevisita}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertTriangle className="w-5 h-5" />
+              Predio Ya Visitado
+            </DialogTitle>
+            <DialogDescription>
+              Este predio ya tiene un formato de visita guardado. ¿Desea sobrescribir los datos existentes?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {predioParaRevisita && (
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                <p className="text-sm text-amber-700 font-medium">Predio:</p>
+                <p className="font-mono text-sm">{predioParaRevisita.codigo_predial || predioParaRevisita.numero_predial}</p>
+                {predioParaRevisita.direccion && (
+                  <p className="text-sm text-slate-500 mt-1">{predioParaRevisita.direccion}</p>
+                )}
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge className="bg-blue-100 text-blue-800">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Visitado
+                  </Badge>
+                  {predioParaRevisita.visita?.fecha_visita && (
+                    <span className="text-xs text-slate-500">
+                      Última visita: {new Date(predioParaRevisita.visita.fecha_visita).toLocaleDateString('es-CO')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+              <p className="font-medium mb-1">⚠️ Atención:</p>
+              <p>Si continúa, los datos del formato de visita anterior serán reemplazados con los nuevos datos que ingrese.</p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={cancelarRevisita}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmarRevisita}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Continuar y Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Modal Crear Predio Nuevo */}
       <CrearPredioNuevoModal
         isOpen={showCrearPredioModal}
