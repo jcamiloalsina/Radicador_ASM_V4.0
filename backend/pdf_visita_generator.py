@@ -533,27 +533,30 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         [("Cercha Mad.", "cercha_madera"), ("C.Met.Liv.", "cercha_metalica_liviana"), 
          ("C.Met.Med.", "cercha_metalica_mediana"), ("C.Met.Pes.", "cercha_metalica_pesada"), ("Altura", "altura")])
     
-    # 8.6 DATOS GENERALES (siempre mostrar)
+    # 8.6 DATOS GENERALES (siempre mostrar, más compacto)
     fifth_w = content_width / 5
-    c.setFillColor(VERDE_CLARO)
-    c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_PRINCIPAL)
-    c.drawString(left + 3, y - 10, "8.6 DATOS GENERALES DE CONSTRUCCIÓN")
-    
     calif_gen = visita.get('calif_generales', {})
-    c.setFont("Helvetica", 7)
-    c.setFillColor(GRIS)
-    for i, (lbl, key) in enumerate([("Total Pisos", "total_pisos"), ("Habitaciones", "total_habitaciones"), 
-                                     ("Baños", "total_banos"), ("Locales", "total_locales"), ("Área Total", "area_total_construida")]):
-        x = left + i * fifth_w
-        c.drawString(x + 2, y - 22, lbl)
-        c.setFont("Helvetica", 9)
-        c.setFillColor(NEGRO)
-        c.drawString(x + 2, y - 35, str(calif_gen.get(key, '')) or "-")
+    has_gen_data = any(calif_gen.get(k) for k in ['total_pisos', 'total_habitaciones', 'total_banos', 'total_locales', 'area_total_construida'])
+    
+    if has_gen_data:
+        c.setFillColor(VERDE_CLARO)
+        c.rect(left, y - 35, content_width, 35, fill=1, stroke=1)
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColor(VERDE_PRINCIPAL)
+        c.drawString(left + 3, y - 10, "8.6 DATOS GENERALES DE CONSTRUCCIÓN")
+        
         c.setFont("Helvetica", 7)
         c.setFillColor(GRIS)
-    y -= 60
+        for i, (lbl, key) in enumerate([("Total Pisos", "total_pisos"), ("Habitaciones", "total_habitaciones"), 
+                                         ("Baños", "total_banos"), ("Locales", "total_locales"), ("Área Total", "area_total_construida")]):
+            x = left + i * fifth_w
+            c.drawString(x + 2, y - 20, lbl)
+            c.setFont("Helvetica", 8)
+            c.setFillColor(NEGRO)
+            c.drawString(x + 2, y - 30, str(calif_gen.get(key, '')) or "-")
+            c.setFont("Helvetica", 7)
+            c.setFillColor(GRIS)
+        y -= 40
     
     # ==================== PÁGINA 4 ====================
     y = new_page()
