@@ -14,6 +14,7 @@ import { getProyectoOffline, getGeometriasOffline, saveProyectoOffline, saveGeom
 // Componentes optimizados
 import FirmaCanvas from '../components/FirmaCanvas';
 import ListaPrediosPaginada from '../components/ListaPrediosPaginada';
+import DebouncedInput from '../components/DebouncedInput';
 
 // Componentes de Actualización
 import CrearPredioNuevoModal from '../components/actualizacion/CrearPredioNuevoModal';
