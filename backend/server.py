@@ -8630,8 +8630,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     
-    # Importar imágenes embebidas en Base64 (funcionan en cualquier servidor)
-    from certificado_images import get_encabezado_image, get_pie_pagina_image, get_firma_dalgie_image
+    # Usar imágenes embebidas en Base64 (importadas al inicio del archivo)
     from reportlab.lib.utils import ImageReader
     
     # Obtener las imágenes desde Base64 (siempre disponibles)
