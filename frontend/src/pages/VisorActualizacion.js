@@ -482,6 +482,20 @@ export default function VisorActualizacion() {
     { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
     { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
   ]);
+  
+  // Estado para calificaciones múltiples (sección 8)
+  const [visitaCalificaciones, setVisitaCalificaciones] = useState([
+    { 
+      id: 1,
+      estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+      acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+      bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+      datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
+    }
+  ]);
+  
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
