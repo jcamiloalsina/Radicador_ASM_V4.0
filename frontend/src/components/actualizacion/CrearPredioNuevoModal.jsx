@@ -193,20 +193,23 @@ const CrearPredioNuevoModal = ({
   
   // Manejar cambio en código
   const handleCodigoChange = (field, value, maxLen) => {
-    console.log(`[CrearPredio] handleCodigoChange: field=${field}, value='${value}', maxLen=${maxLen}`);
+    // Solo permitir números
     const numericValue = value.replace(/\D/g, '').slice(0, maxLen);
-    console.log(`[CrearPredio] numericValue='${numericValue}'`);
+    // No hacer padStart mientras edita - solo guardar el valor numérico
     setCodigoManual(prev => ({
       ...prev,
-      [field]: numericValue.padStart(maxLen, '0')
+      [field]: numericValue
     }));
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
   };
   
-  // Prevenir que eventos de teclado se propaguen al mapa de Leaflet
-  const stopPropagation = (e) => {
-    e.stopPropagation();
+  // Formatear valor con padding para mostrar (al perder foco)
+  const handleCodigoBlur = (field, maxLen) => {
+    setCodigoManual(prev => ({
+      ...prev,
+      [field]: (prev[field] || '').padStart(maxLen, '0')
+    }));
   };
   
   // Verificar código completo
