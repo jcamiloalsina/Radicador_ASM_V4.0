@@ -3717,6 +3717,8 @@ export default function VisorActualizacion() {
             onLocationFound={(latlng) => setUserPosition([latlng.lat, latlng.lng])}
             setCurrentZoom={setCurrentZoom}
             flyToPosition={flyToPosition}
+            fitToBounds={fitToBounds}
+            onMapReady={(map) => { mapRef.current = map; }}
           />
           
           <SmartTileLayer mapType={mapType} tileLayers={tileLayers} />
