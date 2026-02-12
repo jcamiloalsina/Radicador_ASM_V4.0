@@ -5232,7 +5232,13 @@ export default function VisorActualizacion() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Persona que Atiende *</Label>
-                          <Input value={visitaData.persona_atiende} onChange={(e) => setVisitaData(prev => ({ ...prev, persona_atiende: e.target.value.toUpperCase() }))} placeholder="NOMBRE COMPLETO" className="uppercase bg-white" />
+                          <DebouncedInput 
+                            value={visitaData.persona_atiende} 
+                            onChange={(val) => setVisitaData(prev => ({ ...prev, persona_atiende: val }))} 
+                            placeholder="NOMBRE COMPLETO" 
+                            uppercase={true}
+                            className="uppercase bg-white" 
+                          />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
