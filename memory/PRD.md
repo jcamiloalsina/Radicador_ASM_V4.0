@@ -79,12 +79,24 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
    key={`const-${filterEstado}-${construccionesVersion}-${construccionesFiltradas.features.length}`}
    ```
 
+5. **Fix de interacción - Construcciones no bloqueantes:**
+   ```javascript
+   style={(feature) => ({
+     fillColor: '#dc2626',
+     weight: 1,
+     color: '#7f1d1d',
+     fillOpacity: 0.4,
+     interactive: false  // No captura eventos - permite interacción con capas debajo
+   })}
+   ```
+
 **Testing:** ✅ 100% de tests pasaron
 - Visor carga y muestra geometrías correctamente
 - 6,912 construcciones se cargan y procesan
 - Badge "Const. ✓ 6912" visible
 - Badge "Mejoras: 1969" visible
 - Sin errores de JavaScript
+- Interacción con terrenos funciona (se puede seleccionar, ver detalles)
 
 **Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
 
