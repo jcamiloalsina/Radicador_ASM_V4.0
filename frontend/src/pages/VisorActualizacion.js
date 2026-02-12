@@ -3930,6 +3930,7 @@ export default function VisorActualizacion() {
           ref={mapRef}
           zoomControl={false}
           preferCanvas={true}
+          keyboard={false}
         >
           <MapController
             onLocationFound={(latlng) => setUserPosition([latlng.lat, latlng.lng])}
