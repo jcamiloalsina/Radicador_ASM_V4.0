@@ -310,6 +310,10 @@ export default function VisorActualizacion() {
   const [visitaExistente, setVisitaExistente] = useState(null);
   const [savingVisita, setSavingVisita] = useState(false);
   
+  // Modal de confirmación para predio ya visitado
+  const [showConfirmRevisita, setShowConfirmRevisita] = useState(false);
+  const [predioParaRevisita, setPredioParaRevisita] = useState(null);
+  
   // Estados de tipo de revisión
   const [showTipoRevisionModal, setShowTipoRevisionModal] = useState(false);
   const [tipoRevision, setTipoRevision] = useState(null); // 'campo', 'juridico', 'calidad'
