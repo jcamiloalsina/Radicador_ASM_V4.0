@@ -18346,16 +18346,15 @@ async def generar_pdf_informe_visita(
     # Firmas
     elements.append(Paragraph("8. FIRMAS", subtitle_style))
     
-    firma_data = [
-        ["FUNCIONARIO", "QUIEN ATENDIÓ LA VISITA"],
-        [Paragraph(f"Nombre: {visita.get('realizada_por', current_user.get('email', ''))}", normal_style),
-         Paragraph(f"Nombre: {visita.get('persona_atiende', '')}", normal_style)],
-        ["Firma: ____________________", "Firma: ____________________"],
-    ]
+    firma_visitado_text = "Firma: [FIRMA DIGITAL CAPTURADA]" if visita.get('firma_visitado_base64') else "Firma: ____________________"
+    firma_reconocedor_text = "Firma: [FIRMA DIGITAL CAPTURADA]" if visita.get('firma_reconocedor_base64') else "Firma: ____________________"
     
-    # Si hay firma digital, mostrar indicador
-    if visita.get('firma_base64'):
-        firma_data[2][1] = "Firma: [FIRMA DIGITAL CAPTURADA]"
+    firma_data = [
+        ["PERSONA QUE ATENDIÓ LA VISITA (VISITADO)", "RECONOCEDOR DE CAMPO"],
+        [Paragraph(f"Nombre: {visita.get('nombre_visitado', visita.get('persona_atiende', ''))}", normal_style),
+         Paragraph(f"Nombre: {visita.get('nombre_reconocedor', visita.get('realizada_por', current_user.get('email', '')))}", normal_style)],
+        [firma_visitado_text, firma_reconocedor_text],
+    ]
     
     firma_table = Table(firma_data, colWidths=[3.75*inch, 3.75*inch])
     firma_table.setStyle(TableStyle([
