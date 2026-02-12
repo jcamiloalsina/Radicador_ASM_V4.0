@@ -1076,11 +1076,8 @@ export default function VisorActualizacion() {
     // Usar el índice pre-calculado
     const codigosValidos = codigosPorEstadoIndex[filterEstado];
     if (!codigosValidos || codigosValidos.size === 0) {
-      console.warn(`[Filtro] No hay códigos para estado: ${filterEstado}`);
       return { type: 'FeatureCollection', features: [] };
     }
-    
-    console.log(`[Filtro] Filtrando por ${filterEstado}, códigos válidos: ${codigosValidos.size}`);
     
     // Crear índice de terrenos base (primeros 21 dígitos) para matching de mejoras
     const terrenosBase = new Set();
