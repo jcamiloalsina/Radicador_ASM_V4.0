@@ -18136,23 +18136,39 @@ async def generar_pdf_informe_visita(
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     
+    # Decodificar el código predial (puede venir URL encoded)
+    from urllib.parse import unquote
+    codigo_predial_decoded = unquote(codigo_predial)
+    
     # Obtener predio
     predio = await db.predios_actualizacion.find_one({
         "proyecto_id": proyecto_id,
         "$or": [
+            {"codigo_predial": codigo_predial_decoded},
+            {"numero_predial": codigo_predial_decoded},
             {"codigo_predial": codigo_predial},
             {"numero_predial": codigo_predial}
         ]
     }, {"_id": 0})
     
     if not predio:
-        raise HTTPException(status_code=404, detail="Predio no encontrado")
+        raise HTTPException(status_code=404, detail=f"Predio no encontrado: {codigo_predial_decoded}")
     
-    # Datos de visita
+    # Verificar que tiene datos de visita
     visita = predio.get('visita', {})
+    if not visita:
+        # Verificar si el estado indica que fue visitado pero no tiene datos de visita
+        estado = predio.get('estado_visita', 'pendiente')
+        if estado in ['pendiente']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Este predio no tiene formulario de visita diligenciado. Debe registrar una visita primero."
+            )
+        # Si el estado es visitado pero no tiene visita, crear estructura vacía
+        visita = {}
     
     # Propietarios y construcciones de la visita
-    propietarios = visita.get('propietarios', predio.get('propietarios', []))
+    propietarios = visita.get('propietarios', visita.get('propietarios_visita', predio.get('propietarios', [])))
     construcciones = visita.get('construcciones', [])
     
     # Generar PDF usando el nuevo módulo
@@ -18166,13 +18182,17 @@ async def generar_pdf_informe_visita(
             current_user_email=current_user.get('email', '')
         )
     except Exception as e:
-        logger.error(f"Error generando PDF de visita: {e}")
+        logger.error(f"Error generando PDF de visita para {codigo_predial_decoded}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
     
     # Guardar en disco
     pdf_dir = PROYECTOS_ACTUALIZACION_PATH / proyecto_id / "pdfs"
     pdf_dir.mkdir(exist_ok=True)
-    pdf_filename = f"informe_visita_{codigo_predial}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
+    # Sanitizar código predial para nombre de archivo
+    codigo_safe = codigo_predial_decoded.replace('/', '_').replace('\\', '_')
+    pdf_filename = f"informe_visita_{codigo_safe}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
     pdf_path = pdf_dir / pdf_filename
     
     with open(pdf_path, 'wb') as f:
