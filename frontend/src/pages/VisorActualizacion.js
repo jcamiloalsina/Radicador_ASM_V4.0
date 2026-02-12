@@ -257,6 +257,7 @@ export default function VisorActualizacion() {
   const [currentZoom, setCurrentZoom] = useState(14);
   const [mapType, setMapType] = useState('satellite');
   const [mapCenter, setMapCenter] = useState([7.8, -72.9]);
+  const [fitToBounds, setFitToBounds] = useState(null); // Bounds para ajustar el mapa;
   
   // Estados de Ortofoto
   const [ortofotoUrl, setOrtofotoUrl] = useState(null);
