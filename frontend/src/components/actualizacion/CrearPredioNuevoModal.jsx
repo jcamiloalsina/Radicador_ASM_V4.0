@@ -193,7 +193,9 @@ const CrearPredioNuevoModal = ({
   
   // Manejar cambio en código
   const handleCodigoChange = (field, value, maxLen) => {
+    console.log(`[CrearPredio] handleCodigoChange: field=${field}, value='${value}', maxLen=${maxLen}`);
     const numericValue = value.replace(/\D/g, '').slice(0, maxLen);
+    console.log(`[CrearPredio] numericValue='${numericValue}'`);
     setCodigoManual(prev => ({
       ...prev,
       [field]: numericValue.padStart(maxLen, '0')
