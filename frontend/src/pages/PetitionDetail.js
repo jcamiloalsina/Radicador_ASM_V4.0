@@ -28,8 +28,10 @@ export default function PetitionDetail() {
   const [gestores, setGestores] = useState([]);
   const [gestorSearch, setGestorSearch] = useState(''); // Búsqueda de gestores
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showUploadFinalDialog, setShowUploadFinalDialog] = useState(false);
   const [showFinalizarDialog, setShowFinalizarDialog] = useState(false);
   const [enviarArchivosFinalizacion, setEnviarArchivosFinalizacion] = useState(false);
+  const [uploadingFinal, setUploadingFinal] = useState(false);
 
   useEffect(() => {
     fetchPetition();
