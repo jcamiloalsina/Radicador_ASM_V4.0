@@ -18355,7 +18355,7 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
                 predios_dict[codigo_predial] = predio_data
             
             # Agregar propietario si tiene nombre
-            if propietario.get('nombre'):
+            if propietario.get('nombre_propietario'):
                 predios_dict[codigo_predial]['propietarios'].append(propietario)
     
     # Guardar predios únicos con sus propietarios
