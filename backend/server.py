@@ -18295,6 +18295,9 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
         'TIPO_PREDIO': 'tipo_predio',
         'TIPO PREDIO': 'tipo_predio',
         'COMUNA': 'comuna',
+        # Código Homologado
+        'CODIGO_HOMOLOGADO': 'codigo_homologado',
+        'CODIGO HOMOLOGADO': 'codigo_homologado',
         # Matrícula inmobiliaria
         'MATRICULA_INMOBILIARIA': 'matricula_inmobiliaria',
         'MATRICULA INMOBILIARIA': 'matricula_inmobiliaria',
