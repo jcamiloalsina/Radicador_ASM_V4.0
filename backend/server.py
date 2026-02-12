@@ -18132,7 +18132,6 @@ async def generar_pdf_informe_visita(
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para generar PDF")
     
-    from pdf_visita_generator import generar_pdf_visita_completo
     import base64
     
     # Obtener proyecto
