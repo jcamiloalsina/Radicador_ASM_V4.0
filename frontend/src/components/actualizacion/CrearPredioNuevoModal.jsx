@@ -626,6 +626,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.terreno} 
                       onChange={(e) => handleCodigoChange('terreno', e.target.value, 4)}
+                      onKeyDown={stopPropagation}
                       maxLength={4}
                       className="font-mono font-bold text-red-700 text-center"
                     />
@@ -652,6 +653,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.edificio} 
                       onChange={(e) => handleCodigoChange('edificio', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -661,6 +663,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.piso} 
                       onChange={(e) => handleCodigoChange('piso', e.target.value, 2)}
+                      onKeyDown={stopPropagation}
                       maxLength={2}
                       className="font-mono text-center"
                     />
@@ -670,6 +673,7 @@ const CrearPredioNuevoModal = ({
                     <Input 
                       value={codigoManual.unidad} 
                       onChange={(e) => handleCodigoChange('unidad', e.target.value, 4)}
+                      onKeyDown={stopPropagation}
                       maxLength={4}
                       className="font-mono text-center"
                     />
