@@ -35,6 +35,10 @@ import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+# Imports para generación de PDF de visita
+from pdf_visita_generator import generar_pdf_visita_completo
+from certificado_images import get_encabezado_image, get_pie_pagina_image, get_firma_dalgie_image
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
