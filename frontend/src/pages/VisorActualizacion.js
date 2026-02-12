@@ -1547,16 +1547,50 @@ export default function VisorActualizacion() {
     }
     
     try {
-      const geoJsonLayer = L.geoJSON(geometrias);
+      // Filtrar solo geometrías con coordenadas válidas WGS84 (para evitar datos corruptos en caché)
+      const validFeatures = geometrias.features.filter(f => {
+        const coords = f?.geometry?.coordinates;
+        const gtype = f?.geometry?.type;
+        let firstCoord = null;
+        
+        try {
+          if (gtype === 'Polygon' && coords?.[0]?.[0]) {
+            firstCoord = coords[0][0];
+          } else if (gtype === 'MultiPolygon' && coords?.[0]?.[0]?.[0]) {
+            firstCoord = coords[0][0][0];
+          }
+        } catch (e) {
+          return false;
+        }
+        
+        if (!firstCoord || !Array.isArray(firstCoord) || firstCoord.length < 2) return false;
+        
+        const [lon, lat] = firstCoord;
+        // Validar que sean coordenadas WGS84 válidas (no proyectadas)
+        return typeof lon === 'number' && typeof lat === 'number' &&
+               lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90;
+      });
+      
+      if (validFeatures.length === 0) {
+        console.warn('No hay geometrías con coordenadas válidas. El caché puede estar corrupto.');
+        toast.error('Datos de geometrías corruptos. Intente recargar con el botón de refrescar.');
+        return;
+      }
+      
+      if (validFeatures.length < geometrias.features.length) {
+        console.warn(`Filtradas ${geometrias.features.length - validFeatures.length} geometrías con coordenadas inválidas`);
+      }
+      
+      const validGeoJson = { type: 'FeatureCollection', features: validFeatures };
+      const geoJsonLayer = L.geoJSON(validGeoJson);
       const bounds = geoJsonLayer.getBounds();
       
       if (bounds.isValid()) {
-        // Usar el estado fitToBounds que será procesado por MapController
         const boundsArray = [
           [bounds.getSouth(), bounds.getWest()],
           [bounds.getNorth(), bounds.getEast()]
         ];
-        console.log('Ajustando mapa a bounds:', boundsArray);
+        console.log('Ajustando mapa a bounds válidos:', boundsArray);
         setFitToBounds(boundsArray);
         toast.success('Vista ajustada a las geometrías');
       } else {
