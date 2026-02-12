@@ -1527,24 +1527,35 @@ export default function VisorActualizacion() {
       const geoJsonLayer = L.geoJSON(geometrias);
       const bounds = geoJsonLayer.getBounds();
       
-      if (bounds.isValid() && mapRef.current) {
-        mapRef.current.fitBounds(bounds, { padding: [20, 20] });
+      if (bounds.isValid()) {
+        // Usar el estado fitToBounds que será procesado por MapController
+        const boundsArray = [
+          [bounds.getSouth(), bounds.getWest()],
+          [bounds.getNorth(), bounds.getEast()]
+        ];
+        console.log('Ajustando mapa a bounds:', boundsArray);
+        setFitToBounds(boundsArray);
         toast.success('Vista ajustada a las geometrías');
+      } else {
+        console.error('Bounds inválidos:', bounds);
+        toast.error('No se pudieron calcular los límites del mapa');
       }
     } catch (error) {
       console.error('Error al hacer zoom a GDB:', error);
+      toast.error('Error al ajustar la vista');
     }
   }, [geometrias]);
   
   // Auto-zoom cuando se cargan las geometrías por primera vez
   useEffect(() => {
-    if (geometrias?.features?.length > 0 && mapRef.current) {
+    if (geometrias?.features?.length > 0) {
       // Pequeño delay para asegurar que el mapa esté listo
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         zoomToGDBLayer();
-      }, 500);
+      }, 800);
+      return () => clearTimeout(timer);
     }
-  }, [geometrias?.features?.length]);
+  }, [geometrias?.features?.length, zoomToGDBLayer]);
   
   // Buscar predio
   const handleSearch = async () => {
