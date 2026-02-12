@@ -1063,6 +1063,13 @@ export default function VisorActualizacion() {
     return index;
   }, [prediosR1R2]);
   
+  // Debug: mostrar índice de visitados
+  useEffect(() => {
+    if (codigosPorEstadoIndex.visitado.size > 0) {
+      console.log('[Index] Códigos visitados:', Array.from(codigosPorEstadoIndex.visitado).slice(0, 5));
+    }
+  }, [codigosPorEstadoIndex]);
+  
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
     if (!geometrias?.features) {
@@ -1076,8 +1083,11 @@ export default function VisorActualizacion() {
     // Usar el índice pre-calculado
     const codigosValidos = codigosPorEstadoIndex[filterEstado];
     if (!codigosValidos || codigosValidos.size === 0) {
+      console.warn(`[Filtro] No hay códigos para estado: ${filterEstado}`);
       return { type: 'FeatureCollection', features: [] };
     }
+    
+    console.log(`[Filtro] Filtrando por ${filterEstado}, códigos válidos: ${codigosValidos.size}`);
     
     // Crear índice de terrenos base (primeros 21 dígitos) para matching de mejoras
     const terrenosBase = new Set();
