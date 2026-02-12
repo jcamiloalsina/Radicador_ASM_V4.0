@@ -1888,7 +1888,27 @@ export default function VisorActualizacion() {
 
   // Abrir el formulario de visita original
   const abrirFormularioVisita = () => {
+    // Si el predio ya está visitado, mostrar confirmación de re-visita
+    if (selectedPredio?.estado_visita === 'visitado' || selectedPredio?.estado_visita === 'visitado_firmado') {
+      setPredioParaRevisita(selectedPredio);
+      setShowConfirmRevisita(true);
+      return;
+    }
+    // Si no está visitado, abrir directamente
     abrirFormatoVisita();
+  };
+  
+  // Confirmar re-visita (sobrescribir datos existentes)
+  const confirmarRevisita = () => {
+    setShowConfirmRevisita(false);
+    setPredioParaRevisita(null);
+    abrirFormatoVisita();
+  };
+  
+  // Cancelar re-visita
+  const cancelarRevisita = () => {
+    setShowConfirmRevisita(false);
+    setPredioParaRevisita(null);
   };
 
   // Guardar formulario de visita
