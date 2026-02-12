@@ -3878,7 +3878,27 @@ export default function VisorActualizacion() {
               onClose={cerrarDetalleSimplificado}
               onOpenVisita={abrirFormularioVisita}
               onOpenVisitaMejora={(mejora) => {
+                // Obtener el código de la mejora
+                const codigoMejora = mejora?.properties?.codigo || '';
+                console.log('[Visor] Abriendo visita para mejora:', codigoMejora);
+                
+                // Buscar el predio R1/R2 con el código de la mejora
+                const predioMejora = prediosR1R2.find(p => {
+                  const codigoPredio = p.codigo_predial || p.numero_predial;
+                  // Match exacto primero
+                  if (codigoPredio === codigoMejora) return true;
+                  // Match parcial (por si el código tiene variaciones)
+                  if (codigoPredio && codigoMejora && codigoPredio.length >= 27 && codigoMejora.length >= 27) {
+                    // Comparar los primeros 27 dígitos (hasta código de mejora)
+                    if (codigoPredio.substring(0, 27) === codigoMejora.substring(0, 27)) return true;
+                  }
+                  return false;
+                });
+                
+                console.log('[Visor] Predio R1/R2 encontrado para mejora:', predioMejora);
+                
                 setMejoraSeleccionada(mejora);
+                setPredioMejoraSeleccionada(predioMejora || null);
                 setTipoVisita('mejora');
                 setShowVisitaModal(true);
                 setShowDetalleSimplificado(false);
