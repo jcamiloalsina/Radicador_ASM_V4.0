@@ -69,7 +69,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
                        width=content_width + 0.6*cm, height=1.8*cm, 
                        preserveAspectRatio=True, mask='auto')
         else:
-            c.setFillColor(VERDE_TEAL)
+            c.setFillColor(VERDE_PRINCIPAL)
             c.setFont("Helvetica-Bold", 12)
             c.drawCentredString(width/2, height - 1.2*cm, "ASOMUNICIPIOS - Gestor Catastral")
         return height - 2.5*cm
@@ -80,7 +80,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
             c.drawImage(pie_pagina_img, 0, 0, width=width, height=1.8*cm, 
                        preserveAspectRatio=False, mask='auto')
         else:
-            c.setFillColor(VERDE_TEAL)
+            c.setFillColor(VERDE_PRINCIPAL)
             c.rect(0, 0, width, 22, fill=1, stroke=0)
         # Número de página
         c.setFont("Helvetica", 8)
@@ -99,7 +99,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         """Dibuja encabezado de sección con color verde teal"""
         if y < footer_limit + 30:
             y = new_page()
-        c.setFillColor(VERDE_TEAL)
+        c.setFillColor(VERDE_PRINCIPAL)
         c.rect(left, y - 14, content_width, 16, fill=1, stroke=0)
         c.setFillColor(BLANCO)
         c.setFont("Helvetica-Bold", 9)
@@ -354,7 +354,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     
     # Tabla de Propietarios
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left, y, "Propietarios / Poseedores")
     y -= 12
     
@@ -366,7 +366,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setStrokeColor(VERDE_MEDIO)
     c.rect(left, y - 14, sum(cols), 14, stroke=1, fill=0)
     c.setFont("Helvetica-Bold", 6)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     x_pos = left
     for col_w, header in zip(cols, headers):
         c.drawString(x_pos + 2, y - 10, header)
@@ -450,7 +450,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setStrokeColor(VERDE_MEDIO)
     c.rect(left, y - 14, sum(cons_cols), 14, stroke=1, fill=0)
     c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     x_pos = left
     for col_w, header in zip(cons_cols, cons_headers):
         c.drawString(x_pos + 2, y - 10, header)
@@ -487,7 +487,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(GRIS_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.1 ESTRUCTURA")
     
     calif_est = visita.get('calif_estructura', {})
@@ -507,7 +507,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(GRIS_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.2 ACABADOS PRINCIPALES")
     
     calif_acab = visita.get('calif_acabados', {})
@@ -527,7 +527,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(GRIS_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.3 BAÑO")
     
     calif_bano = visita.get('calif_bano', {})
@@ -547,7 +547,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(GRIS_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.4 COCINA")
     
     calif_cocina = visita.get('calif_cocina', {})
@@ -567,7 +567,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(GRIS_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.5 COMPLEMENTO INDUSTRIA (si aplica)")
     
     calif_ind = visita.get('calif_industria', {})
@@ -589,7 +589,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setFillColor(VERDE_CLARO)
     c.rect(left, y - 50, content_width, 50, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     c.drawString(left + 3, y - 10, "8.6 DATOS GENERALES DE CONSTRUCCIÓN")
     
     calif_gen = visita.get('calif_generales', {})
@@ -620,7 +620,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.setStrokeColor(VERDE_MEDIO)
     c.rect(left, y - 14, sum(area_cols), 14, stroke=1, fill=0)
     c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(VERDE_TEAL)
+    c.setFillColor(VERDE_PRINCIPAL)
     x_pos = left
     for col_w, header in zip(area_cols, area_headers):
         c.drawString(x_pos + 3, y - 10, header)
