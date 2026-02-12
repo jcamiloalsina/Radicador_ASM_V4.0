@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo, memo, startTr
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, GeoJSON, Marker, CircleMarker, useMap, useMapEvents, ImageOverlay } from 'react-leaflet';
 import { useAuth } from '../context/AuthContext';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import L from 'leaflet';
