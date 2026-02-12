@@ -1,7 +1,7 @@
 """
 Generador de PDF para Informe de Visita - EXACTO al formulario web
 Contiene 5 páginas y 13 secciones como el formulario
-Color consistente: Verde Teal (#0d9488) de la plataforma
+Color consistente: Verde Emerald (#00b855) de la plataforma
 """
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -14,10 +14,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Color principal de la plataforma
-VERDE_TEAL = colors.HexColor('#0d9488')
-VERDE_CLARO = colors.HexColor('#ccfbf1')
-VERDE_MEDIO = colors.HexColor('#5eead4')
+# Color principal de la plataforma (Emerald)
+VERDE_PRINCIPAL = colors.HexColor('#00b855')  # emerald-600
+VERDE_CLARO = colors.HexColor('#e6f7ed')      # emerald-50
+VERDE_MEDIO = colors.HexColor('#99dfb7')      # emerald-200
+VERDE_OSCURO = colors.HexColor('#007a38')     # emerald-800
 GRIS = colors.HexColor('#6b7280')
 GRIS_CLARO = colors.HexColor('#f1f5f9')
 NEGRO = colors.black
