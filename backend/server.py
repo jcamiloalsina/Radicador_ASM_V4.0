@@ -18344,7 +18344,7 @@ async def generar_pdf_informe_visita(
     elements.append(Spacer(1, 0.3*inch))
     
     # Firmas
-    elements.append(Paragraph("9. FIRMAS", subtitle_style))
+    elements.append(Paragraph("8. FIRMAS", subtitle_style))
     
     firma_data = [
         ["FUNCIONARIO", "QUIEN ATENDIÓ LA VISITA"],
