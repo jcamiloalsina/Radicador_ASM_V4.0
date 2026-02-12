@@ -1675,8 +1675,21 @@ export default function VisorActualizacion() {
     );
     
     if (predio) {
+      // Buscar geometría correspondiente para obtener datos adicionales
+      const feature = geometrias?.features?.find(f => {
+        const props = f.properties || {};
+        const codigo = props.codigo || props.codigo_predial || '';
+        return codigo === predio.codigo_predial || codigo === predio.numero_predial;
+      });
+      
+      // Asegurar que el predio tenga el codigo_homologado
+      const predioCompleto = {
+        ...predio,
+        codigo_homologado: predio.codigo_homologado || feature?.properties?.codigo_homologado || feature?.properties?.CODIGO_HOMOLOGADO || ''
+      };
+      
       // Mostrar panel simplificado directamente (sin modal de tipo revisión)
-      setSelectedPredio(predio);
+      setSelectedPredio(predioCompleto);
       setShowDetalleSimplificado(true);
       setShowPredioDetail(false);
       setEditMode(false);
