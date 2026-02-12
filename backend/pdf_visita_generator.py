@@ -534,53 +534,53 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         # 8.2 ACABADOS
         y = draw_calif_subsection(y, "8.2 ACABADOS PRINCIPALES", calif_acab,
             [("Fachadas", "fachadas"), ("Cubrim. Muros", "cubrim_muros"), ("Pisos", "pisos"), ("Conservación", "conservacion")])
-    
-    # 8.3 BAÑO
-    calif_bano = visita.get('calif_bano', {})
-    y = draw_calif_subsection(y, "8.3 BAÑO", calif_bano,
-        [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
-    
-    # 8.4 COCINA
-    calif_cocina = visita.get('calif_cocina', {})
-    y = draw_calif_subsection(y, "8.4 COCINA", calif_cocina,
-        [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
-    
-    # 8.5 INDUSTRIA (solo si aplica)
-    calif_ind = visita.get('calif_industria', {})
-    y = draw_calif_subsection(y, "8.5 COMPLEMENTO INDUSTRIA", calif_ind,
-        [("Cercha Mad.", "cercha_madera"), ("C.Met.Liv.", "cercha_metalica_liviana"), 
-         ("C.Met.Med.", "cercha_metalica_mediana"), ("C.Met.Pes.", "cercha_metalica_pesada"), ("Altura", "altura")])
-    
-    # 8.6 DATOS GENERALES (siempre mostrar, más compacto)
-    fifth_w = content_width / 5
-    calif_gen = visita.get('calif_generales', {})
-    has_gen_data = any(calif_gen.get(k) for k in ['total_pisos', 'total_habitaciones', 'total_banos', 'total_locales', 'area_total_construida'])
-    
-    if has_gen_data:
-        c.setFillColor(VERDE_CLARO)
-        c.rect(left, y - 35, content_width, 35, fill=1, stroke=1)
-        c.setFont("Helvetica-Bold", 7)
-        c.setFillColor(VERDE_PRINCIPAL)
-        c.drawString(left + 3, y - 10, "8.6 DATOS GENERALES DE CONSTRUCCIÓN")
         
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRIS)
-        for i, (lbl, key) in enumerate([("Total Pisos", "total_pisos"), ("Habitaciones", "total_habitaciones"), 
-                                         ("Baños", "total_banos"), ("Locales", "total_locales"), ("Área Total", "area_total_construida")]):
-            x = left + i * fifth_w
-            c.drawString(x + 2, y - 20, lbl)
-            c.setFont("Helvetica", 8)
-            c.setFillColor(NEGRO)
-            c.drawString(x + 2, y - 30, str(calif_gen.get(key, '')) or "-")
+        # 8.3 BAÑO
+        y = draw_calif_subsection(y, "8.3 BAÑO", calif_bano,
+            [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
+        
+        # 8.4 COCINA
+        y = draw_calif_subsection(y, "8.4 COCINA", calif_cocina,
+            [("Tamaño", "tamano"), ("Enchape", "enchape"), ("Mobiliario", "mobiliario"), ("Conservación", "conservacion")])
+        
+        # 8.5 INDUSTRIA (solo si aplica)
+        y = draw_calif_subsection(y, "8.5 COMPLEMENTO INDUSTRIA", calif_ind,
+            [("Cercha Mad.", "cercha_madera"), ("C.Met.Liv.", "cercha_metalica_liviana"), 
+             ("C.Met.Med.", "cercha_metalica_mediana"), ("C.Met.Pes.", "cercha_metalica_pesada"), ("Altura", "altura")])
+        
+        # 8.6 DATOS GENERALES
+        fifth_w = content_width / 5
+        has_gen_data = any(calif_gen.get(k) for k in ['total_pisos', 'total_habitaciones', 'total_banos', 'total_locales', 'area_total_construida'])
+        
+        if has_gen_data:
+            c.setFillColor(VERDE_CLARO)
+            c.rect(left, y - 35, content_width, 35, fill=1, stroke=1)
+            c.setFont("Helvetica-Bold", 7)
+            c.setFillColor(VERDE_PRINCIPAL)
+            c.drawString(left + 3, y - 10, "8.6 DATOS GENERALES DE CONSTRUCCIÓN")
+            
             c.setFont("Helvetica", 7)
             c.setFillColor(GRIS)
-        y -= 40
+            for i, (lbl, key) in enumerate([("Total Pisos", "total_pisos"), ("Habitaciones", "total_habitaciones"), 
+                                             ("Baños", "total_banos"), ("Locales", "total_locales"), ("Área Total", "area_total_construida")]):
+                x = left + i * fifth_w
+                c.drawString(x + 2, y - 20, lbl)
+                c.setFont("Helvetica", 8)
+                c.setFillColor(NEGRO)
+                c.drawString(x + 2, y - 30, str(calif_gen.get(key, '')) or "-")
+                c.setFont("Helvetica", 7)
+                c.setFillColor(GRIS)
+            y -= 40
     
-    # ==================== PÁGINA 4 ====================
-    y = new_page()
+    # === SECCIÓN 9: RESUMEN ÁREAS DE TERRENO === (Solo si hay datos)
+    areas_terreno = visita.get('areas_terreno', [])
+    has_areas = areas_terreno and any(a.get('hectareas') or a.get('metros') for a in areas_terreno)
     
-    # === SECCIÓN 9: RESUMEN ÁREAS DE TERRENO ===
-    y = section_header(y, "9", "RESUMEN ÁREAS DE TERRENO")
+    if has_areas or visita.get('area_terreno_visita') or predio.get('area_terreno'):
+        if y < footer_limit + 150:
+            y = new_page()
+        
+        y = section_header(y, "9", "RESUMEN ÁREAS DE TERRENO")
     
     # Tabla de áreas
     area_cols = [170, 80, 80, 170]
