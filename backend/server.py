@@ -2646,6 +2646,140 @@ async def upload_petition_files(
     return {"message": "Archivos subidos exitosamente", "files": saved_files}
 
 
+@api_router.post("/petitions/{petition_id}/upload-documento-final")
+async def upload_documento_final(
+    petition_id: str,
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Sube el documento final de respuesta y finaliza automáticamente el trámite.
+    Solo para staff (no ciudadanos). Envía correo con el documento adjunto.
+    """
+    # Solo staff puede subir documento final
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el personal puede subir documentos finales")
+    
+    petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+    if not petition:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Petición no encontrada")
+    
+    # Verificar que el trámite no esté ya finalizado
+    if petition.get('estado') == PetitionStatus.FINALIZADO:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El trámite ya está finalizado")
+    
+    # Crear directorio específico para este trámite
+    petition_dir = UPLOAD_DIR / petition_id
+    petition_dir.mkdir(parents=True, exist_ok=True)
+    
+    saved_files = []
+    for file in files:
+        if file.filename:
+            file_id = str(uuid.uuid4())
+            file_ext = Path(file.filename).suffix
+            # Guardar con nombre descriptivo
+            safe_filename = f"documento_final_{file_id}{file_ext}"
+            file_path = petition_dir / safe_filename
+            
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            saved_files.append({
+                "id": file_id,
+                "filename": safe_filename,
+                "original_name": file.filename,
+                "path": str(file_path),
+                "uploaded_by": current_user['id'],
+                "uploaded_by_name": current_user['full_name'],
+                "uploaded_by_role": current_user['role'],
+                "upload_date": datetime.now(timezone.utc).isoformat(),
+                "es_documento_final": True
+            })
+    
+    if not saved_files:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se recibieron archivos válidos")
+    
+    # Obtener archivos staff existentes y agregar los nuevos
+    archivos_staff = petition.get('archivos_staff', [])
+    archivos_staff.extend(saved_files)
+    
+    # Crear entrada de historial
+    historial_entry = {
+        "accion": "documento_final_subido",
+        "usuario": current_user['full_name'],
+        "usuario_rol": current_user['role'],
+        "estado_anterior": petition['estado'],
+        "estado_nuevo": PetitionStatus.FINALIZADO,
+        "notas": f"Se subió documento final y se finalizó el trámite. Archivo(s): {', '.join([f['original_name'] for f in saved_files])}",
+        "fecha": datetime.now(timezone.utc).isoformat()
+    }
+    
+    historial = petition.get('historial', [])
+    historial.append(historial_entry)
+    
+    # Actualizar la petición: guardar archivos y marcar como finalizado
+    await db.petitions.update_one(
+        {"id": petition_id},
+        {"$set": {
+            "archivos_staff": archivos_staff,
+            "estado": PetitionStatus.FINALIZADO,
+            "historial": historial,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "finalizado_por": current_user['id'],
+            "finalizado_por_nombre": current_user['full_name'],
+            "fecha_finalizacion": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Enviar correo al ciudadano con el documento adjunto
+    citizen_email = petition.get('correo')
+    nombre_solicitante = petition.get('nombre_completo', 'Usuario')
+    
+    if citizen_email:
+        try:
+            email_body = get_finalizacion_email(
+                radicado=petition['radicado'],
+                tipo_tramite=petition['tipo_tramite'],
+                nombre_solicitante=nombre_solicitante,
+                con_archivos=True
+            )
+            
+            # Adjuntar el primer archivo (o el más reciente)
+            attachment_path = str(saved_files[0]['path']) if saved_files else None
+            attachment_name = saved_files[0]['original_name'] if saved_files else None
+            
+            await send_email(
+                citizen_email,
+                f"¡Trámite Finalizado! - {petition['radicado']}",
+                email_body,
+                attachment_path,
+                attachment_name
+            )
+            logger.info(f"Correo de finalización enviado a {citizen_email} con documento adjunto")
+        except Exception as e:
+            logger.error(f"Error enviando correo de finalización: {e}")
+    
+    # Notificar a los gestores asignados
+    gestores_asignados = petition.get('gestores_asignados', [])
+    for gestor_id in gestores_asignados:
+        if gestor_id != current_user['id']:
+            await crear_notificacion(
+                usuario_id=gestor_id,
+                tipo="success",
+                titulo="Trámite Finalizado",
+                mensaje=f"El trámite {petition['radicado']} ha sido finalizado por {current_user['full_name']}.",
+                enlace=f"/dashboard/peticion/{petition_id}",
+                enviar_email=False
+            )
+    
+    return {
+        "message": "Documento final subido y trámite finalizado exitosamente",
+        "files": saved_files,
+        "email_enviado": bool(citizen_email),
+        "estado": "finalizado"
+    }
+
+
 @api_router.get("/petitions/{petition_id}/download-zip")
 async def download_citizen_files_as_zip(petition_id: str, current_user: dict = Depends(get_current_user)):
     """Download all files uploaded by citizen as a ZIP file"""
