@@ -16162,7 +16162,12 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                     gdf = pyogrio.read_dataframe(data_source, layer=capa_especifica)
                 
                 if len(gdf) > 0:
-                    gdf = gdf.to_crs(epsg=4326)
+                    # Manejar geometrías sin CRS definido
+                    if gdf.crs is None:
+                        logger.warning(f"[GDB/SHP] Capa '{capa_especifica}' no tiene CRS definido. Asignando EPSG:4326 por defecto.")
+                        gdf = gdf.set_crs(epsg=4326)
+                    else:
+                        gdf = gdf.to_crs(epsg=4326)
                     logger.info(f"[GDB/SHP Actualizacion] Capa '{capa_especifica}' tiene {len(gdf)} registros")
                     
                     # Determinar tipo de zona basado en el nombre de la capa
