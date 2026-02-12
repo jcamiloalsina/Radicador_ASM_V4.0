@@ -18186,30 +18186,9 @@ async def generar_pdf_informe_visita(
         "filename": pdf_filename,
         "pdf_base64": pdf_base64
     }
-    
-    def draw_header():
-        """Dibuja el encabezado"""
-        if imagenes_ok:
-            c.drawImage(encabezado_img, left_margin - 0.5*cm, height - 2.2*cm, 
-                       width=content_width + 1*cm, height=2*cm, 
-                       preserveAspectRatio=True, mask='auto')
-        else:
-            c.setFillColor(verde)
-            c.setFont("Helvetica-Bold", 14)
-            c.drawCentredString(width/2, height - 1.5*cm, "ASOMUNICIPIOS - Gestor Catastral")
-        return height - 3*cm
-    
-    def draw_footer():
-        """Dibuja el pie de página"""
-        if imagenes_ok:
-            c.drawImage(pie_pagina_img, 0, 0, width=width, height=2*cm, 
-                       preserveAspectRatio=False, mask='auto')
-        else:
-            c.setFillColor(verde)
-            c.rect(0, 0, width, 25, fill=1, stroke=0)
-            c.setFillColor(blanco)
-            c.setFont("Helvetica", 8)
-            c.drawCentredString(width/2, 8, "comunicaciones@asomunicipios.gov.co")
+
+
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/upload-info-alfanumerica")
     
     def new_page():
         """Nueva página con encabezado y pie"""
