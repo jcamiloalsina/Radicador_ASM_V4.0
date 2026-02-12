@@ -1035,6 +1035,13 @@ export default function VisorActualizacion() {
     // Filtrar las geometrías usando el índice
     const featuresFiltradas = geometrias.features.filter(feature => {
       const props = feature.properties || {};
+      const capaOrigen = (props.capa_origen || '').toUpperCase();
+      
+      // SIEMPRE incluir geometrías de perímetro/límite (sin importar el filtro)
+      if (capaOrigen.includes('PERIMETRO') || capaOrigen.includes('LIMITE')) {
+        return true;
+      }
+      
       // El GDB puede usar 'codigo', 'codigo_predial', o 'CODIGO'
       const codigo = props.codigo || props.codigo_predial || props.numero_predial || props.CODIGO;
       if (!codigo) return false;
