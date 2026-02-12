@@ -438,86 +438,102 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     # ==================== PÁGINA 3 ====================
     y = new_page()
     
-    # === SECCIÓN 7: INFORMACIÓN DE CONSTRUCCIONES ===
-    y = section_header(y, "7", "INFORMACIÓN DE CONSTRUCCIONES")
-    
-    # Tabla de construcciones
-    cons_cols = [40, 75, 70, 60, 70, 55]
-    cons_headers = ["Unidad", "Código Uso", "Área (m²)", "Puntaje", "Año Const.", "N° Pisos"]
-    c.setFillColor(VERDE_CLARO)
-    c.rect(left, y - 14, sum(cons_cols), 14, fill=1, stroke=0)
-    c.setStrokeColor(VERDE_MEDIO)
-    c.rect(left, y - 14, sum(cons_cols), 14, stroke=1, fill=0)
-    c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(VERDE_PRINCIPAL)
-    x_pos = left
-    for col_w, header in zip(cons_cols, cons_headers):
-        c.drawString(x_pos + 2, y - 10, header)
-        x_pos += col_w
-    y -= 16
-    
-    c.setFont("Helvetica", 8)
-    c.setFillColor(NEGRO)
-    for cons in construcciones[:8]:
-        if cons.get('codigo_uso') or cons.get('area'):
-            c.setStrokeColor(VERDE_MEDIO)
-            c.rect(left, y - 12, sum(cons_cols), 12, stroke=1, fill=0)
-            row_data = [
-                cons.get('unidad', '-'),
-                cons.get('codigo_uso', '-'),
-                cons.get('area', '-'),
-                cons.get('puntaje', '-'),
-                cons.get('ano_construccion', '-'),
-                cons.get('num_pisos', '-')
-            ]
-            x_pos = left
-            for col_w, val in zip(cons_cols, row_data):
-                c.drawString(x_pos + 2, y - 9, str(val))
-                x_pos += col_w
-            y -= 12
-    y -= 12
-    
-    # === SECCIÓN 8: CALIFICACIÓN ===
-    y = section_header(y, "8", "CALIFICACIÓN")
-    
-    quarter_w = content_width / 4
-    
-    # Helper para dibujar subsección de calificación (compacta)
-    def draw_calif_subsection(y_pos, title, data, fields):
-        # Solo mostrar si hay datos
-        has_data = any(data.get(key) for _, key in fields)
-        if not has_data:
-            return y_pos
+    # === SECCIÓN 7: INFORMACIÓN DE CONSTRUCCIONES === (Solo si hay construcciones)
+    if construcciones and any(c.get('codigo_uso') or c.get('area') for c in construcciones):
+        y = section_header(y, "7", "INFORMACIÓN DE CONSTRUCCIONES")
         
-        box_height = 35
-        c.setFillColor(GRIS_CLARO)
-        c.rect(left, y_pos - box_height, content_width, box_height, fill=1, stroke=1)
+        # Tabla de construcciones
+        cons_cols = [40, 75, 70, 60, 70, 55]
+        cons_headers = ["Unidad", "Código Uso", "Área (m²)", "Puntaje", "Año Const.", "N° Pisos"]
+        c.setFillColor(VERDE_CLARO)
+        c.rect(left, y - 14, sum(cons_cols), 14, fill=1, stroke=0)
+        c.setStrokeColor(VERDE_MEDIO)
+        c.rect(left, y - 14, sum(cons_cols), 14, stroke=1, fill=0)
         c.setFont("Helvetica-Bold", 7)
         c.setFillColor(VERDE_PRINCIPAL)
-        c.drawString(left + 3, y_pos - 10, title)
+        x_pos = left
+        for col_w, header in zip(cons_cols, cons_headers):
+            c.drawString(x_pos + 2, y - 10, header)
+            x_pos += col_w
+        y -= 16
         
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRIS)
-        col_w = content_width / len(fields)
-        for i, (lbl, key) in enumerate(fields):
-            x = left + i * col_w
-            c.drawString(x + 3, y_pos - 20, lbl)
-            c.setFont("Helvetica", 8)
-            c.setFillColor(NEGRO)
-            c.drawString(x + 3, y_pos - 30, str(data.get(key, '')) or "-")
+        c.setFont("Helvetica", 8)
+        c.setFillColor(NEGRO)
+        for cons in construcciones[:8]:
+            if cons.get('codigo_uso') or cons.get('area'):
+                c.setStrokeColor(VERDE_MEDIO)
+                c.rect(left, y - 12, sum(cons_cols), 12, stroke=1, fill=0)
+                row_data = [
+                    cons.get('unidad', '-'),
+                    cons.get('codigo_uso', '-'),
+                    cons.get('area', '-'),
+                    cons.get('puntaje', '-'),
+                    cons.get('ano_construccion', '-'),
+                    cons.get('num_pisos', '-')
+                ]
+                x_pos = left
+                for col_w, val in zip(cons_cols, row_data):
+                    c.drawString(x_pos + 2, y - 9, str(val))
+                    x_pos += col_w
+                y -= 12
+        y -= 5
+    
+    # === SECCIÓN 8: CALIFICACIÓN === (Solo si hay datos de calificación)
+    calif_est = visita.get('calif_estructura', {})
+    calif_acab = visita.get('calif_acabados', {})
+    calif_bano = visita.get('calif_bano', {})
+    calif_cocina = visita.get('calif_cocina', {})
+    calif_ind = visita.get('calif_industria', {})
+    calif_gen = visita.get('calif_generales', {})
+    
+    has_calificacion = any([
+        any(calif_est.values()),
+        any(calif_acab.values()),
+        any(calif_bano.values()),
+        any(calif_cocina.values()),
+        any(calif_ind.values()),
+        any(calif_gen.values())
+    ])
+    
+    if has_calificacion:
+        y = section_header(y, "8", "CALIFICACIÓN")
+        
+        quarter_w = content_width / 4
+        
+        # Helper para dibujar subsección de calificación (compacta)
+        def draw_calif_subsection(y_pos, title, data, fields):
+            # Solo mostrar si hay datos
+            has_data = any(data.get(key) for _, key in fields)
+            if not has_data:
+                return y_pos
+            
+            box_height = 35
+            c.setFillColor(GRIS_CLARO)
+            c.rect(left, y_pos - box_height, content_width, box_height, fill=1, stroke=1)
+            c.setFont("Helvetica-Bold", 7)
+            c.setFillColor(VERDE_PRINCIPAL)
+            c.drawString(left + 3, y_pos - 10, title)
+            
             c.setFont("Helvetica", 7)
             c.setFillColor(GRIS)
-        return y_pos - box_height - 3
-    
-    # 8.1 ESTRUCTURA
-    calif_est = visita.get('calif_estructura', {})
-    y = draw_calif_subsection(y, "8.1 ESTRUCTURA", calif_est, 
-        [("Armazón", "armazon"), ("Muros", "muros"), ("Cubierta", "cubierta"), ("Conservación", "conservacion")])
-    
-    # 8.2 ACABADOS
-    calif_acab = visita.get('calif_acabados', {})
-    y = draw_calif_subsection(y, "8.2 ACABADOS PRINCIPALES", calif_acab,
-        [("Fachadas", "fachadas"), ("Cubrim. Muros", "cubrim_muros"), ("Pisos", "pisos"), ("Conservación", "conservacion")])
+            col_w = content_width / len(fields)
+            for i, (lbl, key) in enumerate(fields):
+                x = left + i * col_w
+                c.drawString(x + 3, y_pos - 20, lbl)
+                c.setFont("Helvetica", 8)
+                c.setFillColor(NEGRO)
+                c.drawString(x + 3, y_pos - 30, str(data.get(key, '')) or "-")
+                c.setFont("Helvetica", 7)
+                c.setFillColor(GRIS)
+            return y_pos - box_height - 3
+        
+        # 8.1 ESTRUCTURA
+        y = draw_calif_subsection(y, "8.1 ESTRUCTURA", calif_est, 
+            [("Armazón", "armazon"), ("Muros", "muros"), ("Cubierta", "cubierta"), ("Conservación", "conservacion")])
+        
+        # 8.2 ACABADOS
+        y = draw_calif_subsection(y, "8.2 ACABADOS PRINCIPALES", calif_acab,
+            [("Fachadas", "fachadas"), ("Cubrim. Muros", "cubrim_muros"), ("Pisos", "pisos"), ("Conservación", "conservacion")])
     
     # 8.3 BAÑO
     calif_bano = visita.get('calif_bano', {})
