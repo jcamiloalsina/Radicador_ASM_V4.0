@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cadastral-update-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predios-admin.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 COORDINADOR_EMAIL = "Camilo.alsina1@hotmail.com"
