@@ -4048,7 +4048,8 @@ export default function VisorActualizacion() {
                                       onClick={() => {
                                         // Abrir formulario de visita para esta mejora específica
                                         setMejoraSeleccionada(mejora);
-                                        setShowVisitaForm(true);
+                                        setTipoVisita('mejora');
+                                        setShowVisitaModal(true);
                                         setShowPredioDetail(false);
                                       }}
                                     >
