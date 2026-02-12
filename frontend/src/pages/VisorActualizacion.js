@@ -2833,11 +2833,19 @@ export default function VisorActualizacion() {
             ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
             : p
         ));
+      }
       
       setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }));
       setEditData(prev => ({ ...prev, estado_visita: 'visitado' }));
       setShowPredioDetail(false);
     } catch (error) {
+      // Manejar error de predio firmado
+      if (error.response?.status === 403 && error.response?.data?.detail?.includes('firmada')) {
+        toast.error('Este predio ya tiene una visita firmada y no puede ser modificado');
+        setShowVisitaModal(false);
+        return;
+      }
+      
       // Intentar guardar offline si falla la conexión
       if (!isOnline || error.code === 'ERR_NETWORK') {
         try {
