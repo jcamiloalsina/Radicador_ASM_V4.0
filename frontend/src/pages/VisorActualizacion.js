@@ -3595,16 +3595,11 @@ export default function VisorActualizacion() {
               data={construccionesFiltradas}
               style={(feature) => ({
                 fillColor: '#dc2626',
-                weight: 3,
+                weight: 1,
                 color: '#7f1d1d',
-                fillOpacity: 0.7
+                fillOpacity: 0.4,
+                interactive: false  // No captura eventos - permite interacción con capas debajo
               })}
-              onEachFeature={(feature, layer) => {
-                // Agregar tooltip con código para verificar que se renderiza
-                const codigo = feature.properties?.codigo || 'Sin código';
-                const tipo = feature.properties?.tipo_construccion || 'Construcción';
-                layer.bindTooltip(`${tipo}: ${codigo}`, { permanent: false, direction: 'top' });
-              }}
             />
           )}
           
