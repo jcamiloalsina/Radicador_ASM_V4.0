@@ -5848,6 +5848,32 @@ export default function VisorActualizacion() {
                             </tr>
                           </tbody>
                         </table>
+                        {/* Resumen de áreas con formato "X ha X.XXX m²" */}
+                        <div className="mt-4 p-3 bg-slate-100 rounded-lg">
+                          <p className="text-xs font-medium text-slate-700 mb-2">Resumen de Áreas:</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-emerald-700">R1 (Base):</span>
+                              <span className="font-mono font-medium">{formatearArea(visitaData.area_base_catastral_m2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-blue-700">GDB:</span>
+                              <span className="font-mono font-medium">{formatearArea(visitaData.area_geografica_m2)}</span>
+                            </div>
+                            {visitaData.area_titulo_m2 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-700">Título:</span>
+                                <span className="font-mono">{formatearArea(visitaData.area_titulo_m2)}</span>
+                              </div>
+                            )}
+                            {visitaData.area_levantamiento_m2 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-700">Levantamiento:</span>
+                                <span className="font-mono">{formatearArea(visitaData.area_levantamiento_m2)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <p className="text-xs text-slate-500 mt-2">* Los campos de Área base catastral (R1) y Área geográfica (GDB) se pre-llenan automáticamente del sistema.</p>
                     </div>
