@@ -16239,6 +16239,14 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
             else:
                 return pyogrio.read_dataframe(data_source, layer=layer_name)
         
+        # Función auxiliar para convertir CRS de forma segura
+        def safe_convert_crs(gdf, layer_name):
+            """Convierte el CRS a WGS84 (EPSG:4326), asumiendo MAGNA-SIRGAS si no hay CRS definido"""
+            if gdf.crs is None:
+                logger.warning(f"[GDB/SHP] Capa '{layer_name}' no tiene CRS definido. Asumiendo MAGNA-SIRGAS (EPSG:3116)")
+                gdf = gdf.set_crs(epsg=3116)  # MAGNA-SIRGAS Colombia Bogotá zone
+            return gdf.to_crs(epsg=4326)
+        
         # Procesar capas estándar (comportamiento original)
         # Procesar terrenos rurales
         for layer_name in rural_found:
