@@ -526,12 +526,7 @@ export default function GestionPrediosActualizacion() {
         setPredios(prediosData);
         setUsingOfflineData(false);
         
-        // Guardar en caché para uso offline
-        if (prediosData.length > 0) {
-          await downloadForOffline(prediosData, null, proyecto?.municipio);
-        }
-        
-        // Calcular estadísticas
+        // Calcular estadísticas PRIMERO (no bloquear por offline cache)
         const newStats = {
           total: prediosData.length,
           pendientes: prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
@@ -540,6 +535,13 @@ export default function GestionPrediosActualizacion() {
         };
         setStats(newStats);
         setCurrentPage(1);
+        
+        // Guardar en caché para uso offline (NO BLOQUEAR - ejecutar en background)
+        if (prediosData.length > 0) {
+          downloadForOffline(prediosData, null, proyecto?.municipio).catch(err => {
+            console.warn('[Offline] Error guardando caché:', err);
+          });
+        }
       } else {
         // Sin conexión - cargar desde IndexedDB
         console.log('[Offline] Cargando predios desde caché local');
