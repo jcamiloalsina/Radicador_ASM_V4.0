@@ -471,7 +471,7 @@ export default function VisorActualizacion() {
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [firmaModalTipo, setFirmaModalTipo] = useState('visitado'); // 'visitado' o 'reconocedor'
   // Lista de propietarios para el formulario de visita
-  const [visitaPropietarios, setVisitaPropietarios] = useState([{
+  const [visitaPropietarios, setVisitaPropietariosRaw] = useState([{
     tipo_documento: '',
     numero_documento: '',
     nombre: '',
@@ -482,6 +482,14 @@ export default function VisorActualizacion() {
     genero_otro: '',
     grupo_etnico: ''
   }]);
+  
+  // Setter optimizado para propietarios
+  const setVisitaPropietarios = useCallback((updater) => {
+    startTransition(() => {
+      setVisitaPropietariosRaw(updater);
+    });
+  }, []);
+  
   // Sección 7: Unidades de Construcción (dinámico, permite agregar más de 5)
   const [visitaConstrucciones, setVisitaConstruccionesRaw] = useState([
     { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
