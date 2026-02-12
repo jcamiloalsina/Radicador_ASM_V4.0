@@ -891,40 +891,41 @@ export default function VisorActualizacion() {
   
   // Cargar predios R1/R2
   const fetchPrediosR1R2 = async () => {
+    // Si está online, SIEMPRE intentar cargar desde el servidor primero
+    if (navigator.onLine) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const predios = response.data.predios || [];
+        setPrediosR1R2(predios);
+        console.log('[Online] Predios R1/R2 cargados desde servidor:', predios.length);
+        
+        // Guardar automáticamente para modo offline (en background, sin bloquear)
+        if (predios.length > 0) {
+          savePrediosOffline(proyectoId, predios, proyecto?.municipio)
+            .then(() => console.log('[Offline] Predios R1/R2 actualizados en caché'))
+            .catch(saveError => console.warn('[Offline] No se pudieron guardar predios:', saveError));
+        }
+        return; // Éxito, salir
+      } catch (error) {
+        console.error('Error cargando predios R1/R2 del servidor:', error);
+        // Si falla el servidor, continuar a cargar desde offline como fallback
+      }
+    }
+    
+    // Si está offline o el servidor falló, intentar cargar desde IndexedDB
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const predios = response.data.predios || [];
-      setPrediosR1R2(predios);
-      
-      // Guardar automáticamente para modo offline
-      if (predios.length > 0) {
-        try {
-          await savePrediosOffline(proyectoId, predios, proyecto?.municipio);
-          console.log('[Offline] Predios R1/R2 guardados para offline:', predios.length);
-        } catch (saveError) {
-          console.warn('[Offline] No se pudieron guardar predios offline:', saveError);
-        }
+      const prediosOffline = await getPrediosOffline(proyectoId);
+      if (prediosOffline && prediosOffline.length > 0) {
+        setPrediosR1R2(prediosOffline);
+        toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
+      } else {
+        console.log('[Offline] No hay predios R1/R2 guardados offline');
       }
-    } catch (error) {
-      console.error('Error cargando predios R1/R2:', error);
-      
-      // Si está offline, intentar cargar desde IndexedDB
-      if (!navigator.onLine) {
-        try {
-          const prediosOffline = await getPrediosOffline(proyectoId);
-          if (prediosOffline && prediosOffline.length > 0) {
-            setPrediosR1R2(prediosOffline);
-            toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
-          } else {
-            console.log('[Offline] No hay predios R1/R2 guardados offline');
-          }
-        } catch (offlineError) {
-          console.error('Error cargando datos offline:', offlineError);
-        }
-      }
+    } catch (offlineError) {
+      console.error('Error cargando datos offline:', offlineError);
     }
   };
   
