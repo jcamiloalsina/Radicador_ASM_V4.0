@@ -5,6 +5,41 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (12 Febrero 2026 - Sesión Actual Fork 6)
+
+### ✅ COMPLETADO: 4 Nuevos Requisitos para "Gestión de Predios de Actualización"
+
+**Requisitos implementados:**
+
+1. **Bloqueo de Predios Visitados con Confirmación de Re-visita** ✅
+   - Al hacer clic en "Registrar Visita" en un predio ya visitado, aparece un diálogo de confirmación
+   - El diálogo muestra: información del predio, última fecha de visita, advertencia sobre sobrescritura
+   - Opciones: "Cancelar" o "Continuar y Editar"
+   - **Archivo:** `/app/frontend/src/pages/VisorActualizacion.js` líneas 1890-1910, 7320-7380
+
+2. **Corregido botón "Ver en Mapa"** ✅
+   - El botón en "Gestión de Predios" ahora navega correctamente al visor
+   - Usa la ruta correcta: `/dashboard/visor-actualizacion/{proyectoId}?codigo={codigoPredial}`
+   - El visor detecta el parámetro `codigo` y enfoca automáticamente el predio
+   - **Archivos:** 
+     - `/app/frontend/src/pages/GestionPrediosActualizacion.js` función `irAlVisor()` línea 1129
+     - `/app/frontend/src/pages/VisorActualizacion.js` efecto `codigoFromUrl` líneas 1671-1730
+
+3. **Datos Editables en "Gestión de Predios"** ✅ (ya existente)
+   - Modal de edición completo con todos los campos del predio
+   - Incluye: código predial, código homologado, propietarios, dirección, destino económico, avalúo, áreas
+   - **Archivo:** `/app/frontend/src/pages/GestionPrediosActualizacion.js` modal `showEditarModal`
+
+4. **Ver PDF de Visita desde Lista** ✅
+   - Nueva opción "Ver PDF de Visita" en el menú desplegable para predios visitados/actualizados
+   - Convierte el base64 del backend a blob y abre en nueva pestaña
+   - **Archivo:** `/app/frontend/src/pages/GestionPrediosActualizacion.js` función `verPdfVisita()` línea 1160
+
+**Testing:** ✅ 100% de tests pasaron (6/6)
+- Test report: `/app/test_reports/iteration_41.json`
+
+---
+
 ## 🔄 TAREA PENDIENTE: Generación de Archivos XTF
 
 **Estado:** EN ESPERA - Análisis completado, requiere definiciones del usuario
