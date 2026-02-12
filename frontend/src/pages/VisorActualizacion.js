@@ -5090,10 +5090,20 @@ export default function VisorActualizacion() {
                     <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
                       <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
                         <Building className="w-4 h-4" />
-                        2. INFORMACIÓN BÁSICA DEL PREDIO
+                        2. INFORMACIÓN BÁSICA DEL {tipoVisita === 'mejora' ? 'MEJORA' : 'PREDIO'}
+                        {tipoVisita === 'mejora' && (
+                          <Badge className="bg-cyan-500 text-white text-xs ml-2">MEJORA</Badge>
+                        )}
                       </h3>
                     </div>
                     <div className="p-4 space-y-4">
+                      {/* Información del predio base (cuando es mejora) */}
+                      {tipoVisita === 'mejora' && (
+                        <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-4">
+                          <p className="text-xs text-cyan-700 font-medium mb-1">Terreno Base:</p>
+                          <p className="font-mono text-xs text-cyan-800">{selectedPredio?.codigo_predial || selectedPredio?.numero_predial || 'N/A'}</p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Departamento</Label>
@@ -5101,17 +5111,25 @@ export default function VisorActualizacion() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Municipio</Label>
-                          <Input value={proyecto?.municipio || selectedPredio.municipio || ''} disabled className="bg-slate-100 font-medium" />
+                          <Input value={proyecto?.municipio || (tipoVisita === 'mejora' ? predioMejoraSeleccionada?.municipio : selectedPredio?.municipio) || ''} disabled className="bg-slate-100 font-medium" />
                         </div>
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-500">Número Predial (30 dígitos)</Label>
-                        <Input value={selectedPredio.codigo_predial || selectedPredio.numero_predial || ''} disabled className="bg-slate-100 font-mono font-bold text-emerald-800 tracking-wider" />
+                        <Label className="text-xs text-slate-500">
+                          Número Predial (30 dígitos) {tipoVisita === 'mejora' && <span className="text-cyan-600 font-medium">- CÓDIGO DE LA MEJORA</span>}
+                        </Label>
+                        <Input 
+                          value={tipoVisita === 'mejora' 
+                            ? (mejoraSeleccionada?.properties?.codigo || predioMejoraSeleccionada?.codigo_predial || '') 
+                            : (selectedPredio?.codigo_predial || selectedPredio?.numero_predial || '')} 
+                          disabled 
+                          className={`bg-slate-100 font-mono font-bold tracking-wider ${tipoVisita === 'mejora' ? 'text-cyan-800 border-cyan-300' : 'text-emerald-800'}`} 
+                        />
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Código Homologado</Label>
-                          <Input value={selectedPredio.codigo_homologado || 'Sin código'} disabled className="bg-slate-100 font-mono" />
+                          <Input value={(tipoVisita === 'mejora' ? predioMejoraSeleccionada?.codigo_homologado : selectedPredio?.codigo_homologado) || 'Sin código'} disabled className="bg-slate-100 font-mono" />
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Tipo <span className="text-emerald-600">(verificar)</span></Label>
