@@ -2668,6 +2668,19 @@ export default function VisorActualizacion() {
     const firmaVisitadoB64 = obtenerFirmaVisitadoBase64();
     const firmaReconocedorB64 = obtenerFirmaReconocedorBase64();
     
+    // Validación de firmas obligatorias
+    if (!firmaVisitadoB64) {
+      toast.error('La firma del visitado es obligatoria');
+      setCurrentPage(5); // Ir a la página de firmas
+      return;
+    }
+    
+    if (!firmaReconocedorB64) {
+      toast.error('La firma del reconocedor es obligatoria');
+      setCurrentPage(5); // Ir a la página de firmas
+      return;
+    }
+    
     setSaving(true);
     
     const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
