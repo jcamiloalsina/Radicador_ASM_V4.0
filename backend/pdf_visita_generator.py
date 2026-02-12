@@ -277,47 +277,57 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         ("Área Construida (m²)", visita.get('area_construida_visita', predio.get('area_construida', '')))
     ], [half_w, half_w])
     
-    # === SECCIÓN 3: PH ===
-    y = section_header(y, "3", "PH (Propiedad Horizontal) - Si aplica")
+    # === SECCIÓN 3: PH === (Solo mostrar si tiene datos)
+    ph_fields = ['ph_area_coeficiente', 'ph_area_construida_privada', 'ph_area_construida_comun', 
+                 'ph_copropiedad', 'ph_predio_asociado', 'ph_torre', 'ph_apartamento']
+    has_ph_data = any(visita.get(f) for f in ph_fields)
     
-    y = field_row(y, [
-        ("Área por Coeficiente", visita.get('ph_area_coeficiente', '')),
-        ("Área Construida Privada", visita.get('ph_area_construida_privada', '')),
-        ("Área Construida Común", visita.get('ph_area_construida_comun', ''))
-    ], [third_w, third_w, third_w])
+    if has_ph_data:
+        y = section_header(y, "3", "PH (Propiedad Horizontal)")
+        
+        y = field_row(y, [
+            ("Área por Coeficiente", visita.get('ph_area_coeficiente', '')),
+            ("Área Construida Privada", visita.get('ph_area_construida_privada', '')),
+            ("Área Construida Común", visita.get('ph_area_construida_comun', ''))
+        ], [third_w, third_w, third_w])
+        
+        y = field_row(y, [
+            ("Copropiedad", visita.get('ph_copropiedad', '')),
+            ("Predio Asociado", visita.get('ph_predio_asociado', ''))
+        ], [half_w, half_w])
+        
+        y = field_row(y, [
+            ("Torre", visita.get('ph_torre', '')),
+            ("Apartamento", visita.get('ph_apartamento', ''))
+        ], [half_w, half_w])
     
-    y = field_row(y, [
-        ("Copropiedad", visita.get('ph_copropiedad', '')),
-        ("Predio Asociado", visita.get('ph_predio_asociado', ''))
-    ], [half_w, half_w])
+    # === SECCIÓN 4: CONDOMINIO === (Solo mostrar si tiene datos)
+    cond_fields = ['cond_area_terreno_comun', 'cond_area_terreno_privada', 'cond_area_construida_privada',
+                   'cond_area_construida_comun', 'cond_condominio', 'cond_predio_asociado', 'cond_unidad', 'cond_casa']
+    has_cond_data = any(visita.get(f) for f in cond_fields)
     
-    y = field_row(y, [
-        ("Torre", visita.get('ph_torre', '')),
-        ("Apartamento", visita.get('ph_apartamento', ''))
-    ], [half_w, half_w])
-    
-    # === SECCIÓN 4: CONDOMINIO ===
-    y = section_header(y, "4", "Condominio")
-    
-    y = field_row(y, [
-        ("Área Terreno Común", visita.get('cond_area_terreno_comun', '')),
-        ("Área Terreno Privada", visita.get('cond_area_terreno_privada', ''))
-    ], [half_w, half_w])
-    
-    y = field_row(y, [
-        ("Área Construida Privada", visita.get('cond_area_construida_privada', '')),
-        ("Área Construida Común", visita.get('cond_area_construida_comun', ''))
-    ], [half_w, half_w])
-    
-    y = field_row(y, [
-        ("Condominio", visita.get('cond_condominio', '')),
-        ("Predio Asociado", visita.get('cond_predio_asociado', ''))
-    ], [half_w, half_w])
-    
-    y = field_row(y, [
-        ("Unidad", visita.get('cond_unidad', '')),
-        ("Casa", visita.get('cond_casa', ''))
-    ], [half_w, half_w])
+    if has_cond_data:
+        y = section_header(y, "4", "Condominio")
+        
+        y = field_row(y, [
+            ("Área Terreno Común", visita.get('cond_area_terreno_comun', '')),
+            ("Área Terreno Privada", visita.get('cond_area_terreno_privada', ''))
+        ], [half_w, half_w])
+        
+        y = field_row(y, [
+            ("Área Construida Privada", visita.get('cond_area_construida_privada', '')),
+            ("Área Construida Común", visita.get('cond_area_construida_comun', ''))
+        ], [half_w, half_w])
+        
+        y = field_row(y, [
+            ("Condominio", visita.get('cond_condominio', '')),
+            ("Predio Asociado", visita.get('cond_predio_asociado', ''))
+        ], [half_w, half_w])
+        
+        y = field_row(y, [
+            ("Unidad", visita.get('cond_unidad', '')),
+            ("Casa", visita.get('cond_casa', ''))
+        ], [half_w, half_w])
     
     # ==================== PÁGINA 2 ====================
     y = new_page()
