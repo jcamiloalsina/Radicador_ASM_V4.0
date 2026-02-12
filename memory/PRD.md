@@ -45,6 +45,40 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (12 Febrero 2026 - Sesión Actual Fork 5)
+
+### ✅ COMPLETADO: Múltiples correcciones del formulario de visita
+
+**1. Error al cargar .shp sin CRS (CORREGIDO)**
+- Problema: "Cannot transform naive geometries" al cargar shapefiles sin CRS definido
+- Solución: Backend ahora asigna EPSG:4326 por defecto cuando el shapefile no tiene CRS
+
+**2. Sección 9 - Resumen Áreas de Terreno (CORREGIDO)**
+- Área GDB ahora se obtiene de `selectedGeometry.properties.shape_Area`
+- Formato correcto: "X ha X.XXX m²"
+- Resumen visual debajo de la tabla con R1 (Base) y GDB
+
+**3. Firmas Obligatorias (IMPLEMENTADO)**
+- Validación al guardar: ambas firmas (visitado y reconocedor) son requeridas
+- Si falta alguna firma, muestra error y redirige a página 5
+
+**4. PDF de Visita (CORREGIDO)**
+- Eliminada sección "6. LINDEROS DEL PREDIO" que no existía en el formulario
+- Renumeradas secciones: Georreferenciación (6), Observaciones (7), Firmas (8)
+- Firmas ahora muestran [FIRMA DIGITAL CAPTURADA] si existen
+
+**5. Bloqueo Post-Firma - Seguridad (IMPLEMENTADO)**
+- Cuando ambas firmas están presentes, estado cambia a "visitado_firmado"
+- Predios firmados NO pueden ser modificados (excepto por administrador)
+- Error 403 si un gestor intenta modificar un predio firmado
+- El coordinador puede solicitar una revisita (nueva visita sin modificar la anterior)
+
+**Archivos modificados:**
+- `/app/backend/server.py` - CRS fix, PDF sections, bloqueo post-firma
+- `/app/frontend/src/pages/VisorActualizacion.js` - Áreas, validación firmas, manejo errores
+
+---
+
 ## 🔧 Cambios Recientes (11 Febrero 2026 - Sesión Actual Fork 4)
 
 ### ✅ COMPLETADO: Bug Crítico P0 - Construcciones no se mostraban en el mapa (RESUELTO)
