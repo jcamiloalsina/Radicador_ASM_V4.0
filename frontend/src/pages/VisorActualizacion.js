@@ -3183,6 +3183,11 @@ export default function VisorActualizacion() {
       p.numero_predial === feature.properties?.numero_predial
     );
     
+    // Debug: log cuando hay predio visitado
+    if (predio?.estado_visita === 'visitado') {
+      console.log('[Style] Predio visitado encontrado:', feature.properties?.codigo_predial);
+    }
+    
     // Verificar si el TERRENO tiene mejoras asociadas (basado en construcciones)
     const codigoFeature = feature.properties?.codigo_predial || feature.properties?.numero_predial || feature.properties?.codigo;
     const tieneMejoras = terrenoTieneMejora(codigoFeature);
