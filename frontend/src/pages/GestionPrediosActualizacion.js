@@ -1202,10 +1202,18 @@ export default function GestionPrediosActualizacion() {
       }
     } catch (error) {
       console.error('Error generando PDF:', error);
+      console.error('Detalles del error:', error.response?.data);
+      
+      const errorDetail = error.response?.data?.detail;
+      
       if (error.response?.status === 404) {
-        toast.error('No se encontró información de visita para este predio');
+        toast.error(errorDetail || 'No se encontró información de visita para este predio');
+      } else if (error.response?.status === 400) {
+        toast.error(errorDetail || 'El predio no tiene formulario de visita diligenciado');
+      } else if (error.response?.status === 500) {
+        toast.error(`Error del servidor: ${errorDetail || 'Error interno al generar PDF'}`);
       } else {
-        toast.error(error.response?.data?.detail || 'Error al generar el PDF');
+        toast.error(errorDetail || 'Error al generar el PDF');
       }
     }
   };
