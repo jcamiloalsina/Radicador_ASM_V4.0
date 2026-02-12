@@ -114,11 +114,19 @@ const formatearArea = (m2) => {
 // Componente para manejar eventos del mapa y ubicación GPS
 function MapController({ onLocationFound, setCurrentZoom, flyToPosition, fitToBounds, onMapReady }) {
   const map = useMap();
+  const [mapIsReady, setMapIsReady] = useState(false);
   
   // Notificar cuando el mapa está listo
   useEffect(() => {
-    if (map && onMapReady) {
-      onMapReady(map);
+    if (map) {
+      // Esperar un poco para asegurar que el mapa esté completamente inicializado
+      const timer = setTimeout(() => {
+        setMapIsReady(true);
+        if (onMapReady) {
+          onMapReady(map);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [map, onMapReady]);
   
@@ -141,16 +149,31 @@ function MapController({ onLocationFound, setCurrentZoom, flyToPosition, fitToBo
     }
   }, [flyToPosition, map]);
   
-  // Ajustar a los bounds cuando se proporcionen
+  // Ajustar a los bounds cuando se proporcionen Y el mapa esté listo
   useEffect(() => {
-    if (fitToBounds && map) {
+    if (fitToBounds && map && mapIsReady) {
       try {
-        map.fitBounds(fitToBounds, { padding: [50, 50], maxZoom: 18 });
+        console.log('[MapController] Ajustando bounds:', fitToBounds);
+        // Validar que los bounds sean un array válido
+        if (Array.isArray(fitToBounds) && fitToBounds.length === 2) {
+          const [[swLat, swLng], [neLat, neLng]] = fitToBounds;
+          console.log(`[MapController] SW: [${swLat}, ${swLng}], NE: [${neLat}, ${neLng}]`);
+          
+          // Verificar que los valores sean números válidos
+          if (isFinite(swLat) && isFinite(swLng) && isFinite(neLat) && isFinite(neLng)) {
+            map.fitBounds(fitToBounds, { padding: [50, 50], maxZoom: 18 });
+            console.log('[MapController] fitBounds ejecutado correctamente');
+          } else {
+            console.error('[MapController] Bounds contienen valores no válidos');
+          }
+        } else {
+          console.error('[MapController] Formato de bounds inválido:', fitToBounds);
+        }
       } catch (error) {
-        console.error('Error ajustando bounds:', error);
+        console.error('[MapController] Error ajustando bounds:', error);
       }
     }
-  }, [fitToBounds, map]);
+  }, [fitToBounds, map, mapIsReady]);
   
   return null;
 }
