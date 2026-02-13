@@ -613,9 +613,11 @@ const Page4 = memo(({ data, setField }) => (
 ));
 Page4.displayName = 'Page4';
 
-// Página 5 - GPS, Observaciones, Firmas
+// Página 5 - GPS, Observaciones, Firmas, Fotos
 const Page5 = memo(({ data, setField, fotos, setFotos }) => {
   const [capturandoGPS, setCapturandoGPS] = useState(false);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const capturarUbicacion = async () => {
     if (!navigator.geolocation) {
@@ -664,6 +666,50 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
     }
   };
 
+  // Manejar captura/selección de fotos - FUNCIONA OFFLINE (base64)
+  const handleFotoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} supera 5MB`);
+        continue;
+      }
+      
+      try {
+        // Convertir a base64 para almacenamiento offline
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        setFotos(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          data: base64,
+          nombre: file.name,
+          tipo: file.type,
+          fecha: new Date().toISOString(),
+          offline: !navigator.onLine
+        }]);
+        
+        toast.success(`📷 Foto agregada${!navigator.onLine ? ' (offline)' : ''}`);
+      } catch (err) {
+        console.error('Error procesando foto:', err);
+        toast.error('Error al procesar la foto');
+      }
+    }
+    
+    // Limpiar input para permitir seleccionar la misma foto
+    e.target.value = '';
+  };
+
+  const eliminarFoto = (fotoId) => {
+    setFotos(prev => prev.filter(f => f.id !== fotoId));
+  };
+
   return (
   <div className="space-y-4">
     {/* GPS */}
@@ -693,6 +739,88 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
       </div>
     </div>
 
+    {/* FOTOS - Funciona offline */}
+    <div className="border border-emerald-200 rounded-lg overflow-hidden">
+      <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
+        <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
+          <Camera className="w-4 h-4" />10. FOTOGRAFÍAS
+          {fotos.length > 0 && <Badge variant="outline" className="ml-2">{fotos.length}</Badge>}
+        </h3>
+      </div>
+      <div className="p-4 space-y-3">
+        {/* Inputs ocultos para cámara y galería */}
+        <input 
+          ref={cameraInputRef}
+          type="file" 
+          accept="image/*" 
+          capture="environment"
+          onChange={handleFotoChange}
+          className="hidden"
+        />
+        <input 
+          ref={fileInputRef}
+          type="file" 
+          accept="image/*" 
+          multiple
+          onChange={handleFotoChange}
+          className="hidden"
+        />
+        
+        {/* Grid de fotos */}
+        {fotos.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {fotos.map((f) => (
+              <div key={f.id} className="relative aspect-square rounded overflow-hidden border group">
+                <img 
+                  src={f.data || f.preview || f} 
+                  alt="Foto" 
+                  className="w-full h-full object-cover"
+                />
+                {f.offline && (
+                  <div className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">
+                    Offline
+                  </div>
+                )}
+                <button 
+                  type="button" 
+                  onClick={() => eliminarFoto(f.id)}
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Botones de captura */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            type="button"
+            variant="outline"
+            onClick={() => cameraInputRef.current?.click()}
+            className="border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            Tomar Foto
+          </Button>
+          <Button 
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="border-dashed"
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            Galería
+          </Button>
+        </div>
+        
+        <p className="text-xs text-slate-500">
+          Máximo 5MB por foto. Las fotos se guardan localmente y se sincronizan cuando haya conexión.
+        </p>
+      </div>
+    </div>
+
     {/* Observaciones */}
     <div className="border border-amber-200 rounded-lg overflow-hidden">
       <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
@@ -700,7 +828,7 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
       </div>
       <div className="p-4">
         <Textarea value={data.observaciones_generales} onChange={e => setField('observaciones_generales', e.target.value.slice(0, 500))} rows={4} placeholder="Observaciones..." />
-        <p className="text-xs text-slate-500 mt-1">{data.observaciones_generales.length}/500</p>
+        <p className="text-xs text-slate-500 mt-1">{data.observaciones_generales?.length || 0}/500</p>
       </div>
     </div>
 
@@ -749,9 +877,9 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
           <div className="flex flex-wrap gap-2">
             {['Agua','Alcantarillado','Energía','Gas','Internet'].map(s => (
               <label key={s} className="flex items-center gap-1 text-xs cursor-pointer">
-                <input type="checkbox" checked={data.servicios_publicos.includes(s)} onChange={e => {
-                  if (e.target.checked) setField('servicios_publicos', [...data.servicios_publicos, s]);
-                  else setField('servicios_publicos', data.servicios_publicos.filter(x => x !== s));
+                <input type="checkbox" checked={data.servicios_publicos?.includes(s)} onChange={e => {
+                  if (e.target.checked) setField('servicios_publicos', [...(data.servicios_publicos || []), s]);
+                  else setField('servicios_publicos', (data.servicios_publicos || []).filter(x => x !== s));
                 }} />
                 {s}
               </label>
