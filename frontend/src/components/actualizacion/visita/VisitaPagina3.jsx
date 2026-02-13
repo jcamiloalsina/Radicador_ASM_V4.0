@@ -149,25 +149,25 @@ const VisitaPagina3 = memo(({
                       <DebouncedTableInput 
                         type="number" 
                         value={cons.puntaje} 
-                        onChange={(e) => handleConstruccionChange(idx, 'puntaje', e.target.value)} 
+                        onChange={(val) => handleConstruccionChange(idx, 'puntaje', val)} 
                         placeholder="0" 
                         className="w-16 h-8 text-sm" 
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <Input 
+                      <DebouncedTableInput 
                         type="number" 
                         value={cons.ano_construccion} 
-                        onChange={(e) => handleConstruccionChange(idx, 'ano_construccion', e.target.value)} 
+                        onChange={(val) => handleConstruccionChange(idx, 'ano_construccion', val)} 
                         placeholder="2024" 
                         className="w-20 h-8 text-sm" 
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <Input 
+                      <DebouncedTableInput 
                         type="number" 
                         value={cons.num_pisos} 
-                        onChange={(e) => handleConstruccionChange(idx, 'num_pisos', e.target.value)} 
+                        onChange={(val) => handleConstruccionChange(idx, 'num_pisos', val)} 
                         placeholder="1" 
                         className="w-16 h-8 text-sm" 
                       />
