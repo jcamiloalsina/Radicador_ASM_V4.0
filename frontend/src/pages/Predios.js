@@ -2820,18 +2820,6 @@ export default function Predios() {
                   {formatTimeAgo(lastSyncTime)}
                 </span>
               )}
-              
-              {/* Botón de refrescar manual */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={fetchPredios}
-                disabled={isRevalidating || loading}
-                className="h-7 px-2"
-                title="Refrescar datos"
-              >
-                <RefreshCw className={`w-4 h-4 ${(isRevalidating || loading) ? 'animate-spin' : ''}`} />
-              </Button>
             </div>
           </div>
 
