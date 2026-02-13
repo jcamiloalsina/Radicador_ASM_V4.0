@@ -9,7 +9,18 @@ import 'leaflet/dist/leaflet.css';
 
 // Offline sync
 import useOfflineSync from '../hooks/useOfflineSync';
-import { getProyectoOffline, getGeometriasOffline, saveProyectoOffline, saveGeometriasOffline, getPrediosOffline, savePrediosOffline } from '../utils/offlineDB';
+import { 
+  getProyectoOffline, 
+  getGeometriasOffline, 
+  saveProyectoOffline, 
+  saveGeometriasOffline, 
+  getPrediosOffline, 
+  savePrediosOffline,
+  initOfflineDB,
+  getOfflineStats,
+  saveCambioPendiente,
+  getCambiosPendientes
+} from '../utils/offlineDB';
 
 // Componentes optimizados
 import FirmaCanvas from '../components/FirmaCanvas';
