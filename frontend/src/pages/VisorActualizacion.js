@@ -2536,6 +2536,31 @@ export default function VisorActualizacion() {
     }, 100);
   };
   
+  // Función para usar el borrador recuperado
+  const usarBorradorRecuperado = () => {
+    if (borradorRecuperado) {
+      setVisitaDataRaw(borradorRecuperado.visitaData);
+      setVisitaPropietariosRaw(borradorRecuperado.visitaPropietarios);
+      setVisitaConstruccionesRaw(borradorRecuperado.visitaConstrucciones);
+      setVisitaPagina(borradorRecuperado.visitaPagina || 1);
+      toast.success('Borrador recuperado exitosamente');
+    }
+    setShowRecuperarBorrador(false);
+    setBorradorRecuperado(null);
+    setShowVisitaModal(true);
+  };
+  
+  // Función para descartar el borrador y comenzar de nuevo
+  const descartarBorrador = () => {
+    limpiarBorradorVisita();
+    setShowRecuperarBorrador(false);
+    setBorradorRecuperado(null);
+    // Inicializar normalmente
+    const visitaExistente = selectedPredio?.visita;
+    const estadoActual = selectedPredio?.estado_visita;
+    inicializarFormularioVisita(visitaExistente, estadoActual);
+  };
+  
   // Efecto para cargar datos cuando se abre visita para una mejora
   useEffect(() => {
     if (showVisitaModal && tipoVisita === 'mejora' && mejoraSeleccionada) {
