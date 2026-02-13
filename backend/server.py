@@ -17924,6 +17924,99 @@ async def aprobar_propuesta(
         
         return {"message": "Cancelación aprobada. Predio cancelado exitosamente."}
     
+    # Si es propuesta de PREDIO NUEVO, crear el predio
+    if propuesta.get('tipo') == 'predio_nuevo':
+        datos_propuestos = propuesta.get('datos_propuestos', {})
+        r1 = datos_propuestos.get('r1', {})
+        r2 = datos_propuestos.get('r2', {})
+        propietarios_data = datos_propuestos.get('propietarios', [])
+        zonas_fisicas = datos_propuestos.get('zonas_fisicas', [])
+        construcciones = datos_propuestos.get('construcciones', [])
+        formato_visita = datos_propuestos.get('formato_visita', {})
+        
+        codigo_predial = propuesta.get('codigo_predial')
+        municipio = propuesta.get('municipio')
+        proyecto_id = propuesta.get('proyecto_id')
+        
+        # Asignar código homologado automáticamente
+        codigo_homologado = await asignar_codigo_homologado(municipio, None)
+        if not codigo_homologado:
+            codigo_homologado, _ = await generate_codigo_homologado(municipio)
+        
+        # Crear el predio nuevo
+        predio_id = str(uuid.uuid4())
+        ahora = datetime.now(timezone.utc).isoformat()
+        
+        predio_nuevo = {
+            "id": predio_id,
+            "proyecto_id": proyecto_id,
+            "codigo_predial": codigo_predial,
+            "codigo_homologado": codigo_homologado,
+            "municipio": municipio,
+            "es_nuevo": True,
+            
+            # Datos R1
+            "direccion": r1.get('direccion', ''),
+            "destino_economico": r1.get('destino_economico', ''),
+            "area_terreno": float(r1.get('area_terreno', 0)),
+            "area_construida": float(r1.get('area_construida', 0)),
+            "avaluo": float(r1.get('avaluo', 0)),
+            "matricula_inmobiliaria": r2.get('matricula_inmobiliaria', ''),
+            
+            # Propietarios
+            "propietarios": propietarios_data,
+            
+            # Zonas físicas y construcciones
+            "zonas_fisicas": zonas_fisicas,
+            "construcciones": construcciones,
+            "r2": r2,
+            
+            # Formato de visita
+            "formato_visita": formato_visita,
+            "estado_visita": "visitado",
+            
+            # Metadatos
+            "creado_por": propuesta.get('creado_por'),
+            "creado_por_nombre": propuesta.get('creado_por_nombre'),
+            "aprobado_por": current_user.get('email'),
+            "aprobado_por_nombre": current_user.get('full_name'),
+            "created_at": propuesta.get('created_at'),
+            "updated_at": ahora,
+            
+            # Historial
+            "historial_cambios": [
+                {
+                    "fecha": propuesta.get('created_at'),
+                    "usuario": propuesta.get('creado_por'),
+                    "accion": "propuesta_predio_nuevo_creada",
+                    "descripcion": "Propuesta de predio nuevo enviada por gestor"
+                },
+                {
+                    "fecha": ahora,
+                    "usuario": current_user.get('email'),
+                    "accion": "predio_nuevo_aprobado",
+                    "descripcion": f"Predio nuevo aprobado por coordinador. Código homologado: {codigo_homologado}"
+                }
+            ]
+        }
+        
+        await db.predios_actualizacion.insert_one(predio_nuevo)
+        
+        # Actualizar contador del proyecto
+        await db.proyectos_actualizacion.update_one(
+            {"id": proyecto_id},
+            {"$inc": {"predios_nuevos_count": 1}}
+        )
+        
+        logger.info(f"Predio nuevo aprobado por {current_user.get('email')}: {codigo_predial} -> {codigo_homologado}")
+        
+        return {
+            "message": "Predio nuevo aprobado y creado exitosamente",
+            "predio_id": predio_id,
+            "codigo_predial": codigo_predial,
+            "codigo_homologado": codigo_homologado
+        }
+    
     # Si es propuesta de CAMBIO, aplicar los cambios propuestos
     datos_propuestos = propuesta.get('datos_propuestos', {})
     
