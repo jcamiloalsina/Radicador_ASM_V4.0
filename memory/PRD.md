@@ -5,6 +5,54 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 10)
+
+### ✅ COMPLETADO: Eliminación de UI Manual de Sincronización
+
+**Problema:** El usuario reportó que en el módulo Conservación (`Predios.js`) seguía existiendo un botón "Sincronizar" clickeable, contradiciendo el requisito de que toda la sincronización debe ser automática.
+
+**Solución implementada:**
+1. **Badge de "pendientes" ahora es solo informativo** ✅
+   - Removido `cursor-pointer` y `onClick` del badge
+   - Cambiado texto a "Sincronizando..." cuando está en proceso
+   - El badge solo muestra el estado, no requiere acción del usuario
+   - **Archivo:** `/app/frontend/src/pages/Predios.js`
+
+2. **Sincronización automática mejorada para módulo Conservación** ✅
+   - El hook `useOfflineSync` ahora sincroniza automáticamente aunque no tenga `proyectoId`
+   - Usa `modulo` como fallback para identificar cambios pendientes
+   - **Archivo:** `/app/frontend/src/hooks/useOfflineSync.js`
+
+### ✅ COMPLETADO: Optimización de Rendimiento en Inputs de Texto
+
+**Problema:** El usuario reportó que el formulario de visita seguía "DEMASIADO lento" al escribir en campos de texto.
+
+**Solución implementada:**
+1. **Debounce aumentado a 300ms** (antes 150ms)
+   - Más tiempo antes de propagar cambios al componente padre
+   - Reduce re-renders durante escritura rápida
+   
+2. **Sincronización solo cuando el input pierde foco**
+   - Evita "saltos de cursor" mientras el usuario escribe
+   - Sincroniza inmediatamente al hacer blur
+   
+3. **Inputs numéricos con delay reducido**
+   - Los campos numéricos actualizan con delay de 150ms
+   - Mejor experiencia al editar cantidades
+
+**Archivos modificados:**
+- `/app/frontend/src/components/DebouncedInput.jsx`
+- `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx`
+- `/app/frontend/src/components/actualizacion/visita/VisitaPagina3.jsx`
+
+### 🐛 CORREGIDO: Bug en Datos Generales de Calificación
+
+**Problema:** Los inputs de "Datos Generales" en la página 3 del formulario (`VisitaPagina3.jsx`) usaban `<Input>` directo con `onChange={(val) => ...}` pero el componente Input de shadcn/ui pasa un evento, no un valor directamente.
+
+**Solución:** Reemplazados por `DebouncedTableInput` que maneja correctamente los valores.
+
+---
+
 ## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 9)
 
 ### ✅ COMPLETADO: Optimización del Formulario de Visita
