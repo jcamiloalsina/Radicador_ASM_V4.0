@@ -1639,13 +1639,16 @@ export default function Predios() {
   };
 
   const fetchPredios = async () => {
+    const vigenciaActual = String(new Date().getFullYear());
+    const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
+    
+    // ====== ESTRATEGIA STALE-WHILE-REVALIDATE ======
+    // 1. Mostrar caché inmediatamente (si existe)
+    // 2. Revalidar del servidor en segundo plano
+    // 3. Actualizar UI cuando lleguen datos frescos
+    
     try {
-      const vigenciaActual = String(new Date().getFullYear());
-      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
-      
-      // OPTIMIZACIÓN: Solo usar caché para la VIGENCIA ACTUAL y cuando NO hay búsqueda activa
-      // Las vigencias anteriores SIEMPRE se consultan del servidor
-      // Las búsquedas activas también van al servidor para garantizar resultados frescos
+      // PASO 1: Intentar cargar desde caché PRIMERO (solo para vigencia actual sin búsqueda)
       if (filterMunicipio && esVigenciaActual && !search) {
         try {
           const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
@@ -1659,31 +1662,42 @@ export default function Predios() {
               filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
             }
             
-            // Ordenar por CNP antes de mostrar
             const prediosOrdenados = sortPrediosByCNP(filtered);
             
-            // Mostrar datos del cache inmediatamente
+            // Mostrar datos del cache INMEDIATAMENTE
             setPredios(prediosOrdenados);
             setTotal(prediosOrdenados.length);
             setLoading(false);
             
+            // Cargar tiempo de última sincronización
+            const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+            setLastSyncTime(syncTime);
+            setDataSource('cache');
+            
+            console.log(`[Cache] Mostrando ${prediosOrdenados.length} predios desde caché`);
+            
             // Si está offline, terminar aquí
             if (!navigator.onLine) {
-              toast.info(`Modo offline: ${prediosOrdenados.length} predios desde cache`, { duration: 2000 });
+              setDataSource('offline');
+              toast.info(`📴 Modo offline: ${prediosOrdenados.length} predios`, { duration: 2000 });
               return;
             }
-            // Si tiene datos en caché y está online, continuar para actualizar del servidor
+            
+            // PASO 2: Revalidar del servidor en segundo plano
+            setIsRevalidating(true);
           }
         } catch (cacheError) {
-          console.warn('Error al acceder al caché offline:', cacheError);
-          // Continuar con la consulta al servidor
+          console.warn('[Cache] Error accediendo caché:', cacheError);
         }
       }
       
-      // VIGENCIAS ANTERIORES o sin caché: Consultar del servidor
-      setLoading(true);
+      // Si no hay caché o es búsqueda/vigencia anterior, mostrar loading
+      if (dataSource !== 'cache' || !isRevalidating) {
+        setLoading(true);
+        setDataSource('loading');
+      }
       
-      // Si está offline y es vigencia anterior, mostrar mensaje
+      // Si está offline y no hay caché, mostrar mensaje
       if (!navigator.onLine) {
         if (!esVigenciaActual) {
           toast.warning('Las vigencias anteriores requieren conexión a internet', { duration: 3000 });
@@ -1693,9 +1707,11 @@ export default function Predios() {
         setPredios([]);
         setTotal(0);
         setLoading(false);
+        setDataSource('offline');
         return;
       }
       
+      // PASO 3: Consultar servidor
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (filterMunicipio) params.append('municipio', filterMunicipio);
@@ -1708,46 +1724,62 @@ export default function Predios() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Verificar que los datos correspondan al municipio filtrado
       const prediosRecibidos = res.data.predios || [];
       
-      // Filtrar solo predios del municipio correcto (protección adicional)
+      // Filtrar solo predios del municipio correcto
       const prediosFiltrados = filterMunicipio 
         ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
         : prediosRecibidos;
       
-      // Ordenar por CNP
       const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
       
+      // PASO 4: Actualizar UI con datos frescos
       setPredios(prediosOrdenados);
       setTotal(prediosOrdenados.length);
       setLoading(false);
+      setIsRevalidating(false);
+      setDataSource('server');
       
-      // IMPORTANTE: Solo guardar en caché si es la vigencia ACTUAL
-      // Las vigencias anteriores NUNCA se guardan en caché
+      const now = new Date().toISOString();
+      setLastSyncTime(now);
+      
+      console.log(`[Server] ${prediosOrdenados.length} predios actualizados desde servidor`);
+      
+      // PASO 5: Guardar en caché (solo vigencia actual)
       if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
-        // Guardar en segundo plano sin bloquear la UI
         downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
-          localStorage.setItem(`sync_${filterMunicipio}_date`, new Date().toISOString());
+          localStorage.setItem(`sync_${filterMunicipio}_date`, now);
           localStorage.setItem(`sync_${filterMunicipio}_vigencia`, vigenciaActual);
+          console.log(`[Cache] ${prediosOrdenados.length} predios guardados en caché`);
         }).catch(err => {
-          console.warn('Error guardando en caché:', err);
+          console.warn('[Cache] Error guardando:', err);
         });
       }
       
     } catch (error) {
-      console.error('Error cargando predios:', error);
+      console.error('[Predios] Error cargando:', error);
       setLoading(false);
+      setIsRevalidating(false);
       
       // Si hay error y es vigencia actual, intentar con caché
-      if (filterMunicipio && (!filterVigencia || String(filterVigencia) === String(new Date().getFullYear()))) {
-        const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
-        if (cachedPredios && cachedPredios.length > 0) {
-          setPredios(cachedPredios);
-          setTotal(cachedPredios.length);
-          toast.info('Mostrando datos desde caché (error de conexión)', { duration: 3000 });
+      if (filterMunicipio && esVigenciaActual) {
+        try {
+          const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+          if (cachedPredios && cachedPredios.length > 0) {
+            const filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+            setPredios(filtered);
+            setTotal(filtered.length);
+            setDataSource('cache');
+            const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+            setLastSyncTime(syncTime);
+            toast.warning('Error de conexión - Mostrando datos desde caché', { duration: 3000 });
+          }
+        } catch (e) {
+          console.warn('[Cache] Error recuperando caché después de error:', e);
         }
       }
+    }
+  };
     }
   };
 
