@@ -21166,7 +21166,7 @@ async def sincronizar_geometrias_gdb_automaticamente():
     """
     Verifica que todos los proyectos de actualización tengan sus geometrías GDB 
     sincronizadas en MongoDB. Si el archivo GDB existe pero las geometrías no están
-    en la base de datos, las procesa automáticamente.
+    en la base de datos, las procesa automáticamente usando geopandas.
     
     Esto resuelve el problema recurrente donde los datos R1/R2 se muestran pero 
     las geometrías no, porque el archivo GDB no fue procesado al hacer fork.
@@ -21203,14 +21203,9 @@ async def sincronizar_geometrias_gdb_automaticamente():
                 logger.warning(f"  ⚠️ {nombre}: Directorio del proyecto no existe")
                 continue
             
-            # Buscar archivos GDB (ZIP o carpeta)
-            gdb_files = list(proyecto_dir.glob("*.zip")) + list(proyecto_dir.glob("*.gdb"))
-            gdb_file = None
-            
-            for f in gdb_files:
-                if "base_grafica" in f.name.lower() or "gdb" in f.name.lower():
-                    gdb_file = f
-                    break
+            # Buscar archivos GDB (ZIP), preferir el más reciente
+            gdb_files = sorted(proyecto_dir.glob("base_grafica*.zip"), key=lambda x: x.stat().st_mtime, reverse=True)
+            gdb_file = gdb_files[0] if gdb_files else None
             
             if not gdb_file:
                 logger.info(f"  ℹ️ {nombre}: Sin archivo GDB para procesar")
@@ -21218,64 +21213,150 @@ async def sincronizar_geometrias_gdb_automaticamente():
             
             logger.info(f"  🔄 {nombre}: Procesando geometrías desde {gdb_file.name}...")
             
+            temp_dir = None
             try:
-                # Procesar el archivo GDB
-                temp_dir = tempfile.mkdtemp()
-                gdb_path = None
+                # Importar geopandas para leer el GDB
+                import geopandas as gpd
+                import pyogrio
+                import json
                 
-                if gdb_file.suffix.lower() == '.zip':
-                    with zipfile.ZipFile(gdb_file, 'r') as z:
-                        z.extractall(temp_dir)
-                    
-                    # Buscar carpeta .gdb extraída
-                    for item in Path(temp_dir).rglob("*.gdb"):
-                        if item.is_dir():
-                            gdb_path = item
-                            break
-                else:
-                    gdb_path = gdb_file
+                # Extraer ZIP a directorio temporal
+                temp_dir = tempfile.mkdtemp()
+                
+                with zipfile.ZipFile(gdb_file, 'r') as z:
+                    z.extractall(temp_dir)
+                
+                # Buscar carpeta .gdb extraída
+                gdb_path = None
+                for item in Path(temp_dir).rglob("*.gdb"):
+                    if item.is_dir():
+                        gdb_path = item
+                        break
                 
                 if not gdb_path or not gdb_path.exists():
                     logger.warning(f"  ⚠️ {nombre}: No se encontró GDB válido en {gdb_file.name}")
-                    shutil.rmtree(temp_dir, ignore_errors=True)
                     continue
                 
-                # Importar fiona para leer el GDB
-                try:
-                    import fiona
-                except ImportError:
-                    logger.error(f"  ❌ {nombre}: Fiona no instalado, no se pueden procesar geometrías")
-                    shutil.rmtree(temp_dir, ignore_errors=True)
-                    continue
+                # Listar capas usando pyogrio
+                capas = pyogrio.list_layers(str(gdb_path))
                 
-                # Listar capas y procesar terrenos
-                capas = fiona.listlayers(str(gdb_path))
-                capa_terrenos = None
-                
+                # Buscar capas de terrenos (urbano y rural)
+                capas_terreno = []
                 for capa in capas:
-                    if any(t in capa.upper() for t in ['TERRENO', 'U_TERRENO', 'R_TERRENO']):
-                        capa_terrenos = capa
-                        break
+                    capa_nombre = capa[0]
+                    if any(t in capa_nombre.upper() for t in ['U_TERRENO', 'R_TERRENO']):
+                        capas_terreno.append(capa_nombre)
                 
-                if not capa_terrenos:
-                    # Buscar cualquier capa con geometría de polígono
+                if not capas_terreno:
+                    # Buscar alternativa
                     for capa in capas:
-                        try:
-                            with fiona.open(str(gdb_path), layer=capa) as src:
-                                if src.schema.get('geometry') in ['Polygon', 'MultiPolygon']:
-                                    capa_terrenos = capa
-                                    break
-                        except:
-                            continue
+                        if 'TERRENO' in capa[0].upper() and capa[1] in ['MultiPolygon', 'Polygon']:
+                            capas_terreno.append(capa[0])
                 
-                if not capa_terrenos:
+                if not capas_terreno:
                     logger.warning(f"  ⚠️ {nombre}: No se encontró capa de terrenos en el GDB")
-                    shutil.rmtree(temp_dir, ignore_errors=True)
                     continue
                 
-                # Procesar geometrías
+                # Procesar cada capa de terrenos
+                total_geometrias = 0
                 geometrias_batch = []
                 municipio = proyecto.get("municipio", "")
+                
+                for capa_nombre in capas_terreno:
+                    logger.info(f"     Leyendo capa: {capa_nombre}")
+                    
+                    try:
+                        gdf = gpd.read_file(str(gdb_path), layer=capa_nombre)
+                        
+                        # Determinar zona por nombre de capa
+                        zona = "urbano" if capa_nombre.startswith("U_") else "rural"
+                        
+                        # Buscar columna de código
+                        codigo_col = None
+                        for col in ['codigo', 'CODIGO', 'terreno_codigo', 'codigo_predial']:
+                            if col in gdf.columns:
+                                codigo_col = col
+                                break
+                        
+                        if not codigo_col:
+                            logger.warning(f"     ⚠️ Capa {capa_nombre}: No se encontró columna de código")
+                            continue
+                        
+                        for idx, row in gdf.iterrows():
+                            codigo = str(row[codigo_col]).strip() if row[codigo_col] else None
+                            
+                            if not codigo or not row.geometry:
+                                continue
+                            
+                            # Convertir geometría a GeoJSON
+                            try:
+                                geom_geojson = json.loads(row.geometry.to_json())
+                            except:
+                                continue
+                            
+                            # Extraer propiedades (excluyendo geometry)
+                            props = {}
+                            for col in gdf.columns:
+                                if col != 'geometry' and col != codigo_col:
+                                    val = row[col]
+                                    if val is not None and str(val) != 'nan':
+                                        props[col] = str(val)
+                            
+                            geometria_doc = {
+                                "proyecto_id": proyecto_id,
+                                "codigo_predial": codigo,
+                                "numero_predial": props.get('numero_predial', ''),
+                                "zona": zona,
+                                "geometry": geom_geojson,
+                                "properties": props,
+                                "municipio": municipio,
+                                "capa_origen": capa_nombre,
+                                "created_at": datetime.now(timezone.utc)
+                            }
+                            
+                            geometrias_batch.append(geometria_doc)
+                            
+                            # Insertar en lotes de 500
+                            if len(geometrias_batch) >= 500:
+                                await db.geometrias_actualizacion.insert_many(geometrias_batch)
+                                total_geometrias += len(geometrias_batch)
+                                geometrias_batch = []
+                        
+                    except Exception as e:
+                        logger.error(f"     ❌ Error leyendo capa {capa_nombre}: {str(e)}")
+                        continue
+                
+                # Insertar resto
+                if geometrias_batch:
+                    await db.geometrias_actualizacion.insert_many(geometrias_batch)
+                    total_geometrias += len(geometrias_batch)
+                
+                # Actualizar proyecto
+                await db.proyectos_actualizacion.update_one(
+                    {"id": proyecto_id},
+                    {"$set": {
+                        "base_grafica_archivo": str(gdb_file),
+                        "base_grafica_cargado_en": datetime.now(timezone.utc),
+                        "total_geometrias": total_geometrias
+                    }}
+                )
+                
+                logger.info(f"  ✅ {nombre}: {total_geometrias} geometrías sincronizadas exitosamente")
+                
+            except Exception as e:
+                logger.error(f"  ❌ {nombre}: Error procesando GDB: {str(e)}")
+                import traceback
+                logger.error(f"     Traceback: {traceback.format_exc()}")
+            finally:
+                if temp_dir:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        logger.info("=" * 60)
+        logger.info("✅ VERIFICACIÓN DE GEOMETRÍAS COMPLETADA")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"❌ Error en sincronización de geometrías: {str(e)}")
                 
                 with fiona.open(str(gdb_path), layer=capa_terrenos) as src:
                     total_features = len(src)
