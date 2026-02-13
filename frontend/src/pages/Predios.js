@@ -1654,70 +1654,157 @@ export default function Predios() {
     const vigenciaActual = String(new Date().getFullYear());
     const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
     
-    // ====== ESTRATEGIA STALE-WHILE-REVALIDATE ======
-    // 1. Mostrar caché inmediatamente (si existe)
-    // 2. Revalidar del servidor en segundo plano
-    // 3. Actualizar UI cuando lleguen datos frescos
+    // ====== ESTRATEGIA STALE-WHILE-REVALIDATE (SWR) ======
+    // 1. Mostrar caché INMEDIATAMENTE (sin bloquear UI)
+    // 2. Revalidar del servidor en SEGUNDO PLANO
+    // 3. Actualizar UI silenciosamente cuando lleguen datos frescos
     
-    try {
-      // PASO 1: Intentar cargar desde caché PRIMERO (solo para vigencia actual sin búsqueda)
-      if (filterMunicipio && esVigenciaActual && !search) {
-        try {
-          const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
-          if (cachedPredios && cachedPredios.length > 0) {
-            // Filtrar solo predios de la vigencia actual en el caché
-            let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
-            
-            if (filterGeometria === 'con') {
-              filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
-            } else if (filterGeometria === 'sin') {
-              filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
-            }
-            
-            const prediosOrdenados = sortPrediosByCNP(filtered);
-            
-            // Mostrar datos del cache INMEDIATAMENTE
-            setPredios(prediosOrdenados);
-            setTotal(prediosOrdenados.length);
-            setLoading(false);
-            
-            // Cargar tiempo de última sincronización
-            const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
-            setLastSyncTime(syncTime);
-            setDataSource('cache');
-            
-            console.log(`[Cache] Mostrando ${prediosOrdenados.length} predios desde caché`);
-            
-            // Si está offline, terminar aquí
-            if (!navigator.onLine) {
-              setDataSource('offline');
-              toast.info(`📴 Modo offline: ${prediosOrdenados.length} predios`, { duration: 2000 });
-              return;
-            }
-            
-            // PASO 2: Revalidar del servidor en segundo plano
-            setIsRevalidating(true);
+    let mostrandoCache = false;
+    
+    // PASO 1: Intentar cargar desde caché PRIMERO (solo para vigencia actual sin búsqueda)
+    if (filterMunicipio && esVigenciaActual && !search) {
+      try {
+        const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+        if (cachedPredios && cachedPredios.length > 0) {
+          // Filtrar solo predios de la vigencia actual en el caché
+          let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+          
+          if (filterGeometria === 'con') {
+            filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
+          } else if (filterGeometria === 'sin') {
+            filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
           }
-        } catch (cacheError) {
-          console.warn('[Cache] Error accediendo caché:', cacheError);
+          
+          const prediosOrdenados = sortPrediosByCNP(filtered);
+          
+          // ✅ Mostrar datos del cache INMEDIATAMENTE - SIN ESPERAR AL SERVIDOR
+          setPredios(prediosOrdenados);
+          setTotal(prediosOrdenados.length);
+          setLoading(false); // ⚡ Quitar loading inmediatamente
+          
+          // Cargar tiempo de última sincronización
+          const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+          setLastSyncTime(syncTime);
+          setDataSource('cache');
+          mostrandoCache = true;
+          
+          console.log(`[SWR] ✅ Mostrando ${prediosOrdenados.length} predios desde caché INMEDIATAMENTE`);
+          
+          // Si está offline, terminar aquí
+          if (!navigator.onLine) {
+            setDataSource('offline');
+            return;
+          }
         }
+      } catch (cacheError) {
+        console.warn('[SWR] Error accediendo caché:', cacheError);
       }
-      
-      // Si no hay caché o es búsqueda/vigencia anterior, mostrar loading
-      if (dataSource !== 'cache' || !isRevalidating) {
-        setLoading(true);
-        setDataSource('loading');
+    }
+    
+    // Si no hay caché, mostrar loading (solo en este caso)
+    if (!mostrandoCache) {
+      setLoading(true);
+      setDataSource('loading');
+    } else {
+      // Si hay caché, marcar que estamos actualizando en segundo plano
+      setIsRevalidating(true);
+    }
+    
+    // Si está offline y no hay caché, mostrar mensaje y salir
+    if (!navigator.onLine) {
+      if (!esVigenciaActual) {
+        toast.warning('Las vigencias anteriores requieren conexión a internet', { duration: 3000 });
+      } else if (!mostrandoCache) {
+        toast.warning('No hay datos offline disponibles para este municipio');
       }
-      
-      // Si está offline y no hay caché, mostrar mensaje
-      if (!navigator.onLine) {
-        if (!esVigenciaActual) {
-          toast.warning('Las vigencias anteriores requieren conexión a internet', { duration: 3000 });
-        } else {
-          toast.warning('No hay datos offline disponibles para este municipio');
-        }
+      if (!mostrandoCache) {
         setPredios([]);
         setTotal(0);
+      }
+      setLoading(false);
+      setDataSource('offline');
+      return;
+    }
+    
+    // PASO 2: Consultar servidor EN SEGUNDO PLANO
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (filterMunicipio) params.append('municipio', filterMunicipio);
+      if (filterVigencia) params.append('vigencia', filterVigencia);
+      if (search) params.append('search', search);
+      if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
+      if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
+      
+      console.log(`[SWR] 🔄 Actualizando desde servidor en segundo plano...`);
+      
+      const res = await axios.get(`${API}/predios?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const prediosRecibidos = res.data.predios || [];
+      
+      // Filtrar solo predios del municipio correcto
+      const prediosFiltrados = filterMunicipio 
+        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        : prediosRecibidos;
+      
+      const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
+      
+      // PASO 3: Actualizar UI con datos frescos (silenciosamente si ya mostraba caché)
+      setPredios(prediosOrdenados);
+      setTotal(prediosOrdenados.length);
+      setLoading(false);
+      setIsRevalidating(false);
+      setDataSource('server');
+      
+      const now = new Date().toISOString();
+      setLastSyncTime(now);
+      
+      console.log(`[SWR] ✅ ${prediosOrdenados.length} predios actualizados desde servidor`);
+      
+      // PASO 4: Guardar en caché (solo vigencia actual, en segundo plano)
+      if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual && !search) {
+        downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
+          localStorage.setItem(`sync_${filterMunicipio}_date`, now);
+          localStorage.setItem(`sync_${filterMunicipio}_vigencia`, vigenciaActual);
+          console.log(`[SWR] 💾 ${prediosOrdenados.length} predios guardados en caché`);
+        }).catch(err => {
+          console.warn('[SWR] Error guardando en caché:', err);
+        });
+      }
+      
+    } catch (error) {
+      console.error('[SWR] Error cargando desde servidor:', error);
+      setIsRevalidating(false);
+      
+      // Si hay error pero ya mostrábamos caché, mantener esos datos
+      if (mostrandoCache) {
+        console.log('[SWR] Error de servidor, manteniendo datos del caché');
+        setDataSource('cache');
+        // No mostrar error si ya tenemos datos visibles
+      } else {
+        // Si no hay caché, intentar cargar como fallback
+        setLoading(false);
+        if (filterMunicipio && esVigenciaActual) {
+          try {
+            const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+            if (cachedPredios && cachedPredios.length > 0) {
+              const filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+              setPredios(filtered);
+              setTotal(filtered.length);
+              setDataSource('cache');
+              const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+              setLastSyncTime(syncTime);
+              toast.warning('Error de conexión - Mostrando datos desde caché', { duration: 3000 });
+            }
+          } catch (e) {
+            console.warn('[SWR] Error recuperando caché:', e);
+          }
+        }
+      }
+    }
+  };
         setLoading(false);
         setDataSource('offline');
         return;
