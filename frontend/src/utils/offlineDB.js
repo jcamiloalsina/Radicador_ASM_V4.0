@@ -250,6 +250,17 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
     });
 
     console.log(`[OfflineDB] ${saved} predios guardados para ${municipio || proyectoId}`);
+    
+    // Guardar en localStorage como respaldo (para el indicador global)
+    try {
+      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
+      offlineStats.prediosCount = (offlineStats.prediosCount || 0) + saved;
+      offlineStats.lastSync = new Date().toISOString();
+      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
+    } catch (lsError) {
+      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
+    }
+    
     window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'predios', count: saved } }));
     return saved;
   } catch (e) {
