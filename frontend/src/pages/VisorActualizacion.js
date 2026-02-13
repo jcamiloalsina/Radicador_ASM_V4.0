@@ -979,6 +979,7 @@ export default function VisorActualizacion() {
   
   // Cargar predios R1/R2
   const fetchPrediosR1R2 = async () => {
+    setLoadingPrediosR1R2(true);
     // Si está online, SIEMPRE intentar cargar desde el servidor primero
     if (navigator.onLine) {
       try {
@@ -996,6 +997,7 @@ export default function VisorActualizacion() {
             .then(() => console.log('[Offline] Predios R1/R2 actualizados en caché'))
             .catch(saveError => console.warn('[Offline] No se pudieron guardar predios:', saveError));
         }
+        setLoadingPrediosR1R2(false);
         return; // Éxito, salir
       } catch (error) {
         console.error('Error cargando predios R1/R2 del servidor:', error);
@@ -1015,6 +1017,7 @@ export default function VisorActualizacion() {
     } catch (offlineError) {
       console.error('Error cargando datos offline:', offlineError);
     }
+    setLoadingPrediosR1R2(false);
   };
   
   useEffect(() => {
