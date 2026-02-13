@@ -596,6 +596,31 @@ export default function VisorActualizacion() {
     });
   }, []);
   
+  // ====== AUTO-GUARDADO DEL FORMULARIO DE VISITA (después de declarar todas las variables) ======
+  useEffect(() => {
+    const storageKey = getVisitaStorageKey();
+    if (!storageKey || !showVisitaModal) return;
+    
+    // Debounce: guardar después de 1.5 segundos de inactividad
+    const timeoutId = setTimeout(() => {
+      try {
+        const draftData = {
+          visitaData: visitaData,
+          visitaPropietarios: visitaPropietarios,
+          visitaConstrucciones: visitaConstrucciones,
+          visitaPagina: visitaPagina,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(draftData));
+        console.log('[Visita] Borrador auto-guardado');
+      } catch (e) {
+        console.warn('[Visita] Error guardando borrador:', e);
+      }
+    }, 1500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [visitaData, visitaPropietarios, visitaConstrucciones, visitaPagina, getVisitaStorageKey, showVisitaModal]);
+  
   const [fotos, setFotos] = useState([]);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
