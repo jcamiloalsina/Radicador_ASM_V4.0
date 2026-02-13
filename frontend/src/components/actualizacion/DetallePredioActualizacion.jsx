@@ -85,15 +85,24 @@ const DetallePredioActualizacion = ({
   const numMejoras = mejorasDelTerreno?.length || 0;
 
   return (
-    <Card className={`shadow-md ${tieneMejoras ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
-      <CardHeader className={`py-3 ${tieneMejoras ? 'bg-cyan-100' : 'bg-amber-100'}`}>
+    <Card className={`shadow-md ${esMejoraDirecta ? 'border-purple-400 border-2' : tieneMejoras ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
+      <CardHeader className={`py-3 ${esMejoraDirecta ? 'bg-purple-100' : tieneMejoras ? 'bg-cyan-100' : 'bg-amber-100'}`}>
         <CardTitle className="text-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MapPin className={`w-4 h-4 ${tieneMejoras ? 'text-cyan-700' : 'text-amber-700'}`} />
-            <span className={`font-semibold ${tieneMejoras ? 'text-cyan-800' : 'text-amber-800'}`}>
-              Terreno Seleccionado
+            {esMejoraDirecta ? (
+              <Building className="w-4 h-4 text-purple-700" />
+            ) : (
+              <MapPin className={`w-4 h-4 ${tieneMejoras ? 'text-cyan-700' : 'text-amber-700'}`} />
+            )}
+            <span className={`font-semibold ${esMejoraDirecta ? 'text-purple-800' : tieneMejoras ? 'text-cyan-800' : 'text-amber-800'}`}>
+              {esMejoraDirecta ? 'Mejora Seleccionada' : 'Terreno Seleccionado'}
             </span>
-            {tieneMejoras && (
+            {esMejoraDirecta && (
+              <Badge className="bg-purple-500 text-white text-[10px] px-1.5 py-0">
+                MEJORA #{codigoPredio.substring(27, 30)}
+              </Badge>
+            )}
+            {!esMejoraDirecta && tieneMejoras && (
               <Badge className="bg-cyan-500 text-white text-[10px] px-1.5 py-0">
                 {numMejoras} MEJORA{numMejoras > 1 ? 'S' : ''}
               </Badge>
@@ -119,7 +128,13 @@ const DetallePredioActualizacion = ({
             {sinCambios && (
               <Badge variant="outline" className="text-xs bg-gray-50">Sin cambios</Badge>
             )}
-            {tieneMejoras && (
+            {esMejoraDirecta && (
+              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
+                <Building className="w-3 h-3 mr-1" />
+                Es Mejora
+              </Badge>
+            )}
+            {!esMejoraDirecta && tieneMejoras && (
               <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-300">
                 <Building className="w-3 h-3 mr-1" />
                 Con Mejoras
@@ -129,8 +144,10 @@ const DetallePredioActualizacion = ({
         </div>
 
         {/* Código Predial */}
-        <div className={`p-2 rounded ${tieneMejoras ? 'bg-cyan-50' : 'bg-slate-50'}`}>
-          <p className="text-xs text-slate-500">Código Predial Nacional (Terreno)</p>
+        <div className={`p-2 rounded ${esMejoraDirecta ? 'bg-purple-50' : tieneMejoras ? 'bg-cyan-50' : 'bg-slate-50'}`}>
+          <p className="text-xs text-slate-500">
+            {esMejoraDirecta ? 'Código Predial Nacional (Mejora)' : 'Código Predial Nacional (Terreno)'}
+          </p>
           <p className="font-mono text-[10px] font-medium text-slate-800 break-all">
             {predio.codigo_predial || predio.codigo_predial_nacional}
           </p>
