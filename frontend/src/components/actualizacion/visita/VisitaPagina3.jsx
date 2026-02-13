@@ -1,12 +1,57 @@
 /**
  * Página 3 del Formulario de Visita
  * Secciones: Información de Construcciones, Calificación
+ * 
+ * OPTIMIZACIÓN DE RENDIMIENTO:
+ * - DebouncedTableInput: Input con estado local y debounce para tablas
+ * - React.memo() en todo el componente y sub-componentes
+ * - useCallback() para handlers
  */
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect, useRef } from 'react';
 import { Building, FileText, Plus, Trash2 } from 'lucide-react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
+
+// Input optimizado para tablas - mantiene estado local y actualiza con debounce
+const DebouncedTableInput = memo(({ value, onChange, debounceMs = 200, ...props }) => {
+  const [localValue, setLocalValue] = useState(value || '');
+  const timeoutRef = useRef(null);
+  const isFirstRender = useRef(true);
+
+  // Sincronizar con valor externo solo cuando cambia desde fuera
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setLocalValue(value || '');
+  }, [value]);
+
+  const handleChange = useCallback((e) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    // Cancelar timeout anterior
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    
+    // Actualizar padre después del debounce
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, debounceMs);
+  }, [onChange, debounceMs]);
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return <Input {...props} value={localValue} onChange={handleChange} />;
+});
+
+DebouncedTableInput.displayName = 'DebouncedTableInput';
 
 const VisitaPagina3 = memo(({ 
   visitaConstrucciones,
