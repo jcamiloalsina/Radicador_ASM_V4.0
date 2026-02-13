@@ -638,20 +638,19 @@ const CrearPredioNuevoModal = ({
                   </div>
                   <div>
                     <Label className="text-xs text-orange-700">Condición (22)</Label>
-                    <Select value={codigoManual.condicion} onValueChange={(v) => setCodigoManual({...codigoManual, condicion: v})}>
-                      <SelectTrigger className="font-mono">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0 - NPH</SelectItem>
-                        <SelectItem value="2">2 - Informales</SelectItem>
-                        <SelectItem value="3">3 - Bienes uso público</SelectItem>
-                        <SelectItem value="4">4 - Vías</SelectItem>
-                        <SelectItem value="7">7 - Parques/cementerios</SelectItem>
-                        <SelectItem value="8">8 - Condominio</SelectItem>
-                        <SelectItem value="9">9 - PH</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input 
+                      type="number"
+                      min="0"
+                      max="9"
+                      value={codigoManual.condicion} 
+                      onChange={(e) => {
+                        const v = e.target.value.slice(0, 1);
+                        setCodigoManual({...codigoManual, condicion: v});
+                      }}
+                      maxLength={1}
+                      className="font-mono text-center"
+                      placeholder="0"
+                    />
                   </div>
                   <div>
                     <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
