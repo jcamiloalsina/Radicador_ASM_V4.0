@@ -21004,6 +21004,199 @@ async def crear_indices_mongodb():
         logger.error(f"❌ Error creando índices (no crítico): {str(e)}")
 
 
+@app.on_event("startup")
+async def sincronizar_geometrias_gdb_automaticamente():
+    """
+    Verifica que todos los proyectos de actualización tengan sus geometrías GDB 
+    sincronizadas en MongoDB. Si el archivo GDB existe pero las geometrías no están
+    en la base de datos, las procesa automáticamente.
+    
+    Esto resuelve el problema recurrente donde los datos R1/R2 se muestran pero 
+    las geometrías no, porque el archivo GDB no fue procesado al hacer fork.
+    """
+    import zipfile
+    import tempfile
+    import shutil
+    
+    try:
+        logger.info("=" * 60)
+        logger.info("🗺️ VERIFICANDO SINCRONIZACIÓN DE GEOMETRÍAS GDB")
+        logger.info("=" * 60)
+        
+        # Obtener todos los proyectos activos
+        proyectos = await db.proyectos_actualizacion.find(
+            {"estado": {"$in": ["activo", "en_progreso"]}},
+            {"_id": 0, "id": 1, "nombre": 1, "base_grafica_archivo": 1, "municipio": 1}
+        ).to_list(100)
+        
+        for proyecto in proyectos:
+            proyecto_id = proyecto.get("id")
+            nombre = proyecto.get("nombre", "Sin nombre")
+            
+            # Contar geometrías existentes
+            count_geometrias = await db.geometrias_actualizacion.count_documents({"proyecto_id": proyecto_id})
+            
+            if count_geometrias > 0:
+                logger.info(f"  ✅ {nombre}: {count_geometrias} geometrías ya sincronizadas")
+                continue
+            
+            # Buscar archivo GDB en el directorio del proyecto
+            proyecto_dir = Path(f"/app/proyectos_actualizacion/{proyecto_id}")
+            if not proyecto_dir.exists():
+                logger.warning(f"  ⚠️ {nombre}: Directorio del proyecto no existe")
+                continue
+            
+            # Buscar archivos GDB (ZIP o carpeta)
+            gdb_files = list(proyecto_dir.glob("*.zip")) + list(proyecto_dir.glob("*.gdb"))
+            gdb_file = None
+            
+            for f in gdb_files:
+                if "base_grafica" in f.name.lower() or "gdb" in f.name.lower():
+                    gdb_file = f
+                    break
+            
+            if not gdb_file:
+                logger.info(f"  ℹ️ {nombre}: Sin archivo GDB para procesar")
+                continue
+            
+            logger.info(f"  🔄 {nombre}: Procesando geometrías desde {gdb_file.name}...")
+            
+            try:
+                # Procesar el archivo GDB
+                temp_dir = tempfile.mkdtemp()
+                gdb_path = None
+                
+                if gdb_file.suffix.lower() == '.zip':
+                    with zipfile.ZipFile(gdb_file, 'r') as z:
+                        z.extractall(temp_dir)
+                    
+                    # Buscar carpeta .gdb extraída
+                    for item in Path(temp_dir).rglob("*.gdb"):
+                        if item.is_dir():
+                            gdb_path = item
+                            break
+                else:
+                    gdb_path = gdb_file
+                
+                if not gdb_path or not gdb_path.exists():
+                    logger.warning(f"  ⚠️ {nombre}: No se encontró GDB válido en {gdb_file.name}")
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    continue
+                
+                # Importar fiona para leer el GDB
+                try:
+                    import fiona
+                except ImportError:
+                    logger.error(f"  ❌ {nombre}: Fiona no instalado, no se pueden procesar geometrías")
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    continue
+                
+                # Listar capas y procesar terrenos
+                capas = fiona.listlayers(str(gdb_path))
+                capa_terrenos = None
+                
+                for capa in capas:
+                    if any(t in capa.upper() for t in ['TERRENO', 'U_TERRENO', 'R_TERRENO']):
+                        capa_terrenos = capa
+                        break
+                
+                if not capa_terrenos:
+                    # Buscar cualquier capa con geometría de polígono
+                    for capa in capas:
+                        try:
+                            with fiona.open(str(gdb_path), layer=capa) as src:
+                                if src.schema.get('geometry') in ['Polygon', 'MultiPolygon']:
+                                    capa_terrenos = capa
+                                    break
+                        except:
+                            continue
+                
+                if not capa_terrenos:
+                    logger.warning(f"  ⚠️ {nombre}: No se encontró capa de terrenos en el GDB")
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    continue
+                
+                # Procesar geometrías
+                geometrias_batch = []
+                municipio = proyecto.get("municipio", "")
+                
+                with fiona.open(str(gdb_path), layer=capa_terrenos) as src:
+                    total_features = len(src)
+                    logger.info(f"     Procesando {total_features} geometrías de capa {capa_terrenos}...")
+                    
+                    for feat in src:
+                        props = feat.get('properties', {})
+                        geom = feat.get('geometry')
+                        
+                        # Extraer código predial
+                        codigo = (
+                            props.get('codigo') or 
+                            props.get('CODIGO') or 
+                            props.get('terreno_codigo') or
+                            props.get('codigo_predial') or
+                            props.get('NUMERO_PREDIAL') or
+                            ''
+                        )
+                        
+                        if not codigo or not geom:
+                            continue
+                        
+                        # Determinar zona (urbano/rural) por el código
+                        zona = "urbano" if str(codigo)[9:11] == "01" else "rural"
+                        
+                        geometria_doc = {
+                            "proyecto_id": proyecto_id,
+                            "codigo_predial": str(codigo).strip(),
+                            "numero_predial": str(props.get('numero_predial', '')).strip(),
+                            "zona": zona,
+                            "geometry": dict(geom),
+                            "properties": {k: str(v) if v else None for k, v in props.items() if k not in ['codigo', 'geometry']},
+                            "municipio": municipio,
+                            "created_at": datetime.now(timezone.utc)
+                        }
+                        
+                        geometrias_batch.append(geometria_doc)
+                        
+                        # Insertar en lotes de 1000
+                        if len(geometrias_batch) >= 1000:
+                            await db.geometrias_actualizacion.insert_many(geometrias_batch)
+                            geometrias_batch = []
+                
+                # Insertar resto
+                if geometrias_batch:
+                    await db.geometrias_actualizacion.insert_many(geometrias_batch)
+                
+                # Contar insertados
+                total_insertados = await db.geometrias_actualizacion.count_documents({"proyecto_id": proyecto_id})
+                
+                # Actualizar proyecto
+                await db.proyectos_actualizacion.update_one(
+                    {"id": proyecto_id},
+                    {"$set": {
+                        "base_grafica_archivo": str(gdb_file),
+                        "base_grafica_cargado_en": datetime.now(timezone.utc),
+                        "total_geometrias": total_insertados
+                    }}
+                )
+                
+                logger.info(f"  ✅ {nombre}: {total_insertados} geometrías sincronizadas exitosamente")
+                
+                # Limpiar temporal
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                
+            except Exception as e:
+                logger.error(f"  ❌ {nombre}: Error procesando GDB: {str(e)}")
+                if 'temp_dir' in locals():
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        logger.info("=" * 60)
+        logger.info("✅ VERIFICACIÓN DE GEOMETRÍAS COMPLETADA")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"❌ Error en sincronización de geometrías: {str(e)}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     # Detener scheduler de backups
