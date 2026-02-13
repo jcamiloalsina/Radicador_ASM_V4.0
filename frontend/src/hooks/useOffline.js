@@ -401,9 +401,10 @@ export function useOffline() {
     const handleOffline = () => setIsOnline(false);
     
     // Escuchar evento de actualización de datos offline
-    const handleOfflineDataUpdate = () => {
-      console.log('[useOffline] Datos offline actualizados, recargando stats...');
-      loadOfflineStats();
+    const handleOfflineDataUpdate = (event) => {
+      console.log('[useOffline] Evento offlineDataUpdated recibido:', event.detail);
+      // Pequeño delay para asegurar que IndexedDB termine la transacción
+      setTimeout(() => loadOfflineStats(), 500);
     };
 
     window.addEventListener('online', handleOnline);
@@ -415,6 +416,11 @@ export function useOffline() {
     
     // Check cache status
     const cacheTimer = setTimeout(() => checkCacheReady(), 0);
+    
+    // Re-verificar stats cada 10 segundos (para cuando el usuario está en una página)
+    const periodicCheck = setInterval(() => {
+      loadOfflineStats();
+    }, 10000);
     
     // Check if Service Worker is registered
     if ('serviceWorker' in navigator) {
@@ -431,6 +437,7 @@ export function useOffline() {
       window.removeEventListener('offlineDataUpdated', handleOfflineDataUpdate);
       clearTimeout(statsTimer);
       clearTimeout(cacheTimer);
+      clearInterval(periodicCheck);
     };
   }, [loadOfflineStats, checkCacheReady]);
 
