@@ -1962,6 +1962,13 @@ export default function Predios() {
     fetchPredios();
   };
 
+  // Efecto para recargar predios cuando se borra la búsqueda
+  useEffect(() => {
+    if (search === '' && filterMunicipio) {
+      fetchPredios();
+    }
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Verificar si el usuario necesita aprobación
   const necesitaAprobacion = user && ['gestor', 'gestor_auxiliar', 'atencion_usuario'].includes(user.role);
 
