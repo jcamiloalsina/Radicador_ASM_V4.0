@@ -486,6 +486,78 @@ export default function VisorActualizacion() {
     });
   }, []);
   
+  // ====== AUTO-GUARDADO DEL FORMULARIO DE VISITA ======
+  // Clave para localStorage basada en el predio actual
+  const getVisitaStorageKey = useCallback(() => {
+    const codigo = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+    return codigo ? `visita_draft_${proyectoId}_${codigo}` : null;
+  }, [selectedPredio, proyectoId]);
+  
+  // Auto-guardar en localStorage cuando cambia visitaData
+  useEffect(() => {
+    const storageKey = getVisitaStorageKey();
+    if (!storageKey || !showVisitaModal) return;
+    
+    // Debounce: guardar después de 1 segundo de inactividad
+    const timeoutId = setTimeout(() => {
+      try {
+        const draftData = {
+          visitaData: visitaData,
+          visitaPropietarios: visitaPropietarios,
+          visitaConstrucciones: visitaConstrucciones,
+          visitaPagina: visitaPagina,
+          savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(draftData));
+        console.log('[Visita] Borrador auto-guardado');
+      } catch (e) {
+        console.warn('[Visita] Error guardando borrador:', e);
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [visitaData, visitaPropietarios, visitaConstrucciones, visitaPagina, getVisitaStorageKey, showVisitaModal]);
+  
+  // Recuperar borrador al abrir el formulario
+  const recuperarBorradorVisita = useCallback(() => {
+    const storageKey = getVisitaStorageKey();
+    if (!storageKey) return false;
+    
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const draftData = JSON.parse(saved);
+        // Verificar que el borrador no sea muy viejo (máx 24 horas)
+        const savedAt = new Date(draftData.savedAt);
+        const now = new Date();
+        const hoursOld = (now - savedAt) / (1000 * 60 * 60);
+        
+        if (hoursOld < 24) {
+          return draftData;
+        } else {
+          // Borrador muy viejo, eliminarlo
+          localStorage.removeItem(storageKey);
+        }
+      }
+    } catch (e) {
+      console.warn('[Visita] Error recuperando borrador:', e);
+    }
+    return null;
+  }, [getVisitaStorageKey]);
+  
+  // Limpiar borrador después de guardar exitosamente
+  const limpiarBorradorVisita = useCallback(() => {
+    const storageKey = getVisitaStorageKey();
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+      console.log('[Visita] Borrador eliminado');
+    }
+  }, [getVisitaStorageKey]);
+  
+  // Estado para mostrar diálogo de recuperación de borrador
+  const [showRecuperarBorrador, setShowRecuperarBorrador] = useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = useState(null);
+  
   // Canvas refs para las firmas
   const canvasVisitadoRef = useRef(null);
   const canvasReconocedorRef = useRef(null);
