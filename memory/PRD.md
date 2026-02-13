@@ -5,7 +5,29 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 12 - Verificación de Calidad)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 12 - Correcciones del Formulario)
+
+### ✅ Bug Fix: Orden de Secciones y Botón Galería en Formulario de Visita
+
+**Problemas reportados:**
+1. En Página 5, la sección 11 (GPS) aparecía ANTES de sección 10 (Fotografías)
+2. En Página 4, la sección Croquis solo tenía botón "Tomar Foto", faltaba "Galería"
+
+**Correcciones aplicadas:**
+1. Reordenado las secciones en Página 5: ahora es 10 → 11 → 12 → 13 (correcto)
+2. Agregada funcionalidad completa a sección Croquis en Página 4:
+   - Input oculto para cámara (capture="environment")
+   - Input oculto para galería (multiple)
+   - Grid de preview de fotos con botón eliminar
+   - Handler `handleCroquisPhoto` para procesar fotos a base64
+
+**Archivo modificado:** `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx`
+
+**Testing:** Verificado visualmente via screenshots automatizados
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Verificación de Calidad)
 
 ### ✅ VERIFICADO: Carga de Datos R1/R2 Funciona Correctamente
 
