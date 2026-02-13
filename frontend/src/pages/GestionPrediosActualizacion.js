@@ -1866,18 +1866,16 @@ export default function GestionPrediosActualizacion() {
                     </div>
                     <div>
                       <Label className="text-xs text-slate-600">Condición (22)</Label>
-                      <Select value={codigoManual.condicion} onValueChange={(v) => handleCodigoChange('condicion', v, 1)}>
-                        <SelectTrigger className="font-mono text-center">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0 - Normal</SelectItem>
-                          <SelectItem value="2">2 - En Condominio</SelectItem>
-                          <SelectItem value="5">5 - Mejora Informal</SelectItem>
-                          <SelectItem value="8">8 - Área Común</SelectItem>
-                          <SelectItem value="9">9 - PH</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input 
+                        type="number"
+                        min="0"
+                        max="9"
+                        value={codigoManual.condicion} 
+                        onChange={(e) => handleCodigoChange('condicion', e.target.value.slice(0, 1), 1)}
+                        maxLength={1}
+                        className="font-mono text-center"
+                        placeholder="0"
+                      />
                     </div>
                     <div>
                       <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
