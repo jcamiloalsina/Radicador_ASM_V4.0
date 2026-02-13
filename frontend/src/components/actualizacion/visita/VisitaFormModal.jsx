@@ -715,37 +715,6 @@ const Page4 = memo(({ data, setField }) => {
   );
 });
 Page4.displayName = 'Page4';
-  const newPhotos = [];
-  for (const file of files) {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error(`${file.name} supera 5MB`);
-      continue;
-    }
-    try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      newPhotos.push({
-        id: Date.now() + Math.random(),
-        data: base64,
-        nombre: file.name,
-        fecha: new Date().toISOString(),
-        offline: !navigator.onLine
-      });
-    } catch (err) {
-      toast.error('Error al procesar la foto');
-    }
-  }
-  
-  if (newPhotos.length > 0) {
-    setField('fotos_croquis', [...(data.fotos_croquis || []), ...newPhotos]);
-    toast.success(`📷 ${newPhotos.length} foto(s) de croquis agregada(s)`);
-  }
-  e.target.value = '';
-};
 
 // Página 5 - GPS, Observaciones, Firmas, Fotos
 const Page5 = memo(({ data, setField, fotos, setFotos }) => {
