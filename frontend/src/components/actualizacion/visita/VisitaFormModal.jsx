@@ -889,34 +889,7 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
 
   return (
   <div className="space-y-4">
-    {/* GPS */}
-    <div className="border border-blue-200 rounded-lg overflow-hidden">
-      <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
-        <h3 className="font-semibold text-blue-800 flex items-center gap-2"><MapPin className="w-4 h-4" />11. COORDENADAS GPS</h3>
-      </div>
-      <div className="p-4 space-y-3">
-        <Button 
-          onClick={capturarUbicacion}
-          disabled={capturandoGPS}
-          className="w-full bg-blue-600 hover:bg-blue-700"
-        >
-          {capturandoGPS ? (
-            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Capturando...</>
-          ) : (
-            <><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</>
-          )}
-        </Button>
-        <div className="grid grid-cols-2 gap-3">
-          <div><Label className="text-xs">Latitud</Label><FastInput value={data.coordenadas_gps?.latitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, latitud: v})} /></div>
-          <div><Label className="text-xs">Longitud</Label><FastInput value={data.coordenadas_gps?.longitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, longitud: v})} /></div>
-        </div>
-        {data.coordenadas_gps?.precision && (
-          <p className="text-xs text-green-600">✅ Precisión: {data.coordenadas_gps.precision}m</p>
-        )}
-      </div>
-    </div>
-
-    {/* FOTOS - Funciona offline */}
+    {/* FOTOS - Funciona offline - SECCIÓN 10 (ahora primero) */}
     <div className="border border-emerald-200 rounded-lg overflow-hidden">
       <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
         <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
@@ -995,6 +968,33 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
         <p className="text-xs text-slate-500">
           Máximo 5MB por foto. Las fotos se guardan localmente y se sincronizan cuando haya conexión.
         </p>
+      </div>
+    </div>
+
+    {/* GPS - SECCIÓN 11 (ahora segundo) */}
+    <div className="border border-blue-200 rounded-lg overflow-hidden">
+      <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
+        <h3 className="font-semibold text-blue-800 flex items-center gap-2"><MapPin className="w-4 h-4" />11. COORDENADAS GPS</h3>
+      </div>
+      <div className="p-4 space-y-3">
+        <Button 
+          onClick={capturarUbicacion}
+          disabled={capturandoGPS}
+          className="w-full bg-blue-600 hover:bg-blue-700"
+        >
+          {capturandoGPS ? (
+            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Capturando...</>
+          ) : (
+            <><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</>
+          )}
+        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label className="text-xs">Latitud</Label><FastInput value={data.coordenadas_gps?.latitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, latitud: v})} /></div>
+          <div><Label className="text-xs">Longitud</Label><FastInput value={data.coordenadas_gps?.longitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, longitud: v})} /></div>
+        </div>
+        {data.coordenadas_gps?.precision && (
+          <p className="text-xs text-green-600">✅ Precisión: {data.coordenadas_gps.precision}m</p>
+        )}
       </div>
     </div>
 
