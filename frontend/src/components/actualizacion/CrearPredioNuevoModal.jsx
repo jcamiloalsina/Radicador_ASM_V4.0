@@ -52,10 +52,15 @@ const CrearPredioNuevoModal = ({
   proyectoId, 
   municipio, 
   token,
-  onSuccess 
+  onSuccess,
+  userRole // 'gestor', 'coordinador', 'administrador'
 }) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('ubicacion');
+  
+  // Refs para inputs de fotos
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   
   // Estructura del código
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
@@ -110,6 +115,27 @@ const CrearPredioNuevoModal = ({
   
   // Construcciones
   const [construcciones, setConstrucciones] = useState([]);
+  
+  // ===== FORMULARIO DE VISITA (OBLIGATORIO) =====
+  const [visitaData, setVisitaData] = useState({
+    fecha_visita: new Date().toISOString().split('T')[0],
+    hora_visita: new Date().toTimeString().slice(0, 5),
+    coordenadas_gps: { latitud: '', longitud: '', precision: null },
+    observaciones: '',
+    nombre_visitado: '',
+    nombre_reconocedor: '',
+    estado_predio: 'habitado',
+    servicios_publicos: [],
+    // Calificación
+    calificacion: {
+      estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+      acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+      bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' }
+    }
+  });
+  const [fotos, setFotos] = useState([]);
+  const [capturandoGPS, setCapturandoGPS] = useState(false);
   
   // Cargar estructura del código al abrir
   useEffect(() => {
