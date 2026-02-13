@@ -311,55 +311,10 @@ export default function VisorPredios() {
     falsoEste: 5000000,          // 5'000,000 m
     nombre: 'Origen Nacional'
   };
-  
-  // Orígenes Locales (CTM12)
-  const ORIGENES_LOCALES = {
-    bogota: {
-      latOrigen: 4.596200417,    // 4°35'46.3215" N
-      lngOrigen: -74.077508056,  // 74°04'39.0285" W
-      falsoNorte: 1000000,
-      falsoEste: 1000000,
-      nombre: 'Bogotá'
-    },
-    este: {
-      latOrigen: 4.596200417,
-      lngOrigen: -71.077508056,  // 71°04'39.0285" W
-      falsoNorte: 1000000,
-      falsoEste: 1000000,
-      nombre: 'Este'
-    },
-    oeste: {
-      latOrigen: 4.596200417,
-      lngOrigen: -77.077508056,  // 77°04'39.0285" W
-      falsoNorte: 1000000,
-      falsoEste: 1000000,
-      nombre: 'Oeste'
-    },
-    este_este: {
-      latOrigen: 4.596200417,
-      lngOrigen: -68.077508056,  // 68°04'39.0285" W
-      falsoNorte: 1000000,
-      falsoEste: 1000000,
-      nombre: 'Este-Este'
-    },
-    oeste_oeste: {
-      latOrigen: 4.596200417,
-      lngOrigen: -80.077508056,  // 80°04'39.0285" W
-      falsoNorte: 1000000,
-      falsoEste: 1000000,
-      nombre: 'Oeste-Oeste'
-    }
-  };
 
   // Función para convertir coordenadas planas a geográficas (aproximación para visualización)
-  // Nota: Para cálculos de alta precisión se recomienda usar proj4js
-  const planasAGeograficas = (norte, este, origen) => {
-    const params = origen === 'nacional' ? ORIGEN_NACIONAL : ORIGENES_LOCALES[origen];
-    
-    if (!params) {
-      console.error('Origen no válido:', origen);
-      return null;
-    }
+  const planasAGeograficas = (norte, este) => {
+    const params = ORIGEN_NACIONAL;
     
     // Metros por grado (aproximación para Colombia)
     const metrosPorGradoLat = 111320; // ~111.32 km por grado de latitud
@@ -381,10 +336,8 @@ export default function VisorPredios() {
   };
 
   // Función para convertir geográficas a planas (para mostrar en el tooltip)
-  const geograficasAPlanas = (lat, lng, origen) => {
-    const params = origen === 'nacional' ? ORIGEN_NACIONAL : ORIGENES_LOCALES[origen];
-    
-    if (!params) return null;
+  const geograficasAPlanas = (lat, lng) => {
+    const params = ORIGEN_NACIONAL;
     
     const metrosPorGradoLat = 111320;
     const metrosPorGradoLng = 111320 * Math.cos(params.latOrigen * Math.PI / 180);
@@ -441,37 +394,7 @@ export default function VisorPredios() {
         toast.warning('Este fuera de rango típico (4,000,000 - 6,000,000 m)');
       }
       
-      const resultado = planasAGeograficas(norte, este, 'nacional');
-      if (!resultado) {
-        toast.error('Error en la conversión de coordenadas');
-        return;
-      }
-      lat = resultado.lat;
-      lng = resultado.lng;
-      
-    } else if (formatoCoordenadas === 'planas_local') {
-      // Conversión desde Origen Local
-      const norte = parseFloat(coordenadasPlanas.norte);
-      const este = parseFloat(coordenadasPlanas.este);
-      
-      if (isNaN(norte) || isNaN(este)) {
-        toast.error('Ingrese coordenadas Norte y Este válidas');
-        return;
-      }
-      
-      // Validar rangos típicos para orígenes locales
-      if (norte < 800000 || norte > 1800000) {
-        toast.warning('Norte fuera de rango típico para origen local');
-      }
-      if (este < 800000 || este > 1800000) {
-        toast.warning('Este fuera de rango típico para origen local');
-      }
-      
-      const resultado = planasAGeograficas(norte, este, origenLocal);
-      if (!resultado) {
-        toast.error('Error en la conversión de coordenadas');
-        return;
-      }
+      const resultado = planasAGeograficas(norte, este);
       lat = resultado.lat;
       lng = resultado.lng;
     }
@@ -498,14 +421,12 @@ export default function VisorPredios() {
     // Mostrar coordenadas en múltiples formatos
     const latDMS = decimalToDMS(lat, true);
     const lngDMS = decimalToDMS(Math.abs(lng), false);
-    const planasNac = geograficasAPlanas(lat, lng, 'nacional');
+    const planasNac = geograficasAPlanas(lat, lng);
     
     let mensaje = `📍 Ubicación encontrada:\n`;
     mensaje += `• Geográficas: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°\n`;
     mensaje += `• DMS: ${latDMS.grados}°${latDMS.minutos}'${latDMS.segundos}"N, ${lngDMS.grados}°${lngDMS.minutos}'${lngDMS.segundos}"W`;
-    if (planasNac) {
-      mensaje += `\n• Origen Nacional: N ${planasNac.norte.toLocaleString()}, E ${planasNac.este.toLocaleString()}`;
-    }
+    mensaje += `\n• Planas: N ${planasNac.norte.toLocaleString()}, E ${planasNac.este.toLocaleString()}`;
     
     toast.success(mensaje, { duration: 5000 });
   };
