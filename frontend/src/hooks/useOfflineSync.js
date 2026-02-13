@@ -473,6 +473,11 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     }
   }, [proyectoId, syncPendingChanges, refreshStats]);
 
+  // Saltar sincronización inicial (para continuar sin sincronizar)
+  const skipInitialSync = useCallback(() => {
+    console.log('[useOfflineSync] Sincronización inicial omitida por el usuario');
+  }, []);
+
   return {
     // Estado
     isOnline,
@@ -492,6 +497,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     refreshStats,
     checkInitialSync,
     performFullSync,
+    skipInitialSync,
     
     // Utilidades para acceso a datos offline
     getPrediosOffline: () => getPrediosOffline(proyectoId),
