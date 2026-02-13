@@ -2767,6 +2767,60 @@ export default function Predios() {
                 {total.toLocaleString()} predios
               </Badge>
             </div>
+            
+            {/* ====== INDICADOR DE ESTADO DE DATOS ====== */}
+            <div className="flex-1"></div>
+            <div className="flex items-center gap-2">
+              {/* Indicador de revalidación en segundo plano */}
+              {isRevalidating && (
+                <Badge className="bg-amber-100 text-amber-800 animate-pulse flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Actualizando...
+                </Badge>
+              )}
+              
+              {/* Estado de datos */}
+              {dataSource === 'server' && !isRevalidating && (
+                <Badge className="bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Actualizado
+                </Badge>
+              )}
+              
+              {dataSource === 'cache' && !isRevalidating && (
+                <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+                  <Database className="w-3 h-3" />
+                  Desde caché
+                </Badge>
+              )}
+              
+              {dataSource === 'offline' && (
+                <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+                  <WifiOff className="w-3 h-3" />
+                  Sin conexión
+                </Badge>
+              )}
+              
+              {/* Última sincronización */}
+              {lastSyncTime && (
+                <span className={`text-xs ${getCacheStatusColor(cacheAge)}`}>
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  {formatTimeAgo(lastSyncTime)}
+                </span>
+              )}
+              
+              {/* Botón de refrescar manual */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={fetchPredios}
+                disabled={isRevalidating || loading}
+                className="h-7 px-2"
+                title="Refrescar datos"
+              >
+                <RefreshCw className={`w-4 h-4 ${(isRevalidating || loading) ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
 
           {/* Filters */}
