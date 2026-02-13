@@ -3198,6 +3198,9 @@ export default function VisorActualizacion() {
         
         setShowVisitaModal(false);
         
+        // Limpiar borrador después de guardar exitosamente
+        limpiarBorradorVisita();
+        
         // Actualizar estado local
         setPrediosR1R2(prev => prev.map(p => 
           (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
@@ -3214,6 +3217,9 @@ export default function VisorActualizacion() {
         toast.info('Visita guardada localmente - Se sincronizará al recuperar conexión');
         
         setShowVisitaModal(false);
+        
+        // Limpiar borrador después de guardar exitosamente (también en offline)
+        limpiarBorradorVisita();
         
         // Actualizar estado local
         setPrediosR1R2(prev => prev.map(p => 
