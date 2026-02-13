@@ -349,23 +349,23 @@ const VisitaPagina3 = memo(({
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
                       <Label className="text-xs text-slate-500">Total Pisos</Label>
-                      <Input type="number" value={calif.datos_generales.total_pisos} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_pisos', val)} placeholder="0" className="h-8 text-sm" />
+                      <DebouncedTableInput type="number" value={calif.datos_generales.total_pisos} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_pisos', val)} placeholder="0" className="h-8 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs text-slate-500">Habitaciones</Label>
-                      <Input type="number" value={calif.datos_generales.total_habitaciones} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_habitaciones', val)} placeholder="0" className="h-8 text-sm" />
+                      <DebouncedTableInput type="number" value={calif.datos_generales.total_habitaciones} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_habitaciones', val)} placeholder="0" className="h-8 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs text-slate-500">Baños</Label>
-                      <Input type="number" value={calif.datos_generales.total_banos} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_banos', val)} placeholder="0" className="h-8 text-sm" />
+                      <DebouncedTableInput type="number" value={calif.datos_generales.total_banos} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_banos', val)} placeholder="0" className="h-8 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs text-slate-500">Locales</Label>
-                      <Input type="number" value={calif.datos_generales.total_locales} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_locales', val)} placeholder="0" className="h-8 text-sm" />
+                      <DebouncedTableInput type="number" value={calif.datos_generales.total_locales} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'total_locales', val)} placeholder="0" className="h-8 text-sm" />
                     </div>
                     <div>
                       <Label className="text-xs text-slate-500">Área Total (m²)</Label>
-                      <Input type="number" value={calif.datos_generales.area_total_construida} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'area_total_construida', val)} placeholder="0" className="h-8 text-sm" />
+                      <DebouncedTableInput type="number" value={calif.datos_generales.area_total_construida} onChange={(val) => handleCalificacionChange(califIdx, 'datos_generales', 'area_total_construida', val)} placeholder="0" className="h-8 text-sm" />
                     </div>
                   </div>
                 </div>
