@@ -1581,15 +1581,18 @@ export default function Predios() {
     await fetchPrediosFromServer();
   };
 
-  // Función interna que carga desde el servidor
+  // Función interna que carga desde el servidor (forzado)
   const fetchPrediosFromServer = async () => {
     try {
       setLoading(true);
+      setIsRevalidating(true);
       
       // Si está offline, mostrar mensaje
       if (!navigator.onLine) {
         toast.warning('No hay conexión. Use los datos offline disponibles.');
         setLoading(false);
+        setIsRevalidating(false);
+        setDataSource('offline');
         return;
       }
       
@@ -1601,7 +1604,7 @@ export default function Predios() {
       if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
       if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
       
-      console.log('[Predios] Consultando servidor con params:', params.toString());
+      console.log('[Predios] Forzando recarga desde servidor...');
       
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -1614,27 +1617,36 @@ export default function Predios() {
         ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
         : prediosRecibidos;
       
-      console.log('[Predios] Después de filtrar por municipio:', prediosFiltrados.length, 'predios');
-      
       // Ordenar por CNP antes de guardar
       const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
       setPredios(prediosOrdenados);
       setTotal(prediosOrdenados.length);
-      setCurrentPage(1); // Resetear a página 1
+      setCurrentPage(1);
       
-      // IMPORTANTE: Solo actualizar caché offline para la vigencia ACTUAL (año actual)
-      // Las vigencias anteriores se consultan del servidor pero NO se guardan en caché
+      // Actualizar estados de caché
+      const now = new Date().toISOString();
+      setLastSyncTime(now);
+      setDataSource('server');
+      setLoading(false);
+      setIsRevalidating(false);
+      
+      // IMPORTANTE: Solo actualizar caché offline para la vigencia ACTUAL
       const vigenciaActual = String(new Date().getFullYear());
       const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
       
       if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
-        await downloadForOffline(prediosOrdenados, null, filterMunicipio);
+        downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
+          localStorage.setItem(`sync_${filterMunicipio}_date`, now);
+          console.log(`[Cache] ${prediosOrdenados.length} predios actualizados en caché`);
+        }).catch(err => {
+          console.warn('[Cache] Error guardando:', err);
+        });
       }
       
-      setLoading(false);
     } catch (error) {
-      console.error('Error cargando predios desde servidor:', error);
+      console.error('[Predios] Error cargando desde servidor:', error);
       setLoading(false);
+      setIsRevalidating(false);
     }
   };
 
