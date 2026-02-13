@@ -985,46 +985,120 @@ export default function VisorActualizacion() {
   };
   
   // Cargar predios R1/R2
+  // Estado para progreso de descarga paginada
+  const [prediosDownloadProgress, setPrediosDownloadProgress] = useState({ loaded: 0, total: 0 });
+  
   const fetchPrediosR1R2 = async () => {
     setLoadingPrediosR1R2(true);
-    // Si está online, SIEMPRE intentar cargar desde el servidor primero
-    if (navigator.onLine) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const predios = response.data.predios || [];
-        setPrediosR1R2(predios);
-        console.log('[Online] Predios R1/R2 cargados desde servidor:', predios.length);
-        
-        // Guardar automáticamente para modo offline (en background, sin bloquear)
-        if (predios.length > 0) {
-          savePrediosOffline(proyectoId, predios, proyecto?.municipio)
-            .then(() => console.log('[Offline] Predios R1/R2 actualizados en caché'))
-            .catch(saveError => console.warn('[Offline] No se pudieron guardar predios:', saveError));
-        }
-        setLoadingPrediosR1R2(false);
-        return; // Éxito, salir
-      } catch (error) {
-        console.error('Error cargando predios R1/R2 del servidor:', error);
-        // Si falla el servidor, continuar a cargar desde offline como fallback
-      }
-    }
+    setPrediosDownloadProgress({ loaded: 0, total: 0 });
     
-    // Si está offline o el servidor falló, intentar cargar desde IndexedDB
+    // 1. PRIMERO: Cargar desde caché offline INSTANTÁNEAMENTE (Stale-While-Revalidate)
+    let loadedFromCache = false;
     try {
       const prediosOffline = await getPrediosOffline(proyectoId);
       if (prediosOffline && prediosOffline.length > 0) {
         setPrediosR1R2(prediosOffline);
-        toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
-      } else {
-        console.log('[Offline] No hay predios R1/R2 guardados offline');
+        loadedFromCache = true;
+        console.log(`[SWR] Mostrando ${prediosOffline.length} predios desde caché (instantáneo)`);
       }
-    } catch (offlineError) {
-      console.error('Error cargando datos offline:', offlineError);
+    } catch (cacheError) {
+      console.warn('[SWR] No hay datos en caché:', cacheError.message);
     }
+    
+    // 2. Si está online, cargar datos frescos CON PAGINACIÓN (en segundo plano)
+    if (navigator.onLine) {
+      try {
+        const token = localStorage.getItem('token');
+        const PAGE_SIZE = 500; // Lote óptimo para balance velocidad/memoria
+        let allPredios = [];
+        let page = 1;
+        let hasMore = true;
+        let totalPredios = 0;
+        
+        // Cargar primera página y obtener total
+        const firstResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { page: 1, page_size: PAGE_SIZE }
+        });
+        
+        const firstPage = firstResponse.data.predios || [];
+        totalPredios = firstResponse.data.total || firstPage.length;
+        hasMore = firstResponse.data.has_more || false;
+        allPredios = [...firstPage];
+        
+        // Si ya tenemos datos del caché, mostrar progreso pero no bloquear
+        if (loadedFromCache) {
+          // Actualizar con la primera página inmediatamente
+          setPrediosR1R2(allPredios);
+          setPrediosDownloadProgress({ loaded: allPredios.length, total: totalPredios });
+        } else {
+          // Sin caché: mostrar primera página inmediatamente
+          setPrediosR1R2(allPredios);
+          setPrediosDownloadProgress({ loaded: allPredios.length, total: totalPredios });
+          setLoadingPrediosR1R2(false); // Quitar loading después de primera página
+        }
+        
+        console.log(`[Online] Primera página cargada: ${firstPage.length}/${totalPredios} predios`);
+        
+        // Cargar páginas restantes en segundo plano
+        page = 2;
+        while (hasMore) {
+          try {
+            const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { page, page_size: PAGE_SIZE }
+            });
+            
+            const pagePredios = response.data.predios || [];
+            hasMore = response.data.has_more || false;
+            
+            if (pagePredios.length > 0) {
+              allPredios = [...allPredios, ...pagePredios];
+              // Actualizar estado con los nuevos predios
+              setPrediosR1R2(allPredios);
+              setPrediosDownloadProgress({ loaded: allPredios.length, total: totalPredios });
+              console.log(`[Online] Página ${page} cargada: ${allPredios.length}/${totalPredios} predios`);
+            }
+            
+            page++;
+          } catch (pageError) {
+            console.error(`Error cargando página ${page}:`, pageError);
+            break; // Salir si hay error, ya tenemos datos parciales
+          }
+        }
+        
+        console.log(`[Online] Carga completa: ${allPredios.length} predios`);
+        
+        // Guardar TODO en caché para uso offline (sin bloquear UI)
+        if (allPredios.length > 0) {
+          savePrediosOffline(proyectoId, allPredios, proyecto?.municipio)
+            .then(() => console.log('[Offline] Predios R1/R2 actualizados en caché'))
+            .catch(saveError => console.warn('[Offline] No se pudieron guardar predios:', saveError));
+        }
+        
+      } catch (error) {
+        console.error('Error cargando predios R1/R2 del servidor:', error);
+        // Si ya cargamos de caché, mantener esos datos
+        if (!loadedFromCache) {
+          // Si no hay caché y el servidor falló, intentar offline de nuevo
+          try {
+            const prediosOffline = await getPrediosOffline(proyectoId);
+            if (prediosOffline && prediosOffline.length > 0) {
+              setPrediosR1R2(prediosOffline);
+              toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
+            }
+          } catch (offlineError) {
+            console.error('Error cargando datos offline:', offlineError);
+          }
+        }
+      }
+    } else if (!loadedFromCache) {
+      // Offline y sin caché previo
+      toast.warning('Sin conexión y sin datos en caché para este proyecto');
+    }
+    
     setLoadingPrediosR1R2(false);
+    setPrediosDownloadProgress({ loaded: 0, total: 0 });
   };
   
   useEffect(() => {
