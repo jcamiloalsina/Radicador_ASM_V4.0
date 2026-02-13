@@ -16896,6 +16896,8 @@ async def get_predios_proyecto(
     page: int = Query(1, ge=1, description="Número de página"),
     page_size: int = Query(500, ge=50, le=1000, description="Predios por página"),
     estado: Optional[str] = Query(None, description="Filtrar por estado: pendiente, visitado, actualizado"),
+    search: Optional[str] = Query(None, description="Buscar por código predial, dirección o propietario"),
+    zona: Optional[str] = Query(None, description="Filtrar por zona"),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -16908,6 +16910,8 @@ async def get_predios_proyecto(
     - page: Número de página (default 1)
     - page_size: Predios por página (default 500, max 1000)
     - estado: Filtrar por estado_visita (opcional)
+    - search: Búsqueda por código, dirección o propietario
+    - zona: Filtrar por zona (Urbano, Rural)
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver predios")
@@ -16920,6 +16924,17 @@ async def get_predios_proyecto(
     filtro = {"proyecto_id": proyecto_id}
     if estado:
         filtro["estado_visita"] = estado
+    if zona:
+        filtro["zona"] = zona
+    
+    # Agregar búsqueda si se proporciona
+    if search and len(search) >= 3:
+        # Búsqueda por regex en múltiples campos
+        filtro["$or"] = [
+            {"codigo_predial": {"$regex": search, "$options": "i"}},
+            {"direccion": {"$regex": search, "$options": "i"}},
+            {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}}
+        ]
     
     # Contar total PRIMERO (usa índice, es rápido)
     total = await db.predios_actualizacion.count_documents(filtro)
