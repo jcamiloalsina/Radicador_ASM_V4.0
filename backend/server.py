@@ -13766,15 +13766,28 @@ async def process_gdb_upload_background(
                             if geom is None or geom.is_empty:
                                 continue
                             
-                            # Transformar a WGS84
+                            # Transformar a WGS84 para visualización
                             if project:
                                 geom = transform(project, geom)
                             
-                            # Calcular área
-                            try:
-                                area_m2 = geom.area if geom.area > 0 else 0
-                            except:
-                                area_m2 = 0
+                            # IMPORTANTE: Usar Shape_Area original del GDB (ya está en m²)
+                            # NO recalcular porque la conversión desde WGS84 es imprecisa
+                            area_m2 = 0
+                            for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
+                                if area_col in gdf_especifica.columns and pd.notna(row.get(area_col)):
+                                    try:
+                                        area_m2 = float(row[area_col])
+                                        break
+                                    except:
+                                        pass
+                            
+                            # Solo si no hay Shape_Area, calcular aproximado (fallback)
+                            if area_m2 == 0:
+                                try:
+                                    # Usar geometría original (antes de transformar) si está disponible
+                                    area_m2 = row.geometry.area if row.geometry.area > 0 else 0
+                                except:
+                                    area_m2 = 0
                             
                             geom_dict = mapping(geom)
                             
