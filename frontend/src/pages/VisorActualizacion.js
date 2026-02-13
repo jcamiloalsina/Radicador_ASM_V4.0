@@ -255,19 +255,6 @@ export default function VisorActualizacion() {
   
   // Hook de sincronización offline
   const { 
-    isOnline, 
-    isSyncing, 
-    offlineStats, 
-    downloadForOffline, 
-    saveOfflineChange,
-    getOfflineData,
-    forceSync,
-    clearOfflineCache,
-    checkInitialSync,
-    performFullSync,
-    skipInitialSync,
-    requiresSync,
-    syncProgress,
   const {
     isOnline,
     isSyncing,
