@@ -618,97 +618,177 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
   const [capturandoGPS, setCapturandoGPS] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  
+  // Refs para canvas de firmas
+  const canvasVisitadoRef = useRef(null);
+  const canvasReconocedorRef = useRef(null);
+  const [isDrawingVisitado, setIsDrawingVisitado] = useState(false);
+  const [isDrawingReconocedor, setIsDrawingReconocedor] = useState(false);
 
   const capturarUbicacion = async () => {
     if (!navigator.geolocation) {
       toast.error('Tu navegador no soporta geolocalización');
       return;
     }
-
     setCapturandoGPS(true);
-    
     try {
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          { 
-            enableHighAccuracy: true, 
-            timeout: 15000, 
-            maximumAge: 0 
-          }
-        );
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+          enableHighAccuracy: true, timeout: 15000, maximumAge: 0 
+        });
       });
-
       const { latitude, longitude, accuracy } = position.coords;
-      
       setField('coordenadas_gps', {
         latitud: latitude.toFixed(7),
         longitud: longitude.toFixed(7),
         precision: accuracy ? accuracy.toFixed(1) : null,
         fecha_captura: new Date().toISOString()
       });
-      
       toast.success(`📍 Ubicación capturada (precisión: ${accuracy?.toFixed(0) || '?'}m)`);
     } catch (error) {
-      console.error('Error GPS:', error);
-      if (error.code === 1) {
-        toast.error('Permiso de ubicación denegado. Por favor habilita el GPS.');
-      } else if (error.code === 2) {
-        toast.error('No se pudo obtener la ubicación. Verifica que el GPS esté activado.');
-      } else if (error.code === 3) {
-        toast.error('Tiempo de espera agotado. Intenta de nuevo.');
-      } else {
-        toast.error('Error al capturar ubicación');
-      }
+      if (error.code === 1) toast.error('Permiso de ubicación denegado');
+      else if (error.code === 2) toast.error('GPS no disponible');
+      else toast.error('Error al capturar ubicación');
     } finally {
       setCapturandoGPS(false);
     }
   };
 
-  // Manejar captura/selección de fotos - FUNCIONA OFFLINE (base64)
+  // Manejar fotos - FUNCIONA OFFLINE (base64)
   const handleFotoChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    
     for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
         toast.error(`${file.name} supera 5MB`);
         continue;
       }
-      
       try {
-        // Convertir a base64 para almacenamiento offline
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        
         setFotos(prev => [...prev, {
           id: Date.now() + Math.random(),
           data: base64,
           nombre: file.name,
-          tipo: file.type,
           fecha: new Date().toISOString(),
           offline: !navigator.onLine
         }]);
-        
         toast.success(`📷 Foto agregada${!navigator.onLine ? ' (offline)' : ''}`);
       } catch (err) {
-        console.error('Error procesando foto:', err);
         toast.error('Error al procesar la foto');
       }
     }
-    
-    // Limpiar input para permitir seleccionar la misma foto
     e.target.value = '';
   };
 
   const eliminarFoto = (fotoId) => {
     setFotos(prev => prev.filter(f => f.id !== fotoId));
   };
+
+  // ===== FUNCIONES PARA CANVAS DE FIRMAS =====
+  const getCanvasCoords = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    if (e.touches) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  };
+
+  const startDrawing = (e, canvasRef, setIsDrawing, fieldName) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    e.preventDefault();
+    setIsDrawing(true);
+    
+    const ctx = canvas.getContext('2d');
+    const coords = getCanvasCoords(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(coords.x, coords.y);
+  };
+
+  const draw = (e, canvasRef, isDrawing, fieldName) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    e.preventDefault();
+    const ctx = canvas.getContext('2d');
+    const coords = getCanvasCoords(e, canvas);
+    
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = (canvasRef, setIsDrawing, fieldName) => {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Guardar firma como base64
+    const base64 = canvas.toDataURL('image/png');
+    setField(fieldName, base64);
+  };
+
+  const clearCanvas = (canvasRef, fieldName) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Fondo blanco
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setField(fieldName, null);
+  };
+
+  // Inicializar canvas al montar
+  useEffect(() => {
+    [canvasVisitadoRef, canvasReconocedorRef].forEach(ref => {
+      const canvas = ref.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    });
+  }, []);
+
+  // Cargar firma existente si hay
+  useEffect(() => {
+    if (data.firma_visitado_base64 && canvasVisitadoRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvasVisitadoRef.current.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = data.firma_visitado_base64;
+    }
+    if (data.firma_reconocedor_base64 && canvasReconocedorRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvasReconocedorRef.current.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = data.firma_reconocedor_base64;
+    }
+  }, [data.firma_visitado_base64, data.firma_reconocedor_base64]);
 
   return (
   <div className="space-y-4">
@@ -832,25 +912,95 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
       </div>
     </div>
 
-    {/* Firmas */}
+    {/* Firmas - FUNCIONA OFFLINE (canvas → base64) */}
     <div className="border border-purple-200 rounded-lg overflow-hidden">
       <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
-        <h3 className="font-semibold text-purple-800 flex items-center gap-2"><Pen className="w-4 h-4" />13. FIRMAS</h3>
+        <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+          <Pen className="w-4 h-4" />13. FIRMAS
+          <span className="text-xs font-normal text-purple-600">(Dibuje con el dedo o mouse)</span>
+        </h3>
       </div>
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-4">
+        {/* Firma Visitado */}
         <div>
-          <Label className="text-xs">Nombre Visitado</Label>
-          <FastInput value={data.nombre_visitado} onChange={v => setField('nombre_visitado', v)} uppercase placeholder="NOMBRE DEL VISITADO" />
-          <div className="h-16 border-2 border-dashed rounded mt-1 flex items-center justify-center text-slate-400 text-sm">
-            Firma del visitado
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs">Firma del Visitado</Label>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => clearCanvas(canvasVisitadoRef, 'firma_visitado_base64')}
+              className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+            >
+              <X className="w-3 h-3 mr-1" />Limpiar
+            </Button>
           </div>
+          <FastInput 
+            value={data.nombre_visitado} 
+            onChange={v => setField('nombre_visitado', v)} 
+            uppercase 
+            placeholder="NOMBRE DEL VISITADO" 
+            className="mb-2"
+          />
+          <div className="border-2 border-dashed border-purple-300 rounded bg-white touch-none">
+            <canvas
+              ref={canvasVisitadoRef}
+              width={400}
+              height={120}
+              className="w-full h-24 cursor-crosshair"
+              onMouseDown={(e) => startDrawing(e, canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onMouseMove={(e) => draw(e, canvasVisitadoRef, isDrawingVisitado, 'firma_visitado_base64')}
+              onMouseUp={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onMouseLeave={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onTouchStart={(e) => startDrawing(e, canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onTouchMove={(e) => draw(e, canvasVisitadoRef, isDrawingVisitado, 'firma_visitado_base64')}
+              onTouchEnd={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+            />
+          </div>
+          {data.firma_visitado_base64 && (
+            <p className="text-xs text-green-600 mt-1">✅ Firma capturada</p>
+          )}
         </div>
+        
+        {/* Firma Reconocedor */}
         <div>
-          <Label className="text-xs">Nombre Reconocedor</Label>
-          <FastInput value={data.nombre_reconocedor} onChange={v => setField('nombre_reconocedor', v)} uppercase placeholder="NOMBRE DEL RECONOCEDOR" />
-          <div className="h-16 border-2 border-dashed rounded mt-1 flex items-center justify-center text-slate-400 text-sm">
-            Firma del reconocedor
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs">Firma del Reconocedor</Label>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => clearCanvas(canvasReconocedorRef, 'firma_reconocedor_base64')}
+              className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+            >
+              <X className="w-3 h-3 mr-1" />Limpiar
+            </Button>
           </div>
+          <FastInput 
+            value={data.nombre_reconocedor} 
+            onChange={v => setField('nombre_reconocedor', v)} 
+            uppercase 
+            placeholder="NOMBRE DEL RECONOCEDOR" 
+            className="mb-2"
+          />
+          <div className="border-2 border-dashed border-purple-300 rounded bg-white touch-none">
+            <canvas
+              ref={canvasReconocedorRef}
+              width={400}
+              height={120}
+              className="w-full h-24 cursor-crosshair"
+              onMouseDown={(e) => startDrawing(e, canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onMouseMove={(e) => draw(e, canvasReconocedorRef, isDrawingReconocedor, 'firma_reconocedor_base64')}
+              onMouseUp={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onMouseLeave={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onTouchStart={(e) => startDrawing(e, canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onTouchMove={(e) => draw(e, canvasReconocedorRef, isDrawingReconocedor, 'firma_reconocedor_base64')}
+              onTouchEnd={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+            />
+          </div>
+          {data.firma_reconocedor_base64 && (
+            <p className="text-xs text-green-600 mt-1">✅ Firma capturada</p>
+          )}
         </div>
       </div>
     </div>
