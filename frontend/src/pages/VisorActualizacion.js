@@ -949,22 +949,44 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId, fetchProyecto]);
   
-  // Verificar sincronización inicial al cargar el proyecto
+  // Verificar sincronización inicial al cargar el proyecto - AUTOMÁTICO EN SEGUNDO PLANO
   const [syncChecked, setSyncChecked] = useState(false); // Bandera para evitar múltiples checks
   
   useEffect(() => {
-    const verificarSincronizacion = async () => {
+    const verificarYSincronizarAutomatico = async () => {
       // Solo verificar UNA vez por sesión
       if (proyecto && isOnline && !loading && !syncChecked) {
         setSyncChecked(true); // Marcar como verificado
         const necesitaSync = await checkInitialSync();
         if (necesitaSync) {
-          setShowSyncScreen(true);
+          // CAMBIO: Sincronizar en segundo plano SIN mostrar pantalla bloqueante
+          console.log('[Sync] Iniciando sincronización automática en segundo plano...');
+          
+          // Sincronizar en segundo plano (no bloquear UI)
+          setTimeout(async () => {
+            try {
+              const token = localStorage.getItem('token');
+              
+              // Descargar predios en segundo plano
+              const prediosResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+                headers: { Authorization: `Bearer ${token}` }
+              }).catch(e => ({ data: [] }));
+              const prediosDescargados = prediosResponse.data.predios || prediosResponse.data || [];
+              
+              // Guardar para offline
+              if (prediosDescargados.length > 0) {
+                await performFullSync(prediosDescargados, null);
+                console.log(`[Sync] ${prediosDescargados.length} predios sincronizados automáticamente`);
+              }
+            } catch (e) {
+              console.warn('[Sync] Error en sincronización automática:', e.message);
+            }
+          }, 1000);
         }
       }
     };
-    verificarSincronizacion();
-  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked]);
+    verificarYSincronizarAutomatico();
+  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked, proyectoId, performFullSync]);
   
   // Ejecutar sincronización completa cuando se muestra la pantalla de sync
   const handlePerformFullSync = async () => {
