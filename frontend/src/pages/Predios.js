@@ -86,9 +86,6 @@ export default function Predios() {
   const { addListener, isConnected } = useWebSocket() || {};
   
   // Hook de sincronización offline para Conservación
-  const { 
-    isOnline, 
-    isSyncing, 
   const {
     isOnline,
     isSyncing,
