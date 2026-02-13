@@ -297,19 +297,34 @@ const DetallePredioActualizacion = ({
               <p className="text-xs font-semibold text-blue-700 mb-1">📋 R1/R2</p>
               <div className="space-y-1">
                 <div>
-                  <p className="text-[10px] text-blue-600">Área Terreno</p>
-                  <p className="font-bold text-blue-800">{formatArea(predio.area_terreno)}</p>
+                  <p className="text-[10px] text-blue-600">{esMejoraDirecta ? 'Área Construida' : 'Área Terreno'}</p>
+                  <p className="font-bold text-blue-800">
+                    {esMejoraDirecta 
+                      ? formatArea(predio.area_construida)
+                      : formatArea(predio.area_terreno)
+                    }
+                  </p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-blue-600">Área Construida</p>
-                  <p className="font-medium text-blue-700">{formatArea(predio.area_construida)}</p>
-                </div>
+                {!esMejoraDirecta && (
+                  <div>
+                    <p className="text-[10px] text-blue-600">Área Construida</p>
+                    <p className="font-medium text-blue-700">{formatArea(predio.area_construida)}</p>
+                  </div>
+                )}
               </div>
             </div>
             {/* Columna GDB */}
-            <div className={`p-2 rounded border ${geometry ? 'bg-amber-50 border-amber-200' : 'bg-slate-100 border-slate-200'}`}>
-              <p className={`text-xs font-semibold mb-1 ${geometry ? 'text-amber-700' : 'text-slate-500'}`}>🗺️ GDB</p>
-              {geometry ? (
+            <div className={`p-2 rounded border ${esMejoraDirecta ? 'bg-purple-50 border-purple-200' : geometry ? 'bg-amber-50 border-amber-200' : 'bg-slate-100 border-slate-200'}`}>
+              <p className={`text-xs font-semibold mb-1 ${esMejoraDirecta ? 'text-purple-700' : geometry ? 'text-amber-700' : 'text-slate-500'}`}>🗺️ GDB</p>
+              {esMejoraDirecta ? (
+                <div>
+                  <p className="text-[10px] text-purple-600">Geometría</p>
+                  <p className="text-xs text-purple-700">Las mejoras no tienen geometría propia</p>
+                  <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 mt-1">
+                    Usar geometría del terreno
+                  </Badge>
+                </div>
+              ) : geometry ? (
                 <div className="space-y-1">
                   <div>
                     <p className="text-[10px] text-amber-600">Área GDB</p>
