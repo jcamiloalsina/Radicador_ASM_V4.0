@@ -21,7 +21,7 @@ import { useWebSocket } from '../context/WebSocketContext';
 import PredioMap from '../components/PredioMap';
 import useOfflineSync from '../hooks/useOfflineSync';
 import { DownloadProgressBar } from '../components/OfflineComponents';
-import { clearAllOfflineData } from '../utils/offlineDB';
+import { clearAllOfflineData, getPrediosOffline, getPrediosByMunicipioOffline } from '../utils/offlineDB';
 
 // Componentes de Conservación refactorizados
 import { 
