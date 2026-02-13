@@ -3558,6 +3558,8 @@ export default function VisorActualizacion() {
                              feature.properties?.numero_predial ||
                              feature.properties?.CODIGO;
         
+        console.log('[Click Predio] Buscando:', codigoFeature, 'en', prediosR1R2.length, 'predios R1/R2');
+        
         // Buscar predio en datos R1/R2 con matching mejorado (incluye mejoras)
         let predio = prediosR1R2.find(p => {
           const codigoPredio = p.codigo_predial || p.numero_predial;
@@ -3569,6 +3571,8 @@ export default function VisorActualizacion() {
           }
           return false;
         });
+        
+        console.log('[Click Predio] Predio encontrado:', predio ? 'SÍ' : 'NO', predio?.area_terreno, predio?.avaluo_catastral);
         
         if (predio) {
           // Asegurar que el predio tenga todos los campos de las propiedades del feature
