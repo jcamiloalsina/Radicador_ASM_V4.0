@@ -5,6 +5,39 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 9)
+
+### ✅ COMPLETADO: Optimización del Formulario de Visita
+
+**Problema:** El formulario de visita presentaba lentitud debido a que todo el código (~1,400 líneas) estaba en un solo archivo de 7,600 líneas, causando re-renders innecesarios en cada cambio.
+
+**Solución implementada:**
+1. **Separación en Componentes por Página** ✅
+   - `VisitaPagina1.jsx` - Info básica, tipo predio, PH/Condominio
+   - `VisitaPagina2.jsx` - Info jurídica, propietarios, notificación
+   - `VisitaPagina3.jsx` - Construcciones y calificación
+   - `VisitaPagina4.jsx` - Áreas de terreno, croquis/fotos
+   - `VisitaPagina5.jsx` - GPS, observaciones, firmas, datos visita
+
+2. **Hook Personalizado `useVisitaForm.js`** ✅
+   - Centraliza toda la lógica de estado del formulario
+   - Funciones memoizadas con `useCallback`
+   - Setters optimizados con `startTransition`
+
+3. **Componente Contenedor `VisitaFormContainer.jsx`** ✅
+   - Lazy loading de páginas con `React.lazy()`
+   - `Suspense` con loader mientras carga la página
+   - Orquesta la navegación entre páginas
+
+4. **Optimizaciones de Rendimiento** ✅
+   - `React.memo()` en cada componente de página
+   - `DebouncedInput` para evitar re-renders frecuentes
+   - Reducción del archivo principal: 7,612 → 6,234 líneas (~18%)
+
+**Ubicación:** `/app/frontend/src/components/actualizacion/visita/`
+
+---
+
 ## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 8)
 
 ### ✅ COMPLETADO: Mejoras al Sistema Offline y UX
