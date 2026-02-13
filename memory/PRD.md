@@ -48,6 +48,25 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Carga completa de 3,234 predios en ~7 páginas (background)
 - Las geometrías del mapa cargan independientemente de los datos R1/R2
 
+### ✅ MEJORA: Caché de Predios por Estado para Filtrado Instantáneo
+
+**Problema:** Al cambiar filtros (Pendientes/Visitados/Actualizados), había que iterar toda la lista cada vez.
+
+**Solución implementada:**
+1. **Índice precalculado por estado** ✅
+   - `prediosPorEstado.todos` → Array completo
+   - `prediosPorEstado.pendiente` → Solo pendientes
+   - `prediosPorEstado.visitado` → Solo visitados
+   - `prediosPorEstado.actualizado` → Solo actualizados
+   - `prediosPorEstado.mejoras` → Solo con mejoras
+
+2. **Acceso O(1)** ✅
+   - Cambiar filtro = acceder directamente al array precalculado
+   - Sin necesidad de `.filter()` en cada render
+   - Estadísticas calculadas desde el caché
+
+**Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
+
 ---
 
 ## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 10 - Sesión 2)
