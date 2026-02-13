@@ -2721,51 +2721,6 @@ export default function VisorPredios() {
                 </div>
               )}
 
-              {/* Formato Planas - Origen Local */}
-              {formatoCoordenadas === 'planas_local' && (
-                <div className="space-y-2">
-                  <div className="bg-purple-50 border border-purple-200 rounded p-2">
-                    <label className="text-xs text-purple-800 font-medium block mb-1">Seleccionar Origen</label>
-                    <Select value={origenLocal} onValueChange={setOrigenLocal}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="bogota">Bogotá (74°04'W)</SelectItem>
-                        <SelectItem value="este">Este (71°04'W)</SelectItem>
-                        <SelectItem value="oeste">Oeste (77°04'W)</SelectItem>
-                        <SelectItem value="este_este">Este-Este (68°04'W)</SelectItem>
-                        <SelectItem value="oeste_oeste">Oeste-Oeste (80°04'W)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-slate-600 font-medium">Norte (N)</label>
-                      <Input
-                        placeholder="1150000"
-                        value={coordenadasPlanas.norte}
-                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, norte: e.target.value }))}
-                        className="text-sm h-8 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-600 font-medium">Este (E)</label>
-                      <Input
-                        placeholder="1080000"
-                        value={coordenadasPlanas.este}
-                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, este: e.target.value }))}
-                        className="text-sm h-8 font-mono"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-500 bg-slate-100 p-1.5 rounded">
-                    Falso N/E: 1'000,000 m c/u<br/>
-                    <span className="text-blue-600">Ej: N 1,150,000 / E 1,080,000</span>
-                  </p>
-                </div>
-              )}
-
               {/* Botones de acción */}
               <div className="flex gap-2 pt-1">
                 <Button
