@@ -356,9 +356,86 @@ const CrearPredioNuevoModal = ({
     return { areaTerrenoTotal, areaConstruidaTotal };
   };
   
+  // ===== FUNCIONES PARA FORMULARIO DE VISITA =====
+  const setVisitaField = (field, value) => {
+    setVisitaData(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const capturarUbicacion = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no soporta geolocalización');
+      return;
+    }
+    setCapturandoGPS(true);
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+          enableHighAccuracy: true, timeout: 15000, maximumAge: 0 
+        });
+      });
+      const { latitude, longitude, accuracy } = position.coords;
+      setVisitaData(prev => ({
+        ...prev,
+        coordenadas_gps: {
+          latitud: latitude.toFixed(7),
+          longitud: longitude.toFixed(7),
+          precision: accuracy ? accuracy.toFixed(1) : null,
+          fecha_captura: new Date().toISOString()
+        }
+      }));
+      toast.success(`📍 Ubicación capturada (precisión: ${accuracy?.toFixed(0) || '?'}m)`);
+    } catch (error) {
+      if (error.code === 1) toast.error('Permiso de ubicación denegado');
+      else if (error.code === 2) toast.error('GPS no disponible');
+      else toast.error('Error al capturar ubicación');
+    } finally {
+      setCapturandoGPS(false);
+    }
+  };
+  
+  const handleFotoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} supera 5MB`);
+        continue;
+      }
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setFotos(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          data: base64,
+          nombre: file.name,
+          fecha: new Date().toISOString(),
+          offline: !navigator.onLine
+        }]);
+        toast.success(`📷 Foto agregada${!navigator.onLine ? ' (offline)' : ''}`);
+      } catch (err) {
+        toast.error('Error al procesar la foto');
+      }
+    }
+    e.target.value = '';
+  };
+
+  // Verificar si el formulario de visita está completo
+  const validarVisita = () => {
+    if (!visitaData.coordenadas_gps?.latitud || !visitaData.coordenadas_gps?.longitud) {
+      return 'Debe capturar las coordenadas GPS';
+    }
+    if (!visitaData.nombre_reconocedor?.trim()) {
+      return 'Debe ingresar el nombre del reconocedor';
+    }
+    return null;
+  };
+  
   // Guardar predio
   const handleGuardar = async () => {
-    // Validaciones
+    // Validaciones básicas
     if (!formData.direccion.trim()) {
       toast.error('Debe ingresar la dirección del predio');
       setActiveTab('propietario');
@@ -374,6 +451,14 @@ const CrearPredioNuevoModal = ({
     
     if (verificacionCodigo?.estado === 'existente') {
       toast.error('El código ya existe. Verifique antes de guardar.');
+      return;
+    }
+    
+    // Validar formulario de visita (OBLIGATORIO)
+    const errorVisita = validarVisita();
+    if (errorVisita) {
+      toast.error(errorVisita);
+      setActiveTab('visita');
       return;
     }
     
@@ -428,12 +513,37 @@ const CrearPredioNuevoModal = ({
           puntaje: parseFloat(c.puntaje) || 0,
           area_construida: parseFloat(c.area_construida) || 0
         })),
+        // FORMULARIO DE VISITA COMPLETO
         formato_visita: {
-          observaciones: '',
-          fecha_visita: new Date().toISOString().split('T')[0]
-        }
+          ...visitaData,
+          fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha }))
+        },
+        // Indicar el rol para que el backend sepa si crear propuesta o directamente
+        rol_creador: userRole
       };
       
+      // Si está OFFLINE, guardar localmente
+      if (!navigator.onLine) {
+        await saveCambioPendiente(proyectoId || 'actualizacion', {
+          tipo: 'predio_nuevo',
+          datos: payload,
+          codigo_predial: codigoCompleto,
+          fecha: new Date().toISOString()
+        });
+        
+        toast.success(
+          <div>
+            <p className="font-semibold">📴 Guardado offline</p>
+            <p className="text-sm">Se sincronizará cuando haya conexión</p>
+          </div>
+        );
+        
+        onSuccess && onSuccess({ codigo_predial: codigoCompleto, offline: true });
+        handleClose();
+        return;
+      }
+      
+      // Si está ONLINE, enviar al servidor
       const response = await fetch(
         `${API_URL}/api/actualizacion/proyectos/${proyectoId}/predios-nuevos`,
         {
@@ -452,13 +562,26 @@ const CrearPredioNuevoModal = ({
         throw new Error(data.detail || 'Error al crear el predio');
       }
       
-      toast.success(
-        <div>
-          <p className="font-semibold">Predio creado exitosamente</p>
-          <p className="text-sm">Código: {data.codigo_predial}</p>
-          <p className="text-sm">Homologado: {data.codigo_homologado}</p>
-        </div>
-      );
+      // Mensaje diferente según si se creó propuesta o predio directo
+      if (data.propuesta_id) {
+        // Gestor: se creó propuesta pendiente
+        toast.success(
+          <div>
+            <p className="font-semibold">📤 Enviado para aprobación</p>
+            <p className="text-sm">El coordinador revisará la solicitud</p>
+            <p className="text-sm text-slate-500">Código: {data.codigo_predial}</p>
+          </div>
+        );
+      } else {
+        // Coordinador/Admin: se creó directamente
+        toast.success(
+          <div>
+            <p className="font-semibold">✅ Predio creado exitosamente</p>
+            <p className="text-sm">Código: {data.codigo_predial}</p>
+            <p className="text-sm">Homologado: {data.codigo_homologado}</p>
+          </div>
+        );
+      }
       
       onSuccess && onSuccess(data);
       handleClose();
