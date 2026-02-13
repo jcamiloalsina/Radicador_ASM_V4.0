@@ -153,6 +153,12 @@ export default function Predios() {
   const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
   const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
   
+  // ====== ESTADOS PARA CACHÉ INTELIGENTE (Stale-While-Revalidate) ======
+  const [dataSource, setDataSource] = useState('loading'); // 'cache', 'server', 'loading', 'offline'
+  const [lastSyncTime, setLastSyncTime] = useState(null); // Timestamp de última sincronización
+  const [isRevalidating, setIsRevalidating] = useState(false); // Indica si está actualizando en segundo plano
+  const [cacheAge, setCacheAge] = useState(null); // Antigüedad del caché en minutos
+  
   // ID del predio nuevo que estamos editando (para actualizaciones)
   const [editingPredioNuevoId, setEditingPredioNuevoId] = useState(null);
   // URL de retorno después de editar un predio (cuando viene de Pendientes)
