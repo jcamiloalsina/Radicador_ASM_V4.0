@@ -83,6 +83,10 @@ export default function GestionPrediosActualizacion() {
   const [catalogos, setCatalogos] = useState(null);
   const [usingOfflineData, setUsingOfflineData] = useState(false);
   
+  // Ref para evitar llamadas múltiples
+  const fetchingRef = React.useRef(false);
+  const hasFetchedRef = React.useRef(false);
+  
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState('todos');
