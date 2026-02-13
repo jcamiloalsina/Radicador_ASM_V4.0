@@ -4174,6 +4174,22 @@ export default function VisorActualizacion() {
       
       {/* Map Container */}
       <div className="flex-1 relative">
+        {/* Indicador de progreso de descarga de predios R1/R2 */}
+        {prediosDownloadProgress.total > 0 && prediosDownloadProgress.loaded < prediosDownloadProgress.total && (
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[500]">
+            <div className="bg-amber-500/95 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-3 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Cargando datos: {prediosDownloadProgress.loaded}/{prediosDownloadProgress.total}</span>
+              <div className="w-24 h-2 bg-amber-300 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-white transition-all duration-300" 
+                  style={{ width: `${(prediosDownloadProgress.loaded / prediosDownloadProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Indicador discreto de sincronización en segundo plano */}
         {isBackgroundSyncing && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[500]">
