@@ -639,7 +639,29 @@ export default function GestionPrediosActualizacion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proyectoId]);
   
-  // Filtrar predios
+  // Búsqueda con debounce - hacer búsqueda en servidor cuando hay >= 3 caracteres
+  useEffect(() => {
+    if (!proyectoId || !isOnline) return;
+    
+    // Si el término de búsqueda tiene 3+ caracteres, buscar en servidor
+    if (searchTerm && searchTerm.length >= 3) {
+      const debounceTimer = setTimeout(() => {
+        hasFetchedRef.current = false; // Permitir nueva fetch
+        fetchPredios(searchTerm);
+      }, 500); // 500ms debounce
+      
+      return () => clearTimeout(debounceTimer);
+    } else if (searchTerm === '' || searchTerm.length < 3) {
+      // Si se borra la búsqueda, recargar datos originales
+      if (hasFetchedRef.current && predios.length < 500) {
+        hasFetchedRef.current = false;
+        fetchPredios();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, proyectoId, isOnline]);
+  
+  // Filtrar predios localmente (para filtros de estado/zona, no búsqueda)
   const prediosFiltrados = predios.filter(predio => {
     // Filtro de búsqueda
     if (searchTerm) {
