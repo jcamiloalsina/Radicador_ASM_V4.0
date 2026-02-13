@@ -2439,7 +2439,7 @@ export default function Predios() {
             <Badge 
               variant="outline" 
               className="bg-blue-100 text-blue-700 border-blue-300 cursor-pointer"
-              onClick={forceSync}
+              onClick={() => syncPendingChanges(true)}
               title="Click para sincronizar"
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
