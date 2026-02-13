@@ -5,6 +5,32 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 12 - Verificación de Calidad)
+
+### ✅ VERIFICADO: Carga de Datos R1/R2 Funciona Correctamente
+
+**Contexto:** El handoff anterior reportó que los datos R1/R2 no se cargaban en `VisorActualizacion.js` a pesar de mostrar "Offline Ready". Se realizó una investigación completa.
+
+**Hallazgos:**
+1. Los datos R1/R2 **SÍ cargan correctamente** - verificado con testing automatizado
+2. La paginación del backend funciona bien (3,234 predios en 7 páginas de 500)
+3. El frontend muestra los contadores correctos: Total: 3234, Pendientes: 3220, Visitados: 10, Actualizados: 4
+
+**Testing (iteration_44.json):**
+- Carga de datos R1/R2: ✅ PASSED
+- Click en polígono: ✅ PASSED
+- Filtros de estado: ✅ PASSED
+- Apertura formulario visita: ✅ PASSED
+- Indicador offline: ✅ PASSED
+- **Success rate: 100%**
+
+**Nota sobre discrepancia "Mejoras":**
+- UI muestra "Mejoras: 1969" (conteo de construcciones que son mejoras)
+- Caché muestra 233 (conteo de terrenos que TIENEN mejoras asociadas)
+- Esto es comportamiento correcto - son métricas diferentes
+
+---
+
 ## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 11 - Optimización de Rendimiento)
 
 ### ✅ RESUELTO: Descarga Inicial de Datos MUY LENTA
