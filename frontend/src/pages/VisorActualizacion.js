@@ -3873,30 +3873,16 @@ export default function VisorActualizacion() {
               {downloadProgress.phase}
             </Badge>
           )}
-          {/* Cambios pendientes con botón de sincronización */}
+          {/* Cambios pendientes - solo indicador informativo */}
           {offlineStats.cambiosPendientes > 0 && (
             <Badge 
               variant="outline" 
-              className="text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-200"
-              onClick={() => setShowSyncDialog(true)}
-              title="Click para ver opciones de sincronización"
+              className="text-xs bg-blue-100 text-blue-700 border-blue-300"
+              title={isSyncing ? 'Sincronizando...' : 'Cambios pendientes - Se sincronizarán automáticamente'}
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
-              {offlineStats.cambiosPendientes} pendientes
+              {isSyncing ? 'Sincronizando...' : `${offlineStats.cambiosPendientes} pendientes`}
             </Badge>
-          )}
-          {/* Botón de Sincronizar visible siempre que haya conexión */}
-          {isOnline && offlineStats.cambiosPendientes > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncWithHistory}
-              disabled={isSyncing}
-              className="text-xs bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
-            >
-              <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
-              Sincronizar
-            </Button>
           )}
           {watchingPosition && gpsAccuracy && (
             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
