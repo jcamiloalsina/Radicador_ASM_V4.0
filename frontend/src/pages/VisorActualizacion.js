@@ -493,31 +493,6 @@ export default function VisorActualizacion() {
     return codigo ? `visita_draft_${proyectoId}_${codigo}` : null;
   }, [selectedPredio, proyectoId]);
   
-  // Auto-guardar en localStorage cuando cambia visitaData
-  useEffect(() => {
-    const storageKey = getVisitaStorageKey();
-    if (!storageKey || !showVisitaModal) return;
-    
-    // Debounce: guardar después de 1 segundo de inactividad
-    const timeoutId = setTimeout(() => {
-      try {
-        const draftData = {
-          visitaData: visitaData,
-          visitaPropietarios: visitaPropietarios,
-          visitaConstrucciones: visitaConstrucciones,
-          visitaPagina: visitaPagina,
-          savedAt: new Date().toISOString()
-        };
-        localStorage.setItem(storageKey, JSON.stringify(draftData));
-        console.log('[Visita] Borrador auto-guardado');
-      } catch (e) {
-        console.warn('[Visita] Error guardando borrador:', e);
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timeoutId);
-  }, [visitaData, visitaPropietarios, visitaConstrucciones, visitaPagina, getVisitaStorageKey, showVisitaModal]);
-  
   // Recuperar borrador al abrir el formulario
   const recuperarBorradorVisita = useCallback(() => {
     const storageKey = getVisitaStorageKey();
