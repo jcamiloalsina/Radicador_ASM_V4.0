@@ -5566,69 +5566,81 @@ export default function VisorActualizacion() {
         </DialogContent>
       </Dialog>
       
-      {/* Modal de Formato de Visita - Componente Optimizado */}
-      <VisitaFormContainer
+      {/* Modal de Formato de Visita - NUEVO: Estado completamente encapsulado para máximo rendimiento */}
+      <VisitaFormModal
         open={showVisitaModal}
-        onOpenChange={setShowVisitaModal}
-        visitaPagina={visitaPagina}
-        setVisitaPagina={setVisitaPagina}
-        visitaData={visitaData}
-        setVisitaData={setVisitaData}
-        visitaConstrucciones={visitaConstrucciones}
-        setVisitaConstrucciones={setVisitaConstrucciones}
-        visitaCalificaciones={visitaCalificaciones}
-        setVisitaCalificaciones={setVisitaCalificaciones}
-        visitaPropietarios={visitaPropietarios}
-        agregarPropietario={agregarPropietarioVisita}
-        eliminarPropietario={eliminarPropietarioVisita}
-        actualizarPropietario={actualizarPropietarioVisita}
-        agregarConstruccion={() => {
-          const nextLetter = String.fromCharCode(65 + visitaConstrucciones.length);
-          setVisitaConstrucciones(prev => [...prev, { unidad: nextLetter, codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }]);
+        onClose={() => setShowVisitaModal(false)}
+        onSave={async (formData) => {
+          // El nuevo componente pasa todos los datos del formulario de una sola vez
+          setSavingVisita(true);
+          try {
+            const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+            const datosActualizacion = {
+              fecha_visita: formData.visitaData.fecha_visita,
+              hora_visita: formData.visitaData.hora_visita,
+              persona_atiende: formData.visitaData.persona_atiende,
+              relacion_predio: formData.visitaData.relacion_predio,
+              acceso_predio: formData.visitaData.acceso_predio,
+              estado_predio: formData.visitaData.estado_predio,
+              servicios_publicos: formData.visitaData.servicios_publicos,
+              sin_cambios: formData.visitaData.sin_cambios,
+              observaciones: formData.visitaData.observaciones_generales,
+              tipo_predio: formData.visitaData.tipo_predio,
+              direccion_verificada: formData.visitaData.direccion_visita,
+              destino_economico: formData.visitaData.destino_economico_visita,
+              coordenadas_gps: formData.visitaData.coordenadas_gps,
+              propietarios: formData.propietarios,
+              construcciones: formData.construcciones,
+              calificaciones: formData.calificaciones
+            };
+
+            if (isOnline) {
+              await axios.patch(`${API}/api/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+              });
+              toast.success('Visita guardada correctamente');
+            } else {
+              await saveCambioPendiente({
+                tipo: 'visita',
+                proyecto_id: proyectoId,
+                datos: { codigo_predial: codigoPredial, ...datosActualizacion }
+              });
+              toast.info('Visita guardada offline - Se sincronizará al recuperar conexión');
+            }
+
+            setShowVisitaModal(false);
+            setPrediosR1R2(prev => prev.map(p => 
+              (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
+                ? { ...p, estado_visita: 'visitado', sin_cambios: formData.visitaData.sin_cambios }
+                : p
+            ));
+          } catch (error) {
+            console.error('[Visita] Error:', error);
+            if (!isOnline || error.code === 'ERR_NETWORK') {
+              try {
+                const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+                await saveCambioPendiente({
+                  tipo: 'visita',
+                  proyecto_id: proyectoId,
+                  datos: { codigo_predial: codigoPredial, ...formData.visitaData }
+                });
+                toast.info('Visita guardada offline');
+                setShowVisitaModal(false);
+              } catch (offlineError) {
+                toast.error('Error al guardar visita');
+              }
+            } else {
+              toast.error('Error al guardar visita');
+            }
+          } finally {
+            setSavingVisita(false);
+          }
         }}
-        eliminarConstruccion={(idx) => setVisitaConstrucciones(prev => prev.filter((_, i) => i !== idx))}
-        agregarCalificacion={() => {
-          setVisitaCalificaciones(prev => [...prev, { 
-            id: prev.length + 1,
-            estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
-            acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
-            bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
-            cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
-            industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
-            datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
-          }]);
-        }}
-        eliminarCalificacion={(idx) => setVisitaCalificaciones(prev => prev.filter((_, i) => i !== idx))}
-        fotos={fotos}
-        setFotos={setFotos}
-        handleFotoCroquisChange={handleFotoCroquisChange}
-        eliminarFotoCroquis={eliminarFotoCroquis}
-        handleFotoChange={handleFotoChange}
-        userPosition={userPosition}
-        gpsAccuracy={gpsAccuracy}
-        watchingPosition={watchingPosition}
-        startWatchingPosition={startWatchingPosition}
-        canvasVisitadoRef={canvasVisitadoRef}
-        canvasReconocedorRef={canvasReconocedorRef}
-        startDrawingVisitado={startDrawingVisitado}
-        drawVisitado={drawVisitado}
-        stopDrawingVisitado={stopDrawingVisitado}
-        startDrawingReconocedor={startDrawingReconocedor}
-        drawReconocedor={drawReconocedor}
-        stopDrawingReconocedor={stopDrawingReconocedor}
-        limpiarFirmaVisitado={limpiarFirmaVisitado}
-        limpiarFirmaReconocedor={limpiarFirmaReconocedor}
-        abrirModalFirma={abrirModalFirma}
-        selectedPredio={selectedPredio}
+        predio={selectedPredio}
         proyecto={proyecto}
-        tipoVisita={tipoVisita}
-        mejoraSeleccionada={mejoraSeleccionada}
-        predioMejoraSeleccionada={predioMejoraSeleccionada}
-        handleGuardarVisita={handleGuardarVisita}
         saving={savingVisita}
       />
       
-      {/* Modal de Propuesta de Cambio */}
       {/* Modal de Propuesta de Cambio */}
       <Dialog open={showPropuestaModal} onOpenChange={setShowPropuestaModal}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
