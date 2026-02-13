@@ -257,10 +257,22 @@ export default function VisorActualizacion() {
     skipInitialSync,
     requiresSync,
     syncProgress,
-    isInitialSyncComplete,
+  const {
+    isOnline,
+    isSyncing,
     isBackgroundSyncing,
-    backgroundSyncMessage,
-    startBackgroundSync
+    offlineStats,
+    hasOffline,
+    lastSync,
+    syncProgress,
+    pendingChangesCount,
+    downloadForOffline,
+    downloadFreshData,
+    syncPendingChanges,
+    saveChangeOffline,
+    refreshStats,
+    getPrediosOffline: getPrediosFromHook,
+    getGeometriasOffline: getGeometriasFromHook
   } = useOfflineSync(proyectoId, 'actualizacion');
   
   // Estado para la pantalla de sincronización inicial
