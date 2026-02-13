@@ -3600,6 +3600,12 @@ export default function VisorActualizacion() {
             cargarVisitaExistente(predio);
           }
         } else {
+          // Si los datos R1/R2 aún están cargando, mostrar mensaje
+          if (loadingPrediosR1R2) {
+            toast.info('Cargando datos R1/R2...', { description: 'Por favor espere un momento' });
+            return;
+          }
+          
           // Si no existe en R1/R2, crear objeto básico desde la geometría
           const predioBasico = {
             codigo_predial: codigoFeature || 'Sin código',
@@ -3611,8 +3617,16 @@ export default function VisorActualizacion() {
             area_construida: feature.properties?.area_construida || '',
             estado_visita: 'pendiente',
             propietarios: [],
-            zonas_fisicas: []
+            zonas_fisicas: [],
+            _sinDatosR1R2: true // Marcar para mostrar alerta en UI
           };
+          
+          // Mostrar alerta de que este predio no tiene datos R1/R2
+          if (prediosR1R2.length > 0) {
+            toast.warning('Predio sin datos R1/R2', { description: 'Este predio no tiene información alfanumérica cargada' });
+          } else {
+            toast.warning('Datos R1/R2 no disponibles', { description: 'Los datos alfanuméricos no se han cargado correctamente' });
+          }
           
           setSelectedPredio(predioBasico);
           setShowDetalleSimplificado(true);
