@@ -14996,6 +14996,10 @@ async def recalcular_areas_gdb(
     """
     Recalcula las áreas de las geometrías GDB existentes y actualiza los predios relacionados.
     Útil para geometrías que se cargaron antes de implementar el cálculo de área.
+    
+    NOTA: Este método usa una conversión aproximada (111320 m/grado) que puede tener
+    errores de ~1.5% en Colombia. Para áreas precisas, se recomienda reprocesar el GDB
+    original que contiene el Shape_Area correcto.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores")
