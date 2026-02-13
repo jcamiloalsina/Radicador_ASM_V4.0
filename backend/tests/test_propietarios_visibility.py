@@ -254,7 +254,7 @@ class TestPropietariosVisibility:
         response = requests.get(
             f"{BASE_URL}/api/actualizacion/proyectos/{PROYECTO_ID}/predios",
             headers=auth_headers,
-            params={"page_size": 10}
+            params={"page_size": 50}  # Mínimo 50 según validación del endpoint
         )
         
         assert response.status_code == 200
