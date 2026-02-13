@@ -670,10 +670,16 @@ const CrearPredioNuevoModal = ({
         )}
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="ubicacion">Código Nacional (30 dígitos)</TabsTrigger>
-            <TabsTrigger value="propietario">Propietario (R1)</TabsTrigger>
-            <TabsTrigger value="fisico">Físico (R2)</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="ubicacion">1. Código</TabsTrigger>
+            <TabsTrigger value="propietario">2. Propietario</TabsTrigger>
+            <TabsTrigger value="fisico">3. Físico</TabsTrigger>
+            <TabsTrigger value="visita" className="relative">
+              4. Visita
+              {(!visitaData.coordenadas_gps?.latitud) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </TabsTrigger>
           </TabsList>
           
           {/* TAB: Código Nacional */}
