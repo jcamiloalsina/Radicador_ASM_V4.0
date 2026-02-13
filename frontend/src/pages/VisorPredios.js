@@ -2566,12 +2566,12 @@ export default function VisorPredios() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 px-3 pb-3">
-              {/* Selector de formato */}
-              <div className="flex gap-1">
+              {/* Selector de formato - 4 opciones */}
+              <div className="grid grid-cols-2 gap-1">
                 <Button
                   variant={formatoCoordenadas === 'decimal' ? 'default' : 'outline'}
                   size="sm"
-                  className="text-xs flex-1"
+                  className="text-xs"
                   onClick={() => setFormatoCoordenadas('decimal')}
                 >
                   Decimales
@@ -2579,10 +2579,26 @@ export default function VisorPredios() {
                 <Button
                   variant={formatoCoordenadas === 'dms' ? 'default' : 'outline'}
                   size="sm"
-                  className="text-xs flex-1"
+                  className="text-xs"
                   onClick={() => setFormatoCoordenadas('dms')}
                 >
                   GMS
+                </Button>
+                <Button
+                  variant={formatoCoordenadas === 'planas_nacional' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setFormatoCoordenadas('planas_nacional')}
+                >
+                  Origen Nacional
+                </Button>
+                <Button
+                  variant={formatoCoordenadas === 'planas_local' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setFormatoCoordenadas('planas_local')}
+                >
+                  Origen Local
                 </Button>
               </div>
 
@@ -2610,7 +2626,6 @@ export default function VisorPredios() {
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 bg-slate-100 p-1.5 rounded">
-                    <strong>Colombia:</strong> Lat 0° a 12°N, Lon -67° a -79°W<br/>
                     <span className="text-blue-600">Ej: 8.230500, -73.356300</span>
                   </p>
                 </div>
@@ -2677,6 +2692,84 @@ export default function VisorPredios() {
                   </div>
                   <p className="text-xs text-slate-500 bg-slate-100 p-1.5 rounded">
                     <span className="text-blue-600">Ej: 8°13'49.80"N, 73°21'22.68"W</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Formato Planas - Origen Nacional */}
+              {formatoCoordenadas === 'planas_nacional' && (
+                <div className="space-y-2">
+                  <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs">
+                    <p className="font-semibold text-amber-800">MAGNA-SIRGAS / Origen Nacional</p>
+                    <p className="text-amber-700">Falso N: 2'000,000 m | Falso E: 5'000,000 m</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-slate-600 font-medium">Norte (N)</label>
+                      <Input
+                        placeholder="1850000"
+                        value={coordenadasPlanas.norte}
+                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, norte: e.target.value }))}
+                        className="text-sm h-8 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-600 font-medium">Este (E)</label>
+                      <Input
+                        placeholder="4950000"
+                        value={coordenadasPlanas.este}
+                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, este: e.target.value }))}
+                        className="text-sm h-8 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 bg-slate-100 p-1.5 rounded">
+                    <span className="text-blue-600">Ej: N 1,850,000 / E 4,950,000</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Formato Planas - Origen Local */}
+              {formatoCoordenadas === 'planas_local' && (
+                <div className="space-y-2">
+                  <div className="bg-purple-50 border border-purple-200 rounded p-2">
+                    <label className="text-xs text-purple-800 font-medium block mb-1">Seleccionar Origen</label>
+                    <Select value={origenLocal} onValueChange={setOrigenLocal}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bogota">Bogotá (74°04'W)</SelectItem>
+                        <SelectItem value="este">Este (71°04'W)</SelectItem>
+                        <SelectItem value="oeste">Oeste (77°04'W)</SelectItem>
+                        <SelectItem value="este_este">Este-Este (68°04'W)</SelectItem>
+                        <SelectItem value="oeste_oeste">Oeste-Oeste (80°04'W)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-slate-600 font-medium">Norte (N)</label>
+                      <Input
+                        placeholder="1150000"
+                        value={coordenadasPlanas.norte}
+                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, norte: e.target.value }))}
+                        className="text-sm h-8 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-600 font-medium">Este (E)</label>
+                      <Input
+                        placeholder="1080000"
+                        value={coordenadasPlanas.este}
+                        onChange={(e) => setCoordenadasPlanas(prev => ({ ...prev, este: e.target.value }))}
+                        className="text-sm h-8 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 bg-slate-100 p-1.5 rounded">
+                    Falso N/E: 1'000,000 m c/u<br/>
+                    <span className="text-blue-600">Ej: N 1,150,000 / E 1,080,000</span>
                   </p>
                 </div>
               )}
