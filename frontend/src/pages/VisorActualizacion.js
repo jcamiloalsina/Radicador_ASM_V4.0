@@ -31,8 +31,8 @@ import DebouncedInput from '../components/DebouncedInput';
 import CrearPredioNuevoModal from '../components/actualizacion/CrearPredioNuevoModal';
 import FinalizarProyectoModal from '../components/actualizacion/FinalizarProyectoModal';
 import DetallePredioActualizacion from '../components/actualizacion/DetallePredioActualizacion';
-// Formulario de Visita Optimizado (lazy loaded por páginas)
-import { VisitaFormContainer } from '../components/actualizacion/visita';
+// Formulario de Visita Optimizado - Estado completamente encapsulado
+import VisitaFormModal from '../components/actualizacion/visita/VisitaFormModal';
 
 // UI Components
 import { Button } from '../components/ui/button';
