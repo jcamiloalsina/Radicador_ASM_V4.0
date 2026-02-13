@@ -16897,6 +16897,7 @@ async def get_predios_proyecto(
         "direccion": 1,
         "propietario": 1,
         "nombre_propietario": 1,
+        "propietarios": 1,  # IMPORTANTE: Incluir array de propietarios para mostrar nombre
         "destino_economico": 1,
         "area_terreno": 1,
         "area_construida": 1,
@@ -16911,13 +16912,23 @@ async def get_predios_proyecto(
         "sin_cambios": 1,
         "propuesta_pendiente": 1,
         "matricula_inmobiliaria": 1,
-        "codigo_homologado": 1
+        "codigo_homologado": 1,
+        "avaluo_catastral": 1,
+        "avaluo": 1
     }
     
     predios = await db.predios_actualizacion.find(
         filtro,
         projection
     ).skip(skip).limit(page_size).to_list(page_size)
+    
+    # Extraer nombre_propietario del array propietarios si no existe directamente
+    for predio in predios:
+        if not predio.get('nombre_propietario') and not predio.get('propietario'):
+            propietarios = predio.get('propietarios', [])
+            if propietarios and len(propietarios) > 0:
+                primer_prop = propietarios[0]
+                predio['nombre_propietario'] = primer_prop.get('nombre_propietario', '')
     
     # Enriquecer con datos de la colección principal de predios (optimizado)
     if predios:
