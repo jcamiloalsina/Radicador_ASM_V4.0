@@ -202,24 +202,24 @@ const VisitaPagina4 = memo(({
         <div className="p-4">
           <p className="text-sm text-slate-600 mb-3">Cargue fotos del croquis del terreno y las construcciones. Incluya información de colindantes y cotas cuando aplique.</p>
           
-          {/* Input para cámara (Android/iOS) */}
+          {/* Input para cámara (Android/iOS) - usando ref */}
           <input 
+            ref={cameraInputRef}
             type="file" 
             accept="image/*" 
             capture="environment"
             onChange={handleFotoCroquisChange} 
             className="hidden" 
-            id="input-croquis-camera" 
           />
           
-          {/* Input para galería */}
+          {/* Input para galería - usando ref */}
           <input 
+            ref={galleryInputRef}
             type="file" 
             accept="image/*" 
             multiple 
             onChange={handleFotoCroquisChange} 
             className="hidden" 
-            id="input-croquis-gallery" 
           />
           
           {/* Grid de fotos cargadas */}
@@ -237,12 +237,13 @@ const VisitaPagina4 = memo(({
             ))}
           </div>
           
-          {/* Botones para agregar fotos */}
+          {/* Botones para agregar fotos - usando refs en onClick */}
           <div className="grid grid-cols-2 gap-2">
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => document.getElementById('input-croquis-camera')?.click()} 
+              onClick={handleOpenCamera}
+              data-testid="croquis-camera-btn"
               className="border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
             >
               <Camera className="w-4 h-4 mr-2" />
@@ -251,7 +252,8 @@ const VisitaPagina4 = memo(({
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => document.getElementById('input-croquis-gallery')?.click()} 
+              onClick={handleOpenGallery}
+              data-testid="croquis-gallery-btn"
               className="border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
             >
               <ImageIcon className="w-4 h-4 mr-2" />
