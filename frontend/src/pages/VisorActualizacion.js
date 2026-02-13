@@ -3210,7 +3210,9 @@ export default function VisorActualizacion() {
         ));
       } else {
         // Modo offline: guardar para sincronizar después
-        await saveOfflineChange('visita', {
+        await saveCambioPendiente({
+          tipo: 'visita',
+          proyecto_id: proyectoId,
           codigo_predial: codigoPredial,
           ...datosActualizacion
         });
