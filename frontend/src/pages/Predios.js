@@ -2579,12 +2579,11 @@ export default function Predios() {
           {offlineStats.cambiosPendientes > 0 && (
             <Badge 
               variant="outline" 
-              className="bg-blue-100 text-blue-700 border-blue-300 cursor-pointer"
-              onClick={() => syncPendingChanges(true)}
-              title="Click para sincronizar"
+              className="bg-blue-100 text-blue-700 border-blue-300"
+              title="Se sincronizará automáticamente cuando haya conexión"
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
-              {offlineStats.cambiosPendientes} pendientes
+              {isSyncing ? 'Sincronizando...' : `${offlineStats.cambiosPendientes} pendientes`}
             </Badge>
           )}
           
