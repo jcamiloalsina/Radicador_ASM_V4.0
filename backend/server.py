@@ -14045,13 +14045,23 @@ async def process_gdb_upload_background(
                                 logger.warning(f"Geometría urbana fuera de Colombia descartada: {codigo}")
                                 continue
                             
-                            # Calcular área en m2
+                            # IMPORTANTE: Usar Shape_Area original del GDB (ya está en m²)
+                            # NO recalcular porque la conversión desde WGS84 es imprecisa
                             area_m2 = 0
-                            try:
-                                area_deg = geom_wgs84.area
-                                area_m2 = round(area_deg * (111320 ** 2), 2)
-                            except:
-                                pass
+                            for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
+                                if area_col in gdf_urban.columns and pd.notna(row.get(area_col)):
+                                    try:
+                                        area_m2 = round(float(row[area_col]), 2)
+                                        break
+                                    except:
+                                        pass
+                            
+                            # Solo si no hay Shape_Area, usar fallback aproximado
+                            if area_m2 == 0:
+                                try:
+                                    area_m2 = round(row.geometry.area, 2) if row.geometry.area > 0 else 0
+                                except:
+                                    pass
                             
                             # Validar que la geometría sea serializable
                             try:
