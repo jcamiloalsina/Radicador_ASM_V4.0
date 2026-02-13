@@ -270,6 +270,7 @@ export default function VisorActualizacion() {
     refreshStats,
     checkInitialSync,
     performFullSync,
+    skipInitialSync,
     getPrediosOffline: getPrediosFromHook,
     getGeometriasOffline: getGeometriasFromHook
   } = useOfflineSync(proyectoId, 'actualizacion');
