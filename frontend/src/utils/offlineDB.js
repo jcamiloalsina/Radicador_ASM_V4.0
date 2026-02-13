@@ -395,6 +395,81 @@ export async function getGeometriasOffline(proyectoId) {
   });
 }
 
+// Guardar geometrías por municipio (para Conservación)
+export async function saveGeometriasMunicipioOffline(municipio, geometrias) {
+  const database = await initOfflineDB();
+  if (!database || !geometrias?.length) return 0;
+  
+  try {
+    const tx = database.transaction(STORES.GEOMETRIAS, 'readwrite');
+    const store = tx.objectStore(STORES.GEOMETRIAS);
+
+    for (const geom of geometrias) {
+      const codigoPredial = geom.properties?.codigo_predial || geom.properties?.CODIGO || geom.id;
+      if (!codigoPredial) continue;
+      
+      const record = {
+        id: `${municipio}_${codigoPredial}`,
+        proyecto_id: municipio, // Usar municipio como proyecto_id
+        codigo_predial: codigoPredial,
+        municipio: municipio,
+        ...geom,
+        saved_offline_at: new Date().toISOString()
+      };
+      store.put(record);
+    }
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    console.log(`[OfflineDB] ${geometrias.length} geometrías guardadas para municipio ${municipio}`);
+    return geometrias.length;
+  } catch (e) {
+    console.error('[OfflineDB] Error guardando geometrías municipio:', e);
+    return 0;
+  }
+}
+
+// Obtener geometrías por municipio
+export async function getGeometriasMunicipioOffline(municipio) {
+  const database = await initOfflineDB();
+  if (!database) return [];
+  
+  return new Promise((resolve) => {
+    try {
+      const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
+      const store = tx.objectStore(STORES.GEOMETRIAS);
+      const index = store.index('proyecto_id');
+      const request = index.getAll(municipio);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => resolve([]);
+    } catch (e) {
+      resolve([]);
+    }
+  });
+}
+
+// Contar geometrías por municipio
+export async function countGeometriasMunicipioOffline(municipio) {
+  const database = await initOfflineDB();
+  if (!database) return 0;
+  
+  return new Promise((resolve) => {
+    try {
+      const tx = database.transaction(STORES.GEOMETRIAS, 'readonly');
+      const store = tx.objectStore(STORES.GEOMETRIAS);
+      const index = store.index('proyecto_id');
+      const request = index.count(municipio);
+      request.onsuccess = () => resolve(request.result || 0);
+      request.onerror = () => resolve(0);
+    } catch (e) {
+      resolve(0);
+    }
+  });
+}
+
 // ==================== CAMBIOS PENDIENTES ====================
 
 export async function saveCambioPendiente(cambio) {
