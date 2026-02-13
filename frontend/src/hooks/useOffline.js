@@ -193,6 +193,83 @@ export function useOffline() {
         console.log('Error reading main offline DB:', e);
       }
       
+      // IMPORTANTE: Leer de offlineDB.js (asomunicipios_offline_v2) que es donde se guardan
+      // los predios del visor de actualización
+      try {
+        const v2DB = await new Promise((resolve, reject) => {
+          const request = indexedDB.open('asomunicipios_offline_v2', 1);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => resolve(null);
+          request.onupgradeneeded = (event) => {
+            // Si no existía, abortar para no crear DB vacía
+            if (event.oldVersion === 0) {
+              request.transaction.abort();
+              resolve(null);
+            }
+          };
+        });
+        
+        if (v2DB) {
+          // Contar predios de la DB v2
+          if (v2DB.objectStoreNames.contains('predios_offline')) {
+            try {
+              const tx = v2DB.transaction('predios_offline', 'readonly');
+              const store = tx.objectStore('predios_offline');
+              const v2PrediosCount = await new Promise((resolve) => {
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(0);
+              });
+              prediosCount += v2PrediosCount;
+              console.log('[useOffline] Found', v2PrediosCount, 'predios in v2 DB (offlineDB.js)');
+              
+              if (v2PrediosCount > 0 && !lastSync) {
+                lastSync = new Date().toISOString();
+              }
+            } catch (txError) {
+              console.log('Error reading v2 predios_offline:', txError.message);
+            }
+          }
+          
+          // Contar geometrías de la DB v2
+          if (v2DB.objectStoreNames.contains('geometrias_offline')) {
+            try {
+              const txGeo = v2DB.transaction('geometrias_offline', 'readonly');
+              const storeGeo = txGeo.objectStore('geometrias_offline');
+              const v2GeoCount = await new Promise((resolve) => {
+                const request = storeGeo.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(0);
+              });
+              geometriasCount += v2GeoCount;
+              console.log('[useOffline] Found', v2GeoCount, 'geometrias in v2 DB');
+            } catch (txError) {
+              console.log('Error reading v2 geometrias_offline:', txError.message);
+            }
+          }
+          
+          // Contar proyectos de la DB v2
+          if (v2DB.objectStoreNames.contains('proyectos_offline')) {
+            try {
+              const txProj = v2DB.transaction('proyectos_offline', 'readonly');
+              const storeProj = txProj.objectStore('proyectos_offline');
+              const v2ProjCount = await new Promise((resolve) => {
+                const request = storeProj.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(0);
+              });
+              proyectosCount += v2ProjCount;
+            } catch (txError) {
+              console.log('Error reading v2 proyectos_offline:', txError.message);
+            }
+          }
+          
+          v2DB.close();
+        }
+      } catch (e) {
+        console.log('[useOffline] v2 DB not available:', e.message);
+      }
+      
       // También leer de la base de datos secundaria (asomunicipios_offline) usada por useOfflineSync
       try {
         // Primero verificar si la DB existe usando databases() si está disponible
@@ -263,11 +340,12 @@ export function useOffline() {
               try {
                 const txProyectos = secondaryDB.transaction('proyectos_offline', 'readonly');
                 const storeProyectos = txProyectos.objectStore('proyectos_offline');
-                proyectosCount = await new Promise((resolve) => {
+                const secProjCount = await new Promise((resolve) => {
                   const request = storeProyectos.count();
                   request.onsuccess = () => resolve(request.result);
                   request.onerror = () => resolve(0);
                 });
+                proyectosCount += secProjCount;
               } catch (txError) {
                 console.log('Error reading proyectos_offline:', txError.message);
               }
@@ -278,7 +356,7 @@ export function useOffline() {
               try {
                 const txGeometrias = secondaryDB.transaction('geometrias_offline', 'readonly');
                 const storeGeometrias = txGeometrias.objectStore('geometrias_offline');
-                geometriasCount = await new Promise((resolve) => {
+                const secGeoCount = await new Promise((resolve) => {
                   let count = 0;
                   const cursorRequest = storeGeometrias.openCursor();
                   
@@ -298,6 +376,7 @@ export function useOffline() {
                   };
                   cursorRequest.onerror = () => resolve(0);
                 });
+                geometriasCount += secGeoCount;
               } catch (txError) {
                 console.log('Error reading geometrias_offline:', txError.message);
               }
