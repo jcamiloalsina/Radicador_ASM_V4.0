@@ -293,6 +293,7 @@ export default function VisorActualizacion() {
   const [loadedFromCache, setLoadedFromCache] = useState(false);
   const [syncHistory, setSyncHistory] = useState([]);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [backgroundSyncMessage, setBackgroundSyncMessage] = useState(null);
   
   // Estados del mapa
   const [currentZoom, setCurrentZoom] = useState(14);
