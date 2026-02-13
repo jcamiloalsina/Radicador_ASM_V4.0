@@ -371,13 +371,16 @@ const DetallePredioActualizacion = ({
         {/* Formulario de Visita - Solo si está pendiente o visitado */}
         {(estado === 'pendiente' || estado === 'visitado') && (esGestor || esCoordinador) && (
           <Button
-            className="w-full bg-amber-600 hover:bg-amber-700"
+            className={`w-full ${esMejoraDirecta ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
             size="sm"
             onClick={onOpenVisita}
             data-testid="open-visita-btn"
           >
             <ClipboardList className="w-4 h-4 mr-2" />
-            {estado === 'visitado' ? 'Ver/Editar Visita' : 'Registrar Visita'}
+            {estado === 'visitado' 
+              ? (esMejoraDirecta ? 'Ver/Editar Visita Mejora' : 'Ver/Editar Visita') 
+              : (esMejoraDirecta ? 'Registrar Visita Mejora' : 'Registrar Visita')
+            }
           </Button>
         )}
 
