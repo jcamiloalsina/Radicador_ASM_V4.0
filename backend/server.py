@@ -17764,6 +17764,38 @@ async def proponer_cancelacion_predio(
             "cancelado_por": current_user['full_name']
         }
     
+    # Si es gestor, verificar que no haya una propuesta pendiente para este código
+    propuesta_existente = await db.propuestas_cambio_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "estado": {"$in": ["pendiente", "subsanacion", "reenviada"]}
+    })
+    
+    if propuesta_existente:
+        tipo_propuesta = propuesta_existente.get('tipo', 'cambio')
+        if tipo_propuesta == 'cancelacion':
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador."
+            )
+        elif tipo_propuesta == 'predio_nuevo':
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de PREDIO NUEVO pendiente para este código. Espere la respuesta del coordinador."
+            )
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador."
+            )
+    
+    # Verificar que el predio no tenga cancelación pendiente ya marcada
+    if predio.get('cancelacion_pendiente'):
+        raise HTTPException(
+            status_code=400, 
+            detail="Este predio ya tiene una solicitud de eliminación en proceso."
+        )
+    
     # Si es gestor, crear propuesta de cancelación
     propuesta = {
         "id": str(uuid.uuid4()),
