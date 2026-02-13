@@ -251,14 +251,13 @@ export default function VisorPredios() {
   const [gdbResumenData, setGdbResumenData] = useState(null); // Datos del resumen de GDB
   const [mostrarPreguntaGdb, setMostrarPreguntaGdb] = useState(false);
   const [coordenadasBusqueda, setCoordenadasBusqueda] = useState({ lat: '', lng: '' });
-  const [formatoCoordenadas, setFormatoCoordenadas] = useState('decimal'); // 'decimal', 'dms', 'planas_nacional', 'planas_local'
+  const [formatoCoordenadas, setFormatoCoordenadas] = useState('decimal'); // 'decimal', 'dms', 'planas_nacional'
   const [coordenadasDMS, setCoordenadasDMS] = useState({
     latGrados: '', latMinutos: '', latSegundos: '', latDireccion: 'N',
     lngGrados: '', lngMinutos: '', lngSegundos: '', lngDireccion: 'W'
   });
   // Coordenadas planas (Norte/Este)
   const [coordenadasPlanas, setCoordenadasPlanas] = useState({ norte: '', este: '' });
-  const [origenLocal, setOrigenLocal] = useState('bogota'); // 'bogota', 'este', 'oeste', 'este_este', 'oeste_oeste'
   const [marcadorCoordenadas, setMarcadorCoordenadas] = useState(null); // [lat, lng] del marcador
   const [resumenCargasMensuales, setResumenCargasMensuales] = useState(null); // Resumen de cargas GDB del mes
   const [construcciones, setConstrucciones] = useState(null); // Construcciones del predio seleccionado
