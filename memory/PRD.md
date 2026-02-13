@@ -5,7 +5,52 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 13 - SOLUCIÓN PERMANENTE R1/R2 + GDB)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 14 - CORRECCIÓN VISIBILIDAD DE DATOS)
+
+### ✅ RESUELTO: Datos de Propietarios No Aparecían en UI
+
+**Problema reportado:**
+El usuario reportó que a pesar de que los datos R1/R2 y GDB estaban cargados en la base de datos, los nombres de propietarios NO aparecían en:
+1. "Gestión de Predios" - lista mostraba todos los campos vacíos para propietario
+2. "Visor de Predios" - al seleccionar un predio, el campo Propietario(s) estaba vacío
+
+**Causa raíz:**
+1. El endpoint `/api/actualizacion/proyectos/{id}/predios` extraía `propietario` y `nombre_propietario` directamente del documento, pero estos campos estaban vacíos - el nombre real estaba en el array `propietarios[0].nombre_propietario`
+2. El endpoint `/api/actualizacion/proyectos/{id}/geometrias` no enriquecía las geometrías con datos de propietarios desde `predios_actualizacion`
+3. La búsqueda era solo local (en los 500 predios de la primera página), no en toda la base de datos
+
+**Solución implementada:**
+
+1. **Endpoint de predios mejorado** (línea ~16893 en server.py):
+   - Agregada proyección `propietarios: 1` para incluir el array completo
+   - Agregada lógica para extraer `nombre_propietario` del array si no existe directamente
+   - Agregado parámetro `search` para búsqueda global en servidor (mínimo 3 caracteres)
+   - Agregado parámetro `zona` para filtrar por zona
+
+2. **Endpoint de geometrías enriquecido** (línea ~16788 en server.py):
+   - Ahora hace join con `predios_actualizacion` para obtener datos de propietarios
+   - Las propiedades de cada geometría incluyen: `propietario`, `direccion`, `area_terreno`, `area_construida`, `avaluo_catastral`, `estado_visita`
+
+3. **Frontend con búsqueda en servidor** (GestionPrediosActualizacion.js):
+   - Agregado debounce de 500ms para búsqueda
+   - Cuando el usuario escribe >= 3 caracteres, se hace fetch al servidor con parámetro `search`
+   - La búsqueda encuentra predios en TODA la base de datos, no solo en la página actual
+
+**Testing verificado (iteration_46.json):**
+- ✅ Endpoint predios devuelve `nombre_propietario` correctamente
+- ✅ Endpoint geometrías devuelve `propietario` en properties
+- ✅ Búsqueda global funciona con parámetro `search`
+- ✅ Frontend "Gestión de Predios" muestra propietarios
+- ✅ Frontend "Visor de Predios" muestra propietario al seleccionar terreno
+- **Success rate: 100%**
+
+**Archivos modificados:**
+- `/app/backend/server.py` - Endpoints mejorados
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js` - Búsqueda en servidor
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 13 - SOLUCIÓN PERMANENTE R1/R2 + GDB)
 
 ### ✅ SOLUCIÓN PERMANENTE: Sincronización Automática de Geometrías GDB
 
