@@ -1,19 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { 
   Plus, Trash2, FileText, Search, MapPin, Camera, Image as ImageIcon,
-  Save, Loader2, AlertCircle, CheckCircle, X, RefreshCw, Pen
+  Save, Loader2, CheckCircle, X, RefreshCw, Pen, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveCambioPendiente } from '../../utils/offlineDB';
+
+// Importar componentes del formulario de visita
+import VisitaPagina1 from './visita/VisitaPagina1';
+import VisitaPagina2 from './visita/VisitaPagina2';
+import VisitaPagina3 from './visita/VisitaPagina3';
+import VisitaPagina4 from './visita/VisitaPagina4';
+import VisitaPagina5 from './visita/VisitaPagina5';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -46,6 +52,107 @@ const DESTINOS_ECONOMICOS = {
   'R': 'Lote Urbanizado'
 };
 
+// Estado inicial del formulario de visita
+const getInitialVisitaData = () => ({
+  tipo_predio: '',
+  direccion_visita: '',
+  destino_economico_visita: '',
+  area_terreno_visita: '',
+  area_construida_visita: '',
+  ph_area_coeficiente: '',
+  ph_area_construida_privada: '',
+  ph_area_construida_comun: '',
+  ph_copropiedad: '',
+  ph_predio_asociado: '',
+  ph_torre: '',
+  ph_apartamento: '',
+  cond_area_terreno_comun: '',
+  cond_area_terreno_privada: '',
+  cond_area_construida_privada: '',
+  cond_area_construida_comun: '',
+  cond_condominio: '',
+  cond_predio_asociado: '',
+  cond_unidad: '',
+  cond_casa: '',
+  jur_matricula: '',
+  jur_tipo_doc: '',
+  jur_numero_doc: '',
+  jur_notaria: '',
+  jur_fecha: '',
+  jur_ciudad: '',
+  jur_razon_social: '',
+  not_telefono: '',
+  not_direccion: '',
+  not_correo: '',
+  not_autoriza_correo: '',
+  not_departamento: 'Norte de Santander',
+  not_municipio: '',
+  not_vereda: '',
+  not_corregimiento: '',
+  not_datos_adicionales: '',
+  area_titulo_m2: '',
+  area_titulo_ha: '',
+  area_titulo_desc: '',
+  area_base_catastral_m2: '',
+  area_base_catastral_ha: '',
+  area_base_catastral_desc: '',
+  area_geografica_m2: '',
+  area_geografica_ha: '',
+  area_geografica_desc: '',
+  area_levantamiento_m2: '',
+  area_levantamiento_ha: '',
+  area_levantamiento_desc: '',
+  area_identificacion_m2: '',
+  area_identificacion_ha: '',
+  area_identificacion_desc: '',
+  fotos_croquis: [],
+  observaciones_generales: '',
+  firma_visitado_base64: null,
+  firma_reconocedor_base64: null,
+  nombre_visitado: '',
+  nombre_reconocedor: '',
+  fecha_visita: new Date().toISOString().split('T')[0],
+  hora_visita: new Date().toTimeString().slice(0, 5),
+  persona_atiende: '',
+  relacion_predio: '',
+  estado_predio: '',
+  acceso_predio: 'si',
+  servicios_publicos: [],
+  observaciones: '',
+  sin_cambios: false,
+  coordenadas_gps: { latitud: '', longitud: '', precision: null, fecha_captura: null }
+});
+
+const getInitialConstrucciones = () => [
+  { unidad: 'A', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+  { unidad: 'B', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+  { unidad: 'C', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+  { unidad: 'D', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' },
+  { unidad: 'E', codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }
+];
+
+const getInitialCalificaciones = () => [{
+  id: 1,
+  estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+  acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+  bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+  cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+  industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+  datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
+}];
+
+const getInitialVisitaPropietarios = () => [{
+  tipo_documento: 'C',
+  numero_documento: '',
+  nombre: '',
+  primer_apellido: '',
+  segundo_apellido: '',
+  genero: '',
+  genero_otro: '',
+  grupo_etnico: 'Ninguno',
+  estado: ''
+}];
+
 const CrearPredioNuevoModal = ({ 
   isOpen, 
   onClose, 
@@ -53,95 +160,73 @@ const CrearPredioNuevoModal = ({
   municipio, 
   token,
   onSuccess,
-  userRole // 'gestor', 'coordinador', 'administrador'
+  userRole
 }) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('ubicacion');
   
-  // Refs para inputs de fotos
-  const cameraInputRef = useRef(null);
-  const galleryInputRef = useRef(null);
-  
-  // Estructura del código
+  // ========== ESTADO DEL CÓDIGO PREDIAL ==========
   const [estructuraCodigo, setEstructuraCodigo] = useState(null);
   const [codigoManual, setCodigoManual] = useState({
-    zona: '00',
-    sector: '00',
-    comuna: '00',
-    barrio: '00',
-    manzana_vereda: '0000',
-    terreno: '0001',
-    condicion: '0',
-    edificio: '00',
-    piso: '00',
-    unidad: '0000'
+    zona: '00', sector: '00', comuna: '00', barrio: '00',
+    manzana_vereda: '0000', terreno: '0001', condicion: '0',
+    edificio: '00', piso: '00', unidad: '0000'
   });
-  
-  // Código homologado
   const [siguienteCodigoHomologado, setSiguienteCodigoHomologado] = useState(null);
-  
-  // Info de terreno y manzana
   const [terrenoInfo, setTerrenoInfo] = useState(null);
   const [prediosEnManzana, setPrediosEnManzana] = useState([]);
   const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
   const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
   const [verificacionCodigo, setVerificacionCodigo] = useState(null);
   
-  // Datos del formulario
+  // ========== ESTADO DEL PREDIO ==========
   const [formData, setFormData] = useState({
-    direccion: '',
-    destino_economico: 'D',
-    matricula_inmobiliaria: '',
-    avaluo: ''
+    direccion: '', destino_economico: 'D', matricula_inmobiliaria: '', avaluo: ''
   });
   
-  // Propietarios
   const [propietarios, setPropietarios] = useState([{
-    tipo_documento: 'C',
-    numero_documento: '',
-    primer_nombre: '',
-    segundo_nombre: '',
-    primer_apellido: '',
-    segundo_apellido: '',
-    estado: ''
+    tipo_documento: 'C', numero_documento: '', primer_nombre: '', segundo_nombre: '',
+    primer_apellido: '', segundo_apellido: '', estado: ''
   }]);
   
-  // Zonas de terreno
-  const [zonasTerreno, setZonasTerreno] = useState([{
-    zona_fisica: '',
-    zona_economica: '',
-    area_terreno: 0
-  }]);
+  const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: 0 }]);
+  const [construccionesR2, setConstruccionesR2] = useState([]);
   
-  // Construcciones
-  const [construcciones, setConstrucciones] = useState([]);
-  
-  // ===== FORMULARIO DE VISITA (OBLIGATORIO) =====
-  const [visitaData, setVisitaData] = useState({
-    fecha_visita: new Date().toISOString().split('T')[0],
-    hora_visita: new Date().toTimeString().slice(0, 5),
-    coordenadas_gps: { latitud: '', longitud: '', precision: null },
-    observaciones: '',
-    nombre_visitado: '',
-    nombre_reconocedor: '',
-    estado_predio: 'habitado',
-    servicios_publicos: [],
-    // Calificación
-    calificacion: {
-      estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
-      acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
-      bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
-      cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' }
-    }
-  });
+  // ========== ESTADO COMPLETO DEL FORMULARIO DE VISITA ==========
+  const [visitaPagina, setVisitaPagina] = useState(1);
+  const [visitaData, setVisitaDataRaw] = useState(getInitialVisitaData);
+  const [visitaConstrucciones, setVisitaConstruccionesRaw] = useState(getInitialConstrucciones);
+  const [visitaCalificaciones, setVisitaCalificacionesRaw] = useState(getInitialCalificaciones);
+  const [visitaPropietarios, setVisitaPropietariosRaw] = useState(getInitialVisitaPropietarios);
   const [fotos, setFotos] = useState([]);
-  const [capturandoGPS, setCapturandoGPS] = useState(false);
   
-  // Cargar estructura del código al abrir
+  // GPS y firmas
+  const [userPosition, setUserPosition] = useState(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [watchingPosition, setWatchingPosition] = useState(false);
+  const canvasVisitadoRef = useRef(null);
+  const canvasReconocedorRef = useRef(null);
+  const [isDrawingVisitado, setIsDrawingVisitado] = useState(false);
+  const [isDrawingReconocedor, setIsDrawingReconocedor] = useState(false);
+  
+  // Setters optimizados
+  const setVisitaData = useCallback((updater) => {
+    startTransition(() => { setVisitaDataRaw(updater); });
+  }, []);
+  const setVisitaConstrucciones = useCallback((updater) => {
+    startTransition(() => { setVisitaConstruccionesRaw(updater); });
+  }, []);
+  const setVisitaCalificaciones = useCallback((updater) => {
+    startTransition(() => { setVisitaCalificacionesRaw(updater); });
+  }, []);
+  const setVisitaPropietarios = useCallback((updater) => {
+    startTransition(() => { setVisitaPropietariosRaw(updater); });
+  }, []);
+
+  // ========== EFECTOS ==========
   useEffect(() => {
     const cargarEstructura = async () => {
       if (!isOpen || !municipio || !token) return;
-      
       try {
         const response = await fetch(`${API_URL}/api/predios/estructura-codigo/${municipio}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -154,15 +239,12 @@ const CrearPredioNuevoModal = ({
         console.error('Error cargando estructura:', error);
       }
     };
-    
     cargarEstructura();
   }, [isOpen, municipio, token]);
-  
-  // Cargar siguiente código homologado
+
   useEffect(() => {
     const cargarCodigoHomologado = async () => {
       if (!isOpen || !municipio || !token) return;
-      
       try {
         const response = await fetch(`${API_URL}/api/codigos-homologados/siguiente/${municipio}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -175,11 +257,9 @@ const CrearPredioNuevoModal = ({
         console.error('Error cargando código homologado:', error);
       }
     };
-    
     cargarCodigoHomologado();
   }, [isOpen, municipio, token]);
-  
-  // Buscar predios en manzana cuando cambia
+
   useEffect(() => {
     const buscarPrediosEnManzana = async () => {
       if (!estructuraCodigo || codigoManual.manzana_vereda === '0000') {
@@ -187,16 +267,13 @@ const CrearPredioNuevoModal = ({
         setSiguienteTerrenoSugerido('0001');
         return;
       }
-      
       setBuscandoPrediosManzana(true);
       try {
         const codigoBase = `${estructuraCodigo.prefijo_fijo}${codigoManual.zona}${codigoManual.sector}${codigoManual.comuna}${codigoManual.barrio}${codigoManual.manzana_vereda}`;
-        
         const response = await fetch(
           `${API_URL}/api/predios/buscar-por-manzana?codigo_base=${codigoBase}&municipio=${municipio}&limit=10`,
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
-        
         if (response.ok) {
           const data = await response.json();
           setPrediosEnManzana(data.predios || []);
@@ -208,191 +285,306 @@ const CrearPredioNuevoModal = ({
         setBuscandoPrediosManzana(false);
       }
     };
-    
     const timeoutId = setTimeout(buscarPrediosEnManzana, 500);
     return () => clearTimeout(timeoutId);
   }, [estructuraCodigo, codigoManual.zona, codigoManual.sector, codigoManual.comuna, codigoManual.barrio, codigoManual.manzana_vereda, municipio, token]);
-  
-  // Construir código completo
+
+  // ========== FUNCIONES DE CÓDIGO ==========
   const construirCodigoCompleto = useCallback(() => {
     if (!estructuraCodigo) return '';
     return `${estructuraCodigo.prefijo_fijo}${codigoManual.zona}${codigoManual.sector}${codigoManual.comuna}${codigoManual.barrio}${codigoManual.manzana_vereda}${codigoManual.terreno}${codigoManual.condicion}${codigoManual.edificio}${codigoManual.piso}${codigoManual.unidad}`;
   }, [estructuraCodigo, codigoManual]);
-  
-  // Manejar cambio en código
+
   const handleCodigoChange = (field, value, maxLen) => {
-    // Solo permitir números
     const numericValue = value.replace(/\D/g, '').slice(0, maxLen);
-    // No hacer padStart mientras edita - solo guardar el valor numérico
-    setCodigoManual(prev => ({
-      ...prev,
-      [field]: numericValue
-    }));
+    setCodigoManual(prev => ({ ...prev, [field]: numericValue }));
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
   };
-  
-  // Formatear valor con padding para mostrar (al perder foco)
+
   const handleCodigoBlur = (field, maxLen) => {
-    setCodigoManual(prev => ({
-      ...prev,
-      [field]: (prev[field] || '').padStart(maxLen, '0')
-    }));
+    setCodigoManual(prev => ({ ...prev, [field]: (prev[field] || '').padStart(maxLen, '0') }));
   };
-  
-  // Verificar código completo
+
   const verificarCodigoCompleto = async () => {
     const codigo = construirCodigoCompleto();
     if (codigo.length !== 30) {
       toast.error('El código debe tener 30 dígitos');
       return;
     }
-    
     setLoading(true);
     try {
       const response = await fetch(
         `${API_URL}/api/predios/verificar-codigo/${codigo}?municipio=${municipio}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      
       if (response.ok) {
         const data = await response.json();
         setVerificacionCodigo(data);
         setTerrenoInfo(data);
       }
     } catch (error) {
-      console.error('Error verificando código:', error);
       toast.error('Error al verificar el código');
     } finally {
       setLoading(false);
     }
   };
-  
-  // Agregar/eliminar propietarios
+
+  // ========== FUNCIONES DE PROPIETARIOS (R1) ==========
   const agregarPropietario = () => {
     setPropietarios(prev => [...prev, {
-      tipo_documento: 'C',
-      numero_documento: '',
-      primer_nombre: '',
-      segundo_nombre: '',
-      primer_apellido: '',
-      segundo_apellido: '',
-      estado: ''
+      tipo_documento: 'C', numero_documento: '', primer_nombre: '', segundo_nombre: '',
+      primer_apellido: '', segundo_apellido: '', estado: ''
     }]);
   };
-  
+
   const eliminarPropietario = (index) => {
-    if (propietarios.length > 1) {
-      setPropietarios(prev => prev.filter((_, i) => i !== index));
-    }
+    if (propietarios.length > 1) setPropietarios(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const actualizarPropietario = (index, field, value) => {
-    setPropietarios(prev => prev.map((p, i) => 
-      i === index ? { ...p, [field]: value } : p
-    ));
+    setPropietarios(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
   };
-  
-  // Generar nombre completo
+
   const generarNombreCompleto = (prop) => {
     return [prop.primer_apellido, prop.segundo_apellido, prop.primer_nombre, prop.segundo_nombre]
-      .filter(Boolean)
-      .join(' ')
-      .toUpperCase();
+      .filter(Boolean).join(' ').toUpperCase();
   };
-  
-  // Formatear número documento (12 dígitos con ceros)
-  const formatearNumeroDocumento = (num) => {
-    return (num || '').padStart(12, '0');
-  };
-  
-  // Zonas de terreno
+
+  const formatearNumeroDocumento = (num) => (num || '').padStart(12, '0');
+
+  // ========== FUNCIONES DE ZONAS Y CONSTRUCCIONES (R2) ==========
   const agregarZonaTerreno = () => {
     setZonasTerreno(prev => [...prev, { zona_fisica: '', zona_economica: '', area_terreno: 0 }]);
   };
-  
+
   const eliminarZonaTerreno = (index) => {
-    if (zonasTerreno.length > 1) {
-      setZonasTerreno(prev => prev.filter((_, i) => i !== index));
-    }
+    if (zonasTerreno.length > 1) setZonasTerreno(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const actualizarZonaTerreno = (index, field, value) => {
-    setZonasTerreno(prev => prev.map((z, i) => 
-      i === index ? { ...z, [field]: value } : z
-    ));
+    setZonasTerreno(prev => prev.map((z, i) => i === index ? { ...z, [field]: value } : z));
   };
-  
-  // Construcciones
-  const agregarConstruccion = () => {
-    const nextId = String.fromCharCode(65 + construcciones.length); // A, B, C...
-    setConstrucciones(prev => [...prev, {
-      id: nextId,
-      piso: 1,
-      habitaciones: 0,
-      banos: 0,
-      locales: 0,
-      tipificacion: '',
-      uso: '',
-      puntaje: 0,
-      area_construida: 0
+
+  const agregarConstruccionR2 = () => {
+    const nextId = String.fromCharCode(65 + construccionesR2.length);
+    setConstruccionesR2(prev => [...prev, {
+      id: nextId, piso: 1, habitaciones: 0, banos: 0, locales: 0,
+      tipificacion: '', uso: '', puntaje: 0, area_construida: 0
     }]);
   };
-  
-  const eliminarConstruccion = (index) => {
-    setConstrucciones(prev => prev.filter((_, i) => i !== index));
+
+  const eliminarConstruccionR2 = (index) => {
+    setConstruccionesR2(prev => prev.filter((_, i) => i !== index));
   };
-  
-  const actualizarConstruccion = (index, field, value) => {
-    setConstrucciones(prev => prev.map((c, i) => 
-      i === index ? { ...c, [field]: value } : c
-    ));
+
+  const actualizarConstruccionR2 = (index, field, value) => {
+    setConstruccionesR2(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
   };
-  
-  // Calcular áreas totales
+
   const calcularAreasTotales = () => {
     const areaTerrenoTotal = zonasTerreno.reduce((sum, z) => sum + (parseFloat(z.area_terreno) || 0), 0);
-    const areaConstruidaTotal = construcciones.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
+    const areaConstruidaTotal = construccionesR2.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
     return { areaTerrenoTotal, areaConstruidaTotal };
   };
-  
-  // ===== FUNCIONES PARA FORMULARIO DE VISITA =====
-  const setVisitaField = (field, value) => {
-    setVisitaData(prev => ({ ...prev, [field]: value }));
-  };
-  
-  const capturarUbicacion = async () => {
+
+  // ========== FUNCIONES DEL FORMULARIO DE VISITA ==========
+  const agregarVisitaPropietario = useCallback(() => {
+    setVisitaPropietarios(prev => [...prev, {
+      tipo_documento: 'C', numero_documento: '', nombre: '', primer_apellido: '',
+      segundo_apellido: '', genero: '', genero_otro: '', grupo_etnico: 'Ninguno', estado: ''
+    }]);
+  }, [setVisitaPropietarios]);
+
+  const eliminarVisitaPropietario = useCallback((idx) => {
+    setVisitaPropietarios(prev => prev.filter((_, i) => i !== idx));
+  }, [setVisitaPropietarios]);
+
+  const actualizarVisitaPropietario = useCallback((idx, campo, valor) => {
+    setVisitaPropietarios(prev => {
+      const nuevos = [...prev];
+      nuevos[idx] = { ...nuevos[idx], [campo]: valor };
+      return nuevos;
+    });
+  }, [setVisitaPropietarios]);
+
+  const agregarConstruccion = useCallback(() => {
+    setVisitaConstrucciones(prev => {
+      const nextLetter = String.fromCharCode(65 + prev.length);
+      return [...prev, { unidad: nextLetter, codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }];
+    });
+  }, [setVisitaConstrucciones]);
+
+  const eliminarConstruccion = useCallback((idx) => {
+    setVisitaConstrucciones(prev => prev.filter((_, i) => i !== idx));
+  }, [setVisitaConstrucciones]);
+
+  const actualizarConstruccion = useCallback((idx, campo, valor) => {
+    setVisitaConstrucciones(prev => {
+      const nuevas = [...prev];
+      nuevas[idx] = { ...nuevas[idx], [campo]: valor };
+      return nuevas;
+    });
+  }, [setVisitaConstrucciones]);
+
+  const agregarCalificacion = useCallback(() => {
+    setVisitaCalificaciones(prev => [...prev, {
+      id: prev.length + 1,
+      estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+      acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+      bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+      industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+      datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
+    }]);
+  }, [setVisitaCalificaciones]);
+
+  const eliminarCalificacion = useCallback((idx) => {
+    setVisitaCalificaciones(prev => prev.filter((_, i) => i !== idx));
+  }, [setVisitaCalificaciones]);
+
+  const actualizarCalificacion = useCallback((califIdx, seccion, campo, valor) => {
+    setVisitaCalificaciones(prev => {
+      const nuevas = [...prev];
+      nuevas[califIdx] = { ...nuevas[califIdx], [seccion]: { ...nuevas[califIdx][seccion], [campo]: valor } };
+      return nuevas;
+    });
+  }, [setVisitaCalificaciones]);
+
+  // ========== FUNCIONES GPS ==========
+  const startWatchingPosition = useCallback(() => {
     if (!navigator.geolocation) {
       toast.error('Tu navegador no soporta geolocalización');
       return;
     }
-    setCapturandoGPS(true);
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { 
-          enableHighAccuracy: true, timeout: 15000, maximumAge: 0 
-        });
-      });
-      const { latitude, longitude, accuracy } = position.coords;
+    setWatchingPosition(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUserPosition([latitude, longitude]);
+        setGpsAccuracy(accuracy);
+        setWatchingPosition(false);
+        toast.success(`📍 Ubicación capturada (precisión: ${Math.round(accuracy)}m)`);
+      },
+      (error) => {
+        setWatchingPosition(false);
+        if (error.code === 1) toast.error('Permiso de ubicación denegado');
+        else if (error.code === 2) toast.error('GPS no disponible');
+        else toast.error('Error al capturar ubicación');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }, []);
+
+  // ========== FUNCIONES FIRMAS ==========
+  const getCanvasContext = (canvasRef) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1e40af';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    return ctx;
+  };
+
+  const getPosition = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if (e.touches) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY
+      };
+    }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  };
+
+  const startDrawingVisitado = (e) => {
+    e.preventDefault();
+    const ctx = getCanvasContext(canvasVisitadoRef);
+    if (!ctx) return;
+    setIsDrawingVisitado(true);
+    const pos = getPosition(e, canvasVisitadoRef.current);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const drawVisitado = (e) => {
+    if (!isDrawingVisitado) return;
+    e.preventDefault();
+    const ctx = getCanvasContext(canvasVisitadoRef);
+    if (!ctx) return;
+    const pos = getPosition(e, canvasVisitadoRef.current);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const stopDrawingVisitado = () => {
+    if (isDrawingVisitado && canvasVisitadoRef.current) {
+      setIsDrawingVisitado(false);
       setVisitaData(prev => ({
         ...prev,
-        coordenadas_gps: {
-          latitud: latitude.toFixed(7),
-          longitud: longitude.toFixed(7),
-          precision: accuracy ? accuracy.toFixed(1) : null,
-          fecha_captura: new Date().toISOString()
-        }
+        firma_visitado_base64: canvasVisitadoRef.current.toDataURL('image/png')
       }));
-      toast.success(`📍 Ubicación capturada (precisión: ${accuracy?.toFixed(0) || '?'}m)`);
-    } catch (error) {
-      if (error.code === 1) toast.error('Permiso de ubicación denegado');
-      else if (error.code === 2) toast.error('GPS no disponible');
-      else toast.error('Error al capturar ubicación');
-    } finally {
-      setCapturandoGPS(false);
     }
   };
-  
+
+  const startDrawingReconocedor = (e) => {
+    e.preventDefault();
+    const ctx = getCanvasContext(canvasReconocedorRef);
+    if (!ctx) return;
+    setIsDrawingReconocedor(true);
+    const pos = getPosition(e, canvasReconocedorRef.current);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const drawReconocedor = (e) => {
+    if (!isDrawingReconocedor) return;
+    e.preventDefault();
+    const ctx = getCanvasContext(canvasReconocedorRef);
+    if (!ctx) return;
+    const pos = getPosition(e, canvasReconocedorRef.current);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const stopDrawingReconocedor = () => {
+    if (isDrawingReconocedor && canvasReconocedorRef.current) {
+      setIsDrawingReconocedor(false);
+      setVisitaData(prev => ({
+        ...prev,
+        firma_reconocedor_base64: canvasReconocedorRef.current.toDataURL('image/png')
+      }));
+    }
+  };
+
+  const limpiarFirmaVisitado = () => {
+    const canvas = canvasVisitadoRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      setVisitaData(prev => ({ ...prev, firma_visitado_base64: null }));
+    }
+  };
+
+  const limpiarFirmaReconocedor = () => {
+    const canvas = canvasReconocedorRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      setVisitaData(prev => ({ ...prev, firma_reconocedor_base64: null }));
+    }
+  };
+
+  const abrirModalFirma = (tipo) => {
+    toast.info(`Dibuje su firma en el recuadro de ${tipo === 'visitado' ? 'Visitado' : 'Reconocedor'}`);
+  };
+
+  // ========== FUNCIONES FOTOS ==========
   const handleFotoChange = async (e) => {
     const files = Array.from(e.target.files || []);
     for (const file of files) {
@@ -408,13 +600,10 @@ const CrearPredioNuevoModal = ({
           reader.readAsDataURL(file);
         });
         setFotos(prev => [...prev, {
-          id: Date.now() + Math.random(),
-          data: base64,
-          nombre: file.name,
-          fecha: new Date().toISOString(),
-          offline: !navigator.onLine
+          id: Date.now() + Math.random(), data: base64, preview: base64,
+          nombre: file.name, fecha: new Date().toISOString(), offline: !navigator.onLine
         }]);
-        toast.success(`📷 Foto agregada${!navigator.onLine ? ' (offline)' : ''}`);
+        toast.success(`📷 Foto agregada`);
       } catch (err) {
         toast.error('Error al procesar la foto');
       }
@@ -422,20 +611,48 @@ const CrearPredioNuevoModal = ({
     e.target.value = '';
   };
 
-  // Verificar si el formulario de visita está completo
+  const handleFotoCroquisChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) continue;
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setVisitaData(prev => ({
+          ...prev,
+          fotos_croquis: [...prev.fotos_croquis, { data: base64, preview: base64, nombre: file.name }]
+        }));
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    }
+    e.target.value = '';
+  };
+
+  const eliminarFotoCroquis = (idx) => {
+    setVisitaData(prev => ({
+      ...prev,
+      fotos_croquis: prev.fotos_croquis.filter((_, i) => i !== idx)
+    }));
+  };
+
+  // ========== VALIDACIÓN ==========
   const validarVisita = () => {
     if (!visitaData.coordenadas_gps?.latitud || !visitaData.coordenadas_gps?.longitud) {
-      return 'Debe capturar las coordenadas GPS';
+      return 'Debe capturar las coordenadas GPS (Página 5)';
     }
     if (!visitaData.nombre_reconocedor?.trim()) {
-      return 'Debe ingresar el nombre del reconocedor';
+      return 'Debe ingresar el nombre del reconocedor (Página 5)';
     }
     return null;
   };
-  
-  // Guardar predio
+
+  // ========== GUARDAR ==========
   const handleGuardar = async () => {
-    // Validaciones básicas
     if (!formData.direccion.trim()) {
       toast.error('Debe ingresar la dirección del predio');
       setActiveTab('propietario');
@@ -444,17 +661,16 @@ const CrearPredioNuevoModal = ({
     
     const propValido = propietarios.some(p => p.primer_apellido && p.primer_nombre);
     if (!propValido) {
-      toast.error('Debe ingresar al menos un propietario con nombre y apellido');
+      toast.error('Debe ingresar al menos un propietario');
       setActiveTab('propietario');
       return;
     }
     
     if (verificacionCodigo?.estado === 'existente') {
-      toast.error('El código ya existe. Verifique antes de guardar.');
+      toast.error('El código ya existe');
       return;
     }
     
-    // Validar formulario de visita (OBLIGATORIO)
     const errorVisita = validarVisita();
     if (errorVisita) {
       toast.error(errorVisita);
@@ -484,9 +700,7 @@ const CrearPredioNuevoModal = ({
           area_construida: areas.areaConstruidaTotal,
           avaluo: parseFloat(formData.avaluo) || 0
         },
-        r2: {
-          matricula_inmobiliaria: formData.matricula_inmobiliaria
-        },
+        r2: { matricula_inmobiliaria: formData.matricula_inmobiliaria },
         propietarios: propietarios.map(p => ({
           tipo_documento: p.tipo_documento,
           numero_documento: formatearNumeroDocumento(p.numero_documento),
@@ -502,99 +716,62 @@ const CrearPredioNuevoModal = ({
           zona_economica: z.zona_economica,
           area_terreno: parseFloat(z.area_terreno) || 0
         })),
-        construcciones: construcciones.map(c => ({
-          id: c.id,
-          piso: parseInt(c.piso) || 1,
-          habitaciones: parseInt(c.habitaciones) || 0,
-          banos: parseInt(c.banos) || 0,
-          locales: parseInt(c.locales) || 0,
-          tipificacion: c.tipificacion?.toUpperCase() || '',
-          uso: c.uso?.toUpperCase() || '',
-          puntaje: parseFloat(c.puntaje) || 0,
-          area_construida: parseFloat(c.area_construida) || 0
+        construcciones: construccionesR2.map(c => ({
+          id: c.id, piso: parseInt(c.piso) || 1, habitaciones: parseInt(c.habitaciones) || 0,
+          banos: parseInt(c.banos) || 0, locales: parseInt(c.locales) || 0,
+          tipificacion: c.tipificacion?.toUpperCase() || '', uso: c.uso?.toUpperCase() || '',
+          puntaje: parseFloat(c.puntaje) || 0, area_construida: parseFloat(c.area_construida) || 0
         })),
-        // FORMULARIO DE VISITA COMPLETO
         formato_visita: {
           ...visitaData,
+          construcciones: visitaConstrucciones,
+          calificaciones: visitaCalificaciones,
+          propietarios_visita: visitaPropietarios,
           fotos: fotos.map(f => ({ data: f.data, nombre: f.nombre, fecha: f.fecha }))
         },
-        // Indicar el rol para que el backend sepa si crear propuesta o directamente
         rol_creador: userRole
       };
       
-      // Si está OFFLINE, guardar localmente
       if (!navigator.onLine) {
         await saveCambioPendiente(proyectoId || 'actualizacion', {
-          tipo: 'predio_nuevo',
-          datos: payload,
-          codigo_predial: codigoCompleto,
-          fecha: new Date().toISOString()
+          tipo: 'predio_nuevo', datos: payload, codigo_predial: codigoCompleto, fecha: new Date().toISOString()
         });
-        
-        toast.success(
-          <div>
-            <p className="font-semibold">📴 Guardado offline</p>
-            <p className="text-sm">Se sincronizará cuando haya conexión</p>
-          </div>
-        );
-        
+        toast.success('📴 Guardado offline - Se sincronizará cuando haya conexión');
         onSuccess && onSuccess({ codigo_predial: codigoCompleto, offline: true });
         handleClose();
         return;
       }
       
-      // Si está ONLINE, enviar al servidor
       const response = await fetch(
         `${API_URL}/api/actualizacion/proyectos/${proyectoId}/predios-nuevos`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         }
       );
       
       const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.detail || 'Error al crear el predio');
-      }
+      if (!response.ok) throw new Error(data.detail || 'Error al crear el predio');
       
-      // Mensaje diferente según si se creó propuesta o predio directo
       if (data.propuesta_id) {
-        // Gestor: se creó propuesta pendiente
-        toast.success(
-          <div>
-            <p className="font-semibold">📤 Enviado para aprobación</p>
-            <p className="text-sm">El coordinador revisará la solicitud</p>
-            <p className="text-sm text-slate-500">Código: {data.codigo_predial}</p>
-          </div>
-        );
+        toast.success('📤 Enviado para aprobación');
       } else {
-        // Coordinador/Admin: se creó directamente
-        toast.success(
-          <div>
-            <p className="font-semibold">✅ Predio creado exitosamente</p>
-            <p className="text-sm">Código: {data.codigo_predial}</p>
-            <p className="text-sm">Homologado: {data.codigo_homologado}</p>
-          </div>
-        );
+        toast.success(`✅ Predio creado: ${data.codigo_predial}`);
       }
       
       onSuccess && onSuccess(data);
       handleClose();
       
     } catch (error) {
-      console.error('Error:', error);
       toast.error(error.message || 'Error al crear el predio');
     } finally {
       setLoading(false);
     }
   };
-  
-  // Reset al cerrar
+
+  // ========== RESET ==========
   const handleClose = () => {
     setCodigoManual({
       zona: '00', sector: '00', comuna: '00', barrio: '00',
@@ -604,38 +781,35 @@ const CrearPredioNuevoModal = ({
     setFormData({ direccion: '', destino_economico: 'D', matricula_inmobiliaria: '', avaluo: '' });
     setPropietarios([{ tipo_documento: 'C', numero_documento: '', primer_nombre: '', segundo_nombre: '', primer_apellido: '', segundo_apellido: '', estado: '' }]);
     setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: 0 }]);
-    setConstrucciones([]);
+    setConstruccionesR2([]);
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
     setPrediosEnManzana([]);
-    // Reset formulario de visita
-    setVisitaData({
-      fecha_visita: new Date().toISOString().split('T')[0],
-      hora_visita: new Date().toTimeString().slice(0, 5),
-      coordenadas_gps: { latitud: '', longitud: '', precision: null },
-      observaciones: '',
-      nombre_visitado: '',
-      nombre_reconocedor: '',
-      estado_predio: 'habitado',
-      servicios_publicos: [],
-      calificacion: {
-        estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
-        acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
-        bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
-        cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' }
-      }
-    });
+    setVisitaDataRaw(getInitialVisitaData());
+    setVisitaConstruccionesRaw(getInitialConstrucciones());
+    setVisitaCalificacionesRaw(getInitialCalificaciones());
+    setVisitaPropietariosRaw(getInitialVisitaPropietarios());
     setFotos([]);
+    setVisitaPagina(1);
     setActiveTab('ubicacion');
     onClose();
   };
-  
+
   const areas = calcularAreasTotales();
+
+  // Datos para pasar al componente de visita
+  const selectedPredio = {
+    codigo_predial: construirCodigoCompleto(),
+    municipio: municipio,
+    zona: codigoManual.zona === '01' ? 'urbano' : 'rural'
+  };
   
+  const proyecto = { municipio };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent 
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="max-w-5xl max-h-[95vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -645,7 +819,6 @@ const CrearPredioNuevoModal = ({
           </DialogTitle>
         </DialogHeader>
         
-        {/* Información del Código Homologado */}
         {siguienteCodigoHomologado && (
           <div className={`p-3 rounded-lg border ${siguienteCodigoHomologado.codigo ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
             <div className="flex items-center justify-between">
@@ -656,14 +829,12 @@ const CrearPredioNuevoModal = ({
                   {siguienteCodigoHomologado.codigo ? (
                     <p className="text-lg font-bold text-emerald-700 font-mono">{siguienteCodigoHomologado.codigo}</p>
                   ) : (
-                    <p className="text-sm text-amber-700">No hay códigos disponibles - se generará automáticamente</p>
+                    <p className="text-sm text-amber-700">Se generará automáticamente</p>
                   )}
                 </div>
               </div>
               {siguienteCodigoHomologado.codigo && (
-                <Badge className="bg-emerald-100 text-emerald-700">
-                  {siguienteCodigoHomologado.disponibles} disponibles
-                </Badge>
+                <Badge className="bg-emerald-100 text-emerald-700">{siguienteCodigoHomologado.disponibles} disponibles</Badge>
               )}
             </div>
           </div>
@@ -676,13 +847,13 @@ const CrearPredioNuevoModal = ({
             <TabsTrigger value="fisico">3. Físico</TabsTrigger>
             <TabsTrigger value="visita" className="relative">
               4. Visita
-              {(!visitaData.coordenadas_gps?.latitud) && (
+              {(!visitaData.coordenadas_gps?.latitud || !visitaData.nombre_reconocedor) && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
             </TabsTrigger>
           </TabsList>
           
-          {/* TAB: Código Nacional */}
+          {/* TAB 1: Código Nacional */}
           <TabsContent value="ubicacion" className="space-y-4 mt-4">
             {estructuraCodigo && (
               <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
@@ -691,248 +862,101 @@ const CrearPredioNuevoModal = ({
                   Código Predial Nacional (30 dígitos)
                 </h4>
                 
-                {/* Visualización del código completo */}
                 <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
-                  <span className="text-blue-600 font-bold" title="Departamento + Municipio">{estructuraCodigo.prefijo_fijo}</span>
-                  <span className="text-emerald-600" title="Zona">{codigoManual.zona}</span>
-                  <span className="text-amber-600" title="Sector">{codigoManual.sector}</span>
-                  <span className="text-purple-600" title="Comuna">{codigoManual.comuna}</span>
-                  <span className="text-pink-600" title="Barrio">{codigoManual.barrio}</span>
-                  <span className="text-cyan-600" title="Manzana/Vereda">{codigoManual.manzana_vereda}</span>
-                  <span className="text-red-600 font-bold" title="Terreno">{codigoManual.terreno}</span>
-                  <span className="text-orange-600" title="Condición">{codigoManual.condicion}</span>
-                  <span className="text-slate-500" title="Edificio">{codigoManual.edificio}</span>
-                  <span className="text-slate-500" title="Piso">{codigoManual.piso}</span>
-                  <span className="text-slate-500" title="Unidad">{codigoManual.unidad}</span>
+                  <span className="text-blue-600 font-bold">{estructuraCodigo.prefijo_fijo}</span>
+                  <span className="text-emerald-600">{codigoManual.zona}</span>
+                  <span className="text-amber-600">{codigoManual.sector}</span>
+                  <span className="text-purple-600">{codigoManual.comuna}</span>
+                  <span className="text-pink-600">{codigoManual.barrio}</span>
+                  <span className="text-cyan-600">{codigoManual.manzana_vereda}</span>
+                  <span className="text-red-600 font-bold">{codigoManual.terreno}</span>
+                  <span className="text-orange-600">{codigoManual.condicion}</span>
+                  <span className="text-slate-500">{codigoManual.edificio}</span>
+                  <span className="text-slate-500">{codigoManual.piso}</span>
+                  <span className="text-slate-500">{codigoManual.unidad}</span>
                   <span className="text-xs text-slate-500 ml-2">({construirCodigoCompleto().length}/30)</span>
                 </div>
                 
-                {/* Campos editables - Fila 1 */}
                 <div className="grid grid-cols-6 gap-2 mb-3">
                   <div className="bg-blue-100 p-2 rounded">
-                    <Label className="text-xs text-blue-700">Dpto+Mpio (1-5)</Label>
+                    <Label className="text-xs text-blue-700">Dpto+Mpio</Label>
                     <Input value={estructuraCodigo.prefijo_fijo} disabled className="font-mono bg-blue-50 text-blue-800 font-bold text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-emerald-700">Zona (6-7)</Label>
-                    <Input 
-                      value={codigoManual.zona} 
-                      onChange={(e) => handleCodigoChange('zona', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('zona', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
-                    <span className="text-xs text-slate-400">00=Rural, 01=Urbano, 02-99=Correg.</span>
+                    <Label className="text-xs text-emerald-700">Zona</Label>
+                    <Input value={codigoManual.zona} onChange={(e) => handleCodigoChange('zona', e.target.value, 2)} onBlur={() => handleCodigoBlur('zona', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-amber-700">Sector (8-9)</Label>
-                    <Input 
-                      value={codigoManual.sector} 
-                      onChange={(e) => handleCodigoChange('sector', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('sector', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-amber-700">Sector</Label>
+                    <Input value={codigoManual.sector} onChange={(e) => handleCodigoChange('sector', e.target.value, 2)} onBlur={() => handleCodigoBlur('sector', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
-                    <Input 
-                      value={codigoManual.comuna} 
-                      onChange={(e) => handleCodigoChange('comuna', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('comuna', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-purple-700">Comuna</Label>
+                    <Input value={codigoManual.comuna} onChange={(e) => handleCodigoChange('comuna', e.target.value, 2)} onBlur={() => handleCodigoBlur('comuna', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-pink-700">Barrio (12-13)</Label>
-                    <Input 
-                      value={codigoManual.barrio} 
-                      onChange={(e) => handleCodigoChange('barrio', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('barrio', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-pink-700">Barrio</Label>
+                    <Input value={codigoManual.barrio} onChange={(e) => handleCodigoChange('barrio', e.target.value, 2)} onBlur={() => handleCodigoBlur('barrio', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-cyan-700">Manzana (14-17)</Label>
-                    <Input 
-                      value={codigoManual.manzana_vereda} 
-                      onChange={(e) => handleCodigoChange('manzana_vereda', e.target.value, 4)}
-                      onBlur={() => handleCodigoBlur('manzana_vereda', 4)}
-                      maxLength={4}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-cyan-700">Manzana</Label>
+                    <Input value={codigoManual.manzana_vereda} onChange={(e) => handleCodigoChange('manzana_vereda', e.target.value, 4)} onBlur={() => handleCodigoBlur('manzana_vereda', 4)} maxLength={4} className="font-mono text-center" />
                   </div>
                 </div>
                 
-                {/* Predios en manzana */}
-                {codigoManual.manzana_vereda !== '0000' && (
-                  <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
-                        <FileText className="w-3 h-3" />
-                        Terrenos existentes en manzana {codigoManual.manzana_vereda}
-                      </p>
-                      {buscandoPrediosManzana && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
-                    </div>
-                    {prediosEnManzana.length > 0 ? (
-                      <div className="space-y-1">
-                        {prediosEnManzana.map((p, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100">
-                            <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
-                            <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
-                          </div>
-                        ))}
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
-                          <p className="text-[10px] text-cyan-600">
-                            Mostrando últimos {prediosEnManzana.length} terrenos
-                          </p>
-                          <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                            💡 Siguiente: <span className="font-mono font-bold">{siguienteTerrenoSugerido}</span>
-                          </p>
-                        </div>
-                      </div>
-                    ) : !buscandoPrediosManzana ? (
-                      <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
-                    ) : null}
-                  </div>
-                )}
-                
-                {/* Campos editables - Fila 2 */}
                 <div className="grid grid-cols-5 gap-2">
                   <div className="bg-red-50 p-2 rounded border border-red-200">
-                    <Label className="text-xs text-red-700 font-semibold">Terreno (18-21) *</Label>
-                    <Input 
-                      value={codigoManual.terreno} 
-                      onChange={(e) => handleCodigoChange('terreno', e.target.value, 4)}
-                      onBlur={() => handleCodigoBlur('terreno', 4)}
-                      maxLength={4}
-                      className="font-mono font-bold text-red-700 text-center"
-                    />
+                    <Label className="text-xs text-red-700 font-semibold">Terreno *</Label>
+                    <Input value={codigoManual.terreno} onChange={(e) => handleCodigoChange('terreno', e.target.value, 4)} onBlur={() => handleCodigoBlur('terreno', 4)} maxLength={4} className="font-mono font-bold text-red-700 text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-orange-700">Condición (22)</Label>
-                    <Input 
-                      type="number"
-                      min="0"
-                      max="9"
-                      value={codigoManual.condicion} 
-                      onChange={(e) => {
-                        const v = e.target.value.slice(0, 1);
-                        setCodigoManual({...codigoManual, condicion: v});
-                      }}
-                      maxLength={1}
-                      className="font-mono text-center"
-                      placeholder="0"
-                    />
+                    <Label className="text-xs text-orange-700">Condición</Label>
+                    <Input type="number" min="0" max="9" value={codigoManual.condicion} onChange={(e) => setCodigoManual({...codigoManual, condicion: e.target.value.slice(0, 1)})} maxLength={1} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
-                    <Input 
-                      value={codigoManual.edificio} 
-                      onChange={(e) => handleCodigoChange('edificio', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('edificio', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-slate-600">Edificio</Label>
+                    <Input value={codigoManual.edificio} onChange={(e) => handleCodigoChange('edificio', e.target.value, 2)} onBlur={() => handleCodigoBlur('edificio', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-600">Piso (25-26)</Label>
-                    <Input 
-                      value={codigoManual.piso} 
-                      onChange={(e) => handleCodigoChange('piso', e.target.value, 2)}
-                      onBlur={() => handleCodigoBlur('piso', 2)}
-                      maxLength={2}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-slate-600">Piso</Label>
+                    <Input value={codigoManual.piso} onChange={(e) => handleCodigoChange('piso', e.target.value, 2)} onBlur={() => handleCodigoBlur('piso', 2)} maxLength={2} className="font-mono text-center" />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-600">Unidad (27-30)</Label>
-                    <Input 
-                      value={codigoManual.unidad} 
-                      onChange={(e) => handleCodigoChange('unidad', e.target.value, 4)}
-                      onBlur={() => handleCodigoBlur('unidad', 4)}
-                      maxLength={4}
-                      className="font-mono text-center"
-                    />
+                    <Label className="text-xs text-slate-600">Unidad</Label>
+                    <Input value={codigoManual.unidad} onChange={(e) => handleCodigoChange('unidad', e.target.value, 4)} onBlur={() => handleCodigoBlur('unidad', 4)} maxLength={4} className="font-mono text-center" />
                   </div>
                 </div>
                 
-                {/* Botón verificar */}
                 <div className="mt-4">
                   <Button onClick={verificarCodigoCompleto} variant="outline" className="w-full" disabled={loading}>
-                    <Search className="w-4 h-4 mr-2" />
-                    Verificar Código
+                    <Search className="w-4 h-4 mr-2" />Verificar Código
                   </Button>
                 </div>
               </div>
             )}
             
-            {/* Info del terreno */}
-            {terrenoInfo && (
-              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
-                <h4 className="font-semibold text-emerald-800 mb-2 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Sugerencia para esta Manzana/Vereda
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div>
-                    <span className="text-slate-500">Predios activos:</span>
-                    <p className="font-bold text-emerald-700">{terrenoInfo.total_activos || 0}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Siguiente terreno:</span>
-                    <p className="font-bold text-emerald-700 text-lg">{terrenoInfo.siguiente_terreno || siguienteTerrenoSugerido}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Código sugerido:</span>
-                    <p className="font-bold text-slate-800 text-xs font-mono">{terrenoInfo.codigo_sugerido || construirCodigoCompleto()}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Base Gráfica:</span>
-                    <p className={`font-bold ${terrenoInfo.tiene_geometria_gdb ? 'text-emerald-700' : 'text-amber-600'}`}>
-                      {terrenoInfo.tiene_geometria_gdb ? '✅ Disponible' : '⚠️ No disponible'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Resultado verificación */}
             {verificacionCodigo && (
-              <div className={`p-4 rounded-lg border ${
-                verificacionCodigo.estado === 'disponible' ? 'bg-emerald-50 border-emerald-300' :
-                verificacionCodigo.estado === 'eliminado' ? 'bg-amber-50 border-amber-300' :
-                'bg-red-50 border-red-300'
-              }`}>
-                <p className={`font-semibold ${
-                  verificacionCodigo.estado === 'disponible' ? 'text-emerald-800' :
-                  verificacionCodigo.estado === 'eliminado' ? 'text-amber-800' :
-                  'text-red-800'
-                }`}>
+              <div className={`p-4 rounded-lg border ${verificacionCodigo.estado === 'disponible' ? 'bg-emerald-50 border-emerald-300' : verificacionCodigo.estado === 'eliminado' ? 'bg-amber-50 border-amber-300' : 'bg-red-50 border-red-300'}`}>
+                <p className={`font-semibold ${verificacionCodigo.estado === 'disponible' ? 'text-emerald-800' : verificacionCodigo.estado === 'eliminado' ? 'text-amber-800' : 'text-red-800'}`}>
                   {verificacionCodigo.mensaje}
                 </p>
-                {verificacionCodigo.estado === 'existente' && (
-                  <p className="mt-2 text-sm text-red-700">No puede crear un predio con este código.</p>
-                )}
               </div>
             )}
           </TabsContent>
           
-          {/* TAB: Propietario (R1) */}
+          {/* TAB 2: Propietario */}
           <TabsContent value="propietario" className="space-y-4 mt-4">
             <div className="flex justify-between items-center">
               <h4 className="font-semibold text-slate-800">Propietarios</h4>
               <Button type="button" variant="outline" size="sm" onClick={agregarPropietario} className="text-emerald-700">
-                <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
+                <Plus className="w-4 h-4 mr-1" /> Agregar
               </Button>
             </div>
             
             {propietarios.map((prop, index) => (
               <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                  <span className="text-sm font-medium">Propietario {index + 1}</span>
                   {propietarios.length > 1 && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietario(index)} className="text-red-600">
                       <Trash2 className="w-4 h-4" />
@@ -942,270 +966,146 @@ const CrearPredioNuevoModal = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Primer Apellido *</Label>
-                    <Input 
-                      value={prop.primer_apellido} 
-                      onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())}
-                      placeholder="PÉREZ"
-                    />
+                    <Input value={prop.primer_apellido} onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())} />
                   </div>
                   <div>
                     <Label className="text-xs">Segundo Apellido</Label>
-                    <Input 
-                      value={prop.segundo_apellido} 
-                      onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())}
-                      placeholder="GARCÍA"
-                    />
+                    <Input value={prop.segundo_apellido} onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())} />
                   </div>
                   <div>
                     <Label className="text-xs">Primer Nombre *</Label>
-                    <Input 
-                      value={prop.primer_nombre} 
-                      onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())}
-                      placeholder="JUAN"
-                    />
+                    <Input value={prop.primer_nombre} onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())} />
                   </div>
                   <div>
                     <Label className="text-xs">Segundo Nombre</Label>
-                    <Input 
-                      value={prop.segundo_nombre} 
-                      onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())}
-                      placeholder="CARLOS"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Estado</Label>
-                    <Input 
-                      value={prop.estado} 
-                      onChange={(e) => actualizarPropietario(index, 'estado', e.target.value.toUpperCase())}
-                      placeholder="Ej: CASADO, SOLTERO, VIUDO, E (Estado)"
-                    />
+                    <Input value={prop.segundo_nombre} onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())} />
                   </div>
                   <div>
-                    <Label className="text-xs mb-2 block">Tipo Documento *</Label>
-                    <RadioGroup 
-                      value={prop.tipo_documento} 
-                      onValueChange={(v) => actualizarPropietario(index, 'tipo_documento', v)}
-                      className="flex flex-wrap gap-3"
-                    >
+                    <Label className="text-xs mb-2 block">Tipo Documento</Label>
+                    <div className="flex flex-wrap gap-2">
                       {Object.entries(TIPOS_DOCUMENTO).map(([k, v]) => (
-                        <div key={k} className="flex items-center space-x-1">
-                          <RadioGroupItem value={k} id={`tipo_doc_${index}_${k}`} />
-                          <Label htmlFor={`tipo_doc_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
-                        </div>
+                        <label key={k} className="flex items-center space-x-1 cursor-pointer">
+                          <input type="radio" checked={prop.tipo_documento === k} onChange={() => actualizarPropietario(index, 'tipo_documento', k)} />
+                          <span className="text-xs">{k}</span>
+                        </label>
                       ))}
-                    </RadioGroup>
+                    </div>
                   </div>
                   <div>
-                    <Label className="text-xs">Número Documento * (máx 12)</Label>
-                    <Input 
-                      value={prop.numero_documento} 
-                      onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
-                      placeholder="12345678"
-                    />
-                    {prop.numero_documento && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Formato: {formatearNumeroDocumento(prop.numero_documento)}
-                      </p>
-                    )}
+                    <Label className="text-xs">Número Documento</Label>
+                    <Input value={prop.numero_documento} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} />
                   </div>
-                  {(prop.primer_apellido || prop.primer_nombre) && (
-                    <div className="col-span-2 bg-emerald-50 p-2 rounded border border-emerald-200">
-                      <p className="text-xs text-emerald-700">
-                        <strong>Nombre completo:</strong> {generarNombreCompleto(prop) || 'Complete los campos'}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
             
-            {/* Información del predio */}
-            <div className="border-t border-slate-200 pt-4 mt-4">
+            <div className="border-t pt-4 mt-4">
               <h4 className="font-semibold text-slate-800 mb-3">Información del Predio</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label>Dirección *</Label>
-                  <Input 
-                    value={formData.direccion} 
-                    onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})}
-                    placeholder="VEREDA, SECTOR O DIRECCIÓN"
-                  />
+                  <Input value={formData.direccion} onChange={(e) => setFormData({...formData, direccion: e.target.value.toUpperCase()})} placeholder="DIRECCIÓN DEL PREDIO" />
                 </div>
                 <div className="col-span-2">
-                  <Label className="mb-2 block">Destino Económico *</Label>
-                  <RadioGroup 
-                    value={formData.destino_economico} 
-                    onValueChange={(v) => setFormData({...formData, destino_economico: v})}
-                    className="flex flex-wrap gap-2"
-                  >
+                  <Label className="mb-2 block">Destino Económico</Label>
+                  <div className="flex flex-wrap gap-2">
                     {Object.entries(DESTINOS_ECONOMICOS).map(([k, v]) => (
-                      <div key={k} className="flex items-center space-x-1">
-                        <RadioGroupItem value={k} id={`destino_${k}`} />
-                        <Label htmlFor={`destino_${k}`} className="text-xs cursor-pointer">{k}</Label>
-                      </div>
+                      <label key={k} className="flex items-center space-x-1 cursor-pointer">
+                        <input type="radio" checked={formData.destino_economico === k} onChange={() => setFormData({...formData, destino_economico: k})} />
+                        <span className="text-xs">{k}</span>
+                      </label>
                     ))}
-                  </RadioGroup>
+                  </div>
                 </div>
                 <div>
                   <Label>Matrícula Inmobiliaria</Label>
-                  <Input 
-                    value={formData.matricula_inmobiliaria} 
-                    onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})}
-                    placeholder="Ej: 270-8920"
-                  />
+                  <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} />
                 </div>
                 <div>
-                  <Label>Avalúo (COP) *</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.avaluo} 
-                    onChange={(e) => setFormData({...formData, avaluo: e.target.value})}
-                  />
-                </div>
-                
-                {/* Áreas calculadas */}
-                <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-medium text-blue-800">Áreas (calculadas del R2)</span>
-                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Automático</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs text-blue-700">Área Terreno Total (m²)</Label>
-                      <Input 
-                        type="number" 
-                        value={areas.areaTerrenoTotal.toFixed(2)} 
-                        readOnly 
-                        className="bg-blue-100 border-blue-300 text-blue-800 font-medium"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-blue-700">Área Construida Total (m²)</Label>
-                      <Input 
-                        type="number" 
-                        value={areas.areaConstruidaTotal.toFixed(2)} 
-                        readOnly 
-                        className="bg-blue-100 border-blue-300 text-blue-800 font-medium"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-blue-600 mt-2">
-                    💡 Modifique los valores en la pestaña "Físico (R2)".
-                  </p>
+                  <Label>Avalúo (COP)</Label>
+                  <Input type="number" value={formData.avaluo} onChange={(e) => setFormData({...formData, avaluo: e.target.value})} />
                 </div>
               </div>
             </div>
           </TabsContent>
           
-          {/* TAB: Físico (R2) */}
+          {/* TAB 3: Físico */}
           <TabsContent value="fisico" className="space-y-4 mt-4">
-            {/* Matrícula */}
-            <div>
-              <Label>Matrícula Inmobiliaria</Label>
-              <Input 
-                value={formData.matricula_inmobiliaria} 
-                onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})}
-                placeholder="Ej: 270-8920"
-              />
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-slate-800">Zonas de Terreno</h4>
+              <Button type="button" variant="outline" size="sm" onClick={agregarZonaTerreno} className="text-emerald-700">
+                <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+              </Button>
             </div>
             
-            {/* Zonas de Terreno */}
-            <div className="border-t border-slate-200 pt-4">
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="font-semibold text-slate-800">Zonas de Terreno</h4>
-                <Button type="button" variant="outline" size="sm" onClick={agregarZonaTerreno} className="text-emerald-700">
-                  <Plus className="w-4 h-4 mr-1" /> Agregar Zona
-                </Button>
-              </div>
-              
-              {zonasTerreno.map((zona, index) => (
-                <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
-                    {zonasTerreno.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaTerreno(index)} className="text-red-600 h-6 w-6 p-0">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+            {zonasTerreno.map((zona, index) => (
+              <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Zona {index + 1}</span>
+                  {zonasTerreno.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaTerreno(index)} className="text-red-600 h-6 w-6 p-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Zona Física</Label>
+                    <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno(index, 'zona_fisica', e.target.value)} />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs">Zona Física</Label>
-                      <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno(index, 'zona_fisica', e.target.value)} placeholder="03" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Zona Económica</Label>
-                      <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno(index, 'zona_economica', e.target.value)} placeholder="05" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Área Terreno (m²)</Label>
-                      <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno(index, 'area_terreno', e.target.value)} />
-                    </div>
+                  <div>
+                    <Label className="text-xs">Zona Económica</Label>
+                    <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno(index, 'zona_economica', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Área (m²)</Label>
+                    <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno(index, 'area_terreno', e.target.value)} />
                   </div>
                 </div>
-              ))}
-              
-              <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
-                <p className="text-sm text-blue-800">
-                  📊 <strong>Subtotal Área Terreno:</strong> {areas.areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
-                </p>
               </div>
+            ))}
+            
+            <div className="bg-blue-50 border border-blue-200 rounded p-2">
+              <p className="text-sm text-blue-800"><strong>Área Terreno Total:</strong> {areas.areaTerrenoTotal.toFixed(2)} m²</p>
             </div>
             
-            {/* Construcciones */}
-            <div className="border-t border-slate-200 pt-4">
+            <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-slate-800">Construcciones</h4>
-                <Button type="button" variant="outline" size="sm" onClick={agregarConstruccion} className="text-emerald-700">
-                  <Plus className="w-4 h-4 mr-1" /> Agregar Construcción
+                <Button type="button" variant="outline" size="sm" onClick={agregarConstruccionR2} className="text-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Agregar
                 </Button>
               </div>
               
-              {construcciones.length === 0 ? (
+              {construccionesR2.length === 0 ? (
                 <div className="text-center py-4 bg-slate-50 rounded-lg border-2 border-dashed">
-                  <p className="text-slate-500 text-sm">No hay construcciones registradas</p>
+                  <p className="text-slate-500 text-sm">No hay construcciones</p>
                 </div>
               ) : (
-                construcciones.map((const_, index) => (
+                construccionesR2.map((c, index) => (
                   <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50 mb-2">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-amber-800">Construcción {const_.id}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarConstruccion(index)} className="text-red-600 h-6 w-6 p-0">
+                      <span className="text-sm font-medium text-amber-800">Construcción {c.id}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => eliminarConstruccionR2(index)} className="text-red-600 h-6 w-6 p-0">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                     <div className="grid grid-cols-4 gap-2">
                       <div>
                         <Label className="text-xs">Piso</Label>
-                        <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion(index, 'piso', e.target.value)} />
+                        <Input type="number" value={c.piso} onChange={(e) => actualizarConstruccionR2(index, 'piso', e.target.value)} />
                       </div>
                       <div>
                         <Label className="text-xs">Habitaciones</Label>
-                        <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion(index, 'habitaciones', e.target.value)} />
+                        <Input type="number" value={c.habitaciones} onChange={(e) => actualizarConstruccionR2(index, 'habitaciones', e.target.value)} />
                       </div>
                       <div>
                         <Label className="text-xs">Baños</Label>
-                        <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion(index, 'banos', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Locales</Label>
-                        <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccion(index, 'locales', e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Tipificación</Label>
-                        <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccion(index, 'tipificacion', e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Uso</Label>
-                        <Input value={const_.uso} onChange={(e) => actualizarConstruccion(index, 'uso', e.target.value.toUpperCase())} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Puntaje</Label>
-                        <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccion(index, 'puntaje', e.target.value)} />
+                        <Input type="number" value={c.banos} onChange={(e) => actualizarConstruccionR2(index, 'banos', e.target.value)} />
                       </div>
                       <div>
                         <Label className="text-xs">Área (m²)</Label>
-                        <Input type="number" value={const_.area_construida} onChange={(e) => actualizarConstruccion(index, 'area_construida', e.target.value)} />
+                        <Input type="number" value={c.area_construida} onChange={(e) => actualizarConstruccionR2(index, 'area_construida', e.target.value)} />
                       </div>
                     </div>
                   </div>
@@ -1213,244 +1113,145 @@ const CrearPredioNuevoModal = ({
               )}
               
               <div className="bg-amber-50 border border-amber-200 rounded p-2 mt-2">
-                <p className="text-sm text-amber-800">
-                  📊 <strong>Subtotal Área Construida:</strong> {areas.areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
-                </p>
-              </div>
-            </div>
-            
-            {/* Resumen R2 */}
-            <div className="border-t border-slate-200 pt-4">
-              <div className="bg-slate-100 border border-slate-300 rounded-lg p-3">
-                <h4 className="font-semibold text-slate-800 mb-2">Resumen R2</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p>• Zonas de Terreno: <strong>{zonasTerreno.length}</strong></p>
-                  <p>• Construcciones: <strong>{construcciones.length}</strong></p>
-                  <p className="text-blue-700">• Área Terreno → R1: <strong>{areas.areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</strong></p>
-                  <p className="text-amber-700">• Área Construida → R1: <strong>{areas.areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</strong></p>
-                </div>
+                <p className="text-sm text-amber-800"><strong>Área Construida Total:</strong> {areas.areaConstruidaTotal.toFixed(2)} m²</p>
               </div>
             </div>
           </TabsContent>
           
-          {/* TAB: VISITA (OBLIGATORIO) */}
-          <TabsContent value="visita" className="space-y-4 mt-4">
+          {/* TAB 4: VISITA COMPLETA (5 páginas) */}
+          <TabsContent value="visita" className="mt-4">
             <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-4">
               <p className="text-sm text-amber-800 font-medium">
-                ⚠️ El formulario de visita es OBLIGATORIO para crear un predio nuevo.
+                ⚠️ El formulario de visita es OBLIGATORIO. Complete las 5 páginas.
               </p>
             </div>
             
-            {/* GPS */}
-            <div className="border border-blue-200 rounded-lg overflow-hidden">
-              <div className="bg-blue-50 px-4 py-2 border-b border-blue-200 flex justify-between items-center">
-                <h3 className="font-semibold text-blue-800 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />Coordenadas GPS
-                  {visitaData.coordenadas_gps?.latitud ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <span className="text-red-500 text-xs font-normal">(Requerido)</span>
-                  )}
-                </h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <Button 
-                  type="button"
-                  onClick={capturarUbicacion}
-                  disabled={capturandoGPS}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+            {/* Paginación */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map(num => (
+                <button
+                  key={num}
+                  onClick={() => setVisitaPagina(num)}
+                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                    visitaPagina === num 
+                      ? 'bg-emerald-600 text-white' 
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
                 >
-                  {capturandoGPS ? (
-                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Capturando...</>
-                  ) : (
-                    <><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</>
-                  )}
-                </Button>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Latitud</Label>
-                    <Input 
-                      value={visitaData.coordenadas_gps?.latitud || ''} 
-                      onChange={(e) => setVisitaData(prev => ({
-                        ...prev, 
-                        coordenadas_gps: {...prev.coordenadas_gps, latitud: e.target.value}
-                      }))}
-                      placeholder="Ej: 7.123456"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Longitud</Label>
-                    <Input 
-                      value={visitaData.coordenadas_gps?.longitud || ''} 
-                      onChange={(e) => setVisitaData(prev => ({
-                        ...prev, 
-                        coordenadas_gps: {...prev.coordenadas_gps, longitud: e.target.value}
-                      }))}
-                      placeholder="Ej: -72.654321"
-                    />
-                  </div>
-                </div>
-                {visitaData.coordenadas_gps?.precision && (
-                  <p className="text-xs text-green-600">✅ Precisión: {visitaData.coordenadas_gps.precision}m</p>
-                )}
-              </div>
+                  {num}
+                </button>
+              ))}
             </div>
             
-            {/* FOTOS */}
-            <div className="border border-emerald-200 rounded-lg overflow-hidden">
-              <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
-                <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
-                  <Camera className="w-4 h-4" />Fotografías
-                  {fotos.length > 0 && <Badge variant="outline" className="ml-2">{fotos.length}</Badge>}
-                </h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFotoChange} className="hidden" />
-                <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={handleFotoChange} className="hidden" />
-                
-                {fotos.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {fotos.map((f) => (
-                      <div key={f.id} className="relative aspect-square rounded overflow-hidden border group">
-                        <img src={f.data} alt="Foto" className="w-full h-full object-cover" />
-                        {f.offline && (
-                          <div className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">Offline</div>
-                        )}
-                        <button 
-                          type="button"
-                          onClick={() => setFotos(prev => prev.filter(x => x.id !== f.id))}
-                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} className="border-dashed border-emerald-300 text-emerald-700">
-                    <Camera className="w-4 h-4 mr-2" />Tomar Foto
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()} className="border-dashed">
-                    <ImageIcon className="w-4 h-4 mr-2" />Galería
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Estado y Servicios */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
-                <h3 className="font-semibold text-slate-800">Estado del Predio</h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <div>
-                  <Label className="text-xs mb-1 block">Estado</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['habitado','deshabitado','en_construccion','abandonado','lote_vacio','comercial'].map(e => (
-                      <label key={e} className="flex items-center gap-1 text-xs cursor-pointer">
-                        <input type="radio" checked={visitaData.estado_predio === e} onChange={() => setVisitaField('estado_predio', e)} />
-                        {e.replace('_', ' ')}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs mb-1 block">Servicios Públicos</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Agua','Alcantarillado','Energía','Gas','Internet'].map(s => (
-                      <label key={s} className="flex items-center gap-1 text-xs cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={visitaData.servicios_publicos?.includes(s)} 
-                          onChange={e => {
-                            if (e.target.checked) setVisitaField('servicios_publicos', [...(visitaData.servicios_publicos || []), s]);
-                            else setVisitaField('servicios_publicos', (visitaData.servicios_publicos || []).filter(x => x !== s));
-                          }} 
-                        />
-                        {s}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Reconocedor */}
-            <div className="border border-purple-200 rounded-lg overflow-hidden">
-              <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
-                <h3 className="font-semibold text-purple-800 flex items-center gap-2">
-                  <Pen className="w-4 h-4" />Información del Reconocedor
-                  {!visitaData.nombre_reconocedor?.trim() && (
-                    <span className="text-red-500 text-xs font-normal">(Requerido)</span>
-                  )}
-                </h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <div>
-                  <Label className="text-xs">Nombre del Visitado</Label>
-                  <Input 
-                    value={visitaData.nombre_visitado} 
-                    onChange={(e) => setVisitaField('nombre_visitado', e.target.value.toUpperCase())}
-                    placeholder="NOMBRE DEL VISITADO"
-                    className="uppercase"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Nombre del Reconocedor *</Label>
-                  <Input 
-                    value={visitaData.nombre_reconocedor} 
-                    onChange={(e) => setVisitaField('nombre_reconocedor', e.target.value.toUpperCase())}
-                    placeholder="NOMBRE DEL RECONOCEDOR"
-                    className="uppercase"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Observaciones */}
-            <div className="border border-amber-200 rounded-lg overflow-hidden">
-              <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
-                <h3 className="font-semibold text-amber-800">Observaciones</h3>
-              </div>
-              <div className="p-4">
-                <Textarea 
-                  value={visitaData.observaciones} 
-                  onChange={(e) => setVisitaField('observaciones', e.target.value.slice(0, 500))}
-                  rows={3}
-                  placeholder="Observaciones sobre la visita..."
+            {/* Contenido de cada página */}
+            <div className="space-y-4">
+              {visitaPagina === 1 && (
+                <VisitaPagina1
+                  visitaData={visitaData}
+                  setVisitaData={setVisitaData}
+                  selectedPredio={selectedPredio}
+                  proyecto={proyecto}
+                  tipoVisita="normal"
+                  mejoraSeleccionada={null}
+                  predioMejoraSeleccionada={null}
                 />
-                <p className="text-xs text-slate-500 mt-1">{visitaData.observaciones?.length || 0}/500</p>
-              </div>
+              )}
+              
+              {visitaPagina === 2 && (
+                <VisitaPagina2
+                  visitaData={visitaData}
+                  setVisitaData={setVisitaData}
+                  visitaPropietarios={visitaPropietarios}
+                  agregarPropietario={agregarVisitaPropietario}
+                  eliminarPropietario={eliminarVisitaPropietario}
+                  actualizarPropietario={actualizarVisitaPropietario}
+                />
+              )}
+              
+              {visitaPagina === 3 && (
+                <VisitaPagina3
+                  visitaConstrucciones={visitaConstrucciones}
+                  setVisitaConstrucciones={setVisitaConstrucciones}
+                  agregarConstruccion={agregarConstruccion}
+                  eliminarConstruccion={eliminarConstruccion}
+                  actualizarConstruccion={actualizarConstruccion}
+                  visitaCalificaciones={visitaCalificaciones}
+                  setVisitaCalificaciones={setVisitaCalificaciones}
+                  agregarCalificacion={agregarCalificacion}
+                  eliminarCalificacion={eliminarCalificacion}
+                  actualizarCalificacion={actualizarCalificacion}
+                />
+              )}
+              
+              {visitaPagina === 4 && (
+                <VisitaPagina4
+                  visitaData={visitaData}
+                  setVisitaData={setVisitaData}
+                  handleFotoCroquisChange={handleFotoCroquisChange}
+                  eliminarFotoCroquis={eliminarFotoCroquis}
+                />
+              )}
+              
+              {visitaPagina === 5 && (
+                <VisitaPagina5
+                  visitaData={visitaData}
+                  setVisitaData={setVisitaData}
+                  fotos={fotos}
+                  setFotos={setFotos}
+                  userPosition={userPosition}
+                  gpsAccuracy={gpsAccuracy}
+                  watchingPosition={watchingPosition}
+                  startWatchingPosition={startWatchingPosition}
+                  canvasVisitadoRef={canvasVisitadoRef}
+                  canvasReconocedorRef={canvasReconocedorRef}
+                  startDrawingVisitado={startDrawingVisitado}
+                  drawVisitado={drawVisitado}
+                  stopDrawingVisitado={stopDrawingVisitado}
+                  startDrawingReconocedor={startDrawingReconocedor}
+                  drawReconocedor={drawReconocedor}
+                  stopDrawingReconocedor={stopDrawingReconocedor}
+                  limpiarFirmaVisitado={limpiarFirmaVisitado}
+                  limpiarFirmaReconocedor={limpiarFirmaReconocedor}
+                  abrirModalFirma={abrirModalFirma}
+                  handleFotoChange={handleFotoChange}
+                />
+              )}
+            </div>
+            
+            {/* Navegación de páginas */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => setVisitaPagina(p => Math.max(1, p - 1))}
+                disabled={visitaPagina === 1}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+              </Button>
+              <span className="text-sm text-slate-600">Página {visitaPagina} de 5</span>
+              <Button 
+                onClick={() => setVisitaPagina(p => Math.min(5, p + 1))}
+                disabled={visitaPagina === 5}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                Siguiente <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
         
         <DialogFooter className="mt-4 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
-            Cancelar
-          </Button>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>Cancelar</Button>
           <Button 
             onClick={handleGuardar} 
             disabled={loading || verificacionCodigo?.estado === 'existente'}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
-              </>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
             ) : userRole === 'gestor' ? (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Enviar para Aprobación
-              </>
+              <><Save className="w-4 h-4 mr-2" />Enviar para Aprobación</>
             ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Crear Predio
-              </>
+              <><Save className="w-4 h-4 mr-2" />Crear Predio</>
             )}
           </Button>
         </DialogFooter>
