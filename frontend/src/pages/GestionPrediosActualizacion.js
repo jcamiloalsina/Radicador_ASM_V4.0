@@ -71,7 +71,8 @@ export default function GestionPrediosActualizacion() {
     pendingChangesCount,
     downloadForOffline,
     saveChangeOffline,
-    syncPendingChanges
+    syncPendingChanges,
+    getPrediosOffline
   } = useOfflineSync(proyectoId, 'actualizacion');
   
   // Estados
