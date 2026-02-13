@@ -1232,6 +1232,199 @@ const CrearPredioNuevoModal = ({
               </div>
             </div>
           </TabsContent>
+          
+          {/* TAB: VISITA (OBLIGATORIO) */}
+          <TabsContent value="visita" className="space-y-4 mt-4">
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-4">
+              <p className="text-sm text-amber-800 font-medium">
+                ⚠️ El formulario de visita es OBLIGATORIO para crear un predio nuevo.
+              </p>
+            </div>
+            
+            {/* GPS */}
+            <div className="border border-blue-200 rounded-lg overflow-hidden">
+              <div className="bg-blue-50 px-4 py-2 border-b border-blue-200 flex justify-between items-center">
+                <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />Coordenadas GPS
+                  {visitaData.coordenadas_gps?.latitud ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <span className="text-red-500 text-xs font-normal">(Requerido)</span>
+                  )}
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <Button 
+                  type="button"
+                  onClick={capturarUbicacion}
+                  disabled={capturandoGPS}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {capturandoGPS ? (
+                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Capturando...</>
+                  ) : (
+                    <><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</>
+                  )}
+                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Latitud</Label>
+                    <Input 
+                      value={visitaData.coordenadas_gps?.latitud || ''} 
+                      onChange={(e) => setVisitaData(prev => ({
+                        ...prev, 
+                        coordenadas_gps: {...prev.coordenadas_gps, latitud: e.target.value}
+                      }))}
+                      placeholder="Ej: 7.123456"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Longitud</Label>
+                    <Input 
+                      value={visitaData.coordenadas_gps?.longitud || ''} 
+                      onChange={(e) => setVisitaData(prev => ({
+                        ...prev, 
+                        coordenadas_gps: {...prev.coordenadas_gps, longitud: e.target.value}
+                      }))}
+                      placeholder="Ej: -72.654321"
+                    />
+                  </div>
+                </div>
+                {visitaData.coordenadas_gps?.precision && (
+                  <p className="text-xs text-green-600">✅ Precisión: {visitaData.coordenadas_gps.precision}m</p>
+                )}
+              </div>
+            </div>
+            
+            {/* FOTOS */}
+            <div className="border border-emerald-200 rounded-lg overflow-hidden">
+              <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200">
+                <h3 className="font-semibold text-emerald-800 flex items-center gap-2">
+                  <Camera className="w-4 h-4" />Fotografías
+                  {fotos.length > 0 && <Badge variant="outline" className="ml-2">{fotos.length}</Badge>}
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFotoChange} className="hidden" />
+                <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={handleFotoChange} className="hidden" />
+                
+                {fotos.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {fotos.map((f) => (
+                      <div key={f.id} className="relative aspect-square rounded overflow-hidden border group">
+                        <img src={f.data} alt="Foto" className="w-full h-full object-cover" />
+                        {f.offline && (
+                          <div className="absolute top-1 left-1 bg-yellow-500 text-white text-xs px-1 rounded">Offline</div>
+                        )}
+                        <button 
+                          type="button"
+                          onClick={() => setFotos(prev => prev.filter(x => x.id !== f.id))}
+                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()} className="border-dashed border-emerald-300 text-emerald-700">
+                    <Camera className="w-4 h-4 mr-2" />Tomar Foto
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()} className="border-dashed">
+                    <ImageIcon className="w-4 h-4 mr-2" />Galería
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Estado y Servicios */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                <h3 className="font-semibold text-slate-800">Estado del Predio</h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
+                  <Label className="text-xs mb-1 block">Estado</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['habitado','deshabitado','en_construccion','abandonado','lote_vacio','comercial'].map(e => (
+                      <label key={e} className="flex items-center gap-1 text-xs cursor-pointer">
+                        <input type="radio" checked={visitaData.estado_predio === e} onChange={() => setVisitaField('estado_predio', e)} />
+                        {e.replace('_', ' ')}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Servicios Públicos</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Agua','Alcantarillado','Energía','Gas','Internet'].map(s => (
+                      <label key={s} className="flex items-center gap-1 text-xs cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={visitaData.servicios_publicos?.includes(s)} 
+                          onChange={e => {
+                            if (e.target.checked) setVisitaField('servicios_publicos', [...(visitaData.servicios_publicos || []), s]);
+                            else setVisitaField('servicios_publicos', (visitaData.servicios_publicos || []).filter(x => x !== s));
+                          }} 
+                        />
+                        {s}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Reconocedor */}
+            <div className="border border-purple-200 rounded-lg overflow-hidden">
+              <div className="bg-purple-50 px-4 py-2 border-b border-purple-200">
+                <h3 className="font-semibold text-purple-800 flex items-center gap-2">
+                  <Pen className="w-4 h-4" />Información del Reconocedor
+                  {!visitaData.nombre_reconocedor?.trim() && (
+                    <span className="text-red-500 text-xs font-normal">(Requerido)</span>
+                  )}
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
+                  <Label className="text-xs">Nombre del Visitado</Label>
+                  <Input 
+                    value={visitaData.nombre_visitado} 
+                    onChange={(e) => setVisitaField('nombre_visitado', e.target.value.toUpperCase())}
+                    placeholder="NOMBRE DEL VISITADO"
+                    className="uppercase"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Nombre del Reconocedor *</Label>
+                  <Input 
+                    value={visitaData.nombre_reconocedor} 
+                    onChange={(e) => setVisitaField('nombre_reconocedor', e.target.value.toUpperCase())}
+                    placeholder="NOMBRE DEL RECONOCEDOR"
+                    className="uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Observaciones */}
+            <div className="border border-amber-200 rounded-lg overflow-hidden">
+              <div className="bg-amber-50 px-4 py-2 border-b border-amber-200">
+                <h3 className="font-semibold text-amber-800">Observaciones</h3>
+              </div>
+              <div className="p-4">
+                <Textarea 
+                  value={visitaData.observaciones} 
+                  onChange={(e) => setVisitaField('observaciones', e.target.value.slice(0, 500))}
+                  rows={3}
+                  placeholder="Observaciones sobre la visita..."
+                />
+                <p className="text-xs text-slate-500 mt-1">{visitaData.observaciones?.length || 0}/500</p>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
         
         <DialogFooter className="mt-4 pt-4 border-t">
@@ -1247,6 +1440,11 @@ const CrearPredioNuevoModal = ({
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Guardando...
+              </>
+            ) : userRole === 'gestor' ? (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Enviar para Aprobación
               </>
             ) : (
               <>
