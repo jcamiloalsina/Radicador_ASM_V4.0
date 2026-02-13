@@ -75,6 +75,10 @@ const DetallePredioActualizacion = ({
   const esGestor = user?.role === 'gestor' || user?.role === 'gestor_auxiliar';
   const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
   
+  // Verificar si el predio seleccionado ES una mejora (código termina en != 000)
+  const codigoPredio = predio.codigo_predial || predio.codigo_predial_nacional || predio.numero_predial || '';
+  const esMejoraDirecta = codigoPredio.length >= 30 && codigoPredio.substring(27, 30) !== '000';
+  
   // Ya no usamos esMejora basado en el código del terreno
   // Ahora usamos terrenoTieneMejoras que viene de las construcciones
   const tieneMejoras = terrenoTieneMejoras || false;
