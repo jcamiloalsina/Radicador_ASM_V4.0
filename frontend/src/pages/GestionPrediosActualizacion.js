@@ -661,14 +661,15 @@ export default function GestionPrediosActualizacion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, proyectoId, isOnline]);
   
-  // Filtrar predios localmente (para filtros de estado/zona, no búsqueda)
+  // Filtrar predios localmente (para filtros de estado/zona, y búsqueda local con < 3 chars)
   const prediosFiltrados = predios.filter(predio => {
-    // Filtro de búsqueda
-    if (searchTerm) {
+    // Filtro de búsqueda LOCAL - solo si hay búsqueda con menos de 3 caracteres
+    // (si hay >= 3 caracteres, la búsqueda ya se hizo en el servidor)
+    if (searchTerm && searchTerm.length < 3 && searchTerm.length > 0) {
       const search = searchTerm.toLowerCase();
       const codigo = (predio.codigo_predial || predio.numero_predial || '').toLowerCase();
       const direccion = (predio.direccion || '').toLowerCase();
-      const propietario = predio.propietarios?.[0]?.nombre_propietario?.toLowerCase() || '';
+      const propietario = predio.propietarios?.[0]?.nombre_propietario?.toLowerCase() || predio.nombre_propietario?.toLowerCase() || '';
       if (!codigo.includes(search) && !direccion.includes(search) && !propietario.includes(search)) {
         return false;
       }
