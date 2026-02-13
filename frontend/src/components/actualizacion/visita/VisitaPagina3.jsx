@@ -129,24 +129,24 @@ const VisitaPagina3 = memo(({
                       <span className="font-bold text-purple-700">{cons.unidad}</span>
                     </td>
                     <td className="px-2 py-2">
-                      <Input 
+                      <DebouncedTableInput 
                         value={cons.codigo_uso} 
-                        onChange={(e) => handleConstruccionChange(idx, 'codigo_uso', e.target.value)} 
+                        onChange={(val) => handleConstruccionChange(idx, 'codigo_uso', val)} 
                         placeholder="Ej: 01" 
                         className="w-20 h-8 text-sm" 
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <Input 
+                      <DebouncedTableInput 
                         type="number" 
                         value={cons.area} 
-                        onChange={(e) => handleConstruccionChange(idx, 'area', e.target.value)} 
+                        onChange={(val) => handleConstruccionChange(idx, 'area', val)} 
                         placeholder="0" 
                         className="w-20 h-8 text-sm" 
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <Input 
+                      <DebouncedTableInput 
                         type="number" 
                         value={cons.puntaje} 
                         onChange={(e) => handleConstruccionChange(idx, 'puntaje', e.target.value)} 
