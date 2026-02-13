@@ -5,7 +5,46 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Sesión Actual Fork 7)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 8)
+
+### ✅ COMPLETADO: Mejoras al Sistema Offline y UX
+
+**Cambios implementados en sesión anterior (Fork 7):**
+
+1. **Sistema de Sincronización Offline Mejorado** ✅
+   - Eliminada pantalla bloqueante de sincronización inicial
+   - Sincronización automática en segundo plano sin interrumpir al usuario
+   - **Archivo:** `/app/frontend/src/pages/VisorActualizacion.js`
+
+2. **Formulario de Visita Resiliente** ✅
+   - Auto-guardado de borradores en localStorage
+   - Recuperación automática de borradores al reabrir
+   - Diálogo de confirmación al cerrar para prevenir pérdida de datos
+   - **Archivo:** `/app/frontend/src/pages/VisorActualizacion.js`
+
+3. **Corrección de Regresión de "Mejoras"** ✅
+   - El sistema ahora identifica y muestra correctamente las mejoras
+   - El formulario de visita se abre correctamente para mejoras
+   - **Archivo:** `/app/frontend/src/components/actualizacion/DetallePredioActualizacion.jsx`
+
+4. **Estrategia de Caché "Stale-While-Revalidate" en Conservación** ✅
+   - Carga instantánea desde caché mientras actualiza del servidor en segundo plano
+   - Indicadores visuales de frescura de datos
+   - **Archivo:** `/app/frontend/src/pages/Predios.js`
+
+5. **Búsqueda por Coordenadas Planas (Origen Nacional)** ✅
+   - Nueva funcionalidad en Visor de Predios de Conservación
+   - Soporta: Decimal, GMS (Grados/Minutos/Segundos), Origen Nacional
+   - Eliminada opción "Origen Local" (no necesaria)
+   - **Archivo:** `/app/frontend/src/pages/VisorPredios.js`
+
+6. **Corrección de Bug de Carga Infinita** ✅
+   - Resuelto problema en Gestión de Predios Actualización
+   - **Archivo:** `/app/frontend/src/pages/GestionPrediosActualizacion.js`
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 7)
 
 ### ✅ COMPLETADO: Fix de Errores de Compilación del Sistema Offline
 
