@@ -767,7 +767,8 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
       </div>
     </div>
   </div>
-));
+  );
+});
 Page5.displayName = 'Page5';
 
 // Componente Principal
