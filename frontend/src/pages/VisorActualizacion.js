@@ -3251,8 +3251,10 @@ export default function VisorActualizacion() {
           await saveCambioPendiente({
             tipo: 'visita',
             proyecto_id: proyectoId,
-            codigo_predial: codigoPredial,
-            ...datosActualizacion
+            datos: {
+              codigo_predial: codigoPredial,
+              ...datosActualizacion
+            }
           });
           toast.info('Visita guardada offline - Se sincronizará al recuperar conexión');
           setShowVisitaModal(false);
