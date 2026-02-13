@@ -14,18 +14,17 @@ import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
 
 // Input optimizado para tablas - mantiene estado local y actualiza con debounce
-const DebouncedTableInput = memo(({ value, onChange, debounceMs = 200, ...props }) => {
+// OPTIMIZACIÓN MÓVIL: debounce aumentado a 300ms, sincroniza solo cuando pierde foco
+const DebouncedTableInput = memo(({ value, onChange, debounceMs = 300, type = 'text', ...props }) => {
   const [localValue, setLocalValue] = useState(value || '');
   const timeoutRef = useRef(null);
-  const isFirstRender = useRef(true);
+  const inputRef = useRef(null);
 
-  // Sincronizar con valor externo solo cuando cambia desde fuera
+  // Sincronizar con valor externo solo cuando el input NO tiene foco
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
+    if (document.activeElement !== inputRef.current) {
+      setLocalValue(value || '');
     }
-    setLocalValue(value || '');
   }, [value]);
 
   const handleChange = useCallback((e) => {
@@ -35,11 +34,14 @@ const DebouncedTableInput = memo(({ value, onChange, debounceMs = 200, ...props 
     // Cancelar timeout anterior
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
-    // Actualizar padre después del debounce
+    // Para inputs numéricos, actualizar con delay corto
+    // Para texto, usar debounce más largo
+    const delay = type === 'number' ? 150 : debounceMs;
+    
     timeoutRef.current = setTimeout(() => {
       onChange(newValue);
-    }, debounceMs);
-  }, [onChange, debounceMs]);
+    }, delay);
+  }, [onChange, debounceMs, type]);
 
   // Limpiar timeout al desmontar
   useEffect(() => {
@@ -48,7 +50,15 @@ const DebouncedTableInput = memo(({ value, onChange, debounceMs = 200, ...props 
     };
   }, []);
 
-  return <Input {...props} value={localValue} onChange={handleChange} />;
+  // Sincronizar al perder foco
+  const handleBlur = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      onChange(localValue);
+    }
+  }, [localValue, onChange]);
+
+  return <Input ref={inputRef} type={type} {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
 });
 
 DebouncedTableInput.displayName = 'DebouncedTableInput';
