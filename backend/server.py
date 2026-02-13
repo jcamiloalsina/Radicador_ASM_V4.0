@@ -16697,9 +16697,22 @@ async def get_geometrias_proyecto(
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/predios")
 async def get_predios_proyecto(
     proyecto_id: str,
+    page: int = Query(1, ge=1, description="Número de página"),
+    page_size: int = Query(500, ge=50, le=1000, description="Predios por página"),
+    estado: Optional[str] = Query(None, description="Filtrar por estado: pendiente, visitado, actualizado"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtiene los predios R1/R2 cargados para el proyecto"""
+    """
+    Obtiene los predios R1/R2 cargados para el proyecto con PAGINACIÓN.
+    
+    Para carga inicial rápida, el frontend puede usar page_size=500 y cargar 
+    páginas adicionales en segundo plano.
+    
+    Parámetros:
+    - page: Número de página (default 1)
+    - page_size: Predios por página (default 500, max 1000)
+    - estado: Filtrar por estado_visita (opcional)
+    """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver predios")
     
@@ -16707,49 +16720,94 @@ async def get_predios_proyecto(
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     
-    # Obtener predios del proyecto
-    predios = await db.predios_actualizacion.find(
-        {"proyecto_id": proyecto_id},
-        {"_id": 0}
-    ).to_list(50000)
+    # Construir filtro
+    filtro = {"proyecto_id": proyecto_id}
+    if estado:
+        filtro["estado_visita"] = estado
     
-    # Enriquecer con datos de la colección principal de predios
+    # Contar total PRIMERO (usa índice, es rápido)
+    total = await db.predios_actualizacion.count_documents(filtro)
+    
+    # Calcular skip
+    skip = (page - 1) * page_size
+    
+    # Obtener predios del proyecto CON PAGINACIÓN
+    # Proyección optimizada: solo campos necesarios para la lista
+    projection = {
+        "_id": 0,
+        "codigo_predial": 1,
+        "numero_predial": 1,
+        "direccion": 1,
+        "propietario": 1,
+        "nombre_propietario": 1,
+        "destino_economico": 1,
+        "area_terreno": 1,
+        "area_construida": 1,
+        "estado_visita": 1,
+        "fecha_visita": 1,
+        "visitado_por": 1,
+        "zona": 1,
+        "sector": 1,
+        "manzana": 1,
+        "observaciones": 1,
+        "tiene_visita": 1,
+        "sin_cambios": 1,
+        "propuesta_pendiente": 1,
+        "matricula_inmobiliaria": 1,
+        "codigo_homologado": 1
+    }
+    
+    predios = await db.predios_actualizacion.find(
+        filtro,
+        projection
+    ).skip(skip).limit(page_size).to_list(page_size)
+    
+    # Enriquecer con datos de la colección principal de predios (optimizado)
     if predios:
         codigos_prediales = [p.get('codigo_predial') for p in predios if p.get('codigo_predial')]
-        # Buscar datos adicionales en la colección principal (puede haber múltiples vigencias)
-        predios_principales = await db.predios.find(
-            {"codigo_predial_nacional": {"$in": codigos_prediales}},
-            {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1, "r2_registros": 1}
-        ).to_list(None)  # Sin límite para asegurar que traiga todos
         
-        # Crear mapas de código -> datos (toma el primero encontrado)
-        codigo_homologado_map = {}
-        matricula_map = {}
-        for p in predios_principales:
-            cpn = p.get('codigo_predial_nacional')
-            if cpn and cpn not in codigo_homologado_map:
-                ch = p.get('codigo_homologado')
-                if ch:
-                    codigo_homologado_map[cpn] = ch
-                # Obtener matrícula del r2_registros
-                r2_registros = p.get('r2_registros', [])
-                if r2_registros and len(r2_registros) > 0:
-                    matricula = r2_registros[0].get('matricula_inmobiliaria')
-                    if matricula:
-                        matricula_map[cpn] = matricula
-        
-        # Agregar datos a cada predio
-        for predio in predios:
-            codigo = predio.get('codigo_predial')
-            if codigo:
-                if codigo in codigo_homologado_map:
-                    predio['codigo_homologado'] = codigo_homologado_map[codigo]
-                if codigo in matricula_map:
-                    predio['matricula_inmobiliaria'] = matricula_map[codigo]
+        if codigos_prediales:
+            # Buscar datos adicionales - SOLO los campos necesarios
+            predios_principales = await db.predios.find(
+                {"codigo_predial_nacional": {"$in": codigos_prediales}},
+                {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1, "r2_registros.matricula_inmobiliaria": 1}
+            ).to_list(len(codigos_prediales) * 2)  # Limitado para evitar sobrecarga
+            
+            # Crear mapas de código -> datos
+            codigo_homologado_map = {}
+            matricula_map = {}
+            for p in predios_principales:
+                cpn = p.get('codigo_predial_nacional')
+                if cpn:
+                    ch = p.get('codigo_homologado')
+                    if ch and cpn not in codigo_homologado_map:
+                        codigo_homologado_map[cpn] = ch
+                    r2 = p.get('r2_registros', [])
+                    if r2 and len(r2) > 0 and cpn not in matricula_map:
+                        mat = r2[0].get('matricula_inmobiliaria')
+                        if mat:
+                            matricula_map[cpn] = mat
+            
+            # Agregar datos a cada predio
+            for predio in predios:
+                codigo = predio.get('codigo_predial')
+                if codigo:
+                    if codigo in codigo_homologado_map:
+                        predio['codigo_homologado'] = codigo_homologado_map[codigo]
+                    if codigo in matricula_map:
+                        predio['matricula_inmobiliaria'] = matricula_map[codigo]
+    
+    # Calcular metadatos de paginación
+    total_pages = (total + page_size - 1) // page_size
+    has_more = page < total_pages
     
     return {
         "predios": predios,
-        "total": len(predios)
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_more": has_more
     }
 
 
