@@ -608,6 +608,24 @@ const CrearPredioNuevoModal = ({
     setVerificacionCodigo(null);
     setTerrenoInfo(null);
     setPrediosEnManzana([]);
+    // Reset formulario de visita
+    setVisitaData({
+      fecha_visita: new Date().toISOString().split('T')[0],
+      hora_visita: new Date().toTimeString().slice(0, 5),
+      coordenadas_gps: { latitud: '', longitud: '', precision: null },
+      observaciones: '',
+      nombre_visitado: '',
+      nombre_reconocedor: '',
+      estado_predio: 'habitado',
+      servicios_publicos: [],
+      calificacion: {
+        estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+        acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+        bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+        cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' }
+      }
+    });
+    setFotos([]);
     setActiveTab('ubicacion');
     onClose();
   };
