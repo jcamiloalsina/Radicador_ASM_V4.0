@@ -287,6 +287,7 @@ export default function VisorActualizacion() {
   const [construcciones, setConstrucciones] = useState(null);
   const [construccionesVersion, setConstruccionesVersion] = useState(0); // Para forzar re-render del GeoJSON
   const [prediosR1R2, setPrediosR1R2] = useState([]);
+  const [loadingPrediosR1R2, setLoadingPrediosR1R2] = useState(false); // Indicador de carga de datos R1/R2
   
   // Estados de descarga offline y progreso
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0, phase: '' });
