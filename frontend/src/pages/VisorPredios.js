@@ -2566,12 +2566,12 @@ export default function VisorPredios() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 px-3 pb-3">
-              {/* Selector de formato - 4 opciones */}
-              <div className="grid grid-cols-2 gap-1">
+              {/* Selector de formato - 3 opciones */}
+              <div className="flex gap-1">
                 <Button
                   variant={formatoCoordenadas === 'decimal' ? 'default' : 'outline'}
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1"
                   onClick={() => setFormatoCoordenadas('decimal')}
                 >
                   Decimales
@@ -2579,7 +2579,7 @@ export default function VisorPredios() {
                 <Button
                   variant={formatoCoordenadas === 'dms' ? 'default' : 'outline'}
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1"
                   onClick={() => setFormatoCoordenadas('dms')}
                 >
                   GMS
@@ -2587,18 +2587,10 @@ export default function VisorPredios() {
                 <Button
                   variant={formatoCoordenadas === 'planas_nacional' ? 'default' : 'outline'}
                   size="sm"
-                  className="text-xs"
+                  className="text-xs flex-1"
                   onClick={() => setFormatoCoordenadas('planas_nacional')}
                 >
-                  Origen Nacional
-                </Button>
-                <Button
-                  variant={formatoCoordenadas === 'planas_local' ? 'default' : 'outline'}
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setFormatoCoordenadas('planas_local')}
-                >
-                  Origen Local
+                  Planas
                 </Button>
               </div>
 
