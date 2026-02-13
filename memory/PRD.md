@@ -5,7 +5,65 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 10)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 10 - Sesión 2)
+
+### ✅ CORREGIDO: Captura GPS en Formulario de Visita
+**Problema:** El botón "Capturar Mi Ubicación" no funcionaba - no tenía handler onClick.
+
+**Solución:** Implementada función completa de captura GPS con:
+- Geolocation API con alta precisión
+- Indicador de "Capturando..." mientras procesa
+- Muestra precisión del GPS en metros
+- Manejo de errores (permiso denegado, GPS desactivado, timeout)
+- **Archivo:** `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx`
+
+### ✅ CORREGIDO: Campo "Condición" como Input Numérico
+**Problema:** El campo "Condición" usaba un Select dropdown cuando debería ser escritura manual.
+
+**Solución:** Cambiado a Input numérico (0-9) en TODOS los módulos:
+- `/app/frontend/src/pages/Predios.js`
+- `/app/frontend/src/pages/GestionPrediosActualizacion.js`
+- `/app/frontend/src/components/conservacion/CodigoPredialBuilder.jsx`
+- `/app/frontend/src/components/actualizacion/CrearPredioNuevoModal.jsx`
+
+### ✅ CORREGIDO: Bug R1/R2 No Cargando (Race Condition)
+**Problema:** Al hacer click en un predio, los datos R1/R2 no se mostraban porque las geometrías se cargaban antes que los datos alfanuméricos.
+
+**Solución:** Implementado `useRef` para mantener referencia actualizada de `prediosR1R2`:
+- El ref se actualiza cada vez que llegan datos
+- El click siempre accede a datos actuales, no al estado capturado
+- **Archivo:** `/app/frontend/src/pages/VisorActualizacion.js`
+
+### ✅ CORREGIDO: Restauración de Predios al Borrar Búsqueda
+**Problema:** En Conservación, al borrar la búsqueda no se restauraba la lista completa de predios.
+
+**Solución:** 
+- Agregado `useEffect` que detecta cuando `search === ''`
+- Recarga automáticamente todos los predios
+- Agregado botón "X" para limpiar búsqueda fácilmente
+- **Archivo:** `/app/frontend/src/pages/Predios.js`
+
+### ✅ OPTIMIZADO: Carga SWR (Stale-While-Revalidate)
+**Problema:** Cada vez que se entraba a un municipio, la sincronización bloqueaba la UI.
+
+**Solución:** Estrategia SWR implementada correctamente:
+1. Mostrar datos del caché INMEDIATAMENTE
+2. Actualizar del servidor EN SEGUNDO PLANO
+3. Refrescar UI silenciosamente cuando llegan datos frescos
+- **Archivo:** `/app/frontend/src/pages/Predios.js`
+
+### ✅ CORREGIDO: Agregar Calificación Completo
+**Problema:** El botón "Agregar Calificación" no existía en el formulario refactorizado.
+
+**Solución:** Restaurada funcionalidad completa:
+- Botón "Agregar Calificación" 
+- Botón "Eliminar" por cada calificación
+- Todos los campos: Estructura, Acabados, Baño, Cocina, Industria, Datos Generales
+- **Archivo:** `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx`
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 10)
 
 ### ✅ COMPLETADO: Eliminación de UI Manual de Sincronización
 
