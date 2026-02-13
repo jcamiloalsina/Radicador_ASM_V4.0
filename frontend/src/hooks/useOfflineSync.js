@@ -288,15 +288,16 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setIsOnline(true);
       console.log('[Offline] Conexión restaurada');
       
-      // Sincronizar cambios pendientes automáticamente
+      // Sincronizar cambios pendientes automáticamente (para cualquier módulo)
+      const storeId = proyectoId || modulo || 'general';
+      const cambios = await getCambiosPendientes(storeId);
+      if (cambios.length > 0) {
+        toast.info(`Sincronizando ${cambios.length} cambio(s) pendiente(s)...`);
+        await syncPendingChanges(true);
+      }
+      
+      // Descargar datos frescos en segundo plano solo si hay proyectoId
       if (proyectoId) {
-        const cambios = await getCambiosPendientes(proyectoId);
-        if (cambios.length > 0) {
-          toast.info(`Sincronizando ${cambios.length} cambio(s) pendiente(s)...`);
-          await syncPendingChanges(true);
-        }
-        
-        // Descargar datos frescos en segundo plano (sin bloquear)
         downloadFreshData(false);
       }
     };
@@ -316,7 +317,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [proyectoId, syncPendingChanges, downloadFreshData]);
+  }, [proyectoId, modulo, syncPendingChanges, downloadFreshData]);
 
   // Inicializar DB y cargar última sincronización
   useEffect(() => {
