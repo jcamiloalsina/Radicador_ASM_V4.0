@@ -254,7 +254,6 @@ export default function VisorActualizacion() {
   const mapRef = useRef(null);
   
   // Hook de sincronización offline
-  const { 
   const {
     isOnline,
     isSyncing,
