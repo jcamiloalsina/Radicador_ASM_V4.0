@@ -948,50 +948,22 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId, fetchProyecto]);
   
-  // Verificar sincronización inicial al cargar el proyecto - AUTOMÁTICO EN SEGUNDO PLANO
+  // Verificar sincronización inicial al cargar el proyecto
   const [syncChecked, setSyncChecked] = useState(false); // Bandera para evitar múltiples checks
   
   useEffect(() => {
-    const verificarYSincronizarAutomatico = async () => {
+    const verificarSincronizacion = async () => {
       // Solo verificar UNA vez por sesión
       if (proyecto && isOnline && !loading && !syncChecked) {
         setSyncChecked(true); // Marcar como verificado
         const necesitaSync = await checkInitialSync();
         if (necesitaSync) {
-          // Sincronizar en segundo plano SIN mostrar pantalla bloqueante
-          console.log('[Sync] Iniciando sincronización automática en segundo plano...');
-          setBackgroundSyncMessage('Sincronizando datos en segundo plano...');
-          
-          try {
-            const token = localStorage.getItem('token');
-            
-            // Descargar predios en segundo plano
-            const prediosResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => ({ data: [] }));
-            const prediosDescargados = prediosResponse.data.predios || prediosResponse.data || [];
-            
-            // Descargar geometrías en segundo plano
-            const geomResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
-              headers: { Authorization: `Bearer ${token}` },
-              params: { zona: 'todas' }
-            }).catch(() => ({ data: null }));
-            
-            // Guardar para offline
-            await performFullSync(prediosDescargados, geomResponse.data);
-            
-            setBackgroundSyncMessage('Datos sincronizados ✓');
-            setTimeout(() => setBackgroundSyncMessage(null), 3000);
-            console.log('[Sync] Sincronización automática completada');
-          } catch (e) {
-            console.warn('[Sync] Error en sincronización automática:', e.message);
-            setBackgroundSyncMessage(null);
-          }
+          setShowSyncScreen(true);
         }
       }
     };
-    verificarYSincronizarAutomatico();
-  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked, proyectoId, performFullSync]);
+    verificarSincronizacion();
+  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked]);
   
   // Ejecutar sincronización completa cuando se muestra la pantalla de sync
   const handlePerformFullSync = async () => {
@@ -3566,9 +3538,106 @@ export default function VisorActualizacion() {
     );
   }
   
-  // NOTA: La pantalla de sincronización bloqueante (showSyncScreen) ha sido eliminada.
-  // Ahora la sincronización se hace automáticamente en segundo plano sin interrumpir al usuario.
-  // El indicador de sincronización aparece en la barra superior cuando hay una sincronización activa.
+  // Pantalla de sincronización obligatoria (cuando hay cambios pendientes y hay conexión)
+  if (showSyncScreen && isOnline) {
+    const hasPendingChanges = offlineStats.cambiosPendientes > 0;
+    
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-6 p-4 bg-gradient-to-b from-slate-100 to-slate-200">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+          <div className="text-center mb-6">
+            <RefreshCw className={`w-16 h-16 mx-auto mb-4 text-amber-500 ${isSyncing ? 'animate-spin' : ''}`} />
+            <h2 className="text-xl font-semibold text-slate-800">
+              {isSyncing ? 'Sincronizando...' : (hasPendingChanges ? 'Subir Cambios al Servidor' : 'Conexión Restaurada')}
+            </h2>
+            <p className="text-slate-600 mt-2">
+              {hasPendingChanges 
+                ? `Hay ${offlineStats.cambiosPendientes} cambio(s) realizados en campo que deben subirse al servidor.`
+                : 'Puede sincronizar para obtener los datos más recientes del servidor.'
+              }
+            </p>
+          </div>
+          
+          {isSyncing ? (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800 font-medium mb-2">{syncProgress.message || 'Procesando...'}</p>
+                <div className="w-full bg-amber-200 rounded-full h-3">
+                  <div 
+                    className="bg-amber-500 h-3 rounded-full transition-all duration-300"
+                    style={{ width: syncProgress.total > 0 ? `${(syncProgress.current / syncProgress.total) * 100}%` : '0%' }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2">
+                  <p className="text-xs text-amber-600">
+                    {syncProgress.current}/{syncProgress.total} completados
+                  </p>
+                  <p className="text-xs text-amber-600">
+                    {syncProgress.total > 0 ? Math.round((syncProgress.current / syncProgress.total) * 100) : 0}%
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 text-center animate-pulse">
+                Por favor espere, no cierre esta ventana...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Explicación del proceso */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                <p className="font-medium mb-1">📋 El proceso de sincronización:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Primero <strong>SUBE</strong> su trabajo de campo al servidor</li>
+                  <li>Después <strong>DESCARGA</strong> los datos actualizados (GDB)</li>
+                </ol>
+                <p className="mt-2 text-blue-600">✅ Su trabajo de campo NO se perderá</p>
+              </div>
+              
+              {hasPendingChanges && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-800 font-medium">
+                    📤 <strong>{offlineStats.cambiosPendientes} cambio(s)</strong> de trabajo de campo por subir
+                  </p>
+                </div>
+              )}
+              
+              <Button 
+                onClick={handlePerformFullSync}
+                className={`w-full h-12 text-base ${hasPendingChanges ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}
+                disabled={isSyncing}
+              >
+                <RefreshCw className="w-5 h-5 mr-2" />
+                {hasPendingChanges ? `Subir ${offlineStats.cambiosPendientes} Cambio(s) y Actualizar` : 'Sincronizar Datos'}
+              </Button>
+              
+              {!hasPendingChanges && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleSkipSync}
+                  className="w-full"
+                  disabled={isSyncing}
+                >
+                  Continuar sin sincronizar
+                </Button>
+              )}
+              
+              {hasPendingChanges && (
+                <p className="text-xs text-red-600 text-center mt-2 font-medium">
+                  ⛔ No puede continuar hasta subir los cambios al servidor
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Info del proyecto */}
+        <div className="text-center text-sm text-slate-500">
+          <p>Proyecto: <span className="font-medium">{proyecto.nombre}</span></p>
+          <p className="text-xs mt-1">Municipio: {proyecto.municipio}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-slate-100">
