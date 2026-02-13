@@ -2903,26 +2903,39 @@ export default function Predios() {
           <CardTitle className="text-slate-900 font-outfit flex items-center justify-between">
             <span>Predios Registrados</span>
             <div className="flex items-center gap-2">
-              {filterMunicipio && (
+              {filterMunicipio && !loading && predios.length > 0 && (
                 <>
-                  {/* Indicador de datos desde caché */}
-                  {!loading && predios.length > 0 && (
-                    <span className="text-xs text-amber-600 flex items-center gap-1" title="Los datos pueden estar desactualizados. Haga clic en Sincronizar para obtener la última versión.">
+                  {/* Indicadores de estado - Solo informativos, sin botones manuales */}
+                  {isRevalidating && (
+                    <Badge className="bg-amber-100 text-amber-800 animate-pulse flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Actualizando...
+                    </Badge>
+                  )}
+                  {dataSource === 'server' && !isRevalidating && (
+                    <Badge className="bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Actualizado
+                    </Badge>
+                  )}
+                  {dataSource === 'cache' && !isRevalidating && (
+                    <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
                       <Database className="w-3 h-3" />
-                      Caché local
+                      Desde caché
+                    </Badge>
+                  )}
+                  {dataSource === 'offline' && (
+                    <Badge className="bg-red-100 text-red-800 flex items-center gap-1">
+                      <WifiOff className="w-3 h-3" />
+                      Sin conexión
+                    </Badge>
+                  )}
+                  {lastSyncTime && (
+                    <span className={`text-xs ${getCacheStatusColor(cacheAge)}`}>
+                      <Clock className="w-3 h-3 inline mr-1" />
+                      {formatTimeAgo(lastSyncTime)}
                     </span>
                   )}
-                  <Button
-                    variant={navigator.onLine ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => syncMunicipioManual(filterMunicipio)}
-                    disabled={downloadProgress.isDownloading || !navigator.onLine}
-                    className={`text-xs ${navigator.onLine ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
-                    title="Actualizar datos desde el servidor"
-                  >
-                    <RefreshCw className={`w-3 h-3 mr-1 ${downloadProgress.isDownloading ? 'animate-spin' : ''}`} />
-                    Sincronizar
-                  </Button>
                 </>
               )}
               <Badge variant="outline">{total.toLocaleString()} predios</Badge>
