@@ -16813,16 +16813,55 @@ async def get_geometrias_proyecto(
     if offset == 0:
         construcciones = await db.construcciones_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
     
-    # Convertir a GeoJSON FeatureCollection
+    # ENRIQUECER GEOMETRÍAS CON DATOS DE PROPIETARIOS desde predios_actualizacion
+    # Crear un mapa de código -> propietario para enriquecimiento rápido
+    codigos_geom = [g.get("codigo_predial") for g in geometrias if g.get("codigo_predial")]
+    propietarios_map = {}
+    if codigos_geom:
+        predios_con_prop = await db.predios_actualizacion.find(
+            {"proyecto_id": proyecto_id, "codigo_predial": {"$in": codigos_geom}},
+            {"_id": 0, "codigo_predial": 1, "propietarios": 1, "propietario": 1, "nombre_propietario": 1, 
+             "direccion": 1, "area_terreno": 1, "area_construida": 1, "avaluo_catastral": 1, "estado_visita": 1}
+        ).to_list(len(codigos_geom))
+        
+        for p in predios_con_prop:
+            cpn = p.get("codigo_predial")
+            if cpn:
+                # Extraer nombre del propietario del array o del campo directo
+                nombre_prop = p.get("nombre_propietario") or p.get("propietario")
+                if not nombre_prop:
+                    propietarios_arr = p.get("propietarios", [])
+                    if propietarios_arr and len(propietarios_arr) > 0:
+                        nombre_prop = propietarios_arr[0].get("nombre_propietario", "")
+                
+                propietarios_map[cpn] = {
+                    "propietario": nombre_prop,
+                    "direccion": p.get("direccion"),
+                    "area_terreno": p.get("area_terreno"),
+                    "area_construida": p.get("area_construida"),
+                    "avaluo_catastral": p.get("avaluo_catastral"),
+                    "estado_visita": p.get("estado_visita", "pendiente")
+                }
+    
+    # Convertir a GeoJSON FeatureCollection con datos enriquecidos
     geom_features = []
     for g in geometrias:
+        codigo = g.get("codigo_predial")
+        extra_props = propietarios_map.get(codigo, {})
+        
         geom_features.append({
             "type": "Feature",
             "geometry": g.get("geometry"),
             "properties": {
-                "codigo_predial": g.get("codigo_predial"),
+                "codigo_predial": codigo,
                 "numero_predial": g.get("numero_predial"),
                 "zona": g.get("zona"),
+                "propietario": extra_props.get("propietario"),
+                "direccion": extra_props.get("direccion"),
+                "area_terreno_r1": extra_props.get("area_terreno"),
+                "area_construida_r1": extra_props.get("area_construida"),
+                "avaluo_catastral": extra_props.get("avaluo_catastral"),
+                "estado_visita": extra_props.get("estado_visita", "pendiente"),
                 **g.get("properties", {})
             }
         })
