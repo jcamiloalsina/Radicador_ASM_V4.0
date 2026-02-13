@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -7,11 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Badge } from '../ui/badge';
+import { Textarea } from '../ui/textarea';
 import { 
-  Plus, Trash2, FileText, Search, MapPin,
-  Save, Loader2, AlertCircle, CheckCircle 
+  Plus, Trash2, FileText, Search, MapPin, Camera, Image as ImageIcon,
+  Save, Loader2, AlertCircle, CheckCircle, X, RefreshCw, Pen
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { saveCambioPendiente } from '../../utils/offlineDB';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
