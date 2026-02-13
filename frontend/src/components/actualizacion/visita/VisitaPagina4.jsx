@@ -24,9 +24,22 @@ const VisitaPagina4 = memo(({
   handleFotoCroquisChange,
   eliminarFotoCroquis
 }) => {
+  // Refs para los inputs de archivo - más robusto que document.getElementById
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+
   const handleFieldChange = useCallback((field, value) => {
     setVisitaData(prev => ({ ...prev, [field]: value }));
   }, [setVisitaData]);
+
+  // Handlers para abrir cámara y galería
+  const handleOpenCamera = useCallback(() => {
+    cameraInputRef.current?.click();
+  }, []);
+
+  const handleOpenGallery = useCallback(() => {
+    galleryInputRef.current?.click();
+  }, []);
 
   // Handler para cambio de área con conversión automática
   const handleAreaChange = useCallback((field, value, multiplier = 10000) => {
