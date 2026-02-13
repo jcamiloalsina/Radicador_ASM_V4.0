@@ -417,6 +417,30 @@ const Page3 = memo(({ construcciones, setConstrucciones, calificaciones, setCali
   const actualizarCons = (i, campo, val) => setConstrucciones(c => { const n = [...c]; n[i] = {...n[i], [campo]: val}; return n; });
   const agregarCons = () => setConstrucciones(c => [...c, { unidad: String.fromCharCode(65 + c.length), codigo_uso: '', area: '', puntaje: '', ano_construccion: '', num_pisos: '' }]);
   
+  const agregarCalificacion = () => setCalificaciones(c => [...c, {
+    id: c.length + 1,
+    estructura: { armazon: '', muros: '', cubierta: '', conservacion: '' },
+    acabados: { fachadas: '', cubrim_muros: '', pisos: '', conservacion: '' },
+    bano: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+    cocina: { tamano: '', enchape: '', mobiliario: '', conservacion: '' },
+    industria: { cercha_madera: '', cercha_metalica_liviana: '', cercha_metalica_mediana: '', cercha_metalica_pesada: '', altura: '' },
+    datos_generales: { total_pisos: '', total_habitaciones: '', total_banos: '', total_locales: '', area_total_construida: '' }
+  }]);
+
+  const eliminarCalificacion = (idx) => {
+    if (calificaciones.length > 1) {
+      setCalificaciones(c => c.filter((_, i) => i !== idx).map((cal, i) => ({ ...cal, id: i + 1 })));
+    }
+  };
+
+  const actualizarCalif = (idx, seccion, campo, val) => {
+    setCalificaciones(c => {
+      const n = [...c];
+      n[idx] = { ...n[idx], [seccion]: { ...n[idx][seccion], [campo]: val } };
+      return n;
+    });
+  };
+  
   return (
     <div className="space-y-4">
       <div className="border border-purple-200 rounded-lg overflow-hidden">
@@ -451,20 +475,79 @@ const Page3 = memo(({ construcciones, setConstrucciones, calificaciones, setCali
       </div>
 
       <div className="border border-orange-200 rounded-lg overflow-hidden">
-        <div className="bg-orange-50 px-4 py-2 border-b border-orange-200">
+        <div className="bg-orange-50 px-4 py-2 border-b border-orange-200 flex justify-between items-center">
           <h3 className="font-semibold text-orange-800">8. CALIFICACIÓN</h3>
+          <Button variant="outline" size="sm" onClick={agregarCalificacion} className="border-orange-300 text-orange-700 hover:bg-orange-100">
+            <Plus className="w-3 h-3 mr-1" />Agregar Calificación
+          </Button>
         </div>
-        <div className="p-4 text-sm text-slate-600">
-          <p>Complete los datos de calificación según el tipo de construcción.</p>
-          {calificaciones.map((cal, i) => (
-            <div key={i} className="mt-3 p-3 border rounded bg-slate-50">
-              <p className="font-medium mb-2">Calificación #{cal.id}</p>
-              <div className="grid grid-cols-4 gap-2">
-                {['armazon','muros','cubierta','conservacion'].map(f => (
-                  <div key={f}><Label className="text-xs capitalize">{f}</Label><FastInput value={cal.estructura[f]} onChange={v => {
-                    setCalificaciones(c => { const n = [...c]; n[i] = {...n[i], estructura: {...n[i].estructura, [f]: v}}; return n; });
-                  }} className="h-7 text-xs" /></div>
-                ))}
+        <div className="p-4 space-y-4">
+          {calificaciones.map((cal, idx) => (
+            <div key={idx} className="border rounded-lg bg-slate-50 overflow-hidden">
+              <div className="bg-orange-100 px-3 py-2 flex justify-between items-center">
+                <span className="font-medium text-orange-800">Calificación #{cal.id}</span>
+                {calificaciones.length > 1 && (
+                  <Button variant="ghost" size="sm" onClick={() => eliminarCalificacion(idx)} className="text-red-600 hover:bg-red-100 h-6 px-2">
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="p-3 space-y-3">
+                {/* 8.1 Estructura */}
+                <div className="border rounded p-2 bg-white">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">8.1 ESTRUCTURA</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[['armazon','Armazón'],['muros','Muros'],['cubierta','Cubierta'],['conservacion','Conservación']].map(([f, label]) => (
+                      <div key={f}><Label className="text-xs">{label}</Label><FastInput value={cal.estructura[f]} onChange={v => actualizarCalif(idx, 'estructura', f, v)} className="h-7 text-xs" /></div>
+                    ))}
+                  </div>
+                </div>
+                {/* 8.2 Acabados */}
+                <div className="border rounded p-2 bg-white">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">8.2 ACABADOS PRINCIPALES</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[['fachadas','Fachadas'],['cubrim_muros','Cubrim. Muros'],['pisos','Pisos'],['conservacion','Conservación']].map(([f, label]) => (
+                      <div key={f}><Label className="text-xs">{label}</Label><FastInput value={cal.acabados[f]} onChange={v => actualizarCalif(idx, 'acabados', f, v)} className="h-7 text-xs" /></div>
+                    ))}
+                  </div>
+                </div>
+                {/* 8.3 Baño y 8.4 Cocina en una fila */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border rounded p-2 bg-white">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">8.3 BAÑO</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[['tamano','Tamaño'],['enchape','Enchape'],['mobiliario','Mobiliario'],['conservacion','Conserv.']].map(([f, label]) => (
+                        <div key={f}><Label className="text-xs">{label}</Label><FastInput value={cal.bano[f]} onChange={v => actualizarCalif(idx, 'bano', f, v)} className="h-7 text-xs" /></div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="border rounded p-2 bg-white">
+                    <p className="text-xs font-semibold text-slate-600 mb-2">8.4 COCINA</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[['tamano','Tamaño'],['enchape','Enchape'],['mobiliario','Mobiliario'],['conservacion','Conserv.']].map(([f, label]) => (
+                        <div key={f}><Label className="text-xs">{label}</Label><FastInput value={cal.cocina[f]} onChange={v => actualizarCalif(idx, 'cocina', f, v)} className="h-7 text-xs" /></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* 8.5 Complemento Industria */}
+                <div className="border rounded p-2 bg-white">
+                  <p className="text-xs font-semibold text-slate-600 mb-2">8.5 COMPLEMENTO INDUSTRIA</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[['cercha_madera','Cercha Mad.'],['cercha_metalica_liviana','C. Met. Liv.'],['cercha_metalica_mediana','C. Met. Med.'],['cercha_metalica_pesada','C. Met. Pes.'],['altura','Altura']].map(([f, label]) => (
+                      <div key={f}><Label className="text-xs">{label}</Label><FastInput value={cal.industria[f]} onChange={v => actualizarCalif(idx, 'industria', f, v)} className="h-7 text-xs" /></div>
+                    ))}
+                  </div>
+                </div>
+                {/* 8.6 Datos Generales */}
+                <div className="border rounded p-2 bg-emerald-50">
+                  <p className="text-xs font-semibold text-emerald-700 mb-2">8.6 DATOS GENERALES</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[['total_pisos','Total Pisos'],['total_habitaciones','Habitaciones'],['total_banos','Baños'],['total_locales','Locales'],['area_total_construida','Área Total (m²)']].map(([f, label]) => (
+                      <div key={f}><Label className="text-xs">{label}</Label><FastInput type="number" value={cal.datos_generales[f]} onChange={v => actualizarCalif(idx, 'datos_generales', f, v)} className="h-7 text-xs" /></div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
