@@ -67,6 +67,22 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 **Archivo modificado:** `/app/frontend/src/pages/VisorActualizacion.js`
 
+### ✅ CORREGIDO: Indicador "Sin datos offline" incorrecto
+
+**Problema:** El indicador global de datos offline mostraba "Sin datos offline" aunque el proyecto estaba marcado como "Offline Ready".
+
+**Causa:** Existían múltiples bases de datos IndexedDB:
+- `asomunicipios_offline` (versión 7) - usada por el indicador global
+- `asomunicipios_offline_v2` (versión 1) - usada por offlineDB.js para guardar datos
+
+**Solución implementada:**
+1. **localStorage como respaldo** - Al guardar predios/geometrías en IndexedDB, también se actualiza un contador en localStorage
+2. **Lectura rápida de localStorage** - El indicador global primero lee de localStorage (instantáneo) antes de escanear IndexedDB
+3. **Conteo por proyecto** - Evita duplicados usando claves únicas por proyecto (`predios_{proyecto_id}`, `geometrias_{proyecto_id}`)
+4. **Actualización periódica** - Stats se recargan cada 10 segundos mientras la app está activa
+
+**Resultado:** El indicador ahora muestra correctamente "Offline (6,076)" cuando hay datos disponibles
+
 ---
 
 ## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 10 - Sesión 2)
