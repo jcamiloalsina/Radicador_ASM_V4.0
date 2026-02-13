@@ -2835,12 +2835,24 @@ export default function Predios() {
               <div className="flex flex-wrap gap-2 items-center">
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex gap-2">
-                    <Input
-                      placeholder="Buscar por código, propietario, documento, matrícula..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    />
+                    <div className="relative flex-1">
+                      <Input
+                        placeholder="Buscar por código, propietario, documento, matrícula..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        className="pr-8"
+                      />
+                      {search && (
+                        <button
+                          onClick={() => setSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          title="Limpiar búsqueda"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                     <Button onClick={handleSearch} variant="outline">
                       <Search className="w-4 h-4" />
                     </Button>
