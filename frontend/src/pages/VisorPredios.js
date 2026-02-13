@@ -303,6 +303,102 @@ export default function VisorPredios() {
     return { grados, minutos, segundos, direccion };
   };
 
+  // ====== PARÁMETROS DE PROYECCIÓN MAGNA-SIRGAS COLOMBIA ======
+  // Origen Nacional Único
+  const ORIGEN_NACIONAL = {
+    latOrigen: 4.596200417,      // 4°35'46.3215" N
+    lngOrigen: -74.077508056,    // 74°04'39.0285" W
+    falsoNorte: 2000000,         // 2'000,000 m
+    falsoEste: 5000000,          // 5'000,000 m
+    nombre: 'Origen Nacional'
+  };
+  
+  // Orígenes Locales (CTM12)
+  const ORIGENES_LOCALES = {
+    bogota: {
+      latOrigen: 4.596200417,    // 4°35'46.3215" N
+      lngOrigen: -74.077508056,  // 74°04'39.0285" W
+      falsoNorte: 1000000,
+      falsoEste: 1000000,
+      nombre: 'Bogotá'
+    },
+    este: {
+      latOrigen: 4.596200417,
+      lngOrigen: -71.077508056,  // 71°04'39.0285" W
+      falsoNorte: 1000000,
+      falsoEste: 1000000,
+      nombre: 'Este'
+    },
+    oeste: {
+      latOrigen: 4.596200417,
+      lngOrigen: -77.077508056,  // 77°04'39.0285" W
+      falsoNorte: 1000000,
+      falsoEste: 1000000,
+      nombre: 'Oeste'
+    },
+    este_este: {
+      latOrigen: 4.596200417,
+      lngOrigen: -68.077508056,  // 68°04'39.0285" W
+      falsoNorte: 1000000,
+      falsoEste: 1000000,
+      nombre: 'Este-Este'
+    },
+    oeste_oeste: {
+      latOrigen: 4.596200417,
+      lngOrigen: -80.077508056,  // 80°04'39.0285" W
+      falsoNorte: 1000000,
+      falsoEste: 1000000,
+      nombre: 'Oeste-Oeste'
+    }
+  };
+
+  // Función para convertir coordenadas planas a geográficas (aproximación para visualización)
+  // Nota: Para cálculos de alta precisión se recomienda usar proj4js
+  const planasAGeograficas = (norte, este, origen) => {
+    const params = origen === 'nacional' ? ORIGEN_NACIONAL : ORIGENES_LOCALES[origen];
+    
+    if (!params) {
+      console.error('Origen no válido:', origen);
+      return null;
+    }
+    
+    // Metros por grado (aproximación para Colombia)
+    const metrosPorGradoLat = 111320; // ~111.32 km por grado de latitud
+    const metrosPorGradoLng = 111320 * Math.cos(params.latOrigen * Math.PI / 180); // Ajuste por latitud
+    
+    // Calcular desplazamiento desde el origen
+    const deltaNorte = norte - params.falsoNorte;
+    const deltaEste = este - params.falsoEste;
+    
+    // Convertir a grados
+    const deltaLat = deltaNorte / metrosPorGradoLat;
+    const deltaLng = deltaEste / metrosPorGradoLng;
+    
+    // Coordenadas finales
+    const lat = params.latOrigen + deltaLat;
+    const lng = params.lngOrigen + deltaLng;
+    
+    return { lat, lng };
+  };
+
+  // Función para convertir geográficas a planas (para mostrar en el tooltip)
+  const geograficasAPlanas = (lat, lng, origen) => {
+    const params = origen === 'nacional' ? ORIGEN_NACIONAL : ORIGENES_LOCALES[origen];
+    
+    if (!params) return null;
+    
+    const metrosPorGradoLat = 111320;
+    const metrosPorGradoLng = 111320 * Math.cos(params.latOrigen * Math.PI / 180);
+    
+    const deltaLat = lat - params.latOrigen;
+    const deltaLng = lng - params.lngOrigen;
+    
+    const norte = params.falsoNorte + (deltaLat * metrosPorGradoLat);
+    const este = params.falsoEste + (deltaLng * metrosPorGradoLng);
+    
+    return { norte: Math.round(norte), este: Math.round(este) };
+  };
+
   // Función para ir a coordenadas
   const irACoordenadas = () => {
     let lat, lng;
@@ -314,7 +410,7 @@ export default function VisorPredios() {
       if (lng > 0 && lng > 60) {
         lng = -lng;
       }
-    } else {
+    } else if (formatoCoordenadas === 'dms') {
       lat = dmsToDecimal(
         coordenadasDMS.latGrados,
         coordenadasDMS.latMinutos,
@@ -328,6 +424,57 @@ export default function VisorPredios() {
         coordenadasDMS.lngSegundos,
         'E' // Usamos E para obtener positivo, luego negamos
       ));
+    } else if (formatoCoordenadas === 'planas_nacional') {
+      // Conversión desde Origen Nacional
+      const norte = parseFloat(coordenadasPlanas.norte);
+      const este = parseFloat(coordenadasPlanas.este);
+      
+      if (isNaN(norte) || isNaN(este)) {
+        toast.error('Ingrese coordenadas Norte y Este válidas');
+        return;
+      }
+      
+      // Validar rangos típicos para Origen Nacional
+      if (norte < 500000 || norte > 3500000) {
+        toast.warning('Norte fuera de rango típico (500,000 - 3,500,000 m)');
+      }
+      if (este < 4000000 || este > 6000000) {
+        toast.warning('Este fuera de rango típico (4,000,000 - 6,000,000 m)');
+      }
+      
+      const resultado = planasAGeograficas(norte, este, 'nacional');
+      if (!resultado) {
+        toast.error('Error en la conversión de coordenadas');
+        return;
+      }
+      lat = resultado.lat;
+      lng = resultado.lng;
+      
+    } else if (formatoCoordenadas === 'planas_local') {
+      // Conversión desde Origen Local
+      const norte = parseFloat(coordenadasPlanas.norte);
+      const este = parseFloat(coordenadasPlanas.este);
+      
+      if (isNaN(norte) || isNaN(este)) {
+        toast.error('Ingrese coordenadas Norte y Este válidas');
+        return;
+      }
+      
+      // Validar rangos típicos para orígenes locales
+      if (norte < 800000 || norte > 1800000) {
+        toast.warning('Norte fuera de rango típico para origen local');
+      }
+      if (este < 800000 || este > 1800000) {
+        toast.warning('Este fuera de rango típico para origen local');
+      }
+      
+      const resultado = planasAGeograficas(norte, este, origenLocal);
+      if (!resultado) {
+        toast.error('Error en la conversión de coordenadas');
+        return;
+      }
+      lat = resultado.lat;
+      lng = resultado.lng;
     }
     
     // Validar coordenadas
@@ -349,13 +496,19 @@ export default function VisorPredios() {
     // Establecer marcador y hacer zoom
     setMarcadorCoordenadas([lat, lng]);
     
-    // Mostrar coordenadas en ambos formatos
+    // Mostrar coordenadas en múltiples formatos
     const latDMS = decimalToDMS(lat, true);
     const lngDMS = decimalToDMS(Math.abs(lng), false);
-    toast.success(
-      `Ubicación: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°\n` +
-      `${latDMS.grados}°${latDMS.minutos}'${latDMS.segundos}"N, ${lngDMS.grados}°${lngDMS.minutos}'${lngDMS.segundos}"W`
-    );
+    const planasNac = geograficasAPlanas(lat, lng, 'nacional');
+    
+    let mensaje = `📍 Ubicación encontrada:\n`;
+    mensaje += `• Geográficas: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°\n`;
+    mensaje += `• DMS: ${latDMS.grados}°${latDMS.minutos}'${latDMS.segundos}"N, ${lngDMS.grados}°${lngDMS.minutos}'${lngDMS.segundos}"W`;
+    if (planasNac) {
+      mensaje += `\n• Origen Nacional: N ${planasNac.norte.toLocaleString()}, E ${planasNac.este.toLocaleString()}`;
+    }
+    
+    toast.success(mensaje, { duration: 5000 });
   };
 
   // Limpiar marcador de coordenadas
