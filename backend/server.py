@@ -21288,9 +21288,10 @@ async def sincronizar_geometrias_gdb_automaticamente():
                             if not codigo or not row.geometry:
                                 continue
                             
-                            # Convertir geometría a GeoJSON
+                            # Convertir geometría a GeoJSON usando shapely.mapping()
                             try:
-                                geom_geojson = json.loads(row.geometry.to_json())
+                                from shapely.geometry import mapping
+                                geom_geojson = mapping(row.geometry)
                             except:
                                 continue
                             
