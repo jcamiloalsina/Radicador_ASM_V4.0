@@ -14162,7 +14162,22 @@ async def process_gdb_upload_background(
                                 logger.warning(f"Construcción fuera de Colombia descartada: {codigo}")
                                 continue
                             
-                            area_m2 = round(geom_wgs84.area * (111320 ** 2), 2) if geom_wgs84.area else 0
+                            # IMPORTANTE: Usar Shape_Area original del GDB (ya está en m²)
+                            area_m2 = 0
+                            for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
+                                if area_col in gdf_const.columns and pd.notna(row.get(area_col)):
+                                    try:
+                                        area_m2 = round(float(row[area_col]), 2)
+                                        break
+                                    except:
+                                        pass
+                            
+                            # Fallback si no hay Shape_Area
+                            if area_m2 == 0:
+                                try:
+                                    area_m2 = round(row.geometry.area, 2) if row.geometry.area > 0 else 0
+                                except:
+                                    pass
                             
                             # Extraer atributos de construcción si existen
                             pisos = row.get('PISOS', row.get('pisos', row.get('NUM_PISOS', 1)))
