@@ -1321,7 +1321,8 @@ export default function VisorActualizacion() {
       }
       
       // Agregar al índice de mejoras si el terreno tiene mejoras asociadas
-      if (terrenoTieneMejora(codigo)) {
+      // Usar directamente el Set terrenosConMejoras
+      if (terrenosConMejoras.has(codigo)) {
         codigosIndex.mejoras.add(codigo);
         prediosCache.mejoras.push(predio);
       }
@@ -1330,7 +1331,7 @@ export default function VisorActualizacion() {
     console.log(`[Cache] Predios indexados: todos=${prediosR1R2.length}, pendiente=${prediosCache.pendiente.length}, visitado=${prediosCache.visitado.length}, actualizado=${prediosCache.actualizado.length}, mejoras=${prediosCache.mejoras.length}`);
     
     return { codigosPorEstadoIndex: codigosIndex, prediosPorEstado: prediosCache };
-  }, [prediosR1R2, terrenoTieneMejora]);
+  }, [prediosR1R2, terrenosConMejoras]);
   
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
