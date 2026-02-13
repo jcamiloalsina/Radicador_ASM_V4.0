@@ -518,7 +518,7 @@ export default function GestionPrediosActualizacion() {
   }, [proyectoId]);
   
   // Cargar predios
-  const fetchPredios = useCallback(async () => {
+  const fetchPredios = useCallback(async (searchQuery = null) => {
     if (!proyectoId) return;
     
     // Evitar llamadas múltiples simultáneas
@@ -534,19 +534,31 @@ export default function GestionPrediosActualizacion() {
       // Si está online, cargar del servidor
       if (isOnline) {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+        
+        // Construir parámetros de búsqueda
+        let params = new URLSearchParams();
+        if (searchQuery && searchQuery.length >= 3) {
+          params.append('search', searchQuery);
+          params.append('page_size', '1000'); // Mayor límite para búsquedas
+        }
+        
+        const url = `${API}/actualizacion/proyectos/${proyectoId}/predios${params.toString() ? '?' + params.toString() : ''}`;
+        const response = await axios.get(url, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
         const prediosData = response.data.predios || response.data || [];
+        const totalFromServer = response.data.total || prediosData.length;
+        
         setPredios(prediosData);
         setUsingOfflineData(false);
         
-        // Calcular estadísticas
+        // Calcular estadísticas - usar total del servidor si disponible
         const newStats = {
-          total: prediosData.length,
-          pendientes: prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
-          visitados: prediosData.filter(p => p.estado_visita === 'visitado').length,
-          actualizados: prediosData.filter(p => p.estado_visita === 'actualizado').length
+          total: totalFromServer,
+          pendientes: response.data.stats?.pendientes || prediosData.filter(p => !p.estado_visita || p.estado_visita === 'pendiente').length,
+          visitados: response.data.stats?.visitados || prediosData.filter(p => p.estado_visita === 'visitado').length,
+          actualizados: response.data.stats?.actualizados || prediosData.filter(p => p.estado_visita === 'actualizado').length
         };
         setStats(newStats);
         setCurrentPage(1);
