@@ -16604,6 +16604,163 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+@api_router.post("/actualizacion/proyectos/{proyecto_id}/resync-gdb")
+async def resync_gdb_geometrias(
+    proyecto_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Fuerza la re-sincronización de las geometrías GDB del proyecto.
+    Útil cuando las geometrías no se cargaron correctamente o después de un fork.
+    """
+    import zipfile
+    import tempfile
+    
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden resincronizar")
+    
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # Buscar archivo GDB
+    proyecto_dir = Path(f"/app/proyectos_actualizacion/{proyecto_id}")
+    if not proyecto_dir.exists():
+        raise HTTPException(status_code=404, detail="Directorio del proyecto no existe")
+    
+    gdb_files = list(proyecto_dir.glob("*.zip")) + list(proyecto_dir.glob("*.gdb"))
+    gdb_file = None
+    
+    for f in gdb_files:
+        if "base_grafica" in f.name.lower() or "gdb" in f.name.lower():
+            gdb_file = f
+            break
+    
+    if not gdb_file:
+        raise HTTPException(status_code=404, detail="No se encontró archivo GDB en el proyecto")
+    
+    # Contar geometrías actuales
+    count_actual = await db.geometrias_actualizacion.count_documents({"proyecto_id": proyecto_id})
+    
+    # Ejecutar sincronización en background
+    async def sync_task():
+        temp_dir = None
+        try:
+            temp_dir = tempfile.mkdtemp()
+            gdb_path = None
+            
+            if gdb_file.suffix.lower() == '.zip':
+                with zipfile.ZipFile(gdb_file, 'r') as z:
+                    z.extractall(temp_dir)
+                
+                for item in Path(temp_dir).rglob("*.gdb"):
+                    if item.is_dir():
+                        gdb_path = item
+                        break
+            else:
+                gdb_path = gdb_file
+            
+            if not gdb_path or not gdb_path.exists():
+                logger.error(f"Resync: No se encontró GDB válido")
+                return
+            
+            import fiona
+            capas = fiona.listlayers(str(gdb_path))
+            
+            # Buscar capa de terrenos
+            capa_terrenos = None
+            for capa in capas:
+                if any(t in capa.upper() for t in ['TERRENO', 'U_TERRENO', 'R_TERRENO']):
+                    capa_terrenos = capa
+                    break
+            
+            if not capa_terrenos:
+                for capa in capas:
+                    try:
+                        with fiona.open(str(gdb_path), layer=capa) as src:
+                            if src.schema.get('geometry') in ['Polygon', 'MultiPolygon']:
+                                capa_terrenos = capa
+                                break
+                    except:
+                        continue
+            
+            if not capa_terrenos:
+                logger.error(f"Resync: No se encontró capa de terrenos")
+                return
+            
+            # Eliminar geometrías existentes
+            await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
+            
+            # Procesar nuevas geometrías
+            geometrias_batch = []
+            municipio = proyecto.get("municipio", "")
+            
+            with fiona.open(str(gdb_path), layer=capa_terrenos) as src:
+                for feat in src:
+                    props = feat.get('properties', {})
+                    geom = feat.get('geometry')
+                    
+                    codigo = (
+                        props.get('codigo') or 
+                        props.get('CODIGO') or 
+                        props.get('terreno_codigo') or
+                        props.get('codigo_predial') or
+                        ''
+                    )
+                    
+                    if not codigo or not geom:
+                        continue
+                    
+                    zona = "urbano" if str(codigo)[9:11] == "01" else "rural"
+                    
+                    geometrias_batch.append({
+                        "proyecto_id": proyecto_id,
+                        "codigo_predial": str(codigo).strip(),
+                        "numero_predial": str(props.get('numero_predial', '')).strip(),
+                        "zona": zona,
+                        "geometry": dict(geom),
+                        "properties": {k: str(v) if v else None for k, v in props.items()},
+                        "municipio": municipio,
+                        "created_at": datetime.now(timezone.utc)
+                    })
+                    
+                    if len(geometrias_batch) >= 1000:
+                        await db.geometrias_actualizacion.insert_many(geometrias_batch)
+                        geometrias_batch = []
+            
+            if geometrias_batch:
+                await db.geometrias_actualizacion.insert_many(geometrias_batch)
+            
+            total = await db.geometrias_actualizacion.count_documents({"proyecto_id": proyecto_id})
+            
+            await db.proyectos_actualizacion.update_one(
+                {"id": proyecto_id},
+                {"$set": {
+                    "base_grafica_archivo": str(gdb_file),
+                    "base_grafica_cargado_en": datetime.now(timezone.utc),
+                    "total_geometrias": total
+                }}
+            )
+            
+            logger.info(f"Resync completado: {total} geometrías sincronizadas para proyecto {proyecto_id}")
+            
+        except Exception as e:
+            logger.error(f"Error en resync: {str(e)}")
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    background_tasks.add_task(sync_task)
+    
+    return {
+        "message": "Resincronización iniciada en segundo plano",
+        "proyecto_id": proyecto_id,
+        "archivo_gdb": gdb_file.name,
+        "geometrias_actuales": count_actual
+    }
+
+
 @api_router.get("/actualizacion/proyectos/{proyecto_id}/geometrias/info")
 async def get_geometrias_info(
     proyecto_id: str,
