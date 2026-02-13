@@ -3561,8 +3561,10 @@ export default function VisorActualizacion() {
     );
   }
   
-  // Pantalla de sincronización obligatoria (cuando hay cambios pendientes y hay conexión)
-  if (showSyncScreen && isOnline) {
+  // NOTA: La pantalla de sincronización obligatoria (showSyncScreen) ha sido desactivada.
+  // Ahora la sincronización se hace automáticamente en segundo plano sin interrumpir al usuario.
+  // Si hay cambios pendientes importantes, se mostrarán como badge en la barra superior.
+  if (false && showSyncScreen && isOnline) {
     const hasPendingChanges = offlineStats.cambiosPendientes > 0;
     
     return (
