@@ -3246,14 +3246,29 @@ export default function VisorActualizacion() {
       // Intentar guardar offline si falla la conexión
       if (!isOnline || error.code === 'ERR_NETWORK') {
         try {
-          await saveOfflineChange('visita', {
+          await saveCambioPendiente({
+            tipo: 'visita',
+            proyecto_id: proyectoId,
             codigo_predial: codigoPredial,
             ...datosActualizacion
           });
           toast.info('Visita guardada offline - Se sincronizará al recuperar conexión');
           setShowVisitaModal(false);
+          
+          // Limpiar borrador después de guardar exitosamente
+          limpiarBorradorVisita();
+          
+          // Actualizar estado local
+          setPrediosR1R2(prev => prev.map(p => 
+            (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
+              ? { ...p, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }
+              : p
+          ));
+          
+          setSelectedPredio(prev => ({ ...prev, estado_visita: 'visitado', sin_cambios: visitaData.sin_cambios }));
         } catch (offlineError) {
-          toast.error('Error al guardar visita');
+          console.error('[Visita] Error guardando offline:', offlineError);
+          toast.error('Error al guardar visita localmente');
         }
       } else {
         toast.error('Error al guardar formato de visita');
