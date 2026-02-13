@@ -5506,8 +5506,53 @@ export default function VisorActualizacion() {
         </DialogContent>
       </Dialog>
       
+      {/* Diálogo para recuperar borrador de visita */}
+      <Dialog open={showRecuperarBorrador} onOpenChange={setShowRecuperarBorrador}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <FileText className="w-5 h-5" />
+              Borrador Encontrado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-slate-600">
+              Se encontró un borrador guardado automáticamente para este predio.
+            </p>
+            {borradorRecuperado && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+                <p className="text-amber-800">
+                  <strong>Guardado:</strong> {new Date(borradorRecuperado.savedAt).toLocaleString('es-CO')}
+                </p>
+                <p className="text-amber-700 mt-1">
+                  Página actual: {borradorRecuperado.visitaPagina}/5
+                </p>
+              </div>
+            )}
+            <p className="text-sm text-slate-500">
+              ¿Desea continuar con el borrador o comenzar de nuevo?
+            </p>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={descartarBorrador}>
+              Comenzar de Nuevo
+            </Button>
+            <Button className="bg-amber-600 hover:bg-amber-700" onClick={usarBorradorRecuperado}>
+              Usar Borrador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Modal de Formato de Visita */}
-      <Dialog open={showVisitaModal} onOpenChange={setShowVisitaModal}>
+      <Dialog open={showVisitaModal} onOpenChange={(open) => {
+        // Si se intenta cerrar y hay datos, pedir confirmación
+        if (!open && visitaData.persona_atiende) {
+          const confirmar = window.confirm('¿Está seguro de cerrar? Los datos no guardados se perderán pero el borrador se conservará automáticamente.');
+          if (!confirmar) return;
+        }
+        setShowVisitaModal(open);
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
