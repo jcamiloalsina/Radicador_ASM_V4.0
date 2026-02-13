@@ -5,7 +5,30 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 12 - Correcciones del Formulario)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 13 - Corrección de Botones Croquis/Fotos)
+
+### ✅ Bug Fix: Botones "Tomar Foto" y "Galería" en Sección Croquis/Fotos NO FUNCIONABAN
+
+**Problema reportado:**
+- Los botones de "Tomar Foto" y "Galería" en la sección de Croquis/Fotos (Página 4) estaban visualmente presentes pero **no abrían la cámara ni la galería** al hacer click.
+- Causa raíz: Los handlers `onClick` usaban `document.getElementById()` lo cual no es robusto en componentes React con lazy loading.
+
+**Corrección aplicada:**
+- Refactorizado ambos componentes para usar **`useRef`** en lugar de `document.getElementById()`
+- Implementados handlers `handleOpenCamera` y `handleOpenGallery` que llaman a `ref.current?.click()`
+- Agregados **`data-testid`** para facilitar pruebas automatizadas:
+  - `croquis-camera-btn` / `croquis-gallery-btn` (VisitaPagina4.jsx)
+  - `croquis-camera-btn-modal` / `croquis-gallery-btn-modal` (VisitaFormModal.jsx)
+
+**Archivos modificados:**
+- `/app/frontend/src/components/actualizacion/visita/VisitaPagina4.jsx` - Componente usado por VisitaFormContainer
+- `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx` - Modal alternativo con Page4 interno
+
+**Testing:** ✅ Verificado - iteration_45.json - Code review 100% passed
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 12 - Correcciones del Formulario)
 
 ### ✅ Bug Fix: Orden de Secciones y Botón Galería en Formulario de Visita
 
