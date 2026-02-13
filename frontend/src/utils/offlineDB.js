@@ -381,6 +381,18 @@ export async function saveGeometriasOffline(proyectoId, geometrias) {
     });
 
     console.log(`[OfflineDB] ${geometrias.length} geometrías guardadas`);
+    
+    // Guardar en localStorage como respaldo (para el indicador global)
+    try {
+      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
+      offlineStats.geometriasCount = (offlineStats.geometriasCount || 0) + geometrias.length;
+      offlineStats.lastSync = new Date().toISOString();
+      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
+    } catch (lsError) {
+      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
+    }
+    
+    window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'geometrias', count: geometrias.length } }));
     return geometrias.length;
   } catch (e) {
     console.error('[OfflineDB] Error guardando geometrías:', e);
