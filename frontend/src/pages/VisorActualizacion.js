@@ -3569,10 +3569,12 @@ export default function VisorActualizacion() {
                              feature.properties?.numero_predial ||
                              feature.properties?.CODIGO;
         
-        console.log('[Click Predio] Buscando:', codigoFeature, 'en', prediosR1R2.length, 'predios R1/R2');
+        // IMPORTANTE: Usar el ref para obtener los datos actualizados (no el estado capturado)
+        const prediosActuales = prediosR1R2Ref.current;
+        console.log('[Click Predio] Buscando:', codigoFeature, 'en', prediosActuales.length, 'predios R1/R2');
         
         // Buscar predio en datos R1/R2 con matching mejorado (incluye mejoras)
-        let predio = prediosR1R2.find(p => {
+        let predio = prediosActuales.find(p => {
           const codigoPredio = p.codigo_predial || p.numero_predial;
           // Match exacto
           if (codigoPredio === codigoFeature) return true;
@@ -3608,8 +3610,8 @@ export default function VisorActualizacion() {
           }
         } else {
           // Si los datos R1/R2 aún están cargando, mostrar mensaje
-          if (loadingPrediosR1R2) {
-            toast.info('Cargando datos R1/R2...', { description: 'Por favor espere un momento' });
+          if (prediosActuales.length === 0) {
+            toast.info('Cargando datos R1/R2...', { description: 'Por favor espere un momento e intente de nuevo' });
             return;
           }
           
@@ -3629,11 +3631,7 @@ export default function VisorActualizacion() {
           };
           
           // Mostrar alerta de que este predio no tiene datos R1/R2
-          if (prediosR1R2.length > 0) {
-            toast.warning('Predio sin datos R1/R2', { description: 'Este predio no tiene información alfanumérica cargada' });
-          } else {
-            toast.warning('Datos R1/R2 no disponibles', { description: 'Los datos alfanuméricos no se han cargado correctamente' });
-          }
+          toast.warning('Predio sin datos R1/R2', { description: 'Este predio no tiene información alfanumérica cargada' });
           
           setSelectedPredio(predioBasico);
           setShowDetalleSimplificado(true);
