@@ -1283,8 +1283,9 @@ export default function VisorActualizacion() {
   }, [filterZona]);
   
   // Pre-calcular índices de códigos por estado (memoizado)
-  const codigosPorEstadoIndex = useMemo(() => {
-    const index = {
+  // Pre-calcular índice de códigos Y predios por estado (memoizado para acceso O(1))
+  const { codigosPorEstadoIndex, prediosPorEstado } = useMemo(() => {
+    const codigosIndex = {
       todos: new Set(),
       pendiente: new Set(),
       visitado: new Set(),
@@ -1292,25 +1293,44 @@ export default function VisorActualizacion() {
       mejoras: new Set() // Terrenos que tienen mejoras asociadas
     };
     
+    // Caché de predios completos por estado para filtrado instantáneo
+    const prediosCache = {
+      todos: prediosR1R2,
+      pendiente: [],
+      visitado: [],
+      actualizado: [],
+      mejoras: []
+    };
+    
     for (const predio of prediosR1R2) {
       const codigo = predio.codigo_predial || predio.numero_predial;
       if (!codigo) continue;
       
       const estado = predio.estado_visita || 'pendiente';
-      index.todos.add(codigo);
+      codigosIndex.todos.add(codigo);
       
-      if (estado === 'pendiente') index.pendiente.add(codigo);
-      else if (estado === 'visitado') index.visitado.add(codigo);
-      else if (estado === 'actualizado') index.actualizado.add(codigo);
+      if (estado === 'pendiente') {
+        codigosIndex.pendiente.add(codigo);
+        prediosCache.pendiente.push(predio);
+      } else if (estado === 'visitado') {
+        codigosIndex.visitado.add(codigo);
+        prediosCache.visitado.push(predio);
+      } else if (estado === 'actualizado') {
+        codigosIndex.actualizado.add(codigo);
+        prediosCache.actualizado.push(predio);
+      }
       
       // Agregar al índice de mejoras si el terreno tiene mejoras asociadas
       if (terrenoTieneMejora(codigo)) {
-        index.mejoras.add(codigo);
+        codigosIndex.mejoras.add(codigo);
+        prediosCache.mejoras.push(predio);
       }
     }
     
-    return index;
-  }, [prediosR1R2]);
+    console.log(`[Cache] Predios indexados: todos=${prediosR1R2.length}, pendiente=${prediosCache.pendiente.length}, visitado=${prediosCache.visitado.length}, actualizado=${prediosCache.actualizado.length}, mejoras=${prediosCache.mejoras.length}`);
+    
+    return { codigosPorEstadoIndex: codigosIndex, prediosPorEstado: prediosCache };
+  }, [prediosR1R2, terrenoTieneMejora]);
   
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
