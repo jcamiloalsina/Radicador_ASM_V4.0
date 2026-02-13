@@ -617,13 +617,14 @@ export default function GestionPrediosActualizacion() {
     }
   }, [proyectoId, isOnline, getPrediosOffline, downloadForOffline, proyecto?.municipio]);
   
-  // Cargar datos iniciales
+  // Cargar datos iniciales - solo cuando cambia proyectoId
   useEffect(() => {
     if (proyectoId && !hasFetchedRef.current) {
       fetchProyecto();
       fetchPredios();
       fetchCatalogos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proyectoId]);
   
   // Filtrar predios
