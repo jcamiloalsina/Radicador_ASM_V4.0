@@ -89,11 +89,14 @@ export default function Predios() {
   const { 
     isOnline, 
     isSyncing, 
+  const {
+    isOnline,
+    isSyncing,
     offlineStats, 
     downloadForOffline, 
-    saveOfflineChange,
-    forceSync,
-    getPrediosOffline
+    saveChangeOffline,
+    syncPendingChanges,
+    pendingChangesCount
   } = useOfflineSync(null, 'conservacion');
   
   // Router hooks para manejar parámetros de URL
