@@ -5,48 +5,39 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 13 - Corrección de Botones Croquis/Fotos)
+## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 13 - SOLUCIÓN PERMANENTE R1/R2 + GDB)
 
-### ✅ Bug Fix: Botones "Tomar Foto" y "Galería" en Sección Croquis/Fotos NO FUNCIONABAN
+### ✅ SOLUCIÓN PERMANENTE: Sincronización Automática de Geometrías GDB
 
-**Problema reportado:**
-- Los botones de "Tomar Foto" y "Galería" en la sección de Croquis/Fotos (Página 4) estaban visualmente presentes pero **no abrían la cámara ni la galería** al hacer click.
-- Causa raíz: Los handlers `onClick` usaban `document.getElementById()` lo cual no es robusto en componentes React con lazy loading.
+**Problema raíz identificado:**
+Los datos R1/R2 y geometrías GDB NO se sincronizaban automáticamente al hacer fork porque:
+1. El archivo GDB existía pero nunca se procesaba e insertaba en MongoDB
+2. El código usaba `fiona` que no estaba instalado
+3. El método de conversión de geometrías era incorrecto (`.to_json()` vs `mapping()`)
 
-**Corrección aplicada:**
-- Refactorizado ambos componentes para usar **`useRef`** en lugar de `document.getElementById()`
-- Implementados handlers `handleOpenCamera` y `handleOpenGallery` que llaman a `ref.current?.click()`
-- Agregados **`data-testid`** para facilitar pruebas automatizadas:
-  - `croquis-camera-btn` / `croquis-gallery-btn` (VisitaPagina4.jsx)
-  - `croquis-camera-btn-modal` / `croquis-gallery-btn-modal` (VisitaFormModal.jsx)
+**Solución implementada:**
+
+1. **Evento de startup automático** (`sincronizar_geometrias_gdb_automaticamente`):
+   - Se ejecuta al iniciar el servidor
+   - Detecta proyectos sin geometrías en `geometrias_actualizacion`
+   - Lee el archivo GDB usando `geopandas` + `pyogrio` (ya instalados)
+   - Inserta las geometrías automáticamente usando `shapely.geometry.mapping()`
+
+2. **Endpoint de resincronización manual**:
+   - `POST /api/actualizacion/proyectos/{proyecto_id}/resync-gdb`
+   - Permite forzar la resincronización si es necesario
+
+3. **Bug fix crítico**:
+   - Cambiado `row.geometry.to_json()` → `shapely.geometry.mapping(row.geometry)`
+   - El método anterior no existe en shapely
+
+**Estado actual del proyecto de prueba:**
+- R1/R2: 3,225 predios
+- Geometrías GDB: 3,361 predios
+- Predio 547200101000000860017000000000: ✅ Tiene AMBOS datos
 
 **Archivos modificados:**
-- `/app/frontend/src/components/actualizacion/visita/VisitaPagina4.jsx` - Componente usado por VisitaFormContainer
-- `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx` - Modal alternativo con Page4 interno
-
-**Testing:** ✅ Verificado - iteration_45.json - Code review 100% passed
-
----
-
-## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 12 - Correcciones del Formulario)
-
-### ✅ Bug Fix: Orden de Secciones y Botón Galería en Formulario de Visita
-
-**Problemas reportados:**
-1. En Página 5, la sección 11 (GPS) aparecía ANTES de sección 10 (Fotografías)
-2. En Página 4, la sección Croquis solo tenía botón "Tomar Foto", faltaba "Galería"
-
-**Correcciones aplicadas:**
-1. Reordenado las secciones en Página 5: ahora es 10 → 11 → 12 → 13 (correcto)
-2. Agregada funcionalidad completa a sección Croquis en Página 4:
-   - Input oculto para cámara (capture="environment")
-   - Input oculto para galería (multiple)
-   - Grid de preview de fotos con botón eliminar
-   - Handler `handleCroquisPhoto` para procesar fotos a base64
-
-**Archivo modificado:** `/app/frontend/src/components/actualizacion/visita/VisitaFormModal.jsx`
-
-**Testing:** Verificado visualmente via screenshots automatizados
+- `/app/backend/server.py` - Nuevo evento de startup y endpoint de resync
 
 ---
 
