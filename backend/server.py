@@ -17554,6 +17554,31 @@ async def crear_propuesta_cambio(
     if predio.get('estado_visita') not in ['visitado', 'actualizado']:
         raise HTTPException(status_code=400, detail="El predio debe estar visitado antes de proponer cambios")
     
+    # Verificar que no haya una propuesta pendiente para este código
+    propuesta_existente = await db.propuestas_cambio_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "estado": {"$in": ["pendiente", "subsanacion", "reenviada"]}
+    })
+    
+    if propuesta_existente:
+        tipo_propuesta = propuesta_existente.get('tipo', 'cambio')
+        if tipo_propuesta == 'cancelacion':
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
+            )
+        elif tipo_propuesta == 'predio_nuevo':
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de PREDIO NUEVO pendiente para este código."
+            )
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
+            )
+    
     # Obtener proyecto para el municipio
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
     municipio = proyecto.get('municipio', '') if proyecto else ''
