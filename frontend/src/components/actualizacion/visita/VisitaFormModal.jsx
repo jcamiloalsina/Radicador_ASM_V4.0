@@ -599,19 +599,116 @@ const Page4 = memo(({ data, setField }) => (
     
     <div className="border border-indigo-200 rounded-lg overflow-hidden">
       <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-200">
-        <h3 className="font-semibold text-indigo-800 flex items-center gap-2"><Camera className="w-4 h-4" />10. CROQUIS / FOTOS</h3>
+        <h3 className="font-semibold text-indigo-800 flex items-center gap-2">
+          <Camera className="w-4 h-4" />9. CROQUIS / FOTOS
+          {data.fotos_croquis?.length > 0 && <Badge variant="outline" className="ml-2">{data.fotos_croquis.length}</Badge>}
+        </h3>
       </div>
-      <div className="p-4">
-        <p className="text-sm text-slate-600">Cargue fotos del croquis del terreno.</p>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <Button variant="outline" className="border-dashed"><Camera className="w-4 h-4 mr-2" />Tomar Foto</Button>
-          <Button variant="outline" className="border-dashed"><ImageIcon className="w-4 h-4 mr-2" />Galería</Button>
+      <div className="p-4 space-y-3">
+        <p className="text-sm text-slate-600">Cargue fotos del croquis del terreno y construcciones.</p>
+        
+        {/* Inputs ocultos para cámara y galería de croquis */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          capture="environment"
+          onChange={(e) => handleCroquisPhoto(e, data, setField)}
+          className="hidden"
+          id="croquis-camera-input"
+        />
+        <input 
+          type="file" 
+          accept="image/*" 
+          multiple
+          onChange={(e) => handleCroquisPhoto(e, data, setField)}
+          className="hidden"
+          id="croquis-gallery-input"
+        />
+        
+        {/* Grid de fotos de croquis */}
+        {data.fotos_croquis?.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {data.fotos_croquis.map((f, idx) => (
+              <div key={f.id || idx} className="relative aspect-square rounded overflow-hidden border group">
+                <img 
+                  src={f.data || f.preview} 
+                  alt={`Croquis ${idx + 1}`} 
+                  className="w-full h-full object-cover"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setField('fotos_croquis', data.fotos_croquis.filter((_, i) => i !== idx));
+                  }}
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            type="button"
+            variant="outline" 
+            onClick={() => document.getElementById('croquis-camera-input')?.click()}
+            className="border-dashed border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+          >
+            <Camera className="w-4 h-4 mr-2" />Tomar Foto
+          </Button>
+          <Button 
+            type="button"
+            variant="outline" 
+            onClick={() => document.getElementById('croquis-gallery-input')?.click()}
+            className="border-dashed border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />Galería
+          </Button>
         </div>
       </div>
     </div>
   </div>
 ));
 Page4.displayName = 'Page4';
+
+// Handler para fotos de croquis (definido fuera del componente para evitar re-renders)
+const handleCroquisPhoto = async (e, data, setField) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  
+  const newPhotos = [];
+  for (const file of files) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(`${file.name} supera 5MB`);
+      continue;
+    }
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      newPhotos.push({
+        id: Date.now() + Math.random(),
+        data: base64,
+        nombre: file.name,
+        fecha: new Date().toISOString(),
+        offline: !navigator.onLine
+      });
+    } catch (err) {
+      toast.error('Error al procesar la foto');
+    }
+  }
+  
+  if (newPhotos.length > 0) {
+    setField('fotos_croquis', [...(data.fotos_croquis || []), ...newPhotos]);
+    toast.success(`📷 ${newPhotos.length} foto(s) de croquis agregada(s)`);
+  }
+  e.target.value = '';
+};
 
 // Página 5 - GPS, Observaciones, Firmas, Fotos
 const Page5 = memo(({ data, setField, fotos, setFotos }) => {
