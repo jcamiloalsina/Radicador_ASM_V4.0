@@ -1,36 +1,18 @@
 /**
  * Página 1 del Formulario de Visita
  * Secciones: Datos de visita, Información básica, PH, Condominio
+ * 
+ * OPTIMIZACIÓN DE RENDIMIENTO:
+ * - React.memo() evita re-renders innecesarios del componente
+ * - DebouncedInput mantiene estado local y actualiza el padre después de 150ms de inactividad
+ * - useCallback() memoiza handlers para evitar recreación en cada render
  */
 import React, { memo, useCallback } from 'react';
 import { Clock, Building, Home } from 'lucide-react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
-
-// Componente DebouncedInput para evitar re-renders frecuentes
-const DebouncedInput = memo(({ value, onChange, uppercase, ...props }) => {
-  const [localValue, setLocalValue] = React.useState(value);
-  const timeoutRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const handleChange = useCallback((e) => {
-    const newValue = uppercase ? e.target.value.toUpperCase() : e.target.value;
-    setLocalValue(newValue);
-    
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      onChange(newValue);
-    }, 300);
-  }, [onChange, uppercase]);
-
-  return <Input {...props} value={localValue} onChange={handleChange} />;
-});
-
-DebouncedInput.displayName = 'DebouncedInput';
+import DebouncedInput from '../../DebouncedInput';
 
 const VisitaPagina1 = memo(({ 
   visitaData, 
