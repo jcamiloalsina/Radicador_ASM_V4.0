@@ -1549,7 +1549,7 @@ export default function Predios() {
       // Las búsquedas activas también van al servidor para garantizar resultados frescos
       if (filterMunicipio && esVigenciaActual && !search) {
         try {
-          const cachedPredios = await getPrediosOffline(filterMunicipio);
+          const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
           if (cachedPredios && cachedPredios.length > 0) {
             // Filtrar solo predios de la vigencia actual en el caché
             let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
