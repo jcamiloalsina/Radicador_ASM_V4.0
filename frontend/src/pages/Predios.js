@@ -1780,8 +1780,6 @@ export default function Predios() {
       }
     }
   };
-    }
-  };
 
   const fetchGdbStats = async () => {
     try {
