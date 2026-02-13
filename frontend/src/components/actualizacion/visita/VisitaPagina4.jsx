@@ -2,7 +2,7 @@
  * Página 4 del Formulario de Visita
  * Secciones: Resumen Áreas de Terreno, Información de Localización (Croquis/Fotos)
  */
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useRef } from 'react';
 import { FileText, Camera, Image as ImageIcon, X } from 'lucide-react';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
