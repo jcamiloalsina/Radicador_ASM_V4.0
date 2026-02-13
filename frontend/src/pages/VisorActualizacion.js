@@ -288,6 +288,13 @@ export default function VisorActualizacion() {
   const [construccionesVersion, setConstruccionesVersion] = useState(0); // Para forzar re-render del GeoJSON
   const [prediosR1R2, setPrediosR1R2] = useState([]);
   const [loadingPrediosR1R2, setLoadingPrediosR1R2] = useState(false); // Indicador de carga de datos R1/R2
+  const prediosR1R2Ref = useRef([]); // Ref para acceso actualizado en callbacks
+  
+  // Mantener ref sincronizado con estado
+  useEffect(() => {
+    prediosR1R2Ref.current = prediosR1R2;
+    console.log('[Sync] prediosR1R2Ref actualizado:', prediosR1R2.length, 'predios');
+  }, [prediosR1R2]);
   
   // Estados de descarga offline y progreso
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0, phase: '' });
