@@ -1333,6 +1333,11 @@ export default function VisorActualizacion() {
     return { codigosPorEstadoIndex: codigosIndex, prediosPorEstado: prediosCache };
   }, [prediosR1R2, terrenosConMejoras]);
   
+  // Predios filtrados por estado actual - acceso O(1) desde caché
+  const prediosFiltrados = useMemo(() => {
+    return prediosPorEstado[filterEstado] || prediosPorEstado.todos;
+  }, [prediosPorEstado, filterEstado]);
+  
   // Filtrar geometrías por estado (usando useMemo para mejor rendimiento)
   const geometriasFiltradas = useMemo(() => {
     if (!geometrias?.features) {
