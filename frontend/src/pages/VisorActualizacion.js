@@ -2313,6 +2313,21 @@ export default function VisorActualizacion() {
       return;
     }
     
+    // ====== VERIFICAR SI HAY BORRADOR GUARDADO ======
+    const borradorGuardado = recuperarBorradorVisita();
+    if (borradorGuardado && !visitaExistente) {
+      // Mostrar diálogo para preguntar si desea recuperar el borrador
+      setBorradorRecuperado(borradorGuardado);
+      setShowRecuperarBorrador(true);
+      return;
+    }
+    
+    // Continuar con la lógica normal
+    inicializarFormularioVisita(visitaExistente, estadoActual);
+  };
+  
+  // Función para inicializar el formulario (separada para poder llamar desde el diálogo de borrador)
+  const inicializarFormularioVisita = (visitaExistente, estadoActual) => {
     // Determinar tipo de predio (PH/NPH)
     const esPH = selectedPredio?.es_ph || (selectedPredio?.condicion_predio && selectedPredio?.condicion_predio !== '000000000');
     
