@@ -14,7 +14,7 @@ import os
 import uuid
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://visit-form-speed.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://offline-sync-rebuild.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "catastro@asomunicipios.gov.co"
