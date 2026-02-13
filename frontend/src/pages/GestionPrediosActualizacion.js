@@ -65,11 +65,15 @@ export default function GestionPrediosActualizacion() {
   // Hook de sincronización offline
   const {
     isOnline,
+  const {
+    isOnline,
     isSyncing,
     offlineStats,
-    getPrediosOffline,
-    saveOfflineChange,
-    downloadForOffline
+    hasOffline,
+    pendingChangesCount,
+    downloadForOffline,
+    saveChangeOffline,
+    syncPendingChanges
   } = useOfflineSync(proyectoId, 'actualizacion');
   
   // Estados
