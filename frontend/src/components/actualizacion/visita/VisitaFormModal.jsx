@@ -559,7 +559,47 @@ const Page3 = memo(({ construcciones, setConstrucciones, calificaciones, setCali
 Page3.displayName = 'Page3';
 
 // Página 4 - Áreas
-const Page4 = memo(({ data, setField }) => (
+const Page4 = memo(({ data, setField }) => {
+  const croquisCameraRef = useRef(null);
+  const croquisGalleryRef = useRef(null);
+
+  const handleCroquisPhotoInternal = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    const newPhotos = [];
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} supera 5MB`);
+        continue;
+      }
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newPhotos.push({
+          id: Date.now() + Math.random(),
+          data: base64,
+          nombre: file.name,
+          fecha: new Date().toISOString(),
+          offline: !navigator.onLine
+        });
+      } catch (err) {
+        toast.error('Error al procesar la foto');
+      }
+    }
+    
+    if (newPhotos.length > 0) {
+      setField('fotos_croquis', [...(data.fotos_croquis || []), ...newPhotos]);
+      toast.success(`${newPhotos.length} foto(s) de croquis agregada(s)`);
+    }
+    e.target.value = '';
+  };
+
+  return (
   <div className="space-y-4">
     <div className="border border-teal-200 rounded-lg overflow-hidden">
       <div className="bg-teal-50 px-4 py-2 border-b border-teal-200">
@@ -600,29 +640,29 @@ const Page4 = memo(({ data, setField }) => (
     <div className="border border-indigo-200 rounded-lg overflow-hidden">
       <div className="bg-indigo-50 px-4 py-2 border-b border-indigo-200">
         <h3 className="font-semibold text-indigo-800 flex items-center gap-2">
-          <Camera className="w-4 h-4" />9. CROQUIS / FOTOS
+          <Camera className="w-4 h-4" />10. CROQUIS / FOTOS
           {data.fotos_croquis?.length > 0 && <Badge variant="outline" className="ml-2">{data.fotos_croquis.length}</Badge>}
         </h3>
       </div>
       <div className="p-4 space-y-3">
         <p className="text-sm text-slate-600">Cargue fotos del croquis del terreno y construcciones.</p>
         
-        {/* Inputs ocultos para cámara y galería de croquis */}
+        {/* Inputs ocultos para cámara y galería de croquis - usando refs */}
         <input 
+          ref={croquisCameraRef}
           type="file" 
           accept="image/*" 
           capture="environment"
-          onChange={(e) => handleCroquisPhoto(e, data, setField)}
+          onChange={handleCroquisPhotoInternal}
           className="hidden"
-          id="croquis-camera-input"
         />
         <input 
+          ref={croquisGalleryRef}
           type="file" 
           accept="image/*" 
           multiple
-          onChange={(e) => handleCroquisPhoto(e, data, setField)}
+          onChange={handleCroquisPhotoInternal}
           className="hidden"
-          id="croquis-gallery-input"
         />
         
         {/* Grid de fotos de croquis */}
@@ -653,7 +693,8 @@ const Page4 = memo(({ data, setField }) => (
           <Button 
             type="button"
             variant="outline" 
-            onClick={() => document.getElementById('croquis-camera-input')?.click()}
+            onClick={() => croquisCameraRef.current?.click()}
+            data-testid="croquis-camera-btn-modal"
             className="border-dashed border-indigo-300 text-indigo-700 hover:bg-indigo-50"
           >
             <Camera className="w-4 h-4 mr-2" />Tomar Foto
@@ -661,7 +702,8 @@ const Page4 = memo(({ data, setField }) => (
           <Button 
             type="button"
             variant="outline" 
-            onClick={() => document.getElementById('croquis-gallery-input')?.click()}
+            onClick={() => croquisGalleryRef.current?.click()}
+            data-testid="croquis-gallery-btn-modal"
             className="border-dashed border-indigo-300 text-indigo-700 hover:bg-indigo-50"
           >
             <ImageIcon className="w-4 h-4 mr-2" />Galería
@@ -670,14 +712,9 @@ const Page4 = memo(({ data, setField }) => (
       </div>
     </div>
   </div>
-));
+  );
+});
 Page4.displayName = 'Page4';
-
-// Handler para fotos de croquis (definido fuera del componente para evitar re-renders)
-const handleCroquisPhoto = async (e, data, setField) => {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
-  
   const newPhotos = [];
   for (const file of files) {
     if (file.size > 5 * 1024 * 1024) {
