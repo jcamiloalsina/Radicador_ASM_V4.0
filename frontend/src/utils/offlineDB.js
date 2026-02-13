@@ -393,9 +393,19 @@ export async function saveGeometriasOffline(proyectoId, geometrias) {
     console.log(`[OfflineDB] ${geometrias.length} geometrías guardadas`);
     
     // Guardar en localStorage como respaldo (para el indicador global)
+    // Usar una clave única para no duplicar conteos
     try {
       const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      offlineStats.geometriasCount = (offlineStats.geometriasCount || 0) + geometrias.length;
+      const key = `geometrias_${geometrias[0]?.proyecto_id || 'default'}`;
+      offlineStats[key] = geometrias.length; // Reemplazar, no acumular
+      // Calcular total de todas las geometrías
+      let totalGeo = 0;
+      for (const k in offlineStats) {
+        if (k.startsWith('geometrias_') && typeof offlineStats[k] === 'number') {
+          totalGeo += offlineStats[k];
+        }
+      }
+      offlineStats.geometriasCount = totalGeo;
       offlineStats.lastSync = new Date().toISOString();
       localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
     } catch (lsError) {
