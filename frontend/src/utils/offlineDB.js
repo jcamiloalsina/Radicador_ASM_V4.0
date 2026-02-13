@@ -608,6 +608,39 @@ export async function saveProyectoOffline(proyecto) {
   }
 }
 
+// Guardar múltiples proyectos (para uso en lista de proyectos)
+export async function saveProyectosOffline(proyectos) {
+  const database = await initOfflineDB();
+  if (!database || !proyectos?.length) return 0;
+  
+  try {
+    const tx = database.transaction(STORES.PROYECTOS, 'readwrite');
+    const store = tx.objectStore(STORES.PROYECTOS);
+    
+    let saved = 0;
+    for (const proyecto of proyectos) {
+      if (!proyecto.id) continue;
+      
+      store.put({
+        ...proyecto,
+        saved_offline_at: new Date().toISOString()
+      });
+      saved++;
+    }
+    
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    
+    console.log(`[OfflineDB] ${saved} proyectos guardados`);
+    return saved;
+  } catch (e) {
+    console.error('[OfflineDB] Error guardando proyectos:', e);
+    return 0;
+  }
+}
+
 export async function getProyectoOffline(proyectoId) {
   const database = await initOfflineDB();
   if (!database) return null;
