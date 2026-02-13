@@ -1642,7 +1642,7 @@ export default function Predios() {
       
       // Si hay error y es vigencia actual, intentar con caché
       if (filterMunicipio && (!filterVigencia || String(filterVigencia) === String(new Date().getFullYear()))) {
-        const cachedPredios = await getPrediosOffline(filterMunicipio);
+        const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
         if (cachedPredios && cachedPredios.length > 0) {
           setPredios(cachedPredios);
           setTotal(cachedPredios.length);
