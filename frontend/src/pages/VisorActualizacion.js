@@ -948,22 +948,50 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId, fetchProyecto]);
   
-  // Verificar sincronización inicial al cargar el proyecto
+  // Verificar sincronización inicial al cargar el proyecto - AUTOMÁTICO EN SEGUNDO PLANO
   const [syncChecked, setSyncChecked] = useState(false); // Bandera para evitar múltiples checks
   
   useEffect(() => {
-    const verificarSincronizacion = async () => {
+    const verificarYSincronizarAutomatico = async () => {
       // Solo verificar UNA vez por sesión
       if (proyecto && isOnline && !loading && !syncChecked) {
         setSyncChecked(true); // Marcar como verificado
         const necesitaSync = await checkInitialSync();
         if (necesitaSync) {
-          setShowSyncScreen(true);
+          // Sincronizar en segundo plano SIN mostrar pantalla bloqueante
+          console.log('[Sync] Iniciando sincronización automática en segundo plano...');
+          setBackgroundSyncMessage('Sincronizando datos en segundo plano...');
+          
+          try {
+            const token = localStorage.getItem('token');
+            
+            // Descargar predios en segundo plano
+            const prediosResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/predios`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: [] }));
+            const prediosDescargados = prediosResponse.data.predios || prediosResponse.data || [];
+            
+            // Descargar geometrías en segundo plano
+            const geomResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
+              headers: { Authorization: `Bearer ${token}` },
+              params: { zona: 'todas' }
+            }).catch(() => ({ data: null }));
+            
+            // Guardar para offline
+            await performFullSync(prediosDescargados, geomResponse.data);
+            
+            setBackgroundSyncMessage('Datos sincronizados ✓');
+            setTimeout(() => setBackgroundSyncMessage(null), 3000);
+            console.log('[Sync] Sincronización automática completada');
+          } catch (e) {
+            console.warn('[Sync] Error en sincronización automática:', e.message);
+            setBackgroundSyncMessage(null);
+          }
         }
       }
     };
-    verificarSincronizacion();
-  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked]);
+    verificarYSincronizarAutomatico();
+  }, [proyecto, isOnline, loading, checkInitialSync, syncChecked, proyectoId, performFullSync]);
   
   // Ejecutar sincronización completa cuando se muestra la pantalla de sync
   const handlePerformFullSync = async () => {
