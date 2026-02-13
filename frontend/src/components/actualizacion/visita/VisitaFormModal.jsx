@@ -115,13 +115,17 @@ const getInitialPropietarios = () => [{
   segundo_apellido: '', genero: '', genero_otro: '', grupo_etnico: 'Ninguno', estado: ''
 }];
 
-// Input con debounce para evitar re-renders - CRÍTICO para rendimiento
-const FastInput = memo(({ value, onChange, delay = 150, uppercase, ...props }) => {
+// Input con debounce para evitar re-renders - CRÍTICO para rendimiento en móviles
+const FastInput = memo(({ value, onChange, delay = 300, uppercase, type = 'text', ...props }) => {
   const [localValue, setLocalValue] = useState(value || '');
   const timeoutRef = useRef(null);
+  const inputRef = useRef(null);
   
+  // Solo sincronizar con prop cuando el input NO tiene foco (evita saltos de cursor)
   useEffect(() => {
-    setLocalValue(value || '');
+    if (document.activeElement !== inputRef.current) {
+      setLocalValue(value || '');
+    }
   }, [value]);
 
   const handleChange = useCallback((e) => {
@@ -129,13 +133,30 @@ const FastInput = memo(({ value, onChange, delay = 150, uppercase, ...props }) =
     if (uppercase) newVal = newVal.toUpperCase();
     setLocalValue(newVal);
     
+    // Limpiar timeout anterior
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => onChange(newVal), delay);
-  }, [onChange, delay, uppercase]);
+    
+    // Para inputs numéricos, actualizar inmediatamente
+    if (type === 'number') {
+      onChange(newVal);
+    } else {
+      // Para texto, usar debounce más largo para mejor rendimiento móvil
+      timeoutRef.current = setTimeout(() => onChange(newVal), delay);
+    }
+  }, [onChange, delay, uppercase, type]);
 
+  // Limpiar timeout al desmontar
   useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
 
-  return <Input {...props} value={localValue} onChange={handleChange} />;
+  // Sincronizar al perder foco
+  const handleBlur = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      onChange(localValue);
+    }
+  }, [localValue, onChange]);
+
+  return <Input ref={inputRef} type={type} {...props} value={localValue} onChange={handleChange} onBlur={handleBlur} />;
 });
 FastInput.displayName = 'FastInput';
 
