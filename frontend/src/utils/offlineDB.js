@@ -252,9 +252,19 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
     console.log(`[OfflineDB] ${saved} predios guardados para ${municipio || proyectoId}`);
     
     // Guardar en localStorage como respaldo (para el indicador global)
+    // Usar el proyecto como clave para no duplicar conteos
     try {
       const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      offlineStats.prediosCount = (offlineStats.prediosCount || 0) + saved;
+      const key = `predios_${municipio || proyectoId}`;
+      offlineStats[key] = saved; // Reemplazar, no acumular
+      // Calcular total de todos los proyectos
+      let totalPredios = 0;
+      for (const k in offlineStats) {
+        if (k.startsWith('predios_') && typeof offlineStats[k] === 'number') {
+          totalPredios += offlineStats[k];
+        }
+      }
+      offlineStats.prediosCount = totalPredios;
       offlineStats.lastSync = new Date().toISOString();
       localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
     } catch (lsError) {
