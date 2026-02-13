@@ -400,6 +400,79 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     return () => window.removeEventListener('offlineDataUpdated', handleOfflineUpdate);
   }, [refreshStats]);
 
+  // Verificar si necesita sincronización inicial
+  const checkInitialSync = useCallback(async () => {
+    try {
+      // Verificar si hay cambios pendientes
+      const cambios = await getCambiosPendientes(proyectoId);
+      if (cambios.length > 0) {
+        return true; // Necesita sincronizar cambios pendientes
+      }
+      
+      // Verificar si tiene datos offline pero nunca se ha sincronizado
+      const hasData = await hasOfflineData(proyectoId);
+      const syncTime = await getLastSync(proyectoId);
+      
+      if (hasData && !syncTime) {
+        return true; // Tiene datos pero nunca sincronizado
+      }
+      
+      // Verificar si la última sincronización fue hace más de 24 horas
+      if (syncTime) {
+        const lastSyncDate = new Date(syncTime);
+        const now = new Date();
+        const hoursSinceSync = (now - lastSyncDate) / (1000 * 60 * 60);
+        if (hoursSinceSync > 24) {
+          return true; // Más de 24 horas sin sincronizar
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      console.log('[useOfflineSync] Error en checkInitialSync:', e.message);
+      return false;
+    }
+  }, [proyectoId]);
+
+  // Realizar sincronización completa (guardar datos para offline)
+  const performFullSync = useCallback(async (predios, geometrias) => {
+    try {
+      const storeId = proyectoId;
+      
+      // Primero sincronizar cambios pendientes al servidor
+      if (navigator.onLine) {
+        await syncPendingChanges(false);
+      }
+      
+      // Guardar predios si se proporcionan
+      if (predios?.length > 0) {
+        const proyecto = await getProyectoOffline(proyectoId);
+        const municipio = proyecto?.municipio;
+        await savePrediosOffline(storeId, predios, municipio);
+      }
+      
+      // Guardar geometrías si se proporcionan
+      if (geometrias) {
+        const geomArray = geometrias.features || geometrias;
+        if (geomArray?.length > 0) {
+          await saveGeometriasOffline(storeId, geomArray);
+        }
+      }
+      
+      // Actualizar última sincronización
+      await setLastSync(storeId);
+      setLastSyncState(new Date().toISOString());
+      setHasOffline(true);
+      await refreshStats();
+      
+      console.log('[useOfflineSync] Sincronización completa realizada');
+      return true;
+    } catch (e) {
+      console.error('[useOfflineSync] Error en performFullSync:', e);
+      return false;
+    }
+  }, [proyectoId, syncPendingChanges, refreshStats]);
+
   return {
     // Estado
     isOnline,
@@ -417,6 +490,8 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     syncPendingChanges,
     saveChangeOffline,
     refreshStats,
+    checkInitialSync,
+    performFullSync,
     
     // Utilidades para acceso a datos offline
     getPrediosOffline: () => getPrediosOffline(proyectoId),
