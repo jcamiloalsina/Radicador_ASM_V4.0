@@ -1,6 +1,10 @@
 /**
  * Página 2 del Formulario de Visita
  * Secciones: Información Jurídica, Propietarios, Datos de Notificación
+ * 
+ * OPTIMIZACIÓN DE RENDIMIENTO:
+ * - React.memo() evita re-renders innecesarios
+ * - DebouncedInput para campos de texto con estado local
  */
 import React, { memo, useCallback } from 'react';
 import { FileText, Mail, Plus, Trash2 } from 'lucide-react';
@@ -8,32 +12,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
 import { Textarea } from '../../../components/ui/textarea';
-
-// Componente DebouncedInput para evitar re-renders frecuentes
-const DebouncedInput = memo(({ value, onChange, uppercase, type = 'text', ...props }) => {
-  const [localValue, setLocalValue] = React.useState(value);
-  const timeoutRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const handleChange = useCallback((e) => {
-    let newValue = e.target.value;
-    if (uppercase) newValue = newValue.toUpperCase();
-    if (type === 'email') newValue = newValue.toLowerCase();
-    setLocalValue(newValue);
-    
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      onChange(newValue);
-    }, 300);
-  }, [onChange, uppercase, type]);
-
-  return <Input {...props} type={type} value={localValue} onChange={handleChange} />;
-});
-
-DebouncedInput.displayName = 'DebouncedInput';
+import DebouncedInput from '../../DebouncedInput';
 
 const VisitaPagina2 = memo(({ 
   visitaData, 
