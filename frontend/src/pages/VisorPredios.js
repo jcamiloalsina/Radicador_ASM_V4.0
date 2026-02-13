@@ -519,6 +519,7 @@ export default function VisorPredios() {
       latGrados: '', latMinutos: '', latSegundos: '', latDireccion: 'N',
       lngGrados: '', lngMinutos: '', lngSegundos: '', lngDireccion: 'W'
     });
+    setCoordenadasPlanas({ norte: '', este: '' });
   };
 
   useEffect(() => {
