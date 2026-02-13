@@ -614,7 +614,57 @@ const Page4 = memo(({ data, setField }) => (
 Page4.displayName = 'Page4';
 
 // Página 5 - GPS, Observaciones, Firmas
-const Page5 = memo(({ data, setField, fotos, setFotos }) => (
+const Page5 = memo(({ data, setField, fotos, setFotos }) => {
+  const [capturandoGPS, setCapturandoGPS] = useState(false);
+
+  const capturarUbicacion = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setCapturandoGPS(true);
+    
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          { 
+            enableHighAccuracy: true, 
+            timeout: 15000, 
+            maximumAge: 0 
+          }
+        );
+      });
+
+      const { latitude, longitude, accuracy } = position.coords;
+      
+      setField('coordenadas_gps', {
+        latitud: latitude.toFixed(7),
+        longitud: longitude.toFixed(7),
+        precision: accuracy ? accuracy.toFixed(1) : null,
+        fecha_captura: new Date().toISOString()
+      });
+      
+      toast.success(`📍 Ubicación capturada (precisión: ${accuracy?.toFixed(0) || '?'}m)`);
+    } catch (error) {
+      console.error('Error GPS:', error);
+      if (error.code === 1) {
+        toast.error('Permiso de ubicación denegado. Por favor habilita el GPS.');
+      } else if (error.code === 2) {
+        toast.error('No se pudo obtener la ubicación. Verifica que el GPS esté activado.');
+      } else if (error.code === 3) {
+        toast.error('Tiempo de espera agotado. Intenta de nuevo.');
+      } else {
+        toast.error('Error al capturar ubicación');
+      }
+    } finally {
+      setCapturandoGPS(false);
+    }
+  };
+
+  return (
   <div className="space-y-4">
     {/* GPS */}
     <div className="border border-blue-200 rounded-lg overflow-hidden">
@@ -622,11 +672,24 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => (
         <h3 className="font-semibold text-blue-800 flex items-center gap-2"><MapPin className="w-4 h-4" />11. COORDENADAS GPS</h3>
       </div>
       <div className="p-4 space-y-3">
-        <Button className="w-full bg-blue-600 hover:bg-blue-700"><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</Button>
+        <Button 
+          onClick={capturarUbicacion}
+          disabled={capturandoGPS}
+          className="w-full bg-blue-600 hover:bg-blue-700"
+        >
+          {capturandoGPS ? (
+            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Capturando...</>
+          ) : (
+            <><MapPin className="w-4 h-4 mr-2" />📍 Capturar Mi Ubicación</>
+          )}
+        </Button>
         <div className="grid grid-cols-2 gap-3">
           <div><Label className="text-xs">Latitud</Label><FastInput value={data.coordenadas_gps?.latitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, latitud: v})} /></div>
           <div><Label className="text-xs">Longitud</Label><FastInput value={data.coordenadas_gps?.longitud || ''} onChange={v => setField('coordenadas_gps', {...data.coordenadas_gps, longitud: v})} /></div>
         </div>
+        {data.coordenadas_gps?.precision && (
+          <p className="text-xs text-green-600">✅ Precisión: {data.coordenadas_gps.precision}m</p>
+        )}
       </div>
     </div>
 
