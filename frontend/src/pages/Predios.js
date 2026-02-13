@@ -489,6 +489,102 @@ export default function Predios() {
     }
   };
 
+  // ====== FUNCIONES HELPER PARA CACHÉ INTELIGENTE ======
+  
+  // Calcular antigüedad del caché en minutos
+  const calculateCacheAge = useCallback((syncTimeStr) => {
+    if (!syncTimeStr) return null;
+    const syncTime = new Date(syncTimeStr);
+    const now = new Date();
+    const diffMs = now - syncTime;
+    return Math.floor(diffMs / (1000 * 60)); // minutos
+  }, []);
+  
+  // Obtener color del indicador según antigüedad
+  const getCacheStatusColor = useCallback((ageMinutes) => {
+    if (ageMinutes === null) return 'text-slate-400';
+    if (ageMinutes < 5) return 'text-emerald-600'; // Verde: < 5 min
+    if (ageMinutes < 60) return 'text-amber-600'; // Amarillo: 5-60 min
+    return 'text-red-600'; // Rojo: > 60 min
+  }, []);
+  
+  // Formatear tiempo relativo
+  const formatTimeAgo = useCallback((syncTimeStr) => {
+    if (!syncTimeStr) return 'Nunca';
+    const ageMinutes = calculateCacheAge(syncTimeStr);
+    if (ageMinutes === null) return 'Nunca';
+    if (ageMinutes < 1) return 'Hace un momento';
+    if (ageMinutes < 60) return `Hace ${ageMinutes} min`;
+    const hours = Math.floor(ageMinutes / 60);
+    if (hours < 24) return `Hace ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `Hace ${days} día${days > 1 ? 's' : ''}`;
+  }, [calculateCacheAge]);
+  
+  // Actualizar la antigüedad del caché cada minuto
+  useEffect(() => {
+    if (!lastSyncTime) return;
+    
+    const updateAge = () => {
+      setCacheAge(calculateCacheAge(lastSyncTime));
+    };
+    updateAge();
+    
+    const interval = setInterval(updateAge, 60000); // Cada minuto
+    return () => clearInterval(interval);
+  }, [lastSyncTime, calculateCacheAge]);
+  
+  // Actualizar caché local después de operaciones CRUD
+  const updateLocalCache = useCallback(async (operation, predio) => {
+    if (!filterMunicipio) return;
+    
+    try {
+      // Actualizar el estado local inmediatamente
+      if (operation === 'create') {
+        setPredios(prev => {
+          const updated = [predio, ...prev];
+          return sortPrediosByCNP(updated);
+        });
+        setTotal(prev => prev + 1);
+      } else if (operation === 'update') {
+        setPredios(prev => prev.map(p => 
+          (p._id === predio._id || p.numero_predial === predio.numero_predial) ? predio : p
+        ));
+      } else if (operation === 'delete') {
+        setPredios(prev => prev.filter(p => 
+          p._id !== predio._id && p.numero_predial !== predio.numero_predial
+        ));
+        setTotal(prev => Math.max(0, prev - 1));
+      }
+      
+      // Actualizar el caché en IndexedDB en segundo plano
+      const currentPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+      let updatedPredios;
+      
+      if (operation === 'create') {
+        updatedPredios = [predio, ...currentPredios];
+      } else if (operation === 'update') {
+        updatedPredios = currentPredios.map(p => 
+          (p._id === predio._id || p.numero_predial === predio.numero_predial) ? predio : p
+        );
+      } else if (operation === 'delete') {
+        updatedPredios = currentPredios.filter(p => 
+          p._id !== predio._id && p.numero_predial !== predio.numero_predial
+        );
+      }
+      
+      if (updatedPredios) {
+        await downloadForOffline(updatedPredios, null, filterMunicipio);
+        const now = new Date().toISOString();
+        localStorage.setItem(`sync_${filterMunicipio}_date`, now);
+        setLastSyncTime(now);
+        setDataSource('server');
+      }
+    } catch (error) {
+      console.warn('[Cache] Error actualizando caché local:', error);
+    }
+  }, [filterMunicipio, downloadForOffline]);
+
   useEffect(() => {
     fetchCatalogos();
     fetchVigencias();
