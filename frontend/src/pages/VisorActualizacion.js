@@ -6083,10 +6083,15 @@ export default function VisorActualizacion() {
         proyectoId={proyectoId}
         municipio={proyecto?.municipio}
         token={localStorage.getItem('token')}
+        userRole={user?.role || 'gestor'}
         onSuccess={(data) => {
           // Recargar predios del proyecto
           fetchPrediosR1R2();
-          toast.success(`Predio ${data.codigo_homologado} creado exitosamente`);
+          if (data.propuesta_id) {
+            toast.success(`Predio enviado para aprobación del coordinador`);
+          } else if (!data.offline) {
+            toast.success(`Predio ${data.codigo_homologado || data.codigo_predial} creado exitosamente`);
+          }
         }}
       />
       
