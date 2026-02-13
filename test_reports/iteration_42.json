@@ -1,0 +1,127 @@
+{
+  "summary": "Frontend testing completed for offline sync fix. 6 of 7 features tested PASSED. 1 CRITICAL BUG found: Gestión de Predios de Actualización page is stuck in 'Cargando predios...' loading state indefinitely even though the API returns 200 OK and data is saved to IndexedDB.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "GestionPrediosActualizacion.js",
+        "issue": "Predios list stuck in 'Cargando predios...' loading state indefinitely. Statistics show correctly (3234 Total, 3220 Pendientes, 10 Visitados, 4 Actualizados, 501 Con Mejoras) but the predios list never renders. The loadingPredios state is not being set to false after fetchPredios completes.",
+        "selector": "text=Cargando predios",
+        "priority": "CRITICAL",
+        "evidence": [
+          "API returns 200 OK for /api/actualizacion/proyectos/{id}/predios",
+          "Console shows: [OfflineDB] 3234 predios guardados para 32ba040f-ed50-45e2-a115-22ab3a351423",
+          "Statistics are displayed correctly",
+          "Page shows 'Mostrando 50 de 3234 predios' but list is stuck on loading",
+          "Waited 35+ seconds and still loading"
+        ],
+        "root_cause_hypothesis": "The fetchPredios useCallback has dependencies on isOnline, getPrediosOffline, downloadForOffline, and proyecto?.municipio. When any of these change, fetchPredios is recreated, which triggers the useEffect again. This may cause a race condition where loadingPredios is set to true by a new call before the previous call's finally block executes."
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_42.json"
+  ],
+  "action_items": [
+    "FIX CRITICAL: GestionPrediosActualizacion.js - loadingPredios state not being set to false after fetchPredios completes. The predios list is stuck in loading state indefinitely.",
+    "Investigate race condition in fetchPredios useCallback - dependencies may be causing multiple calls",
+    "Consider adding a loading timeout or error handling to prevent infinite loading state"
+  ],
+  "critical_code_review_comments": [
+    "GestionPrediosActualizacion.js line 605: fetchPredios useCallback has many dependencies that may cause re-creation and race conditions",
+    "GestionPrediosActualizacion.js line 607-611: useEffect depends on fetchPredios which changes when its dependencies change",
+    "The finally block at line 601-604 should always execute, but the loading state is not being updated - possible async race condition"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A - Frontend only testing",
+    "frontend": "86% - 6 of 7 features passed"
+  },
+  "test_credentials": {
+    "email": "Camilo.alsina1@hotmail.com",
+    "password": "Asm*123*",
+    "role": "Coordinador",
+    "proyecto_id": "32ba040f-ed50-45e2-a115-22ab3a351423"
+  },
+  "seed_data_creation": "None - used existing project data",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Gestión de Predios de Actualización page has a critical bug where predios list is stuck in loading state. All other pages (Login, Dashboard, Proyectos de Actualización, Visor de Actualización, Gestión de Predios Conservación, Visor de Predios Conservación) are working correctly.",
+  "features_tested": {
+    "1_login_functionality": {
+      "status": "PASSED",
+      "details": "Login with Camilo.alsina1@hotmail.com / Asm*123* successful. User role: Coordinador. Redirects to /dashboard correctly."
+    },
+    "2_dashboard_principal": {
+      "status": "PASSED",
+      "details": "Dashboard shows '¡Buenos días, Camilo Prueba!' with Panel de Coordinación. Shows Pendientes por Aprobar (0), Trámites Radicados (Nuevos: 110, Asignados: 2229, En Revisión: 11, Total Activos: 5484), Estadísticas del Mes."
+    },
+    "3_proyectos_actualizacion": {
+      "status": "PASSED",
+      "details": "Page loads correctly at /dashboard/proyectos-actualizacion. Shows 1 project 'Proyecto_prueba_ZU_Sardinata' with status 'Activo'. Statistics: Total: 1, Activos: 1, Pausados: 0, Completados: 0, Archivados: 0."
+    },
+    "4_visor_actualizacion": {
+      "status": "PASSED",
+      "details": "Map loads correctly at /dashboard/visor-actualizacion/{proyectoId}. Shows project 'Proyecto_prueba_ZU_Sardinata - Sardinata'. Statistics: Total: 3234, Pendientes: 3220, Visitados: 10, Actualizados: 4, Mejoras: 1969, Const. ✓ 6912. Map shows geometries (green for rural, blue for urban). 6076 geometrías descargadas - Listo para trabajo offline."
+    },
+    "5_gestion_predios_actualizacion": {
+      "status": "FAILED",
+      "details": "Page loads at /dashboard/gestion-predios-actualizacion/{proyectoId}. Statistics show correctly (3234 Total, 3220 Pendientes, 10 Visitados, 4 Actualizados, 501 Con Mejoras). Shows 'Mostrando 50 de 3234 predios'. BUT predios list is stuck on 'Cargando predios...' indefinitely. Waited 35+ seconds and still loading.",
+      "bug_details": {
+        "symptom": "Predios list stuck in loading state",
+        "api_status": "200 OK",
+        "data_saved": "3234 predios saved to IndexedDB",
+        "statistics_displayed": true,
+        "list_rendered": false
+      }
+    },
+    "6_gestion_predios_conservacion": {
+      "status": "PASSED",
+      "details": "Page loads correctly at /dashboard/predios. Shows Total Predios: 58,810, Avalúo Total: $ 3.636.403.257.598, Área R1: 990.600 ha 7.987,15 m², Base Gráfica: 19,443. Shows Predios por Municipio with all municipalities and their counts."
+    },
+    "7_visor_predios_conservacion": {
+      "status": "PASSED",
+      "details": "Map loads correctly at /dashboard/visor-predios. Shows 19,688 predios en Base Gráfica (Rural: 12,901, Urbano: 6,787). Map shows municipality boundaries. Estado GDB: 2 cargados, 10 pendientes."
+    }
+  },
+  "console_logs_analysis": {
+    "offline_db_initialization": [
+      "[OfflineDB] Nueva estructura detectada (null -> 3.0.0)",
+      "[OfflineDB] Stores creados",
+      "[OfflineDB] Base de datos lista"
+    ],
+    "data_saved": [
+      "[OfflineDB] 3234 predios guardados para 32ba040f-ed50-45e2-a115-22ab3a351423"
+    ],
+    "secondary_db_issue": [
+      "[useOffline] Found 0 predios in secondary DB - This message appears multiple times, indicating the secondary DB (useOffline.js) is not synced with the primary DB (offlineDB.js)"
+    ],
+    "no_errors": "No JavaScript errors or exceptions found in console"
+  },
+  "rca_of_the_issue": {
+    "bug": "Gestión de Predios de Actualización - Predios list stuck in loading state",
+    "reproduction_steps": [
+      "1. Login with Camilo.alsina1@hotmail.com / Asm*123*",
+      "2. Navigate to /dashboard/gestion-predios-actualizacion/32ba040f-ed50-45e2-a115-22ab3a351423",
+      "3. Wait for page to load",
+      "4. Observe that statistics are displayed but predios list shows 'Cargando predios...' indefinitely"
+    ],
+    "root_cause": "The fetchPredios useCallback in GestionPrediosActualizacion.js has dependencies that may cause it to be recreated multiple times during component mount. This can lead to a race condition where the loadingPredios state is set to true by a new call before the previous call's finally block executes, leaving the UI in a permanent loading state.",
+    "affected_code": {
+      "file": "/app/frontend/src/pages/GestionPrediosActualizacion.js",
+      "lines": "516-611",
+      "function": "fetchPredios useCallback and useEffect"
+    },
+    "mitigation": [
+      "Add a ref to track if a fetch is in progress and skip new calls if one is already running",
+      "Use a stable reference for the fetch function instead of recreating it on every dependency change",
+      "Add a timeout to automatically set loadingPredios to false if it takes too long",
+      "Consider using useRef to track the mounted state and prevent state updates after unmount"
+    ]
+  }
+}
