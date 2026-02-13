@@ -19044,6 +19044,9 @@ async def crear_predio_nuevo_actualizacion(
 ):
     """
     Crea un predio nuevo dentro de un proyecto de actualización.
+    - Si el usuario es GESTOR: Crea una propuesta pendiente de aprobación
+    - Si el usuario es COORDINADOR/ADMIN: Crea el predio directamente
+    
     Asigna código homologado automáticamente.
     El predio queda en predios_actualizacion con es_nuevo=true hasta que se finalice el proyecto.
     """
@@ -19066,6 +19069,7 @@ async def crear_predio_nuevo_actualizacion(
     propietarios = predio_data.get('propietarios', [])
     zonas_fisicas = predio_data.get('zonas_fisicas', [])
     formato_visita = predio_data.get('formato_visita', {})
+    construcciones = predio_data.get('construcciones', [])
     
     # Construir código predial nacional
     divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
@@ -19101,6 +19105,67 @@ async def crear_predio_nuevo_actualizacion(
     if existing_proyecto:
         raise HTTPException(status_code=400, detail="Ya existe un predio con este código en el proyecto")
     
+    # Verificar si ya hay una propuesta pendiente para este código
+    existing_propuesta = await db.propuestas_cambio_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "codigo_predial": codigo_predial,
+        "tipo": "predio_nuevo",
+        "estado": {"$in": ["pendiente", "subsanar"]}
+    })
+    if existing_propuesta:
+        raise HTTPException(status_code=400, detail="Ya existe una propuesta pendiente para este código")
+    
+    ahora = datetime.now(timezone.utc).isoformat()
+    
+    # ============ FLUJO SEGÚN ROL ============
+    # Si es GESTOR: crear propuesta pendiente de aprobación
+    if current_user['role'] == UserRole.GESTOR:
+        propuesta_id = str(uuid.uuid4())
+        
+        propuesta = {
+            "id": propuesta_id,
+            "proyecto_id": proyecto_id,
+            "tipo": "predio_nuevo",  # Tipo de propuesta: predio nuevo
+            "codigo_predial": codigo_predial,
+            "municipio": municipio,
+            "estado": "pendiente",
+            
+            # Todos los datos del predio nuevo
+            "datos_propuestos": {
+                "r1": r1,
+                "r2": r2,
+                "propietarios": propietarios,
+                "zonas_fisicas": zonas_fisicas,
+                "construcciones": construcciones,
+                "formato_visita": formato_visita
+            },
+            
+            # Metadatos
+            "creado_por": current_user.get('email'),
+            "creado_por_nombre": current_user.get('full_name'),
+            "created_at": ahora,
+            "updated_at": ahora,
+            
+            "historial": [{
+                "fecha": ahora,
+                "usuario": current_user.get('email'),
+                "accion": "propuesta_creada",
+                "descripcion": "Propuesta de predio nuevo enviada para aprobación"
+            }]
+        }
+        
+        await db.propuestas_cambio_actualizacion.insert_one(propuesta)
+        
+        logger.info(f"Propuesta de predio nuevo creada por gestor {current_user.get('email')}: {codigo_predial}")
+        
+        return {
+            "message": "Propuesta de predio nuevo enviada para aprobación del coordinador",
+            "propuesta_id": propuesta_id,
+            "codigo_predial": codigo_predial,
+            "estado": "pendiente"
+        }
+    
+    # Si es COORDINADOR o ADMIN: crear predio directamente
     # Asignar código homologado automáticamente
     codigo_homologado = await asignar_codigo_homologado(municipio, None)
     if not codigo_homologado:
@@ -19109,7 +19174,6 @@ async def crear_predio_nuevo_actualizacion(
     
     # Crear el predio nuevo
     predio_id = str(uuid.uuid4())
-    ahora = datetime.now(timezone.utc).isoformat()
     
     predio_nuevo = {
         "id": predio_id,
