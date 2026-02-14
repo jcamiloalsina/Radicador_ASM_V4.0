@@ -1160,8 +1160,10 @@ export default function VisorActualizacion() {
           try {
             const prediosOffline = await getPrediosOffline(proyectoId);
             if (prediosOffline && prediosOffline.length > 0) {
-              setPrediosR1R2(prediosOffline);
-              toast.info(`Datos R1/R2 cargados desde caché offline (${prediosOffline.length} predios)`);
+              // Deduplicar también en fallback
+              const prediosUnicos = deduplicarPredios(prediosOffline);
+              setPrediosR1R2(prediosUnicos);
+              toast.info(`Datos R1/R2 cargados desde caché offline (${prediosUnicos.length} predios)`);
             }
           } catch (offlineError) {
             console.error('Error cargando datos offline:', offlineError);
