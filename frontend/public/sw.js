@@ -1,8 +1,18 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `asomunicipios-${CACHE_VERSION}`;
 const STATIC_CACHE = `asomunicipios-static-${CACHE_VERSION}`;
 const DATA_CACHE = `asomunicipios-data-${CACHE_VERSION}`;
 const MAP_CACHE = `asomunicipios-maps-${CACHE_VERSION}`;
+
+// Configuración del caché de mapas
+const MAP_CACHE_CONFIG = {
+  maxTiles: 5000,           // Máximo ~50MB de tiles (aprox 10KB por tile)
+  maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 días máximo
+  cleanupInterval: 1000     // Limpiar cada 1000 nuevos tiles
+};
+
+// Contador de tiles para trigger de limpieza
+let tileCounter = 0;
 
 // Static assets to cache immediately (critical for offline)
 const STATIC_ASSETS = [
