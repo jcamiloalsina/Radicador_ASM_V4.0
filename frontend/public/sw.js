@@ -250,31 +250,98 @@ function isMapTileRequest(url) {
   return mapProviders.some(provider => url.hostname.includes(provider) || url.href.includes(provider));
 }
 
-// Handle map tile requests with cache-first strategy
+// Handle map tile requests with cache-first strategy (fluido para offline)
 async function handleMapTileRequest(request) {
   const cache = await caches.open(MAP_CACHE);
   const cachedResponse = await cache.match(request);
   
   if (cachedResponse) {
-    // Return cached tile but also update in background
-    fetch(request).then((networkResponse) => {
-      if (networkResponse.ok) {
-        cache.put(request, networkResponse);
-      }
-    }).catch(() => {});
-    
+    // Cache hit - retornar inmediatamente (fluido)
+    // Actualizar en background solo si estamos online
+    if (navigator.onLine !== false) {
+      updateTileInBackground(request, cache);
+    }
     return cachedResponse;
   }
   
+  // Cache miss - intentar descargar
   try {
-    const networkResponse = await fetch(request);
+    const networkResponse = await fetch(request, { 
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    
     if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+      // Guardar en caché con timestamp
+      const responseToCache = networkResponse.clone();
+      cache.put(request, responseToCache);
+      
+      // Limpiar caché periódicamente
+      tileCounter++;
+      if (tileCounter >= MAP_CACHE_CONFIG.cleanupInterval) {
+        tileCounter = 0;
+        cleanupMapCache();
+      }
     }
     return networkResponse;
   } catch (error) {
-    // Return a placeholder or error for map tiles
-    return new Response('', { status: 404 });
+    // Offline y sin caché - retornar tile placeholder transparente
+    // Esto evita errores visuales y permite ver las geometrías
+    return createPlaceholderTile();
+  }
+}
+
+// Actualizar tile en background sin bloquear
+function updateTileInBackground(request, cache) {
+  fetch(request, { mode: 'cors', credentials: 'omit' })
+    .then((networkResponse) => {
+      if (networkResponse.ok) {
+        cache.put(request, networkResponse);
+      }
+    })
+    .catch(() => {
+      // Silenciar errores de background update
+    });
+}
+
+// Crear tile placeholder para áreas sin caché (offline)
+function createPlaceholderTile() {
+  // Tile gris semi-transparente de 256x256 (tamaño estándar)
+  // PNG 1x1 gris claro escalado por el navegador
+  const placeholderBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88P/BfwYABdQCzT4FvKAAAAAASUVORK5CYII=';
+  const binaryString = atob(placeholderBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  
+  return new Response(bytes.buffer, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'no-store',
+      'X-Offline-Placeholder': 'true'
+    }
+  });
+}
+
+// Limpiar tiles antiguos del caché
+async function cleanupMapCache() {
+  try {
+    const cache = await caches.open(MAP_CACHE);
+    const keys = await cache.keys();
+    
+    console.log(`[SW] Map cache cleanup: ${keys.length} tiles`);
+    
+    // Si excede el límite, eliminar los más antiguos (FIFO)
+    if (keys.length > MAP_CACHE_CONFIG.maxTiles) {
+      const toDelete = keys.slice(0, keys.length - MAP_CACHE_CONFIG.maxTiles);
+      console.log(`[SW] Removing ${toDelete.length} old tiles`);
+      
+      await Promise.all(toDelete.map(key => cache.delete(key)));
+    }
+  } catch (error) {
+    console.warn('[SW] Cache cleanup error:', error);
   }
 }
 
