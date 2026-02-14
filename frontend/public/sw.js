@@ -34,7 +34,7 @@ const CACHEABLE_API_ROUTES = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker v2...');
+  console.log('[SW] Installing Service Worker v3 with map tile caching...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
