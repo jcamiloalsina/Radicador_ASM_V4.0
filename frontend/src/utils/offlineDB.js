@@ -842,14 +842,15 @@ export async function getConfig(key) {
 
 export async function getOfflineStats() {
   const database = await initOfflineDB();
-  if (!database) return { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
+  if (!database) return { predios: 0, geometrias: 0, construcciones: 0, cambiosPendientes: 0, proyectos: 0 };
   
   try {
-    const stats = { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
+    const stats = { predios: 0, geometrias: 0, construcciones: 0, cambiosPendientes: 0, proyectos: 0 };
     
     for (const [key, storeName] of [
       ['predios', STORES.PREDIOS],
       ['geometrias', STORES.GEOMETRIAS],
+      ['construcciones', STORES.CONSTRUCCIONES],
       ['cambiosPendientes', STORES.CAMBIOS_PENDIENTES],
       ['proyectos', STORES.PROYECTOS]
     ]) {
@@ -869,7 +870,7 @@ export async function getOfflineStats() {
     
     return stats;
   } catch (e) {
-    return { predios: 0, geometrias: 0, cambiosPendientes: 0, proyectos: 0 };
+    return { predios: 0, geometrias: 0, construcciones: 0, cambiosPendientes: 0, proyectos: 0 };
   }
 }
 
