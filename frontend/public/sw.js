@@ -377,9 +377,44 @@ self.addEventListener('message', (event) => {
     console.log('[SW] Cache cleared');
   }
   
+  if (event.data && event.data.type === 'CLEAR_MAP_CACHE') {
+    caches.delete(MAP_CACHE).then(() => {
+      console.log('[SW] Map cache cleared');
+    });
+  }
+  
+  if (event.data && event.data.type === 'GET_CACHE_STATS') {
+    getCacheStats().then(stats => {
+      event.source.postMessage({ type: 'CACHE_STATS', payload: stats });
+    });
+  }
+  
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// Obtener estadísticas del caché
+async function getCacheStats() {
+  const stats = { maps: 0, static: 0, data: 0 };
+  
+  try {
+    const mapCache = await caches.open(MAP_CACHE);
+    const mapKeys = await mapCache.keys();
+    stats.maps = mapKeys.length;
+    
+    const staticCache = await caches.open(STATIC_CACHE);
+    const staticKeys = await staticCache.keys();
+    stats.static = staticKeys.length;
+    
+    const dataCache = await caches.open(DATA_CACHE);
+    const dataKeys = await dataCache.keys();
+    stats.data = dataKeys.length;
+  } catch (e) {
+    console.warn('[SW] Error getting cache stats:', e);
+  }
+  
+  return stats;
 });
 
 // Background sync for offline actions (future feature)
