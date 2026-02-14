@@ -19,7 +19,9 @@ import {
   initOfflineDB,
   getOfflineStats,
   saveCambioPendiente,
-  getCambiosPendientes
+  getCambiosPendientes,
+  saveConstruccionesOffline,
+  getConstruccionesOffline
 } from '../utils/offlineDB';
 
 // Componentes optimizados
