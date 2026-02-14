@@ -730,3 +730,7 @@ frontend/node_modules/.cache/default-development/5.pack_
 *.env
 *.env.*
 .emergent/summary.txt
+-e 
+# Environment files
+*.env
+*.env.*
