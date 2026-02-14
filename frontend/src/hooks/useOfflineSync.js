@@ -147,6 +147,104 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     return { sincronizados, errores };
   }, [proyectoId, refreshStats]);
 
+  // Sincronizar TODOS los cambios pendientes de CUALQUIER proyecto
+  // Útil cuando se reconecta a internet y hay cambios de múltiples proyectos
+  const syncAllPendingChanges = useCallback(async (showToasts = true) => {
+    if (syncingRef.current || !navigator.onLine) return { sincronizados: 0, errores: 0 };
+    
+    syncingRef.current = true;
+    setIsSyncing(true);
+    
+    let sincronizados = 0;
+    let errores = 0;
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      syncingRef.current = false;
+      setIsSyncing(false);
+      return { sincronizados: 0, errores: 0 };
+    }
+
+    try {
+      // Obtener TODOS los cambios pendientes sin filtrar por proyecto
+      const cambios = await getCambiosPendientes(null);
+      
+      if (cambios.length === 0) {
+        syncingRef.current = false;
+        setIsSyncing(false);
+        return { sincronizados: 0, errores: 0 };
+      }
+
+      console.log(`[Sync] Sincronizando ${cambios.length} cambio(s) de todos los proyectos`);
+      setSyncProgress({ current: 0, total: cambios.length, message: 'Sincronizando cambios...' });
+
+      for (let i = 0; i < cambios.length; i++) {
+        const cambio = cambios[i];
+        setSyncProgress({ current: i + 1, total: cambios.length, message: `Sincronizando ${i + 1}/${cambios.length}...` });
+        
+        try {
+          // Usar el proyecto_id guardado en el cambio, no el actual
+          const cambioProyectoId = cambio.proyecto_id;
+          
+          switch (cambio.tipo) {
+            case 'visita':
+              await axios.patch(
+                `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
+                cambio.datos,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              break;
+            
+            case 'propuesta':
+              await axios.post(
+                `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/propuesta`,
+                cambio.datos,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              break;
+            
+            case 'actualizacion_predio':
+              await axios.patch(
+                `${API}/api/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
+                cambio.datos,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              break;
+
+            default:
+              console.warn(`[Sync] Tipo no reconocido: ${cambio.tipo}`);
+          }
+
+          await eliminarCambioSincronizado(cambio.id);
+          sincronizados++;
+          console.log(`[Sync] ✓ Cambio ${cambio.id} sincronizado (proyecto: ${cambioProyectoId})`);
+        } catch (error) {
+          console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
+          errores++;
+        }
+      }
+
+      await refreshStats();
+
+      if (showToasts) {
+        if (sincronizados > 0) {
+          toast.success(`${sincronizados} cambio(s) sincronizado(s)`);
+        }
+        if (errores > 0) {
+          toast.error(`${errores} cambio(s) con error`);
+        }
+      }
+    } catch (e) {
+      console.error('[Sync] Error general:', e);
+    }
+
+    setSyncProgress({ current: 0, total: 0, message: '' });
+    setIsSyncing(false);
+    syncingRef.current = false;
+    
+    return { sincronizados, errores };
+  }, [refreshStats]);
+
   // Descargar datos frescos del servidor (en segundo plano)
   const downloadFreshData = useCallback(async (showProgress = false) => {
     if (!navigator.onLine || !proyectoId) return false;
