@@ -265,13 +265,13 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
       tx.onerror = () => reject(tx.error);
     });
 
-    console.log(`[OfflineDB] ${saved} predios guardados para proyecto ${proyectoId} (${predios.length - saved} duplicados ignorados)`);
+    console.log(`[OfflineDB] ${saved} predios guardados para proyecto ${proyectoId}${predios.length !== saved ? ` (${predios.length - saved} duplicados ignorados)` : ''}`);
     
     // Guardar en localStorage como respaldo (para el indicador global)
-    // Usar el proyecto como clave para no duplicar conteos
+    // IMPORTANTE: Usar proyectoId SIEMPRE como clave para consistencia
     try {
       const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      const key = `predios_${municipio || proyectoId}`;
+      const key = `predios_${proyectoId}`;
       offlineStats[key] = saved; // Reemplazar, no acumular
       // Calcular total de todos los proyectos
       let totalPredios = 0;
