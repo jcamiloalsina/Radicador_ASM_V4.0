@@ -698,11 +698,34 @@ export default function VisorActualizacion() {
           try {
             const prediosOffline = await withTimeout(getPrediosOffline(proyectoId), 5000, []);
             if (prediosOffline && prediosOffline.length > 0) {
-              setPrediosR1R2(prediosOffline);
-              console.log('[Offline] Predios R1/R2 cargados desde offline:', prediosOffline.length);
+              // IMPORTANTE: Deduplicar predios por codigo_predial para evitar duplicados
+              const prediosUnicos = [];
+              const codigosVistos = new Set();
+              for (const predio of prediosOffline) {
+                const codigo = predio.codigo_predial || predio.numero_predial;
+                if (codigo && !codigosVistos.has(codigo)) {
+                  codigosVistos.add(codigo);
+                  prediosUnicos.push(predio);
+                }
+              }
+              setPrediosR1R2(prediosUnicos);
+              console.log('[Offline] Predios R1/R2 cargados desde offline:', prediosUnicos.length, '(originales:', prediosOffline.length, ')');
             }
           } catch (prediosError) {
             console.warn('[Offline] No se pudieron cargar predios R1/R2 offline');
+          }
+          
+          // Intentar cargar construcciones offline (NUEVO)
+          try {
+            const construccionesOffline = await withTimeout(getConstruccionesOffline(proyectoId), 5000, null);
+            if (construccionesOffline?.features?.length > 0) {
+              setConstrucciones(construccionesOffline);
+              console.log('[Offline] Construcciones cargadas desde offline:', construccionesOffline.features.length);
+            } else {
+              console.log('[Offline] No hay construcciones en caché para este proyecto');
+            }
+          } catch (constError) {
+            console.warn('[Offline] No se pudieron cargar construcciones offline:', constError.message);
           }
           
           return;
