@@ -756,10 +756,19 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.drawString(left + half_w + 8, y - 6, "Nombre")
     c.setFont("Helvetica", 9)
     c.setFillColor(NEGRO)
-    # Prioridad: nombre_reconocedor de visita > nombre de quien visitó > nombre actual > email actual
+    # IMPORTANTE: Prioridad de reconocedor debe ser desde los datos guardados, NO el usuario actual
+    # Esto permite que un coordinador genere el PDF mostrando el nombre del gestor que hizo la visita
+    # Prioridad: 
+    #   1. nombre_reconocedor de visita (ingresado manualmente)
+    #   2. nombre_reconocedor del predio (guardado al registrar visita)
+    #   3. visitado_por_nombre del predio (guardado al cambiar estado a visitado)
+    #   4. visitado_por del predio (email del gestor que visitó)
+    #   5. Solo como ÚLTIMO recurso: nombre/email actual (raramente debería usarse)
     reconocedor = (
         visita.get('nombre_reconocedor', '') or 
-        visita.get('visitado_por_nombre', '') or 
+        predio.get('nombre_reconocedor', '') or
+        predio.get('visitado_por_nombre', '') or
+        predio.get('visitado_por', '') or
         current_user_name or 
         current_user_email
     )
