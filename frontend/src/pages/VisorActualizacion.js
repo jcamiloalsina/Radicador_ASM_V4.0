@@ -934,7 +934,9 @@ export default function VisorActualizacion() {
             });
             if (response.data.construcciones?.features?.length > 0) {
               setConstrucciones(response.data.construcciones);
-              console.log(`[Visor] ✓ Construcciones cargadas: ${response.data.construcciones.features.length}`);
+              // GUARDAR construcciones en caché para uso offline
+              await saveConstruccionesOffline(proyectoId, response.data.construcciones);
+              console.log(`[Visor] ✓ Construcciones cargadas y guardadas en caché: ${response.data.construcciones.features.length}`);
             } else {
               console.warn(`[Visor] ✗ No se recibieron construcciones en el batch 0`);
             }
