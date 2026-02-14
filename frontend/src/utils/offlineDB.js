@@ -156,6 +156,11 @@ function createAllStores(database) {
     { name: 'codigo_predial', keyPath: 'codigo_predial' }
   ]);
 
+  // NUEVO: Store para construcciones/mejoras
+  createStore(STORES.CONSTRUCCIONES, 'id', [
+    { name: 'proyecto_id', keyPath: 'proyecto_id' }
+  ]);
+
   createStore(STORES.CAMBIOS_PENDIENTES, 'id', [
     { name: 'proyecto_id', keyPath: 'proyecto_id' },
     { name: 'tipo', keyPath: 'tipo' },
