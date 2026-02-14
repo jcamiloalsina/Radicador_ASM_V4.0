@@ -1052,14 +1052,30 @@ export default function VisorActualizacion() {
     setLoadingPrediosR1R2(true);
     setPrediosDownloadProgress({ loaded: 0, total: 0 });
     
+    // Helper para deduplicar predios por código
+    const deduplicarPredios = (predios) => {
+      const unicos = [];
+      const codigosVistos = new Set();
+      for (const predio of predios) {
+        const codigo = predio.codigo_predial || predio.numero_predial;
+        if (codigo && !codigosVistos.has(codigo)) {
+          codigosVistos.add(codigo);
+          unicos.push(predio);
+        }
+      }
+      return unicos;
+    };
+    
     // 1. PRIMERO: Cargar desde caché offline INSTANTÁNEAMENTE (Stale-While-Revalidate)
     let loadedFromCache = false;
     try {
       const prediosOffline = await getPrediosOffline(proyectoId);
       if (prediosOffline && prediosOffline.length > 0) {
-        setPrediosR1R2(prediosOffline);
+        // Deduplicar para evitar mostrar duplicados
+        const prediosUnicos = deduplicarPredios(prediosOffline);
+        setPrediosR1R2(prediosUnicos);
         loadedFromCache = true;
-        console.log(`[SWR] Mostrando ${prediosOffline.length} predios desde caché (instantáneo)`);
+        console.log(`[SWR] Mostrando ${prediosUnicos.length} predios desde caché (instantáneo)${prediosOffline.length !== prediosUnicos.length ? ` [${prediosOffline.length - prediosUnicos.length} duplicados removidos]` : ''}`);
       }
     } catch (cacheError) {
       console.warn('[SWR] No hay datos en caché:', cacheError.message);
