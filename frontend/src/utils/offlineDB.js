@@ -8,7 +8,8 @@ const SCHEMA_VERSION = '3.0.0'; // Solo cambiar cuando cambie la estructura de d
 // Stores en IndexedDB
 const STORES = {
   PREDIOS: 'predios_offline',
-  GEOMETRIAS: 'geometrias_offline', 
+  GEOMETRIAS: 'geometrias_offline',
+  CONSTRUCCIONES: 'construcciones_offline', // NUEVO: Para persistir construcciones/mejoras
   CAMBIOS_PENDIENTES: 'cambios_pendientes',
   VISITAS_PENDIENTES: 'visitas_pendientes',
   CONFIG: 'config_offline',
