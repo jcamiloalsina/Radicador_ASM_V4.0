@@ -30,15 +30,19 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     
     Args:
         proyecto: dict con datos del proyecto
-        predio: dict con datos del predio
+        predio: dict con datos del predio (incluye visitado_por, visitado_por_nombre, codigo_homologado)
         visita: dict con datos de la visita (visitaData del frontend)
         propietarios: list de propietarios (visitaPropietarios del frontend)
         construcciones: list de construcciones (visitaConstrucciones del frontend)
-        current_user_email: email del usuario actual
-        current_user_name: nombre del usuario actual (opcional)
+        current_user_email: email del usuario actual (NO usar para reconocedor, solo como último fallback)
+        current_user_name: nombre del usuario actual (NO usar para reconocedor, solo como último fallback)
     
     Returns:
         bytes: contenido del PDF
+    
+    IMPORTANTE: El nombre del reconocedor debe obtenerse de los datos guardados en la visita/predio,
+    NO del usuario que genera el PDF. Esto permite que un coordinador genere el PDF 
+    mostrando el nombre del gestor que realizó la visita.
     """
     # Importar imágenes del certificado
     try:
