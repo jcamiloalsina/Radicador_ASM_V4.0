@@ -2,8 +2,8 @@
 // VERSIÓN MEJORADA - Persistencia robusta y sincronización en segundo plano
 
 const DB_NAME = 'asomunicipios_offline_v2';
-const DB_VERSION = 1; // Nueva versión limpia
-const SCHEMA_VERSION = '3.0.0'; // Solo cambiar cuando cambie la estructura de datos
+const DB_VERSION = 2; // Incrementar para agregar nuevo store de construcciones
+const SCHEMA_VERSION = '3.1.0'; // Actualizado para incluir construcciones
 
 // Stores en IndexedDB
 const STORES = {
