@@ -18786,6 +18786,18 @@ async def generar_pdf_informe_visita(
     if not predio:
         raise HTTPException(status_code=404, detail=f"Predio no encontrado: {codigo_predial_decoded}")
     
+    # BUGFIX: Obtener codigo_homologado desde la colección principal si no está en predios_actualizacion
+    # El codigo_homologado se almacena en la colección 'predios' (principal) y puede no estar en 'predios_actualizacion'
+    if not predio.get('codigo_homologado'):
+        codigo_predial_para_buscar = predio.get('codigo_predial') or predio.get('numero_predial')
+        if codigo_predial_para_buscar:
+            predio_principal = await db.predios.find_one(
+                {"codigo_predial_nacional": codigo_predial_para_buscar},
+                {"_id": 0, "codigo_homologado": 1}
+            )
+            if predio_principal and predio_principal.get('codigo_homologado'):
+                predio['codigo_homologado'] = predio_principal['codigo_homologado']
+    
     # Verificar que tiene datos de visita
     visita = predio.get('visita', {})
     if not visita:
