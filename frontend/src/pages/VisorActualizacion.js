@@ -269,6 +269,7 @@ export default function VisorActualizacion() {
     downloadForOffline,
     downloadFreshData,
     syncPendingChanges,
+    syncAllPendingChanges, // NUEVO: Sincroniza cambios de todos los proyectos
     saveChangeOffline,
     refreshStats,
     checkInitialSync,
