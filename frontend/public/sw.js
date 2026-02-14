@@ -415,7 +415,7 @@ async function getCacheStats() {
   }
   
   return stats;
-});
+}
 
 // Background sync for offline actions (future feature)
 self.addEventListener('sync', (event) => {
