@@ -18813,8 +18813,19 @@ async def generar_pdf_informe_visita(
         visita = {}
     
     # Propietarios y construcciones de la visita
-    propietarios = visita.get('propietarios', visita.get('propietarios_visita', predio.get('propietarios', [])))
-    construcciones = visita.get('construcciones', [])
+    # Los datos pueden estar en formato_visita, en campos separados del predio, o en el predio original
+    propietarios = (
+        visita.get('propietarios_visita') or 
+        visita.get('propietarios') or 
+        predio.get('propietarios_visita') or
+        predio.get('propietarios', [])
+    )
+    construcciones = (
+        visita.get('construcciones_visita') or
+        visita.get('construcciones') or
+        predio.get('construcciones_visita') or
+        predio.get('construcciones', [])
+    )
     
     # Generar PDF usando el nuevo módulo
     try:
