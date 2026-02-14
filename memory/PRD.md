@@ -7,6 +7,34 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 15)
 
+### ✅ IMPLEMENTADO: Caché de Tiles de Mapas para Modo Offline (Esri/Google)
+
+**Problema reportado:**
+Los visores de Esri y Google no funcionaban sin internet porque los tiles se descargaban en tiempo real.
+
+**Solución implementada:**
+Service Worker v3 con sistema de caché de tiles automático y fluido.
+
+**Archivo `/app/frontend/public/sw.js`:**
+- Nueva versión v3 con caché inteligente de tiles
+- Estrategia **cache-first**: Prioriza tiles cacheados para fluidez
+- Actualización en background cuando hay conexión
+- Límite de **5000 tiles** (~50MB) para no llenar almacenamiento
+- Limpieza automática FIFO cada 1000 nuevos tiles
+- Fallback con tile placeholder gris si no hay caché
+
+**Funcionamiento:**
+1. Usuario navega por el mapa (online) → Tiles se cachean automáticamente
+2. Usuario regresa al mismo área (offline) → Tiles se cargan del caché instantáneamente
+3. Usuario va a área nueva (offline) → Ve placeholder gris pero geometrías/predios visibles
+
+**Proveedores soportados:**
+- ✅ Esri World Imagery (server.arcgisonline.com)
+- ✅ Google Satellite (mt0.google.com, mt1.google.com)
+- ✅ OpenStreetMap
+
+---
+
 ### ✅ CORREGIDO: Construcciones/Mejoras No Persistían en Modo Offline
 
 **Problema reportado:**
