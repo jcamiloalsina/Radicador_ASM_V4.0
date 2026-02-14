@@ -894,8 +894,11 @@ export default function VisorActualizacion() {
           toast.success(`${response.data.geometrias.features.length} geometrías descargadas y listas para offline`);
         }
         
+        // Guardar construcciones en caché para uso offline
         if (response.data.construcciones?.features?.length > 0) {
           setConstrucciones(response.data.construcciones);
+          await saveConstruccionesOffline(proyectoId, response.data.construcciones);
+          console.log(`[Visor] ✓ Construcciones guardadas en caché: ${response.data.construcciones.features.length}`);
         }
       } else {
         // Descarga progresiva por lotes
