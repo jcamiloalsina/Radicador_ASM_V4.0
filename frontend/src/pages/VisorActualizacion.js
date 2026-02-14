@@ -1026,11 +1026,15 @@ export default function VisorActualizacion() {
       // Si está offline, intentar cargar desde IndexedDB
       if (!navigator.onLine) {
         try {
-          const { geometrias: offlineGeom } = await getOfflineData();
-          if (offlineGeom.length > 0) {
+          const offlineGeom = await getGeometriasOffline(proyectoId);
+          if (offlineGeom && offlineGeom.length > 0) {
             const geojson = {
               type: 'FeatureCollection',
-              features: offlineGeom
+              features: offlineGeom.map(g => ({
+                type: g.type || 'Feature',
+                geometry: g.geometry,
+                properties: g.properties
+              }))
             };
             setGeometrias(geojson);
             setLoadedFromCache(true);
