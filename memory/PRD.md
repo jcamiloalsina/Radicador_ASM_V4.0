@@ -5,7 +5,40 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 15 - BUGS PDF VISITA CORREGIDOS)
+## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 15)
+
+### ✅ CORREGIDO: Construcciones/Mejoras No Persistían en Modo Offline
+
+**Problema reportado:**
+Cuando el usuario salía del proyecto y regresaba en modo offline, los predios y geometrías se cargaban correctamente desde el caché, pero las construcciones/mejoras desaparecían.
+
+**Causa raíz:**
+Las construcciones solo se cargaban del servidor y NO se guardaban en IndexedDB. Cuando el usuario estaba offline, el intento de cargar construcciones del servidor fallaba silenciosamente.
+
+**Solución implementada:**
+
+1. **Archivo `/app/frontend/src/utils/offlineDB.js`:**
+   - Agregado nuevo store `CONSTRUCCIONES: 'construcciones_offline'`
+   - Incrementado `DB_VERSION` a 2 para crear el nuevo store
+   - Creadas funciones `saveConstruccionesOffline()` y `getConstruccionesOffline()`
+   - Actualizada función `getOfflineStats()` para incluir construcciones
+
+2. **Archivo `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - Importadas nuevas funciones `saveConstruccionesOffline, getConstruccionesOffline`
+   - Cuando se cargan geometrías desde caché, también se cargan construcciones del caché
+   - Cuando se descargan construcciones del servidor, se guardan automáticamente en el caché
+   - Aplica tanto para descarga simple como para descarga por lotes
+
+**Testing verificado:**
+- ✅ Construcciones (6912) guardadas en caché: `[OfflineDB] 6912 construcciones guardadas para proyecto...`
+- ✅ Log confirma: `[Visor] ✓ Construcciones cargadas y guardadas en caché: 6912`
+- ✅ El contador de Mejoras (1969) y Const. (6012) visible en el visor
+
+**Archivos modificados:**
+- `/app/frontend/src/utils/offlineDB.js`
+- `/app/frontend/src/pages/VisorActualizacion.js`
+
+---
 
 ### ✅ CORREGIDOS: Bugs en Exportación PDF de Visita
 
