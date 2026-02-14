@@ -5,7 +5,46 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 15)
+## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 16)
+
+### ✅ CORREGIDO: Regresión Crítica - Duplicación de Datos y Construcciones Offline (P0)
+
+**Problema reportado:**
+El usuario reportó que en modo offline:
+1. Las construcciones no se cargaban (mostrando "0")
+2. Los predios y visitas se duplicaban, mostrando un conteo inflado
+
+**Causa raíz:**
+1. **Construcciones**: No se cargaban desde IndexedDB cuando el usuario estaba offline - solo se intentaba cargar del servidor
+2. **Duplicación**: El ID de predios en IndexedDB usaba inconsistentemente `municipio || proyectoId` como prefijo, causando que el mismo predio pudiera tener múltiples entradas con IDs diferentes
+
+**Solución implementada:**
+
+1. **Archivo `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - Agregada carga de construcciones desde IndexedDB en modo offline (líneas 717-729)
+   - Agregada función `deduplicarPredios()` que filtra predios por `codigo_predial` antes de mostrarlos
+   - Deduplicación aplicada en todos los puntos de carga offline (cache inicial, fallback, SWR)
+
+2. **Archivo `/app/frontend/src/utils/offlineDB.js`:**
+   - `savePrediosOffline()`: Ahora usa `Map` para deduplicar por código antes de guardar
+   - `savePrediosOffline()`: Usa `proyectoId` SIEMPRE como prefijo de ID (no municipio)
+   - `updatePredioOffline()`: Consistencia en formato de ID con `proyectoId`
+   - Los stats de localStorage también usan `proyectoId` consistentemente
+
+**Testing verificado (iteration_47.json):**
+- ✅ Carga de datos sin duplicación: Total 3234, Pendientes 3220, Visitados 10, Actualizados 4
+- ✅ Construcciones cargadas: 6912
+- ✅ Indicador "Offline Ready" funciona correctamente
+- ✅ IndexedDB: 3234 predios, 6076 geometrías, 6912 construcciones
+- **Success rate: 100%**
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js` - Deduplicación y carga offline de construcciones
+- `/app/frontend/src/utils/offlineDB.js` - IDs consistentes y deduplicación al guardar
+
+---
+
+## 🔧 Cambios Anteriores (14 Febrero 2026 - Fork 15)
 
 ### ✅ IMPLEMENTADO: Caché de Tiles de Mapas para Modo Offline (Esri/Google)
 
