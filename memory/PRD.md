@@ -5,7 +5,50 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (13 Febrero 2026 - Fork 14 - CORRECCIÓN VISIBILIDAD DE DATOS)
+## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 15 - BUGS PDF VISITA CORREGIDOS)
+
+### ✅ CORREGIDOS: Bugs en Exportación PDF de Visita
+
+**Problemas reportados:**
+1. El campo `código homologado` aparecía vacío en el PDF generado
+2. Cuando un `coordinador` generaba el PDF de una visita hecha por un `gestor`, el nombre del coordinador sobrescribía el del gestor
+
+**Causa raíz Bug 1 (código homologado):**
+- El generador de PDF leía `visita` desde `predio.get('visita', {})` pero los datos se guardaban en `predio.get('formato_visita', {})`
+- El código homologado podía no estar presente en `predios_actualizacion` si venía de la colección principal `predios`
+
+**Causa raíz Bug 2 (nombre reconocedor):**
+- El fallback en `pdf_visita_generator.py` líneas 756-761 usaba `current_user_name` o `current_user_email` como último recurso
+- Esto hacía que el coordinador que generaba el PDF apareciera en lugar del gestor que realizó la visita
+
+**Solución implementada:**
+
+1. **Archivo `/app/backend/pdf_visita_generator.py`** - líneas 756-773:
+   - Nueva prioridad para nombre del reconocedor:
+     1. `visita.get('nombre_reconocedor')` - ingresado manualmente
+     2. `predio.get('nombre_reconocedor')` - guardado al registrar visita
+     3. `predio.get('visitado_por_nombre')` - guardado al cambiar estado
+     4. `predio.get('visitado_por')` - email del gestor
+     5. `current_user_name` o `current_user_email` - SOLO como último fallback
+
+2. **Archivo `/app/backend/server.py`** - endpoint `generar_pdf_informe_visita`:
+   - Cambiado `predio.get('visita', {})` → `predio.get('formato_visita', {}) or predio.get('visita', {})`
+   - Agregado fallback para buscar `codigo_homologado` en la colección `predios` si no está en `predios_actualizacion`
+   - Mejorada lectura de propietarios y construcciones con múltiples fallbacks
+
+**Testing verificado:**
+- ✅ PDF muestra código homologado correctamente (`BSB0001RFED`)
+- ✅ Coordinador `Camilo Prueba` genera PDF → Muestra nombre del gestor `Jefer David Geney Orozco`
+- ✅ El nombre del coordinador NO aparece en la sección de reconocedor
+- **Success rate: 100%**
+
+**Archivos modificados:**
+- `/app/backend/pdf_visita_generator.py` - Lógica de reconocedor corregida
+- `/app/backend/server.py` - Endpoint de generación PDF mejorado
+
+---
+
+## 🔧 Cambios Anteriores (13 Febrero 2026 - Fork 14 - CORRECCIÓN VISIBILIDAD DE DATOS)
 
 ### ✅ RESUELTO: Datos de Propietarios No Aparecían en UI
 
