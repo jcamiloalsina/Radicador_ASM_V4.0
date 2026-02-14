@@ -288,12 +288,12 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       setIsOnline(true);
       console.log('[Offline] Conexión restaurada');
       
-      // Sincronizar cambios pendientes automáticamente (para cualquier módulo)
-      const storeId = proyectoId || modulo || 'general';
-      const cambios = await getCambiosPendientes(storeId);
-      if (cambios.length > 0) {
-        toast.info(`Sincronizando ${cambios.length} cambio(s) pendiente(s)...`);
-        await syncPendingChanges(true);
+      // IMPORTANTE: Sincronizar TODOS los cambios pendientes de CUALQUIER proyecto
+      // No filtrar por proyectoId actual para no perder cambios de otros proyectos
+      const todosLosCambios = await getCambiosPendientes(null); // null = sin filtro de proyecto
+      if (todosLosCambios.length > 0) {
+        toast.info(`Sincronizando ${todosLosCambios.length} cambio(s) pendiente(s)...`);
+        await syncAllPendingChanges(true); // Nueva función que sincroniza TODO
       }
       
       // Descargar datos frescos en segundo plano solo si hay proyectoId
