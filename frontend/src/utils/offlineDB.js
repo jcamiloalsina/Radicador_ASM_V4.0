@@ -519,6 +519,81 @@ export async function countGeometriasMunicipioOffline(municipio) {
   });
 }
 
+// ==================== CONSTRUCCIONES (MEJORAS) ====================
+
+// Guardar construcciones/mejoras de un proyecto
+export async function saveConstruccionesOffline(proyectoId, construcciones) {
+  const database = await initOfflineDB();
+  if (!database || !construcciones?.features?.length) return 0;
+  
+  try {
+    const tx = database.transaction(STORES.CONSTRUCCIONES, 'readwrite');
+    const store = tx.objectStore(STORES.CONSTRUCCIONES);
+    
+    // Guardar el GeoJSON completo como un solo registro por proyecto
+    const record = {
+      id: `construcciones_${proyectoId}`,
+      proyecto_id: proyectoId,
+      geojson: construcciones,
+      count: construcciones.features.length,
+      saved_offline_at: new Date().toISOString()
+    };
+    
+    store.put(record);
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    console.log(`[OfflineDB] ${construcciones.features.length} construcciones guardadas para proyecto ${proyectoId}`);
+    
+    // Actualizar localStorage stats
+    try {
+      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
+      offlineStats[`construcciones_${proyectoId}`] = construcciones.features.length;
+      offlineStats.lastSync = new Date().toISOString();
+      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
+    } catch (lsError) {
+      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
+    }
+    
+    window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'construcciones', count: construcciones.features.length } }));
+    return construcciones.features.length;
+  } catch (e) {
+    console.error('[OfflineDB] Error guardando construcciones:', e);
+    return 0;
+  }
+}
+
+// Obtener construcciones/mejoras de un proyecto
+export async function getConstruccionesOffline(proyectoId) {
+  const database = await initOfflineDB();
+  if (!database) return null;
+  
+  return new Promise((resolve) => {
+    try {
+      const tx = database.transaction(STORES.CONSTRUCCIONES, 'readonly');
+      const store = tx.objectStore(STORES.CONSTRUCCIONES);
+      const request = store.get(`construcciones_${proyectoId}`);
+      
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result?.geojson) {
+          console.log(`[OfflineDB] Construcciones cargadas del caché: ${result.count}`);
+          resolve(result.geojson);
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => resolve(null);
+    } catch (e) {
+      console.error('[OfflineDB] Error obteniendo construcciones:', e);
+      resolve(null);
+    }
+  });
+}
+
 // ==================== CAMBIOS PENDIENTES ====================
 
 export async function saveCambioPendiente(cambio) {
