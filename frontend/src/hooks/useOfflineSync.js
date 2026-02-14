@@ -592,6 +592,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     downloadForOffline,
     downloadFreshData,
     syncPendingChanges,
+    syncAllPendingChanges, // NUEVO: Sincroniza cambios de TODOS los proyectos
     saveChangeOffline,
     refreshStats,
     checkInitialSync,
