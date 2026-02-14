@@ -18799,7 +18799,8 @@ async def generar_pdf_informe_visita(
                 predio['codigo_homologado'] = predio_principal['codigo_homologado']
     
     # Verificar que tiene datos de visita
-    visita = predio.get('visita', {})
+    # NOTA: Los datos de visita se guardan en 'formato_visita', no en 'visita'
+    visita = predio.get('formato_visita', {}) or predio.get('visita', {})
     if not visita:
         # Verificar si el estado indica que fue visitado pero no tiene datos de visita
         estado = predio.get('estado_visita', 'pendiente')
