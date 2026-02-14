@@ -815,8 +815,13 @@ export default function VisorActualizacion() {
             
             toast.success(`${cachedGeometrias.length} geometrías cargadas desde caché`);
             
-            // IMPORTANTE: Aunque las geometrías estén en caché, cargar construcciones del servidor
-            if (navigator.onLine) {
+            // CARGAR CONSTRUCCIONES: Primero intentar desde caché, luego del servidor
+            const cachedConstrucciones = await getConstruccionesOffline(proyectoId);
+            if (cachedConstrucciones?.features?.length > 0) {
+              setConstrucciones(cachedConstrucciones);
+              console.log(`[Visor] ✓ Construcciones cargadas desde caché: ${cachedConstrucciones.features.length}`);
+            } else if (navigator.onLine) {
+              // Si no hay en caché y estamos online, descargar del servidor
               try {
                 const token = localStorage.getItem('token');
                 const constResponse = await axios.get(`${API}/actualizacion/proyectos/${proyectoId}/geometrias`, {
@@ -827,11 +832,15 @@ export default function VisorActualizacion() {
                 
                 if (constResponse.data.construcciones?.features?.length > 0) {
                   setConstrucciones(constResponse.data.construcciones);
-                  console.log(`[Visor] Construcciones cargadas del servidor: ${constResponse.data.construcciones.features.length}`);
+                  // GUARDAR en caché para uso offline
+                  await saveConstruccionesOffline(proyectoId, constResponse.data.construcciones);
+                  console.log(`[Visor] ✓ Construcciones cargadas del servidor y guardadas en caché: ${constResponse.data.construcciones.features.length}`);
                 }
               } catch (constError) {
-                console.warn('[Visor] Error cargando construcciones:', constError.message);
+                console.warn('[Visor] Error cargando construcciones del servidor:', constError.message);
               }
+            } else {
+              console.warn('[Visor] Sin conexión y sin construcciones en caché');
             }
             
             return; // Ya cargamos geometrías desde caché
