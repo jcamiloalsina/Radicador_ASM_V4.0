@@ -425,4 +425,4 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-console.log('[SW] Service Worker v2 loaded');
+console.log('[SW] Service Worker v3 loaded - Map tiles will be cached automatically for offline use');
