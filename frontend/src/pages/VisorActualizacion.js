@@ -4074,12 +4074,23 @@ export default function VisorActualizacion() {
               {downloadProgress.phase}
             </Badge>
           )}
-          {/* Cambios pendientes - solo indicador informativo */}
+          {/* Cambios pendientes - clickeable para sincronizar manualmente */}
           {offlineStats.cambiosPendientes > 0 && (
             <Badge 
               variant="outline" 
-              className="text-xs bg-blue-100 text-blue-700 border-blue-300"
-              title={isSyncing ? 'Sincronizando...' : 'Cambios pendientes - Se sincronizarán automáticamente'}
+              className={`text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-200 ${isSyncing ? 'opacity-75' : ''}`}
+              title={isSyncing ? 'Sincronizando...' : 'Clic para sincronizar cambios pendientes'}
+              onClick={async () => {
+                if (!isSyncing && navigator.onLine) {
+                  toast.info('Sincronizando cambios pendientes...');
+                  const resultado = await syncAllPendingChanges(true);
+                  if (resultado.sincronizados === 0 && resultado.errores === 0) {
+                    toast.info('No hay cambios pendientes para sincronizar');
+                  }
+                } else if (!navigator.onLine) {
+                  toast.warning('Sin conexión. Los cambios se sincronizarán cuando vuelva la conexión.');
+                }
+              }}
             >
               <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Sincronizando...' : `${offlineStats.cambiosPendientes} pendientes`}
