@@ -211,6 +211,7 @@ async function withStore(storeName, mode, operation) {
 // ==================== PREDIOS ====================
 
 // Guardar predios (merge, no reemplazar completamente)
+// IMPORTANTE: Usa proyectoId consistentemente para evitar duplicados
 export async function savePrediosOffline(proyectoId, predios, municipio) {
   const database = await initOfflineDB();
   if (!database || !predios?.length) return 0;
@@ -219,12 +220,21 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
     const tx = database.transaction(STORES.PREDIOS, 'readwrite');
     const store = tx.objectStore(STORES.PREDIOS);
     
-    let saved = 0;
+    // Deduplicar entrada por código predial antes de guardar
+    const prediosUnicos = new Map();
     for (const predio of predios) {
       const codigoPredial = predio.codigo_predial || predio.numero_predial || predio.codigo_predial_nacional;
       if (!codigoPredial) continue;
       
-      const id = `${municipio || proyectoId}_${codigoPredial}`;
+      // Si ya existe, mantener el más reciente (último en la lista)
+      prediosUnicos.set(codigoPredial, predio);
+    }
+    
+    let saved = 0;
+    for (const [codigoPredial, predio] of prediosUnicos) {
+      // IMPORTANTE: Usar proyectoId SIEMPRE como prefijo para consistencia
+      // Esto evita que el mismo predio tenga IDs diferentes según se pase municipio o no
+      const id = `${proyectoId}_${codigoPredial}`;
       
       // Obtener registro existente para preservar datos locales
       const existing = await new Promise(resolve => {
@@ -255,7 +265,7 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
       tx.onerror = () => reject(tx.error);
     });
 
-    console.log(`[OfflineDB] ${saved} predios guardados para ${municipio || proyectoId}`);
+    console.log(`[OfflineDB] ${saved} predios guardados para proyecto ${proyectoId} (${predios.length - saved} duplicados ignorados)`);
     
     // Guardar en localStorage como respaldo (para el indicador global)
     // Usar el proyecto como clave para no duplicar conteos
