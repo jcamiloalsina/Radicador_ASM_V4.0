@@ -415,7 +415,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [proyectoId, modulo, syncPendingChanges, downloadFreshData]);
+  }, [proyectoId, modulo, syncAllPendingChanges, downloadFreshData]);
 
   // Inicializar DB y cargar última sincronización
   useEffect(() => {
