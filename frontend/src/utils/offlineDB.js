@@ -335,6 +335,7 @@ export async function getPrediosByMunicipioOffline(municipio) {
 }
 
 // Actualizar un predio localmente (para cambios offline)
+// IMPORTANTE: Usar proyectoId consistentemente para el ID (igual que savePrediosOffline)
 export async function updatePredioOffline(proyectoId, codigoPredial, updates, municipio) {
   const database = await initOfflineDB();
   if (!database) return false;
@@ -342,7 +343,8 @@ export async function updatePredioOffline(proyectoId, codigoPredial, updates, mu
   try {
     const tx = database.transaction(STORES.PREDIOS, 'readwrite');
     const store = tx.objectStore(STORES.PREDIOS);
-    const id = `${municipio || proyectoId}_${codigoPredial}`;
+    // IMPORTANTE: Usar proyectoId SIEMPRE como prefijo para consistencia
+    const id = `${proyectoId}_${codigoPredial}`;
     
     const existing = await new Promise(resolve => {
       const req = store.get(id);
