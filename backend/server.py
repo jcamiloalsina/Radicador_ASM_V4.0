@@ -200,6 +200,7 @@ class UserRole:
     USUARIO = "usuario"  # Usuario externo (antes "usuario")
     ATENCION_USUARIO = "atencion_usuario"
     GESTOR = "gestor"
+    GESTOR_AUXILIAR = "gestor_auxiliar"  # Gestor auxiliar - apoyo en trabajo de campo
     COORDINADOR = "coordinador"
     ADMINISTRADOR = "administrador"
     COMUNICACIONES = "comunicaciones"  # Puede consultar predios, ver visor, ver trámites, descargar/subir archivos
