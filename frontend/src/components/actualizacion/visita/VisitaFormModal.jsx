@@ -1169,9 +1169,10 @@ const VisitaFormModal = ({
   const [propietarios, setPropietarios] = useState(getInitialPropietarios);
   const [fotos, setFotos] = useState([]);
 
-  // Resetear cuando se abre
+  // Resetear TODOS los estados cuando se abre para un nuevo predio
   useEffect(() => {
     if (open && predio) {
+      // Resetear datos principales del formulario
       setData(prev => ({
         ...getInitialVisitaData(),
         direccion_visita: predio.direccion || '',
@@ -1179,9 +1180,17 @@ const VisitaFormModal = ({
         area_base_catastral_m2: predio.area_terreno || predio.area_r1 || '',
         area_base_catastral_ha: predio.area_terreno ? (parseFloat(predio.area_terreno) / 10000).toFixed(4) : '',
         area_geografica_m2: predio.area_gdb || '',
-        area_geografica_ha: predio.area_gdb ? (parseFloat(predio.area_gdb) / 10000).toFixed(4) : ''
+        area_geografica_ha: predio.area_gdb ? (parseFloat(predio.area_gdb) / 10000).toFixed(4) : '',
+        // Pre-llenar matrícula si existe
+        jur_matricula: predio.matricula_inmobiliaria || ''
       }));
       setPagina(1);
+      
+      // IMPORTANTE: Resetear todos los demás estados para evitar que persistan datos del predio anterior
+      setConstrucciones(getInitialConstrucciones());
+      setCalificaciones(getInitialCalificaciones());
+      setPropietarios(getInitialPropietarios());
+      setFotos([]);
     }
   }, [open, predio]);
 
