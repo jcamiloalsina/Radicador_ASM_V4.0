@@ -6580,10 +6580,21 @@ async def crear_predio_con_workflow(
     if not codigo_predial.startswith(prefijo_esperado):
         raise HTTPException(status_code=400, detail=f"El código no corresponde al municipio {municipio}")
     
-    # Verificar si ya existe
+    # Verificar si ya existe en predios activos
     existente = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
     if existente:
         raise HTTPException(status_code=400, detail="Este código predial ya existe")
+    
+    # Verificar si ya existe una propuesta pendiente para este código
+    propuesta_existente = await db.predios_cambios.find_one({
+        "datos_propuestos.codigo_predial_nacional": codigo_predial,
+        "estado": {"$in": ["pendiente_creacion", "pendiente_aprobacion", "en_proceso"]}
+    })
+    if propuesta_existente:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ya existe una propuesta pendiente para este código predial (ID: {propuesta_existente.get('id', 'N/A')})"
+        )
     
     # Si es reactivación, verificar que esté eliminado
     if es_reactivacion:
@@ -6596,6 +6607,11 @@ async def crear_predio_con_workflow(
         {"codigo": codigo_predial[:21], "municipio": municipio},
         {"_id": 0, "area_m2": 1, "geometry": 1}
     )
+    
+    # VERIFICAR PERMISOS DE APROBACIÓN
+    user_permissions = current_user.get('permissions', [])
+    has_approve_permission = 'approve_changes' in user_permissions
+    puede_aprobar = current_user["role"] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or has_approve_permission
     
     # Crear propuesta de cambio
     cambio_id = str(uuid.uuid4())
