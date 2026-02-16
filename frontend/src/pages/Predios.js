@@ -2041,6 +2041,7 @@ export default function Predios() {
         numero_documento: formatearNumeroDocumento(p.numero_documento)
       }));
 
+    setIsSavingCreate(true); // Activar estado de guardado
     try {
       const token = localStorage.getItem('token');
       
