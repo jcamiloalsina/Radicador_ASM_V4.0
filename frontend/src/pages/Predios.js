@@ -2234,6 +2234,9 @@ export default function Predios() {
   };
 
   const handleUpdate = async () => {
+    if (isSavingUpdate) return; // Prevenir doble clic
+    setIsSavingUpdate(true);
+    
     try {
       const token = localStorage.getItem('token');
       
@@ -2242,6 +2245,7 @@ export default function Predios() {
       
       if (propietariosValidos.length === 0) {
         toast.error('Debe ingresar al menos un propietario con nombre y documento');
+        setIsSavingUpdate(false);
         return;
       }
       
