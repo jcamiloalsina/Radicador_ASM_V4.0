@@ -17882,8 +17882,25 @@ async def crear_propuesta_cambio(
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
     # Verificar que el predio esté visitado
-    if predio.get('estado_visita') not in ['visitado', 'actualizado']:
+    if predio.get('estado_visita') not in ['visitado', 'visitado_firmado', 'actualizado']:
         raise HTTPException(status_code=400, detail="El predio debe estar visitado antes de proponer cambios")
+    
+    # Verificar que tenga el formulario de visita completo
+    formato_visita = predio.get('formato_visita')
+    if not formato_visita:
+        raise HTTPException(
+            status_code=400, 
+            detail="Debe completar el Formato de Visita antes de enviar a aprobación. Abra el predio y complete el formulario de visita."
+        )
+    
+    # Validar campos mínimos requeridos del formato de visita
+    campos_requeridos = ['fecha_visita', 'persona_atiende']
+    campos_faltantes = [campo for campo in campos_requeridos if not formato_visita.get(campo)]
+    if campos_faltantes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El Formato de Visita está incompleto. Faltan los siguientes campos: {', '.join(campos_faltantes)}"
+        )
     
     # Verificar que no haya una propuesta pendiente para este código
     propuesta_existente = await db.propuestas_cambio_actualizacion.find_one({
