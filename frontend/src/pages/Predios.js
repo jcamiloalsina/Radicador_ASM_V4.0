@@ -2353,6 +2353,8 @@ export default function Predios() {
 
   const handleDelete = async (predio) => {
     if (!window.confirm(`¿Está seguro de eliminar el predio ${predio.codigo_homologado}?`)) return;
+    if (isSavingDelete) return; // Prevenir doble clic
+    setIsSavingDelete(true);
     
     try {
       const token = localStorage.getItem('token');
@@ -2378,6 +2380,8 @@ export default function Predios() {
       fetchCambiosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al eliminar predio');
+    } finally {
+      setIsSavingDelete(false);
     }
   };
 
