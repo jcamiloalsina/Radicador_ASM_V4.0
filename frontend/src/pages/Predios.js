@@ -1992,6 +1992,8 @@ export default function Predios() {
   const necesitaAprobacion = user && ['gestor', 'gestor_auxiliar', 'atencion_usuario'].includes(user.role);
 
   const handleCreate = async () => {
+    if (isSavingCreate) return; // Prevenir doble clic
+    
     // Validar que el código esté completo
     const codigoCompleto = construirCodigoCompleto();
     if (codigoCompleto.length !== 30) {
