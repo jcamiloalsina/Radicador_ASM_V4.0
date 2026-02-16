@@ -5788,8 +5788,12 @@ export default function VisorActualizacion() {
         onSave={async (formData) => {
           // El nuevo componente pasa todos los datos del formulario de una sola vez
           setSavingVisita(true);
+          console.log('[Visita] Guardando - isOnline:', isOnline, 'navigator.onLine:', navigator.onLine);
           try {
             const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+            console.log('[Visita] Código predial:', codigoPredial);
+            
+            // Incluir firmas si existen
             const datosActualizacion = {
               fecha_visita: formData.visitaData.fecha_visita,
               hora_visita: formData.visitaData.hora_visita,
@@ -5806,15 +5810,27 @@ export default function VisorActualizacion() {
               coordenadas_gps: formData.visitaData.coordenadas_gps,
               propietarios: formData.propietarios,
               construcciones: formData.construcciones,
-              calificaciones: formData.calificaciones
+              calificaciones: formData.calificaciones,
+              // Incluir firmas
+              firma_visitado_base64: formData.visitaData.firma_visitado_base64,
+              firma_reconocedor_base64: formData.visitaData.firma_reconocedor_base64,
+              nombre_visitado: formData.visitaData.nombre_visitado,
+              nombre_reconocedor: formData.visitaData.nombre_reconocedor
             };
 
-            if (isOnline) {
-              await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
+            // Usar navigator.onLine como respaldo para asegurar detección correcta
+            const estaOnline = isOnline && navigator.onLine;
+            console.log('[Visita] Estado real online:', estaOnline);
+            
+            if (estaOnline) {
+              console.log('[Visita] Enviando al servidor:', `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`);
+              const response = await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
               });
+              console.log('[Visita] Respuesta del servidor:', response.data);
               toast.success('Visita guardada correctamente');
             } else {
+              console.log('[Visita] Guardando offline...');
               await saveCambioPendiente({
                 tipo: 'visita',
                 proyecto_id: proyectoId,
