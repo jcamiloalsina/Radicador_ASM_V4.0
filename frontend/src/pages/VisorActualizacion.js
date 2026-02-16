@@ -5790,23 +5790,17 @@ export default function VisorActualizacion() {
           setSavingVisita(true);
           try {
             const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+            
+            // Enviar TODOS los datos del formulario completos
             const datosActualizacion = {
-              fecha_visita: formData.visitaData.fecha_visita,
-              hora_visita: formData.visitaData.hora_visita,
-              persona_atiende: formData.visitaData.persona_atiende,
-              relacion_predio: formData.visitaData.relacion_predio,
-              acceso_predio: formData.visitaData.acceso_predio,
-              estado_predio: formData.visitaData.estado_predio,
-              servicios_publicos: formData.visitaData.servicios_publicos,
-              sin_cambios: formData.visitaData.sin_cambios,
-              observaciones: formData.visitaData.observaciones_generales,
-              tipo_predio: formData.visitaData.tipo_predio,
-              direccion_verificada: formData.visitaData.direccion_visita,
-              destino_economico: formData.visitaData.destino_economico_visita,
-              coordenadas_gps: formData.visitaData.coordenadas_gps,
+              ...formData.visitaData,  // Todos los campos del formulario de visita
               propietarios: formData.propietarios,
               construcciones: formData.construcciones,
-              calificaciones: formData.calificaciones
+              calificaciones: formData.calificaciones,
+              fotos: formData.fotos,
+              // Renombrar campos para consistencia con el backend
+              propietarios_visita: formData.propietarios,
+              construcciones_visita: formData.construcciones
             };
 
             if (isOnline) {
