@@ -2233,6 +2233,8 @@ export default function Predios() {
       fetchCambiosStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al crear predio');
+    } finally {
+      setIsSavingCreate(false);
     }
   };
 
