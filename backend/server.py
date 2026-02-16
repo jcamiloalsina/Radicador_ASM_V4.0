@@ -6667,7 +6667,12 @@ async def crear_predio_con_workflow(
             "notas": justificacion
         }],
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        # Campos adicionales para compatibilidad con predios_cambios
+        "fecha_propuesta": datetime.now(timezone.utc).isoformat(),
+        "propuesto_por": current_user["id"],
+        "propuesto_por_nombre": current_user["full_name"],
+        "propuesto_por_rol": current_user["role"]
     }
     
     # Si se asignó a otro gestor para continuar
@@ -6687,10 +6692,46 @@ async def crear_predio_con_workflow(
                 "notas": f"Asignado a {gestor_info['full_name']} para continuar el diligenciamiento"
             })
     
-    await db.predios_cambios_propuestos.insert_one(propuesta)
+    # Determinar si requiere aprobación basado en rol Y permisos
+    requiere_aprobacion = not puede_aprobar
     
-    # Si es coordinador o admin, puede aprobar directamente
-    requiere_aprobacion = current_user["role"] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]
+    if puede_aprobar:
+        # Usuario con permiso de aprobación: crear el predio directamente
+        propuesta["estado"] = PredioEstadoAprobacion.APROBADO
+        propuesta["historial"].append({
+            "accion": "Aprobación automática",
+            "usuario": current_user["full_name"],
+            "usuario_id": current_user["id"],
+            "rol": current_user["role"],
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "notas": "Creado por usuario con permiso de aprobación"
+        })
+        
+        # Crear el predio directamente en la colección predios
+        nuevo_predio = {
+            "id": str(uuid.uuid4()),
+            **propuesta["datos_propuestos"],
+            "codigo_homologado": codigo_predial[:21],
+            "estado": "activo",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "creado_por": current_user["id"],
+            "creado_por_nombre": current_user["full_name"]
+        }
+        await db.predios.insert_one(nuevo_predio)
+        
+        # Guardar también en historial de cambios para registro
+        await db.predios_cambios.insert_one(propuesta)
+        
+        mensaje = "Predio creado exitosamente"
+    else:
+        # Usuario sin permiso: guardar en predios_cambios para aprobación
+        propuesta["estado"] = PredioEstadoAprobacion.PENDIENTE_CREACION
+        await db.predios_cambios.insert_one(propuesta)
+        mensaje = "Predio propuesto. Pendiente de aprobación del coordinador."
+    
+    # También guardar en predios_cambios_propuestos para compatibilidad
+    await db.predios_cambios_propuestos.insert_one({**propuesta, "_id": None})
     
     # Actualizar contador de trámites del gestor
     await db.users.update_one(
@@ -6701,8 +6742,9 @@ async def crear_predio_con_workflow(
     return {
         "cambio_id": cambio_id,
         "requiere_aprobacion": requiere_aprobacion,
-        "mensaje": "Predio propuesto. Pendiente de aprobación del coordinador." if requiere_aprobacion else "Predio listo para aprobar.",
-        "tiene_geometria": geometria is not None
+        "mensaje": mensaje,
+        "tiene_geometria": geometria is not None,
+        "predio_creado": puede_aprobar  # Indica si el predio ya fue creado directamente
     }
 
 
