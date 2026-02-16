@@ -60,7 +60,7 @@ function App() {
           </Route>
         </Routes>
         </BrowserRouter>
-        <Toaster position="top-right" richColors />
+        <Toaster position="top-right" richColors toastOptions={{ style: { zIndex: 99999 } }} />
         
         {/* PWA Components */}
         <OfflineIndicator />
