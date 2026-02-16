@@ -17000,10 +17000,11 @@ async def get_predios_proyecto(
         
         if codigos_prediales:
             # Buscar datos adicionales - SOLO los campos necesarios
+            # Priorizar documentos que tengan r2_registros con matrícula
             predios_principales = await db.predios.find(
                 {"codigo_predial_nacional": {"$in": codigos_prediales}},
                 {"_id": 0, "codigo_predial_nacional": 1, "codigo_homologado": 1, "r2_registros.matricula_inmobiliaria": 1}
-            ).to_list(len(codigos_prediales) * 2)  # Limitado para evitar sobrecarga
+            ).to_list(len(codigos_prediales) * 5)  # Aumentar límite para capturar duplicados
             
             # Crear mapas de código -> datos
             codigo_homologado_map = {}
@@ -17012,12 +17013,16 @@ async def get_predios_proyecto(
                 cpn = p.get('codigo_predial_nacional')
                 if cpn:
                     ch = p.get('codigo_homologado')
+                    # Solo guardar código homologado si no existe aún
                     if ch and cpn not in codigo_homologado_map:
                         codigo_homologado_map[cpn] = ch
+                    
+                    # Para matrícula: SIEMPRE actualizar si encontramos una válida
+                    # (puede haber duplicados donde solo algunos tienen matrícula)
                     r2 = p.get('r2_registros', [])
-                    if r2 and len(r2) > 0 and cpn not in matricula_map:
+                    if r2 and len(r2) > 0:
                         mat = r2[0].get('matricula_inmobiliaria')
-                        if mat:
+                        if mat and mat.strip():  # Solo si hay matrícula válida
                             matricula_map[cpn] = mat
             
             # Agregar datos a cada predio
