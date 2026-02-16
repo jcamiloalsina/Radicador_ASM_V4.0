@@ -19639,6 +19639,24 @@ async def crear_predio_nuevo_actualizacion(
     
     ahora = datetime.now(timezone.utc).isoformat()
     
+    # ============ VALIDACIÓN DEL FORMATO DE VISITA ============
+    # Para gestores, el formato de visita es OBLIGATORIO antes de enviar a aprobación
+    if current_user['role'] == UserRole.GESTOR:
+        if not formato_visita:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe completar el Formato de Visita antes de enviar el predio nuevo a aprobación."
+            )
+        
+        # Validar campos mínimos requeridos
+        campos_requeridos = ['fecha_visita', 'persona_atiende']
+        campos_faltantes = [campo for campo in campos_requeridos if not formato_visita.get(campo)]
+        if campos_faltantes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El Formato de Visita está incompleto. Faltan: {', '.join(campos_faltantes)}"
+            )
+    
     # ============ FLUJO SEGÚN ROL ============
     # Si es GESTOR: crear propuesta pendiente de aprobación
     if current_user['role'] == UserRole.GESTOR:
