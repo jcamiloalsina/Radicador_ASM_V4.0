@@ -4295,11 +4295,12 @@ export default function Predios() {
               onClick={handleUpdate} 
               className="bg-emerald-700 hover:bg-emerald-800"
               disabled={
+                isSavingUpdate ||
                 (!['coordinador', 'administrador'].includes(user?.role) && !radicadoSeleccionado) ||
                 (usarGestorApoyoMod && !gestorApoyoModificacion)
               }
             >
-              {usarGestorApoyoMod ? 'Asignar a Gestor de Apoyo' : 'Guardar Cambios'}
+              {isSavingUpdate ? 'Guardando...' : (usarGestorApoyoMod ? 'Asignar a Gestor de Apoyo' : 'Guardar Cambios')}
             </Button>
           </div>
           </div>
