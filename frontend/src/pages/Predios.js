@@ -3394,7 +3394,7 @@ export default function Predios() {
                     <MapPin className="w-4 h-4" />
                     Sugerencia para esta Manzana/Vereda
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <div>
                       <span className="text-slate-500">Predios activos:</span>
                       <p className="font-bold text-emerald-700">{terrenoInfo.total_activos}</p>
@@ -3403,9 +3403,9 @@ export default function Predios() {
                       <span className="text-slate-500">Siguiente terreno:</span>
                       <p className="font-bold text-emerald-700 text-lg">{terrenoInfo.siguiente_terreno}</p>
                     </div>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <span className="text-slate-500">Código sugerido:</span>
-                      <p className="font-bold text-slate-800 text-xs font-mono">{terrenoInfo.codigo_sugerido}</p>
+                      <p className="font-bold text-slate-800 text-xs font-mono break-all">{terrenoInfo.codigo_sugerido}</p>
                     </div>
                     <div>
                       <span className="text-slate-500">Base Gráfica:</span>
