@@ -5788,12 +5788,8 @@ export default function VisorActualizacion() {
         onSave={async (formData) => {
           // El nuevo componente pasa todos los datos del formulario de una sola vez
           setSavingVisita(true);
-          console.log('[Visita] Guardando - isOnline:', isOnline, 'navigator.onLine:', navigator.onLine);
           try {
             const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
-            console.log('[Visita] Código predial:', codigoPredial);
-            
-            // Incluir firmas si existen
             const datosActualizacion = {
               fecha_visita: formData.visitaData.fecha_visita,
               hora_visita: formData.visitaData.hora_visita,
@@ -5810,27 +5806,15 @@ export default function VisorActualizacion() {
               coordenadas_gps: formData.visitaData.coordenadas_gps,
               propietarios: formData.propietarios,
               construcciones: formData.construcciones,
-              calificaciones: formData.calificaciones,
-              // Incluir firmas
-              firma_visitado_base64: formData.visitaData.firma_visitado_base64,
-              firma_reconocedor_base64: formData.visitaData.firma_reconocedor_base64,
-              nombre_visitado: formData.visitaData.nombre_visitado,
-              nombre_reconocedor: formData.visitaData.nombre_reconocedor
+              calificaciones: formData.calificaciones
             };
 
-            // Usar navigator.onLine como respaldo para asegurar detección correcta
-            const estaOnline = isOnline && navigator.onLine;
-            console.log('[Visita] Estado real online:', estaOnline);
-            
-            if (estaOnline) {
-              console.log('[Visita] Enviando al servidor:', `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`);
-              const response = await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
+            if (isOnline) {
+              await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
               });
-              console.log('[Visita] Respuesta del servidor:', response.data);
               toast.success('Visita guardada correctamente');
             } else {
-              console.log('[Visita] Guardando offline...');
               await saveCambioPendiente({
                 tipo: 'visita',
                 proyecto_id: proyectoId,
@@ -5846,15 +5830,8 @@ export default function VisorActualizacion() {
                 : p
             ));
           } catch (error) {
-            console.error('[Visita] Error completo:', error);
-            console.error('[Visita] Error response:', error.response?.data);
-            console.error('[Visita] Error status:', error.response?.status);
-            
-            // Si hay respuesta del servidor con mensaje de error específico, mostrarlo
-            if (error.response?.data?.detail) {
-              toast.error(error.response.data.detail);
-            } else if (!navigator.onLine || error.code === 'ERR_NETWORK') {
-              // Si es error de red, intentar guardar offline
+            console.error('[Visita] Error:', error);
+            if (!isOnline || error.code === 'ERR_NETWORK') {
               try {
                 const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
                 await saveCambioPendiente({
@@ -5865,11 +5842,10 @@ export default function VisorActualizacion() {
                 toast.info('Visita guardada offline');
                 setShowVisitaModal(false);
               } catch (offlineError) {
-                console.error('[Visita] Error guardando offline:', offlineError);
-                toast.error('Error al guardar visita offline');
+                toast.error('Error al guardar visita');
               }
             } else {
-              toast.error(`Error al guardar visita: ${error.message}`);
+              toast.error('Error al guardar visita');
             }
           } finally {
             setSavingVisita(false);
