@@ -1169,28 +1169,76 @@ const VisitaFormModal = ({
   const [propietarios, setPropietarios] = useState(getInitialPropietarios);
   const [fotos, setFotos] = useState([]);
 
-  // Resetear TODOS los estados cuando se abre para un nuevo predio
+  // Resetear o cargar datos cuando se abre para un predio
   useEffect(() => {
     if (open && predio) {
-      // Resetear datos principales del formulario
-      setData(prev => ({
-        ...getInitialVisitaData(),
-        direccion_visita: predio.direccion || '',
-        destino_economico_visita: predio.destino_economico || '',
-        area_base_catastral_m2: predio.area_terreno || predio.area_r1 || '',
-        area_base_catastral_ha: predio.area_terreno ? (parseFloat(predio.area_terreno) / 10000).toFixed(4) : '',
-        area_geografica_m2: predio.area_gdb || '',
-        area_geografica_ha: predio.area_gdb ? (parseFloat(predio.area_gdb) / 10000).toFixed(4) : '',
-        // Pre-llenar matrícula si existe
-        jur_matricula: predio.matricula_inmobiliaria || ''
-      }));
-      setPagina(1);
+      // Verificar si el predio ya tiene datos de visita guardados
+      const formatoVisita = predio.formato_visita;
       
-      // IMPORTANTE: Resetear todos los demás estados para evitar que persistan datos del predio anterior
-      setConstrucciones(getInitialConstrucciones());
-      setCalificaciones(getInitialCalificaciones());
-      setPropietarios(getInitialPropietarios());
-      setFotos([]);
+      if (formatoVisita && Object.keys(formatoVisita).length > 0) {
+        // CARGAR datos existentes de la visita
+        console.log('[VisitaFormModal] Cargando datos existentes de visita');
+        setData({
+          ...getInitialVisitaData(),
+          ...formatoVisita,
+          // Asegurar que los campos del predio actual se mantengan actualizados
+          direccion_visita: formatoVisita.direccion_visita || formatoVisita.direccion_verificada || predio.direccion || '',
+          destino_economico_visita: formatoVisita.destino_economico_visita || formatoVisita.destino_economico || predio.destino_economico || '',
+          jur_matricula: formatoVisita.jur_matricula || predio.matricula_inmobiliaria || '',
+          area_base_catastral_m2: formatoVisita.area_base_catastral_m2 || predio.area_terreno || predio.area_r1 || '',
+          area_base_catastral_ha: formatoVisita.area_base_catastral_ha || (predio.area_terreno ? (parseFloat(predio.area_terreno) / 10000).toFixed(4) : ''),
+          area_geografica_m2: formatoVisita.area_geografica_m2 || predio.area_gdb || '',
+          area_geografica_ha: formatoVisita.area_geografica_ha || (predio.area_gdb ? (parseFloat(predio.area_gdb) / 10000).toFixed(4) : ''),
+        });
+        
+        // Cargar construcciones, calificaciones, propietarios y fotos existentes
+        if (formatoVisita.construcciones_visita && formatoVisita.construcciones_visita.length > 0) {
+          setConstrucciones(formatoVisita.construcciones_visita);
+        } else if (formatoVisita.construcciones && formatoVisita.construcciones.length > 0) {
+          setConstrucciones(formatoVisita.construcciones);
+        } else {
+          setConstrucciones(getInitialConstrucciones());
+        }
+        
+        if (formatoVisita.calificaciones) {
+          setCalificaciones(formatoVisita.calificaciones);
+        } else {
+          setCalificaciones(getInitialCalificaciones());
+        }
+        
+        if (formatoVisita.propietarios_visita && formatoVisita.propietarios_visita.length > 0) {
+          setPropietarios(formatoVisita.propietarios_visita);
+        } else if (formatoVisita.propietarios && formatoVisita.propietarios.length > 0) {
+          setPropietarios(formatoVisita.propietarios);
+        } else {
+          setPropietarios(getInitialPropietarios());
+        }
+        
+        if (formatoVisita.fotos && formatoVisita.fotos.length > 0) {
+          setFotos(formatoVisita.fotos);
+        } else {
+          setFotos([]);
+        }
+      } else {
+        // RESETEAR para nuevo predio (sin visita previa)
+        console.log('[VisitaFormModal] Inicializando formulario vacío para nuevo predio');
+        setData({
+          ...getInitialVisitaData(),
+          direccion_visita: predio.direccion || '',
+          destino_economico_visita: predio.destino_economico || '',
+          area_base_catastral_m2: predio.area_terreno || predio.area_r1 || '',
+          area_base_catastral_ha: predio.area_terreno ? (parseFloat(predio.area_terreno) / 10000).toFixed(4) : '',
+          area_geografica_m2: predio.area_gdb || '',
+          area_geografica_ha: predio.area_gdb ? (parseFloat(predio.area_gdb) / 10000).toFixed(4) : '',
+          jur_matricula: predio.matricula_inmobiliaria || ''
+        });
+        setConstrucciones(getInitialConstrucciones());
+        setCalificaciones(getInitialCalificaciones());
+        setPropietarios(getInitialPropietarios());
+        setFotos([]);
+      }
+      
+      setPagina(1);
     }
   }, [open, predio]);
 
