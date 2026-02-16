@@ -1199,10 +1199,22 @@ const VisitaFormModal = ({
   }, []);
 
   const handleGuardar = useCallback(() => {
+    // Validar persona que atiende
     if (!data.persona_atiende.trim()) {
       toast.error('Ingrese el nombre de la persona que atiende');
       return;
     }
+    
+    // Validar firmas obligatorias
+    if (!data.firma_visitado_base64) {
+      toast.error('La firma del visitado es obligatoria');
+      return;
+    }
+    if (!data.firma_reconocedor_base64) {
+      toast.error('La firma del reconocedor es obligatoria');
+      return;
+    }
+    
     onSave({
       visitaData: data,
       construcciones,
