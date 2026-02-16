@@ -5846,8 +5846,15 @@ export default function VisorActualizacion() {
                 : p
             ));
           } catch (error) {
-            console.error('[Visita] Error:', error);
-            if (!isOnline || error.code === 'ERR_NETWORK') {
+            console.error('[Visita] Error completo:', error);
+            console.error('[Visita] Error response:', error.response?.data);
+            console.error('[Visita] Error status:', error.response?.status);
+            
+            // Si hay respuesta del servidor con mensaje de error específico, mostrarlo
+            if (error.response?.data?.detail) {
+              toast.error(error.response.data.detail);
+            } else if (!navigator.onLine || error.code === 'ERR_NETWORK') {
+              // Si es error de red, intentar guardar offline
               try {
                 const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
                 await saveCambioPendiente({
@@ -5858,10 +5865,11 @@ export default function VisorActualizacion() {
                 toast.info('Visita guardada offline');
                 setShowVisitaModal(false);
               } catch (offlineError) {
-                toast.error('Error al guardar visita');
+                console.error('[Visita] Error guardando offline:', offlineError);
+                toast.error('Error al guardar visita offline');
               }
             } else {
-              toast.error('Error al guardar visita');
+              toast.error(`Error al guardar visita: ${error.message}`);
             }
           } finally {
             setSavingVisita(false);
