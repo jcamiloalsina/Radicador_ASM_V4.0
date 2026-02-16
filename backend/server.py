@@ -17486,6 +17486,12 @@ async def guardar_visita_predio(
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
         raise HTTPException(status_code=403, detail="No tiene permisos para registrar visitas")
     
+    # VALIDACIÓN OBLIGATORIA: Firmas requeridas
+    if not visita_data.get('firma_visitado_base64'):
+        raise HTTPException(status_code=400, detail="La firma del visitado es obligatoria")
+    if not visita_data.get('firma_reconocedor_base64'):
+        raise HTTPException(status_code=400, detail="La firma del reconocedor es obligatoria")
+    
     predio = await db.predios_actualizacion.find_one({
         "proyecto_id": proyecto_id,
         "$or": [
