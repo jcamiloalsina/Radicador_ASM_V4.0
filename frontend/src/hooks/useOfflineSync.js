@@ -26,9 +26,6 @@ const API = process.env.REACT_APP_BACKEND_URL;
 // Intervalo de sincronización en segundo plano (5 minutos cuando online)
 const BACKGROUND_SYNC_INTERVAL = 5 * 60 * 1000;
 
-// Intervalo para verificar estado de conexión real (30 segundos)
-const CONNECTION_CHECK_INTERVAL = 30 * 1000;
-
 export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -42,63 +39,6 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const syncingRef = useRef(false);
   const backgroundIntervalRef = useRef(null);
   const mountedRef = useRef(true);
-  const connectionCheckRef = useRef(null);
-
-  // Verificar conexión real haciendo un fetch pequeño
-  const checkRealConnection = useCallback(async () => {
-    if (!mountedRef.current) return navigator.onLine;
-    
-    // Si navigator.onLine es false, definitivamente estamos offline
-    if (!navigator.onLine) {
-      if (isOnline) {
-        console.log('[useOfflineSync] navigator.onLine = false, actualizando estado');
-        setIsOnline(false);
-      }
-      return false;
-    }
-    
-    // Si navigator.onLine es true, verificar con un fetch real
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${API}/api/health`, {
-        method: 'HEAD',
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!isOnline && response.ok) {
-        console.log('[useOfflineSync] Conexión restaurada (verificación real)');
-        setIsOnline(true);
-      }
-      return true;
-    } catch (e) {
-      // Si falla el fetch pero navigator.onLine es true, mantener el estado actual
-      // El usuario puede tener internet pero el servidor está caído
-      console.log('[useOfflineSync] Verificación de conexión falló:', e.message);
-      return navigator.onLine;
-    }
-  }, [isOnline]);
-
-  // Verificación periódica de conexión
-  useEffect(() => {
-    // Verificar inmediatamente al montar
-    checkRealConnection();
-    
-    // Configurar verificación periódica
-    connectionCheckRef.current = setInterval(() => {
-      checkRealConnection();
-    }, CONNECTION_CHECK_INTERVAL);
-    
-    return () => {
-      if (connectionCheckRef.current) {
-        clearInterval(connectionCheckRef.current);
-      }
-    };
-  }, [checkRealConnection]);
 
   // Refrescar estadísticas
   const refreshStats = useCallback(async () => {
