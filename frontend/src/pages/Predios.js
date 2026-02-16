@@ -3970,8 +3970,12 @@ export default function Predios() {
               Descartar cambios
             </Button>
             {gestorAsignado ? (
-              <Button onClick={handleCreate} className="bg-emerald-700 hover:bg-emerald-800">
-                Guardar y Asignar
+              <Button 
+                onClick={handleCreate} 
+                className="bg-emerald-700 hover:bg-emerald-800"
+                disabled={isSavingCreate}
+              >
+                {isSavingCreate ? 'Guardando...' : 'Guardar y Asignar'}
               </Button>
             ) : (
               <Button onClick={() => setShowConfirmClose(false)} className="bg-blue-600 hover:bg-blue-700">
