@@ -5810,7 +5810,7 @@ export default function VisorActualizacion() {
             };
 
             if (isOnline) {
-              await axios.patch(`${API}/api/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
+              await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
               });
               toast.success('Visita guardada correctamente');
