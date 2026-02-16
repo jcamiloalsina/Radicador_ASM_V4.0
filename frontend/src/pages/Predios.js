@@ -2211,10 +2211,13 @@ export default function Predios() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (res.data.requiere_aprobacion) {
-        toast.success('Predio propuesto. Pendiente de aprobación del coordinador.');
+      // Mostrar mensaje apropiado según si fue creado directamente o queda pendiente
+      if (res.data.predio_creado) {
+        toast.success('✅ Predio creado exitosamente');
+      } else if (res.data.requiere_aprobacion) {
+        toast.success('📋 Predio propuesto. Pendiente de aprobación del coordinador.');
       } else {
-        toast.success('Predio creado exitosamente');
+        toast.success(res.data.mensaje || 'Operación completada');
       }
 
       if (gestorAsignado) {
