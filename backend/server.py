@@ -17522,6 +17522,7 @@ async def guardar_visita_predio(
         "formato_visita": visita_data,
         "estado_visita": estado_visita,
         "visitado_por": current_user.get('email'),
+        "visitado_por_nombre": current_user.get('full_name'),  # Guardar nombre para PDF e historial
         "visitado_en": ahora.isoformat(),
         "updated_at": ahora,
         # Campos separados para facilitar consultas
@@ -17533,7 +17534,7 @@ async def guardar_visita_predio(
         "firma_visitado_base64": visita_data.get('firma_visitado_base64'),
         "firma_reconocedor_base64": visita_data.get('firma_reconocedor_base64'),
         "nombre_visitado": visita_data.get('nombre_visitado'),
-        "nombre_reconocedor": visita_data.get('nombre_reconocedor'),
+        "nombre_reconocedor": visita_data.get('nombre_reconocedor') or current_user.get('full_name'),  # Usar nombre del usuario si no se especifica
         "observaciones_generales": visita_data.get('observaciones'),
         "sin_cambios": visita_data.get('sin_cambios', False),
         "fecha_visita": visita_data.get('fecha_visita'),
@@ -17546,7 +17547,8 @@ async def guardar_visita_predio(
     # Registrar en historial
     historial_entry = {
         "fecha": ahora.isoformat(),
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),  # Mostrar nombre, no email
+        "usuario_email": current_user.get('email'),  # Mantener email como referencia
         "rol": current_user['role'],
         "accion": "visita_registrada" if estado_visita == "visitado" else "visita_firmada",
         "comentario": f"Visita de campo {'firmada y bloqueada' if estado_visita == 'visitado_firmado' else 'registrada'}. {'Sin cambios detectados.' if visita_data.get('sin_cambios') else 'Cambios por verificar.'}"
