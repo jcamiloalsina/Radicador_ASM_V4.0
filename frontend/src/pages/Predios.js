@@ -198,6 +198,12 @@ export default function Predios() {
   const [showDiagnosticoDialog, setShowDiagnosticoDialog] = useState(false);
   const [forzarDisponibles, setForzarDisponibles] = useState(false);
   
+  // Estados para prevenir doble clic en acciones
+  const [isSavingUpdate, setIsSavingUpdate] = useState(false);
+  const [isSavingCreate, setIsSavingCreate] = useState(false);
+  const [isSavingDelete, setIsSavingDelete] = useState(false);
+  const [isApprovingChange, setIsApprovingChange] = useState(false);
+  
   // Estado para múltiples propietarios (formato XTF)
   const [propietarios, setPropietarios] = useState([{
     primer_apellido: '',
