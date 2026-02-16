@@ -1135,6 +1135,15 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
     )
 
 
+# Health check endpoint para verificación de conexión
+@api_router.get("/health")
+@api_router.head("/health")
+async def health_check():
+    """Endpoint simple para verificar conectividad"""
+    return {"status": "ok"}
+
+
+
 class TestEmailRequest(BaseModel):
     to_email: str
 
