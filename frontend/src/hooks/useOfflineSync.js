@@ -18,7 +18,8 @@ import {
   getLastSync,
   saveProyectoOffline,
   getProyectoOffline,
-  updatePredioOffline
+  updatePredioOffline,
+  clearAllCambiosPendientes
 } from '../utils/offlineDB';
 
 const API = process.env.REACT_APP_BACKEND_URL;
