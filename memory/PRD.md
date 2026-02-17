@@ -5,7 +5,35 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (14 Febrero 2026 - Fork 16)
+## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 17)
+
+### ✅ CORREGIDO: Botón de Descarga PDF no aparecía para estado `visitado_firmado` (P0)
+
+**Problema reportado:**
+El usuario reportó que no podía descargar el PDF de visita para predios con estado `visitado_firmado`.
+
+**Causa raíz:**
+La condición del botón "Generar PDF" en el frontend solo verificaba los estados `visitado` y `actualizado`, omitiendo `visitado_firmado`:
+```javascript
+// ANTES (incorrecto)
+{(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'actualizado') && (
+```
+
+**Solución implementada:**
+1. **Botón PDF habilitado para `visitado_firmado`** - Agregado el estado a la condición
+2. **Botón "Editar Visita" bloqueado para `visitado_firmado`** - Predios firmados no deben editarse
+3. **Badge mejorado** - Muestra "Visitado (Firmado)" con color verde distintivo
+
+**Archivos modificados:**
+- `/app/frontend/src/pages/VisorActualizacion.js` - Líneas 5644-5658, 4664-4675
+
+**Testing verificado:**
+- ✅ Endpoint backend funciona correctamente para generar PDF
+- ✅ PDF generado exitosamente para predios con estado `visitado`
+
+---
+
+## 🔧 Cambios Anteriores (14 Febrero 2026 - Fork 16)
 
 ### ✅ CORREGIDO: Regresión Crítica - Duplicación de Datos y Construcciones Offline (P0)
 
