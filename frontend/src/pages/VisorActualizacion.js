@@ -2390,7 +2390,10 @@ export default function VisorActualizacion() {
             actualizado_en: new Date().toISOString(),
             estado_visita: 'actualizado'
           },
-          { headers: { Authorization: `Bearer ${token}` }}
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 1 minuto para actualizaciones
+          }
         );
         
         toast.success('Cambios aplicados directamente');
