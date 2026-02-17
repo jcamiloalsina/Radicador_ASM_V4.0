@@ -2231,10 +2231,20 @@ export default function Predios() {
         toast.info('⚠️ Este predio no tiene información gráfica (GDB). Se relacionará cuando se cargue el archivo GDB.', { duration: 5000 });
       }
       
+      // Mostrar mensaje de éxito con info de dónde encontrar el predio
+      const municipioCreado = formData.municipio || filterMunicipio;
+      toast.success(`✅ Predio creado en ${municipioCreado}. Código: ${res.data.codigo_homologado || codigoCompleto}`, { duration: 5000 });
+      
       setShowCreateDialog(false);
       resetForm();
       // Recargar el siguiente código homologado disponible (el anterior ya se usó)
       setSiguienteCodigoHomologado(null);
+      
+      // Asegurar que el filtro de municipio sea el correcto para ver el predio
+      if (municipioCreado && filterMunicipio !== municipioCreado) {
+        setFilterMunicipio(municipioCreado);
+      }
+      
       // Forzar recarga desde servidor para ver el nuevo predio
       await forceRefreshPredios();
       fetchCambiosStats();
