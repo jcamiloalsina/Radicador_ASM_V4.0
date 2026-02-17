@@ -46,12 +46,18 @@ const tipoConfig = {
   cambio: { icon: Wrench, color: 'text-slate-500', bg: 'bg-slate-50', label: 'Cambio' }
 };
 
-export default function NovedadesModal({ userId }) {
+// Roles que pueden ver las novedades
+const ROLES_PERMITIDOS = ['coordinador', 'administrador'];
+
+export default function NovedadesModal({ userId, userRole }) {
   const [open, setOpen] = useState(false);
   const [versionesNuevas, setVersionesNuevas] = useState([]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !userRole) return;
+    
+    // Solo mostrar para roles permitidos (Coordinador y Administrador)
+    if (!ROLES_PERMITIDOS.includes(userRole)) return;
     
     // Obtener la última versión vista por este usuario
     const ultimaVersionVista = localStorage.getItem(`novedades_version_${userId}`);
@@ -73,7 +79,7 @@ export default function NovedadesModal({ userId }) {
         setTimeout(() => setOpen(true), 500);
       }
     }
-  }, [userId]);
+  }, [userId, userRole]);
 
   const handleClose = () => {
     // Guardar que el usuario ya vio esta versión
