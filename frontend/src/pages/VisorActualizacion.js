@@ -1884,7 +1884,10 @@ export default function VisorActualizacion() {
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `${API}/actualizacion/proyectos/${proyectoId}/ortofoto`,
-        { headers: { Authorization: `Bearer ${token}` }}
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000 // 30 segundos
+        }
       );
       
       if (response.data.url && response.data.bounds) {
