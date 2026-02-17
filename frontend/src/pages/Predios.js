@@ -320,6 +320,8 @@ export default function Predios() {
     tipo_mutacion: '',
     numero_resolucion: '',
     fecha_resolucion: '',
+    // Acto administrativo obligatorio
+    acto_administrativo: '',
     // R2
     matricula_inmobiliaria: '',
     zona_fisica_1: '0',
