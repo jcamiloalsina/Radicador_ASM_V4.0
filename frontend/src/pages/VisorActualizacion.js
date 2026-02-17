@@ -2197,7 +2197,10 @@ export default function VisorActualizacion() {
       // Buscar en las construcciones del proyecto
       const response = await axios.get(
         `${API}/actualizacion/proyectos/${proyectoId}/construcciones?codigo=${codigoParaBuscar}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000 // 30 segundos
+        }
       );
       
       if (response.data?.construcciones?.length > 0) {
