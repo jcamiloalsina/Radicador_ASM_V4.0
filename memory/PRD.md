@@ -5,7 +5,55 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 17)
+## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 18)
+
+### ✅ VERIFICADO: Timeouts para Fallos Intermitentes de Guardado/Sincronización (P0)
+
+**Problema reportado:**
+El usuario reportó errores intermitentes al guardar formularios de visita online, especialmente con conexiones lentas y datos grandes (fotos/firmas). También existía preocupación sobre la sincronización de múltiples cambios offline pendientes.
+
+**Causa raíz identificada:**
+Las llamadas axios no tenían timeout configurado, lo que causaba que conexiones lentas con payloads grandes (fotos base64, firmas) pudieran fallar silenciosamente o quedar colgadas indefinidamente.
+
+**Solución implementada:**
+
+1. **Archivo `/app/frontend/src/hooks/useOfflineSync.js`:**
+   - `syncPendingChanges`: timeout de 120s (2 min) por cambio ✅ (ya existía)
+   - `syncAllPendingChanges`: **AGREGADO** timeout de 120s (2 min) por cambio
+   - Manejo de error `ECONNABORTED` para reintentos
+
+2. **Archivo `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - `guardarFormularioVisita` (simple): **AGREGADO** timeout de 120s
+   - `guardarVisita` (modal completo): timeout de 120s ✅ (ya existía)
+   - `cargarVisitaExistente`: **AGREGADO** timeout de 30s
+   - `verificarConstrucciones`: **AGREGADO** timeout de 30s
+   - `handleSaveCambios` (coordinador): **AGREGADO** timeout de 60s
+   - `handleSaveCambios` (propuesta): **AGREGADO** timeout de 60s
+   - `handleMarcarVisitado`: **AGREGADO** timeout de 60s
+   - `handleCancelarPredio`: **AGREGADO** timeout de 60s
+   - `handleOrtofotoUpload`: **AGREGADO** timeout de 300s (5 min)
+   - `fetchOrtofoto`: **AGREGADO** timeout de 30s
+   - `handleGenerarPdf`: **AGREGADO** timeout de 120s
+   - `handleGenerarPdfMejora`: **AGREGADO** timeout de 120s
+
+**Resumen de timeouts configurados:**
+| Operación | Timeout | Justificación |
+|-----------|---------|---------------|
+| Guardado de visitas | 120s | Fotos/firmas grandes |
+| Sincronización offline | 120s | Múltiples fotos |
+| Upload de ortofoto | 300s | Archivos muy grandes |
+| Generación PDF | 120s | Procesamiento servidor |
+| Operaciones CRUD | 60s | Operaciones estándar |
+| Consultas GET | 30s | Lectura de datos |
+
+**Manejo mejorado de errores:**
+- Mensajes específicos para timeout vs otros errores
+- Fallback a guardado offline si timeout ocurre
+- Log de errores `ECONNABORTED` para debugging
+
+---
+
+## 🔧 Cambios Anteriores (17 Febrero 2026 - Fork 17)
 
 ### ✅ CORREGIDO: Sincronización Offline Usaba Endpoint Incorrecto (P0)
 
