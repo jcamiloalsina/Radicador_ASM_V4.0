@@ -18925,6 +18925,53 @@ async def generar_pdf_informe_visita(
         predio.get('construcciones', [])
     )
     
+    # BUGFIX: Obtener matrícula inmobiliaria de la colección principal si no está en predios_actualizacion
+    if not predio.get('matricula_inmobiliaria'):
+        codigo_para_buscar = predio.get('codigo_predial') or predio.get('numero_predial')
+        if codigo_para_buscar:
+            # Buscar en predios principal
+            predio_principal = await db.predios.find_one(
+                {"codigo_predial_nacional": codigo_para_buscar},
+                {"_id": 0, "matricula_inmobiliaria": 1, "r2_registros": 1}
+            )
+            if predio_principal:
+                # Intentar obtener de campo directo
+                mat = predio_principal.get('matricula_inmobiliaria')
+                # Si no, intentar de r2_registros
+                if not mat:
+                    r2 = predio_principal.get('r2_registros', [])
+                    if r2 and len(r2) > 0:
+                        mat = r2[0].get('matricula_inmobiliaria')
+                if mat:
+                    predio['matricula_inmobiliaria'] = mat
+    
+    # BUGFIX: Asegurar que visita tenga todos los campos necesarios desde el predio
+    # El nombre del reconocedor puede estar en varios lugares
+    if not visita.get('nombre_reconocedor'):
+        visita['nombre_reconocedor'] = (
+            predio.get('nombre_reconocedor') or 
+            predio.get('visitado_por_nombre') or 
+            predio.get('visitado_por', '')
+        )
+    
+    # La matrícula puede estar en varios lugares
+    if not visita.get('jur_matricula'):
+        visita['jur_matricula'] = predio.get('matricula_inmobiliaria', '')
+    
+    # Las firmas pueden estar a nivel del predio o en formato_visita
+    if not visita.get('firma_visitado_base64'):
+        visita['firma_visitado_base64'] = predio.get('firma_visitado_base64')
+    if not visita.get('firma_reconocedor_base64'):
+        visita['firma_reconocedor_base64'] = predio.get('firma_reconocedor_base64')
+    
+    # El nombre del visitado
+    if not visita.get('nombre_visitado'):
+        visita['nombre_visitado'] = predio.get('nombre_visitado', '')
+    
+    # Las fotos pueden estar en varios lugares
+    if not visita.get('fotos') or len(visita.get('fotos', [])) == 0:
+        visita['fotos'] = predio.get('fotos_visita') or predio.get('fotos', [])
+    
     # Generar PDF usando el nuevo módulo
     try:
         pdf_content = generar_pdf_visita_completo(
