@@ -66,7 +66,8 @@ const DetallePredioActualizacion = ({
   onOpenCancelar,
   terrenoTieneMejoras, // Nueva: indica si el terreno tiene mejoras
   mejorasDelTerreno, // Nueva: lista de mejoras del terreno
-  user
+  user,
+  prediosR1R2 = [] // Lista de predios para buscar estado de mejoras
 }) => {
   if (!predio) return null;
 
