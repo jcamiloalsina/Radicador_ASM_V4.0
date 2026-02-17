@@ -580,6 +580,20 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     console.log('[useOfflineSync] Sincronización inicial omitida por el usuario');
   }, []);
 
+  // Limpiar todos los cambios pendientes (para resolver errores de sincronización)
+  const clearPendingChanges = useCallback(async () => {
+    try {
+      await clearAllCambiosPendientes();
+      await refreshStats();
+      toast.success('Cambios pendientes eliminados');
+      return true;
+    } catch (e) {
+      console.error('[useOfflineSync] Error limpiando cambios:', e);
+      toast.error('Error al limpiar cambios pendientes');
+      return false;
+    }
+  }, [refreshStats]);
+
   return {
     // Estado
     isOnline,
@@ -601,6 +615,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     checkInitialSync,
     performFullSync,
     skipInitialSync,
+    clearPendingChanges, // NUEVO: Limpiar cambios con error
     
     // Utilidades para acceso a datos offline
     getPrediosOffline: () => getPrediosOffline(proyectoId),
