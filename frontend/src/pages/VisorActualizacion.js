@@ -5648,8 +5648,8 @@ export default function VisorActualizacion() {
               <DialogFooter className="flex flex-wrap gap-2 pt-4">
                 {!editMode ? (
                   <>
-                    {/* Botón Generar PDF - Solo si está visitado, visitado_firmado o actualizado */}
-                    {(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado' || selectedPredio.estado_visita === 'actualizado') && (
+                    {/* Botón Generar PDF - Solo si está firmado o actualizado (visita completa) */}
+                    {(selectedPredio.estado_visita === 'visitado_firmado' || selectedPredio.estado_visita === 'actualizado') && (
                       <Button 
                         variant="outline" 
                         onClick={handleGenerarPdf}
