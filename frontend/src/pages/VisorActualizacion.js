@@ -2547,7 +2547,10 @@ export default function VisorActualizacion() {
         await axios.post(
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/proponer-cancelacion`,
           { motivo: motivoCancelacion },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 1 minuto
+          }
         );
         
         toast.success('Propuesta de cancelación enviada al coordinador');
