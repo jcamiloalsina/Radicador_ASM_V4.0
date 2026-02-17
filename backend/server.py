@@ -6846,6 +6846,32 @@ async def crear_predio_con_workflow(
         }
         await db.predios.insert_one(nuevo_predio)
         
+        # IMPORTANTE: También insertar en predios_actualizacion para que aparezca en el Visor
+        predio_actualizacion = {
+            "id": nuevo_predio["id"],
+            "codigo_predial_nacional": codigo_predial,
+            "codigo_predial": codigo_predial,
+            "numero_predial": codigo_predial,
+            "codigo_homologado": codigo_homologado_final,
+            "municipio": municipio,
+            "vigencia": datetime.now(timezone.utc).year,
+            "direccion": propuesta["datos_propuestos"].get("direccion", ""),
+            "destino_economico": propuesta["datos_propuestos"].get("destino_economico", ""),
+            "area_terreno": propuesta["datos_propuestos"].get("area_terreno", 0),
+            "area_construida": propuesta["datos_propuestos"].get("area_construida", 0),
+            "avaluo_catastral": propuesta["datos_propuestos"].get("avaluo", 0),
+            "nombre_propietario": propuesta["datos_propuestos"].get("nombre_propietario", ""),
+            "propietarios": propuesta["datos_propuestos"].get("propietarios", []),
+            "matricula_inmobiliaria": propuesta["datos_propuestos"].get("matricula_inmobiliaria", ""),
+            "estado_visita": "pendiente",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "creado_por": current_user["id"],
+            "creado_por_nombre": current_user["full_name"],
+            "es_predio_nuevo": True  # Marcar como predio nuevo para identificarlo
+        }
+        await db.predios_actualizacion.insert_one(predio_actualizacion)
+        
         # Actualizar la propuesta con el código homologado final
         propuesta["datos_propuestos"]["codigo_homologado"] = codigo_homologado_final
         
