@@ -2300,7 +2300,16 @@ export default function VisorActualizacion() {
       fetchProyecto();
     } catch (error) {
       console.error('Error guardando visita:', error);
-      toast.error(error.response?.data?.detail || 'Error al guardar el formulario de visita');
+      
+      // Manejar timeout específicamente
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error('La conexión tardó demasiado', {
+          description: 'El guardado tomó más tiempo del esperado. Por favor, intente de nuevo o verifique su conexión.',
+          duration: 6000
+        });
+      } else {
+        toast.error(error.response?.data?.detail || 'Error al guardar el formulario de visita');
+      }
     } finally {
       setSavingVisita(false);
     }
