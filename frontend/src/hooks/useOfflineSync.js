@@ -91,8 +91,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         try {
           switch (cambio.tipo) {
             case 'visita':
-              await axios.patch(
-                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
+              // CORREGIDO: Usar POST a /visita (no PATCH)
+              await axios.post(
+                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/visita`,
                 cambio.datos,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
