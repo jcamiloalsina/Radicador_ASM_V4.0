@@ -2423,6 +2423,13 @@ async def create_petition(
         "fecha": datetime.now(timezone.utc).isoformat()
     }]
     
+    # Determinar tipo de solicitante basado en el rol del usuario
+    tipo_solicitante = "ciudadano"
+    if current_user['role'] == UserRole.EMPRESA:
+        tipo_solicitante = "empresa"
+    elif current_user['role'] not in [UserRole.USUARIO, UserRole.EMPRESA]:
+        tipo_solicitante = "interno"  # Staff creando petición para alguien
+    
     petition = Petition(
         radicado=radicado,
         user_id=current_user['id'],
@@ -2433,7 +2440,8 @@ async def create_petition(
         municipio=municipio,
         descripcion=descripcion,
         archivos=saved_files,
-        historial=historial
+        historial=historial,
+        tipo_solicitante=tipo_solicitante
     )
     
     doc = petition.model_dump()
