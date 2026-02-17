@@ -84,6 +84,22 @@ const DetallePredioActualizacion = ({
   // Ahora usamos terrenoTieneMejoras que viene de las construcciones
   const tieneMejoras = terrenoTieneMejoras || false;
   const numMejoras = mejorasDelTerreno?.length || 0;
+  
+  // Helper: Obtener estado de una mejora desde prediosR1R2
+  const getEstadoMejora = (codigoMejora) => {
+    if (!codigoMejora || !prediosR1R2.length) return 'pendiente';
+    const predioMejora = prediosR1R2.find(p => {
+      const codigo = p.codigo_predial || p.numero_predial;
+      return codigo === codigoMejora;
+    });
+    return predioMejora?.estado_visita || 'pendiente';
+  };
+  
+  // Helper: Verificar si la mejora está bloqueada para edición
+  const esMejoraBloqueada = (codigoMejora) => {
+    const estado = getEstadoMejora(codigoMejora);
+    return estado === 'visitado_firmado' || estado === 'actualizado';
+  };
 
   return (
     <Card className={`shadow-md ${esMejoraDirecta ? 'border-purple-400 border-2' : tieneMejoras ? 'border-cyan-400 border-2' : 'border-amber-300'}`} data-testid="detalle-predio-actualizacion">
