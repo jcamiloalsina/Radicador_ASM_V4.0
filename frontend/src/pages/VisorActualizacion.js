@@ -2136,6 +2136,36 @@ export default function VisorActualizacion() {
       fetchHistorial(codigo);
       verificarConstrucciones(predio);
       cargarVisitaExistente(predio);
+      
+      // Buscar y establecer la geometría correspondiente del GDB
+      if (geometrias?.features) {
+        const feature = geometrias.features.find(f => {
+          const props = f.properties || {};
+          const codigoGDB = props.codigo || props.codigo_predial || props.numero_predial || '';
+          // Match exacto
+          if (codigoGDB === codigo) return true;
+          // Match parcial: mismos primeros 21 dígitos (hasta unidad predial)
+          if (codigoGDB.length >= 21 && codigo.length >= 21) {
+            if (codigoGDB.substring(0, 21) === codigo.substring(0, 21)) return true;
+          }
+          return false;
+        });
+        
+        if (feature) {
+          setSelectedGeometry(feature);
+          // Centrar el mapa en el predio si hay coordenadas
+          try {
+            const bounds = L.geoJSON(feature).getBounds();
+            if (mapRef.current && bounds.isValid()) {
+              mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+            }
+          } catch (e) {
+            console.warn('[Visor] No se pudo centrar el mapa:', e);
+          }
+        } else {
+          setSelectedGeometry(null);
+        }
+      }
     }
   };
 
