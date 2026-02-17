@@ -275,6 +275,7 @@ export default function VisorActualizacion() {
     checkInitialSync,
     performFullSync,
     skipInitialSync,
+    clearPendingChanges, // NUEVO: Limpiar cambios con error
     getPrediosOffline: getPrediosFromHook,
     getGeometriasOffline: getGeometriasFromHook
   } = useOfflineSync(proyectoId, 'actualizacion');
