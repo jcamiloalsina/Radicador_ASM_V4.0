@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { Search, Eye, Filter, FileText, FileSpreadsheet, Calendar, Users, MapPin, ChevronDown, ChevronUp, RotateCcw, Download, WifiOff } from 'lucide-react';
+import { Search, Eye, Filter, FileText, FileSpreadsheet, Calendar, Users, MapPin, ChevronDown, ChevronUp, RotateCcw, Download, WifiOff, Building, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MUNICIPIOS } from '../data/catalogos';
 import { SyncPetitionsButton } from '../components/OfflineComponents';
