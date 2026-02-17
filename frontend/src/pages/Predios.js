@@ -3974,8 +3974,6 @@ export default function Predios() {
               {isSavingCreate ? 'Creando...' : (usarNuevoFlujo ? 'Crear y Asignar a Flujo' : 'Crear Predio')}
             </Button>
           </div>
-            </Button>
-          </div>
           </div>
         </DialogContent>
       </Dialog>
