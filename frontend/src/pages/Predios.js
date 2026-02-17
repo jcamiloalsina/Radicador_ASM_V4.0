@@ -3945,6 +3945,23 @@ export default function Predios() {
                 </div>
               </div>
             ) : null}
+            
+            {/* Acto Administrativo - OBLIGATORIO */}
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <Label className="text-sm font-medium text-amber-800 flex items-center gap-1">
+                <FileText className="w-4 h-4" />
+                Número de Acto Administrativo <span className="text-red-500">*</span>
+              </Label>
+              <p className="text-xs text-amber-600 mb-2">Requerido para trazabilidad del cambio</p>
+              <Input
+                type="text"
+                value={formData.acto_administrativo}
+                onChange={(e) => setFormData({ ...formData, acto_administrativo: e.target.value })}
+                placeholder="Ej: RES-2026-001234, RAD-2026-5511"
+                className="bg-white"
+                data-testid="acto-administrativo-input"
+              />
+            </div>
           </div>
           
           <div className="flex justify-end gap-3 mt-6">
@@ -3952,9 +3969,11 @@ export default function Predios() {
             <Button 
               onClick={handleCreate} 
               className="bg-emerald-700 hover:bg-emerald-800"
-              disabled={isSavingCreate}
+              disabled={isSavingCreate || !formData.acto_administrativo?.trim()}
             >
               {isSavingCreate ? 'Creando...' : (usarNuevoFlujo ? 'Crear y Asignar a Flujo' : 'Crear Predio')}
+            </Button>
+          </div>
             </Button>
           </div>
           </div>
