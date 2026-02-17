@@ -226,10 +226,27 @@ const DetallePredioActualizacion = ({
                       <p className="font-mono text-[9px] text-slate-600 mt-1 truncate">{codigoMejora}</p>
                     </div>
                     {bloqueada ? (
-                      <Badge className="bg-emerald-100 text-emerald-700 text-[10px] ml-2">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Completo
-                      </Badge>
+                      <div className="flex items-center gap-1 ml-2">
+                        <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Completo
+                        </Badge>
+                        {/* Botón PDF para mejoras firmadas */}
+                        {(estadoMejora === 'visitado_firmado' || estadoMejora === 'actualizado') && onGenerarPdfMejora && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-6 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 px-2"
+                            title="Generar PDF de la visita"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onGenerarPdfMejora(codigoMejora);
+                            }}
+                          >
+                            <FileDown className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <Button 
                         size="sm" 
