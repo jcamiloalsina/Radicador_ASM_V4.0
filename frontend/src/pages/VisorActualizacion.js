@@ -2223,7 +2223,10 @@ export default function VisorActualizacion() {
       
       const response = await axios.get(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigo}/visita`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000 // 30 segundos para carga de datos
+        }
       );
       
       if (response.data?.visita) {
