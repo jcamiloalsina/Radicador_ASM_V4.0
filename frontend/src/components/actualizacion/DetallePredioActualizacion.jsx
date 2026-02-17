@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { 
   MapPin, User, FileText, Building, DollarSign, Eye, EyeOff, 
-  Loader2, ClipboardList, Edit, History, CheckCircle, Clock, AlertCircle, Trash2
+  Loader2, ClipboardList, Edit, History, CheckCircle, Clock, AlertCircle, Trash2, FileDown
 } from 'lucide-react';
 
 // Helper para formatear área
