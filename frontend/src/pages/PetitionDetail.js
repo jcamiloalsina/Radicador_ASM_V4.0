@@ -913,7 +913,28 @@ export default function PetitionDetail() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Nombre Completo</p>
-                    <p className="font-medium text-slate-900" data-testid="petition-nombre">{petition.nombre_completo}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-slate-900" data-testid="petition-nombre">{petition.nombre_completo}</p>
+                      {/* Badge de tipo de solicitante */}
+                      {petition.tipo_solicitante === 'empresa' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                          <Building className="w-3.5 h-3.5 mr-1" />
+                          Empresa
+                        </span>
+                      )}
+                      {petition.tipo_solicitante === 'interno' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          <UserCheck className="w-3.5 h-3.5 mr-1" />
+                          Interno
+                        </span>
+                      )}
+                      {(!petition.tipo_solicitante || petition.tipo_solicitante === 'ciudadano') && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                          <User className="w-3.5 h-3.5 mr-1" />
+                          Ciudadano
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
