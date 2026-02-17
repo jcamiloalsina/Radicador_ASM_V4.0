@@ -63,7 +63,7 @@ export default function CreatePetition() {
   // Verificar si es un trámite de certificado
   const esCertificado = ['certificado_catastral', 'certificado_catastral_especial', 'certificado_plano'].includes(formData.tipo_tramite);
   
-  // Verificar si es "otro trámite" (para empresas)
+  // Verificar si es "otro trámite"
   const esOtroTramite = formData.tipo_tramite === 'otro_tramite';
 
   const handleFileChange = (e) => {
