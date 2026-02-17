@@ -6752,6 +6752,9 @@ async def crear_predio_con_workflow(
     # Determinar si requiere aprobación basado en rol Y permisos
     requiere_aprobacion = not puede_aprobar
     
+    # Obtener el código homologado del request o calcular el siguiente disponible
+    codigo_homologado_solicitado = request.get("codigo_homologado", "").strip()
+    
     if puede_aprobar:
         # Usuario con permiso de aprobación: crear el predio directamente
         propuesta["estado"] = PredioEstadoAprobacion.APROBADO
@@ -6764,11 +6767,48 @@ async def crear_predio_con_workflow(
             "notas": "Creado por usuario con permiso de aprobación"
         })
         
+        # IMPORTANTE: Marcar el código homologado como usado en la colección codigos_homologados
+        codigo_homologado_final = None
+        if codigo_homologado_solicitado:
+            # Si se proporcionó un código específico, marcarlo como usado
+            resultado_marcar = await db.codigos_homologados.find_one_and_update(
+                {'municipio': municipio, 'codigo': codigo_homologado_solicitado, 'usado': False},
+                {
+                    '$set': {
+                        'usado': True,
+                        'predio_id': cambio_id,
+                        'fecha_asignacion': datetime.now(timezone.utc).isoformat()
+                    }
+                },
+                return_document=True
+            )
+            if resultado_marcar:
+                codigo_homologado_final = codigo_homologado_solicitado
+            else:
+                # El código ya estaba usado o no existe, verificar si ya está usado
+                codigo_existente = await db.codigos_homologados.find_one({
+                    'municipio': municipio, 
+                    'codigo': codigo_homologado_solicitado
+                })
+                if codigo_existente and codigo_existente.get('usado'):
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"El código homologado {codigo_homologado_solicitado} ya está en uso"
+                    )
+                # Si no existe en la colección, usarlo directamente
+                codigo_homologado_final = codigo_homologado_solicitado
+        else:
+            # Asignar el siguiente código disponible automáticamente
+            codigo_homologado_final = await asignar_codigo_homologado(municipio, cambio_id)
+            if not codigo_homologado_final:
+                # Fallback: usar los primeros 21 dígitos del código predial
+                codigo_homologado_final = codigo_predial[:21]
+        
         # Crear el predio directamente en la colección predios
         nuevo_predio = {
             "id": str(uuid.uuid4()),
             **propuesta["datos_propuestos"],
-            "codigo_homologado": codigo_predial[:21],
+            "codigo_homologado": codigo_homologado_final,
             "estado": "activo",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -6777,18 +6817,25 @@ async def crear_predio_con_workflow(
         }
         await db.predios.insert_one(nuevo_predio)
         
-        # Guardar también en historial de cambios para registro
+        # Actualizar la propuesta con el código homologado final
+        propuesta["datos_propuestos"]["codigo_homologado"] = codigo_homologado_final
+        
+        # Guardar también en historial de cambios para registro (con estado aprobado)
         await db.predios_cambios.insert_one(propuesta)
         
-        mensaje = "Predio creado exitosamente"
+        mensaje = f"Predio creado exitosamente con código homologado {codigo_homologado_final}"
     else:
         # Usuario sin permiso: guardar en predios_cambios para aprobación
         propuesta["estado"] = PredioEstadoAprobacion.PENDIENTE_CREACION
+        
+        # Guardar el código homologado solicitado en la propuesta (se asignará al aprobar)
+        if codigo_homologado_solicitado:
+            propuesta["datos_propuestos"]["codigo_homologado_solicitado"] = codigo_homologado_solicitado
+        
         await db.predios_cambios.insert_one(propuesta)
         mensaje = "Predio propuesto. Pendiente de aprobación del coordinador."
     
-    # También guardar en predios_cambios_propuestos para compatibilidad
-    await db.predios_cambios_propuestos.insert_one({**propuesta, "_id": None})
+    # NO guardar en predios_cambios_propuestos (duplica datos y causa problemas)
     
     # Actualizar contador de trámites del gestor
     await db.users.update_one(
