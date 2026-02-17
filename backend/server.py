@@ -6875,9 +6875,20 @@ async def crear_predio_con_workflow(
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "creado_por": current_user["id"],
             "creado_por_nombre": current_user["full_name"],
-            "es_predio_nuevo": True  # Marcar como predio nuevo para identificarlo
+            "es_predio_nuevo": True,  # Marcar como predio nuevo para identificarlo
+            "acto_administrativo": acto_admin  # Acto administrativo para trazabilidad
         }
         await db.predios_actualizacion.insert_one(predio_actualizacion)
+        
+        # También agregar acto administrativo al predio principal
+        nuevo_predio["acto_administrativo"] = acto_admin
+        nuevo_predio["historial_cambios"] = [{
+            "accion": "Creación de predio",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user["full_name"],
+            "usuario_id": current_user["id"],
+            "acto_administrativo": acto_admin
+        }]
         
         # Actualizar la propuesta con el código homologado final
         propuesta["datos_propuestos"]["codigo_homologado"] = codigo_homologado_final
@@ -6910,7 +6921,8 @@ async def crear_predio_con_workflow(
         "requiere_aprobacion": requiere_aprobacion,
         "mensaje": mensaje,
         "tiene_geometria": geometria is not None,
-        "predio_creado": puede_aprobar  # Indica si el predio ya fue creado directamente
+        "predio_creado": puede_aprobar,  # Indica si el predio ya fue creado directamente
+        "codigo_homologado": codigo_homologado_final if puede_aprobar else None
     }
 
 
