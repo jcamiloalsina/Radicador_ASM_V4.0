@@ -5845,7 +5845,7 @@ export default function VisorActualizacion() {
             setSavingVisita(false);
           }
         }}
-        predio={selectedPredio}
+        predio={tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio}
         proyecto={proyecto}
         saving={savingVisita}
       />
