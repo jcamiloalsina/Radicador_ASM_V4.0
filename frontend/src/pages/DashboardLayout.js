@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { OfflineReadyBadge, OfflineBanner, OfflineStatusPanel } from '../components/OfflineComponents';
 import { useOffline } from '../hooks/useOffline';
+import NovedadesModal from '../components/NovedadesModal';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
