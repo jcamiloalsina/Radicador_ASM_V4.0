@@ -2233,6 +2233,8 @@ export default function Predios() {
       
       setShowCreateDialog(false);
       resetForm();
+      // Recargar el siguiente código homologado disponible (el anterior ya se usó)
+      setSiguienteCodigoHomologado(null);
       // Forzar recarga desde servidor para ver el nuevo predio
       await forceRefreshPredios();
       fetchCambiosStats();
