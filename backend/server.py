@@ -325,6 +325,8 @@ class Petition(BaseModel):
     aprobado_por_nombre: Optional[str] = None  # Nombre del coordinador
     fecha_aprobacion: Optional[str] = None  # Fecha de aprobación
     comentario_aprobacion: Optional[str] = None  # Comentario del coordinador al aprobar
+    # Origen de la petición (empresa, ciudadano, interno)
+    tipo_solicitante: str = "ciudadano"  # empresa, ciudadano, interno
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
