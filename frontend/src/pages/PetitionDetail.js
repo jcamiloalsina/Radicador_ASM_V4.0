@@ -591,48 +591,35 @@ export default function PetitionDetail() {
             {canAssignGestores && petition.estado !== 'finalizado' && (
               <div className="border-t pt-4 mt-4">
                 <p className="text-sm font-medium text-slate-700 mb-2">Asignar un gestor:</p>
-                {/* Buscador de gestores */}
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    type="text"
-                    placeholder="Buscar gestor por nombre..."
-                    value={gestorSearch}
-                    onChange={(e) => setGestorSearch(e.target.value)}
-                    className="pl-9 h-9"
-                    data-testid="buscar-gestor-input"
-                  />
-                  {gestorSearch && (
-                    <button 
-                      onClick={() => setGestorSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Select 
-                    onValueChange={async (gestorId) => {
-                      if (!gestorId) return;
-                      try {
-                        const token = localStorage.getItem('token');
-                        await axios.post(`${API}/petitions/${petition.id}/asignar/${gestorId}`, {}, {
-                          headers: { Authorization: `Bearer ${token}` }
-                        });
-                        const gestor = gestores.find(g => g.id === gestorId);
-                        toast.success(`${gestor?.full_name || 'Gestor'} asignado al trámite`);
-                        setGestorSearch(''); // Limpiar búsqueda después de asignar
-                        fetchPetition();
-                      } catch (error) {
-                        toast.error(error.response?.data?.detail || 'Error al asignar gestor');
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="flex-1" data-testid="asignar-gestor-select">
-                      <SelectValue placeholder="Seleccionar gestor..." />
-                    </SelectTrigger>
-                    <SelectContent>
+                {/* Combobox unificado de búsqueda y selección */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar y seleccionar gestor..."
+                      value={gestorSearch}
+                      onChange={(e) => setGestorSearch(e.target.value)}
+                      onFocus={() => setShowGestorList(true)}
+                      className="pl-9 h-10 pr-8"
+                      data-testid="buscar-gestor-input"
+                    />
+                    {gestorSearch && (
+                      <button 
+                        onClick={() => {
+                          setGestorSearch('');
+                          setShowGestorList(false);
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Lista desplegable de gestores */}
+                  {showGestorList && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {gestores
                         .filter(g => !petition.gestores_asignados?.includes(g.id))
                         .filter(g => {
@@ -646,9 +633,30 @@ export default function PetitionDetail() {
                         })
                         .sort((a, b) => a.full_name.localeCompare(b.full_name))
                         .map((g) => (
-                          <SelectItem key={g.id} value={g.id}>
-                            {g.full_name} ({g.role === 'atencion_usuario' ? 'Atención' : g.role === 'coordinador' ? 'Coordinador' : 'Gestor'})
-                          </SelectItem>
+                          <button
+                            key={g.id}
+                            type="button"
+                            className="w-full px-3 py-2 text-left hover:bg-emerald-50 flex items-center justify-between text-sm border-b border-slate-100 last:border-0"
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem('token');
+                                await axios.post(`${API}/petitions/${petition.id}/asignar/${g.id}`, {}, {
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                toast.success(`${g.full_name} asignado al trámite`);
+                                setGestorSearch('');
+                                setShowGestorList(false);
+                                fetchPetition();
+                              } catch (error) {
+                                toast.error(error.response?.data?.detail || 'Error al asignar gestor');
+                              }
+                            }}
+                          >
+                            <span className="font-medium text-slate-700">{g.full_name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {g.role === 'atencion_usuario' ? 'Atención' : g.role === 'coordinador' ? 'Coordinador' : g.role === 'gestor_auxiliar' ? 'Auxiliar' : 'Gestor'}
+                            </Badge>
+                          </button>
                         ))}
                       {gestores
                         .filter(g => !petition.gestores_asignados?.includes(g.id))
@@ -657,17 +665,24 @@ export default function PetitionDetail() {
                           const searchLower = gestorSearch.toLowerCase();
                           return (
                             g.full_name?.toLowerCase().includes(searchLower) ||
-                            g.email?.toLowerCase().includes(searchLower) ||
-                            g.role?.toLowerCase().includes(searchLower)
+                            g.email?.toLowerCase().includes(searchLower)
                           );
                         }).length === 0 && (
-                          <div className="px-2 py-4 text-sm text-slate-500 text-center">
+                          <div className="px-3 py-4 text-sm text-slate-500 text-center">
                             {gestorSearch ? `No se encontró: "${gestorSearch}"` : 'No hay gestores disponibles'}
                           </div>
                         )}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
                 </div>
+                
+                {/* Cerrar lista al hacer clic fuera */}
+                {showGestorList && (
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowGestorList(false)}
+                  />
+                )}
               </div>
             )}
           </CardContent>
