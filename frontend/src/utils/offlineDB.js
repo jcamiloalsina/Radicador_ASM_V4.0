@@ -718,6 +718,29 @@ export async function eliminarCambioSincronizado(cambioId) {
   }
 }
 
+// Limpiar TODOS los cambios pendientes (para resolver errores de sincronización)
+export async function clearAllCambiosPendientes() {
+  const database = await initOfflineDB();
+  if (!database) return false;
+  
+  try {
+    const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
+    const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
+    store.clear();
+    
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    
+    console.log('[OfflineDB] Todos los cambios pendientes han sido eliminados');
+    return true;
+  } catch (e) {
+    console.error('[OfflineDB] Error limpiando cambios pendientes:', e);
+    return false;
+  }
+}
+
 // ==================== PROYECTOS ====================
 
 export async function saveProyectoOffline(proyecto) {
