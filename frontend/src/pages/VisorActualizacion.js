@@ -4081,25 +4081,40 @@ export default function VisorActualizacion() {
           )}
           {/* Cambios pendientes - clickeable para sincronizar manualmente */}
           {offlineStats.cambiosPendientes > 0 && (
-            <Badge 
-              variant="outline" 
-              className={`text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-200 ${isSyncing ? 'opacity-75' : ''}`}
-              title={isSyncing ? 'Sincronizando...' : 'Clic para sincronizar cambios pendientes'}
-              onClick={async () => {
-                if (!isSyncing && navigator.onLine) {
-                  toast.info('Sincronizando cambios pendientes...');
-                  const resultado = await syncAllPendingChanges(true);
-                  if (resultado.sincronizados === 0 && resultado.errores === 0) {
-                    toast.info('No hay cambios pendientes para sincronizar');
+            <div className="flex items-center gap-1">
+              <Badge 
+                variant="outline" 
+                className={`text-xs bg-blue-100 text-blue-700 border-blue-300 cursor-pointer hover:bg-blue-200 ${isSyncing ? 'opacity-75' : ''}`}
+                title={isSyncing ? 'Sincronizando...' : 'Clic para sincronizar cambios pendientes'}
+                onClick={async () => {
+                  if (!isSyncing && navigator.onLine) {
+                    toast.info('Sincronizando cambios pendientes...');
+                    const resultado = await syncAllPendingChanges(true);
+                    if (resultado.sincronizados === 0 && resultado.errores === 0) {
+                      toast.info('No hay cambios pendientes para sincronizar');
+                    }
+                  } else if (!navigator.onLine) {
+                    toast.warning('Sin conexión. Los cambios se sincronizarán cuando vuelva la conexión.');
                   }
-                } else if (!navigator.onLine) {
-                  toast.warning('Sin conexión. Los cambios se sincronizarán cuando vuelva la conexión.');
-                }
-              }}
-            >
-              <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Sincronizando...' : `${offlineStats.cambiosPendientes} pendientes`}
-            </Badge>
+                }}
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Sincronizando...' : `${offlineStats.cambiosPendientes} pendientes`}
+              </Badge>
+              {/* Botón para limpiar cambios con error */}
+              <Badge 
+                variant="outline" 
+                className="text-xs bg-red-100 text-red-700 border-red-300 cursor-pointer hover:bg-red-200"
+                title="Limpiar cambios con error (se perderán los datos no sincronizados)"
+                onClick={async () => {
+                  if (window.confirm('¿Está seguro de eliminar los cambios pendientes? Los datos no sincronizados se perderán.')) {
+                    await clearPendingChanges();
+                  }
+                }}
+              >
+                <Trash2 className="w-3 h-3" />
+              </Badge>
+            </div>
           )}
           {watchingPosition && gpsAccuracy && (
             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
