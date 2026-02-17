@@ -2450,6 +2450,24 @@ async def create_petition(
     
     await db.petitions.insert_one(doc)
     
+    # Enviar correo de confirmación al solicitante
+    try:
+        email_html = get_confirmacion_peticion_email(
+            radicado=radicado,
+            nombre_solicitante=nombre_completo,
+            tipo_tramite=tipo_tramite,
+            municipio=municipio
+        )
+        await send_email(
+            to_email=correo,
+            subject=f"Confirmación de Radicación - {radicado}",
+            body=email_html
+        )
+        logging.info(f"[Petición] Correo de confirmación enviado a {correo} para radicado {radicado}")
+    except Exception as e:
+        logging.error(f"[Petición] Error enviando correo de confirmación a {correo}: {str(e)}")
+        # No fallar la creación de la petición si el correo falla
+    
     # Notificación en plataforma a atención al usuario (NO correo) si la crea un ciudadano
     if current_user['role'] == UserRole.USUARIO:
         atencion_users = await db.users.find({"role": UserRole.ATENCION_USUARIO}, {"_id": 0}).to_list(100)
