@@ -5925,7 +5925,8 @@ export default function VisorActualizacion() {
             
             if (isOnline) {
               const response = await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                timeout: 120000 // 2 minutos timeout para permitir subida de fotos grandes
               });
               nuevoEstado = response.data?.estado_visita || 'visitado';
               const estaFirmado = response.data?.firmado || nuevoEstado === 'visitado_firmado';
