@@ -7,29 +7,46 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 17)
 
+### ✅ CORREGIDO: Mejoras Visitadas - Comportamiento Igual que Terrenos (P0)
+
+**Problema reportado:**
+1. El PDF se generaba para `visitado` (incompleto), debería ser solo para `visitado_firmado`
+2. Cuando se visitaba una mejora firmada, seguía marcando habilitada para visita
+3. La visita de mejora se guardaba con el código del terreno padre en lugar de la mejora
+4. No se registraba en el historial del predio de la mejora
+
+**Solución implementada:**
+
+1. **Archivo `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - Botón PDF solo para `visitado_firmado` y `actualizado` (línea 5644)
+   - Al guardar visita de mejora usa `predioMejoraSeleccionada` (no `selectedPredio`)
+   - Limpia estado de mejora al cerrar modal y después de guardar
+   - Pasa `prediosR1R2` al componente para verificar estados de mejoras
+
+2. **Archivo `/app/frontend/src/components/actualizacion/DetallePredioActualizacion.jsx`:**
+   - Nueva prop `prediosR1R2` para buscar estado de cada mejora
+   - Helper `getEstadoMejora()` busca estado en lista de predios
+   - Helper `esMejoraBloqueada()` verifica si mejora está firmada/actualizada
+   - UI muestra badges de estado diferenciados por color:
+     - Verde emerald: visitado_firmado
+     - Azul: visitado
+     - Verde: actualizado
+     - Cyan: pendiente
+   - Mejora bloqueada muestra "Completo" en lugar de botón de visita
+
+---
+
 ### ✅ CORREGIDO: Botón de Descarga PDF no aparecía para estado `visitado_firmado` (P0)
 
 **Problema reportado:**
 El usuario reportó que no podía descargar el PDF de visita para predios con estado `visitado_firmado`.
 
 **Causa raíz:**
-La condición del botón "Generar PDF" en el frontend solo verificaba los estados `visitado` y `actualizado`, omitiendo `visitado_firmado`:
-```javascript
-// ANTES (incorrecto)
-{(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'actualizado') && (
-```
+La condición del botón "Generar PDF" solo verificaba `visitado` y `actualizado`, omitiendo `visitado_firmado`.
 
-**Solución implementada:**
-1. **Botón PDF habilitado para `visitado_firmado`** - Agregado el estado a la condición
-2. **Botón "Editar Visita" bloqueado para `visitado_firmado`** - Predios firmados no deben editarse
-3. **Badge mejorado** - Muestra "Visitado (Firmado)" con color verde distintivo
-
-**Archivos modificados:**
-- `/app/frontend/src/pages/VisorActualizacion.js` - Líneas 5644-5658, 4664-4675
-
-**Testing verificado:**
-- ✅ Endpoint backend funciona correctamente para generar PDF
-- ✅ PDF generado exitosamente para predios con estado `visitado`
+**Solución:**
+- Botón PDF habilitado para `visitado_firmado` y `actualizado` (NO para `visitado` incompleto)
+- Badge mejorado muestra "Visitado (Firmado)" con color verde distintivo
 
 ---
 
