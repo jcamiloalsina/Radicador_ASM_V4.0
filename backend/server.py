@@ -6810,6 +6810,7 @@ async def crear_predio_con_workflow(
             **propuesta["datos_propuestos"],
             "codigo_homologado": codigo_homologado_final,
             "estado": "activo",
+            "vigencia": datetime.now(timezone.utc).year,  # Vigencia del año actual
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "creado_por": current_user["id"],
