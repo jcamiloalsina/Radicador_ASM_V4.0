@@ -6757,8 +6757,15 @@ async def crear_predio_con_workflow(
         "fecha_propuesta": datetime.now(timezone.utc).isoformat(),
         "propuesto_por": current_user["id"],
         "propuesto_por_nombre": current_user["full_name"],
-        "propuesto_por_rol": current_user["role"]
+        "propuesto_por_rol": current_user["role"],
+        # Acto administrativo para trazabilidad
+        "acto_administrativo": request.get("acto_administrativo", "")
     }
+    
+    # Agregar acto administrativo al historial si se proporcionó
+    acto_admin = request.get("acto_administrativo", "").strip()
+    if acto_admin:
+        propuesta["historial"][0]["acto_administrativo"] = acto_admin
     
     # Si se asignó a otro gestor para continuar
     gestor_asignado_id = request.get("gestor_asignado_id")
