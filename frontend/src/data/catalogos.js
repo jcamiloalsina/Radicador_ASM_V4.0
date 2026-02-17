@@ -81,6 +81,12 @@ export const TIPOS_TRAMITE = [
     nombre: 'Solicitud copia de ficha predial',
     descripcion: 'Solicitud de copia de la ficha predial del predio',
     subOpciones: null
+  },
+  {
+    id: 'otro_tramite',
+    nombre: 'Otros',
+    descripcion: 'Otro tipo de trámite no listado',
+    subOpciones: null
   }
 ];
 
