@@ -7,6 +7,38 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 17)
 
+### ✅ CORREGIDO: Sincronización Offline Usaba Endpoint Incorrecto (P0)
+
+**Problema reportado:**
+Al volver online, los cambios guardados offline mostraban "1 cambio(s) con error" y no se sincronizaban.
+
+**Causa raíz:**
+En `useOfflineSync.js`, la sincronización de visitas usaba el endpoint incorrecto:
+```javascript
+// ANTES (incorrecto)
+axios.patch(`${API}/api/actualizacion/.../predios/${codigo}`, ...)
+
+// AHORA (correcto)
+axios.post(`${API}/api/actualizacion/.../predios/${codigo}/visita`, ...)
+```
+
+**Solución implementada:**
+
+1. **Archivo `/app/frontend/src/hooks/useOfflineSync.js`:**
+   - Corregido endpoint: usa `POST` a `/visita` (líneas 93-98 y 191-196)
+   - Nueva función `clearPendingChanges` para limpiar cambios con error
+
+2. **Archivo `/app/frontend/src/utils/offlineDB.js`:**
+   - Nueva función `clearAllCambiosPendientes()` para eliminar cambios pendientes
+
+3. **Archivo `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - Botón de basura rojo junto al badge de pendientes para limpiar cambios fallidos
+
+**Para resolver cambios con error existentes:**
+- Clic en icono de basura rojo → Confirmar → Volver a registrar la visita
+
+---
+
 ### ✅ CORREGIDO: Mejoras Visitadas - Comportamiento Igual que Terrenos (P0)
 
 **Problema reportado:**
