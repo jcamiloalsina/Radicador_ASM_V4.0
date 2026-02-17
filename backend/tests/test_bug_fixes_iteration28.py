@@ -16,7 +16,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://offline-sync-test.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predios-creation.preview.emergentagent.com').rstrip('/')
 
 
 class TestBugFixes:
