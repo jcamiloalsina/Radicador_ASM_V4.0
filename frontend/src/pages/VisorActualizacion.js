@@ -2273,7 +2273,10 @@ export default function VisorActualizacion() {
       const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigo}/visita`,
         datosVisita,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 120000 // 2 minutos para permitir subida de fotos grandes
+        }
       );
       
       toast.success('Formulario de visita guardado correctamente');
