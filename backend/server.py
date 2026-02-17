@@ -3722,6 +3722,24 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
                 enviar_email=False  # Solo notificación en plataforma
             )
     
+    # Notificar a Atención al Usuario sobre la subsanación
+    ids_ya_notificados = set([devuelto_por_id] + petition.get('gestores_asignados', []))
+    atencion_users = await db.users.find(
+        {"role": UserRole.ATENCION_USUARIO}, 
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    
+    for user in atencion_users:
+        if user['id'] not in ids_ya_notificados:
+            await crear_notificacion(
+                usuario_id=user['id'],
+                titulo="📋 Subsanación Recibida",
+                mensaje=f"El trámite {petition['radicado']} ha sido subsanado por {current_user['full_name']}. Pendiente de revisión.",
+                tipo="info",
+                enlace=f"/dashboard/peticion/{petition_id}",
+                enviar_email=False  # Solo notificación en plataforma
+            )
+    
     return {"message": "Petición reenviada exitosamente para revisión"}
 
 @api_router.get("/gestores")
