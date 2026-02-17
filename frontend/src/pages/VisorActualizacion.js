@@ -1850,7 +1850,8 @@ export default function VisorActualizacion() {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
-          }
+          },
+          timeout: 300000 // 5 minutos para upload de archivos grandes
         }
       );
       
