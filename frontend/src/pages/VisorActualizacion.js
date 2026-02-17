@@ -4662,8 +4662,15 @@ export default function VisorActualizacion() {
                 )}
               </div>
               {selectedPredio?.estado_visita && (
-                <Badge variant={selectedPredio.estado_visita === 'visitado' ? 'warning' : selectedPredio.estado_visita === 'actualizado' ? 'secondary' : 'outline'}>
-                  {selectedPredio.estado_visita}
+                <Badge 
+                  variant={
+                    selectedPredio.estado_visita === 'visitado' ? 'warning' : 
+                    selectedPredio.estado_visita === 'visitado_firmado' ? 'default' : 
+                    selectedPredio.estado_visita === 'actualizado' ? 'secondary' : 'outline'
+                  }
+                  className={selectedPredio.estado_visita === 'visitado_firmado' ? 'bg-emerald-600' : ''}
+                >
+                  {selectedPredio.estado_visita === 'visitado_firmado' ? 'Visitado (Firmado)' : selectedPredio.estado_visita}
                 </Badge>
               )}
             </DialogTitle>
