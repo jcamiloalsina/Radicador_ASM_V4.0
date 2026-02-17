@@ -2432,7 +2432,10 @@ export default function VisorActualizacion() {
             tipo_revision: tipoRevision || 'campo',
             justificacion: tiposRevision[tipoRevision] || 'Propuesta de cambio'
           },
-          { headers: { Authorization: `Bearer ${token}` }}
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 1 minuto para propuestas
+          }
         );
         
         toast.success('Propuesta de cambio enviada al coordinador para aprobación');
