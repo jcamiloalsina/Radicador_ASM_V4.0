@@ -61,6 +61,7 @@ const DetallePredioActualizacion = ({
   onClose,
   onOpenVisita,
   onOpenVisitaMejora, // Nueva: para visita de mejora específica
+  onGenerarPdfMejora, // Nueva: para generar PDF de mejora
   onOpenEdicion,
   onOpenHistorial,
   onOpenCancelar,
