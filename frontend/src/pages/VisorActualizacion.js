@@ -2085,11 +2085,25 @@ export default function VisorActualizacion() {
     
     if (predio) {
       // Buscar geometría correspondiente para obtener datos adicionales
+      const predioCode = predio.codigo_predial || predio.numero_predial || '';
       const feature = geometrias?.features?.find(f => {
         const props = f.properties || {};
-        const codigo = props.codigo || props.codigo_predial || '';
-        return codigo === predio.codigo_predial || codigo === predio.numero_predial;
+        const codigoGDB = props.codigo || props.codigo_predial || props.numero_predial || '';
+        // Match exacto
+        if (codigoGDB === predioCode) return true;
+        // Match parcial: mismos primeros 21 dígitos
+        if (codigoGDB.length >= 21 && predioCode.length >= 21) {
+          if (codigoGDB.substring(0, 21) === predioCode.substring(0, 21)) return true;
+        }
+        return false;
       });
+      
+      // Establecer geometría si se encontró
+      if (feature) {
+        setSelectedGeometry(feature);
+      } else {
+        setSelectedGeometry(null);
+      }
       
       // Asegurar que el predio tenga el codigo_homologado
       const predioCompleto = {
