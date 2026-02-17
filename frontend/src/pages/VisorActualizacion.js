@@ -3738,6 +3738,36 @@ export default function VisorActualizacion() {
     }
   };
   
+  // Generar PDF del informe de visita para una MEJORA
+  const handleGenerarPdfMejora = async (codigoMejora) => {
+    if (!codigoMejora) return;
+    
+    setGenerandoPdf(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoMejora}/generar-pdf`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      // Descargar el PDF
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${response.data.pdf_base64}`;
+      link.download = response.data.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('PDF de mejora generado exitosamente');
+    } catch (error) {
+      toast.error('Error al generar PDF de mejora');
+      console.error(error);
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+  
   // ========== FIN FUNCIONES PROPUESTAS E HISTORIAL ==========
   
   // Estilo de geometrías
