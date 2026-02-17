@@ -197,13 +197,19 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           // Usar el proyecto_id guardado en el cambio, no el actual
           const cambioProyectoId = cambio.proyecto_id;
           
+          // Configuración común con timeout extendido para datos grandes (fotos, firmas)
+          const config = { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 120000 // 2 minutos por cambio
+          };
+          
           switch (cambio.tipo) {
             case 'visita':
               // CORREGIDO: Usar POST a /visita (no PATCH)
               await axios.post(
                 `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/visita`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
             
@@ -211,7 +217,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
               await axios.post(
                 `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/propuesta`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
             
@@ -219,7 +225,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
               await axios.patch(
                 `${API}/api/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
 
@@ -232,6 +238,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           console.log(`[Sync] ✓ Cambio ${cambio.id} sincronizado (proyecto: ${cambioProyectoId})`);
         } catch (error) {
           console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
+          if (error.code === 'ECONNABORTED') {
+            console.error(`[Sync] Timeout en cambio ${cambio.id} - se reintentará`);
+          }
           errores++;
         }
       }
