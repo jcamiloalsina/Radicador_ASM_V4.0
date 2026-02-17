@@ -746,6 +746,9 @@ export default function DashboardLayout() {
           }
         ]}
       />
+      
+      {/* Modal de Novedades */}
+      <NovedadesModal userId={user?.id} />
     </div>
   );
 }
