@@ -2473,7 +2473,10 @@ export default function VisorActualizacion() {
           visitado_por: user?.full_name || user?.email,
           visitado_en: new Date().toISOString()
         },
-        { headers: { Authorization: `Bearer ${token}` }}
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 60000 // 1 minuto para marcar visitado
+        }
       );
       
       toast.success('Predio marcado como visitado');
