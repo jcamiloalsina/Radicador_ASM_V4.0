@@ -90,13 +90,19 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         setSyncProgress({ current: i + 1, total: cambios.length, message: `Sincronizando ${i + 1}/${cambios.length}...` });
         
         try {
+          // Configuración común con timeout extendido para datos grandes (fotos, firmas)
+          const config = { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 120000 // 2 minutos por cambio
+          };
+          
           switch (cambio.tipo) {
             case 'visita':
               // CORREGIDO: Usar POST a /visita (no PATCH)
               await axios.post(
                 `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/visita`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
             
@@ -104,7 +110,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
               await axios.post(
                 `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/propuesta`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
             
@@ -112,7 +118,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
               await axios.patch(
                 `${API}/api/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
                 cambio.datos,
-                { headers: { Authorization: `Bearer ${token}` } }
+                config
               );
               break;
 
@@ -124,6 +130,9 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           sincronizados++;
         } catch (error) {
           console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
+          if (error.code === 'ECONNABORTED') {
+            console.error(`[Sync] Timeout en cambio ${cambio.id} - se reintentará`);
+          }
           errores++;
         }
       }
@@ -135,7 +144,7 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           toast.success(`${sincronizados} cambio(s) sincronizado(s)`);
         }
         if (errores > 0) {
-          toast.error(`${errores} cambio(s) fallaron`);
+          toast.error(`${errores} cambio(s) con error - Se reintentarán`);
         }
       }
     } catch (e) {
