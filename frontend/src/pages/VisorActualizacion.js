@@ -1396,7 +1396,8 @@ export default function VisorActualizacion() {
       if (estado === 'pendiente') {
         codigosIndex.pendiente.add(codigo);
         prediosCache.pendiente.push(predio);
-      } else if (estado === 'visitado') {
+      } else if (estado === 'visitado' || estado === 'visitado_firmado') {
+        // Incluir tanto visitado como visitado_firmado en el conteo de visitados
         codigosIndex.visitado.add(codigo);
         prediosCache.visitado.push(predio);
       } else if (estado === 'actualizado') {
