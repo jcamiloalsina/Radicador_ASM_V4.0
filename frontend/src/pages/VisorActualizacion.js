@@ -5791,12 +5791,26 @@ export default function VisorActualizacion() {
       {/* Modal de Formato de Visita - NUEVO: Estado completamente encapsulado para máximo rendimiento */}
       <VisitaFormModal
         open={showVisitaModal}
-        onClose={() => setShowVisitaModal(false)}
+        onClose={() => {
+          setShowVisitaModal(false);
+          // Limpiar estado de mejora al cerrar
+          setTipoVisita('terreno');
+          setMejoraSeleccionada(null);
+          setPredioMejoraSeleccionada(null);
+        }}
         onSave={async (formData) => {
           // El nuevo componente pasa todos los datos del formulario de una sola vez
           setSavingVisita(true);
           try {
-            const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+            // IMPORTANTE: Usar el predio correcto según el tipo de visita
+            const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
+            const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+            const esMejora = tipoVisita === 'mejora';
+            
+            if (!codigoPredial) {
+              toast.error('No se pudo identificar el predio/mejora para guardar la visita');
+              return;
+            }
             
             // Enviar TODOS los datos del formulario completos
             const datosActualizacion = {
@@ -5807,34 +5821,63 @@ export default function VisorActualizacion() {
               fotos: formData.fotos,
               // Renombrar campos para consistencia con el backend
               propietarios_visita: formData.propietarios,
-              construcciones_visita: formData.construcciones
+              construcciones_visita: formData.construcciones,
+              // Marcar si es visita de mejora para el historial
+              es_mejora: esMejora,
+              codigo_terreno_padre: esMejora ? (selectedPredio?.codigo_predial || selectedPredio?.numero_predial) : null
             };
 
+            // Variable para capturar el nuevo estado de la respuesta
+            let nuevoEstado = 'visitado';
+            
             if (isOnline) {
-              await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
+              const response = await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
               });
-              toast.success('Visita guardada correctamente');
+              nuevoEstado = response.data?.estado_visita || 'visitado';
+              const estaFirmado = response.data?.firmado || nuevoEstado === 'visitado_firmado';
+              
+              if (estaFirmado) {
+                toast.success(`✅ Visita de ${esMejora ? 'mejora' : 'terreno'} firmada y guardada`, { duration: 5000 });
+              } else {
+                toast.success(`Visita de ${esMejora ? 'mejora' : 'terreno'} guardada correctamente`);
+              }
             } else {
               await saveCambioPendiente({
                 tipo: 'visita',
                 proyecto_id: proyectoId,
                 datos: { codigo_predial: codigoPredial, ...datosActualizacion }
               });
-              toast.info('Visita guardada offline - Se sincronizará al recuperar conexión');
+              toast.info(`Visita de ${esMejora ? 'mejora' : 'terreno'} guardada offline - Se sincronizará al recuperar conexión`);
             }
 
             setShowVisitaModal(false);
+            
+            // Actualizar estado del predio/mejora en la lista local
             setPrediosR1R2(prev => prev.map(p => 
               (p.codigo_predial === codigoPredial || p.numero_predial === codigoPredial)
-                ? { ...p, estado_visita: 'visitado', sin_cambios: formData.visitaData.sin_cambios }
+                ? { ...p, estado_visita: nuevoEstado, sin_cambios: formData.visitaData.sin_cambios }
                 : p
             ));
+            
+            // Limpiar estado de mejora después de guardar
+            setTipoVisita('terreno');
+            setMejoraSeleccionada(null);
+            setPredioMejoraSeleccionada(null);
+            
           } catch (error) {
             console.error('[Visita] Error:', error);
+            // Manejar error de predio firmado
+            if (error.response?.status === 403 && error.response?.data?.detail?.includes('firmada')) {
+              toast.error('Este predio/mejora ya tiene una visita firmada y no puede ser modificado');
+              setShowVisitaModal(false);
+              return;
+            }
+            
             if (!isOnline || error.code === 'ERR_NETWORK') {
               try {
-                const codigoPredial = selectedPredio?.codigo_predial || selectedPredio?.numero_predial;
+                const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
+                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
                 await saveCambioPendiente({
                   tipo: 'visita',
                   proyecto_id: proyectoId,
@@ -5846,7 +5889,7 @@ export default function VisorActualizacion() {
                 toast.error('Error al guardar visita');
               }
             } else {
-              toast.error('Error al guardar visita');
+              toast.error(error.response?.data?.detail || 'Error al guardar visita');
             }
           } finally {
             setSavingVisita(false);
