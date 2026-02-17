@@ -3795,8 +3795,8 @@ export default function VisorActualizacion() {
       borderColor = '#0891b2';
     }
     
-    if (predio?.estado_visita === 'visitado') {
-      fillColor = '#f59e0b'; // Naranja si visitado
+    if (predio?.estado_visita === 'visitado' || predio?.estado_visita === 'visitado_firmado') {
+      fillColor = '#f59e0b'; // Naranja si visitado o visitado_firmado
     } else if (predio?.estado_visita === 'actualizado') {
       fillColor = '#8b5cf6'; // Púrpura si actualizado
     }
