@@ -1072,6 +1072,45 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     )
 
 
+def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo_tramite: str, municipio: str) -> str:
+    """Genera el correo de confirmación de petición para el solicitante."""
+    contenido = f'''
+    <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
+    
+    <p>Le confirmamos que su solicitud ha sido radicada exitosamente en nuestro sistema.</p>
+    
+    <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #10b981;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px 0; color: #64748b; width: 160px;">📋 Tipo de Trámite:</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #1e293b;">{tipo_tramite}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; color: #64748b;">📍 Municipio:</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #1e293b;">{municipio}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <p>Puede hacer seguimiento a su trámite ingresando a la plataforma con su usuario y contraseña.</p>
+    
+    <p style="color: #64748b; font-size: 14px;">
+        <strong>Nota:</strong> Recibirá notificaciones por correo electrónico cuando haya actualizaciones en su trámite.
+    </p>
+    '''
+    
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://offline-sync-test.preview.emergentagent.com')
+    
+    return get_email_template(
+        titulo="Confirmación de Radicación",
+        contenido=contenido,
+        radicado=radicado,
+        tipo_notificacion="success",
+        boton_texto="Ver Mi Trámite",
+        boton_url=f"{frontend_url}/dashboard/peticiones"
+    )
+
+
 def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -> str:
     """Genera el correo de asignación para gestor."""
     contenido = f'''
