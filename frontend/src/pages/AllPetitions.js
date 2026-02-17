@@ -582,8 +582,23 @@ export default function AllPetitions() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="text-sm text-slate-800 font-medium">
-                        {petition.nombre_completo || petition.creator_name}
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm text-slate-800 font-medium">
+                          {petition.nombre_completo || petition.creator_name}
+                        </div>
+                        {/* Badge de tipo de solicitante */}
+                        {petition.tipo_solicitante === 'empresa' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200" title="Solicitado por empresa">
+                            <Building className="w-3 h-3 mr-0.5" />
+                            Empresa
+                          </span>
+                        )}
+                        {petition.tipo_solicitante === 'interno' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200" title="Creado por funcionario">
+                            <UserCheck className="w-3 h-3 mr-0.5" />
+                            Interno
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-4">
