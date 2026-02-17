@@ -747,8 +747,8 @@ export default function DashboardLayout() {
         ]}
       />
       
-      {/* Modal de Novedades */}
-      <NovedadesModal userId={user?.id} />
+      {/* Modal de Novedades - Solo para Coordinadores y Administradores */}
+      <NovedadesModal userId={user?.id} userRole={user?.role} />
     </div>
   );
 }
