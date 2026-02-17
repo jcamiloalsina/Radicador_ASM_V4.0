@@ -4726,6 +4726,7 @@ export default function VisorActualizacion() {
               onOpenEdicion={abrirEdicionPredio}
               onOpenHistorial={abrirHistorial}
               onOpenCancelar={abrirCancelarModal}
+              onGenerarPdfMejora={handleGenerarPdfMejora}
               terrenoTieneMejoras={terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
               mejorasDelTerreno={getMejorasDeTerreno(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
               user={user}
