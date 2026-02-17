@@ -5654,8 +5654,8 @@ export default function VisorActualizacion() {
                       </Button>
                     )}
                     
-                    {/* Botón Formato de Visita - Visible si NO está actualizado (aprobado) */}
-                    {selectedPredio.estado_visita !== 'actualizado' && (
+                    {/* Botón Formato de Visita - Visible si NO está actualizado ni firmado (ambos bloqueados) */}
+                    {selectedPredio.estado_visita !== 'actualizado' && selectedPredio.estado_visita !== 'visitado_firmado' && (
                       <Button 
                         variant="outline" 
                         onClick={() => {
