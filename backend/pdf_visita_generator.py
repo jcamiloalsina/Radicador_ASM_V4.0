@@ -747,7 +747,9 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     c.drawString(left + 3, y - 6, "Nombre")
     c.setFont("Helvetica", 9)
     c.setFillColor(NEGRO)
-    c.drawString(left + 45, y - 13, visita.get('nombre_visitado', visita.get('persona_atiende', ''))[:30] or "-")
+    # Obtener nombre del visitado con fallback seguro
+    nombre_visitado = visita.get('nombre_visitado') or visita.get('persona_atiende') or "-"
+    c.drawString(left + 45, y - 13, (nombre_visitado[:30] if nombre_visitado else "-"))
     
     # Nombre del reconocedor
     c.rect(left + half_w + 5, y - 18, half_w - 5, 18, stroke=1, fill=0)
