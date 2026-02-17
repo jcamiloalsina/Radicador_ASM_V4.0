@@ -184,26 +184,71 @@ const DetallePredioActualizacion = ({
                 const props = mejora.properties || {};
                 const codigoMejora = props.codigo || '';
                 const numMejoraStr = codigoMejora.substring(27, 30);
+                const estadoMejora = getEstadoMejora(codigoMejora);
+                const bloqueada = esMejoraBloqueada(codigoMejora);
+                
+                // Determinar estilos según estado
+                let badgeClass = 'bg-cyan-500';
+                let borderClass = 'border-cyan-200';
+                let bgClass = 'bg-white';
+                
+                if (estadoMejora === 'visitado_firmado') {
+                  badgeClass = 'bg-emerald-600';
+                  borderClass = 'border-emerald-300';
+                  bgClass = 'bg-emerald-50';
+                } else if (estadoMejora === 'visitado') {
+                  badgeClass = 'bg-blue-500';
+                  borderClass = 'border-blue-200';
+                  bgClass = 'bg-blue-50';
+                } else if (estadoMejora === 'actualizado') {
+                  badgeClass = 'bg-green-600';
+                  borderClass = 'border-green-300';
+                  bgClass = 'bg-green-50';
+                }
+                
                 return (
-                  <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-cyan-200">
-                    <div>
-                      <Badge className="bg-cyan-500 text-white text-[10px]">Mejora #{numMejoraStr}</Badge>
-                      <p className="font-mono text-[9px] text-slate-600 mt-1">{codigoMejora}</p>
+                  <div key={idx} className={`flex items-center justify-between ${bgClass} p-2 rounded border ${borderClass}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Badge className={`${badgeClass} text-white text-[10px]`}>Mejora #{numMejoraStr}</Badge>
+                        {estadoMejora !== 'pendiente' && (
+                          <Badge variant="outline" className={`text-[9px] ${
+                            estadoMejora === 'visitado_firmado' ? 'border-emerald-400 text-emerald-700' :
+                            estadoMejora === 'visitado' ? 'border-blue-400 text-blue-700' :
+                            estadoMejora === 'actualizado' ? 'border-green-400 text-green-700' :
+                            'border-gray-300 text-gray-600'
+                          }`}>
+                            {estadoMejora === 'visitado_firmado' ? 'Firmado' : estadoMejora}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="font-mono text-[9px] text-slate-600 mt-1 truncate">{codigoMejora}</p>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-6 text-xs border-cyan-300 text-cyan-700 hover:bg-cyan-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onOpenVisitaMejora) {
-                          onOpenVisitaMejora(mejora);
-                        }
-                      }}
-                    >
-                      <ClipboardList className="w-3 h-3 mr-1" />
-                      Visita
-                    </Button>
+                    {bloqueada ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 text-[10px] ml-2">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Completo
+                      </Badge>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className={`h-6 text-xs ml-2 ${
+                          estadoMejora === 'visitado' 
+                            ? 'border-blue-300 text-blue-700 hover:bg-blue-100' 
+                            : 'border-cyan-300 text-cyan-700 hover:bg-cyan-100'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onOpenVisitaMejora) {
+                            onOpenVisitaMejora(mejora);
+                          }
+                        }}
+                      >
+                        <ClipboardList className="w-3 h-3 mr-1" />
+                        {estadoMejora === 'visitado' ? 'Editar' : 'Visita'}
+                      </Button>
+                    )}
                   </div>
                 );
               })}
