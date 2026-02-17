@@ -3751,7 +3751,10 @@ export default function VisorActualizacion() {
       const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}/generar-pdf`,
         {},
-        { headers: { Authorization: `Bearer ${token}` }}
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 120000 // 2 minutos para generación de PDF
+        }
       );
       
       // Descargar el PDF
@@ -3764,7 +3767,11 @@ export default function VisorActualizacion() {
       
       toast.success('PDF generado exitosamente');
     } catch (error) {
-      toast.error('Error al generar PDF');
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error('La generación del PDF tardó demasiado. Intente de nuevo.');
+      } else {
+        toast.error('Error al generar PDF');
+      }
       console.error(error);
     } finally {
       setGenerandoPdf(false);
@@ -3781,7 +3788,10 @@ export default function VisorActualizacion() {
       const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoMejora}/generar-pdf`,
         {},
-        { headers: { Authorization: `Bearer ${token}` }}
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 120000 // 2 minutos para generación de PDF
+        }
       );
       
       // Descargar el PDF
@@ -3794,7 +3804,11 @@ export default function VisorActualizacion() {
       
       toast.success('PDF de mejora generado exitosamente');
     } catch (error) {
-      toast.error('Error al generar PDF de mejora');
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error('La generación del PDF tardó demasiado. Intente de nuevo.');
+      } else {
+        toast.error('Error al generar PDF de mejora');
+      }
       console.error(error);
     } finally {
       setGenerandoPdf(false);
