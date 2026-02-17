@@ -5968,6 +5968,25 @@ export default function VisorActualizacion() {
               return;
             }
             
+            // Manejar timeout
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+              toast.error('La conexión tardó demasiado. Intentando guardar offline...', { duration: 5000 });
+              try {
+                const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
+                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+                await saveCambioPendiente({
+                  tipo: 'visita',
+                  proyecto_id: proyectoId,
+                  datos: { codigo_predial: codigoPredial, ...formData.visitaData }
+                });
+                toast.info('Visita guardada offline - Se sincronizará cuando mejore la conexión');
+                setShowVisitaModal(false);
+              } catch (offlineError) {
+                toast.error('Error al guardar visita');
+              }
+              return;
+            }
+            
             if (!isOnline || error.code === 'ERR_NETWORK') {
               try {
                 const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
@@ -5983,7 +6002,10 @@ export default function VisorActualizacion() {
                 toast.error('Error al guardar visita');
               }
             } else {
-              toast.error(error.response?.data?.detail || 'Error al guardar visita');
+              // Mostrar error específico del servidor
+              const errorMsg = error.response?.data?.detail || 'Error al guardar visita';
+              toast.error(errorMsg, { duration: 5000 });
+              console.error('[Visita] Error detalle:', error.response?.data);
             }
           } finally {
             setSavingVisita(false);
