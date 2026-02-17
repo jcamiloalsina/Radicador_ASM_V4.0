@@ -2525,7 +2525,8 @@ export default function VisorActualizacion() {
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}`,
           {
             headers: { Authorization: `Bearer ${token}` },
-            data: { motivo: motivoCancelacion }
+            data: { motivo: motivoCancelacion },
+            timeout: 60000 // 1 minuto
           }
         );
         
