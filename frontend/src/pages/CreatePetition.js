@@ -271,7 +271,7 @@ export default function CreatePetition() {
               )}
             </div>
 
-            {/* Campo "¿Cuál trámite?" para empresas que seleccionan "Otro Trámite" */}
+            {/* Campo "¿Cuál trámite?" cuando se selecciona "Otros" */}
             {esOtroTramite && (
               <div className="space-y-2">
                 <Label htmlFor="otro_tramite_cual" className="text-slate-700">¿Cuál trámite necesita? *</Label>
