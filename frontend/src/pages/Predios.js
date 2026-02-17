@@ -2163,6 +2163,8 @@ export default function Predios() {
       const predioData = {
         codigo_predial_nacional: codigoCompleto,
         municipio: formData.municipio || filterMunicipio,
+        // IMPORTANTE: Incluir el código homologado seleccionado/siguiente
+        codigo_homologado: siguienteCodigoHomologado?.codigo || null,
         es_reactivacion: verificacionCodigo.estado === 'eliminado',
         justificacion: verificacionCodigo.estado === 'eliminado' 
           ? 'Reactivación de predio eliminado' 
