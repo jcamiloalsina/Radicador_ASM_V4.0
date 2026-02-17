@@ -2173,6 +2173,8 @@ export default function Predios() {
         municipio: formData.municipio || filterMunicipio,
         // IMPORTANTE: Incluir el código homologado seleccionado/siguiente
         codigo_homologado: siguienteCodigoHomologado?.codigo || null,
+        // Acto administrativo obligatorio
+        acto_administrativo: formData.acto_administrativo.trim(),
         es_reactivacion: verificacionCodigo.estado === 'eliminado',
         justificacion: verificacionCodigo.estado === 'eliminado' 
           ? 'Reactivación de predio eliminado' 
