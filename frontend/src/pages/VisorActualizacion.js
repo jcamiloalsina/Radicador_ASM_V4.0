@@ -4639,6 +4639,7 @@ export default function VisorActualizacion() {
               terrenoTieneMejoras={terrenoTieneMejora(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
               mejorasDelTerreno={getMejorasDeTerreno(selectedPredio?.codigo_predial || selectedPredio?.numero_predial)}
               user={user}
+              prediosR1R2={prediosR1R2}
             />
           </div>
         )}
