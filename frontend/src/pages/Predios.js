@@ -1996,6 +1996,12 @@ export default function Predios() {
   const handleCreate = async () => {
     if (isSavingCreate) return; // Prevenir doble clic
     
+    // Validar acto administrativo obligatorio
+    if (!formData.acto_administrativo?.trim()) {
+      toast.error('Debe ingresar el número de Acto Administrativo');
+      return;
+    }
+    
     // Validar que el código esté completo
     const codigoCompleto = construirCodigoCompleto();
     if (codigoCompleto.length !== 30) {
