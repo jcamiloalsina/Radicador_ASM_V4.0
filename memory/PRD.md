@@ -7,6 +7,36 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 18)
 
+### ✅ CORREGIDO: Reactivación de Predios Eliminados no Funcionaba (P0)
+
+**Problema reportado:**
+Al verificar un código de predio eliminado, el sistema mostraba "existente" (rojo) en lugar de "eliminado" (amarillo), impidiendo la reactivación.
+
+**Causa raíz:**
+Los predios "eliminados" existían en AMBAS colecciones (`predios` y `predios_eliminados`). La lógica de verificación revisaba primero `predios`, encontraba el registro y devolvía "existente" sin verificar `predios_eliminados`.
+
+**Solución implementada:**
+
+1. **Archivo `/app/backend/server.py` - Endpoint `verificar-codigo-completo`:**
+   - **ANTES:** Verificaba primero `predios`, si existía retornaba "existente"
+   - **AHORA:** Verifica primero `predios_eliminados`, si existe retorna "eliminado" (prioridad)
+   - Añadida información adicional: `tiene_registro_previo` y `vigencia_registro_previo`
+
+2. **Archivo `/app/backend/server.py` - Endpoint `crear-con-workflow`:**
+   - **ANTES:** Si `es_reactivacion=True` pero existía en `predios`, fallaba con error de duplicado
+   - **AHORA:** Si es reactivación y existe en ambas colecciones:
+     - Actualiza el registro existente en `predios` (no intenta insertar)
+     - Elimina el registro de `predios_eliminados`
+     - Actualiza/inserta en `predios_actualizacion`
+     - Marca con `reactivado_en`, `reactivado_por` para trazabilidad
+
+**Comportamiento corregido:**
+- Código en `predios_eliminados` → Muestra amarillo "¿Desea reactivarlo?"
+- Código solo en `predios` (activo) → Muestra rojo "Ya existe"
+- Código no existe en ninguna → Muestra verde "Disponible"
+
+---
+
 ### ✅ VERIFICADO: Timeouts para Fallos Intermitentes de Guardado/Sincronización (P0)
 
 **Problema reportado:**
