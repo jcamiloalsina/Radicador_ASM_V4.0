@@ -6853,21 +6853,42 @@ async def crear_predio_con_workflow(
                 # Fallback: usar los primeros 21 dígitos del código predial
                 codigo_homologado_final = codigo_predial[:21]
         
-        # Crear el predio directamente en la colección predios
+        # Crear o actualizar el predio en la colección predios
         nuevo_predio = {
-            "id": str(uuid.uuid4()),
             **propuesta["datos_propuestos"],
             "codigo_homologado": codigo_homologado_final,
             "estado": "activo",
             "vigencia": datetime.now(timezone.utc).year,  # Vigencia del año actual
-            "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "creado_por": current_user["id"],
             "creado_por_nombre": current_user["full_name"]
         }
-        await db.predios.insert_one(nuevo_predio)
         
-        # IMPORTANTE: También insertar en predios_actualizacion para que aparezca en el Visor
+        # Si es reactivación y existe, actualizar; si no, insertar
+        if es_reactivacion and existente:
+            # Reactivación: actualizar el predio existente
+            nuevo_predio["reactivado_en"] = datetime.now(timezone.utc).isoformat()
+            nuevo_predio["reactivado_por"] = current_user["full_name"]
+            nuevo_predio["reactivado_por_id"] = current_user["id"]
+            nuevo_predio["id"] = existente.get("id", str(uuid.uuid4()))  # Mantener ID existente
+            
+            await db.predios.update_one(
+                {"codigo_predial_nacional": codigo_predial},
+                {"$set": nuevo_predio}
+            )
+            
+            # Remover de predios_eliminados
+            await db.predios_eliminados.delete_one({"codigo_predial_nacional": codigo_predial})
+            
+            mensaje_tipo = "Predio REACTIVADO"
+        else:
+            # Creación normal: insertar nuevo
+            nuevo_predio["id"] = str(uuid.uuid4())
+            nuevo_predio["created_at"] = datetime.now(timezone.utc).isoformat()
+            await db.predios.insert_one(nuevo_predio)
+            mensaje_tipo = "Predio creado"
+        
+        # IMPORTANTE: También insertar/actualizar en predios_actualizacion para que aparezca en el Visor
         predio_actualizacion = {
             "id": nuevo_predio["id"],
             "codigo_predial_nacional": codigo_predial,
@@ -6889,15 +6910,26 @@ async def crear_predio_con_workflow(
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "creado_por": current_user["id"],
             "creado_por_nombre": current_user["full_name"],
-            "es_predio_nuevo": True,  # Marcar como predio nuevo para identificarlo
+            "es_predio_nuevo": not es_reactivacion,  # Marcar si es nuevo o reactivación
+            "es_reactivacion": es_reactivacion,
             "acto_administrativo": acto_admin  # Acto administrativo para trazabilidad
         }
-        await db.predios_actualizacion.insert_one(predio_actualizacion)
+        
+        # Si es reactivación, actualizar; si no, insertar
+        if es_reactivacion:
+            await db.predios_actualizacion.update_one(
+                {"codigo_predial_nacional": codigo_predial},
+                {"$set": predio_actualizacion},
+                upsert=True
+            )
+        else:
+            await db.predios_actualizacion.insert_one(predio_actualizacion)
         
         # También agregar acto administrativo al predio principal
         nuevo_predio["acto_administrativo"] = acto_admin
+        accion_historial = "Reactivación de predio eliminado" if es_reactivacion else "Creación de predio"
         nuevo_predio["historial_cambios"] = [{
-            "accion": "Creación de predio",
+            "accion": accion_historial,
             "fecha": datetime.now(timezone.utc).isoformat(),
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
@@ -6910,7 +6942,7 @@ async def crear_predio_con_workflow(
         # Guardar también en historial de cambios para registro (con estado aprobado)
         await db.predios_cambios.insert_one(propuesta)
         
-        mensaje = f"Predio creado exitosamente con código homologado {codigo_homologado_final}"
+        mensaje = f"{mensaje_tipo} exitosamente con código homologado {codigo_homologado_final}"
     else:
         # Usuario sin permiso: guardar en predios_cambios para aprobación
         propuesta["estado"] = PredioEstadoAprobacion.PENDIENTE_CREACION
