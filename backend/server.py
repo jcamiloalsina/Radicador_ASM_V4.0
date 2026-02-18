@@ -6678,8 +6678,17 @@ async def crear_predio_con_workflow(
     
     # Verificar si ya existe en predios activos
     existente = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
-    if existente:
-        raise HTTPException(status_code=400, detail="Este código predial ya existe")
+    
+    # Si es reactivación, verificar que esté eliminado (permite existencia en predios)
+    if es_reactivacion:
+        eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo_predial})
+        if not eliminado:
+            raise HTTPException(status_code=400, detail="Este código no está en la lista de eliminados")
+        # Si existe en predios Y está en eliminados, permitir la reactivación (actualizará el existente)
+    else:
+        # Si NO es reactivación y ya existe, bloquear
+        if existente:
+            raise HTTPException(status_code=400, detail="Este código predial ya existe")
     
     # Verificar si ya existe una propuesta pendiente para este código
     propuesta_existente = await db.predios_cambios.find_one({
@@ -6691,12 +6700,6 @@ async def crear_predio_con_workflow(
             status_code=400, 
             detail=f"Ya existe una propuesta pendiente para este código predial (ID: {propuesta_existente.get('id', 'N/A')})"
         )
-    
-    # Si es reactivación, verificar que esté eliminado
-    if es_reactivacion:
-        eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo_predial})
-        if not eliminado:
-            raise HTTPException(status_code=400, detail="Este código no está en la lista de eliminados")
     
     # Verificar geometría GDB
     geometria = await db.gdb_geometrias.find_one(
