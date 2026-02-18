@@ -6564,8 +6564,8 @@ async def verificar_codigo_completo(
 ):
     """
     Verifica un código predial completo de 30 dígitos:
-    - Si ya existe activo
-    - Si está eliminado (y ofrece reactivar)
+    - Si ya existe activo (y NO está en eliminados)
+    - Si está eliminado (y ofrece reactivar) - PRIORIDAD sobre existente
     - Si está disponible
     - Si tiene geometría GDB
     """
@@ -6575,21 +6575,8 @@ async def verificar_codigo_completo(
     if len(codigo) != 30:
         raise HTTPException(status_code=400, detail="El código predial debe tener exactamente 30 dígitos")
     
-    # Verificar si ya existe activo
-    predio_existente = await db.predios.find_one(
-        {"codigo_predial_nacional": codigo},
-        {"_id": 0, "id": 1, "municipio": 1, "nombre_propietario": 1, "estado": 1}
-    )
-    
-    if predio_existente:
-        return {
-            "estado": "existente",
-            "disponible": False,
-            "mensaje": "Este código predial ya está registrado en la base de datos",
-            "predio": predio_existente
-        }
-    
-    # Verificar si está eliminado
+    # IMPORTANTE: Verificar PRIMERO si está en eliminados (tiene prioridad)
+    # Esto permite reactivar predios que fueron eliminados pero aún existen en la colección principal
     eliminado = await db.predios_eliminados.find_one(
         {"codigo_predial_nacional": codigo},
         {"_id": 0}
@@ -6601,10 +6588,17 @@ async def verificar_codigo_completo(
         {"_id": 0, "area_m2": 1}
     )
     
+    # Si está en eliminados, permitir reactivación (incluso si existe en predios)
     if eliminado:
         # Verificar si ya tiene aprobación de reaparición
         aprobacion = await db.predios_reapariciones_aprobadas.find_one(
             {"codigo_predial_nacional": codigo, "estado": "aprobado"}
+        )
+        
+        # Verificar si también existe en predios activos (para informar al usuario)
+        existe_activo = await db.predios.find_one(
+            {"codigo_predial_nacional": codigo},
+            {"_id": 0, "id": 1, "vigencia": 1}
         )
         
         return {
@@ -6620,7 +6614,24 @@ async def verificar_codigo_completo(
             },
             "aprobacion_existente": aprobacion is not None,
             "tiene_geometria": geometria is not None,
-            "area_gdb": geometria.get("area_m2") if geometria else None
+            "area_gdb": geometria.get("area_m2") if geometria else None,
+            # Información adicional sobre registro existente (si lo hay)
+            "tiene_registro_previo": existe_activo is not None,
+            "vigencia_registro_previo": existe_activo.get("vigencia") if existe_activo else None
+        }
+    
+    # Si NO está eliminado, verificar si existe activo
+    predio_existente = await db.predios.find_one(
+        {"codigo_predial_nacional": codigo},
+        {"_id": 0, "id": 1, "municipio": 1, "nombre_propietario": 1, "estado": 1}
+    )
+    
+    if predio_existente:
+        return {
+            "estado": "existente",
+            "disponible": False,
+            "mensaje": "Este código predial ya está registrado en la base de datos",
+            "predio": predio_existente
         }
     
     # Código disponible
