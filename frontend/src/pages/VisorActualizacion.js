@@ -6123,10 +6123,38 @@ export default function VisorActualizacion() {
                 toast.error(`Error al guardar offline: ${offlineError.message || 'Verifique el almacenamiento'}`, { duration: 8000 });
               }
             } else {
-              // Mostrar error específico del servidor
-              const errorMsg = error.response?.data?.detail || 'Error al guardar visita';
-              toast.error(errorMsg, { duration: 5000 });
-              console.error('[Visita] Error detalle:', error.response?.data);
+              // Mostrar error específico del servidor con más detalle
+              const statusCode = error.response?.status;
+              const errorDetail = error.response?.data?.detail;
+              let errorMsg = errorDetail || 'Error al guardar visita';
+              
+              // Agregar código de estado para mejor diagnóstico
+              if (statusCode) {
+                errorMsg = `[${statusCode}] ${errorMsg}`;
+              }
+              
+              // Si es error de red, intentar guardar offline
+              if (error.code === 'ERR_NETWORK' || !error.response) {
+                errorMsg = 'Error de conexión con el servidor';
+                toast.error(errorMsg, { duration: 5000 });
+                // Intentar guardar offline como fallback
+                try {
+                  const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
+                  const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+                  await saveCambioPendiente({
+                    tipo: 'visita',
+                    proyecto_id: proyectoId,
+                    datos: { codigo_predial: codigoPredial, ...formData.visitaData }
+                  });
+                  toast.info('📴 Visita guardada offline como respaldo', { duration: 5000 });
+                  setShowVisitaModal(false);
+                } catch (offlineErr) {
+                  toast.error('No se pudo guardar offline tampoco', { duration: 5000 });
+                }
+              } else {
+                toast.error(errorMsg, { duration: 8000 });
+              }
+              console.error('[Visita] Error completo:', { status: statusCode, detail: errorDetail, error });
             }
           } finally {
             setSavingVisita(false);
