@@ -617,12 +617,19 @@ export async function saveCambioPendiente(cambio) {
   }
   
   try {
+    // Comprimir imágenes antes de guardar para reducir uso de almacenamiento
+    let datosOptimizados = { ...cambio };
+    
+    if (cambio.tipo === 'visita' && cambio.datos) {
+      datosOptimizados.datos = await comprimirDatosVisita(cambio.datos);
+    }
+    
     const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
     const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
     
     const record = {
       id: `cambio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      ...cambio,
+      ...datosOptimizados,
       fecha: new Date().toISOString(),
       sincronizado: false,
       intentos: 0
@@ -645,6 +652,67 @@ export async function saveCambioPendiente(cambio) {
     error.originalError = e;
     throw error;
   }
+}
+
+// Función para comprimir imágenes base64
+async function comprimirImagen(base64, quality = 0.6, maxWidth = 1200) {
+  return new Promise((resolve) => {
+    if (!base64 || !base64.startsWith('data:image')) {
+      resolve(base64);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+}
+
+// Comprimir datos de visita (firmas y fotos)
+async function comprimirDatosVisita(datos) {
+  const datosComprimidos = { ...datos };
+  
+  // Comprimir firmas (calidad 0.7, max 800px)
+  if (datosComprimidos.firma_visitado_base64) {
+    datosComprimidos.firma_visitado_base64 = await comprimirImagen(
+      datosComprimidos.firma_visitado_base64, 0.7, 800
+    );
+  }
+  if (datosComprimidos.firma_reconocedor_base64) {
+    datosComprimidos.firma_reconocedor_base64 = await comprimirImagen(
+      datosComprimidos.firma_reconocedor_base64, 0.7, 800
+    );
+  }
+  
+  // Comprimir fotos (calidad 0.5, max 1200px)
+  if (datosComprimidos.fotos && Array.isArray(datosComprimidos.fotos)) {
+    datosComprimidos.fotos = await Promise.all(
+      datosComprimidos.fotos.map(async (foto) => {
+        if (typeof foto === 'string') {
+          return await comprimirImagen(foto, 0.5, 1200);
+        } else if (foto?.data) {
+          return { ...foto, data: await comprimirImagen(foto.data, 0.5, 1200) };
+        }
+        return foto;
+      })
+    );
+  }
+  
+  console.log('[OfflineDB] Datos de visita comprimidos');
+  return datosComprimidos;
 }
 
 export async function getCambiosPendientes(proyectoId = null) {
