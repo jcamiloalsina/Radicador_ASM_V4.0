@@ -610,7 +610,11 @@ export async function getConstruccionesOffline(proyectoId) {
 
 export async function saveCambioPendiente(cambio) {
   const database = await initOfflineDB();
-  if (!database) return null;
+  if (!database) {
+    const error = new Error('No se pudo inicializar la base de datos offline');
+    error.code = 'DB_INIT_ERROR';
+    throw error;
+  }
   
   try {
     const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
@@ -636,7 +640,10 @@ export async function saveCambioPendiente(cambio) {
     return record.id;
   } catch (e) {
     console.error('[OfflineDB] Error guardando cambio:', e);
-    return null;
+    const error = new Error(`Error guardando offline: ${e.message || 'Error desconocido'}`);
+    error.code = 'SAVE_ERROR';
+    error.originalError = e;
+    throw error;
   }
 }
 
