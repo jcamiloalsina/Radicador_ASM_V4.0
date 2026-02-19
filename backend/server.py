@@ -8617,7 +8617,7 @@ async def import_predios_excel(
             "message": f"Importación exitosa para {municipio}",
             "vigencia": vigencia_int,
             "predios_importados": len(predios_list),
-            "predios_anteriores": len(existing_predios),
+            "predios_anteriores": len(existing_predios_vigencia_actual),
             "predios_eliminados": predios_eliminados_count,
             "predios_nuevos": predios_nuevos_count,
             "municipio": municipio
