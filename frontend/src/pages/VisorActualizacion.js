@@ -5851,6 +5851,19 @@ export default function VisorActualizacion() {
                       </Button>
                     )}
                     
+                    {/* Botón Revertir Visita - Solo coordinadores cuando está visitado o visitado_firmado */}
+                    {(user?.role === 'coordinador' || user?.role === 'administrador') && 
+                     (selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowRevertirModal(true)}
+                        className="border-orange-500 text-orange-700 hover:bg-orange-50"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Revertir Visita
+                      </Button>
+                    )}
+                    
                     {/* Botón Formato de Visita - Visible si NO está actualizado ni firmado (ambos bloqueados) */}
                     {selectedPredio.estado_visita !== 'actualizado' && selectedPredio.estado_visita !== 'visitado_firmado' && (
                       <Button 
