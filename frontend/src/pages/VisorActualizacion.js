@@ -6015,13 +6015,71 @@ export default function VisorActualizacion() {
               return;
             }
             
-            // Enviar TODOS los datos del formulario completos
+            // ========== FUNCIÓN DE COMPRESIÓN DE IMÁGENES ==========
+            const compressImage = (base64, quality = 0.6, maxWidth = 1200) => {
+              return new Promise((resolve) => {
+                if (!base64 || !base64.startsWith('data:image')) {
+                  resolve(base64);
+                  return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  let width = img.width;
+                  let height = img.height;
+                  if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                  }
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(img, 0, 0, width, height);
+                  resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => resolve(base64);
+                img.src = base64;
+              });
+            };
+            
+            // Comprimir firmas y fotos antes de enviar
+            let datosComprimidos = { ...formData.visitaData };
+            
+            // Comprimir firmas (calidad 0.7, máximo 800px)
+            if (datosComprimidos.firma_visitado_base64) {
+              datosComprimidos.firma_visitado_base64 = await compressImage(
+                datosComprimidos.firma_visitado_base64, 0.7, 800
+              );
+            }
+            if (datosComprimidos.firma_reconocedor_base64) {
+              datosComprimidos.firma_reconocedor_base64 = await compressImage(
+                datosComprimidos.firma_reconocedor_base64, 0.7, 800
+              );
+            }
+            
+            // Comprimir fotos (calidad 0.5, máximo 1200px)
+            let fotosComprimidas = formData.fotos;
+            if (formData.fotos && formData.fotos.length > 0) {
+              fotosComprimidas = await Promise.all(
+                formData.fotos.map(async (foto) => {
+                  if (typeof foto === 'string') {
+                    return await compressImage(foto, 0.5, 1200);
+                  } else if (foto?.data) {
+                    return { ...foto, data: await compressImage(foto.data, 0.5, 1200) };
+                  }
+                  return foto;
+                })
+              );
+            }
+            // ========== FIN COMPRESIÓN ==========
+            
+            // Enviar TODOS los datos del formulario completos (ya comprimidos)
             const datosActualizacion = {
-              ...formData.visitaData,  // Todos los campos del formulario de visita
+              ...datosComprimidos,  // Datos con firmas comprimidas
               propietarios: formData.propietarios,
               construcciones: formData.construcciones,
               calificaciones: formData.calificaciones,
-              fotos: formData.fotos,
+              fotos: fotosComprimidas,  // Fotos comprimidas
               // Renombrar campos para consistencia con el backend
               propietarios_visita: formData.propietarios,
               construcciones_visita: formData.construcciones,
@@ -6034,10 +6092,30 @@ export default function VisorActualizacion() {
             let nuevoEstado = 'visitado';
             
             if (isOnline) {
-              const response = await axios.post(`${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, datosActualizacion, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-                timeout: 120000 // 2 minutos timeout para permitir subida de fotos grandes
-              });
+              // Función para intentar con reintentos
+              const intentarGuardar = async (intento = 1, maxIntentos = 3) => {
+                try {
+                  return await axios.post(
+                    `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoPredial}/visita`, 
+                    datosActualizacion, 
+                    {
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                      timeout: 180000 // 3 minutos timeout para conexiones lentas
+                    }
+                  );
+                } catch (err) {
+                  const esErrorRed = err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK' || !err.response;
+                  if (esErrorRed && intento < maxIntentos) {
+                    console.log(`[Visita] Reintento ${intento}/${maxIntentos}...`);
+                    toast.info(`Reintentando (${intento}/${maxIntentos})...`, { duration: 2000 });
+                    await new Promise(r => setTimeout(r, 2000 * intento)); // Espera exponencial
+                    return intentarGuardar(intento + 1, maxIntentos);
+                  }
+                  throw err;
+                }
+              };
+              
+              const response = await intentarGuardar();
               nuevoEstado = response.data?.estado_visita || 'visitado';
               const estaFirmado = response.data?.firmado || nuevoEstado === 'visitado_firmado';
               
