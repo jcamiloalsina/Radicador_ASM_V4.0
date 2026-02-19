@@ -6492,6 +6492,93 @@ export default function VisorActualizacion() {
         </DialogContent>
       </Dialog>
       
+      {/* Modal Revertir Visita - Solo Coordinadores */}
+      <Dialog open={showRevertirModal} onOpenChange={setShowRevertirModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-700">
+              <RefreshCcw className="w-5 h-5" />
+              Revertir Visita
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará la visita actual y permitirá al gestor volver a realizarla.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedPredio && (
+              <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg">
+                <p className="text-sm text-orange-700 font-medium">Predio:</p>
+                <p className="font-mono text-sm">{selectedPredio.codigo_predial || selectedPredio.numero_predial}</p>
+                {selectedPredio.direccion && (
+                  <p className="text-sm text-slate-500 mt-1">{selectedPredio.direccion}</p>
+                )}
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge className={selectedPredio.estado_visita === 'visitado_firmado' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-blue-100 text-blue-800'}>
+                    {selectedPredio.estado_visita === 'visitado_firmado' ? 'Firmado' : 'Visitado'}
+                  </Badge>
+                  {selectedPredio.formato_visita?.fecha_visita && (
+                    <span className="text-xs text-slate-500">
+                      Visita: {new Date(selectedPredio.formato_visita.fecha_visita).toLocaleDateString('es-CO')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Motivo de la reversión <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                rows={3}
+                placeholder="Indique el motivo por el cual se debe revertir la visita..."
+                value={motivoReversion}
+                onChange={(e) => setMotivoReversion(e.target.value)}
+              />
+            </div>
+            
+            <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
+              <p className="font-medium text-slate-700 mb-1">⚠️ Importante:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Se eliminará el formato de visita actual</li>
+                <li>Se borrará la información de fotos y firmas</li>
+                <li>El gestor deberá realizar la visita nuevamente</li>
+                <li>Esta acción quedará registrada en el historial</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowRevertirModal(false);
+                setMotivoReversion('');
+              }}
+              disabled={revirtiendoVisita}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleRevertirVisita}
+              disabled={revirtiendoVisita || !motivoReversion.trim()}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {revirtiendoVisita ? (
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCcw className="w-4 h-4 mr-2" />
+              )}
+              Confirmar Reversión
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Modal Confirmación Re-visita */}
       <Dialog open={showConfirmRevisita} onOpenChange={setShowConfirmRevisita}>
         <DialogContent className="max-w-md">
