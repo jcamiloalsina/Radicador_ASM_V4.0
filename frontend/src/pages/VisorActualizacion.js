@@ -6047,7 +6047,21 @@ export default function VisorActualizacion() {
                 toast.success(`Visita de ${esMejora ? 'mejora' : 'terreno'} guardada correctamente`);
               }
             } else {
-              await saveCambioPendiente({
+              // MODO OFFLINE: Guardar localmente
+              console.log('[Visita] Modo offline - guardando localmente...');
+              try {
+                await saveCambioPendiente({
+                  tipo: 'visita',
+                  proyecto_id: proyectoId,
+                  datos: { codigo_predial: codigoPredial, ...datosActualizacion }
+                });
+                toast.info('📴 Visita guardada offline - Se sincronizará cuando haya conexión', { duration: 5000 });
+              } catch (offlineError) {
+                console.error('[Visita] Error guardando offline:', offlineError);
+                toast.error(`Error al guardar offline: ${offlineError.message || 'Verifique el almacenamiento del dispositivo'}`, { duration: 8000 });
+                setSavingVisita(false);
+                return; // No cerrar el modal si hay error
+              }
                 tipo: 'visita',
                 proyecto_id: proyectoId,
                 datos: { codigo_predial: codigoPredial, ...datosActualizacion }
