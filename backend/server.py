@@ -17858,6 +17858,102 @@ async def guardar_visita_predio(
     }
 
 
+@api_router.delete("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/visita")
+async def revertir_visita_firmada(
+    proyecto_id: str,
+    codigo_predial: str,
+    data: dict = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Revierte/elimina una visita firmada para que el gestor pueda volver a realizarla.
+    SOLO disponible para COORDINADORES y ADMINISTRADORES.
+    """
+    # Solo coordinadores y administradores pueden revertir
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Solo coordinadores y administradores pueden revertir visitas firmadas"
+        )
+    
+    # Buscar el predio
+    predio = await db.predios_actualizacion.find_one({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"codigo_predial": codigo_predial},
+            {"numero_predial": codigo_predial}
+        ]
+    })
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    estado_actual = predio.get('estado_visita', 'pendiente')
+    
+    # Verificar que el predio tenga una visita firmada
+    if estado_actual not in ['visitado', 'visitado_firmado']:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"El predio no tiene visita para revertir. Estado actual: {estado_actual}"
+        )
+    
+    motivo = data.get('motivo', 'Sin motivo especificado') if data else 'Sin motivo especificado'
+    ahora = datetime.now(timezone.utc).isoformat()
+    
+    # Guardar copia de la visita anterior en historial antes de eliminarla
+    visita_anterior = predio.get('formato_visita', {})
+    
+    # Revertir el predio a estado pendiente y limpiar datos de visita
+    historial_entry = {
+        "accion": "visita_revertida",
+        "fecha": ahora,
+        "usuario": current_user['full_name'],
+        "usuario_id": current_user['id'],
+        "rol": current_user['role'],
+        "motivo": motivo,
+        "estado_anterior": estado_actual,
+        "visita_eliminada": {
+            "fecha_visita": visita_anterior.get('fecha_visita'),
+            "visitado_por": predio.get('visitado_por'),
+            "firma_visitante": "Sí" if visita_anterior.get('firma_visitante') else "No",
+            "firma_propietario": "Sí" if visita_anterior.get('firma_propietario') else "No"
+        }
+    }
+    
+    # Actualizar el predio
+    await db.predios_actualizacion.update_one(
+        {"_id": predio["_id"]},
+        {
+            "$set": {
+                "estado_visita": "pendiente",
+                "formato_visita": None,  # Limpiar el formato de visita
+                "visitado_por": None,
+                "visitado_en": None,
+                "ubicacion_gps": None,
+                "updated_at": ahora,
+                "visita_revertida_en": ahora,
+                "visita_revertida_por": current_user['full_name'],
+                "visita_revertida_por_id": current_user['id'],
+                "motivo_reversion": motivo
+            },
+            "$push": {
+                "historial": historial_entry
+            }
+        }
+    )
+    
+    logger.info(f"Visita revertida por {current_user['email']}: predio {codigo_predial}, motivo: {motivo}")
+    
+    return {
+        "message": "Visita revertida exitosamente. El gestor puede volver a realizar la visita.",
+        "codigo_predial": codigo_predial,
+        "estado_anterior": estado_actual,
+        "estado_nuevo": "pendiente",
+        "revertido_por": current_user['full_name'],
+        "motivo": motivo
+    }
+
+
 @api_router.patch("/actualizacion/proyectos/{proyecto_id}/predios/{codigo_predial}/estado")
 async def actualizar_estado_predio(
     proyecto_id: str,
