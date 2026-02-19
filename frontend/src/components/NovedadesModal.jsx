@@ -9,6 +9,32 @@ import { Sparkles, CheckCircle, Bug, Wrench, Star } from 'lucide-react';
 // ============================================================
 const CHANGELOG = [
   {
+    version: "2.7.0",
+    fecha: "19 de Febrero 2026",
+    cambios: [
+      { tipo: "nuevo", texto: "Botón para revertir visita firmada (solo coordinadores)" },
+      { tipo: "nuevo", texto: "Documentación PDF del API generada automáticamente" },
+      { tipo: "mejora", texto: "Timeouts configurados en todas las operaciones de sincronización" },
+      { tipo: "fix", texto: "Corrección de reactivación de predios eliminados" }
+    ]
+  },
+  {
+    version: "2.6.0",
+    fecha: "17-18 de Febrero 2026",
+    cambios: [
+      { tipo: "fix", texto: "Corrección de sincronización offline con método POST correcto" },
+      { tipo: "fix", texto: "Corrección de colores en mapa para predios visitado_firmado" },
+      { tipo: "fix", texto: "Corrección de geometría GDB al seleccionar predio de lista" },
+      { tipo: "nuevo", texto: "Campo opcional 'Acto Administrativo' en creación de predios" },
+      { tipo: "nuevo", texto: "Badges de origen de petición (empresa/ciudadano/interno)" },
+      { tipo: "nuevo", texto: "Notificaciones por email al crear peticiones" },
+      { tipo: "nuevo", texto: "Generación de PDF para mejoras" },
+      { tipo: "mejora", texto: "Combobox unificado para selección de gestor" },
+      { tipo: "mejora", texto: "Botón para limpiar cambios pendientes con error" },
+      { tipo: "mejora", texto: "Tipo 'Otros' agregado a tipos de trámite" }
+    ]
+  },
+  {
     version: "2.5.0",
     fecha: "16 de Febrero 2026",
     cambios: [
