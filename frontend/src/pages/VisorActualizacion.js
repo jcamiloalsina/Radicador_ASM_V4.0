@@ -364,6 +364,9 @@ export default function VisorActualizacion() {
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
+  const [revirtiendoVisita, setRevirtiendoVisita] = useState(false);
+  const [motivoReversion, setMotivoReversion] = useState('');
+  const [showRevertirModal, setShowRevertirModal] = useState(false);
   
   // Estados para construcciones (como en Conservación)
   const [tieneConstrucciones, setTieneConstrucciones] = useState(false);
