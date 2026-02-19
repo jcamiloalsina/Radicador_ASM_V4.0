@@ -309,54 +309,69 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         setSyncProgress({ current: i + 1, total: cambios.length, message: `Sincronizando ${i + 1}/${cambios.length}...` });
         
         try {
-          // Usar el proyecto_id guardado en el cambio, no el actual
-          const cambioProyectoId = cambio.proyecto_id;
-          
-          // Configuración común con timeout extendido para datos grandes (fotos, firmas)
+          // Configuración común con timeout extendido para datos grandes
           const config = { 
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 120000 // 2 minutos por cambio
+            timeout: 180000 // 3 minutos por cambio (aumentado para conexiones lentas)
           };
           
-          switch (cambio.tipo) {
-            case 'visita':
-              // CORREGIDO: Usar POST a /visita (no PATCH)
-              await axios.post(
-                `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/visita`,
-                cambio.datos,
-                config
-              );
-              break;
-            
-            case 'propuesta':
-              await axios.post(
-                `${API}/api/actualizacion/proyectos/${cambioProyectoId}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}/propuesta`,
-                cambio.datos,
-                config
-              );
-              break;
-            
-            case 'actualizacion_predio':
-              await axios.patch(
-                `${API}/api/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
-                cambio.datos,
-                config
-              );
-              break;
-
-            default:
-              console.warn(`[Sync] Tipo no reconocido: ${cambio.tipo}`);
+          // Comprimir datos de visita antes de enviar
+          let datosAEnviar = cambio.datos;
+          if (cambio.tipo === 'visita') {
+            console.log(`[Sync] Comprimiendo datos de visita ${cambio.id}...`);
+            datosAEnviar = await compressVisitaData(cambio.datos);
           }
+          
+          // Ejecutar petición con reintentos automáticos
+          await requestWithRetry(async () => {
+            switch (cambio.tipo) {
+              case 'visita':
+                await axios.post(
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(datosAEnviar.codigo_predial)}/visita`,
+                  datosAEnviar,
+                  config
+                );
+                break;
+              
+              case 'propuesta':
+                await axios.post(
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(datosAEnviar.codigo_predial)}/propuesta`,
+                  datosAEnviar,
+                  config
+                );
+                break;
+              
+              case 'actualizacion_predio':
+                await axios.patch(
+                  `${API}/api/predios/${encodeURIComponent(datosAEnviar.codigo_predial)}`,
+                  datosAEnviar,
+                  config
+                );
+                break;
+
+              default:
+                console.warn(`[Sync] Tipo no reconocido: ${cambio.tipo}`);
+            }
+          }, MAX_RETRIES);
 
           await eliminarCambioSincronizado(cambio.id);
           sincronizados++;
-          console.log(`[Sync] ✓ Cambio ${cambio.id} sincronizado (proyecto: ${cambioProyectoId})`);
+          console.log(`[Sync] ✓ Cambio ${cambio.id} sincronizado (proyecto: ${cambio.proyecto_id})`);
         } catch (error) {
           console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
+          
+          // Marcar el cambio con error para que el usuario pueda verlo
           if (error.code === 'ECONNABORTED') {
-            console.error(`[Sync] Timeout en cambio ${cambio.id} - se reintentará`);
+            console.error(`[Sync] Timeout en cambio ${cambio.id} después de ${MAX_RETRIES} reintentos`);
           }
           errores++;
+          
+          // Si hay muchos errores seguidos, pausar para no saturar
+          if (errores >= 3) {
+            console.log('[Sync] Demasiados errores, pausando sincronización...');
+            toast.warning('Conexión inestable. La sincronización se pausará y reintentará más tarde.', { duration: 5000 });
+            break;
+          }
         }
       }
 
