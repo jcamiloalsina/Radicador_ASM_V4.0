@@ -27,6 +27,121 @@ const API = process.env.REACT_APP_BACKEND_URL;
 // Intervalo de sincronización en segundo plano (5 minutos cuando online)
 const BACKGROUND_SYNC_INTERVAL = 5 * 60 * 1000;
 
+// Configuración de reintentos
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE = 2000; // 2 segundos base, se multiplica exponencialmente
+
+// ========== UTILIDADES DE OPTIMIZACIÓN ==========
+
+/**
+ * Comprime una imagen base64 reduciendo su calidad
+ * @param {string} base64 - Imagen en formato base64
+ * @param {number} quality - Calidad de 0 a 1 (default 0.6)
+ * @param {number} maxWidth - Ancho máximo en pixels (default 1200)
+ * @returns {Promise<string>} - Imagen comprimida en base64
+ */
+const compressBase64Image = (base64, quality = 0.6, maxWidth = 1200) => {
+  return new Promise((resolve) => {
+    // Si no es una imagen válida, retornar sin cambios
+    if (!base64 || !base64.startsWith('data:image')) {
+      resolve(base64);
+      return;
+    }
+    
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      
+      // Redimensionar si es muy grande
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convertir a JPEG con la calidad especificada
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressed);
+    };
+    
+    img.onerror = () => resolve(base64); // Si falla, retornar original
+    img.src = base64;
+  });
+};
+
+/**
+ * Comprime todas las imágenes en los datos de una visita
+ */
+const compressVisitaData = async (datos) => {
+  const compressedDatos = { ...datos };
+  
+  // Comprimir firmas
+  if (compressedDatos.firma_visitado_base64) {
+    compressedDatos.firma_visitado_base64 = await compressBase64Image(
+      compressedDatos.firma_visitado_base64, 0.7, 800
+    );
+  }
+  if (compressedDatos.firma_reconocedor_base64) {
+    compressedDatos.firma_reconocedor_base64 = await compressBase64Image(
+      compressedDatos.firma_reconocedor_base64, 0.7, 800
+    );
+  }
+  
+  // Comprimir fotos
+  if (compressedDatos.fotos && Array.isArray(compressedDatos.fotos)) {
+    compressedDatos.fotos = await Promise.all(
+      compressedDatos.fotos.map(async (foto) => {
+        if (typeof foto === 'string') {
+          return await compressBase64Image(foto, 0.5, 1200);
+        } else if (foto?.data) {
+          return { ...foto, data: await compressBase64Image(foto.data, 0.5, 1200) };
+        }
+        return foto;
+      })
+    );
+  }
+  
+  return compressedDatos;
+};
+
+/**
+ * Ejecuta una petición con reintentos automáticos
+ */
+const requestWithRetry = async (requestFn, maxRetries = MAX_RETRIES) => {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      lastError = error;
+      const isNetworkError = error.code === 'ECONNABORTED' || 
+                            error.code === 'ERR_NETWORK' || 
+                            !error.response;
+      
+      // Solo reintentar en errores de red, no en errores del servidor (4xx, 5xx)
+      if (!isNetworkError || attempt === maxRetries) {
+        throw error;
+      }
+      
+      const delay = RETRY_DELAY_BASE * Math.pow(2, attempt - 1); // Backoff exponencial
+      console.log(`[Sync] Reintento ${attempt}/${maxRetries} en ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+};
+
+// ========== FIN UTILIDADES ==========
+
 export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
