@@ -5859,7 +5859,7 @@ export default function VisorActualizacion() {
                         onClick={() => setShowRevertirModal(true)}
                         className="border-orange-500 text-orange-700 hover:bg-orange-50"
                       >
-                        <RotateCcw className="w-4 h-4 mr-2" />
+                        <RefreshCcw className="w-4 h-4 mr-2" />
                         Revertir Visita
                       </Button>
                     )}
