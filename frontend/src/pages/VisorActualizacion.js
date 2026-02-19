@@ -6062,11 +6062,6 @@ export default function VisorActualizacion() {
                 setSavingVisita(false);
                 return; // No cerrar el modal si hay error
               }
-                tipo: 'visita',
-                proyecto_id: proyectoId,
-                datos: { codigo_predial: codigoPredial, ...datosActualizacion }
-              });
-              toast.info(`Visita de ${esMejora ? 'mejora' : 'terreno'} guardada offline - Se sincronizará al recuperar conexión`);
             }
 
             setShowVisitaModal(false);
