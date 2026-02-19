@@ -6098,10 +6098,11 @@ export default function VisorActualizacion() {
                   proyecto_id: proyectoId,
                   datos: { codigo_predial: codigoPredial, ...formData.visitaData }
                 });
-                toast.info('Visita guardada offline - Se sincronizará cuando mejore la conexión');
+                toast.info('📴 Visita guardada offline (timeout) - Se sincronizará cuando mejore la conexión', { duration: 5000 });
                 setShowVisitaModal(false);
               } catch (offlineError) {
-                toast.error('Error al guardar visita');
+                console.error('[Visita] Error guardando offline después de timeout:', offlineError);
+                toast.error(`Error al guardar offline: ${offlineError.message || 'Verifique el almacenamiento'}`, { duration: 8000 });
               }
               return;
             }
@@ -6115,10 +6116,11 @@ export default function VisorActualizacion() {
                   proyecto_id: proyectoId,
                   datos: { codigo_predial: codigoPredial, ...formData.visitaData }
                 });
-                toast.info('Visita guardada offline');
+                toast.info('📴 Visita guardada offline', { duration: 5000 });
                 setShowVisitaModal(false);
               } catch (offlineError) {
-                toast.error('Error al guardar visita');
+                console.error('[Visita] Error guardando offline:', offlineError);
+                toast.error(`Error al guardar offline: ${offlineError.message || 'Verifique el almacenamiento'}`, { duration: 8000 });
               }
             } else {
               // Mostrar error específico del servidor
