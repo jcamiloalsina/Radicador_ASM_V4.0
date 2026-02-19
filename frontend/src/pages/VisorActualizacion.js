@@ -3821,6 +3821,51 @@ export default function VisorActualizacion() {
     }
   };
   
+  // Revertir visita firmada (solo coordinadores)
+  const handleRevertirVisita = async () => {
+    if (!selectedPredio || !motivoReversion.trim()) {
+      toast.error('Debe indicar un motivo para revertir la visita');
+      return;
+    }
+    
+    setRevirtiendoVisita(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+      
+      const response = await axios.delete(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigoPredial)}/visita`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { motivo: motivoReversion },
+          timeout: 60000
+        }
+      );
+      
+      toast.success('Visita revertida. El gestor puede volver a realizarla.');
+      
+      // Actualizar el estado del predio localmente
+      setSelectedPredio(prev => ({
+        ...prev,
+        estado_visita: 'pendiente',
+        formato_visita: null
+      }));
+      
+      // Refrescar datos del proyecto
+      fetchProyecto();
+      
+      // Cerrar modal y limpiar
+      setShowRevertirModal(false);
+      setMotivoReversion('');
+      
+    } catch (error) {
+      console.error('Error al revertir visita:', error);
+      toast.error(error.response?.data?.detail || 'Error al revertir la visita');
+    } finally {
+      setRevirtiendoVisita(false);
+    }
+  };
+  
   // ========== FIN FUNCIONES PROPUESTAS E HISTORIAL ==========
   
   // Estilo de geometrías
