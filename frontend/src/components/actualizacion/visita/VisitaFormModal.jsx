@@ -262,7 +262,7 @@ const Page1 = memo(({ data, setField, predio, proyecto }) => (
         <div>
           <Label className="text-xs text-slate-500 mb-2 block">Destino Económico</Label>
           <div className="grid grid-cols-4 gap-1 text-xs">
-            {['A-Habitacional','B-Industrial','C-Comercial','D-Agropecuario','E-Minero','F-Cultural','G-Recreacional','H-Salubridad','I-Institucional','J-Educativo','K-Religioso','L-Agrícola','M-Pecuario','N-Agroindustrial','O-Forestal','P-Uso Público'].map(d => {
+            {['A-Habitacional','B-Industrial','C-Comercial','D-Agropecuario','E-Minero','F-Cultural','G-Recreacional','H-Salubridad','I-Institucional','J-Educativo','K-Religioso','L-Agrícola','M-Pecuario','N-Agroindustrial','O-Forestal','P-Uso Público','Q-Lote Urbanizable No Urbanizado','R-Lote Urbanizado No Edificado','S-Lote No Urbanizable','T-Servicios Especiales'].map(d => {
               const [v, l] = d.split('-');
               return (
                 <label key={v} className="flex items-center gap-1 cursor-pointer">
