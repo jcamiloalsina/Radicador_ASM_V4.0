@@ -133,22 +133,10 @@ export default function DashboardLayout() {
       const total = cambios + prediosNuevos + reapariciones;
       
       setCambiosPendientesCount(total);
-      setNovedadesDetalle({ cambios, prediosNuevos, reapariciones });
-      
-      // Mostrar banner si hay pendientes y no se ha cerrado en esta sesión
-      const bannerCerrado = sessionStorage.getItem('novedadesBannerCerrado');
-      if (total > 0 && !bannerCerrado) {
-        setShowNovedadesBanner(true);
-      }
     } catch (error) {
       console.error('Error fetching pending changes:', error);
     }
   }, []);
-
-  const cerrarBannerNovedades = () => {
-    setShowNovedadesBanner(false);
-    sessionStorage.setItem('novedadesBannerCerrado', 'true');
-  };
 
   const handleNotificationClick = (notif) => {
     // Marcar como leída
