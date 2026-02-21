@@ -879,6 +879,59 @@ export default function VisorActualizacion() {
     }
   }, [showEstadisticasPanel, estadisticasAvanzadas, loadingEstadisticas, fetchEstadisticasAvanzadas]);
   
+  // Función para exportar Excel R1/R2
+  const handleExportExcelR1R2 = useCallback(async (soloActualizados = false) => {
+    if (!proyectoId) return;
+    
+    setExportingExcel(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/exportar-excel${soloActualizados ? '?solo_actualizados=true' : ''}`,
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob',
+          timeout: 120000 // 2 minutos para proyectos grandes
+        }
+      );
+      
+      // Crear blob y descargar
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Obtener nombre del archivo del header o usar uno por defecto
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `R1R2_${proyecto?.municipio || 'Proyecto'}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Excel R1/R2 exportado correctamente');
+    } catch (error) {
+      console.error('Error exportando Excel:', error);
+      if (error.response?.status === 404) {
+        toast.error('No hay predios para exportar con los criterios especificados');
+      } else {
+        toast.error('Error al exportar Excel R1/R2');
+      }
+    } finally {
+      setExportingExcel(false);
+    }
+  }, [proyectoId, proyecto?.municipio]);
+  
   // Cargar geometrías - Primero desde caché, luego del servidor con descarga progresiva
   const fetchGeometrias = async (forceRefresh = false) => {
     try {
