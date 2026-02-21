@@ -10,7 +10,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predios-creation.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://visit-form-mobile.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 COORDINADOR_EMAIL = "Camilo.alsina1@hotmail.com"
