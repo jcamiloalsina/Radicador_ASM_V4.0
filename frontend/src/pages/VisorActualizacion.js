@@ -4718,6 +4718,40 @@ export default function VisorActualizacion() {
               </span>
             </div>
           )}
+          
+          {/* Botones de Exportación Excel R1/R2 */}
+          <div className="mt-4 pt-3 border-t border-emerald-200 flex flex-wrap gap-3">
+            <Button
+              onClick={() => handleExportExcelR1R2(false)}
+              disabled={exportingExcel}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3"
+              data-testid="export-excel-all-btn"
+            >
+              {exportingExcel ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-3 h-3 mr-2" />
+              )}
+              Exportar Excel R1/R2 Completo
+            </Button>
+            <Button
+              onClick={() => handleExportExcelR1R2(true)}
+              disabled={exportingExcel}
+              variant="outline"
+              className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 text-xs h-8 px-3"
+              data-testid="export-excel-updated-btn"
+            >
+              {exportingExcel ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3 mr-2" />
+              )}
+              Solo Actualizados/Firmados
+            </Button>
+            <span className="text-[10px] text-slate-500 flex items-center">
+              Incluye: Predios GDB + Nuevos aprobados + Mejoras aprobadas + Cambios aprobados
+            </span>
+          </div>
         </div>
       )}
       
