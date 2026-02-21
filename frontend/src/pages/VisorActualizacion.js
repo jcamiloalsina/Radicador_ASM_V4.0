@@ -110,7 +110,12 @@ import {
   Building2,
   FileCheck,
   ClipboardList,
-  RefreshCcw
+  RefreshCcw,
+  BarChart3,
+  TrendingUp,
+  CheckCheck,
+  Ban,
+  FilePlus
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
