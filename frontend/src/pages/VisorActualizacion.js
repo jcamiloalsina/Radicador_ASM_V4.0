@@ -841,6 +841,36 @@ export default function VisorActualizacion() {
     }
   }, [proyectoId]);
   
+  // Cargar estadísticas avanzadas del proyecto
+  const fetchEstadisticasAvanzadas = useCallback(async () => {
+    if (!proyectoId) return;
+    
+    setLoadingEstadisticas(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/estadisticas-avanzadas`,
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000
+        }
+      );
+      setEstadisticasAvanzadas(response.data);
+    } catch (error) {
+      console.error('Error cargando estadísticas avanzadas:', error);
+      // No mostrar toast para no molestar, las estadísticas son opcionales
+    } finally {
+      setLoadingEstadisticas(false);
+    }
+  }, [proyectoId]);
+  
+  // Cargar estadísticas cuando se abre el panel o se carga el proyecto
+  useEffect(() => {
+    if (showEstadisticasPanel && !estadisticasAvanzadas && !loadingEstadisticas) {
+      fetchEstadisticasAvanzadas();
+    }
+  }, [showEstadisticasPanel, estadisticasAvanzadas, loadingEstadisticas, fetchEstadisticasAvanzadas]);
+  
   // Cargar geometrías - Primero desde caché, luego del servidor con descarga progresiva
   const fetchGeometrias = async (forceRefresh = false) => {
     try {
