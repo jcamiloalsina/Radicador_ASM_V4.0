@@ -3209,9 +3209,9 @@ async def asignar_gestor_a_tramite(petition_id: str, gestor_id: str, current_use
 
 @api_router.post("/petitions/{petition_id}/marcar-completado")
 async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depends(get_current_user)):
-    """El gestor marca su trabajo como completado en el trámite"""
-    if current_user['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
-        raise HTTPException(status_code=403, detail="Solo gestores pueden marcar su trabajo como completado")
+    """El gestor/atención al usuario marca su trabajo como completado en el trámite"""
+    if current_user['role'] not in [UserRole.GESTOR, UserRole.ATENCION_USUARIO, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para marcar trabajo como completado")
     
     petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
     if not petition:
