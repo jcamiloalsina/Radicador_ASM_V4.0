@@ -18608,7 +18608,6 @@ async def exportar_actualizacion_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-    )
 
 
 # ==================== PROPUESTAS DE CAMBIO ====================
