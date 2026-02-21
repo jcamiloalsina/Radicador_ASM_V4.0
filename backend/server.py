@@ -18550,6 +18550,15 @@ async def exportar_actualizacion_excel(
     # === HOJA RESUMEN ===
     ws_resumen = wb.create_sheet(title="RESUMEN")
     
+    # Calcular estadísticas
+    count_con_geometria = len([p for p in predios if p.get('tipo_cambio') == 'con_geometria'])
+    count_original = len([p for p in predios if p.get('tipo_cambio') == 'original'])
+    count_predio_nuevo = len([p for p in predios if p.get('tipo_cambio') == 'predio_nuevo'])
+    count_mejora_nueva = len([p for p in predios if p.get('tipo_cambio') == 'mejora_nueva'])
+    count_actualizado = len([p for p in predios if p.get('tipo_cambio') == 'actualizado' or p.get('estado_visita') == 'actualizado'])
+    count_firmado = len([p for p in predios if p.get('estado_visita') == 'visitado_firmado'])
+    count_visitado = len([p for p in predios if p.get('estado_visita') == 'visitado'])
+    
     resumen_data = [
         ["RESUMEN DE EXPORTACIÓN R1/R2"],
         [""],
@@ -18557,20 +18566,25 @@ async def exportar_actualizacion_excel(
         ["Municipio:", municipio],
         ["Fecha de exportación:", datetime.now().strftime('%Y-%m-%d %H:%M')],
         ["Exportado por:", current_user.get('full_name', '')],
+        ["Modo:", "Solo actualizados/firmados" if solo_actualizados else "Completo (todos los predios)"],
         [""],
         ["ESTADÍSTICAS:"],
         ["Total predios exportados:", len(predios)],
-        ["Predios con GDB (originales):", len([p for p in predios if p.get('tipo_cambio') == 'original'])],
-        ["Predios nuevos aprobados:", len([p for p in predios if p.get('tipo_cambio') == 'predio_nuevo'])],
-        ["Mejoras nuevas aprobadas:", len([p for p in predios if p.get('tipo_cambio') == 'mejora_nueva'])],
-        ["Predios actualizados:", len([p for p in predios if p.get('tipo_cambio') == 'actualizado' or p.get('estado_visita') == 'actualizado'])],
-        ["Visitas firmadas:", len([p for p in predios if p.get('estado_visita') == 'visitado_firmado'])],
+        ["Predios con geometría GDB:", count_con_geometria],
+        ["Predios originales (R1/R2):", count_original],
+        ["Predios nuevos aprobados:", count_predio_nuevo],
+        ["Mejoras nuevas aprobadas:", count_mejora_nueva],
+        ["Predios con cambios aprobados:", count_actualizado],
+        [""],
+        ["ESTADOS DE VISITA:"],
+        ["Visitas firmadas:", count_firmado],
+        ["Visitas sin firmar:", count_visitado],
         ["Cancelaciones (excluidas):", len(codigos_cancelados)],
         [""],
         ["LEYENDA DE COLORES:"],
         ["Azul claro:", "Predio nuevo aprobado"],
         ["Indigo claro:", "Mejora nueva aprobada"],
-        ["Amarillo:", "Predio actualizado"],
+        ["Amarillo:", "Predio actualizado / con cambios"],
         ["Verde claro:", "Visita firmada"],
         ["Sin color:", "Original (sin cambios)"],
     ]
