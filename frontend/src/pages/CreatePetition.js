@@ -49,6 +49,7 @@ export default function CreatePetition() {
     otro_tramite_cual: ''
   });
   const [files, setFiles] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Verificar si es rol empresa
   const isEmpresa = user?.role === 'empresa';
