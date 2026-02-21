@@ -76,6 +76,38 @@ export default function CreatePetition() {
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  // Funciones para Drag and Drop
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Solo salir si realmente sale del área
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      setFiles([...files, ...droppedFiles]);
+      toast.success(`${droppedFiles.length} archivo(s) agregado(s)`);
+    }
+  };
+
   const handleTipoTramiteChange = (value) => {
     setFormData({ 
       ...formData, 
