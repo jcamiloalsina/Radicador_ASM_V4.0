@@ -655,52 +655,6 @@ export default function DashboardLayout() {
 
         {/* Page Content */}
         <div className="flex-1 p-6 md:p-8">
-          {/* Banner de Novedades Pendientes */}
-          {showNovedadesBanner && cambiosPendientesCount > 0 && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg shadow-sm" data-testid="novedades-banner">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-amber-100 rounded-full">
-                    <Bell className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-amber-800">
-                      Tiene {cambiosPendientesCount} elemento{cambiosPendientesCount !== 1 ? 's' : ''} pendiente{cambiosPendientesCount !== 1 ? 's' : ''} de revisión
-                    </h3>
-                    <ul className="mt-1 text-sm text-amber-700 space-y-0.5">
-                      {novedadesDetalle.cambios > 0 && (
-                        <li>• {novedadesDetalle.cambios} modificación{novedadesDetalle.cambios !== 1 ? 'es' : ''} pendiente{novedadesDetalle.cambios !== 1 ? 's' : ''}</li>
-                      )}
-                      {novedadesDetalle.prediosNuevos > 0 && (
-                        <li>• {novedadesDetalle.prediosNuevos} predio{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} nuevo{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''} pendiente{novedadesDetalle.prediosNuevos !== 1 ? 's' : ''}</li>
-                      )}
-                      {novedadesDetalle.reapariciones > 0 && (
-                        <li>• {novedadesDetalle.reapariciones} reaparición{novedadesDetalle.reapariciones !== 1 ? 'es' : ''} pendiente{novedadesDetalle.reapariciones !== 1 ? 's' : ''}</li>
-                      )}
-                    </ul>
-                    <Button
-                      size="sm"
-                      className="mt-3 bg-amber-600 hover:bg-amber-700 text-white"
-                      onClick={() => {
-                        cerrarBannerNovedades();
-                        navigate('/dashboard/pendientes');
-                      }}
-                    >
-                      Ver Pendientes
-                    </Button>
-                  </div>
-                </div>
-                <button
-                  onClick={cerrarBannerNovedades}
-                  className="text-amber-600 hover:text-amber-800 p-1"
-                  title="Cerrar"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          )}
-          
           <Outlet />
         </div>
       </div>
