@@ -378,6 +378,9 @@ export default function VisorActualizacion() {
   const [loadingEstadisticas, setLoadingEstadisticas] = useState(false);
   const [showEstadisticasPanel, setShowEstadisticasPanel] = useState(false);
   
+  // Estado para exportación Excel R1/R2
+  const [exportingExcel, setExportingExcel] = useState(false);
+  
   // Estados para construcciones (como en Conservación)
   const [tieneConstrucciones, setTieneConstrucciones] = useState(false);
   const [construccionesPredio, setConstruccionesPredio] = useState([]);
