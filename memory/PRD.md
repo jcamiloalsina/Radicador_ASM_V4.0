@@ -5,7 +5,45 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Cambios Recientes (17 Febrero 2026 - Fork 18)
+## 🔧 Cambios Recientes (21 Febrero 2026 - Fork 19)
+
+### ✅ IMPLEMENTADO: Exportación Excel R1/R2 desde Módulo de Actualización (P0)
+
+**Solicitud del usuario:**
+Poder exportar todos los predios de un proyecto de actualización en formato R1/R2 (dos hojas de Excel), incluyendo predios originales, nuevos aprobados, mejoras aprobadas y cambios aprobados.
+
+**Implementación:**
+
+1. **Backend - `/app/backend/server.py`:**
+   - Endpoint `GET /api/actualizacion/proyectos/{proyecto_id}/exportar-excel`
+   - Parámetro opcional `?solo_actualizados=true` para filtrar
+   - Genera Excel con 3 hojas:
+     - **REGISTRO_R1**: Datos de propietarios por predio
+     - **REGISTRO_R2**: Datos físicos y construcciones
+     - **RESUMEN**: Estadísticas y leyenda de colores
+   - Colores por tipo de cambio:
+     - Azul claro: Predio nuevo aprobado
+     - Indigo claro: Mejora nueva aprobada
+     - Amarillo: Predio con cambios aprobados
+     - Verde claro: Visita firmada
+   - Excluye automáticamente predios con cancelación aprobada
+
+2. **Frontend - `/app/frontend/src/pages/VisorActualizacion.js`:**
+   - Estado `exportingExcel` para controlar loading
+   - Función `handleExportExcelR1R2(soloActualizados)` con axios blob download
+   - Timeout de 120s para proyectos grandes
+   - Dos botones en panel de Estadísticas Avanzadas:
+     - "Exportar Excel R1/R2 Completo" (todos los predios)
+     - "Solo Actualizados/Firmados" (filtrado)
+
+**Verificación:**
+- Backend: 7/7 tests pasaron
+- Frontend: Todos los elementos UI verificados
+- Proyecto de prueba: 8731 predios exportados correctamente
+
+---
+
+## 🔧 Cambios Anteriores (17 Febrero 2026 - Fork 18)
 
 ### ✅ CORREGIDO: Reactivación de Predios Eliminados no Funcionaba (P0)
 
