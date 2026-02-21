@@ -18315,62 +18315,67 @@ async def exportar_actualizacion_excel(
     logger.info(f"[Export R1/R2] Cancelaciones aprobadas: {len(codigos_cancelados)}")
     
     # ========== PASO 4: Construir lista final de códigos a exportar ==========
-    codigos_a_exportar = codigos_con_gdb | codigos_nuevos_aprobados | codigos_cambios_aprobados
-    # Excluir los cancelados
-    codigos_a_exportar = codigos_a_exportar - codigos_cancelados
+    # Ya no filtramos por códigos específicos, obtenemos todos los predios del proyecto
     
-    logger.info(f"[Export R1/R2] Total códigos a exportar: {len(codigos_a_exportar)}")
+    logger.info(f"[Export R1/R2] Códigos GDB: {len(codigos_con_gdb)}, Nuevos aprobados: {len(codigos_nuevos_aprobados)}, Cambios aprobados: {len(codigos_cambios_aprobados)}")
     
-    # ========== PASO 5: Obtener datos de predios ==========
+    # ========== PASO 5: Obtener TODOS los predios del proyecto ==========
     predios = []
     
-    if codigos_a_exportar:
-        # Buscar en predios_actualizacion
-        predios_actualizacion = await db.predios_actualizacion.find(
-            {
-                "proyecto_id": proyecto_id,
-                "$or": [
-                    {"codigo_predial": {"$in": list(codigos_a_exportar)}},
-                    {"codigo_predial_nacional": {"$in": list(codigos_a_exportar)}},
-                    {"numero_predial": {"$in": list(codigos_a_exportar)}}
-                ]
-            },
-            {"_id": 0}
-        ).to_list(100000)
+    # Consulta base: todos los predios del proyecto
+    query = {"proyecto_id": proyecto_id}
+    
+    # Si solo_actualizados, filtrar por estados específicos
+    if solo_actualizados:
+        query["$or"] = [
+            {"estado_visita": {"$in": ["visitado_firmado", "actualizado"]}},
+            {"codigo_predial": {"$in": list(codigos_nuevos_aprobados | codigos_cambios_aprobados)}},
+            {"codigo_predial_nacional": {"$in": list(codigos_nuevos_aprobados | codigos_cambios_aprobados)}},
+            {"numero_predial": {"$in": list(codigos_nuevos_aprobados | codigos_cambios_aprobados)}}
+        ]
+    
+    # Obtener predios
+    predios_actualizacion = await db.predios_actualizacion.find(
+        query,
+        {"_id": 0}
+    ).to_list(100000)
+    
+    # Excluir cancelados
+    for p in predios_actualizacion:
+        codigo = p.get('codigo_predial') or p.get('codigo_predial_nacional') or p.get('numero_predial')
         
-        codigos_encontrados = set()
-        for p in predios_actualizacion:
-            codigo = p.get('codigo_predial') or p.get('codigo_predial_nacional') or p.get('numero_predial')
-            codigos_encontrados.add(codigo)
-            
-            # Determinar tipo de cambio
-            if codigo in codigos_nuevos_aprobados:
-                p['tipo_cambio'] = datos_propuestas.get(codigo, {}).get('tipo_cambio', 'predio_nuevo')
-            elif codigo in codigos_cambios_aprobados:
-                p['tipo_cambio'] = 'actualizado'
-            elif codigo in codigos_con_gdb:
-                p['tipo_cambio'] = 'original'
-            else:
-                p['tipo_cambio'] = 'original'
-            
-            predios.append(p)
+        # Saltar si está cancelado
+        if codigo in codigos_cancelados:
+            continue
         
-        # Para predios nuevos que no están en predios_actualizacion, usar datos de propuesta
-        codigos_faltantes = codigos_nuevos_aprobados - codigos_encontrados
-        for codigo in codigos_faltantes:
-            if codigo in datos_propuestas:
-                datos = datos_propuestas[codigo].get('datos', {})
-                datos['tipo_cambio'] = datos_propuestas[codigo].get('tipo_cambio', 'predio_nuevo')
-                datos['codigo_predial'] = codigo
-                datos['codigo_predial_nacional'] = codigo
-                predios.append(datos)
+        # Determinar tipo de cambio
+        if codigo in codigos_nuevos_aprobados:
+            p['tipo_cambio'] = datos_propuestas.get(codigo, {}).get('tipo_cambio', 'predio_nuevo')
+        elif codigo in codigos_cambios_aprobados:
+            p['tipo_cambio'] = 'actualizado'
+        elif codigo in codigos_con_gdb:
+            p['tipo_cambio'] = 'con_geometria'
+        else:
+            p['tipo_cambio'] = 'original'
+        
+        predios.append(p)
+    
+    # Agregar predios nuevos aprobados que no estén en predios_actualizacion
+    codigos_encontrados = set(
+        p.get('codigo_predial') or p.get('codigo_predial_nacional') or p.get('numero_predial') 
+        for p in predios
+    )
+    
+    for codigo in codigos_nuevos_aprobados - codigos_encontrados:
+        if codigo in datos_propuestas and codigo not in codigos_cancelados:
+            datos = datos_propuestas[codigo].get('datos', {})
+            datos['tipo_cambio'] = datos_propuestas[codigo].get('tipo_cambio', 'predio_nuevo')
+            datos['codigo_predial'] = codigo
+            datos['codigo_predial_nacional'] = codigo
+            predios.append(datos)
     
     if not predios:
         raise HTTPException(status_code=404, detail="No hay predios para exportar con los criterios especificados")
-    
-    # Filtrar solo actualizados si se solicita
-    if solo_actualizados:
-        predios = [p for p in predios if p.get('tipo_cambio') != 'original' or p.get('estado_visita') in ['visitado_firmado', 'actualizado']]
     
     logger.info(f"[Export R1/R2] Exportando {len(predios)} predios")
     
