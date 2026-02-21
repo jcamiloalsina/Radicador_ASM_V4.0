@@ -18214,10 +18214,11 @@ async def exportar_actualizacion_excel(
     Exporta los predios del proyecto de actualización a Excel en formato R1/R2.
     
     CRITERIOS DE INCLUSIÓN:
-    1. Predios que tienen geometría en la GDB
-    2. + Predios nuevos aprobados
-    3. + Mejoras nuevas aprobadas
-    4. + Predios con cambios aprobados
+    - solo_actualizados=false: Todos los predios del proyecto (R1/R2 cargados + nuevos aprobados)
+    - solo_actualizados=true: Solo predios con visitas firmadas, actualizados, o con cambios aprobados
+    
+    EXCLUSIONES:
+    - Predios con cancelación aprobada
     """
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
@@ -18233,7 +18234,7 @@ async def exportar_actualizacion_excel(
     
     municipio = proyecto.get('municipio', '')
     
-    # ========== PASO 1: Obtener códigos de predios con geometría GDB ==========
+    # ========== PASO 1: Obtener códigos de predios con geometría GDB (para marcar) ==========
     # Buscar en geometrias_actualizacion (GDB cargado al proyecto)
     geometrias_proyecto = await db.geometrias_actualizacion.find(
         {"proyecto_id": proyecto_id, "type": "Feature"},
