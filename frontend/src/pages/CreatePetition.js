@@ -424,9 +424,22 @@ export default function CreatePetition() {
 
             <div className="space-y-2">
               <Label htmlFor="files" className="text-slate-700">Documentos Adjuntos</Label>
-              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors">
-                <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                <p className="text-sm text-slate-600 mb-2">Arrastra archivos aquí o haz clic para seleccionar</p>
+              <div 
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                  isDragging 
+                    ? 'border-emerald-500 bg-emerald-50' 
+                    : 'border-slate-300 hover:border-emerald-500'
+                }`}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('files').click()}
+              >
+                <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragging ? 'text-emerald-500' : 'text-slate-400'}`} />
+                <p className={`text-sm mb-2 ${isDragging ? 'text-emerald-600 font-medium' : 'text-slate-600'}`}>
+                  {isDragging ? 'Suelta los archivos aquí' : 'Arrastra archivos aquí o haz clic para seleccionar'}
+                </p>
                 <Input
                   id="files"
                   type="file"
@@ -438,7 +451,10 @@ export default function CreatePetition() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById('files').click()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document.getElementById('files').click();
+                  }}
                   data-testid="select-files-button"
                 >
                   Seleccionar Archivos
