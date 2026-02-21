@@ -18210,36 +18210,179 @@ async def exportar_actualizacion_excel(
     solo_actualizados: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    """Exporta los predios del proyecto de actualización a Excel en formato R1/R2"""
+    """
+    Exporta los predios del proyecto de actualización a Excel en formato R1/R2.
+    
+    CRITERIOS DE INCLUSIÓN:
+    1. Predios que tienen geometría en la GDB
+    2. + Predios nuevos aprobados
+    3. + Mejoras nuevas aprobadas
+    4. + Predios con cambios aprobados
+    """
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
     from io import BytesIO
     from fastapi.responses import StreamingResponse
     
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores pueden exportar")
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para exportar")
     
     proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id})
     if not proyecto:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     
-    # Query de predios
-    query = {"proyecto_id": proyecto_id}
-    if solo_actualizados:
-        query["estado_visita"] = "actualizado"
+    municipio = proyecto.get('municipio', '')
     
-    predios = await db.predios_actualizacion.find(query, {"_id": 0}).to_list(50000)
+    # ========== PASO 1: Obtener códigos de predios con geometría GDB ==========
+    # Buscar en geometrias_actualizacion (GDB cargado al proyecto)
+    geometrias_proyecto = await db.geometrias_actualizacion.find(
+        {"proyecto_id": proyecto_id, "type": "Feature"},
+        {"properties.codigo": 1, "_id": 0}
+    ).to_list(100000)
+    
+    codigos_con_gdb = set()
+    for g in geometrias_proyecto:
+        codigo = g.get('properties', {}).get('codigo')
+        if codigo:
+            # El código en GDB suele ser de 21 dígitos, expandir a 30 para terreno
+            if len(codigo) == 21:
+                codigos_con_gdb.add(codigo + "000000000")  # Terreno
+            else:
+                codigos_con_gdb.add(codigo)
+    
+    # También buscar en gdb_geometrias (GDB general del municipio)
+    if municipio:
+        geometrias_municipio = await db.gdb_geometrias.find(
+            {"municipio": municipio},
+            {"codigo": 1, "_id": 0}
+        ).to_list(100000)
+        
+        for g in geometrias_municipio:
+            codigo = g.get('codigo')
+            if codigo:
+                if len(codigo) == 21:
+                    codigos_con_gdb.add(codigo + "000000000")
+                else:
+                    codigos_con_gdb.add(codigo)
+    
+    logger.info(f"[Export R1/R2] Encontrados {len(codigos_con_gdb)} códigos con geometría GDB")
+    
+    # ========== PASO 2: Obtener predios nuevos y mejoras aprobadas ==========
+    propuestas_aprobadas = await db.propuestas_cambio_actualizacion.find(
+        {
+            "proyecto_id": proyecto_id,
+            "estado": "aprobada",
+            "tipo": {"$in": ["predio_nuevo", "cambio"]}
+        },
+        {"_id": 0}
+    ).to_list(10000)
+    
+    codigos_nuevos_aprobados = set()
+    codigos_cambios_aprobados = set()
+    datos_propuestas = {}
+    
+    for prop in propuestas_aprobadas:
+        codigo = prop.get('codigo_predial') or prop.get('datos_propuestos', {}).get('codigo_predial_nacional')
+        if codigo:
+            if prop.get('tipo') == 'predio_nuevo':
+                codigos_nuevos_aprobados.add(codigo)
+                # Guardar datos de la propuesta para usar después
+                datos_propuestas[codigo] = {
+                    'tipo_cambio': 'mejora_nueva' if prop.get('es_mejora') else 'predio_nuevo',
+                    'datos': prop.get('datos_propuestos', {})
+                }
+            else:
+                codigos_cambios_aprobados.add(codigo)
+                datos_propuestas[codigo] = {
+                    'tipo_cambio': 'actualizado',
+                    'datos': prop.get('datos_propuestos', {})
+                }
+    
+    logger.info(f"[Export R1/R2] Predios nuevos aprobados: {len(codigos_nuevos_aprobados)}, Cambios aprobados: {len(codigos_cambios_aprobados)}")
+    
+    # ========== PASO 3: Obtener cancelaciones aprobadas ==========
+    cancelaciones = await db.propuestas_cambio_actualizacion.find(
+        {
+            "proyecto_id": proyecto_id,
+            "estado": "aprobada",
+            "tipo": "cancelacion"
+        },
+        {"codigo_predial": 1, "_id": 0}
+    ).to_list(10000)
+    
+    codigos_cancelados = set(c.get('codigo_predial') for c in cancelaciones if c.get('codigo_predial'))
+    logger.info(f"[Export R1/R2] Cancelaciones aprobadas: {len(codigos_cancelados)}")
+    
+    # ========== PASO 4: Construir lista final de códigos a exportar ==========
+    codigos_a_exportar = codigos_con_gdb | codigos_nuevos_aprobados | codigos_cambios_aprobados
+    # Excluir los cancelados
+    codigos_a_exportar = codigos_a_exportar - codigos_cancelados
+    
+    logger.info(f"[Export R1/R2] Total códigos a exportar: {len(codigos_a_exportar)}")
+    
+    # ========== PASO 5: Obtener datos de predios ==========
+    predios = []
+    
+    if codigos_a_exportar:
+        # Buscar en predios_actualizacion
+        predios_actualizacion = await db.predios_actualizacion.find(
+            {
+                "proyecto_id": proyecto_id,
+                "$or": [
+                    {"codigo_predial": {"$in": list(codigos_a_exportar)}},
+                    {"codigo_predial_nacional": {"$in": list(codigos_a_exportar)}},
+                    {"numero_predial": {"$in": list(codigos_a_exportar)}}
+                ]
+            },
+            {"_id": 0}
+        ).to_list(100000)
+        
+        codigos_encontrados = set()
+        for p in predios_actualizacion:
+            codigo = p.get('codigo_predial') or p.get('codigo_predial_nacional') or p.get('numero_predial')
+            codigos_encontrados.add(codigo)
+            
+            # Determinar tipo de cambio
+            if codigo in codigos_nuevos_aprobados:
+                p['tipo_cambio'] = datos_propuestas.get(codigo, {}).get('tipo_cambio', 'predio_nuevo')
+            elif codigo in codigos_cambios_aprobados:
+                p['tipo_cambio'] = 'actualizado'
+            elif codigo in codigos_con_gdb:
+                p['tipo_cambio'] = 'original'
+            else:
+                p['tipo_cambio'] = 'original'
+            
+            predios.append(p)
+        
+        # Para predios nuevos que no están en predios_actualizacion, usar datos de propuesta
+        codigos_faltantes = codigos_nuevos_aprobados - codigos_encontrados
+        for codigo in codigos_faltantes:
+            if codigo in datos_propuestas:
+                datos = datos_propuestas[codigo].get('datos', {})
+                datos['tipo_cambio'] = datos_propuestas[codigo].get('tipo_cambio', 'predio_nuevo')
+                datos['codigo_predial'] = codigo
+                datos['codigo_predial_nacional'] = codigo
+                predios.append(datos)
     
     if not predios:
-        raise HTTPException(status_code=404, detail="No hay predios para exportar")
+        raise HTTPException(status_code=404, detail="No hay predios para exportar con los criterios especificados")
     
-    # Crear workbook
+    # Filtrar solo actualizados si se solicita
+    if solo_actualizados:
+        predios = [p for p in predios if p.get('tipo_cambio') != 'original' or p.get('estado_visita') in ['visitado_firmado', 'actualizado']]
+    
+    logger.info(f"[Export R1/R2] Exportando {len(predios)} predios")
+    
+    # ========== PASO 6: Crear Excel ==========
     wb = Workbook()
     
     # Estilos
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="047857", end_color="047857", fill_type="solid")
-    actualizado_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    nuevo_fill = PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid")  # Azul claro
+    mejora_fill = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")  # Indigo claro
+    actualizado_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")  # Amarillo
+    firmado_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")  # Verde claro
     thin_border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
@@ -18251,13 +18394,12 @@ async def exportar_actualizacion_excel(
     ws_r1 = wb.active
     ws_r1.title = "REGISTRO_R1"
     
-    # Headers R1
     headers_r1 = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL", 
         "CODIGO_HOMOLOGADO", "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS",
         "NOMBRE", "ESTADO_CIVIL", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
         "COMUNA", "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", "AVALUO",
-        "VIGENCIA", "ESTADO_VISITA", "ACTUALIZADO_POR", "FECHA_ACTUALIZACION"
+        "VIGENCIA", "ESTADO_VISITA", "TIPO_CAMBIO", "ACTUALIZADO_POR", "FECHA_ACTUALIZACION"
     ]
     
     for col, header in enumerate(headers_r1, 1):
@@ -18267,7 +18409,6 @@ async def exportar_actualizacion_excel(
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
     
-    # Escribir datos R1
     row = 2
     for predio in predios:
         propietarios = predio.get('propietarios', [])
@@ -18280,7 +18421,20 @@ async def exportar_actualizacion_excel(
             }]
         
         total_props = len(propietarios) if propietarios else 1
-        es_actualizado = predio.get('estado_visita') == 'actualizado'
+        tipo_cambio = predio.get('tipo_cambio', 'original')
+        estado_visita = predio.get('estado_visita', 'pendiente')
+        
+        # Seleccionar color según tipo
+        if tipo_cambio == 'predio_nuevo':
+            fill = nuevo_fill
+        elif tipo_cambio == 'mejora_nueva':
+            fill = mejora_fill
+        elif tipo_cambio == 'actualizado' or estado_visita == 'actualizado':
+            fill = actualizado_fill
+        elif estado_visita == 'visitado_firmado':
+            fill = firmado_fill
+        else:
+            fill = None
         
         for idx, prop in enumerate(propietarios, 1):
             ws_r1.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
@@ -18302,14 +18456,15 @@ async def exportar_actualizacion_excel(
             ws_r1.cell(row=row, column=17, value=predio.get('area_construida', 0))
             ws_r1.cell(row=row, column=18, value=predio.get('avaluo', predio.get('avaluo_catastral', 0)))
             ws_r1.cell(row=row, column=19, value=predio.get('vigencia', datetime.now().year))
-            ws_r1.cell(row=row, column=20, value=predio.get('estado_visita', 'pendiente'))
-            ws_r1.cell(row=row, column=21, value=predio.get('actualizado_por', ''))
-            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_en', ''))
+            ws_r1.cell(row=row, column=20, value=estado_visita)
+            ws_r1.cell(row=row, column=21, value=tipo_cambio.upper())
+            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_por', predio.get('visitado_por', '')))
+            ws_r1.cell(row=row, column=23, value=predio.get('actualizado_en', predio.get('visitado_en', '')))
             
-            # Resaltar filas actualizadas
-            if es_actualizado:
-                for c in range(1, 23):
-                    ws_r1.cell(row=row, column=c).fill = actualizado_fill
+            # Aplicar color
+            if fill:
+                for c in range(1, 24):
+                    ws_r1.cell(row=row, column=c).fill = fill
             
             row += 1
     
@@ -18323,7 +18478,7 @@ async def exportar_actualizacion_excel(
         "ZONA_FISICA_2", "ZONA_ECONOMICA_2", "AREA_TERRENO_2",
         "ZONA_FISICA_3", "ZONA_ECONOMICA_3", "AREA_TERRENO_3",
         "HABITACIONES", "BANOS", "LOCALES", "PISOS", "USO", "AREA_CONSTRUIDA",
-        "VIGENCIA", "ESTADO_VISITA"
+        "VIGENCIA", "ESTADO_VISITA", "TIPO_CAMBIO"
     ]
     
     for col, header in enumerate(headers_r2, 1):
@@ -18333,11 +18488,23 @@ async def exportar_actualizacion_excel(
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
     
-    # Escribir datos R2
     row = 2
     for predio in predios:
         zonas = predio.get('zonas_fisicas', predio.get('r2_registros', []))
-        es_actualizado = predio.get('estado_visita') == 'actualizado'
+        tipo_cambio = predio.get('tipo_cambio', 'original')
+        estado_visita = predio.get('estado_visita', 'pendiente')
+        
+        # Seleccionar color
+        if tipo_cambio == 'predio_nuevo':
+            fill = nuevo_fill
+        elif tipo_cambio == 'mejora_nueva':
+            fill = mejora_fill
+        elif tipo_cambio == 'actualizado' or estado_visita == 'actualizado':
+            fill = actualizado_fill
+        elif estado_visita == 'visitado_firmado':
+            fill = firmado_fill
+        else:
+            fill = None
         
         ws_r2.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
         ws_r2.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
@@ -18364,16 +18531,58 @@ async def exportar_actualizacion_excel(
         ws_r2.cell(row=row, column=22, value=predio.get('uso', predio.get('destino_economico', '')))
         ws_r2.cell(row=row, column=23, value=predio.get('area_construida', 0))
         ws_r2.cell(row=row, column=24, value=predio.get('vigencia', datetime.now().year))
-        ws_r2.cell(row=row, column=25, value=predio.get('estado_visita', 'pendiente'))
+        ws_r2.cell(row=row, column=25, value=estado_visita)
+        ws_r2.cell(row=row, column=26, value=tipo_cambio.upper())
         
-        # Resaltar filas actualizadas
-        if es_actualizado:
-            for c in range(1, 26):
-                ws_r2.cell(row=row, column=c).fill = actualizado_fill
+        # Aplicar color
+        if fill:
+            for c in range(1, 27):
+                ws_r2.cell(row=row, column=c).fill = fill
         
         row += 1
     
-    # Ajustar anchos de columna
+    # === HOJA RESUMEN ===
+    ws_resumen = wb.create_sheet(title="RESUMEN")
+    
+    resumen_data = [
+        ["RESUMEN DE EXPORTACIÓN R1/R2"],
+        [""],
+        ["Proyecto:", proyecto.get('nombre', '')],
+        ["Municipio:", municipio],
+        ["Fecha de exportación:", datetime.now().strftime('%Y-%m-%d %H:%M')],
+        ["Exportado por:", current_user.get('full_name', '')],
+        [""],
+        ["ESTADÍSTICAS:"],
+        ["Total predios exportados:", len(predios)],
+        ["Predios con GDB (originales):", len([p for p in predios if p.get('tipo_cambio') == 'original'])],
+        ["Predios nuevos aprobados:", len([p for p in predios if p.get('tipo_cambio') == 'predio_nuevo'])],
+        ["Mejoras nuevas aprobadas:", len([p for p in predios if p.get('tipo_cambio') == 'mejora_nueva'])],
+        ["Predios actualizados:", len([p for p in predios if p.get('tipo_cambio') == 'actualizado' or p.get('estado_visita') == 'actualizado'])],
+        ["Visitas firmadas:", len([p for p in predios if p.get('estado_visita') == 'visitado_firmado'])],
+        ["Cancelaciones (excluidas):", len(codigos_cancelados)],
+        [""],
+        ["LEYENDA DE COLORES:"],
+        ["Azul claro:", "Predio nuevo aprobado"],
+        ["Indigo claro:", "Mejora nueva aprobada"],
+        ["Amarillo:", "Predio actualizado"],
+        ["Verde claro:", "Visita firmada"],
+        ["Sin color:", "Original (sin cambios)"],
+    ]
+    
+    for row_idx, row_data in enumerate(resumen_data, 1):
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws_resumen.cell(row=row_idx, column=col_idx, value=value)
+            if row_idx == 1:
+                cell.font = Font(bold=True, size=14)
+            elif row_idx == 8:
+                cell.font = Font(bold=True)
+            elif row_idx == 17:
+                cell.font = Font(bold=True)
+    
+    ws_resumen.column_dimensions['A'].width = 30
+    ws_resumen.column_dimensions['B'].width = 50
+    
+    # Ajustar anchos de columna para R1 y R2
     for ws in [ws_r1, ws_r2]:
         for col in ws.columns:
             max_length = 0
@@ -18392,12 +18601,13 @@ async def exportar_actualizacion_excel(
     wb.save(output)
     output.seek(0)
     
-    filename = f"Actualizacion_{proyecto.get('municipio', 'Proyecto')}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = f"R1R2_Actualizacion_{municipio}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
     
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
     )
 
 
