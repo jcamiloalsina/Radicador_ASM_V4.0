@@ -4513,7 +4513,157 @@ export default function VisorActualizacion() {
             </button>
           </span>
         )}
+        
+        {/* Separador */}
+        <div className="border-l border-slate-300 mx-1 ml-auto"></div>
+        
+        {/* Botón Estadísticas Avanzadas */}
+        <button 
+          onClick={() => {
+            setShowEstadisticasPanel(!showEstadisticasPanel);
+            if (!estadisticasAvanzadas) {
+              fetchEstadisticasAvanzadas();
+            }
+          }}
+          className={`flex items-center gap-1 whitespace-nowrap px-2 py-1 rounded transition-colors ${
+            showEstadisticasPanel ? 'bg-emerald-200 font-medium text-emerald-800' : 'hover:bg-emerald-50 text-emerald-700'
+          }`}
+          title="Ver estadísticas de aprobaciones"
+        >
+          <BarChart3 className="w-3 h-3" />
+          <span>Avanzadas</span>
+          {loadingEstadisticas && <Loader2 className="w-3 h-3 animate-spin" />}
+        </button>
       </div>
+      
+      {/* Panel de Estadísticas Avanzadas */}
+      {showEstadisticasPanel && (
+        <div className="bg-gradient-to-r from-emerald-50 to-cyan-50 border-b px-4 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Estadísticas de Aprobaciones del Proyecto
+            </h3>
+            <button 
+              onClick={() => fetchEstadisticasAvanzadas()}
+              className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+              disabled={loadingEstadisticas}
+            >
+              <RefreshCw className={`w-3 h-3 ${loadingEstadisticas ? 'animate-spin' : ''}`} />
+              Actualizar
+            </button>
+          </div>
+          
+          {loadingEstadisticas && !estadisticasAvanzadas ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+              <span className="ml-2 text-sm text-emerald-600">Cargando estadísticas...</span>
+            </div>
+          ) : estadisticasAvanzadas ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {/* Predios Nuevos Aprobados */}
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-emerald-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FilePlus className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-medium text-slate-600">Predios Nuevos</span>
+                </div>
+                <div className="text-2xl font-bold text-emerald-700">
+                  {estadisticasAvanzadas.aprobaciones?.predios_nuevos || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">aprobados</div>
+              </div>
+              
+              {/* Mejoras Nuevas Aprobadas */}
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-cyan-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Building className="w-4 h-4 text-cyan-600" />
+                  <span className="text-xs font-medium text-slate-600">Mejoras Nuevas</span>
+                </div>
+                <div className="text-2xl font-bold text-cyan-700">
+                  {estadisticasAvanzadas.aprobaciones?.mejoras_nuevas || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">aprobadas</div>
+              </div>
+              
+              {/* Visitas Firmadas */}
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCheck className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-slate-600">Visitas Firmadas</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-700">
+                  {estadisticasAvanzadas.aprobaciones?.visitas_firmadas || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">completadas</div>
+              </div>
+              
+              {/* Cancelaciones Aprobadas */}
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-red-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Ban className="w-4 h-4 text-red-500" />
+                  <span className="text-xs font-medium text-slate-600">Cancelaciones</span>
+                </div>
+                <div className="text-2xl font-bold text-red-600">
+                  {estadisticasAvanzadas.aprobaciones?.cancelaciones || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">aprobadas</div>
+              </div>
+              
+              {/* Cambios/Actualizaciones Aprobadas */}
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-purple-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckSquare className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs font-medium text-slate-600">Actualizaciones</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-700">
+                  {estadisticasAvanzadas.aprobaciones?.cambios_predios || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">aprobadas</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-sm text-slate-500">
+              No se pudieron cargar las estadísticas
+            </div>
+          )}
+          
+          {/* Resumen adicional */}
+          {estadisticasAvanzadas && (
+            <div className="mt-3 pt-3 border-t border-emerald-200 flex flex-wrap gap-4 text-xs text-slate-600">
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Total aprobaciones:</span>
+                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
+                  {estadisticasAvanzadas.aprobaciones?.total_aprobaciones || 0}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Propuestas pendientes:</span>
+                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
+                  {estadisticasAvanzadas.propuestas_pendientes || 0}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Total predios:</span>
+                <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
+                  {estadisticasAvanzadas.totales?.predios || 0}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Terrenos:</span>
+                <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
+                  {estadisticasAvanzadas.totales?.terrenos || 0}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-medium">Mejoras:</span>
+                <span className="bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded">
+                  {estadisticasAvanzadas.totales?.mejoras || 0}
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Map Container */}
       <div className="flex-1 relative">
