@@ -368,6 +368,11 @@ export default function VisorActualizacion() {
   const [motivoReversion, setMotivoReversion] = useState('');
   const [showRevertirModal, setShowRevertirModal] = useState(false);
   
+  // Estadísticas avanzadas del proyecto
+  const [estadisticasAvanzadas, setEstadisticasAvanzadas] = useState(null);
+  const [loadingEstadisticas, setLoadingEstadisticas] = useState(false);
+  const [showEstadisticasPanel, setShowEstadisticasPanel] = useState(false);
+  
   // Estados para construcciones (como en Conservación)
   const [tieneConstrucciones, setTieneConstrucciones] = useState(false);
   const [construccionesPredio, setConstruccionesPredio] = useState([]);
