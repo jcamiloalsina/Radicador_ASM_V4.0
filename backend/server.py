@@ -3262,9 +3262,9 @@ async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depen
 
 @api_router.post("/petitions/{petition_id}/desmarcar-completado")
 async def desmarcar_trabajo_completado(petition_id: str, current_user: dict = Depends(get_current_user)):
-    """El gestor desmarca su trabajo como completado (por si necesita hacer más cambios)"""
-    if current_user['role'] not in [UserRole.GESTOR, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
-        raise HTTPException(status_code=403, detail="Solo gestores pueden modificar el estado de su trabajo")
+    """El gestor/atención al usuario desmarca su trabajo como completado (por si necesita hacer más cambios)"""
+    if current_user['role'] not in [UserRole.GESTOR, UserRole.ATENCION_USUARIO, UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para modificar el estado de su trabajo")
     
     petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
     if not petition:
