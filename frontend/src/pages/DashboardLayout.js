@@ -93,14 +93,6 @@ export default function DashboardLayout() {
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
   const [showOfflinePanel, setShowOfflinePanel] = useState(false);
   
-  // Estado para banner de novedades
-  const [showNovedadesBanner, setShowNovedadesBanner] = useState(false);
-  const [novedadesDetalle, setNovedadesDetalle] = useState({
-    cambios: 0,
-    prediosNuevos: 0,
-    reapariciones: 0
-  });
-  
   // Estado de secciones colapsables
   const [conservacionOpen, setConservacionOpen] = useState(true);
   const [actualizacionOpen, setActualizacionOpen] = useState(true);
