@@ -15984,6 +15984,150 @@ async def estadisticas_proyectos_actualizacion(current_user: dict = Depends(get_
     
     return stats
 
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/estadisticas-avanzadas")
+async def estadisticas_avanzadas_proyecto(
+    proyecto_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene estadísticas avanzadas de un proyecto de actualización:
+    - Predios nuevos aprobados
+    - Mejoras nuevas aprobadas
+    - Visitas firmadas
+    - Cancelaciones aprobadas
+    - Predios actualizados (cambios aprobados)
+    """
+    # Verificar permisos
+    tiene_acceso = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]
+    if not tiene_acceso:
+        raise HTTPException(status_code=403, detail="No tiene permiso para ver estadísticas")
+    
+    # Verificar que el proyecto existe
+    proyecto = await db.proyectos_actualizacion.find_one({"id": proyecto_id}, {"_id": 0, "id": 1, "nombre": 1})
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    
+    # 1. Contar predios nuevos aprobados (terrenos - código termina en 0000)
+    predios_nuevos_aprobados = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "tipo": "predio_nuevo",
+        "estado": "aprobada",
+        "$or": [
+            {"es_mejora": {"$ne": True}},
+            {"es_mejora": {"$exists": False}}
+        ]
+    })
+    
+    # 2. Contar mejoras nuevas aprobadas
+    mejoras_nuevas_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "tipo": "predio_nuevo",
+        "estado": "aprobada",
+        "es_mejora": True
+    })
+    
+    # 3. Contar visitas firmadas
+    visitas_firmadas = await db.predios_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "estado_visita": "visitado_firmado"
+    })
+    
+    # 4. Contar cancelaciones aprobadas
+    cancelaciones_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "tipo": "cancelacion",
+        "estado": "aprobada"
+    })
+    
+    # 5. Contar predios con cambios aprobados (actualizados)
+    cambios_aprobados = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "tipo": "cambio",
+        "estado": "aprobada"
+    })
+    
+    # 6. Estadísticas adicionales de propuestas pendientes
+    propuestas_pendientes = await db.propuestas_cambio_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "estado": "pendiente"
+    })
+    
+    # 7. Contar predios por estado de visita
+    pipeline_estados = [
+        {"$match": {"proyecto_id": proyecto_id}},
+        {"$group": {"_id": "$estado_visita", "count": {"$sum": 1}}}
+    ]
+    estados_cursor = db.predios_actualizacion.aggregate(pipeline_estados)
+    estados_result = await estados_cursor.to_list(100)
+    
+    estados_visita = {
+        "pendiente": 0,
+        "visitado": 0,
+        "visitado_firmado": 0,
+        "actualizado": 0,
+        "cancelado": 0
+    }
+    
+    for e in estados_result:
+        estado = e.get("_id", "pendiente") or "pendiente"
+        if estado in estados_visita:
+            estados_visita[estado] = e["count"]
+    
+    # 8. Contar mejoras totales (predios con código que NO termina en 0000)
+    total_mejoras = await db.predios_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "$or": [
+            {"es_mejora": True},
+            {"codigo_predial": {"$regex": "(?<!0000)$"}},  # Código no termina en 0000
+        ]
+    })
+    
+    # También contar mejoras con método más preciso (últimos 4 caracteres != "0000")
+    pipeline_mejoras = [
+        {"$match": {"proyecto_id": proyecto_id}},
+        {"$addFields": {
+            "ultimos_4": {"$substr": [{"$ifNull": ["$codigo_predial", "$numero_predial"]}, 26, 4]}
+        }},
+        {"$match": {"ultimos_4": {"$ne": "0000"}}},
+        {"$count": "total"}
+    ]
+    mejoras_cursor = db.predios_actualizacion.aggregate(pipeline_mejoras)
+    mejoras_result = await mejoras_cursor.to_list(1)
+    total_mejoras_preciso = mejoras_result[0]["total"] if mejoras_result else 0
+    
+    # Total de predios en el proyecto
+    total_predios = await db.predios_actualizacion.count_documents({"proyecto_id": proyecto_id})
+    
+    return {
+        "proyecto_id": proyecto_id,
+        "proyecto_nombre": proyecto.get("nombre", ""),
+        
+        # Estadísticas de aprobaciones (lo solicitado)
+        "aprobaciones": {
+            "predios_nuevos": predios_nuevos_aprobados,
+            "mejoras_nuevas": mejoras_nuevas_aprobadas,
+            "visitas_firmadas": visitas_firmadas,
+            "cancelaciones": cancelaciones_aprobadas,
+            "cambios_predios": cambios_aprobados,
+            "total_aprobaciones": predios_nuevos_aprobados + mejoras_nuevas_aprobadas + cancelaciones_aprobadas + cambios_aprobados
+        },
+        
+        # Propuestas pendientes
+        "propuestas_pendientes": propuestas_pendientes,
+        
+        # Estados de visita
+        "estados_visita": estados_visita,
+        
+        # Totales
+        "totales": {
+            "predios": total_predios,
+            "mejoras": total_mejoras_preciso,
+            "terrenos": total_predios - total_mejoras_preciso
+        }
+    }
+
+
 @api_router.post("/actualizacion/proyectos")
 async def crear_proyecto_actualizacion(
     proyecto_data: ProyectoActualizacionCreate,
