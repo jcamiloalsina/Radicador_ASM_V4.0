@@ -18594,9 +18594,11 @@ async def exportar_actualizacion_excel(
             cell = ws_resumen.cell(row=row_idx, column=col_idx, value=value)
             if row_idx == 1:
                 cell.font = Font(bold=True, size=14)
-            elif row_idx == 8:
+            elif row_idx == 9:  # ESTADÍSTICAS
                 cell.font = Font(bold=True)
-            elif row_idx == 17:
+            elif row_idx == 17:  # ESTADOS DE VISITA
+                cell.font = Font(bold=True)
+            elif row_idx == 22:  # LEYENDA DE COLORES
                 cell.font = Font(bold=True)
     
     ws_resumen.column_dimensions['A'].width = 30
