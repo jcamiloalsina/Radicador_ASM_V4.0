@@ -3610,8 +3610,8 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             "estado": "pendiente"
         })
         
-        # Reapariciones pendientes
-        reapariciones_pendientes = await db.reapariciones.count_documents({
+        # Reapariciones pendientes - buscar en la colección correcta de solicitudes
+        reapariciones_pendientes = await db.predios_reapariciones_solicitudes.count_documents({
             **query_municipio,
             "estado": {"$in": ["pendiente", "revision"]}
         })
