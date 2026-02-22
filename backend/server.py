@@ -18464,7 +18464,8 @@ async def exportar_actualizacion_excel(
             ws_r1.cell(row=row, column=19, value=predio.get('vigencia', datetime.now().year))
             ws_r1.cell(row=row, column=20, value=estado_visita)
             ws_r1.cell(row=row, column=21, value=tipo_cambio.upper())
-            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_por', predio.get('visitado_por', '')))
+            # Usar nombre en vez de email para ACTUALIZADO_POR
+            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_por_nombre', predio.get('visitado_por_nombre', predio.get('actualizado_por', predio.get('visitado_por', '')))))
             ws_r1.cell(row=row, column=23, value=predio.get('actualizado_en', predio.get('visitado_en', '')))
             
             # Aplicar color

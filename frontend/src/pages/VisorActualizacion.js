@@ -4665,16 +4665,32 @@ export default function VisorActualizacion() {
                 <div className="text-[10px] text-slate-500">aprobadas</div>
               </div>
               
-              {/* Cambios/Actualizaciones Aprobadas */}
+              {/* Cambios/Propuestas de Cambio Aprobadas */}
               <div className="bg-white rounded-lg p-3 shadow-sm border border-purple-200">
                 <div className="flex items-center gap-2 mb-1">
                   <CheckSquare className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs font-medium text-slate-600">Actualizaciones</span>
+                  <span className="text-xs font-medium text-slate-600">Cambios</span>
                 </div>
                 <div className="text-2xl font-bold text-purple-700">
                   {estadisticasAvanzadas.aprobaciones?.cambios_predios || 0}
                 </div>
-                <div className="text-[10px] text-slate-500">aprobadas</div>
+                <div className="text-[10px] text-slate-500">propuestas aprobadas</div>
+              </div>
+              
+              {/* GRAN TOTAL */}
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-3 shadow-sm border border-emerald-300">
+                <div className="flex items-center gap-2 mb-1">
+                  <BarChart3 className="w-4 h-4 text-white" />
+                  <span className="text-xs font-medium text-white/90">GRAN TOTAL</span>
+                </div>
+                <div className="text-2xl font-bold text-white">
+                  {(estadisticasAvanzadas.aprobaciones?.predios_nuevos || 0) +
+                   (estadisticasAvanzadas.aprobaciones?.mejoras_nuevas || 0) +
+                   (estadisticasAvanzadas.aprobaciones?.visitas_firmadas || 0) +
+                   (estadisticasAvanzadas.aprobaciones?.cancelaciones || 0) +
+                   (estadisticasAvanzadas.aprobaciones?.cambios_predios || 0)}
+                </div>
+                <div className="text-[10px] text-white/80">acciones completadas</div>
               </div>
             </div>
           ) : (
