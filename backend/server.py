@@ -16041,11 +16041,22 @@ async def estadisticas_avanzadas_proyecto(
     })
     
     # 5. Contar predios con cambios aprobados (actualizados)
-    cambios_aprobados = await db.propuestas_cambio_actualizacion.count_documents({
+    # Incluye: propuestas de cambio aprobadas + predios con estado_visita = 'actualizado'
+    propuestas_cambio_aprobadas = await db.propuestas_cambio_actualizacion.count_documents({
         "proyecto_id": proyecto_id,
         "tipo": "cambio",
         "estado": "aprobada"
     })
+    
+    # Contar predios con estado_visita = 'actualizado' (actualizaciones directas)
+    predios_actualizados_directos = await db.predios_actualizacion.count_documents({
+        "proyecto_id": proyecto_id,
+        "estado_visita": "actualizado"
+    })
+    
+    # Total de cambios/actualizados = propuestas aprobadas + actualizaciones directas
+    # Nota: Usamos el mayor de los dos para evitar doble conteo si coinciden
+    cambios_aprobados = max(propuestas_cambio_aprobadas, predios_actualizados_directos)
     
     # 6. Estadísticas adicionales de propuestas pendientes
     propuestas_pendientes = await db.propuestas_cambio_actualizacion.count_documents({
