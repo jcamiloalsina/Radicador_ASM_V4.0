@@ -4665,16 +4665,16 @@ export default function VisorActualizacion() {
                 <div className="text-[10px] text-slate-500">aprobadas</div>
               </div>
               
-              {/* Cambios/Propuestas de Cambio Aprobadas */}
+              {/* Actualizados (incluye cambios aprobados y actualizaciones directas) */}
               <div className="bg-white rounded-lg p-3 shadow-sm border border-purple-200">
                 <div className="flex items-center gap-2 mb-1">
                   <CheckSquare className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs font-medium text-slate-600">Cambios</span>
+                  <span className="text-xs font-medium text-slate-600">Actualizados</span>
                 </div>
                 <div className="text-2xl font-bold text-purple-700">
                   {estadisticasAvanzadas.aprobaciones?.cambios_predios || 0}
                 </div>
-                <div className="text-[10px] text-slate-500">propuestas aprobadas</div>
+                <div className="text-[10px] text-slate-500">predios</div>
               </div>
               
               {/* GRAN TOTAL */}
