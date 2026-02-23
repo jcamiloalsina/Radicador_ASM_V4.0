@@ -20515,9 +20515,10 @@ async def crear_predio_nuevo_actualizacion(
                 "formato_visita": formato_visita
             },
             
-            # Metadatos
+            # Metadatos - usar nombres consistentes
             "creado_por": current_user.get('email'),
             "creado_por_nombre": current_user.get('full_name'),
+            "creado_en": ahora,  # Campo correcto para ordenamiento
             "created_at": ahora,
             "updated_at": ahora,
             
