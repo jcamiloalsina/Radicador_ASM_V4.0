@@ -20429,25 +20429,35 @@ async def crear_predio_nuevo_actualizacion(
     construcciones = predio_data.get('construcciones', [])
     
     # Construir código predial nacional
-    divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
-    if not divipola:
-        raise HTTPException(status_code=400, detail=f"Municipio {municipio} no válido")
+    # PRIMERO verificar si el frontend ya envió un código completo
+    codigo_predial_enviado = predio_data.get('codigo_predial', '')
     
-    prefijo = divipola["departamento"] + divipola["municipio"]
-    
-    # Construir el código completo de 30 dígitos
-    codigo_predial = (
-        f"{prefijo}"
-        f"{str(r1.get('zona', '0')).zfill(2)}"
-        f"{str(r1.get('sector', '0')).zfill(2)}"
-        f"{str(r1.get('comuna', '0')).zfill(2)}"
-        f"{str(r1.get('barrio', '0')).zfill(2)}"
-        f"{str(r1.get('manzana_vereda', '0')).zfill(4)}"
-        f"{str(r1.get('terreno', '0')).zfill(4)}"
-        f"{str(r1.get('condicion_predio', '0')).zfill(4)}"
-        f"{str(r1.get('predio_horizontal', '0')).zfill(5)}"
-    )
-    codigo_predial = codigo_predial[:30].ljust(30, '0')
+    if codigo_predial_enviado and len(codigo_predial_enviado) == 30:
+        # Usar el código enviado por el frontend
+        codigo_predial = codigo_predial_enviado
+        logger.info(f"[Predio Nuevo] Usando código del frontend: {codigo_predial}")
+    else:
+        # Construir el código desde los campos de r1
+        divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
+        if not divipola:
+            raise HTTPException(status_code=400, detail=f"Municipio {municipio} no válido")
+        
+        prefijo = divipola["departamento"] + divipola["municipio"]
+        
+        # Construir el código completo de 30 dígitos
+        codigo_predial = (
+            f"{prefijo}"
+            f"{str(r1.get('zona', '0')).zfill(2)}"
+            f"{str(r1.get('sector', '0')).zfill(2)}"
+            f"{str(r1.get('comuna', '0')).zfill(2)}"
+            f"{str(r1.get('barrio', '0')).zfill(2)}"
+            f"{str(r1.get('manzana_vereda', '0')).zfill(4)}"
+            f"{str(r1.get('terreno', '0')).zfill(4)}"
+            f"{str(r1.get('condicion_predio', '0')).zfill(4)}"
+            f"{str(r1.get('predio_horizontal', '0')).zfill(5)}"
+        )
+        codigo_predial = codigo_predial[:30].ljust(30, '0')
+        logger.info(f"[Predio Nuevo] Código construido desde r1: {codigo_predial}")
     
     # Verificar que no exista en predios principal
     existing = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
