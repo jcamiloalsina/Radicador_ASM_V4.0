@@ -21965,12 +21965,25 @@ async def drop_collection(
 @api_router.get("/descargas/{filename}")
 async def descargar_archivo_servidor(filename: str):
     """Endpoint para descargar archivos de cambios"""
-    filepath = Path(f"/app/backend/static/descargas/{filename}")
-    if not filepath.exists():
+    # SEGURIDAD: Sanitizar nombre de archivo para prevenir Path Traversal
+    safe_filename = secure_filename(filename)
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
+    
+    base_path = "/app/backend/static/descargas"
+    filepath = os.path.join(base_path, safe_filename)
+    
+    # SEGURIDAD: Verificar que el path está dentro del directorio permitido
+    if not is_safe_path(base_path, filepath):
+        logger.warning(f"[SEGURIDAD] Intento de Path Traversal detectado: {filename}")
+        raise HTTPException(status_code=400, detail="Ruta de archivo no permitida")
+    
+    if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    
     return FileResponse(
-        path=str(filepath),
-        filename=filename,
+        path=filepath,
+        filename=safe_filename,
         media_type="application/octet-stream"
     )
 
