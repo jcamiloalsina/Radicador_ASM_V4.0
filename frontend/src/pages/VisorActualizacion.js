@@ -6454,6 +6454,12 @@ export default function VisorActualizacion() {
             
           } catch (error) {
             console.error('[Visita] Error:', error);
+            
+            // Detectar error "body stream" (streaming/conexión interrumpida)
+            const esErrorBodyStream = error.message?.toLowerCase().includes('body stream') || 
+                                       error.message?.toLowerCase().includes('network') ||
+                                       error.message?.toLowerCase().includes('failed to fetch');
+            
             // Manejar error de predio firmado
             if (error.response?.status === 403 && error.response?.data?.detail?.includes('firmada')) {
               toast.error('Este predio/mejora ya tiene una visita firmada y no puede ser modificado');
@@ -6461,9 +6467,12 @@ export default function VisorActualizacion() {
               return;
             }
             
-            // Manejar timeout
-            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-              toast.error('La conexión tardó demasiado. Intentando guardar offline...', { duration: 5000 });
+            // Manejar timeout o error de body stream
+            if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || esErrorBodyStream) {
+              const mensajeError = esErrorBodyStream 
+                ? '🔌 Conexión interrumpida. Guardando offline...' 
+                : 'La conexión tardó demasiado. Guardando offline...';
+              toast.error(mensajeError, { duration: 5000 });
               try {
                 const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
                 const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
