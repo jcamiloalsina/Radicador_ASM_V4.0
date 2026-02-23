@@ -142,9 +142,20 @@ code {
   z-index: 9999 !important;
 }
 
-/* Sonner toasts */
+/* Sonner toasts - MUST be above all modals */
 [data-sonner-toaster] {
-  z-index: 99999 !important;
+  z-index: 2147483647 !important; /* Max z-index value */
+  position: fixed !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  z-index: 2147483647 !important;
+}
+
+/* Ensure toast container is always on top */
+.sonner-toast-wrapper,
+[data-sonner-toaster] > * {
+  z-index: 2147483647 !important;
 }
 
 /* Select content */
