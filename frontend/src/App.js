@@ -31,6 +31,17 @@ import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./component
 function App() {
   return (
     <AuthProvider>
+      <Toaster 
+        position="top-center" 
+        richColors 
+        expand={true}
+        visibleToasts={5}
+        toastOptions={{ 
+          style: { zIndex: 2147483647 },
+          className: 'toast-above-all'
+        }} 
+        containerStyle={{ zIndex: 2147483647 }}
+      />
       <WebSocketProvider>
         <BrowserRouter>
           <Routes>
