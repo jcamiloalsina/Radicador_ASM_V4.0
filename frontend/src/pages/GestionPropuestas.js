@@ -635,6 +635,15 @@ export default function GestionPropuestas() {
                       {propuesta.tipo === 'cancelacion' && (
                         <Badge className="mt-1 bg-red-100 text-red-600 text-xs">Eliminación</Badge>
                       )}
+                      {propuesta.tipo === 'predio_nuevo' && (
+                        <Badge className="mt-1 bg-blue-100 text-blue-600 text-xs">Predio Nuevo</Badge>
+                      )}
+                      {propuesta.tipo === 'mejora_nueva' && (
+                        <Badge className="mt-1 bg-cyan-100 text-cyan-600 text-xs">Mejora Nueva</Badge>
+                      )}
+                      {propuesta.tipo === 'cambio' && (
+                        <Badge className="mt-1 bg-purple-100 text-purple-600 text-xs">Cambio</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">
                       {propuesta.creado_por_nombre || propuesta.propuesto_por_nombre || propuesta.creado_por || '-'}
