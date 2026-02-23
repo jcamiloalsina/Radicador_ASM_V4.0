@@ -6484,9 +6484,10 @@ export default function VisorActualizacion() {
             // Manejar timeout o error de body stream
             if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || esErrorBodyStream) {
               const mensajeError = esErrorBodyStream 
-                ? '🔌 Conexión interrumpida. Guardando offline...' 
-                : 'La conexión tardó demasiado. Guardando offline...';
-              toast.error(mensajeError, { duration: 5000 });
+                ? '🔌 Conexión interrumpida (posible datos muy grandes). Guardando offline...' 
+                : '⏱️ La conexión tardó demasiado. Guardando offline...';
+              toast.error(mensajeError, { duration: 6000 });
+              console.error('[Visita] Error de conexión:', error.message);
               try {
                 const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
                 const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
