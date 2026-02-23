@@ -742,14 +742,21 @@ const CrearPredioNuevoModal = ({
         return;
       }
       
+      // Crear AbortController con timeout de 60 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       const response = await fetch(
         `${API_URL}/api/actualizacion/proyectos/${proyectoId}/predios-nuevos`,
         {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal: controller.signal
         }
       );
+      
+      clearTimeout(timeoutId);
       
       const data = await response.json();
       
