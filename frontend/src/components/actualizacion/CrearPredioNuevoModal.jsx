@@ -772,7 +772,18 @@ const CrearPredioNuevoModal = ({
       handleClose();
       
     } catch (error) {
-      toast.error(error.message || 'Error al crear el predio');
+      console.error('Error al crear predio:', error);
+      
+      // Mensajes de error específicos
+      if (error.name === 'AbortError') {
+        toast.error('⏱️ Tiempo de espera agotado. Intente de nuevo.');
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('body stream')) {
+        toast.error('🔌 Error de conexión. Verifique su internet e intente de nuevo.');
+      } else if (error.message?.includes('NetworkError')) {
+        toast.error('🌐 Error de red. El servidor no responde.');
+      } else {
+        toast.error(error.message || 'Error al crear el predio');
+      }
     } finally {
       setLoading(false);
     }
