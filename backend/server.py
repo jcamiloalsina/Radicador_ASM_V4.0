@@ -15099,11 +15099,23 @@ async def descargar_reporte_calidad_gdb(filename: str, current_user: dict = Depe
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    filepath = Path("/app/reports/gdb_calidad") / filename
-    if not filepath.exists():
+    # SEGURIDAD: Sanitizar nombre de archivo para prevenir Path Traversal
+    safe_filename = secure_filename(filename)
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="Nombre de archivo inválido")
+    
+    base_path = "/app/reports/gdb_calidad"
+    filepath = os.path.join(base_path, safe_filename)
+    
+    # SEGURIDAD: Verificar que el path está dentro del directorio permitido
+    if not is_safe_path(base_path, filepath):
+        logger.warning(f"[SEGURIDAD] Intento de Path Traversal detectado: {filename}")
+        raise HTTPException(status_code=400, detail="Ruta de archivo no permitida")
+    
+    if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     
-    return FileResponse(filepath, filename=filename, media_type="application/pdf")
+    return FileResponse(filepath, filename=safe_filename, media_type="application/pdf")
 
 
 @api_router.get("/gdb/cargas-mensuales")
