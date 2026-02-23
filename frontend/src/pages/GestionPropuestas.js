@@ -416,8 +416,43 @@ export default function GestionPropuestas() {
     setPropuestaDetalle(propuesta);
     setComentarioRevision('');
     setModoEdicion(false);
-    // Inicializar datos editados con los propuestos
-    setDatosEditados(propuesta.datos_propuestos || {});
+    
+    // Normalizar datos propuestos para predios nuevos/mejoras
+    // Si datos_propuestos tiene r1/r2, extraer los campos a la raíz
+    let datosNormalizados = propuesta.datos_propuestos || {};
+    
+    if (datosNormalizados.r1) {
+      // Es un predio nuevo o mejora - aplanar la estructura
+      datosNormalizados = {
+        ...datosNormalizados,
+        direccion: datosNormalizados.r1?.direccion || '',
+        destino_economico: datosNormalizados.r1?.destino_economico || '',
+        area_terreno: datosNormalizados.r1?.area_terreno || '',
+        area_construida: datosNormalizados.r1?.area_construida || '',
+        avaluo: datosNormalizados.r1?.avaluo || '',
+        zona: datosNormalizados.r1?.zona || '',
+        sector: datosNormalizados.r1?.sector || '',
+        comuna: datosNormalizados.r1?.comuna || '',
+        barrio: datosNormalizados.r1?.barrio || '',
+        manzana_vereda: datosNormalizados.r1?.manzana_vereda || '',
+        terreno: datosNormalizados.r1?.terreno || '',
+        matricula: datosNormalizados.r2?.matricula_inmobiliaria || datosNormalizados.r2?.matricula || '',
+        estrato: datosNormalizados.r1?.estrato || '',
+        propietarios: datosNormalizados.propietarios || [],
+        construcciones: datosNormalizados.construcciones || [],
+        zonas_fisicas: datosNormalizados.zonas_fisicas || [],
+        formato_visita: datosNormalizados.formato_visita || {}
+      };
+    }
+    
+    // Actualizar la propuesta con datos normalizados para la vista
+    const propuestaNormalizada = {
+      ...propuesta,
+      datos_propuestos: datosNormalizados
+    };
+    
+    setPropuestaDetalle(propuestaNormalizada);
+    setDatosEditados(datosNormalizados);
     setShowDetalleModal(true);
   };
   
