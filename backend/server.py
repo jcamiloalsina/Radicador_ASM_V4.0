@@ -48,9 +48,48 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
-JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
+# CRITICAL: JWT_SECRET debe ser configurado en producción con un valor seguro
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    logger.warning("⚠️ SEGURIDAD: JWT_SECRET no configurado. Usando valor por defecto INSEGURO.")
+    JWT_SECRET = 'INSECURE-DEFAULT-CHANGE-IN-PRODUCTION-' + str(uuid.uuid4())
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
+
+# ==================== FUNCIONES DE SEGURIDAD ====================
+import re
+from pathlib import Path
+
+def is_safe_path(base_path: str, target_path: str) -> bool:
+    """
+    Verifica que el path objetivo esté dentro del directorio base.
+    Previene ataques de Path Traversal (../).
+    """
+    base = os.path.abspath(base_path)
+    target = os.path.abspath(target_path)
+    return target.startswith(base + os.sep) or target == base
+
+def secure_filename(filename: str) -> str:
+    """
+    Sanitiza el nombre de archivo removiendo caracteres peligrosos.
+    Previene ataques de Path Traversal y caracteres maliciosos.
+    """
+    if not filename:
+        return ""
+    # Remover path separators y caracteres peligrosos
+    filename = os.path.basename(filename)  # Solo el nombre del archivo
+    # Remover caracteres no permitidos
+    filename = re.sub(r'[^\w\s\-\.]', '', filename)
+    # Remover múltiples puntos consecutivos
+    filename = re.sub(r'\.{2,}', '.', filename)
+    # Remover espacios al inicio/fin
+    filename = filename.strip()
+    # Si el nombre quedó vacío, generar uno aleatorio
+    if not filename or filename.startswith('.'):
+        filename = f"file_{uuid.uuid4().hex[:8]}"
+    return filename
+
+# ==================== FIN FUNCIONES DE SEGURIDAD ====================
 
 # URL Base para verificación de certificados (OBLIGATORIO - debe configurarse en producción)
 # Esta variable DEBE estar definida en el archivo .env del servidor de producción
