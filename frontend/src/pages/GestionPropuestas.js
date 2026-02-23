@@ -1075,7 +1075,151 @@ export default function GestionPropuestas() {
                         onChange={(e) => setDatosEditados({...datosEditados, matricula: e.target.value})}
                       />
                     </div>
+                    <div>
+                      <Label className="text-xs">Estrato</Label>
+                      <Select 
+                        value={datosEditados.estrato || ''} 
+                        onValueChange={(v) => setDatosEditados({...datosEditados, estrato: v})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1</SelectItem>
+                          <SelectItem value="2">2</SelectItem>
+                          <SelectItem value="3">3</SelectItem>
+                          <SelectItem value="4">4</SelectItem>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="6">6</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Zona</Label>
+                      <Input 
+                        value={datosEditados.zona || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, zona: e.target.value})}
+                        maxLength={2}
+                        placeholder="00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Sector</Label>
+                      <Input 
+                        value={datosEditados.sector || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, sector: e.target.value})}
+                        maxLength={2}
+                        placeholder="00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Comuna/Corregimiento</Label>
+                      <Input 
+                        value={datosEditados.comuna || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, comuna: e.target.value})}
+                        maxLength={2}
+                        placeholder="00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Barrio</Label>
+                      <Input 
+                        value={datosEditados.barrio || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, barrio: e.target.value})}
+                        maxLength={2}
+                        placeholder="00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Manzana/Vereda</Label>
+                      <Input 
+                        value={datosEditados.manzana_vereda || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, manzana_vereda: e.target.value})}
+                        maxLength={4}
+                        placeholder="0000"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Terreno</Label>
+                      <Input 
+                        value={datosEditados.terreno || ''} 
+                        onChange={(e) => setDatosEditados({...datosEditados, terreno: e.target.value})}
+                        maxLength={4}
+                        placeholder="0000"
+                      />
+                    </div>
                   </div>
+                  
+                  {/* Sección de Propietarios */}
+                  {datosEditados.propietarios && datosEditados.propietarios.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <Label className="text-xs text-blue-700 font-medium mb-2 block">Propietarios</Label>
+                      <div className="space-y-2">
+                        {datosEditados.propietarios.map((prop, idx) => (
+                          <div key={idx} className="grid grid-cols-4 gap-2 bg-white p-2 rounded border">
+                            <div>
+                              <Label className="text-[10px]">Tipo Doc</Label>
+                              <Select 
+                                value={prop.tipo_documento || 'C'} 
+                                onValueChange={(v) => {
+                                  const newProps = [...datosEditados.propietarios];
+                                  newProps[idx] = {...newProps[idx], tipo_documento: v};
+                                  setDatosEditados({...datosEditados, propietarios: newProps});
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="C">C - Cédula</SelectItem>
+                                  <SelectItem value="E">E - Extranjería</SelectItem>
+                                  <SelectItem value="N">N - NIT</SelectItem>
+                                  <SelectItem value="T">T - Tarjeta ID</SelectItem>
+                                  <SelectItem value="P">P - Pasaporte</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Número</Label>
+                              <Input 
+                                className="h-8 text-xs"
+                                value={prop.numero_documento || ''} 
+                                onChange={(e) => {
+                                  const newProps = [...datosEditados.propietarios];
+                                  newProps[idx] = {...newProps[idx], numero_documento: e.target.value};
+                                  setDatosEditados({...datosEditados, propietarios: newProps});
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Primer Nombre</Label>
+                              <Input 
+                                className="h-8 text-xs"
+                                value={prop.primer_nombre || ''} 
+                                onChange={(e) => {
+                                  const newProps = [...datosEditados.propietarios];
+                                  newProps[idx] = {...newProps[idx], primer_nombre: e.target.value.toUpperCase()};
+                                  setDatosEditados({...datosEditados, propietarios: newProps});
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px]">Primer Apellido</Label>
+                              <Input 
+                                className="h-8 text-xs"
+                                value={prop.primer_apellido || ''} 
+                                onChange={(e) => {
+                                  const newProps = [...datosEditados.propietarios];
+                                  newProps[idx] = {...newProps[idx], primer_apellido: e.target.value.toUpperCase()};
+                                  setDatosEditados({...datosEditados, propietarios: newProps});
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
