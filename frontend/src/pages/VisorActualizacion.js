@@ -6369,6 +6369,20 @@ export default function VisorActualizacion() {
             }
             // ========== FIN COMPRESIÓN ==========
             
+            // Log del tamaño de los datos para debugging
+            const calcularTamano = (obj) => {
+              try {
+                const str = JSON.stringify(obj);
+                return (str.length / 1024).toFixed(2) + ' KB';
+              } catch { return 'N/A'; }
+            };
+            console.log('[Visita] Tamaño de datos a enviar:', {
+              firmaVisitado: calcularTamano(datosComprimidos.firma_visitado_base64),
+              firmaReconocedor: calcularTamano(datosComprimidos.firma_reconocedor_base64),
+              fotos: fotosComprimidas?.length || 0,
+              totalEstimado: calcularTamano({ ...datosComprimidos, fotos: fotosComprimidas })
+            });
+            
             // Enviar TODOS los datos del formulario completos (ya comprimidos)
             const datosActualizacion = {
               ...datosComprimidos,  // Datos con firmas comprimidas
