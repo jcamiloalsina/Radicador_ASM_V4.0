@@ -100,6 +100,22 @@ function CampoComparativo({ label, valorAnterior, valorNuevo, icon: Icon, tipo =
 function PropietariosComparativos({ anteriores = [], nuevos = [] }) {
   const maxLength = Math.max(anteriores.length, nuevos.length);
   
+  // Función para construir nombre completo
+  const getNombreCompleto = (p) => {
+    if (p.nombre_propietario) return p.nombre_propietario;
+    if (p.nombre) return p.nombre;
+    
+    // Construir desde campos individuales
+    const partes = [
+      p.primer_nombre,
+      p.segundo_nombre,
+      p.primer_apellido,
+      p.segundo_apellido
+    ].filter(Boolean);
+    
+    return partes.length > 0 ? partes.join(' ') : '-';
+  };
+  
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-2">
@@ -122,7 +138,7 @@ function PropietariosComparativos({ anteriores = [], nuevos = [] }) {
             <div className="space-y-2">
               {anteriores.map((p, i) => (
                 <div key={i} className="text-sm bg-white p-2 rounded border">
-                  <p className="font-medium text-slate-700">{p.nombre_propietario || p.nombre || '-'}</p>
+                  <p className="font-medium text-slate-700">{getNombreCompleto(p)}</p>
                   <p className="text-xs text-slate-500">
                     {p.tipo_documento || 'CC'}: {p.numero_documento || '-'}
                   </p>
@@ -141,7 +157,7 @@ function PropietariosComparativos({ anteriores = [], nuevos = [] }) {
             <div className="space-y-2">
               {nuevos.map((p, i) => (
                 <div key={i} className="text-sm bg-white p-2 rounded border border-emerald-200">
-                  <p className="font-medium text-emerald-700">{p.nombre_propietario || p.nombre || '-'}</p>
+                  <p className="font-medium text-emerald-700">{getNombreCompleto(p)}</p>
                   <p className="text-xs text-emerald-600">
                     {p.tipo_documento || 'CC'}: {p.numero_documento || '-'}
                   </p>
