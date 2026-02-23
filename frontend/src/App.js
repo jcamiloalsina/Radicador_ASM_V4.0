@@ -71,15 +71,6 @@ function App() {
           </Route>
         </Routes>
         </BrowserRouter>
-        <Toaster 
-          position="top-right" 
-          richColors 
-          toastOptions={{ 
-            style: { zIndex: 999999 },
-            className: 'toast-above-modal'
-          }} 
-          containerStyle={{ zIndex: 999999 }}
-        />
         
         {/* PWA Components */}
         <OfflineIndicator />
