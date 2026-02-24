@@ -167,13 +167,26 @@ export default function CreatePetition() {
     
     // Validar campos de certificado
     if (esCertificado) {
-      if (formData.busqueda_tipo === 'codigo' && !formData.codigo_predial.trim()) {
-        toast.error('Debe ingresar el Código Predial Nacional');
-        return;
-      }
-      if (formData.busqueda_tipo === 'matricula' && !formData.matricula_inmobiliaria.trim()) {
-        toast.error('Debe ingresar la Matrícula Inmobiliaria');
-        return;
+      // Si no hay predios en la lista, verificar que haya al menos uno en el formulario
+      if (prediosCertificado.length === 0) {
+        if (formData.busqueda_tipo === 'codigo' && !formData.codigo_predial.trim()) {
+          toast.error('Debe agregar al menos un predio (Código Predial Nacional)');
+          return;
+        }
+        if (formData.busqueda_tipo === 'matricula' && !formData.matricula_inmobiliaria.trim()) {
+          toast.error('Debe agregar al menos un predio (Matrícula Inmobiliaria)');
+          return;
+        }
+        // Si hay un valor en el formulario pero no se ha agregado a la lista, agregarlo automáticamente
+        const valor = formData.busqueda_tipo === 'codigo' ? formData.codigo_predial.trim() : formData.matricula_inmobiliaria.trim();
+        if (valor) {
+          prediosCertificado.push({
+            id: Date.now(),
+            tipo_busqueda: formData.busqueda_tipo,
+            codigo_predial: formData.busqueda_tipo === 'codigo' ? valor : '',
+            matricula_inmobiliaria: formData.busqueda_tipo === 'matricula' ? valor : ''
+          });
+        }
       }
     }
     
