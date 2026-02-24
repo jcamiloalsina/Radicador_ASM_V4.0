@@ -218,11 +218,16 @@ export default function CreatePetition() {
       formDataToSend.append('descripcion', formData.descripcion);
       
       // Agregar campos de certificado si aplica
-      if (esCertificado) {
-        if (formData.busqueda_tipo === 'codigo') {
-          formDataToSend.append('codigo_predial', formData.codigo_predial.trim());
-        } else {
-          formDataToSend.append('matricula_inmobiliaria', formData.matricula_inmobiliaria.trim());
+      if (esCertificado && prediosCertificado.length > 0) {
+        // Enviar la lista completa de predios como JSON
+        formDataToSend.append('predios_certificado', JSON.stringify(prediosCertificado));
+        
+        // También enviar el primer predio en los campos tradicionales para compatibilidad
+        const primerPredio = prediosCertificado[0];
+        if (primerPredio.tipo_busqueda === 'codigo' && primerPredio.codigo_predial) {
+          formDataToSend.append('codigo_predial', primerPredio.codigo_predial);
+        } else if (primerPredio.matricula_inmobiliaria) {
+          formDataToSend.append('matricula_inmobiliaria', primerPredio.matricula_inmobiliaria);
         }
       }
       
