@@ -8,7 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { ArrowLeft, Send, Upload, X, FileText, Info, Building2 } from 'lucide-react';
+import { ArrowLeft, Send, Upload, X, FileText, Info, Building2, Plus, Trash2 } from 'lucide-react';
 import { TIPOS_TRAMITE, MUNICIPIOS, getTramiteCompleto } from '../data/catalogos';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,7 +27,7 @@ export default function CreatePetition() {
     sub_tipo_tramite: '',
     municipio: '',
     descripcion: '',
-    // Campos para certificado catastral
+    // Campos para certificado catastral (para agregar uno a uno)
     codigo_predial: '',
     matricula_inmobiliaria: '',
     busqueda_tipo: 'codigo', // 'codigo' o 'matricula'
@@ -36,6 +36,9 @@ export default function CreatePetition() {
   });
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Estado para múltiples predios en certificados
+  const [prediosCertificado, setPrediosCertificado] = useState([]);
 
   // Verificar si es rol empresa
   const isEmpresa = user?.role === 'empresa';
