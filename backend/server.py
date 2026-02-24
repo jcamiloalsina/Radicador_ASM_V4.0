@@ -10857,25 +10857,134 @@ async def verificar_integridad_pdf(
 async def listar_certificados_verificables(
     skip: int = 0,
     limit: int = 50,
-    estado: str = Query(None, description="Filtrar por estado: activo, anulado"),
+    estado: str = Query(None, description="Filtrar por estado: activo, vencido, anulado, por_vencer"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Lista todos los certificados verificables generados"""
+    """Lista todos los certificados verificables generados con información de vigencia"""
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
+    ahora = datetime.now(timezone.utc)
+    fecha_limite_por_vencer = ahora + timedelta(days=7)  # Próximos 7 días
+    
     query = {}
-    if estado:
+    if estado == "por_vencer":
+        # Certificados activos que vencen en los próximos 7 días
+        query = {
+            "estado": "activo",
+            "fecha_vencimiento": {
+                "$lte": fecha_limite_por_vencer.isoformat(),
+                "$gt": ahora.isoformat()
+            }
+        }
+    elif estado == "vencido":
+        # Certificados cuya fecha de vencimiento ya pasó
+        query = {
+            "$or": [
+                {"estado": "vencido"},
+                {
+                    "estado": "activo",
+                    "fecha_vencimiento": {"$lte": ahora.isoformat()}
+                }
+            ]
+        }
+    elif estado:
         query["estado"] = estado
     
     certificados = await db.certificados_verificables.find(query, {"_id": 0}).sort("fecha_generacion", -1).skip(skip).limit(limit).to_list(length=limit)
     total = await db.certificados_verificables.count_documents(query)
+    
+    # Agregar información de vigencia a cada certificado
+    for cert in certificados:
+        fecha_venc = cert.get('fecha_vencimiento')
+        if fecha_venc:
+            try:
+                dt_venc = datetime.fromisoformat(fecha_venc.replace('Z', '+00:00'))
+                dias_restantes = (dt_venc - ahora).days
+                cert['dias_restantes'] = dias_restantes
+                cert['esta_vencido'] = dias_restantes < 0
+                cert['por_vencer'] = 0 <= dias_restantes <= 7
+            except:
+                cert['dias_restantes'] = None
+                cert['esta_vencido'] = False
+                cert['por_vencer'] = False
+        else:
+            # Calcular desde fecha_generacion si no tiene fecha_vencimiento
+            fecha_gen = cert.get('fecha_generacion')
+            if fecha_gen:
+                try:
+                    dt_gen = datetime.fromisoformat(fecha_gen.replace('Z', '+00:00'))
+                    dt_venc = dt_gen + timedelta(days=30)
+                    dias_restantes = (dt_venc - ahora).days
+                    cert['dias_restantes'] = dias_restantes
+                    cert['esta_vencido'] = dias_restantes < 0
+                    cert['por_vencer'] = 0 <= dias_restantes <= 7
+                    cert['fecha_vencimiento'] = dt_venc.isoformat()
+                except:
+                    cert['dias_restantes'] = None
+                    cert['esta_vencido'] = False
+                    cert['por_vencer'] = False
     
     return {
         "certificados": certificados,
         "total": total,
         "skip": skip,
         "limit": limit
+    }
+
+
+@api_router.get("/certificados/estadisticas")
+async def estadisticas_certificados(
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene estadísticas de certificados: activos, vencidos, por vencer, anulados"""
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+    
+    ahora = datetime.now(timezone.utc)
+    fecha_limite_por_vencer = ahora + timedelta(days=7)
+    
+    # Total de certificados
+    total = await db.certificados_verificables.count_documents({})
+    
+    # Activos (no vencidos)
+    activos = await db.certificados_verificables.count_documents({
+        "estado": "activo",
+        "$or": [
+            {"fecha_vencimiento": {"$gt": ahora.isoformat()}},
+            {"fecha_vencimiento": {"$exists": False}}
+        ]
+    })
+    
+    # Por vencer (próximos 7 días)
+    por_vencer = await db.certificados_verificables.count_documents({
+        "estado": "activo",
+        "fecha_vencimiento": {
+            "$lte": fecha_limite_por_vencer.isoformat(),
+            "$gt": ahora.isoformat()
+        }
+    })
+    
+    # Vencidos
+    vencidos = await db.certificados_verificables.count_documents({
+        "$or": [
+            {"estado": "vencido"},
+            {
+                "estado": "activo",
+                "fecha_vencimiento": {"$lte": ahora.isoformat()}
+            }
+        ]
+    })
+    
+    # Anulados
+    anulados = await db.certificados_verificables.count_documents({"estado": "anulado"})
+    
+    return {
+        "total": total,
+        "activos": activos,
+        "por_vencer": por_vencer,
+        "vencidos": vencidos,
+        "anulados": anulados
     }
 
 
