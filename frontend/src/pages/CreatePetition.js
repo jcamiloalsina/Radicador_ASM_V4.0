@@ -15,20 +15,6 @@ import { useAuth } from '../context/AuthContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Tipos de trámite para empresas
-const TIPOS_TRAMITE_EMPRESA = [
-  {
-    id: 'certificado_catastral',
-    nombre: 'Certificado Catastral',
-    descripcion: 'Solicitud de certificado catastral del predio'
-  },
-  {
-    id: 'otro_tramite',
-    nombre: 'Otro Trámite',
-    descripcion: 'Especifique el trámite que necesita realizar'
-  }
-];
-
 export default function CreatePetition() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -54,8 +40,8 @@ export default function CreatePetition() {
   // Verificar si es rol empresa
   const isEmpresa = user?.role === 'empresa';
   
-  // Lista de tipos de trámite según el rol
-  const tiposTramiteDisponibles = isEmpresa ? TIPOS_TRAMITE_EMPRESA : TIPOS_TRAMITE;
+  // Todos los roles ven todos los tipos de trámite disponibles
+  const tiposTramiteDisponibles = TIPOS_TRAMITE;
 
   // Obtener el tipo de trámite seleccionado
   const selectedTipoTramite = tiposTramiteDisponibles.find(t => t.id === formData.tipo_tramite);
