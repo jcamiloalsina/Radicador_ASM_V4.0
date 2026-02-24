@@ -1480,7 +1480,72 @@ export default function PetitionDetail() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No hay archivos adjuntos</p>
+            <p className="text-sm text-slate-500">No hay archivos adjuntos del usuario</p>
+          )}
+          
+          {/* Documentos Finales (Staff) */}
+          {petition.archivos_staff && petition.archivos_staff.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <p className="text-sm font-medium text-emerald-700 mb-2 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Documentos de Respuesta ({petition.archivos_staff.length})
+              </p>
+              <div className="space-y-2">
+                {petition.archivos_staff.map((archivo, idx) => {
+                  const fileId = archivo.id || archivo.filename;
+                  const esDocFinal = archivo.es_documento_final;
+                  
+                  return (
+                    <div key={`staff-${idx}`} className="flex items-center justify-between p-3 bg-emerald-50 rounded-md border border-emerald-200" data-testid={`staff-file-${idx}`}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <FileText className="w-4 h-4 text-emerald-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-emerald-800">{archivo.original_name}</p>
+                          {archivo.uploaded_by_name && (
+                            <p className="text-xs text-emerald-600">
+                              Subido por: {archivo.uploaded_by_name}
+                              {archivo.upload_date && ` - ${new Date(archivo.upload_date).toLocaleDateString('es-ES')}`}
+                            </p>
+                          )}
+                        </div>
+                        <Badge className={esDocFinal ? "bg-emerald-200 text-emerald-800" : "bg-slate-200 text-slate-800"}>
+                          {esDocFinal ? 'Documento Final' : 'Staff'}
+                        </Badge>
+                      </div>
+                      {fileId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const response = await axios.get(`${API}/petitions/${id}/archivo/${fileId}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                                responseType: 'blob'
+                              });
+                              const url = window.URL.createObjectURL(new Blob([response.data]));
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.setAttribute('download', archivo.original_name);
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              toast.error('Error al descargar el archivo');
+                            }
+                          }}
+                          className="ml-2 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100"
+                          data-testid={`download-staff-file-${idx}`}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
