@@ -9637,6 +9637,10 @@ async def generar_certificado_catastral_endpoint(
     hash_datos = hashlib.sha256(datos_string.encode()).hexdigest()
     
     # Registrar certificado en la base de datos
+    # Calcular fecha de vencimiento (1 mes = 30 días)
+    fecha_generacion = datetime.now(timezone.utc)
+    fecha_vencimiento = fecha_generacion + timedelta(days=30)
+    
     certificado_record = {
         "id": str(uuid.uuid4()),
         "codigo_verificacion": codigo_verificacion,
@@ -9654,8 +9658,9 @@ async def generar_certificado_catastral_endpoint(
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "generado_por_email": current_user['email'],
-        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-        "estado": "activo",  # activo, anulado
+        "fecha_generacion": fecha_generacion.isoformat(),
+        "fecha_vencimiento": fecha_vencimiento.isoformat(),  # Vigencia 1 mes
+        "estado": "activo",  # activo, vencido, anulado
         "motivo_anulacion": None,
         "fecha_anulacion": None,
         "anulado_por": None
