@@ -257,23 +257,57 @@ export default function CertificadosGestion() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredCertificados.map((cert) => (
+              {filteredCertificados.map((cert) => {
+                // Determinar estado visual
+                const estaVencido = cert.esta_vencido || cert.estado === 'vencido';
+                const porVencer = cert.por_vencer && !estaVencido;
+                const estaAnulado = cert.estado === 'anulado';
+                const estaActivo = cert.estado === 'activo' && !estaVencido && !porVencer;
+                
+                let bgClass = 'bg-white hover:bg-slate-50';
+                let borderClass = '';
+                if (estaAnulado) {
+                  bgClass = 'bg-red-50';
+                  borderClass = 'border-red-200';
+                } else if (estaVencido) {
+                  bgClass = 'bg-orange-50';
+                  borderClass = 'border-orange-200';
+                } else if (porVencer) {
+                  bgClass = 'bg-amber-50';
+                  borderClass = 'border-amber-200';
+                }
+                
+                return (
                 <div 
                   key={cert.id} 
-                  className={`border rounded-lg p-4 ${cert.estado === 'anulado' ? 'bg-red-50 border-red-200' : 'bg-white hover:bg-slate-50'}`}
+                  className={`border rounded-lg p-4 ${bgClass} ${borderClass}`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={cert.estado === 'activo' ? 'default' : 'destructive'} 
-                               className={cert.estado === 'activo' ? 'bg-emerald-600' : ''}>
-                          {cert.estado === 'activo' ? (
-                            <><CheckCircle className="w-3 h-3 mr-1" /> Válido</>
-                          ) : (
-                            <><XCircle className="w-3 h-3 mr-1" /> Anulado</>
-                          )}
-                        </Badge>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {estaAnulado ? (
+                          <Badge variant="destructive">
+                            <XCircle className="w-3 h-3 mr-1" /> Anulado
+                          </Badge>
+                        ) : estaVencido ? (
+                          <Badge className="bg-orange-600">
+                            <AlertTriangle className="w-3 h-3 mr-1" /> Vencido
+                          </Badge>
+                        ) : porVencer ? (
+                          <Badge className="bg-amber-500">
+                            <Clock className="w-3 h-3 mr-1" /> Por Vencer ({cert.dias_restantes} días)
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-emerald-600">
+                            <CheckCircle className="w-3 h-3 mr-1" /> Vigente
+                          </Badge>
+                        )}
                         <span className="font-mono font-bold text-emerald-800">{cert.codigo_verificacion}</span>
+                        {cert.dias_restantes !== null && cert.dias_restantes >= 0 && !estaAnulado && (
+                          <span className="text-xs text-slate-500">
+                            (vence en {cert.dias_restantes} días)
+                          </span>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
