@@ -5036,15 +5036,113 @@ export default function Predios() {
                 <Card>
                   <CardHeader className="py-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <History className="w-4 h-4" /> Historial
+                      <History className="w-4 h-4" /> Historial de Cambios ({selectedPredio.historial.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {selectedPredio.historial.map((h, idx) => (
-                        <div key={idx} className="text-sm border-l-2 border-emerald-200 pl-3 py-1">
-                          <p className="font-medium">{h.accion}</p>
-                          <p className="text-xs text-slate-500">{h.usuario} - {new Date(h.fecha).toLocaleString()}</p>
+                    <div className="space-y-3">
+                      {selectedPredio.historial.slice().reverse().map((h, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
+                          {/* Encabezado con acción */}
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${
+                                h.accion?.toLowerCase().includes('aprobad') ? 'bg-emerald-500' :
+                                h.accion?.toLowerCase().includes('rechaz') ? 'bg-red-500' :
+                                h.accion?.toLowerCase().includes('devuel') ? 'bg-amber-500' :
+                                h.accion?.toLowerCase().includes('crea') ? 'bg-blue-500' :
+                                'bg-slate-400'
+                              }`} />
+                              <span className="font-semibold text-slate-800">{h.accion || 'Acción'}</span>
+                            </div>
+                            {h.estado_nuevo && (
+                              <Badge variant="outline" className="text-xs">
+                                {h.estado_anterior && `${h.estado_anterior} → `}{h.estado_nuevo}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Información del usuario y fecha */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs text-slate-600 mb-2">
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              <span>{h.usuario || h.usuario_nombre || 'Usuario'}</span>
+                              {h.rol && <span className="text-slate-400">({h.rol})</span>}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{h.fecha ? new Date(h.fecha).toLocaleString('es-CO') : 'Sin fecha'}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Acto Administrativo / Resolución */}
+                          {(h.acto_administrativo || h.numero_resolucion || h.resolucion) && (
+                            <div className="flex items-center gap-2 text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded mb-2">
+                              <FileText className="w-3 h-3" />
+                              <span className="font-medium">
+                                {h.acto_administrativo && `Acto: ${h.acto_administrativo}`}
+                                {h.numero_resolucion && `Resolución: ${h.numero_resolucion}`}
+                                {h.resolucion && `Resolución: ${h.resolucion}`}
+                                {h.fecha_resolucion && ` (${h.fecha_resolucion})`}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Radicado */}
+                          {(h.radicado || h.numero_radicado || h.petition_radicado) && (
+                            <div className="flex items-center gap-2 text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded mb-2">
+                              <Hash className="w-3 h-3" />
+                              <span className="font-medium">
+                                Radicado: {h.radicado || h.numero_radicado || h.petition_radicado}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Notas / Observaciones / Motivo */}
+                          {(h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario) && (
+                            <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded p-2 mb-2">
+                              <span className="font-medium text-slate-700">Observaciones: </span>
+                              {h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario}
+                            </div>
+                          )}
+                          
+                          {/* Documentos adjuntos */}
+                          {h.documentos && h.documentos.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium text-slate-600 mb-1">Documentos:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {h.documentos.map((doc, docIdx) => (
+                                  <Button
+                                    key={docIdx}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => {
+                                      if (doc.url || doc.path) {
+                                        window.open(doc.url || `${BACKEND_URL}${doc.path}`, '_blank');
+                                      }
+                                    }}
+                                  >
+                                    <Download className="w-3 h-3 mr-1" />
+                                    {doc.nombre || doc.filename || `Documento ${docIdx + 1}`}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Documento único (si existe como campo directo) */}
+                          {(h.documento_url || h.archivo_url) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs mt-2"
+                              onClick={() => window.open(h.documento_url || h.archivo_url, '_blank')}
+                            >
+                              <Download className="w-3 h-3 mr-1" />
+                              Descargar documento
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
