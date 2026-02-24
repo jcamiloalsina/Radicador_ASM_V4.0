@@ -2881,7 +2881,7 @@ async def upload_documento_final(
         }}
     )
     
-    # Enviar correo al ciudadano con el documento adjunto
+    # Enviar correo al ciudadano con TODOS los documentos adjuntos
     citizen_email = petition.get('correo')
     nombre_solicitante = petition.get('nombre_completo', 'Usuario')
     
@@ -2894,18 +2894,21 @@ async def upload_documento_final(
                 con_archivos=True
             )
             
-            # Adjuntar el primer archivo (o el más reciente)
-            attachment_path = str(saved_files[0]['path']) if saved_files else None
-            attachment_name = saved_files[0]['original_name'] if saved_files else None
+            # Preparar TODOS los archivos para adjuntar
+            attachments = []
+            for archivo in saved_files:
+                attachments.append({
+                    'path': str(archivo['path']),
+                    'name': archivo['original_name']
+                })
             
             await send_email(
                 citizen_email,
                 f"¡Trámite Finalizado! - {petition['radicado']}",
                 email_body,
-                attachment_path,
-                attachment_name
+                attachments=attachments  # Enviar todos los archivos
             )
-            logger.info(f"Correo de finalización enviado a {citizen_email} con documento adjunto")
+            logger.info(f"Correo de finalización enviado a {citizen_email} con {len(attachments)} documento(s) adjunto(s)")
         except Exception as e:
             logger.error(f"Error enviando correo de finalización: {e}")
     
