@@ -359,7 +359,8 @@ export default function CertificadosGestion() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
