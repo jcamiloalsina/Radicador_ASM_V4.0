@@ -1646,7 +1646,9 @@ export default function PetitionDetail() {
                 <div className="space-y-2">
                   {petition.gestores_asignados.map(gestorId => {
                     const gestor = gestores.find(g => g.id === gestorId);
-                    const completado = petition.gestores_finalizados?.includes(gestorId);
+                    // Si el trámite está finalizado, todos los gestores se consideran completados
+                    const tramiteFinalizado = petition.estado === 'finalizado';
+                    const completado = tramiteFinalizado || petition.gestores_finalizados?.includes(gestorId);
                     const esUsuarioActual = gestorId === user?.id;
                     
                     return (
@@ -1664,8 +1666,9 @@ export default function PetitionDetail() {
                           ) : (
                             <Badge className="bg-amber-100 text-amber-700">Trabajando</Badge>
                           )}
-                          {esUsuarioActual && ['asignado', 'en_proceso'].includes(petition.estado) && (
-                            completado ? (
+                          {/* Solo mostrar botones si el trámite NO está finalizado */}
+                          {!tramiteFinalizado && esUsuarioActual && ['asignado', 'en_proceso'].includes(petition.estado) && (
+                            petition.gestores_finalizados?.includes(gestorId) ? (
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -1712,13 +1715,21 @@ export default function PetitionDetail() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-600">Progreso de gestores:</span>
                     <span className="font-medium">
-                      {petition.gestores_finalizados?.length || 0} / {petition.gestores_asignados.length} completados
+                      {/* Si está finalizado, mostrar todos como completados */}
+                      {petition.estado === 'finalizado' 
+                        ? petition.gestores_asignados.length 
+                        : (petition.gestores_finalizados?.length || 0)
+                      } / {petition.gestores_asignados.length} completados
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
                     <div 
                       className="bg-emerald-500 h-2 rounded-full transition-all" 
-                      style={{ width: `${((petition.gestores_finalizados?.length || 0) / petition.gestores_asignados.length) * 100}%` }}
+                      style={{ 
+                        width: petition.estado === 'finalizado' 
+                          ? '100%' 
+                          : `${((petition.gestores_finalizados?.length || 0) / petition.gestores_asignados.length) * 100}%` 
+                      }}
                     ></div>
                   </div>
                 </div>
