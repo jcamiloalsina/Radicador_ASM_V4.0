@@ -8,7 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { 
   FileText, Search, XCircle, CheckCircle, ExternalLink, 
-  Calendar, User, Hash, MapPin, AlertTriangle, Loader2
+  Calendar, User, Hash, MapPin, AlertTriangle, Loader2, Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +18,7 @@ const API = `${BACKEND_URL}/api`;
 export default function CertificadosGestion() {
   const { user } = useAuth();
   const [certificados, setCertificados] = useState([]);
+  const [estadisticas, setEstadisticas] = useState({ total: 0, activos: 0, por_vencer: 0, vencidos: 0, anulados: 0 });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
@@ -30,7 +31,23 @@ export default function CertificadosGestion() {
 
   useEffect(() => {
     fetchCertificados();
+    fetchEstadisticas();
   }, [filtroEstado]);
+
+  const fetchEstadisticas = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API}/certificados/estadisticas`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEstadisticas(data);
+      }
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    }
+  };
 
   const fetchCertificados = async () => {
     setLoading(true);
