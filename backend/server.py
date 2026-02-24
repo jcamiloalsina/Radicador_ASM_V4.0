@@ -10564,6 +10564,86 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         </body>
         </html>
         """
+    elif esta_vencido:
+        # Certificado VENCIDO
+        fecha_venc_fmt = "No disponible"
+        if fecha_vencimiento:
+            try:
+                dt = datetime.fromisoformat(fecha_vencimiento.replace('Z', '+00:00'))
+                fecha_venc_fmt = dt.strftime("%d/%m/%Y")
+            except:
+                fecha_venc_fmt = fecha_vencimiento
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>⏰ Certificado Vencido - Asomunicipios</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #fffbeb; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
+                .header {{ background: #f59e0b; color: white; padding: 25px; text-align: center; }}
+                .header img {{ max-width: 180px; margin-bottom: 15px; background: white; padding: 8px; border-radius: 8px; }}
+                .header h1 {{ margin: 10px 0 0 0; font-size: 22px; }}
+                .content {{ padding: 30px; }}
+                .warning {{ background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center; }}
+                .info-row {{ display: flex; border-bottom: 1px solid #e5e7eb; padding: 12px 0; }}
+                .info-label {{ font-weight: bold; color: #374151; width: 150px; flex-shrink: 0; }}
+                .info-value {{ color: #6b7280; }}
+                .footer {{ background: #009846; padding: 20px; text-align: center; font-size: 12px; color: white; }}
+                .footer a {{ color: #a7f3d0; }}
+                .renew-btn {{ display: inline-block; background: #009846; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; margin-top: 15px; }}
+                .renew-btn:hover {{ background: #007a38; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <img src="{logo_url}" alt="Asomunicipios">
+                    <h1>⏰ CERTIFICADO VENCIDO</h1>
+                </div>
+                <div class="content">
+                    <div class="warning">
+                        <strong style="font-size: 16px;">⏰ Este certificado ha VENCIDO</strong><br><br>
+                        La vigencia de los certificados catastrales es de <strong>30 días</strong> a partir de su expedición.<br><br>
+                        <strong>Fecha de vencimiento:</strong> {fecha_venc_fmt}
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">🔑 Código:</span>
+                        <span class="info-value" style="font-family: monospace;">{codigo_verificacion}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📍 Predio:</span>
+                        <span class="info-value">{certificado.get('codigo_predial', 'N/A')}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📅 Emitido:</span>
+                        <span class="info-value">{fecha_formateada}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📅 Venció:</span>
+                        <span class="info-value" style="color: #f59e0b; font-weight: bold;">{fecha_venc_fmt}</span>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 25px;">
+                        <p style="color: #6b7280;">Para obtener un certificado vigente, solicite uno nuevo a través de nuestros canales de atención.</p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>Asomunicipios</strong> - Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</p>
+                    <p>📧 comunicaciones@asomunicipios.gov.co | 🌐 <a href="https://asomunicipios.gov.co">www.asomunicipios.gov.co</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
     else:
         # Certificado ANULADO
         fecha_anulacion = certificado.get('fecha_anulacion', '')
