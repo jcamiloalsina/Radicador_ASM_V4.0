@@ -139,6 +139,40 @@ export default function CertificadosGestion() {
         </div>
       </div>
 
+      {/* Estadísticas */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card className="bg-slate-50">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-slate-700">{estadisticas.total}</p>
+            <p className="text-xs text-slate-500">Total</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-emerald-50 border-emerald-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-emerald-700">{estadisticas.activos}</p>
+            <p className="text-xs text-emerald-600">Vigentes</p>
+          </CardContent>
+        </Card>
+        <Card className={`border-amber-200 ${estadisticas.por_vencer > 0 ? 'bg-amber-50 animate-pulse' : 'bg-amber-50/50'}`}>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-amber-600">{estadisticas.por_vencer}</p>
+            <p className="text-xs text-amber-600">Por Vencer (7 días)</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-orange-600">{estadisticas.vencidos}</p>
+            <p className="text-xs text-orange-600">Vencidos</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-600">{estadisticas.anulados}</p>
+            <p className="text-xs text-red-600">Anulados</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filtros */}
       <Card>
         <CardContent className="p-4">
@@ -152,11 +186,12 @@ export default function CertificadosGestion() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={filtroEstado === 'todos' ? 'default' : 'outline'}
                 onClick={() => setFiltroEstado('todos')}
-                className={filtroEstado === 'todos' ? 'bg-emerald-700' : ''}
+                className={filtroEstado === 'todos' ? 'bg-slate-700' : ''}
+                size="sm"
               >
                 Todos
               </Button>
@@ -164,13 +199,36 @@ export default function CertificadosGestion() {
                 variant={filtroEstado === 'activo' ? 'default' : 'outline'}
                 onClick={() => setFiltroEstado('activo')}
                 className={filtroEstado === 'activo' ? 'bg-emerald-700' : ''}
+                size="sm"
               >
-                <CheckCircle className="w-4 h-4 mr-1" /> Activos
+                <CheckCircle className="w-4 h-4 mr-1" /> Vigentes
+              </Button>
+              <Button
+                variant={filtroEstado === 'por_vencer' ? 'default' : 'outline'}
+                onClick={() => setFiltroEstado('por_vencer')}
+                className={filtroEstado === 'por_vencer' ? 'bg-amber-600' : 'border-amber-300 text-amber-700'}
+                size="sm"
+              >
+                <Clock className="w-4 h-4 mr-1" /> Por Vencer
+                {estadisticas.por_vencer > 0 && (
+                  <span className="ml-1 bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded-full text-xs">
+                    {estadisticas.por_vencer}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant={filtroEstado === 'vencido' ? 'default' : 'outline'}
+                onClick={() => setFiltroEstado('vencido')}
+                className={filtroEstado === 'vencido' ? 'bg-orange-600' : 'border-orange-300 text-orange-700'}
+                size="sm"
+              >
+                <AlertTriangle className="w-4 h-4 mr-1" /> Vencidos
               </Button>
               <Button
                 variant={filtroEstado === 'anulado' ? 'default' : 'outline'}
                 onClick={() => setFiltroEstado('anulado')}
                 className={filtroEstado === 'anulado' ? 'bg-red-600' : ''}
+                size="sm"
               >
                 <XCircle className="w-4 h-4 mr-1" /> Anulados
               </Button>
