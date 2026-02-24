@@ -2570,8 +2570,15 @@ async def create_petition(
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     
-    # Agregar información del predio relacionado si existe
-    if predio_relacionado:
+    # Agregar información de predios relacionados
+    if predios_relacionados:
+        # Múltiples predios (certificados sencillos múltiples)
+        doc['predios_relacionados'] = predios_relacionados
+        # Compatibilidad: también guardar el primero como predio_relacionado
+        if predios_relacionados:
+            doc['predio_relacionado'] = predios_relacionados[0]
+    elif predio_relacionado:
+        # Predio único (flujo original)
         doc['predio_relacionado'] = predio_relacionado
     
     # Agregar campos de búsqueda para certificados
@@ -2579,6 +2586,10 @@ async def create_petition(
         doc['codigo_predial_buscado'] = codigo_predial.strip()
     if matricula_inmobiliaria:
         doc['matricula_buscada'] = matricula_inmobiliaria.strip()
+    
+    # Guardar la lista original de predios solicitados
+    if lista_predios:
+        doc['predios_solicitados'] = lista_predios
     
     await db.petitions.insert_one(doc)
     
