@@ -10345,9 +10345,42 @@ async def verificar_certificado_publico(codigo_verificacion: str):
         """
         return HTMLResponse(content=html_content, status_code=404)
     
-    # Verificar estado
+    # Verificar estado y vigencia
     estado = certificado.get('estado', 'activo')
-    es_valido = estado == 'activo'
+    
+    # Verificar si está vencido (más de 30 días desde generación)
+    fecha_vencimiento = certificado.get('fecha_vencimiento')
+    esta_vencido = False
+    dias_restantes = None
+    
+    if fecha_vencimiento:
+        try:
+            dt_venc = datetime.fromisoformat(fecha_vencimiento.replace('Z', '+00:00'))
+            ahora = datetime.now(timezone.utc)
+            if ahora > dt_venc:
+                esta_vencido = True
+                estado = "vencido"
+            else:
+                dias_restantes = (dt_venc - ahora).days
+        except:
+            pass
+    else:
+        # Si no tiene fecha_vencimiento, calcular desde fecha_generacion
+        fecha_gen_str = certificado.get('fecha_generacion', '')
+        if fecha_gen_str:
+            try:
+                dt_gen = datetime.fromisoformat(fecha_gen_str.replace('Z', '+00:00'))
+                dt_venc = dt_gen + timedelta(days=30)
+                ahora = datetime.now(timezone.utc)
+                if ahora > dt_venc:
+                    esta_vencido = True
+                    estado = "vencido"
+                else:
+                    dias_restantes = (dt_venc - ahora).days
+            except:
+                pass
+    
+    es_valido = estado == 'activo' and not esta_vencido
     
     # Formatear fecha
     fecha_gen = certificado.get('fecha_generacion', '')
