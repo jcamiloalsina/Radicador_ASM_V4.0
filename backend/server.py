@@ -2427,14 +2427,69 @@ async def create_petition(
     descripcion: str = Form(default=""),
     codigo_predial: str = Form(default=""),
     matricula_inmobiliaria: str = Form(default=""),
+    predios_certificado: str = Form(default=""),  # JSON string con lista de predios
     files: List[UploadFile] = File(default=[]),
     current_user: dict = Depends(get_current_user)
 ):
     radicado = await generate_radicado()
     
-    # Si es un certificado catastral, buscar el predio relacionado
+    # Parsear lista de predios para certificados (si existe)
+    lista_predios = []
+    if predios_certificado:
+        try:
+            lista_predios = json.loads(predios_certificado)
+            logging.info(f"[Petición] Recibida lista de {len(lista_predios)} predios para certificado")
+        except json.JSONDecodeError:
+            logging.warning(f"[Petición] Error parseando predios_certificado: {predios_certificado}")
+    
+    # Si es un certificado catastral, buscar los predios relacionados
+    predios_relacionados = []
+    
+    # Procesar lista de predios (múltiples certificados)
+    if lista_predios:
+        for predio_item in lista_predios:
+            cod_predial = predio_item.get("codigo_predial", "").strip()
+            mat_inmob = predio_item.get("matricula_inmobiliaria", "").strip()
+            
+            predio = None
+            if cod_predial:
+                predio = await db.predios.find_one(
+                    {"codigo_predial_nacional": cod_predial}, 
+                    {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
+                )
+            elif mat_inmob:
+                predio = await db.predios.find_one(
+                    {"r2_registros.matricula_inmobiliaria": mat_inmob}, 
+                    {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
+                )
+            
+            if predio:
+                matricula_r2 = None
+                r2_registros = predio.get("r2_registros", [])
+                if r2_registros:
+                    matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
+                
+                predios_relacionados.append({
+                    "predio_id": predio.get("id"),
+                    "codigo_predial": predio.get("codigo_predial_nacional"),
+                    "matricula": matricula_r2 or mat_inmob,
+                    "direccion": predio.get("direccion"),
+                    "municipio": predio.get("municipio")
+                })
+            else:
+                # Guardar referencia aunque no se encuentre en BD
+                predios_relacionados.append({
+                    "predio_id": None,
+                    "codigo_predial": cod_predial or None,
+                    "matricula": mat_inmob or None,
+                    "direccion": None,
+                    "municipio": None,
+                    "no_encontrado": True
+                })
+    
+    # Compatibilidad: Si no hay lista pero hay código/matrícula individual
     predio_relacionado = None
-    if codigo_predial or matricula_inmobiliaria:
+    if not lista_predios and (codigo_predial or matricula_inmobiliaria):
         predio = None
         if codigo_predial:
             predio = await db.predios.find_one(
@@ -2442,7 +2497,6 @@ async def create_petition(
                 {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "r2_registros": 1, "direccion": 1, "municipio": 1}
             )
         elif matricula_inmobiliaria:
-            # Buscar la matrícula en r2_registros.matricula_inmobiliaria (fuente R1/R2)
             matricula_limpia = matricula_inmobiliaria.strip()
             predio = await db.predios.find_one(
                 {"r2_registros.matricula_inmobiliaria": matricula_limpia}, 
@@ -2450,7 +2504,6 @@ async def create_petition(
             )
         
         if predio:
-            # Extraer la matrícula del R2 si existe
             matricula_r2 = None
             r2_registros = predio.get("r2_registros", [])
             if r2_registros:
