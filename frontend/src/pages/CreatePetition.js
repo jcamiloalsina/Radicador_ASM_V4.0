@@ -106,6 +106,54 @@ export default function CreatePetition() {
       matricula_inmobiliaria: '',
       otro_tramite_cual: '' // Reset campo de otro trámite
     });
+    setPrediosCertificado([]); // Limpiar lista de predios
+  };
+
+  // Función para agregar un predio a la lista
+  const agregarPredio = () => {
+    const tipoBusqueda = formData.busqueda_tipo;
+    const valor = tipoBusqueda === 'codigo' ? formData.codigo_predial.trim() : formData.matricula_inmobiliaria.trim();
+    
+    if (!valor) {
+      toast.error(`Ingrese ${tipoBusqueda === 'codigo' ? 'el código predial' : 'la matrícula inmobiliaria'}`);
+      return;
+    }
+    
+    // Verificar que no esté duplicado
+    const yaExiste = prediosCertificado.some(p => 
+      (tipoBusqueda === 'codigo' && p.codigo_predial === valor) ||
+      (tipoBusqueda === 'matricula' && p.matricula_inmobiliaria === valor)
+    );
+    
+    if (yaExiste) {
+      toast.error('Este predio ya fue agregado a la lista');
+      return;
+    }
+    
+    // Agregar a la lista
+    const nuevoPredio = {
+      id: Date.now(),
+      tipo_busqueda: tipoBusqueda,
+      codigo_predial: tipoBusqueda === 'codigo' ? valor : '',
+      matricula_inmobiliaria: tipoBusqueda === 'matricula' ? valor : ''
+    };
+    
+    setPrediosCertificado([...prediosCertificado, nuevoPredio]);
+    
+    // Limpiar campos
+    setFormData({
+      ...formData,
+      codigo_predial: '',
+      matricula_inmobiliaria: ''
+    });
+    
+    toast.success('Predio agregado a la lista');
+  };
+
+  // Función para eliminar un predio de la lista
+  const eliminarPredio = (id) => {
+    setPrediosCertificado(prediosCertificado.filter(p => p.id !== id));
+    toast.info('Predio eliminado de la lista');
   };
 
   const handleSubmit = async (e) => {
