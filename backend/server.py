@@ -2960,13 +2960,21 @@ async def download_petition_file(
         if petition.get('user_id') != current_user['id']:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para descargar este archivo")
     
-    # Buscar el archivo en la lista de archivos
+    # Buscar el archivo en TODAS las listas de archivos (archivos del ciudadano Y archivos staff)
     archivo_encontrado = None
+    
+    # Buscar en archivos del ciudadano
     for archivo in petition.get('archivos', []):
-        # Buscar por id o por filename (para compatibilidad)
         if archivo.get('id') == file_id or archivo.get('filename') == file_id:
             archivo_encontrado = archivo
             break
+    
+    # Si no se encontró, buscar en archivos_staff (documentos finales)
+    if not archivo_encontrado:
+        for archivo in petition.get('archivos_staff', []):
+            if archivo.get('id') == file_id or archivo.get('filename') == file_id:
+                archivo_encontrado = archivo
+                break
     
     if not archivo_encontrado:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
