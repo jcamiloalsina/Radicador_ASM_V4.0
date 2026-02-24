@@ -813,7 +813,18 @@ async def enviar_correo_con_adjunto(destinatario: str, asunto: str, contenido_ht
     """Wrapper async para enviar correo con adjunto."""
     await send_email(destinatario, asunto, contenido_html, adjunto_path, adjunto_nombre)
 
-async def send_email(to_email: str, subject: str, body: str, attachment_path: str = None, attachment_name: str = None):
+async def send_email(to_email: str, subject: str, body: str, attachment_path: str = None, attachment_name: str = None, attachments: list = None):
+    """
+    Envía un correo electrónico con soporte para múltiples adjuntos.
+    
+    Args:
+        to_email: Correo destino
+        subject: Asunto
+        body: Cuerpo HTML
+        attachment_path: Ruta de un archivo adjunto (compatibilidad)
+        attachment_name: Nombre del archivo adjunto (compatibilidad)
+        attachments: Lista de diccionarios con {'path': str, 'name': str} para múltiples adjuntos
+    """
     if not SMTP_USER or not SMTP_PASSWORD:
         logging.warning("SMTP credentials not configured, skipping email")
         return
@@ -828,13 +839,32 @@ async def send_email(to_email: str, subject: str, body: str, attachment_path: st
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
         
-        # Add attachment if provided
+        # Construir lista de adjuntos
+        archivos_adjuntar = []
+        
+        # Agregar adjunto único (compatibilidad con código existente)
         if attachment_path and os.path.exists(attachment_path):
-            with open(attachment_path, 'rb') as f:
+            archivos_adjuntar.append({
+                'path': attachment_path,
+                'name': attachment_name or os.path.basename(attachment_path)
+            })
+        
+        # Agregar múltiples adjuntos
+        if attachments:
+            for adj in attachments:
+                if adj.get('path') and os.path.exists(adj['path']):
+                    archivos_adjuntar.append({
+                        'path': adj['path'],
+                        'name': adj.get('name') or os.path.basename(adj['path'])
+                    })
+        
+        # Adjuntar todos los archivos
+        for archivo in archivos_adjuntar:
+            with open(archivo['path'], 'rb') as f:
                 part = MIMEBase('application', 'octet-stream')
                 part.set_payload(f.read())
                 encoders.encode_base64(part)
-                part.add_header('Content-Disposition', f'attachment; filename="{attachment_name or os.path.basename(attachment_path)}"')
+                part.add_header('Content-Disposition', f'attachment; filename="{archivo["name"]}"')
                 msg.attach(part)
         
         server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
@@ -842,7 +872,7 @@ async def send_email(to_email: str, subject: str, body: str, attachment_path: st
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
         server.quit()
-        logging.info(f"Email sent to {to_email}")
+        logging.info(f"Email sent to {to_email} with {len(archivos_adjuntar)} attachment(s)")
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
 
