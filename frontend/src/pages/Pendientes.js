@@ -2151,25 +2151,33 @@ export default function Pendientes() {
                   </div>
                   <div>
                     <span className="text-xs text-slate-500 uppercase tracking-wide">Radicado Asociado</span>
-                    {selectedCambio.radicado_numero ? (
-                      <button
-                        onClick={() => {
-                          if (selectedCambio.radicado_id) {
-                            navigate(`/dashboard/peticiones/${selectedCambio.radicado_id}`);
-                          } else {
-                            toast.info('No se puede abrir: ID de radicado no disponible');
-                          }
-                        }}
-                        className="font-medium text-blue-700 flex items-center gap-1 hover:text-blue-900 hover:underline transition-colors cursor-pointer"
-                        data-testid="radicado-link"
-                      >
-                        <FileText className="w-4 h-4" />
-                        {selectedCambio.radicado_numero}
-                        <ExternalLink className="w-3 h-3 ml-1" />
-                      </button>
-                    ) : (
-                      <p className="text-sm text-amber-600">Sin radicado asociado</p>
-                    )}
+                    {/* Para eliminaciones, el radicado puede estar en datos_propuestos */}
+                    {(() => {
+                      const radicadoNumero = selectedCambio.radicado_numero || 
+                        (selectedCambio.tipo_cambio === 'eliminacion' && 
+                          (selectedCambio.datos_propuestos?.radicado || selectedCambio.datos_propuestos?.radicado_eliminacion));
+                      
+                      if (radicadoNumero) {
+                        return (
+                          <button
+                            onClick={() => {
+                              if (selectedCambio.radicado_id) {
+                                navigate(`/dashboard/peticiones/${selectedCambio.radicado_id}`);
+                              } else {
+                                toast.info('Radicado ingresado manualmente');
+                              }
+                            }}
+                            className="font-medium text-blue-700 flex items-center gap-1 hover:text-blue-900 hover:underline transition-colors cursor-pointer"
+                            data-testid="radicado-link"
+                          >
+                            <FileText className="w-4 h-4" />
+                            {radicadoNumero}
+                            {selectedCambio.radicado_id && <ExternalLink className="w-3 h-3 ml-1" />}
+                          </button>
+                        );
+                      }
+                      return <p className="text-sm text-amber-600">Sin radicado asociado</p>;
+                    })()}
                   </div>
                 </div>
               </div>
