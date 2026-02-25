@@ -10145,11 +10145,14 @@ async def generar_certificado_desde_peticion(
         radicado=petition.get('radicado')  # Pasar el radicado de la petición
     )
     
-    # Guardar PDF permanentemente para que el usuario pueda descargarlo después
-    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}.pdf"
+    # Guardar PDF permanentemente con timestamp para evitar caché
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}_{timestamp}.pdf"
     cert_path = UPLOAD_DIR / cert_filename
     with open(cert_path, 'wb') as f:
         f.write(pdf_bytes)
+    
+    logger.info(f"[Certificado] PDF generado: {cert_filename} - Propietario en PDF: {propietarios_nombres}")
     
     # Extraer matrícula del R2 si existe
     matricula_r2 = None
