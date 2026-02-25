@@ -2419,8 +2419,19 @@ export default function Predios() {
         predio_id: predioAEliminar.id,
         tipo_cambio: 'eliminacion',
         datos_propuestos: { 
+          // Datos completos del predio para que se muestren en el historial
+          codigo_predial_nacional: predioAEliminar.codigo_predial_nacional,
           codigo_homologado: predioAEliminar.codigo_homologado, 
+          municipio: predioAEliminar.municipio,
+          direccion: predioAEliminar.direccion,
           nombre_propietario: predioAEliminar.nombre_propietario,
+          propietarios: predioAEliminar.propietarios || [],
+          area_terreno: predioAEliminar.area_terreno,
+          area_construida: predioAEliminar.area_construida,
+          avaluo: predioAEliminar.avaluo,
+          destino_economico: predioAEliminar.destino_economico,
+          vigencia: predioAEliminar.vigencia,
+          // Datos de la eliminación
           radicado: eliminacionData.radicado.trim(),
           radicado_eliminacion: eliminacionData.radicado.trim(),
           resolucion: eliminacionData.resolucion.trim(),
