@@ -18925,28 +18925,64 @@ async def exportar_actualizacion_excel(
     
     row = 2
     for predio in predios:
-        # Obtener propietarios - priorizar datos de visita si el predio fue actualizado
+        # Obtener código del predio para buscar propuestas aprobadas
+        codigo_predio = predio.get('codigo_predial') or predio.get('codigo_predial_nacional') or predio.get('numero_predial')
+        
+        # ========== FUSIONAR CON DATOS DE PROPUESTA APROBADA ==========
+        # Si hay una propuesta aprobada para este predio, usar sus datos
+        datos_aprobados = {}
+        if codigo_predio and codigo_predio in datos_propuestas:
+            datos_aprobados = datos_propuestas[codigo_predio].get('datos', {})
+        
+        # Función helper para obtener dato priorizando propuesta aprobada
+        def get_dato(campo, default=''):
+            # Primero buscar en datos aprobados, luego en predio original
+            if datos_aprobados:
+                # Buscar en datos_aprobados con variantes del nombre del campo
+                valor = datos_aprobados.get(campo)
+                if valor is not None and valor != '':
+                    return valor
+                # Buscar en r1 anidado si existe
+                r1_data = datos_aprobados.get('r1', {})
+                if isinstance(r1_data, dict):
+                    valor = r1_data.get(campo)
+                    if valor is not None and valor != '':
+                        return valor
+            return predio.get(campo, default)
+        
+        # Obtener propietarios - priorizar propuesta aprobada > visita > original
         propietarios = []
         estado_visita = predio.get('estado_visita', 'pendiente')
         visita_data = predio.get('visita_data', {})
         
-        # Si el predio tiene visita, usar propietarios de la visita
-        if estado_visita in ['visitado_firmado', 'actualizado'] and visita_data:
+        # 1. Prioridad: Propietarios de propuesta aprobada
+        if datos_aprobados:
+            propietarios_propuesta = datos_aprobados.get('propietarios', [])
+            # También buscar en r1.propietarios si existe
+            if not propietarios_propuesta:
+                r1_data = datos_aprobados.get('r1', {})
+                if isinstance(r1_data, dict):
+                    propietarios_propuesta = r1_data.get('propietarios', [])
+            if propietarios_propuesta:
+                propietarios = propietarios_propuesta
+        
+        # 2. Si no hay de propuesta, usar visita
+        if not propietarios and estado_visita in ['visitado_firmado', 'actualizado'] and visita_data:
             propietarios_visita = visita_data.get('propietarios', [])
             if propietarios_visita:
                 propietarios = propietarios_visita
         
-        # Si no hay propietarios de visita, usar los originales del predio
+        # 3. Si no hay de visita, usar originales del predio
         if not propietarios:
             propietarios = predio.get('propietarios', [])
         
-        # Fallback: crear un propietario con datos del predio
+        # 4. Fallback: crear un propietario con datos del predio/propuesta
         if not propietarios:
             propietarios = [{
-                'nombre_propietario': predio.get('nombre_propietario', predio.get('nombre', '')),
-                'tipo_documento': predio.get('tipo_documento', ''),
-                'numero_documento': predio.get('numero_documento', ''),
-                'estado': predio.get('estado', predio.get('estado_civil', ''))
+                'nombre_propietario': get_dato('nombre_propietario', get_dato('nombre', '')),
+                'tipo_documento': get_dato('tipo_documento', ''),
+                'numero_documento': get_dato('numero_documento', ''),
+                'estado': get_dato('estado', get_dato('estado_civil', ''))
             }]
         
         total_props = len(propietarios)
@@ -18964,6 +19000,16 @@ async def exportar_actualizacion_excel(
         else:
             fill = None
         
+        # Obtener datos del predio fusionando con propuesta aprobada
+        codigo_homologado = get_dato('codigo_homologado', '')
+        matricula = get_dato('matricula_inmobiliaria', get_dato('matricula', ''))
+        direccion = get_dato('direccion', '')
+        comuna = get_dato('comuna', '')
+        destino_economico = get_dato('destino_economico', '')
+        area_terreno = get_dato('area_terreno', 0)
+        area_construida = get_dato('area_construida', 0)
+        avaluo = get_dato('avaluo', get_dato('avaluo_catastral', 0))
+        
         for idx, prop in enumerate(propietarios, 1):
             # Obtener campos de nombre parseados
             campos_nombre = obtener_campos_nombre(prop)
@@ -18972,7 +19018,7 @@ async def exportar_actualizacion_excel(
             ws_r1.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
             ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
             ws_r1.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('numero_predial', ''))))
-            ws_r1.cell(row=row, column=5, value=predio.get('codigo_homologado', ''))
+            ws_r1.cell(row=row, column=5, value=codigo_homologado)
             ws_r1.cell(row=row, column=6, value='1')
             ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))
             ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))
