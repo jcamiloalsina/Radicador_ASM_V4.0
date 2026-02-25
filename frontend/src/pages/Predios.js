@@ -4414,6 +4414,112 @@ export default function Predios() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Eliminación de Predio */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" />
+              Eliminar Predio
+            </DialogTitle>
+            <DialogDescription>
+              Complete los datos requeridos para procesar la eliminación del predio.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {predioAEliminar && (
+            <div className="space-y-4">
+              {/* Info del predio a eliminar */}
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-800">
+                  Predio: {predioAEliminar.codigo_homologado || predioAEliminar.codigo_predial_nacional}
+                </p>
+                <p className="text-sm text-red-600">
+                  Propietario: {predioAEliminar.nombre_propietario || 'N/A'}
+                </p>
+              </div>
+              
+              {/* Formulario de eliminación */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Radicado (opcional)</Label>
+                  <Input
+                    placeholder="Ej: RASMGC-1234-01-01-2026"
+                    value={eliminacionData.radicado}
+                    onChange={(e) => setEliminacionData({...eliminacionData, radicado: e.target.value})}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Si existe un radicado de petición asociado</p>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">
+                    Número de Resolución <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Ej: 001-2026"
+                    value={eliminacionData.resolucion}
+                    onChange={(e) => setEliminacionData({...eliminacionData, resolucion: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">Fecha de Resolución</Label>
+                  <Input
+                    type="date"
+                    value={eliminacionData.fecha_resolucion}
+                    onChange={(e) => setEliminacionData({...eliminacionData, fecha_resolucion: e.target.value})}
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">
+                    Motivo de Eliminación <span className="text-red-500">*</span>
+                  </Label>
+                  <textarea
+                    placeholder="Describa el motivo de la eliminación del predio..."
+                    value={eliminacionData.motivo}
+                    onChange={(e) => setEliminacionData({...eliminacionData, motivo: e.target.value})}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]"
+                  />
+                </div>
+              </div>
+              
+              {/* Botones de acción */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isSavingDelete}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={isSavingDelete || !eliminacionData.resolucion.trim() || !eliminacionData.motivo.trim()}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isSavingDelete ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Confirmar Eliminación
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Deleted Predios Dialog */}
       <Dialog open={showDeletedDialog} onOpenChange={setShowDeletedDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
