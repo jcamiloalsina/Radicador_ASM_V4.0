@@ -8912,16 +8912,82 @@ async def export_predios_excel(
         # Rellenar con ceros a la izquierda hasta 12 dígitos
         return solo_numeros.zfill(12) if solo_numeros else ''
     
+    # Función para parsear nombre completo en partes (cuando solo viene nombre_propietario)
+    def parsear_nombre_propietario(nombre_completo):
+        """
+        Divide un nombre completo en: primer_apellido, segundo_apellido, primer_nombre, segundo_nombre
+        Lógica:
+        - 4+ palabras: AP1, AP2, N1, N2+resto
+        - 3 palabras: AP1, AP2, N1
+        - 2 palabras: AP1, N1
+        - 1 palabra: AP1
+        """
+        if not nombre_completo:
+            return {'primer_apellido': '', 'segundo_apellido': '', 'primer_nombre': '', 'segundo_nombre': ''}
+        
+        partes = nombre_completo.strip().split()
+        
+        if len(partes) >= 4:
+            return {
+                'primer_apellido': partes[0],
+                'segundo_apellido': partes[1],
+                'primer_nombre': partes[2],
+                'segundo_nombre': ' '.join(partes[3:])
+            }
+        elif len(partes) == 3:
+            return {
+                'primer_apellido': partes[0],
+                'segundo_apellido': partes[1],
+                'primer_nombre': partes[2],
+                'segundo_nombre': ''
+            }
+        elif len(partes) == 2:
+            return {
+                'primer_apellido': partes[0],
+                'segundo_apellido': '',
+                'primer_nombre': partes[1],
+                'segundo_nombre': ''
+            }
+        else:
+            return {
+                'primer_apellido': partes[0] if partes else '',
+                'segundo_apellido': '',
+                'primer_nombre': '',
+                'segundo_nombre': ''
+            }
+    
+    # Función para obtener campos de nombre (usa parseados si no hay separados)
+    def obtener_campos_nombre(prop):
+        """Obtiene los campos de nombre, parseando si es necesario"""
+        primer_ap = prop.get('primer_apellido', '').strip()
+        segundo_ap = prop.get('segundo_apellido', '').strip()
+        primer_nom = prop.get('primer_nombre', '').strip()
+        segundo_nom = prop.get('segundo_nombre', '').strip()
+        
+        # Si no hay campos separados, parsear del nombre completo
+        if not primer_ap and not primer_nom:
+            nombre_completo = prop.get('nombre_propietario', '') or prop.get('nombre', '')
+            parseado = parsear_nombre_propietario(nombre_completo)
+            return parseado
+        
+        return {
+            'primer_apellido': primer_ap,
+            'segundo_apellido': segundo_ap,
+            'primer_nombre': primer_nom,
+            'segundo_nombre': segundo_nom
+        }
+    
     # Función para generar nombre completo desde campos separados
     def generar_nombre_completo(prop):
+        campos = obtener_campos_nombre(prop)
         partes = [
-            prop.get('primer_apellido', ''),
-            prop.get('segundo_apellido', ''),
-            prop.get('primer_nombre', ''),
-            prop.get('segundo_nombre', '')
+            campos.get('primer_apellido', ''),
+            campos.get('segundo_apellido', ''),
+            campos.get('primer_nombre', ''),
+            campos.get('segundo_nombre', '')
         ]
         nombre = ' '.join(p for p in partes if p and p.strip())
-        # Si no hay campos separados, usar nombre_propietario
+        # Si no hay campos separados, usar nombre_propietario directamente
         return nombre if nombre else prop.get('nombre_propietario', '')
     
     # Escribir datos R1
