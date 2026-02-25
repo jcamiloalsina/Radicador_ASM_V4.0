@@ -2382,20 +2382,53 @@ export default function Predios() {
     }
   };
 
-  const handleDelete = async (predio) => {
-    if (!window.confirm(`¿Está seguro de eliminar el predio ${predio.codigo_homologado}?`)) return;
-    if (isSavingDelete) return; // Prevenir doble clic
+  // Función para abrir modal de eliminación
+  const openDeleteModal = (predio) => {
+    setPredioAEliminar(predio);
+    setEliminacionData({
+      radicado: '',
+      resolucion: '',
+      fecha_resolucion: '',
+      motivo: ''
+    });
+    setShowDeleteModal(true);
+  };
+
+  // Función para confirmar eliminación con datos del modal
+  const handleConfirmDelete = async () => {
+    if (!predioAEliminar) return;
+    if (isSavingDelete) return;
+    
+    // Validar campos requeridos
+    if (!eliminacionData.resolucion.trim()) {
+      toast.error('Debe ingresar el número de resolución');
+      return;
+    }
+    if (!eliminacionData.motivo.trim()) {
+      toast.error('Debe ingresar el motivo de eliminación');
+      return;
+    }
+    
     setIsSavingDelete(true);
     
     try {
       const token = localStorage.getItem('token');
       
-      // Usar sistema de aprobación
+      // Usar sistema de aprobación con datos completos
       const res = await axios.post(`${API}/predios/cambios/proponer`, {
-        predio_id: predio.id,
+        predio_id: predioAEliminar.id,
         tipo_cambio: 'eliminacion',
-        datos_propuestos: { codigo_homologado: predio.codigo_homologado, nombre_propietario: predio.nombre_propietario },
-        justificacion: 'Eliminación de predio'
+        datos_propuestos: { 
+          codigo_homologado: predioAEliminar.codigo_homologado, 
+          nombre_propietario: predioAEliminar.nombre_propietario,
+          radicado: eliminacionData.radicado.trim(),
+          radicado_eliminacion: eliminacionData.radicado.trim(),
+          resolucion: eliminacionData.resolucion.trim(),
+          numero_resolucion: eliminacionData.resolucion.trim(),
+          fecha_resolucion: eliminacionData.fecha_resolucion,
+          motivo: eliminacionData.motivo.trim()
+        },
+        justificacion: eliminacionData.motivo.trim() || 'Eliminación de predio'
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2406,6 +2439,10 @@ export default function Predios() {
         toast.success('Predio eliminado exitosamente');
       }
       
+      // Cerrar modal y limpiar
+      setShowDeleteModal(false);
+      setPredioAEliminar(null);
+      
       // Forzar recarga desde servidor para ver cambios inmediatamente
       await forceRefreshPredios();
       fetchCambiosStats();
@@ -2414,6 +2451,11 @@ export default function Predios() {
     } finally {
       setIsSavingDelete(false);
     }
+  };
+
+  // Función legacy para compatibilidad (ahora abre el modal)
+  const handleDelete = async (predio) => {
+    openDeleteModal(predio);
   };
 
   const openEditDialog = (predio) => {
