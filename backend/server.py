@@ -12541,6 +12541,14 @@ async def proponer_cambio_predio(
     else:
         estado_inicial = f"pendiente_{cambio.tipo_cambio}"
     
+    # Para eliminaciones, el radicado puede venir en datos_propuestos
+    radicado_de_datos_propuestos = None
+    if cambio.tipo_cambio == "eliminacion" and cambio.datos_propuestos:
+        radicado_de_datos_propuestos = cambio.datos_propuestos.get("radicado") or cambio.datos_propuestos.get("radicado_eliminacion")
+    
+    # Prioridad: radicado_info (de petición vinculada) > cambio.radicado_numero > radicado de datos_propuestos
+    radicado_numero_final = radicado_info['radicado'] if radicado_info else (cambio.radicado_numero or radicado_de_datos_propuestos)
+    
     cambio_doc = {
         "id": str(uuid.uuid4()),
         "predio_id": cambio.predio_id,
@@ -12549,7 +12557,7 @@ async def proponer_cambio_predio(
         "predio_actual": predio_actual_data,  # Guardar datos actuales para comparación
         "justificacion": cambio.justificacion,
         "radicado_id": cambio.radicado_id,
-        "radicado_numero": radicado_info['radicado'] if radicado_info else cambio.radicado_numero,
+        "radicado_numero": radicado_numero_final,
         "estado": estado_inicial,
         "propuesto_por": current_user['id'],
         "propuesto_por_nombre": current_user['full_name'],
