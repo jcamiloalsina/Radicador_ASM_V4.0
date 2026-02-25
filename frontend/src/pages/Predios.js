@@ -3092,20 +3092,20 @@ export default function Predios() {
                   </Button>
                 )}
                 {canModifyPredios && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Predios Eliminados
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Predios Eliminados - {filterMunicipio}</DialogTitle>
-                    </DialogHeader>
-                    <PrediosEliminadosView municipio={filterMunicipio} />
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  variant="outline" 
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                  onClick={() => {
+                    setRegistroEliminacion({
+                      ...registroEliminacion,
+                      municipio: filterMunicipio || ''
+                    });
+                    fetchPrediosEliminados();
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Predios Eliminados
+                </Button>
                 )}
                 {/* Botón de Subsanaciones - Para gestores y coordinadores */}
                 {user && ['gestor', 'coordinador', 'administrador'].includes(user.role) && subsanacionesConteo > 0 && (
