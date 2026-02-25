@@ -10015,26 +10015,52 @@ async def generar_certificado_desde_peticion(
     if 'certificado' not in tipo:
         raise HTTPException(status_code=400, detail="Esta petición no es de tipo certificado catastral")
     
-    # Buscar el predio relacionado
+    # Buscar el predio relacionado - SIEMPRE usar datos más recientes de la BD
     predio = None
     predio_relacionado = petition.get('predio_relacionado')
+    codigo_buscado = petition.get('codigo_predial_buscado')
+    matricula_buscada = petition.get('matricula_buscada')
     
-    if predio_relacionado and predio_relacionado.get('predio_id'):
-        predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
-    
-    # Si no hay predio relacionado, buscar por código o matrícula guardada
-    if not predio:
-        codigo_buscado = petition.get('codigo_predial_buscado')
-        matricula_buscada = petition.get('matricula_buscada')
-        
-        if codigo_buscado:
+    # PRIMERO: Buscar por código predial (más confiable y siempre actualizado)
+    if codigo_buscado:
+        # Buscar primero predios activos (no eliminados)
+        predio = await db.predios.find_one(
+            {"codigo_predial_nacional": codigo_buscado, "deleted": {"$ne": True}}, 
+            {"_id": 0}
+        )
+        if not predio:
+            # Si no hay activo, buscar cualquiera con ese código
             predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
-        elif matricula_buscada:
-            # Buscar matrícula en r2_registros.matricula_inmobiliaria (fuente R1/R2)
+        logger.info(f"[Certificado] Búsqueda por código {codigo_buscado}: {'encontrado' if predio else 'no encontrado'}")
+    
+    # SEGUNDO: Si no se encontró por código, buscar por predio_id guardado en la petición
+    if not predio and predio_relacionado and predio_relacionado.get('predio_id'):
+        predio = await db.predios.find_one(
+            {"id": predio_relacionado['predio_id'], "deleted": {"$ne": True}}, 
+            {"_id": 0}
+        )
+        if not predio:
+            predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
+        logger.info(f"[Certificado] Búsqueda por predio_id {predio_relacionado.get('predio_id')}: {'encontrado' if predio else 'no encontrado'}")
+    
+    # TERCERO: Buscar por matrícula inmobiliaria
+    if not predio and matricula_buscada:
+        predio = await db.predios.find_one(
+            {"r2_registros.matricula_inmobiliaria": matricula_buscada, "deleted": {"$ne": True}}, 
+            {"_id": 0}
+        )
+        if not predio:
             predio = await db.predios.find_one(
                 {"r2_registros.matricula_inmobiliaria": matricula_buscada}, 
                 {"_id": 0}
             )
+        logger.info(f"[Certificado] Búsqueda por matrícula {matricula_buscada}: {'encontrado' if predio else 'no encontrado'}")
+    
+    # Log de datos del predio encontrado para debugging
+    if predio:
+        propietarios_info = predio.get('propietarios', [])
+        nombre_prop = propietarios_info[0].get('nombre_propietario', 'N/A') if propietarios_info else predio.get('nombre_propietario', 'N/A')
+        logger.info(f"[Certificado] Predio encontrado - CNP: {predio.get('codigo_predial_nacional')}, Propietario: {nombre_prop}, updated_at: {predio.get('updated_at', 'N/A')}")
     
     if not predio:
         raise HTTPException(
