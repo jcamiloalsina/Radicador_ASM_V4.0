@@ -8319,12 +8319,16 @@ async def exportar_predios_eliminados_excel(
     # Headers
     headers = [
         "Código Predial Nacional",
+        "Código Homologado",
         "Municipio",
         "Dirección",
         "Propietario",
         "Área Terreno (m²)",
         "Área Construida (m²)",
         "Avalúo",
+        "Tipo Mutación",
+        "Resolución",
+        "Fecha Resolución",
         "Vigencia Origen",
         "Vigencia Eliminación",
         "Radicado Eliminación",
@@ -8342,34 +8346,38 @@ async def exportar_predios_eliminados_excel(
     
     # Datos
     for row_idx, predio in enumerate(predios, 2):
-        propietario = ""
-        if predio.get("propietarios"):
+        propietario = predio.get("nombre_propietario", "")
+        if not propietario and predio.get("propietarios"):
             propietario = predio["propietarios"][0].get("nombre_propietario", "")
         
         data = [
             predio.get("codigo_predial_nacional", ""),
+            predio.get("codigo_homologado", ""),
             predio.get("municipio", ""),
             predio.get("direccion", ""),
             propietario,
             predio.get("area_terreno", 0),
             predio.get("area_construida", 0),
             predio.get("avaluo", 0),
+            predio.get("tipo_mutacion", "ELIMINACION"),
+            predio.get("resolucion", predio.get("numero_resolucion", "")),
+            predio.get("fecha_resolucion", ""),
             predio.get("vigencia_origen", predio.get("vigencia", "")),
             predio.get("vigencia_eliminacion", ""),
             predio.get("radicado_eliminacion", ""),
             predio.get("eliminado_en", "")[:10] if predio.get("eliminado_en") else "",
             predio.get("motivo", ""),
-            predio.get("eliminado_por_nombre", "")
+            predio.get("eliminado_por", predio.get("eliminado_por_nombre", ""))
         ]
         
         for col, value in enumerate(data, 1):
             cell = ws.cell(row=row_idx, column=col, value=value)
             cell.border = thin_border
-            if col in [5, 6, 7]:  # Números
+            if col in [6, 7, 8]:  # Números
                 cell.alignment = Alignment(horizontal="right")
     
     # Ajustar anchos de columna
-    column_widths = [35, 15, 30, 30, 15, 15, 15, 12, 12, 20, 12, 30, 20]
+    column_widths = [35, 15, 15, 30, 30, 15, 15, 15, 15, 15, 15, 12, 12, 25, 12, 30, 20]
     for i, width in enumerate(column_widths, 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
     
