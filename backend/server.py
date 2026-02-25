@@ -12808,7 +12808,42 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
     elif tipo == "eliminacion":
         predio_id = cambio["predio_id"]
         
-        # Soft delete
+        # Obtener datos del predio antes de eliminar
+        predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        if predio:
+            # Guardar en predios_eliminados para el Excel de exportación
+            eliminado_doc = {
+                "id": str(uuid.uuid4()),
+                "codigo_predial_nacional": predio.get("codigo_predial_nacional"),
+                "codigo_homologado": predio.get("codigo_homologado"),
+                "municipio": predio.get("municipio"),
+                "direccion": predio.get("direccion"),
+                "nombre_propietario": predio.get("nombre_propietario"),
+                "propietarios": predio.get("propietarios", []),
+                "area_terreno": predio.get("area_terreno"),
+                "area_construida": predio.get("area_construida"),
+                "avaluo": predio.get("avaluo"),
+                "destino_economico": predio.get("destino_economico"),
+                "vigencia_origen": predio.get("vigencia"),
+                "vigencia_eliminacion": datetime.now().year,
+                # Datos de la eliminación (vienen del modal)
+                "radicado_eliminacion": datos.get("radicado") or datos.get("radicado_eliminacion"),
+                "resolucion": datos.get("resolucion") or datos.get("numero_resolucion"),
+                "fecha_resolucion": datos.get("fecha_resolucion"),
+                "motivo": datos.get("motivo") or cambio.get("justificacion", "Eliminación de predio"),
+                # Metadatos
+                "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                "eliminado_por": aprobador['full_name'],
+                "eliminado_por_id": aprobador['id'],
+                "predio_id_original": predio_id,
+                "propuesto_por": cambio.get("propuesto_por_nombre"),
+                "fecha_propuesta": cambio.get("fecha_propuesta")
+            }
+            await db.predios_eliminados.insert_one(eliminado_doc)
+            logger.info(f"[Eliminación] Predio {predio.get('codigo_predial_nacional')} guardado en predios_eliminados")
+        
+        # Soft delete en la colección principal
         await db.predios.update_one(
             {"id": predio_id},
             {
@@ -12817,7 +12852,10 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
                     "deleted_at": datetime.now(timezone.utc).isoformat(),
                     "deleted_by": aprobador['id'],
                     "deleted_by_name": aprobador['full_name'],
-                    "estado_aprobacion": PredioEstadoAprobacion.APROBADO
+                    "estado_aprobacion": PredioEstadoAprobacion.APROBADO,
+                    "radicado_eliminacion": datos.get("radicado") or datos.get("radicado_eliminacion"),
+                    "resolucion_eliminacion": datos.get("resolucion") or datos.get("numero_resolucion"),
+                    "motivo_eliminacion": datos.get("motivo") or cambio.get("justificacion")
                 },
                 "$push": {"historial": historial_entry}
             }
