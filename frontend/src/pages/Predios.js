@@ -4606,7 +4606,7 @@ export default function Predios() {
 
       {/* Deleted Predios Dialog */}
       <Dialog open={showDeletedDialog} onOpenChange={setShowDeletedDialog}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-red-700">
               <AlertTriangle className="w-5 h-5" />
@@ -4615,215 +4615,9 @@ export default function Predios() {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-slate-500">
-                Los siguientes predios han sido eliminados del sistema.
-              </p>
-              {(user?.role === 'coordinador' || user?.role === 'administrador') && (
-                <Button 
-                  size="sm"
-                  onClick={() => {
-                    setRegistroEliminacion({
-                      ...registroEliminacion,
-                      municipio: filterMunicipio || ''
-                    });
-                    setShowRegistrarEliminacion(true);
-                  }}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Registrar Eliminación
-                </Button>
-              )}
-            </div>
-            
-            {/* Formulario de registro manual */}
-            {showRegistrarEliminacion && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-red-800">Registrar Eliminación Manual</h4>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setShowRegistrarEliminacion(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-sm font-medium">
-                      Código Predial Nacional <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Ej: 547200001000..."
-                      value={registroEliminacion.codigo_predial_nacional}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, codigo_predial_nacional: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Código Homologado</Label>
-                    <Input
-                      placeholder="Ej: BSB0001XXXX"
-                      value={registroEliminacion.codigo_homologado}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, codigo_homologado: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">
-                      Municipio <span className="text-red-500">*</span>
-                    </Label>
-                    <select
-                      value={registroEliminacion.municipio}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, municipio: e.target.value})}
-                      className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {municipiosDisponibles.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-sm font-medium">Dirección</Label>
-                    <Input
-                      placeholder="Dirección del predio"
-                      value={registroEliminacion.direccion}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, direccion: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Propietario</Label>
-                    <Input
-                      placeholder="Nombre del propietario"
-                      value={registroEliminacion.nombre_propietario}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, nombre_propietario: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <Label className="text-sm font-medium">Área Terreno (m²)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={registroEliminacion.area_terreno}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, area_terreno: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Área Construida (m²)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={registroEliminacion.area_construida}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, area_construida: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Avalúo ($)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={registroEliminacion.avaluo}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, avaluo: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Destino Económico</Label>
-                    <Input
-                      placeholder="Ej: HABITACIONAL"
-                      value={registroEliminacion.destino_economico}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, destino_economico: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-sm font-medium">Radicado (opcional)</Label>
-                    <Input
-                      placeholder="Ej: RASMGC-1234..."
-                      value={registroEliminacion.radicado_eliminacion}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, radicado_eliminacion: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">
-                      Número de Resolución <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Ej: 001-2026"
-                      value={registroEliminacion.resolucion}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, resolucion: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Fecha de Resolución</Label>
-                    <Input
-                      type="date"
-                      value={registroEliminacion.fecha_resolucion}
-                      onChange={(e) => setRegistroEliminacion({...registroEliminacion, fecha_resolucion: e.target.value})}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium">
-                    Motivo de Eliminación <span className="text-red-500">*</span>
-                  </Label>
-                  <textarea
-                    placeholder="Describa el motivo de la eliminación..."
-                    value={registroEliminacion.motivo}
-                    onChange={(e) => setRegistroEliminacion({...registroEliminacion, motivo: e.target.value})}
-                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[60px]"
-                  />
-                </div>
-                
-                <div className="flex justify-end gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowRegistrarEliminacion(false)}
-                    disabled={savingRegistro}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleRegistrarEliminacion}
-                    disabled={savingRegistro}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {savingRegistro ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Guardar Registro
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
+            <p className="text-sm text-slate-500">
+              Los siguientes predios han sido eliminados del sistema. Sus números de terreno no pueden ser reutilizados.
+            </p>
             
             {prediosEliminados.length === 0 ? (
               <div className="py-8 text-center text-slate-500">
@@ -4840,7 +4634,7 @@ export default function Predios() {
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
-                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Registrado Por</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Eliminado Por</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4862,12 +4656,7 @@ export default function Predios() {
                           {predio.eliminado_en ? new Date(predio.eliminado_en).toLocaleDateString('es-CO') : 
                            predio.deleted_at ? new Date(predio.deleted_at).toLocaleDateString('es-CO') : 'N/A'}
                         </td>
-                        <td className="py-3 px-4 text-slate-500">
-                          {predio.eliminado_por || predio.deleted_by_name || 'N/A'}
-                          {predio.registro_manual && (
-                            <Badge variant="outline" className="ml-1 text-xs">Manual</Badge>
-                          )}
-                        </td>
+                        <td className="py-3 px-4 text-slate-500">{predio.eliminado_por || predio.deleted_by_name || 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>
