@@ -9008,6 +9008,9 @@ async def export_predios_excel(
         
         total_props = len(propietarios)
         for idx, prop in enumerate(propietarios, 1):
+            # Obtener campos de nombre (parseados si es necesario)
+            campos_nombre = obtener_campos_nombre(prop)
+            
             ws_r1.cell(row=row, column=1, value=predio.get('departamento', ''))
             ws_r1.cell(row=row, column=2, value=predio.get('municipio', ''))
             ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', ''))
@@ -9016,11 +9019,11 @@ async def export_predios_excel(
             ws_r1.cell(row=row, column=6, value='1')  # Tipo de registro R1
             ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))  # Número de orden
             ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))  # Total registros
-            # Campos de nombre (formato XTF)
-            ws_r1.cell(row=row, column=9, value=prop.get('primer_apellido', ''))
-            ws_r1.cell(row=row, column=10, value=prop.get('segundo_apellido', ''))
-            ws_r1.cell(row=row, column=11, value=prop.get('primer_nombre', ''))
-            ws_r1.cell(row=row, column=12, value=prop.get('segundo_nombre', ''))
+            # Campos de nombre (formato XTF) - usar campos parseados
+            ws_r1.cell(row=row, column=9, value=campos_nombre.get('primer_apellido', ''))
+            ws_r1.cell(row=row, column=10, value=campos_nombre.get('segundo_apellido', ''))
+            ws_r1.cell(row=row, column=11, value=campos_nombre.get('primer_nombre', ''))
+            ws_r1.cell(row=row, column=12, value=campos_nombre.get('segundo_nombre', ''))
             ws_r1.cell(row=row, column=13, value=generar_nombre_completo(prop))  # Nombre completo
             ws_r1.cell(row=row, column=14, value=prop.get('estado', prop.get('estado_civil', '')))  # Estado
             ws_r1.cell(row=row, column=15, value=prop.get('tipo_documento', ''))
