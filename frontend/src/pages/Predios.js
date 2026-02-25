@@ -174,6 +174,25 @@ export default function Predios() {
     motivo: ''
   });
   
+  // Estados para registro manual de eliminaciones
+  const [showRegistrarEliminacion, setShowRegistrarEliminacion] = useState(false);
+  const [registroEliminacion, setRegistroEliminacion] = useState({
+    codigo_predial_nacional: '',
+    codigo_homologado: '',
+    municipio: '',
+    direccion: '',
+    nombre_propietario: '',
+    area_terreno: '',
+    area_construida: '',
+    avaluo: '',
+    destino_economico: '',
+    radicado_eliminacion: '',
+    resolucion: '',
+    fecha_resolucion: '',
+    motivo: ''
+  });
+  const [savingRegistro, setSavingRegistro] = useState(false);
+  
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 100; // Mostrar 100 predios por página
