@@ -6080,6 +6080,77 @@ async def get_predios_eliminados(
         "predios": predios
     }
 
+
+class EliminacionManualCreate(BaseModel):
+    codigo_predial_nacional: str
+    codigo_homologado: Optional[str] = ""
+    municipio: str
+    direccion: Optional[str] = ""
+    nombre_propietario: Optional[str] = ""
+    area_terreno: Optional[float] = 0
+    area_construida: Optional[float] = 0
+    avaluo: Optional[float] = 0
+    destino_economico: Optional[str] = ""
+    vigencia_origen: Optional[int] = None
+    radicado_eliminacion: Optional[str] = ""
+    resolucion: str
+    fecha_resolucion: Optional[str] = ""
+    motivo: str
+
+
+@api_router.post("/predios/eliminados/registrar")
+async def registrar_eliminacion_manual(
+    eliminacion: EliminacionManualCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Registra manualmente una eliminación de predio.
+    Útil para predios que fueron eliminados antes de la implementación del registro automático.
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden registrar eliminaciones")
+    
+    # Verificar si ya existe una eliminación con este código
+    existe = await db.predios_eliminados.find_one({"codigo_predial_nacional": eliminacion.codigo_predial_nacional})
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe un registro de eliminación para este código predial")
+    
+    # Crear documento de eliminación
+    eliminado_doc = {
+        "id": str(uuid.uuid4()),
+        "codigo_predial_nacional": eliminacion.codigo_predial_nacional,
+        "codigo_homologado": eliminacion.codigo_homologado,
+        "municipio": eliminacion.municipio,
+        "direccion": eliminacion.direccion,
+        "nombre_propietario": eliminacion.nombre_propietario,
+        "propietarios": [],
+        "area_terreno": eliminacion.area_terreno,
+        "area_construida": eliminacion.area_construida,
+        "avaluo": eliminacion.avaluo,
+        "destino_economico": eliminacion.destino_economico,
+        "vigencia_origen": eliminacion.vigencia_origen or datetime.now().year - 1,
+        "vigencia_eliminacion": datetime.now().year,
+        "radicado_eliminacion": eliminacion.radicado_eliminacion,
+        "resolucion": eliminacion.resolucion,
+        "fecha_resolucion": eliminacion.fecha_resolucion,
+        "motivo": eliminacion.motivo,
+        "eliminado_en": datetime.now(timezone.utc).isoformat(),
+        "eliminado_por": current_user['full_name'],
+        "eliminado_por_id": current_user['id'],
+        "registro_manual": True,
+        "fecha_registro": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.predios_eliminados.insert_one(eliminado_doc)
+    logger.info(f"[Eliminación Manual] Predio {eliminacion.codigo_predial_nacional} registrado por {current_user['full_name']}")
+    
+    return {
+        "mensaje": "Eliminación registrada exitosamente",
+        "id": eliminado_doc["id"],
+        "codigo_predial": eliminacion.codigo_predial_nacional
+    }
+
+
 @api_router.get("/predios/eliminados/stats")
 async def get_predios_eliminados_stats(current_user: dict = Depends(get_current_user)):
     """Obtiene estadísticas de predios eliminados por municipio"""
