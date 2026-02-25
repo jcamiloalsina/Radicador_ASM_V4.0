@@ -18859,14 +18859,59 @@ async def exportar_actualizacion_excel(
         bottom=Side(style='thin')
     )
     
+    # Función para formatear número de documento con padding de 0s (12 dígitos)
+    def formatear_documento(numero):
+        if not numero:
+            return ''
+        solo_numeros = ''.join(filter(str.isdigit, str(numero)))
+        return solo_numeros.zfill(12) if solo_numeros else ''
+    
+    # Función para parsear nombre completo en partes
+    def parsear_nombre_propietario(nombre_completo):
+        if not nombre_completo:
+            return {'primer_apellido': '', 'segundo_apellido': '', 'primer_nombre': '', 'segundo_nombre': ''}
+        partes = nombre_completo.strip().split()
+        if len(partes) >= 4:
+            return {'primer_apellido': partes[0], 'segundo_apellido': partes[1], 'primer_nombre': partes[2], 'segundo_nombre': ' '.join(partes[3:])}
+        elif len(partes) == 3:
+            return {'primer_apellido': partes[0], 'segundo_apellido': partes[1], 'primer_nombre': partes[2], 'segundo_nombre': ''}
+        elif len(partes) == 2:
+            return {'primer_apellido': partes[0], 'segundo_apellido': '', 'primer_nombre': partes[1], 'segundo_nombre': ''}
+        else:
+            return {'primer_apellido': partes[0] if partes else '', 'segundo_apellido': '', 'primer_nombre': '', 'segundo_nombre': ''}
+    
+    # Función para obtener campos de nombre
+    def obtener_campos_nombre(prop):
+        primer_ap = prop.get('primer_apellido', '').strip()
+        primer_nom = prop.get('primer_nombre', '').strip()
+        if not primer_ap and not primer_nom:
+            nombre_completo = prop.get('nombre_propietario', '') or prop.get('nombre', '')
+            return parsear_nombre_propietario(nombre_completo)
+        return {
+            'primer_apellido': primer_ap,
+            'segundo_apellido': prop.get('segundo_apellido', '').strip(),
+            'primer_nombre': primer_nom,
+            'segundo_nombre': prop.get('segundo_nombre', '').strip()
+        }
+    
+    # Función para generar nombre completo
+    def generar_nombre_completo(prop):
+        campos = obtener_campos_nombre(prop)
+        partes = [campos.get('primer_apellido', ''), campos.get('segundo_apellido', ''), 
+                  campos.get('primer_nombre', ''), campos.get('segundo_nombre', '')]
+        nombre = ' '.join(p for p in partes if p and p.strip())
+        return nombre if nombre else prop.get('nombre_propietario', '')
+    
     # === HOJA REGISTRO_R1 (Propietarios) ===
     ws_r1 = wb.active
     ws_r1.title = "REGISTRO_R1"
     
+    # Headers R1 - Formato igual a Conservación + campos extra de Actualización
     headers_r1 = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL", 
         "CODIGO_HOMOLOGADO", "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS",
-        "NOMBRE", "ESTADO_CIVIL", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
+        "PRIMER_APELLIDO", "SEGUNDO_APELLIDO", "PRIMER_NOMBRE", "SEGUNDO_NOMBRE",
+        "NOMBRE", "ESTADO", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
         "COMUNA", "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", "AVALUO",
         "VIGENCIA", "ESTADO_VISITA", "TIPO_CAMBIO", "ACTUALIZADO_POR", "FECHA_ACTUALIZACION"
     ]
@@ -18880,18 +18925,32 @@ async def exportar_actualizacion_excel(
     
     row = 2
     for predio in predios:
-        propietarios = predio.get('propietarios', [])
+        # Obtener propietarios - priorizar datos de visita si el predio fue actualizado
+        propietarios = []
+        estado_visita = predio.get('estado_visita', 'pendiente')
+        visita_data = predio.get('visita_data', {})
+        
+        # Si el predio tiene visita, usar propietarios de la visita
+        if estado_visita in ['visitado_firmado', 'actualizado'] and visita_data:
+            propietarios_visita = visita_data.get('propietarios', [])
+            if propietarios_visita:
+                propietarios = propietarios_visita
+        
+        # Si no hay propietarios de visita, usar los originales del predio
+        if not propietarios:
+            propietarios = predio.get('propietarios', [])
+        
+        # Fallback: crear un propietario con datos del predio
         if not propietarios:
             propietarios = [{
                 'nombre_propietario': predio.get('nombre_propietario', predio.get('nombre', '')),
                 'tipo_documento': predio.get('tipo_documento', ''),
                 'numero_documento': predio.get('numero_documento', ''),
-                'estado_civil': predio.get('estado_civil', '')
+                'estado': predio.get('estado', predio.get('estado_civil', ''))
             }]
         
-        total_props = len(propietarios) if propietarios else 1
+        total_props = len(propietarios)
         tipo_cambio = predio.get('tipo_cambio', 'original')
-        estado_visita = predio.get('estado_visita', 'pendiente')
         
         # Seleccionar color según tipo
         if tipo_cambio == 'predio_nuevo':
@@ -18906,6 +18965,9 @@ async def exportar_actualizacion_excel(
             fill = None
         
         for idx, prop in enumerate(propietarios, 1):
+            # Obtener campos de nombre parseados
+            campos_nombre = obtener_campos_nombre(prop)
+            
             ws_r1.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
             ws_r1.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
             ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
@@ -18914,40 +18976,51 @@ async def exportar_actualizacion_excel(
             ws_r1.cell(row=row, column=6, value='1')
             ws_r1.cell(row=row, column=7, value=str(idx).zfill(2))
             ws_r1.cell(row=row, column=8, value=str(total_props).zfill(2))
-            ws_r1.cell(row=row, column=9, value=prop.get('nombre_propietario', prop.get('nombre', '')))
-            ws_r1.cell(row=row, column=10, value=prop.get('estado_civil', ''))
-            ws_r1.cell(row=row, column=11, value=prop.get('tipo_documento', ''))
-            ws_r1.cell(row=row, column=12, value=prop.get('numero_documento', ''))
-            ws_r1.cell(row=row, column=13, value=predio.get('direccion', ''))
-            ws_r1.cell(row=row, column=14, value=predio.get('comuna', ''))
-            ws_r1.cell(row=row, column=15, value=predio.get('destino_economico', ''))
-            ws_r1.cell(row=row, column=16, value=predio.get('area_terreno', 0))
-            ws_r1.cell(row=row, column=17, value=predio.get('area_construida', 0))
-            ws_r1.cell(row=row, column=18, value=predio.get('avaluo', predio.get('avaluo_catastral', 0)))
-            ws_r1.cell(row=row, column=19, value=predio.get('vigencia', datetime.now().year))
-            ws_r1.cell(row=row, column=20, value=estado_visita)
-            ws_r1.cell(row=row, column=21, value=tipo_cambio.upper())
-            # Usar nombre en vez de email para ACTUALIZADO_POR
-            ws_r1.cell(row=row, column=22, value=predio.get('actualizado_por_nombre', predio.get('visitado_por_nombre', predio.get('actualizado_por', predio.get('visitado_por', '')))))
-            ws_r1.cell(row=row, column=23, value=predio.get('actualizado_en', predio.get('visitado_en', '')))
+            # Campos de nombre separados
+            ws_r1.cell(row=row, column=9, value=campos_nombre.get('primer_apellido', ''))
+            ws_r1.cell(row=row, column=10, value=campos_nombre.get('segundo_apellido', ''))
+            ws_r1.cell(row=row, column=11, value=campos_nombre.get('primer_nombre', ''))
+            ws_r1.cell(row=row, column=12, value=campos_nombre.get('segundo_nombre', ''))
+            ws_r1.cell(row=row, column=13, value=generar_nombre_completo(prop))
+            ws_r1.cell(row=row, column=14, value=prop.get('estado', prop.get('estado_civil', '')))
+            ws_r1.cell(row=row, column=15, value=prop.get('tipo_documento', ''))
+            ws_r1.cell(row=row, column=16, value=formatear_documento(prop.get('numero_documento', '')))
+            ws_r1.cell(row=row, column=17, value=predio.get('direccion', ''))
+            ws_r1.cell(row=row, column=18, value=predio.get('comuna', ''))
+            ws_r1.cell(row=row, column=19, value=predio.get('destino_economico', ''))
+            ws_r1.cell(row=row, column=20, value=predio.get('area_terreno', 0))
+            ws_r1.cell(row=row, column=21, value=predio.get('area_construida', 0))
+            ws_r1.cell(row=row, column=22, value=predio.get('avaluo', predio.get('avaluo_catastral', 0)))
+            ws_r1.cell(row=row, column=23, value=predio.get('vigencia', datetime.now().year))
+            ws_r1.cell(row=row, column=24, value=estado_visita)
+            ws_r1.cell(row=row, column=25, value=tipo_cambio.upper())
+            ws_r1.cell(row=row, column=26, value=predio.get('actualizado_por_nombre', predio.get('visitado_por_nombre', predio.get('actualizado_por', predio.get('visitado_por', '')))))
+            ws_r1.cell(row=row, column=27, value=predio.get('actualizado_en', predio.get('visitado_en', '')))
             
             # Aplicar color
             if fill:
-                for c in range(1, 24):
+                for c in range(1, 28):
                     ws_r1.cell(row=row, column=c).fill = fill
             
             row += 1
     
-    # === HOJA REGISTRO_R2 (Físico) ===
+    # === HOJA REGISTRO_R2 (Físico - Formato igual a Conservación) ===
     ws_r2 = wb.create_sheet(title="REGISTRO_R2")
     
+    # Headers R2 - Formato original con zonas y construcciones en columnas horizontales
     headers_r2 = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL",
         "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS", "MATRICULA_INMOBILIARIA",
+        # Zona 1
         "ZONA_FISICA_1", "ZONA_ECONOMICA_1", "AREA_TERRENO_1",
+        # Zona 2
         "ZONA_FISICA_2", "ZONA_ECONOMICA_2", "AREA_TERRENO_2",
-        "ZONA_FISICA_3", "ZONA_ECONOMICA_3", "AREA_TERRENO_3",
-        "HABITACIONES", "BANOS", "LOCALES", "PISOS", "USO", "AREA_CONSTRUIDA",
+        # Construcción 1
+        "HABITACIONES_1", "BANOS_1", "LOCALES_1", "PISOS_1", "TIPIFICACION_1", "USO_1", "PUNTAJE_1", "AREA_CONSTRUIDA_1",
+        # Construcción 2
+        "HABITACIONES_2", "BANOS_2", "LOCALES_2", "PISOS_2", "TIPIFICACION_2", "USO_2", "PUNTAJE_2", "AREA_CONSTRUIDA_2",
+        # Construcción 3
+        "HABITACIONES_3", "BANOS_3", "LOCALES_3", "PISOS_3", "TIPIFICACION_3", "USO_3", "PUNTAJE_3", "AREA_CONSTRUIDA_3",
         "VIGENCIA", "ESTADO_VISITA", "TIPO_CAMBIO"
     ]
     
@@ -18960,7 +19033,6 @@ async def exportar_actualizacion_excel(
     
     row = 2
     for predio in predios:
-        zonas = predio.get('zonas_fisicas', predio.get('r2_registros', []))
         tipo_cambio = predio.get('tipo_cambio', 'original')
         estado_visita = predio.get('estado_visita', 'pendiente')
         
@@ -18976,40 +19048,127 @@ async def exportar_actualizacion_excel(
         else:
             fill = None
         
-        ws_r2.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
-        ws_r2.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
-        ws_r2.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
-        ws_r2.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('numero_predial', ''))))
-        ws_r2.cell(row=row, column=5, value='2')
-        ws_r2.cell(row=row, column=6, value='01')
-        ws_r2.cell(row=row, column=7, value='01')
-        ws_r2.cell(row=row, column=8, value=predio.get('matricula_inmobiliaria', predio.get('matricula', '')))
+        # Obtener datos R2 - buscar en múltiples fuentes
+        r2_registros = predio.get('r2_registros', [])
         
-        # Zonas físicas (hasta 3)
-        for i in range(3):
-            if i < len(zonas):
-                zona = zonas[i]
-                ws_r2.cell(row=row, column=9 + i*3, value=zona.get('zona_fisica', ''))
-                ws_r2.cell(row=row, column=10 + i*3, value=zona.get('zona_economica', ''))
-                ws_r2.cell(row=row, column=11 + i*3, value=zona.get('area_terreno', 0))
+        # Si no hay r2_registros, intentar construirlos desde zonas_fisicas o visita_data
+        if not r2_registros:
+            zonas_fisicas = predio.get('zonas_fisicas', [])
+            visita_data = predio.get('visita_data', {})
+            construcciones = predio.get('construcciones', visita_data.get('construcciones', []))
+            matricula = predio.get('matricula_inmobiliaria', predio.get('matricula', ''))
+            
+            # Combinar zonas y construcciones
+            if zonas_fisicas or construcciones:
+                zonas_combinadas = []
+                max_items = max(len(zonas_fisicas), len(construcciones))
+                for i in range(max_items):
+                    zona_data = zonas_fisicas[i] if i < len(zonas_fisicas) else {}
+                    const_data = construcciones[i] if i < len(construcciones) else {}
+                    zonas_combinadas.append({
+                        'zona_fisica': zona_data.get('zona_fisica', 0),
+                        'zona_economica': zona_data.get('zona_economica', 0),
+                        'area_terreno': zona_data.get('area_terreno', 0),
+                        'habitaciones': const_data.get('habitaciones', const_data.get('total_habitaciones', 0)),
+                        'banos': const_data.get('banos', const_data.get('total_banos', 0)),
+                        'locales': const_data.get('locales', const_data.get('total_locales', 0)),
+                        'pisos': const_data.get('pisos', const_data.get('num_pisos', const_data.get('total_pisos', 0))),
+                        'tipificacion': const_data.get('tipificacion', ''),
+                        'uso': const_data.get('uso', const_data.get('codigo_uso', '')),
+                        'puntaje': const_data.get('puntaje', 0),
+                        'area_construida': const_data.get('area_construida', const_data.get('area', 0))
+                    })
+                r2_registros = [{'matricula_inmobiliaria': matricula, 'zonas': zonas_combinadas}]
+            else:
+                # Crear registro mínimo
+                r2_registros = [{'matricula_inmobiliaria': matricula, 'zonas': []}]
         
-        # Datos de construcción
-        ws_r2.cell(row=row, column=18, value=predio.get('habitaciones', ''))
-        ws_r2.cell(row=row, column=19, value=predio.get('banos', ''))
-        ws_r2.cell(row=row, column=20, value=predio.get('locales', ''))
-        ws_r2.cell(row=row, column=21, value=predio.get('pisos', ''))
-        ws_r2.cell(row=row, column=22, value=predio.get('uso', predio.get('destino_economico', '')))
-        ws_r2.cell(row=row, column=23, value=predio.get('area_construida', 0))
-        ws_r2.cell(row=row, column=24, value=predio.get('vigencia', datetime.now().year))
-        ws_r2.cell(row=row, column=25, value=estado_visita)
-        ws_r2.cell(row=row, column=26, value=tipo_cambio.upper())
+        # Calcular total de registros R2 (considerando que cada 3 zonas = 1 registro)
+        total_r2 = len(r2_registros)
+        for r2 in r2_registros:
+            zonas = r2.get('zonas', [])
+            if len(zonas) > 3:
+                # Cada grupo de 3 zonas genera un registro adicional
+                total_r2 += (len(zonas) - 1) // 3
         
-        # Aplicar color
-        if fill:
-            for c in range(1, 27):
-                ws_r2.cell(row=row, column=c).fill = fill
-        
-        row += 1
+        r2_idx_global = 0
+        for r2 in r2_registros:
+            zonas = r2.get('zonas', [])
+            matricula = r2.get('matricula_inmobiliaria', '')
+            
+            # Si no hay zonas, escribir un registro vacío
+            if not zonas:
+                zonas = [{}]
+            
+            # Agrupar zonas de 3 en 3 (cada grupo genera una fila)
+            for grupo_idx in range(0, len(zonas), 3):
+                r2_idx_global += 1
+                grupo_zonas = zonas[grupo_idx:grupo_idx + 3]
+                
+                # Datos básicos del predio
+                ws_r2.cell(row=row, column=1, value=predio.get('departamento', proyecto.get('departamento', 'NORTE DE SANTANDER')))
+                ws_r2.cell(row=row, column=2, value=predio.get('municipio', proyecto.get('municipio', '')))
+                ws_r2.cell(row=row, column=3, value=predio.get('numero_predio', predio.get('numero_predial', '')))
+                ws_r2.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('numero_predial', ''))))
+                ws_r2.cell(row=row, column=5, value='2')
+                ws_r2.cell(row=row, column=6, value=str(r2_idx_global).zfill(2))
+                ws_r2.cell(row=row, column=7, value=str(total_r2).zfill(2))
+                ws_r2.cell(row=row, column=8, value=matricula)
+                
+                # Zona 1 (columnas 9-11)
+                z1 = grupo_zonas[0] if len(grupo_zonas) >= 1 else {}
+                ws_r2.cell(row=row, column=9, value=z1.get('zona_fisica', 0) or 0)
+                ws_r2.cell(row=row, column=10, value=z1.get('zona_economica', 0) or 0)
+                ws_r2.cell(row=row, column=11, value=z1.get('area_terreno', 0) or 0)
+                
+                # Zona 2 (columnas 12-14)
+                z2 = grupo_zonas[1] if len(grupo_zonas) >= 2 else {}
+                ws_r2.cell(row=row, column=12, value=z2.get('zona_fisica', 0) or 0)
+                ws_r2.cell(row=row, column=13, value=z2.get('zona_economica', 0) or 0)
+                ws_r2.cell(row=row, column=14, value=z2.get('area_terreno', 0) or 0)
+                
+                # Construcción 1 (columnas 15-22)
+                ws_r2.cell(row=row, column=15, value=z1.get('habitaciones', 0) or 0)
+                ws_r2.cell(row=row, column=16, value=z1.get('banos', 0) or 0)
+                ws_r2.cell(row=row, column=17, value=z1.get('locales', 0) or 0)
+                ws_r2.cell(row=row, column=18, value=z1.get('pisos', 0) or 0)
+                ws_r2.cell(row=row, column=19, value=z1.get('tipificacion', 0) or 0)
+                ws_r2.cell(row=row, column=20, value=z1.get('uso', 0) or 0)
+                ws_r2.cell(row=row, column=21, value=z1.get('puntaje', 0) or 0)
+                ws_r2.cell(row=row, column=22, value=z1.get('area_construida', 0) or 0)
+                
+                # Construcción 2 (columnas 23-30)
+                ws_r2.cell(row=row, column=23, value=z2.get('habitaciones', 0) or 0)
+                ws_r2.cell(row=row, column=24, value=z2.get('banos', 0) or 0)
+                ws_r2.cell(row=row, column=25, value=z2.get('locales', 0) or 0)
+                ws_r2.cell(row=row, column=26, value=z2.get('pisos', 0) or 0)
+                ws_r2.cell(row=row, column=27, value=z2.get('tipificacion', 0) or 0)
+                ws_r2.cell(row=row, column=28, value=z2.get('uso', 0) or 0)
+                ws_r2.cell(row=row, column=29, value=z2.get('puntaje', 0) or 0)
+                ws_r2.cell(row=row, column=30, value=z2.get('area_construida', 0) or 0)
+                
+                # Construcción 3 (columnas 31-38)
+                z3 = grupo_zonas[2] if len(grupo_zonas) >= 3 else {}
+                ws_r2.cell(row=row, column=31, value=z3.get('habitaciones', 0) or 0)
+                ws_r2.cell(row=row, column=32, value=z3.get('banos', 0) or 0)
+                ws_r2.cell(row=row, column=33, value=z3.get('locales', 0) or 0)
+                ws_r2.cell(row=row, column=34, value=z3.get('pisos', 0) or 0)
+                ws_r2.cell(row=row, column=35, value=z3.get('tipificacion', 0) or 0)
+                ws_r2.cell(row=row, column=36, value=z3.get('uso', 0) or 0)
+                ws_r2.cell(row=row, column=37, value=z3.get('puntaje', 0) or 0)
+                ws_r2.cell(row=row, column=38, value=z3.get('area_construida', 0) or 0)
+                
+                # Campos extra de actualización
+                ws_r2.cell(row=row, column=39, value=predio.get('vigencia', datetime.now().year))
+                ws_r2.cell(row=row, column=40, value=estado_visita)
+                ws_r2.cell(row=row, column=41, value=tipo_cambio.upper())
+                
+                # Aplicar color
+                if fill:
+                    for c in range(1, 42):
+                        ws_r2.cell(row=row, column=c).fill = fill
+                
+                row += 1
     
     # === HOJA RESUMEN ===
     ws_resumen = wb.create_sheet(title="RESUMEN")
