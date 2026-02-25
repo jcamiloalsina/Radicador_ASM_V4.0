@@ -6102,6 +6102,80 @@ async def get_predios_eliminados_stats(current_user: dict = Depends(get_current_
     }
 
 
+@api_router.post("/predios/migrar-eliminados")
+async def migrar_predios_eliminados(current_user: dict = Depends(get_current_user)):
+    """
+    Migra predios que tienen deleted=true pero no están en predios_eliminados.
+    Esto es para corregir predios eliminados antes del fix del código.
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
+    
+    # Buscar predios con deleted=true
+    predios_deleted = await db.predios.find(
+        {"deleted": True},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    migrados = 0
+    ya_existentes = 0
+    errores = 0
+    
+    for predio in predios_deleted:
+        codigo = predio.get("codigo_predial_nacional")
+        
+        # Verificar si ya existe en predios_eliminados
+        existe = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo})
+        if existe:
+            ya_existentes += 1
+            continue
+        
+        try:
+            # Crear documento para predios_eliminados
+            eliminado_doc = {
+                "id": str(uuid.uuid4()),
+                "codigo_predial_nacional": codigo,
+                "codigo_homologado": predio.get("codigo_homologado"),
+                "municipio": predio.get("municipio"),
+                "direccion": predio.get("direccion"),
+                "nombre_propietario": predio.get("nombre_propietario"),
+                "propietarios": predio.get("propietarios", []),
+                "area_terreno": predio.get("area_terreno"),
+                "area_construida": predio.get("area_construida"),
+                "avaluo": predio.get("avaluo"),
+                "destino_economico": predio.get("destino_economico"),
+                "vigencia_origen": predio.get("vigencia"),
+                "vigencia_eliminacion": datetime.now().year,
+                # Datos de eliminación (del historial o del predio)
+                "radicado_eliminacion": predio.get("radicado_eliminacion", ""),
+                "resolucion": predio.get("resolucion_eliminacion", ""),
+                "fecha_resolucion": predio.get("fecha_resolucion", ""),
+                "motivo": predio.get("motivo_eliminacion", "Eliminación de predio (migrado)"),
+                # Metadatos
+                "eliminado_en": predio.get("deleted_at", datetime.now(timezone.utc).isoformat()),
+                "eliminado_por": predio.get("deleted_by_name", "Sistema (migración)"),
+                "eliminado_por_id": predio.get("deleted_by"),
+                "predio_id_original": predio.get("id"),
+                "migrado": True,
+                "fecha_migracion": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.predios_eliminados.insert_one(eliminado_doc)
+            migrados += 1
+            logger.info(f"[Migración] Predio {codigo} migrado a predios_eliminados")
+        except Exception as e:
+            errores += 1
+            logger.error(f"[Migración] Error migrando predio {codigo}: {str(e)}")
+    
+    return {
+        "mensaje": "Migración completada",
+        "total_deleted": len(predios_deleted),
+        "migrados": migrados,
+        "ya_existentes": ya_existentes,
+        "errores": errores
+    }
+
+
 @api_router.post("/predios/analisis-historico")
 async def analisis_historico_predios(
     current_user: dict = Depends(get_current_user)
