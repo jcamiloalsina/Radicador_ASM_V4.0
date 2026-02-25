@@ -13072,6 +13072,25 @@ async def get_mis_propuestas(
     total = await db.predios_cambios.count_documents(query)
     cambios = await db.predios_cambios.find(query, {"_id": 0}).sort("fecha_propuesta", -1).skip(skip).limit(limit).to_list(limit)
     
+    # Enriquecer con datos del predio actual
+    for cambio in cambios:
+        if cambio.get("predio_id"):
+            predio = await db.predios.find_one(
+                {"id": cambio["predio_id"]}, 
+                {"_id": 0, "historial": 0}
+            )
+            if not predio:
+                predio = await db.predios.find_one(
+                    {"id": cambio["predio_id"], "deleted": True}, 
+                    {"_id": 0, "historial": 0}
+                )
+            if not predio and cambio.get("datos_propuestos", {}).get("codigo_predial_nacional"):
+                predio = await db.predios_eliminados.find_one(
+                    {"codigo_predial_nacional": cambio["datos_propuestos"]["codigo_predial_nacional"]},
+                    {"_id": 0}
+                )
+            cambio["predio_actual"] = predio
+    
     return {
         "total": total,
         "cambios": cambios
