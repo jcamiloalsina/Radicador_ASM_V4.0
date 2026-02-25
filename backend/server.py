@@ -12383,13 +12383,14 @@ async def proponer_cambio_predio(
     if cambio.radicado_id:
         radicado_info = await db.petitions.find_one({"id": cambio.radicado_id}, {"_id": 0, "radicado": 1, "tipo_tramite": 1})
     
-    # Obtener datos actuales del predio para modificaciones
+    # Obtener datos actuales del predio para modificaciones y eliminaciones
     predio_actual_data = None
-    if cambio.tipo_cambio == "modificacion" and cambio.predio_id:
+    if cambio.tipo_cambio in ["modificacion", "eliminacion"] and cambio.predio_id:
         predio_existente = await db.predios.find_one({"id": cambio.predio_id}, {"_id": 0})
         if predio_existente:
             predio_actual_data = {
                 "codigo_predial_nacional": predio_existente.get("codigo_predial_nacional"),
+                "codigo_homologado": predio_existente.get("codigo_homologado"),
                 "municipio": predio_existente.get("municipio"),
                 "direccion": predio_existente.get("direccion"),
                 "nombre_propietario": predio_existente.get("nombre_propietario"),
@@ -12399,7 +12400,30 @@ async def proponer_cambio_predio(
                 "avaluo": predio_existente.get("avaluo"),
                 "destino_economico": predio_existente.get("destino_economico"),
                 "zona": predio_existente.get("zona"),
+                "vigencia": predio_existente.get("vigencia"),
             }
+            # Para eliminaciones, también incluir datos actuales en datos_propuestos si están vacíos
+            if cambio.tipo_cambio == "eliminacion":
+                datos_prop = cambio.datos_propuestos or {}
+                if not datos_prop.get("municipio"):
+                    datos_prop["municipio"] = predio_existente.get("municipio")
+                if not datos_prop.get("direccion"):
+                    datos_prop["direccion"] = predio_existente.get("direccion")
+                if not datos_prop.get("nombre_propietario"):
+                    datos_prop["nombre_propietario"] = predio_existente.get("nombre_propietario")
+                if not datos_prop.get("area_terreno"):
+                    datos_prop["area_terreno"] = predio_existente.get("area_terreno")
+                if not datos_prop.get("area_construida"):
+                    datos_prop["area_construida"] = predio_existente.get("area_construida")
+                if not datos_prop.get("avaluo"):
+                    datos_prop["avaluo"] = predio_existente.get("avaluo")
+                if not datos_prop.get("codigo_predial_nacional"):
+                    datos_prop["codigo_predial_nacional"] = predio_existente.get("codigo_predial_nacional")
+                if not datos_prop.get("codigo_homologado"):
+                    datos_prop["codigo_homologado"] = predio_existente.get("codigo_homologado")
+                if not datos_prop.get("propietarios"):
+                    datos_prop["propietarios"] = predio_existente.get("propietarios", [])
+                cambio.datos_propuestos = datos_prop
     
     # Determinar estado inicial según el flujo
     if aprueba_directo:
