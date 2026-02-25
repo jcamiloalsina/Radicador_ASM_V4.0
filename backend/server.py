@@ -13192,6 +13192,18 @@ async def get_cambios_historial(
         # Solo enriquecer si NO tiene datos_anteriores guardados (para compatibilidad con registros antiguos)
         if cambio.get('predio_id') and not cambio.get('datos_anteriores'):
             predio = await db.predios.find_one({"id": cambio['predio_id']}, {"_id": 0, "codigo_predial_nacional": 1, "nombre_propietario": 1, "codigo_homologado": 1, "direccion": 1, "municipio": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "destino_economico": 1, "zona": 1, "propietarios": 1})
+            
+            # Si no se encuentra, buscar incluyendo eliminados
+            if not predio:
+                predio = await db.predios.find_one({"id": cambio['predio_id'], "deleted": True}, {"_id": 0, "codigo_predial_nacional": 1, "nombre_propietario": 1, "codigo_homologado": 1, "direccion": 1, "municipio": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "destino_economico": 1, "zona": 1, "propietarios": 1})
+            
+            # Si aún no se encuentra, buscar en predios_eliminados
+            if not predio and cambio.get("datos_propuestos", {}).get("codigo_predial_nacional"):
+                predio = await db.predios_eliminados.find_one(
+                    {"codigo_predial_nacional": cambio["datos_propuestos"]["codigo_predial_nacional"]},
+                    {"_id": 0}
+                )
+            
             if predio:
                 # Usar como predio_actual para mostrar datos de referencia (actuales)
                 # Nota: Este es el estado ACTUAL, no el estado en el momento del cambio
