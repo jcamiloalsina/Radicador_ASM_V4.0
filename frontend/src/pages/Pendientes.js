@@ -2229,35 +2229,58 @@ export default function Pendientes() {
                 </div>
               ) : (
                 // Para creación o cuando no hay predio actual, mostrar solo los datos propuestos
+                // También buscar datos en predio_actual si datos_propuestos está vacío (para cambios antiguos)
                 <div className="bg-slate-50 rounded-lg p-4">
                   <h4 className="font-medium text-slate-700 mb-3">Datos del Predio</h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-slate-500">Código Predial Nacional:</span>
-                      <p className="font-mono break-all">{selectedCambio.datos_propuestos?.codigo_predial_nacional || 'Nuevo'}</p>
+                      <p className="font-mono break-all">
+                        {selectedCambio.datos_propuestos?.codigo_predial_nacional || 
+                         selectedCambio.predio_actual?.codigo_predial_nacional ||
+                         selectedCambio.codigo_predial || 'Nuevo'}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Municipio:</span>
-                      <p>{selectedCambio.datos_propuestos?.municipio || 'N/A'}</p>
+                      <p>
+                        {selectedCambio.datos_propuestos?.municipio || 
+                         selectedCambio.predio_actual?.municipio ||
+                         selectedCambio.municipio || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Dirección:</span>
-                      <p>{selectedCambio.datos_propuestos?.direccion || 'N/A'}</p>
+                      <p>
+                        {selectedCambio.datos_propuestos?.direccion || 
+                         selectedCambio.predio_actual?.direccion || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Propietario(s):</span>
-                      <p>{selectedCambio.datos_propuestos?.nombre_propietario || 
-                          (selectedCambio.datos_propuestos?.propietarios?.length > 0 
+                      <p>
+                        {selectedCambio.datos_propuestos?.nombre_propietario || 
+                         selectedCambio.predio_actual?.nombre_propietario ||
+                         (selectedCambio.datos_propuestos?.propietarios?.length > 0 
                             ? selectedCambio.datos_propuestos.propietarios.map(p => p.nombre_propietario).join(', ')
-                            : 'N/A')}</p>
+                            : (selectedCambio.predio_actual?.propietarios?.length > 0 
+                                ? selectedCambio.predio_actual.propietarios.map(p => p.nombre_propietario).join(', ')
+                                : 'N/A'))}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Área Terreno:</span>
-                      <p>{selectedCambio.datos_propuestos?.area_terreno?.toLocaleString() || 'N/A'} m²</p>
+                      <p>
+                        {(selectedCambio.datos_propuestos?.area_terreno || 
+                          selectedCambio.predio_actual?.area_terreno)?.toLocaleString() || 'N/A'} m²
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Avalúo:</span>
-                      <p>${selectedCambio.datos_propuestos?.avaluo?.toLocaleString() || 'N/A'}</p>
+                      <p>
+                        ${(selectedCambio.datos_propuestos?.avaluo || 
+                           selectedCambio.predio_actual?.avaluo)?.toLocaleString() || 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
