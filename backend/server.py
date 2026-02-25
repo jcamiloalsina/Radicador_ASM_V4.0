@@ -12612,6 +12612,21 @@ async def get_cambios_pendientes(
                 {"id": cambio["predio_id"]}, 
                 {"_id": 0, "historial": 0}  # Excluir historial para reducir tamaño
             )
+            
+            # Si no se encuentra (puede estar eliminado), buscar incluyendo eliminados
+            if not predio:
+                predio = await db.predios.find_one(
+                    {"id": cambio["predio_id"], "deleted": True}, 
+                    {"_id": 0, "historial": 0}
+                )
+            
+            # Si aún no se encuentra, buscar en predios_eliminados por código
+            if not predio and cambio.get("datos_propuestos", {}).get("codigo_predial_nacional"):
+                predio = await db.predios_eliminados.find_one(
+                    {"codigo_predial_nacional": cambio["datos_propuestos"]["codigo_predial_nacional"]},
+                    {"_id": 0}
+                )
+            
             cambio["predio_actual"] = predio
     
     return {
