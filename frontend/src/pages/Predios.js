@@ -4443,7 +4443,10 @@ export default function Predios() {
               {/* Info del predio a eliminar */}
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm font-medium text-red-800">
-                  Predio: {predioAEliminar.codigo_homologado || predioAEliminar.codigo_predial_nacional}
+                  CNP: {predioAEliminar.codigo_predial_nacional || 'N/A'}
+                </p>
+                <p className="text-sm text-red-700">
+                  Matrícula: {predioAEliminar.matricula_inmobiliaria || predioAEliminar.matricula || 'N/A'}
                 </p>
                 <p className="text-sm text-red-600">
                   Propietario: {predioAEliminar.nombre_propietario || 'N/A'}
