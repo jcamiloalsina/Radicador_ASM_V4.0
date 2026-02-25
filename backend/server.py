@@ -19082,6 +19082,14 @@ async def exportar_actualizacion_excel(
         tipo_cambio = predio.get('tipo_cambio', 'original')
         estado_visita = predio.get('estado_visita', 'pendiente')
         
+        # Obtener código del predio para buscar propuestas aprobadas
+        codigo_predio = predio.get('codigo_predial') or predio.get('codigo_predial_nacional') or predio.get('numero_predial')
+        
+        # Obtener datos de propuesta aprobada si existe
+        datos_aprobados_r2 = {}
+        if codigo_predio and codigo_predio in datos_propuestas:
+            datos_aprobados_r2 = datos_propuestas[codigo_predio].get('datos', {})
+        
         # Seleccionar color
         if tipo_cambio == 'predio_nuevo':
             fill = nuevo_fill
@@ -19094,20 +19102,45 @@ async def exportar_actualizacion_excel(
         else:
             fill = None
         
-        # Obtener datos R2 - buscar en múltiples fuentes
-        r2_registros = predio.get('r2_registros', [])
+        # Obtener datos R2 - buscar en múltiples fuentes, priorizando propuesta aprobada
+        r2_registros = []
+        
+        # 1. Prioridad: datos de propuesta aprobada
+        if datos_aprobados_r2:
+            r2_prop = datos_aprobados_r2.get('r2_registros', [])
+            if not r2_prop:
+                # Buscar en r2 anidado
+                r2_data = datos_aprobados_r2.get('r2', {})
+                if isinstance(r2_data, dict):
+                    r2_prop = r2_data.get('registros', [])
+            if r2_prop:
+                r2_registros = r2_prop
+        
+        # 2. Si no hay de propuesta, usar del predio
+        if not r2_registros:
+            r2_registros = predio.get('r2_registros', [])
         
         # Si no hay r2_registros, intentar construirlos desde zonas_fisicas o visita_data
         if not r2_registros:
             zonas_fisicas = predio.get('zonas_fisicas', [])
             visita_data = predio.get('visita_data', {})
             construcciones = predio.get('construcciones', visita_data.get('construcciones', []))
-            matricula = predio.get('matricula_inmobiliaria', predio.get('matricula', ''))
+            
+            # También buscar construcciones en datos aprobados
+            if not construcciones and datos_aprobados_r2:
+                construcciones = datos_aprobados_r2.get('construcciones', [])
+            
+            # Obtener matrícula priorizando propuesta aprobada
+            matricula = ''
+            if datos_aprobados_r2:
+                matricula = datos_aprobados_r2.get('matricula_inmobiliaria', datos_aprobados_r2.get('matricula', ''))
+            if not matricula:
+                matricula = predio.get('matricula_inmobiliaria', predio.get('matricula', ''))
             
             # Combinar zonas y construcciones
             if zonas_fisicas or construcciones:
                 zonas_combinadas = []
-                max_items = max(len(zonas_fisicas), len(construcciones))
+                max_items = max(len(zonas_fisicas), len(construcciones)) if zonas_fisicas or construcciones else 0
                 for i in range(max_items):
                     zona_data = zonas_fisicas[i] if i < len(zonas_fisicas) else {}
                     const_data = construcciones[i] if i < len(construcciones) else {}
