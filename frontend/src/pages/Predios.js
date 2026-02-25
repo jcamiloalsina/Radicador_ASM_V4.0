@@ -164,6 +164,16 @@ export default function Predios() {
   // URL de retorno después de editar un predio (cuando viene de Pendientes)
   const [returnUrl, setReturnUrl] = useState(null);
   
+  // Estados para modal de eliminación de predio
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [predioAEliminar, setPredioAEliminar] = useState(null);
+  const [eliminacionData, setEliminacionData] = useState({
+    radicado: '',
+    resolucion: '',
+    fecha_resolucion: '',
+    motivo: ''
+  });
+  
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 100; // Mostrar 100 predios por página
