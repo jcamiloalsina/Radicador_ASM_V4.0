@@ -4448,9 +4448,6 @@ export default function Predios() {
                 <p className="text-sm text-red-700">
                   Matrícula: {predioAEliminar.matricula_inmobiliaria || predioAEliminar.matricula || 'N/A'}
                 </p>
-                <p className="text-sm text-red-600">
-                  Propietario: {predioAEliminar.nombre_propietario || 'N/A'}
-                </p>
               </div>
               
               {/* Formulario de eliminación */}
