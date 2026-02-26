@@ -834,14 +834,14 @@ export default function Predios() {
           if (predioNuevo.construcciones && predioNuevo.construcciones.length > 0) {
             setConstrucciones(predioNuevo.construcciones.map(c => ({
               id: c.id || 'A',
-              piso: String(c.piso || 1),
-              habitaciones: String(c.habitaciones || 0),
-              banos: String(c.banos || 0),
-              locales: String(c.locales || 0),
+              piso: String(c.piso ?? 0),
+              habitaciones: String(c.habitaciones ?? 0),
+              banos: String(c.banos ?? 0),
+              locales: String(c.locales ?? 0),
               tipificacion: c.tipificacion || '',
               uso: c.uso || '',
-              puntaje: String(c.puntaje || 0),
-              area_construida: String(c.area_construida || 0)
+              puntaje: String(c.puntaje ?? 0),
+              area_construida: String(c.area_construida ?? 0)
             })));
           }
           
