@@ -14987,7 +14987,7 @@ async def process_gdb_upload_background(
                             for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
                                 if area_col in gdf_rural.columns and pd.notna(row.get(area_col)):
                                     try:
-                                        area_m2 = round(float(row[area_col]), 2)
+                                        area_m2 = float(row[area_col])
                                         break
                                     except:
                                         pass
@@ -15117,7 +15117,7 @@ async def process_gdb_upload_background(
                             for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
                                 if area_col in gdf_urban.columns and pd.notna(row.get(area_col)):
                                     try:
-                                        area_m2 = round(float(row[area_col]), 2)
+                                        area_m2 = float(row[area_col])
                                         break
                                     except:
                                         pass
@@ -15233,7 +15233,7 @@ async def process_gdb_upload_background(
                             for area_col in ['Shape_Area', 'shape_Area', 'SHAPE_AREA', 'shape_area', 'Area', 'AREA', 'area_m2']:
                                 if area_col in gdf_const.columns and pd.notna(row.get(area_col)):
                                     try:
-                                        area_m2 = round(float(row[area_col]), 2)
+                                        area_m2 = float(row[area_col])
                                         break
                                     except:
                                         pass
