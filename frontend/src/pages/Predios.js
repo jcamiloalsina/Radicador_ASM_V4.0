@@ -2213,7 +2213,7 @@ export default function Predios() {
         // Acto administrativo obligatorio (= número de resolución)
         acto_administrativo: formData.acto_administrativo.trim(),
         numero_resolucion: formData.acto_administrativo.trim(),
-        tipo_mutacion: formData.tipo_mutacion || 'Primera',
+        tipo_mutacion: formData.tipo_mutacion || 'Mutación Quinta',
         fecha_resolucion: formData.fecha_resolucion || new Date().toISOString().split('T')[0],
         es_reactivacion: verificacionCodigo.estado === 'eliminado',
         justificacion: verificacionCodigo.estado === 'eliminado' 
