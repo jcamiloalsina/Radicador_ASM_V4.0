@@ -2117,7 +2117,7 @@ export default function Predios() {
             // Áreas calculadas del R2
             area_terreno: areaTerrenoTotal,
             area_construida: areaConstruidaTotal,
-            avaluo: parseFloat(formData.avaluo) || 0,
+            avaluo: parsearNumeroColombiano(formData.avaluo),
           },
           r2: {
             matricula_inmobiliaria: formData.matricula_inmobiliaria || null,
