@@ -5,66 +5,31 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Última Verificación (25 Febrero 2026 - Fork 20)
+## 🔧 Última Actualización (26 Febrero 2026)
 
-### ✅ VERIFICADO: Modal "Detalle del Cambio" en Pendientes
+### ✅ IMPLEMENTADO: Lógica de Predios Nuevos vs Viejos
 
-**Estado:** FUNCIONANDO CORRECTAMENTE
+**Nuevos campos en predios:**
+- `creado_en_plataforma: true/false` - Indica si el predio fue creado manualmente en la plataforma
+- `area_editada_en_plataforma: true/false` - Indica si el área fue editada en la plataforma
 
-**Verificación realizada:**
-- El modal muestra todos los datos del predio correctamente:
-  - Código Predial Nacional (CNP)
-  - Municipio
-  - Propietario (datos anteriores y valor aplicado)
-  - Justificación del cambio
-  - Fecha y usuario que aprobó/rechazó
-- El historial muestra 21 aprobados y 5 rechazados
-- Los datos se obtienen correctamente del campo `predio_actual` enriquecido por el backend
+**Sincronización automática R2→R1:**
+El modal de edición debe comportarse diferente según:
+- Si `creado_en_plataforma = true` OR `area_editada_en_plataforma = true` → Sincronización AUTOMÁTICA R2→R1
+- Si ambos son `false` → Modo MANUAL (áreas R1 y R2 independientes)
 
-**Backend - Lógica de búsqueda en `/predios/cambios/pendientes` y `/predios/cambios/historial`:**
-1. Busca primero en `predios` por `predio_id`
-2. Si no encuentra, busca en `predios` con `deleted: true`
-3. Si aún no encuentra, busca en `predios_eliminados` por `codigo_predial_nacional`
+**Comportamiento al importar Excel:**
+- Si el predio YA EXISTE en BD → PRESERVA valores de `creado_en_plataforma` y `area_editada_en_plataforma`
+- Si el predio NO EXISTE en BD → Se crea con ambos campos en `false`
 
----
+### ✅ FIX: Piso inicial = 0
+- Corregido en `Predios.js`: El campo "Piso" ahora inicia en 0 (antes era 1)
 
-### ✅ VERIFICADO: Export Excel R1/R2 desde Módulo de Actualización
+### ✅ FIX: Radicado en eliminaciones
+- El radicado ingresado al eliminar un predio ahora se guarda y muestra correctamente
 
-**Estado:** YA IMPLEMENTADO
-
-**Funcionalidad:**
-- Endpoint: `GET /api/actualizacion/proyectos/{proyecto_id}/exportar-excel`
-- Parámetro opcional: `?solo_actualizados=true`
-- Genera Excel con 3 hojas: REGISTRO_R1, REGISTRO_R2, RESUMEN
-- Botones en el Visor de Actualización:
-  - "Exportar Excel R1/R2 Completo"
-  - "Solo Actualizados/Firmados"
-
----
-
-### ✅ CONFIRMADO POR USUARIO: Rendimiento del Formulario de Visita en Móvil
-
-**Estado:** RESUELTO (según confirmación del usuario)
-
----
-
-## 🔧 Cambios Anteriores (21 Febrero 2026 - Fork 19)
-
-### ✅ IMPLEMENTADO: Multi-Property Certificate Petition
-- Backend completado para manejar lista de propiedades en certificado sencillo
-
-### ✅ IMPLEMENTADO: Gestor Status Fix
-- Corregido el estado de gestores en peticiones finalizadas (ahora muestra "Completado")
-
-### ✅ IMPLEMENTADO: Unified Excel R1/R2 Exports
-- Exports refactorizados para Conservación y Actualización
-- Función `parsear_nombre_completo` para dividir nombres
-- Lógica de merge con propuestas aprobadas
-
-### ✅ IMPLEMENTADO: Property Deletion Flow Overhaul
-- Modal para capturar radicado, resolución y motivo
-- Guardado en `predios_eliminados` con metadatos completos
-- Export de eliminados actualizado con nuevas columnas
+### ✅ FIX: Certificado catastral usa datos actualizados
+- El sistema ahora busca los datos más recientes del predio al generar certificados
 
 ---
 
@@ -74,14 +39,14 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - **Mapas:** Leaflet + react-leaflet
 - **PDFs:** ReportLab
 - **Excel:** openpyxl
-- **PWA:** Service Worker + IndexedDB (modo offline unificado)
+- **PWA:** Service Worker + IndexedDB (modo offline)
 
 ## Roles de Usuario
-1. `usuario` - Usuario externo, puede crear peticiones y dar seguimiento
+1. `usuario` - Usuario externo
 2. `atencion_usuario` - Atiende peticiones iniciales
 3. `gestor` - Gestiona peticiones y predios
-4. `coordinador` - Aprueba cambios, gestiona permisos, ve histórico completo
-5. `administrador` - Control total del sistema
+4. `coordinador` - Aprueba cambios
+5. `administrador` - Control total
 6. `comunicaciones` - Solo lectura
 7. `empresa` - Solo lectura restringida
 
@@ -93,20 +58,17 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 - Ninguno actualmente
 
 ### P1 - Alta Prioridad
-- **Verificar guardado de visitas:** El usuario cree que está resuelto, pero fue un bug recurrente
-- **Export Excel específico de formulario de visita:** Si el usuario lo requiere (diferente del R1/R2)
+- **Implementar UI condicional del modal:** Cuando `creado_en_plataforma=true` OR `area_editada_en_plataforma=true`, mostrar modal con sincronización automática R2→R1. De lo contrario, modo manual.
 
 ### P2 - Media Prioridad
 - Implementar exportación XTF
 - Desarrollar App de Correspondencia
-- Verificar sincronización offline-to-online completa
-- Investigar error intermitente `checkInitialSync is not defined`
+- Verificar sincronización offline-to-online
 
 ### P3 - Baja Prioridad
-- Refactorizar `VisorActualizacion.js` y `Predios.js`
+- Refactorizar archivos grandes
 - UI para reportes GDB
 - Gráficos en dashboards
-- Sistema de acto administrativo automatizado
 
 ---
 
@@ -119,9 +81,9 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## Archivos Clave
 - `/app/backend/server.py` - Lógica principal del backend
+- `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
 - `/app/frontend/src/pages/Pendientes.js` - UI de pendientes y historial
 - `/app/frontend/src/pages/VisorActualizacion.js` - Visor de predios actualización
-- `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
 
 ---
 
