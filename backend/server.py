@@ -13202,8 +13202,6 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
                 datos["fecha_resolucion"] = f"{fecha_anterior} | {fecha_resolucion_nueva}"
             elif fecha_resolucion_nueva:
                 datos["fecha_resolucion"] = fecha_resolucion_nueva
-        if datos.get("fecha_resolucion"):
-            pass  # Ya viene en datos
         
         # Si se modifican áreas, activar sincronización automática R2→R1
         campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros', 'r2']
