@@ -13046,6 +13046,11 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         datos["updated_at"] = datetime.now(timezone.utc).isoformat()
         datos["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
         
+        # Si se modifican áreas, activar sincronización automática R2→R1
+        campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros', 'r2']
+        if any(campo in datos for campo in campos_area):
+            datos["area_editada_en_plataforma"] = True
+        
         # Convertir r2 a formato r2_registros para mantener consistencia
         if "r2" in datos:
             r2_data = datos["r2"]
