@@ -270,7 +270,7 @@ export default function Predios() {
       habitaciones: '0',
       banos: '0',
       locales: '0',
-      pisos: '1',
+      pisos: '0',
       puntaje: '0',
       area_construida: '0'
     }]);
@@ -434,7 +434,7 @@ export default function Predios() {
     const nuevoId = generarIdConstruccion(construcciones.length);
     setConstrucciones([...construcciones, {
       id: nuevoId,
-      piso: '1',
+      piso: '0',
       habitaciones: '0',
       banos: '0',
       locales: '0',
