@@ -238,7 +238,7 @@ export default function Predios() {
   // Estado para construcciones (R2) - SEPARADO
   const [construcciones, setConstrucciones] = useState([{
     id: 'A',
-    piso: '1',
+    piso: '0',
     habitaciones: '0',
     banos: '0',
     locales: '0',
@@ -256,7 +256,7 @@ export default function Predios() {
     habitaciones: '0',
     banos: '0',
     locales: '0',
-    pisos: '1',
+    pisos: '0',
     puntaje: '0',
     area_construida: '0'
   }]);
