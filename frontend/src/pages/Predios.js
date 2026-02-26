@@ -2508,13 +2508,13 @@ export default function Predios() {
       newZonasFisicas = zonasData.map(z => ({
         zona_fisica: z.zona_fisica?.toString() || '0',
         zona_economica: z.zona_economica?.toString() || '0',
-        area_terreno: z.area_terreno?.toString() || '0',
-        habitaciones: z.habitaciones?.toString() || '0',
-        banos: z.banos?.toString() || '0',
-        locales: z.locales?.toString() || '0',
-        pisos: z.pisos?.toString() || '1',
-        puntaje: z.puntaje?.toString() || '0',
-        area_construida: z.area_construida?.toString() || '0'
+        area_terreno: z.area_terreno?.toString() ?? '0',
+        habitaciones: z.habitaciones?.toString() ?? '0',
+        banos: z.banos?.toString() ?? '0',
+        locales: z.locales?.toString() ?? '0',
+        pisos: z.pisos?.toString() ?? '0',
+        puntaje: z.puntaje?.toString() ?? '0',
+        area_construida: z.area_construida?.toString() ?? '0'
       }));
     } else {
       newZonasFisicas = [{
