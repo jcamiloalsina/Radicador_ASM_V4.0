@@ -19176,6 +19176,9 @@ async def exportar_actualizacion_excel(
     
     logger.info(f"[Export R1/R2] Exportando {len(predios)} predios")
     
+    # Ordenar predios por código predial (ubicación geográfica)
+    predios.sort(key=lambda p: p.get('codigo_predial') or p.get('codigo_predial_nacional') or p.get('numero_predial') or '')
+    
     # ========== PASO 6: Crear Excel ==========
     wb = Workbook()
     
