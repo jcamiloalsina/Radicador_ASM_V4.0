@@ -13154,6 +13154,8 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         
         # Agregar detalles de modificación al historial
         historial_entry["accion"] = "Predio modificado"
+        historial_entry["tipo_mutacion"] = datos.get("tipo_mutacion") or ""
+        historial_entry["fecha_resolucion"] = datos.get("fecha_resolucion") or datetime.now().strftime("%Y-%m-%d")
         historial_entry["detalles"] = {
             "campos_modificados": campos_modificados,
             "total_campos": len(campos_modificados)
@@ -13163,11 +13165,43 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         datos["updated_at"] = datetime.now(timezone.utc).isoformat()
         datos["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
         
-        # Actualizar tipo_mutacion y resolución si vienen en los datos
-        if datos.get("tipo_mutacion"):
-            pass  # Ya viene en datos
-        if numero_resolucion:
-            datos["numero_resolucion"] = numero_resolucion
+        # CONCATENAR tipo_mutacion, numero_resolucion y fecha_resolucion (no reemplazar)
+        # Formato: "Tipo1 (Res1, Fecha1) | Tipo2 (Res2, Fecha2)"
+        tipo_mutacion_nuevo = datos.get("tipo_mutacion", "")
+        resolucion_nueva = numero_resolucion or datos.get("numero_resolucion", "")
+        fecha_resolucion_nueva = datos.get("fecha_resolucion", datetime.now().strftime("%Y-%m-%d"))
+        
+        if tipo_mutacion_nuevo or resolucion_nueva:
+            # Construir la nueva entrada
+            nueva_entrada = tipo_mutacion_nuevo
+            if resolucion_nueva:
+                nueva_entrada += f" ({resolucion_nueva}"
+                if fecha_resolucion_nueva:
+                    nueva_entrada += f", {fecha_resolucion_nueva}"
+                nueva_entrada += ")"
+            elif fecha_resolucion_nueva:
+                nueva_entrada += f" ({fecha_resolucion_nueva})"
+            
+            # Concatenar con el valor anterior si existe
+            tipo_mutacion_anterior = predio_actual.get("tipo_mutacion", "") if predio_actual else ""
+            if tipo_mutacion_anterior and nueva_entrada:
+                datos["tipo_mutacion"] = f"{tipo_mutacion_anterior} | {nueva_entrada}"
+            elif nueva_entrada:
+                datos["tipo_mutacion"] = nueva_entrada
+            
+            # Concatenar resoluciones
+            resolucion_anterior = predio_actual.get("numero_resolucion", "") if predio_actual else ""
+            if resolucion_anterior and resolucion_nueva:
+                datos["numero_resolucion"] = f"{resolucion_anterior} | {resolucion_nueva}"
+            elif resolucion_nueva:
+                datos["numero_resolucion"] = resolucion_nueva
+            
+            # Concatenar fechas
+            fecha_anterior = predio_actual.get("fecha_resolucion", "") if predio_actual else ""
+            if fecha_anterior and fecha_resolucion_nueva:
+                datos["fecha_resolucion"] = f"{fecha_anterior} | {fecha_resolucion_nueva}"
+            elif fecha_resolucion_nueva:
+                datos["fecha_resolucion"] = fecha_resolucion_nueva
         if datos.get("fecha_resolucion"):
             pass  # Ya viene en datos
         
