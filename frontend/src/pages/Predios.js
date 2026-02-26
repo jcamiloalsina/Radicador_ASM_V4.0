@@ -392,6 +392,35 @@ export default function Predios() {
     return partes.join(' ');
   };
   
+  // Función para parsear números en formato colombiano (200.000 = doscientos mil)
+  // Elimina puntos de miles y convierte comas a puntos decimales
+  const parsearNumeroColombiano = (valor) => {
+    if (!valor || valor === '') return 0;
+    // Convertir a string
+    let str = String(valor);
+    // Si tiene punto y coma, el punto es separador de miles y la coma es decimal
+    // Ej: 1.200.000,50 = 1200000.50
+    if (str.includes(',')) {
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Si solo tiene puntos, determinar si es decimal o miles
+      const puntos = (str.match(/\./g) || []).length;
+      if (puntos > 1) {
+        // Múltiples puntos = separadores de miles (200.000.000)
+        str = str.replace(/\./g, '');
+      } else if (puntos === 1) {
+        // Un solo punto: verificar si parece miles o decimal
+        const partes = str.split('.');
+        // Si la parte después del punto tiene 3 dígitos, probablemente es miles
+        if (partes[1] && partes[1].length === 3) {
+          str = str.replace('.', '');
+        }
+        // Si no, dejar como decimal (200.50)
+      }
+    }
+    return parseFloat(str) || 0;
+  };
+  
   // Calcular áreas totales desde zonas y construcciones (SEPARADOS)
   const calcularAreasTotales = () => {
     const areaTerrenoTotal = zonasTerreno.reduce((sum, zona) => {
