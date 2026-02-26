@@ -13074,9 +13074,55 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
     elif tipo == "modificacion":
         predio_id = cambio["predio_id"]
         
+        # Obtener predio actual para comparar cambios
+        predio_actual = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        # Calcular qué campos se cambiaron
+        campos_modificados = []
+        if predio_actual:
+            campos_a_comparar = [
+                ("nombre_propietario", "Propietario"),
+                ("propietarios", "Propietarios"),
+                ("direccion", "Dirección"),
+                ("area_terreno", "Área Terreno"),
+                ("area_construida", "Área Construida"),
+                ("avaluo", "Avalúo"),
+                ("destino_economico", "Destino Económico"),
+                ("matricula_inmobiliaria", "Matrícula Inmobiliaria"),
+                ("zonas", "Zonas R2"),
+                ("construcciones", "Construcciones R2"),
+                ("zonas_fisicas", "Zonas Físicas")
+            ]
+            for campo, nombre in campos_a_comparar:
+                if campo in datos:
+                    valor_anterior = predio_actual.get(campo)
+                    valor_nuevo = datos.get(campo)
+                    if str(valor_anterior) != str(valor_nuevo):
+                        campos_modificados.append({
+                            "campo": nombre,
+                            "campo_key": campo,
+                            "valor_anterior": valor_anterior,
+                            "valor_nuevo": valor_nuevo
+                        })
+        
+        # Agregar detalles de modificación al historial
+        historial_entry["accion"] = "Predio modificado"
+        historial_entry["detalles"] = {
+            "campos_modificados": campos_modificados,
+            "total_campos": len(campos_modificados)
+        }
+        
         # Actualizar predio
         datos["updated_at"] = datetime.now(timezone.utc).isoformat()
         datos["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
+        
+        # Actualizar tipo_mutacion y resolución si vienen en los datos
+        if datos.get("tipo_mutacion"):
+            pass  # Ya viene en datos
+        if numero_resolucion:
+            datos["numero_resolucion"] = numero_resolucion
+        if datos.get("fecha_resolucion"):
+            pass  # Ya viene en datos
         
         # Si se modifican áreas, activar sincronización automática R2→R1
         campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros', 'r2']
