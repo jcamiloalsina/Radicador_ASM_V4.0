@@ -2214,14 +2214,14 @@ export default function Predios() {
         })),
         construcciones: construcciones.map(c => ({
           id: c.id,
-          piso: parseInt(c.piso) || 1,
-          habitaciones: parseInt(c.habitaciones) || 0,
-          banos: parseInt(c.banos) || 0,
-          locales: parseInt(c.locales) || 0,
+          piso: parseInt(c.piso) ?? 0,
+          habitaciones: parseInt(c.habitaciones) ?? 0,
+          banos: parseInt(c.banos) ?? 0,
+          locales: parseInt(c.locales) ?? 0,
           tipificacion: c.tipificacion || '',
           uso: c.uso || '',
-          puntaje: parseFloat(c.puntaje) || 0,
-          area_construida: parseFloat(c.area_construida) || 0
+          puntaje: parseFloat(c.puntaje) ?? 0,
+          area_construida: parseFloat(c.area_construida) ?? 0
         })),
         // Gestor asignado para continuar
         gestor_asignado_id: gestorAsignado || null
