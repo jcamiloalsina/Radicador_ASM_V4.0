@@ -2476,6 +2476,11 @@ export default function Predios() {
   };
 
   const openEditDialog = (predio) => {
+    // Determinar si usar formato automático (R2→R1) o manual
+    // Automático si: creado_en_plataforma=true O area_editada_en_plataforma=true
+    const esFormatoAutomatico = predio.creado_en_plataforma === true || predio.area_editada_en_plataforma === true;
+    setUsarFormatoAutomatico(esFormatoAutomatico);
+    
     // Preparar todos los datos antes de hacer setState
     let newPropietarios;
     if (predio.propietarios && predio.propietarios.length > 0) {
