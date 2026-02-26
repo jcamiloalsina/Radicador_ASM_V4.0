@@ -4105,11 +4105,13 @@ export default function Predios() {
                     data-testid="tipo-mutacion-select"
                   >
                     <option value="">Seleccionar...</option>
-                    <option value="Primera">Primera (Inscripción inicial)</option>
-                    <option value="Segunda">Segunda</option>
-                    <option value="Tercera">Tercera</option>
-                    <option value="Cuarta">Cuarta</option>
-                    <option value="Quinta">Quinta</option>
+                    <option value="Mutación Primera">Mutación Primera - Cambio de propietario</option>
+                    <option value="Mutación Segunda">Mutación Segunda - Englobe o Desenglobe</option>
+                    <option value="Mutación Tercera">Mutación Tercera - Modificación de construcción o destino</option>
+                    <option value="Mutación Cuarta">Mutación Cuarta - Auto estimación del avalúo catastral</option>
+                    <option value="Mutación Quinta">Mutación Quinta - Inscripción o eliminación de predio</option>
+                    <option value="Mutación Sexta">Mutación Sexta - Rectificación de área</option>
+                    <option value="Complementación">Complementación de información catastral</option>
                   </select>
                 </div>
                 <div>
