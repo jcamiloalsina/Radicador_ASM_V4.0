@@ -2560,6 +2560,49 @@ export default function Predios() {
       matricula_inmobiliaria: matricula
     };
     
+    // Cargar zonas de terreno y construcciones para formato automático
+    if (esFormatoAutomatico) {
+      // Cargar zonas de terreno
+      const zonasTerrData = predio.zonas || r2Data.zonas || [];
+      if (zonasTerrData.length > 0) {
+        setZonasTerreno(zonasTerrData.map(z => ({
+          zona_fisica: z.zona_fisica || '',
+          zona_economica: z.zona_economica || '',
+          area_terreno: String(z.area_terreno ?? 0)
+        })));
+      } else {
+        setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+      }
+      
+      // Cargar construcciones
+      const construccionesData = predio.construcciones || r2Data.construcciones || [];
+      if (construccionesData.length > 0) {
+        setConstrucciones(construccionesData.map((c, i) => ({
+          id: c.id || generarIdConstruccion(i),
+          piso: String(c.piso ?? 0),
+          habitaciones: String(c.habitaciones ?? 0),
+          banos: String(c.banos ?? 0),
+          locales: String(c.locales ?? 0),
+          tipificacion: c.tipificacion || '',
+          uso: c.uso || '',
+          puntaje: String(c.puntaje ?? 0),
+          area_construida: String(c.area_construida ?? 0)
+        })));
+      } else {
+        setConstrucciones([{
+          id: 'A',
+          piso: '0',
+          habitaciones: '0',
+          banos: '0',
+          locales: '0',
+          tipificacion: '',
+          uso: '',
+          puntaje: '0',
+          area_construida: '0'
+        }]);
+      }
+    }
+    
     // Hacer todos los setState juntos - React los batcha automáticamente
     setSelectedPredio(predio);
     setPropietarios(newPropietarios);
