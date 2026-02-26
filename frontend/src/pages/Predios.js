@@ -2060,6 +2060,8 @@ export default function Predios() {
       // === NUEVO FLUJO CON WORKFLOW ===
       if (usarNuevoFlujo) {
         const predioNuevoData = {
+          // Marcar como creado en plataforma para sincronización automática R2→R1
+          creado_en_plataforma: true,
           r1: {
             municipio: formData.municipio || filterMunicipio,
             zona: codigoManual.zona,
