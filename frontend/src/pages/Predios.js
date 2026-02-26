@@ -2345,6 +2345,7 @@ export default function Predios() {
         avaluo: parseFloat(formData.avaluo) || 0,
         tipo_mutacion: formData.tipo_mutacion || null,
         numero_resolucion: formData.numero_resolucion || null,
+        fecha_resolucion: formData.fecha_resolucion || null,
         matricula_inmobiliaria: formData.matricula_inmobiliaria || null
       };
       
