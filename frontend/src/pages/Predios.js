@@ -2210,8 +2210,11 @@ export default function Predios() {
         municipio: formData.municipio || filterMunicipio,
         // IMPORTANTE: Incluir el código homologado seleccionado/siguiente
         codigo_homologado: siguienteCodigoHomologado?.codigo || null,
-        // Acto administrativo obligatorio
+        // Acto administrativo obligatorio (= número de resolución)
         acto_administrativo: formData.acto_administrativo.trim(),
+        numero_resolucion: formData.acto_administrativo.trim(),
+        tipo_mutacion: formData.tipo_mutacion || 'Primera',
+        fecha_resolucion: formData.fecha_resolucion || new Date().toISOString().split('T')[0],
         es_reactivacion: verificacionCodigo.estado === 'eliminado',
         justificacion: verificacionCodigo.estado === 'eliminado' 
           ? 'Reactivación de predio eliminado' 
@@ -2236,7 +2239,7 @@ export default function Predios() {
         // Áreas calculadas del R2
         area_terreno: areaTerrenoTotal,
         area_construida: areaConstruidaTotal,
-        avaluo: parseFloat(formData.avaluo) || 0,
+        avaluo: parsearNumeroColombiano(formData.avaluo),
         // Nuevo formato R2: zonas y construcciones separadas
         zonas: zonasTerreno.map(z => ({
           zona_fisica: z.zona_fisica || '0',
