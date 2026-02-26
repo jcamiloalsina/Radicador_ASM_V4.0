@@ -5487,6 +5487,41 @@ export default function Predios() {
                             </div>
                           )}
                           
+                          {/* Detalles de creación */}
+                          {h.tipo_cambio === 'creacion' && h.detalles && (
+                            <div className="text-xs bg-emerald-50 border border-emerald-200 rounded p-2 mb-2">
+                              <p className="font-medium text-emerald-800 mb-1">Datos del predio creado:</p>
+                              <div className="grid grid-cols-2 gap-1 text-emerald-700">
+                                {h.detalles.propietario && <p>• Propietario: {h.detalles.propietario}</p>}
+                                {h.detalles.area_terreno && <p>• Área Terreno: {h.detalles.area_terreno} m²</p>}
+                                {h.detalles.area_construida !== undefined && <p>• Área Construida: {h.detalles.area_construida} m²</p>}
+                                {h.detalles.avaluo && <p>• Avalúo: ${h.detalles.avaluo?.toLocaleString('es-CO')}</p>}
+                                {h.detalles.direccion && <p>• Dirección: {h.detalles.direccion}</p>}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Detalles de modificación - Campos cambiados */}
+                          {h.tipo_cambio === 'modificacion' && h.detalles?.campos_modificados && h.detalles.campos_modificados.length > 0 && (
+                            <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 mb-2">
+                              <p className="font-medium text-amber-800 mb-1">Campos modificados ({h.detalles.total_campos}):</p>
+                              <div className="space-y-1">
+                                {h.detalles.campos_modificados.map((cm, cmIdx) => (
+                                  <div key={cmIdx} className="flex items-start gap-2 text-amber-700">
+                                    <span className="font-medium">{cm.campo}:</span>
+                                    <span className="text-red-600 line-through">
+                                      {typeof cm.valor_anterior === 'object' ? JSON.stringify(cm.valor_anterior).slice(0, 50) : String(cm.valor_anterior || 'N/A').slice(0, 50)}
+                                    </span>
+                                    <span>→</span>
+                                    <span className="text-emerald-700">
+                                      {typeof cm.valor_nuevo === 'object' ? JSON.stringify(cm.valor_nuevo).slice(0, 50) : String(cm.valor_nuevo || 'N/A').slice(0, 50)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Documentos adjuntos */}
                           {h.documentos && h.documentos.length > 0 && (
                             <div className="mt-2">
