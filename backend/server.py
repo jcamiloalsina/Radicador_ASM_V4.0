@@ -9045,7 +9045,8 @@ async def export_predios_excel(
                 vigencia_exportada = max(numeric_vigencias)
                 query["vigencia"] = vigencia_exportada
     
-    predios = await db.predios.find(query, {"_id": 0}).to_list(50000)
+    # Obtener predios ORDENADOS por código predial nacional (ubicación geográfica)
+    predios = await db.predios.find(query, {"_id": 0}).sort("codigo_predial_nacional", 1).to_list(50000)
     
     # Crear workbook
     wb = Workbook()
