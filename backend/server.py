@@ -11634,6 +11634,11 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
     if not update_dict:
         return predio
     
+    # Si se actualiza área (terreno o construida), activar sincronización automática R2→R1
+    campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros']
+    if any(campo in update_dict for campo in campos_area):
+        update_dict["area_editada_en_plataforma"] = True
+    
     # Agregar metadata de actualización
     update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
     
