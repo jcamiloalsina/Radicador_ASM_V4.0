@@ -340,7 +340,7 @@ export default function Predios() {
     habitaciones_1: '0',
     banos_1: '0',
     locales_1: '0',
-    pisos_1: '1',
+    pisos_1: '0',
     puntaje_1: '0',
     area_construida_1: '0'
   });
@@ -2520,7 +2520,7 @@ export default function Predios() {
         habitaciones: '0',
         banos: '0',
         locales: '0',
-        pisos: '1',
+        pisos: '0',
         puntaje: '0',
         area_construida: '0'
       }];
@@ -2584,7 +2584,7 @@ export default function Predios() {
       habitaciones_1: '0',
       banos_1: '0',
       locales_1: '0',
-      pisos_1: '1',
+      pisos_1: '0',
       puntaje_1: '0',
       area_construida_1: '0'
     });
@@ -2616,7 +2616,7 @@ export default function Predios() {
       habitaciones: '0',
       banos: '0',
       locales: '0',
-      pisos: '1',
+      pisos: '0',
       puntaje: '0',
       area_construida: '0'
     }]);
@@ -2628,7 +2628,7 @@ export default function Predios() {
     }]);
     setConstrucciones([{
       id: 'A',
-      piso: '1',
+      piso: '0',
       habitaciones: '0',
       banos: '0',
       locales: '0',
