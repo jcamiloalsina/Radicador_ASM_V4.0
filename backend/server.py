@@ -13063,7 +13063,7 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         predio_doc["created_at"] = datetime.now(timezone.utc).isoformat()
         predio_doc["updated_at"] = datetime.now(timezone.utc).isoformat()
         # Guardar tipo_mutacion y resolución en el predio
-        predio_doc["tipo_mutacion"] = datos.get("tipo_mutacion") or "Primera"
+        predio_doc["tipo_mutacion"] = datos.get("tipo_mutacion") or "Mutación Quinta"
         predio_doc["numero_resolucion"] = numero_resolucion
         predio_doc["fecha_resolucion"] = datos.get("fecha_resolucion") or datetime.now().strftime("%Y-%m-%d")
         predio_doc["historial"] = [historial_entry]
