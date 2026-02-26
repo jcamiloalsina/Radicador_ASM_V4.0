@@ -2183,6 +2183,8 @@ export default function Predios() {
         justificacion: verificacionCodigo.estado === 'eliminado' 
           ? 'Reactivación de predio eliminado' 
           : 'Creación de nuevo predio',
+        // Marcar como creado en plataforma para sincronización automática R2→R1
+        creado_en_plataforma: true,
         // Usar el primer propietario como principal (para compatibilidad)
         primer_apellido: propietariosFormateados[0].primer_apellido,
         segundo_apellido: propietariosFormateados[0].segundo_apellido,
