@@ -3806,7 +3806,7 @@ export default function Predios() {
                   
                   <div className="col-span-2">
                     <Label>Avalúo (COP) *</Label>
-                    <Input type="number" value={formData.avaluo} onChange={(e) => setFormData({...formData, avaluo: e.target.value})} />
+                    <Input type="text" placeholder="Ej: 200.000" value={formData.avaluo} onChange={(e) => setFormData({...formData, avaluo: e.target.value})} />
                   </div>
                 </div>
               </div>
