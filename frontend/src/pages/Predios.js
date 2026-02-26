@@ -140,6 +140,8 @@ export default function Predios() {
   const [reaparicionesConteo, setReaparicionesConteo] = useState({});
   const [gdbStats, setGdbStats] = useState(null); // Estadísticas de geometrías GDB
   const [selectedPredio, setSelectedPredio] = useState(null);
+  // Estado para determinar si el predio usa formato automático (R2→R1) o manual
+  const [usarFormatoAutomatico, setUsarFormatoAutomatico] = useState(false);
   const [prediosEliminados, setPrediosEliminados] = useState([]);
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [cambiosHistorial, setCambiosHistorial] = useState([]);
