@@ -14996,7 +14996,7 @@ async def process_gdb_upload_background(
                             if area_m2 == 0:
                                 try:
                                     # Usar área de geometría original (antes de transformar)
-                                    area_m2 = round(row.geometry.area, 2) if row.geometry.area > 0 else 0
+                                    area_m2 = row.geometry.area if row.geometry.area > 0 else 0
                                 except:
                                     pass
                             
@@ -15125,7 +15125,7 @@ async def process_gdb_upload_background(
                             # Solo si no hay Shape_Area, usar fallback aproximado
                             if area_m2 == 0:
                                 try:
-                                    area_m2 = round(row.geometry.area, 2) if row.geometry.area > 0 else 0
+                                    area_m2 = row.geometry.area if row.geometry.area > 0 else 0
                                 except:
                                     pass
                             
@@ -15241,7 +15241,7 @@ async def process_gdb_upload_background(
                             # Fallback si no hay Shape_Area
                             if area_m2 == 0:
                                 try:
-                                    area_m2 = round(row.geometry.area, 2) if row.geometry.area > 0 else 0
+                                    area_m2 = row.geometry.area if row.geometry.area > 0 else 0
                                 except:
                                     pass
                             
