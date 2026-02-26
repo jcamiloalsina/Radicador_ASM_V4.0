@@ -7164,9 +7164,31 @@ async def crear_predio_con_workflow(
             nuevo_predio["reactivado_por_id"] = current_user["id"]
             nuevo_predio["id"] = existente.get("id", str(uuid.uuid4()))  # Mantener ID existente
             
+            # Agregar historial de reactivación
+            datos_propuestos = propuesta.get("datos_propuestos", {})
+            historial_reactivacion = {
+                "accion": "Predio reactivado",
+                "tipo_cambio": "reactivacion",
+                "usuario": current_user["full_name"],
+                "usuario_id": current_user["id"],
+                "usuario_rol": current_user["role"],
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "numero_resolucion": acto_admin,
+                "tipo_mutacion": datos_propuestos.get("tipo_mutacion", "Mutación Quinta"),
+                "fecha_resolucion": datos_propuestos.get("fecha_resolucion", datetime.now().strftime("%Y-%m-%d")),
+                "detalles": {
+                    "codigo_predial_nacional": codigo_predial,
+                    "propietario": datos_propuestos.get("nombre_propietario"),
+                    "motivo": "Reactivación de predio eliminado"
+                }
+            }
+            
             await db.predios.update_one(
                 {"codigo_predial_nacional": codigo_predial},
-                {"$set": nuevo_predio}
+                {
+                    "$set": nuevo_predio,
+                    "$push": {"historial": historial_reactivacion}
+                }
             )
             
             # Remover de predios_eliminados
