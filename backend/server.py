@@ -13018,16 +13018,43 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
     tipo = cambio["tipo_cambio"]
     datos = cambio["datos_propuestos"]
     
+    # Obtener número de resolución/acto administrativo
+    numero_resolucion = (
+        cambio.get("radicado_numero") or 
+        datos.get("acto_administrativo") or 
+        datos.get("numero_resolucion") or 
+        datos.get("resolucion") or
+        ""
+    )
+    
     historial_entry = {
         "accion": f"Cambio {tipo} aprobado",
+        "tipo_cambio": tipo,
         "usuario": aprobador['full_name'],
+        "usuario_id": aprobador.get('id'),
         "usuario_rol": aprobador['role'],
         "propuesto_por": cambio.get("propuesto_por_nombre"),
+        "propuesto_por_id": cambio.get("propuesto_por"),
         "fecha": datetime.now(timezone.utc).isoformat(),
-        "comentario": cambio.get("comentario_aprobacion")
+        "comentario": cambio.get("comentario_aprobacion") or cambio.get("justificacion"),
+        "numero_resolucion": numero_resolucion,
+        "radicado_numero": cambio.get("radicado_numero"),
+        "cambio_id": cambio.get("id")
     }
     
     if tipo == "creacion":
+        # Agregar detalles específicos de creación al historial
+        historial_entry["accion"] = "Predio creado"
+        historial_entry["detalles"] = {
+            "codigo_predial_nacional": datos.get("codigo_predial_nacional"),
+            "propietario": datos.get("nombre_propietario") or (datos.get("propietarios", [{}])[0].get("nombre_propietario") if datos.get("propietarios") else ""),
+            "area_terreno": datos.get("area_terreno"),
+            "area_construida": datos.get("area_construida"),
+            "avaluo": datos.get("avaluo"),
+            "direccion": datos.get("direccion"),
+            "destino_economico": datos.get("destino_economico")
+        }
+        
         # Crear nuevo predio
         predio_doc = datos.copy()
         predio_doc["id"] = str(uuid.uuid4())
@@ -13035,6 +13062,10 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         predio_doc["deleted"] = False
         predio_doc["created_at"] = datetime.now(timezone.utc).isoformat()
         predio_doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+        # Guardar tipo_mutacion y resolución en el predio
+        predio_doc["tipo_mutacion"] = datos.get("tipo_mutacion") or "Primera"
+        predio_doc["numero_resolucion"] = numero_resolucion
+        predio_doc["fecha_resolucion"] = datos.get("fecha_resolucion") or datetime.now().strftime("%Y-%m-%d")
         predio_doc["historial"] = [historial_entry]
         
         await db.predios.insert_one(predio_doc)
