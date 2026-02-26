@@ -4089,21 +4089,51 @@ export default function Predios() {
               </div>
             ) : null}
             
-            {/* Acto Administrativo - Opcional */}
-            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-              <Label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+            {/* Acto Administrativo / Resolución - OBLIGATORIO para predios nuevos */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Label className="text-sm font-medium text-blue-800 flex items-center gap-1 mb-2">
                 <FileText className="w-4 h-4" />
-                Número de Acto Administrativo <span className="text-slate-400 text-xs">(Opcional)</span>
+                Información de Resolución
               </Label>
-              <p className="text-xs text-slate-500 mb-2">Para trazabilidad del cambio</p>
-              <Input
-                type="text"
-                value={formData.acto_administrativo}
-                onChange={(e) => setFormData({ ...formData, acto_administrativo: e.target.value })}
-                placeholder="Ej: RES-2026-001234, RAD-2026-5511"
-                className="bg-white"
-                data-testid="acto-administrativo-input"
-              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-slate-600">Tipo de Mutación</Label>
+                  <select
+                    className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                    value={formData.tipo_mutacion}
+                    onChange={(e) => setFormData({ ...formData, tipo_mutacion: e.target.value })}
+                    data-testid="tipo-mutacion-select"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Primera">Primera (Inscripción inicial)</option>
+                    <option value="Segunda">Segunda</option>
+                    <option value="Tercera">Tercera</option>
+                    <option value="Cuarta">Cuarta</option>
+                    <option value="Quinta">Quinta</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-600">Número de Resolución / Acto</Label>
+                  <Input
+                    type="text"
+                    value={formData.acto_administrativo}
+                    onChange={(e) => setFormData({ ...formData, acto_administrativo: e.target.value })}
+                    placeholder="Ej: RES-540-0106-2026"
+                    className="bg-white"
+                    data-testid="acto-administrativo-input"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-600">Fecha de Resolución</Label>
+                  <Input
+                    type="date"
+                    value={formData.fecha_resolucion}
+                    onChange={(e) => setFormData({ ...formData, fecha_resolucion: e.target.value })}
+                    className="bg-white"
+                    data-testid="fecha-resolucion-input"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           
