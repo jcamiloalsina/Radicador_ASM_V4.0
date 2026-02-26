@@ -7035,7 +7035,10 @@ async def crear_predio_con_workflow(
             "construcciones": request.get("construcciones", []),
             # Campo legacy para compatibilidad
             "zonas_fisicas": request.get("zonas_fisicas", []),
-            "matricula_inmobiliaria": request.get("matricula_inmobiliaria", "")
+            "matricula_inmobiliaria": request.get("matricula_inmobiliaria", ""),
+            # Marcador de predio creado en plataforma (sincronización automática R2→R1)
+            "creado_en_plataforma": request.get("creado_en_plataforma", True),
+            "area_editada_en_plataforma": False
         },
         "justificacion": justificacion,
         "estado": "pendiente_aprobacion",
