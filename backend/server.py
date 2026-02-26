@@ -8874,11 +8874,33 @@ async def import_predios_excel(
                 for p in existing_predios_vigencia_actual
             ])
         
+        # Obtener campos especiales de predios existentes para preservarlos
+        # (creado_en_plataforma y area_editada_en_plataforma no deben sobrescribirse)
+        existing_special_fields = {}
+        for p in existing_predios_vigencia_actual:
+            cnp = p.get('codigo_predial_nacional')
+            if cnp:
+                existing_special_fields[cnp] = {
+                    'creado_en_plataforma': p.get('creado_en_plataforma', False),
+                    'area_editada_en_plataforma': p.get('area_editada_en_plataforma', False)
+                }
+        
         # Eliminar predios actuales de este municipio SOLO PARA ESTA VIGENCIA
         await db.predios.delete_many({"municipio": municipio, "vigencia": vigencia_int})
         
-        # Insertar nuevos predios
+        # Insertar nuevos predios preservando campos especiales
         predios_list = list(r1_data.values())
+        for predio in predios_list:
+            cnp = predio.get('codigo_predial_nacional')
+            if cnp and cnp in existing_special_fields:
+                # Preservar campos especiales si el predio existía
+                predio['creado_en_plataforma'] = existing_special_fields[cnp].get('creado_en_plataforma', False)
+                predio['area_editada_en_plataforma'] = existing_special_fields[cnp].get('area_editada_en_plataforma', False)
+            else:
+                # Predios nuevos desde importación = no creados en plataforma
+                predio['creado_en_plataforma'] = False
+                predio['area_editada_en_plataforma'] = False
+        
         if predios_list:
             await db.predios.insert_many(predios_list)
         
