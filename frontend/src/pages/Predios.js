@@ -2327,13 +2327,13 @@ export default function Predios() {
           zonas: zonasValidas.map(z => ({
             zona_fisica: z.zona_fisica,
             zona_economica: z.zona_economica,
-            area_terreno: parseFloat(z.area_terreno) || 0,
-            habitaciones: parseInt(z.habitaciones) || 0,
-            banos: parseInt(z.banos) || 0,
-            locales: parseInt(z.locales) || 0,
-            pisos: parseInt(z.pisos) || 1,
-            puntaje: parseFloat(z.puntaje) || 0,
-            area_construida: parseFloat(z.area_construida) || 0
+            area_terreno: parseFloat(z.area_terreno) ?? 0,
+            habitaciones: parseInt(z.habitaciones) ?? 0,
+            banos: parseInt(z.banos) ?? 0,
+            locales: parseInt(z.locales) ?? 0,
+            pisos: parseInt(z.pisos) ?? 0,
+            puntaje: parseFloat(z.puntaje) ?? 0,
+            area_construida: parseFloat(z.area_construida) ?? 0
           }))
         };
       }
