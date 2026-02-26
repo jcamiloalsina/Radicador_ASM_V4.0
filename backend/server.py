@@ -7177,6 +7177,31 @@ async def crear_predio_con_workflow(
             # Creación normal: insertar nuevo
             nuevo_predio["id"] = str(uuid.uuid4())
             nuevo_predio["created_at"] = datetime.now(timezone.utc).isoformat()
+            
+            # Agregar historial de creación
+            datos_propuestos = propuesta.get("datos_propuestos", {})
+            nuevo_predio["historial"] = [{
+                "accion": "Predio creado",
+                "tipo_cambio": "creacion",
+                "usuario": current_user["full_name"],
+                "usuario_id": current_user["id"],
+                "usuario_rol": current_user["role"],
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "numero_resolucion": acto_admin,
+                "tipo_mutacion": datos_propuestos.get("tipo_mutacion", "Mutación Quinta"),
+                "fecha_resolucion": datos_propuestos.get("fecha_resolucion", datetime.now().strftime("%Y-%m-%d")),
+                "detalles": {
+                    "codigo_predial_nacional": codigo_predial,
+                    "codigo_homologado": codigo_homologado_final,
+                    "propietario": datos_propuestos.get("nombre_propietario") or (datos_propuestos.get("propietarios", [{}])[0].get("nombre_propietario") if datos_propuestos.get("propietarios") else ""),
+                    "area_terreno": datos_propuestos.get("area_terreno"),
+                    "area_construida": datos_propuestos.get("area_construida"),
+                    "avaluo": datos_propuestos.get("avaluo"),
+                    "direccion": datos_propuestos.get("direccion"),
+                    "destino_economico": datos_propuestos.get("destino_economico")
+                }
+            }]
+            
             await db.predios.insert_one(nuevo_predio)
             mensaje_tipo = "Predio creado"
         
