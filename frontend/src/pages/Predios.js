@@ -811,13 +811,13 @@ export default function Predios() {
             setZonasFisicas([{
               zona_fisica: predioNuevo.zona_fisica_1 || r2Data.zona_fisica_1 || '0',
               zona_economica: predioNuevo.zona_economica_1 || r2Data.zona_economica_1 || '0',
-              area_terreno: predioNuevo.area_terreno_1 || r2Data.area_terreno_1 || '0',
-              habitaciones: predioNuevo.habitaciones_1 || r2Data.habitaciones_1 || '0',
-              banos: predioNuevo.banos_1 || r2Data.banos_1 || '0',
-              locales: predioNuevo.locales_1 || r2Data.locales_1 || '0',
-              pisos: predioNuevo.pisos_1 || r2Data.pisos_1 || '1',
-              puntaje: predioNuevo.puntaje_1 || r2Data.puntaje_1 || '0',
-              area_construida: predioNuevo.area_construida_1 || r2Data.area_construida_1 || '0'
+              area_terreno: predioNuevo.area_terreno_1 ?? r2Data.area_terreno_1 ?? '0',
+              habitaciones: predioNuevo.habitaciones_1 ?? r2Data.habitaciones_1 ?? '0',
+              banos: predioNuevo.banos_1 ?? r2Data.banos_1 ?? '0',
+              locales: predioNuevo.locales_1 ?? r2Data.locales_1 ?? '0',
+              pisos: predioNuevo.pisos_1 ?? r2Data.pisos_1 ?? '0',
+              puntaje: predioNuevo.puntaje_1 ?? r2Data.puntaje_1 ?? '0',
+              area_construida: predioNuevo.area_construida_1 ?? r2Data.area_construida_1 ?? '0'
             }]);
           }
           
