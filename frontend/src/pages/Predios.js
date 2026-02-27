@@ -4632,57 +4632,6 @@ export default function Predios() {
             </div>
           )}
           
-          {/* Información de Resolución para modificaciones - SOLO coordinador/admin */}
-          {['coordinador', 'administrador'].includes(user?.role) && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <Label className="text-sm font-medium text-blue-800 flex items-center gap-1 mb-2">
-                <FileText className="w-4 h-4" />
-                Información de Resolución (Modificación)
-              </Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs text-slate-600">Tipo de Mutación</Label>
-                  <select
-                    className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                    value={formData.tipo_mutacion}
-                    onChange={(e) => setFormData({ ...formData, tipo_mutacion: e.target.value })}
-                    data-testid="tipo-mutacion-edit-select"
-                  >
-                    <option value="">Seleccionar...</option>
-                    <option value="Mutación Primera">Mutación Primera - Cambio de propietario</option>
-                    <option value="Mutación Segunda">Mutación Segunda - Englobe o Desenglobe</option>
-                    <option value="Mutación Tercera">Mutación Tercera - Modificación de construcción o destino</option>
-                    <option value="Mutación Cuarta">Mutación Cuarta - Auto estimación del avalúo catastral</option>
-                    <option value="Mutación Quinta">Mutación Quinta - Inscripción o eliminación de predio</option>
-                    <option value="Mutación Sexta">Mutación Sexta - Rectificación de área</option>
-                    <option value="Complementación">Complementación de información catastral</option>
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-600">Número de Resolución / Acto</Label>
-                  <Input
-                    type="text"
-                    value={formData.numero_resolucion || ''}
-                    onChange={(e) => setFormData({ ...formData, numero_resolucion: e.target.value })}
-                    placeholder="Ej: RES-540-0106-2026"
-                    className="bg-white"
-                    data-testid="numero-resolucion-edit-input"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-600">Fecha de Resolución</Label>
-                  <Input
-                    type="date"
-                    value={formData.fecha_resolucion || ''}
-                    onChange={(e) => setFormData({ ...formData, fecha_resolucion: e.target.value })}
-                    className="bg-white"
-                    data-testid="fecha-resolucion-edit-input"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          
           {/* Opción: Asignar a Gestor de Apoyo para completar modificación */}
           <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 mt-4">
             <div className="flex items-center gap-2 mb-2">
