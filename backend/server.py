@@ -9401,8 +9401,11 @@ async def export_predios_excel(
             total_r2 = 1
         
         for r2_idx, r2 in enumerate(r2_registros, 1):
-            ws_r2.cell(row=row, column=1, value=predio.get('departamento', ''))
-            ws_r2.cell(row=row, column=2, value=predio.get('municipio', ''))
+            # Obtener código de municipio
+            codigo_muni = obtener_codigo_municipio(predio.get('municipio', ''))
+            
+            ws_r2.cell(row=row, column=1, value='54')  # Departamento Norte de Santander
+            ws_r2.cell(row=row, column=2, value=codigo_muni)  # Código DIVIPOLA del municipio
             ws_r2.cell(row=row, column=3, value=predio.get('numero_predio', ''))
             ws_r2.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', ''))
             ws_r2.cell(row=row, column=5, value='2')
@@ -9412,11 +9415,11 @@ async def export_predios_excel(
             
             zonas = r2.get('zonas', [])
             
-            # Zona 1 (columnas 9-11) - siempre llenar con 0 si vacío
+            # Zona 1 (columnas 9-11) - siempre llenar con 0 si vacío, áreas con 2 decimales
             z1 = zonas[0] if len(zonas) >= 1 else {}
             ws_r2.cell(row=row, column=9, value=z1.get('zona_fisica', 0) or 0)
             ws_r2.cell(row=row, column=10, value=z1.get('zona_economica', 0) or 0)
-            ws_r2.cell(row=row, column=11, value=z1.get('area_terreno', 0) or 0)
+            ws_r2.cell(row=row, column=11, value=formatear_area(z1.get('area_terreno', 0)))
             
             # Zona 2 (columnas 12-14)
             z2 = zonas[1] if len(zonas) >= 2 else {}
