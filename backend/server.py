@@ -13127,29 +13127,60 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         # Calcular qué campos se cambiaron
         campos_modificados = []
         if predio_actual:
-            campos_a_comparar = [
-                ("nombre_propietario", "Propietario"),
-                ("propietarios", "Propietarios"),
+            # Campos simples a comparar
+            campos_simples = [
                 ("direccion", "Dirección"),
                 ("area_terreno", "Área Terreno"),
                 ("area_construida", "Área Construida"),
                 ("avaluo", "Avalúo"),
                 ("destino_economico", "Destino Económico"),
                 ("matricula_inmobiliaria", "Matrícula Inmobiliaria"),
-                ("zonas", "Zonas R2"),
-                ("construcciones", "Construcciones R2"),
-                ("zonas_fisicas", "Zonas Físicas")
             ]
-            for campo, nombre in campos_a_comparar:
+            
+            for campo, nombre in campos_simples:
                 if campo in datos:
                     valor_anterior = predio_actual.get(campo)
                     valor_nuevo = datos.get(campo)
-                    if str(valor_anterior) != str(valor_nuevo):
+                    # Comparar como strings normalizados
+                    if str(valor_anterior or '').strip() != str(valor_nuevo or '').strip():
                         campos_modificados.append({
                             "campo": nombre,
                             "campo_key": campo,
                             "valor_anterior": valor_anterior,
                             "valor_nuevo": valor_nuevo
+                        })
+            
+            # Comparación especial para propietarios: solo comparar nombre_propietario
+            if "propietarios" in datos:
+                # Obtener nombre del propietario anterior
+                props_anterior = predio_actual.get("propietarios", [])
+                nombre_anterior = props_anterior[0].get("nombre_propietario", "") if props_anterior else predio_actual.get("nombre_propietario", "")
+                
+                # Obtener nombre del propietario nuevo
+                props_nuevo = datos.get("propietarios", [])
+                nombre_nuevo = props_nuevo[0].get("nombre_propietario", "") if props_nuevo else ""
+                
+                # Solo registrar cambio si el nombre realmente cambió
+                if nombre_anterior.strip().upper() != nombre_nuevo.strip().upper():
+                    campos_modificados.append({
+                        "campo": "Propietario",
+                        "campo_key": "propietarios",
+                        "valor_anterior": nombre_anterior,
+                        "valor_nuevo": nombre_nuevo
+                    })
+            
+            # Comparar zonas y construcciones solo si hay cambios significativos
+            for campo, nombre in [("zonas", "Zonas R2"), ("construcciones", "Construcciones R2"), ("zonas_fisicas", "Zonas Físicas")]:
+                if campo in datos:
+                    valor_anterior = predio_actual.get(campo, [])
+                    valor_nuevo = datos.get(campo, [])
+                    # Solo comparar si la cantidad de elementos cambió o si hay diferencias
+                    if len(valor_anterior) != len(valor_nuevo):
+                        campos_modificados.append({
+                            "campo": nombre,
+                            "campo_key": campo,
+                            "valor_anterior": f"{len(valor_anterior)} registros",
+                            "valor_nuevo": f"{len(valor_nuevo)} registros"
                         })
         
         # Agregar detalles de modificación al historial
