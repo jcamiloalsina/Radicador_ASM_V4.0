@@ -9297,8 +9297,11 @@ async def export_predios_excel(
             # Obtener campos de nombre (parseados si es necesario)
             campos_nombre = obtener_campos_nombre(prop)
             
-            ws_r1.cell(row=row, column=1, value=predio.get('departamento', ''))
-            ws_r1.cell(row=row, column=2, value=predio.get('municipio', ''))
+            # Obtener código de municipio
+            codigo_muni = obtener_codigo_municipio(predio.get('municipio', ''))
+            
+            ws_r1.cell(row=row, column=1, value='54')  # Departamento Norte de Santander
+            ws_r1.cell(row=row, column=2, value=codigo_muni)  # Código DIVIPOLA del municipio
             ws_r1.cell(row=row, column=3, value=predio.get('numero_predio', ''))
             ws_r1.cell(row=row, column=4, value=predio.get('codigo_predial_nacional', ''))
             ws_r1.cell(row=row, column=5, value=predio.get('codigo_homologado', ''))
@@ -9317,8 +9320,8 @@ async def export_predios_excel(
             ws_r1.cell(row=row, column=17, value=predio.get('direccion', ''))
             ws_r1.cell(row=row, column=18, value=predio.get('comuna', ''))
             ws_r1.cell(row=row, column=19, value=predio.get('destino_economico', ''))
-            ws_r1.cell(row=row, column=20, value=predio.get('area_terreno', 0))
-            ws_r1.cell(row=row, column=21, value=predio.get('area_construida', 0))
+            ws_r1.cell(row=row, column=20, value=formatear_area(predio.get('area_terreno', 0)))  # Área con 2 decimales
+            ws_r1.cell(row=row, column=21, value=formatear_area(predio.get('area_construida', 0)))  # Área con 2 decimales
             ws_r1.cell(row=row, column=22, value=predio.get('avaluo', 0))
             # Vigencia: extraer solo el año si viene en formato largo
             vigencia_raw = predio.get('vigencia', datetime.now().year)
