@@ -9216,6 +9216,66 @@ async def export_predios_excel(
         # Si no hay campos separados, usar nombre_propietario directamente
         return nombre if nombre else prop.get('nombre_propietario', '')
     
+    # Función para formatear áreas con 2 decimales siempre
+    def formatear_area(valor):
+        """Formatea un área con exactamente 2 decimales"""
+        try:
+            num = float(valor) if valor else 0
+            return f"{num:.2f}"
+        except (ValueError, TypeError):
+            return "0.00"
+    
+    # Diccionario de códigos DIVIPOLA de municipios del Catatumbo
+    CODIGOS_MUNICIPIO = {
+        "Ábrego": "54003",
+        "Abrego": "54003",
+        "ABREGO": "54003",
+        "ÁBREGO": "54003",
+        "Cáchira": "54128",
+        "Cachira": "54128",
+        "CACHIRA": "54128",
+        "CÁCHIRA": "54128",
+        "Convención": "54206",
+        "Convencion": "54206",
+        "CONVENCION": "54206",
+        "CONVENCIÓN": "54206",
+        "El Carmen": "54245",
+        "EL CARMEN": "54245",
+        "El Tarra": "54250",
+        "EL TARRA": "54250",
+        "Hacarí": "54344",
+        "Hacari": "54344",
+        "HACARI": "54344",
+        "HACARÍ": "54344",
+        "La Esperanza": "54385",
+        "LA ESPERANZA": "54385",
+        "La Playa": "54398",
+        "LA PLAYA": "54398",
+        "Ocaña": "54498",
+        "Ocana": "54498",
+        "OCAÑA": "54498",
+        "OCANA": "54498",
+        "San Calixto": "54670",
+        "SAN CALIXTO": "54670",
+        "Sardinata": "54720",
+        "SARDINATA": "54720",
+        "Teorama": "54800",
+        "TEORAMA": "54800",
+        "Tibú": "54810",
+        "Tibu": "54810",
+        "TIBÚ": "54810",
+        "TIBU": "54810",
+    }
+    
+    def obtener_codigo_municipio(nombre_municipio):
+        """Obtiene el código DIVIPOLA del municipio"""
+        if not nombre_municipio:
+            return ""
+        # Si ya es un código numérico, devolverlo
+        if str(nombre_municipio).isdigit():
+            return str(nombre_municipio)
+        return CODIGOS_MUNICIPIO.get(nombre_municipio, CODIGOS_MUNICIPIO.get(nombre_municipio.upper(), nombre_municipio))
+    
     # Escribir datos R1
     row = 2
     for predio in predios:
