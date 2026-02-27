@@ -9421,13 +9421,13 @@ async def export_predios_excel(
             ws_r2.cell(row=row, column=10, value=z1.get('zona_economica', 0) or 0)
             ws_r2.cell(row=row, column=11, value=formatear_area(z1.get('area_terreno', 0)))
             
-            # Zona 2 (columnas 12-14)
+            # Zona 2 (columnas 12-14) - áreas con 2 decimales
             z2 = zonas[1] if len(zonas) >= 2 else {}
             ws_r2.cell(row=row, column=12, value=z2.get('zona_fisica', 0) or 0)
             ws_r2.cell(row=row, column=13, value=z2.get('zona_economica', 0) or 0)
-            ws_r2.cell(row=row, column=14, value=z2.get('area_terreno', 0) or 0)
+            ws_r2.cell(row=row, column=14, value=formatear_area(z2.get('area_terreno', 0)))
             
-            # Construcción 1 (columnas 15-22)
+            # Construcción 1 (columnas 15-22) - área construida con 2 decimales
             ws_r2.cell(row=row, column=15, value=z1.get('habitaciones', 0) or 0)
             ws_r2.cell(row=row, column=16, value=z1.get('banos', 0) or 0)
             ws_r2.cell(row=row, column=17, value=z1.get('locales', 0) or 0)
@@ -9435,9 +9435,9 @@ async def export_predios_excel(
             ws_r2.cell(row=row, column=19, value=z1.get('tipificacion', 0) or 0)
             ws_r2.cell(row=row, column=20, value=z1.get('uso', 0) or 0)
             ws_r2.cell(row=row, column=21, value=z1.get('puntaje', 0) or 0)
-            ws_r2.cell(row=row, column=22, value=z1.get('area_construida', 0) or 0)
+            ws_r2.cell(row=row, column=22, value=formatear_area(z1.get('area_construida', 0)))
             
-            # Construcción 2 (columnas 23-30)
+            # Construcción 2 (columnas 23-30) - área construida con 2 decimales
             ws_r2.cell(row=row, column=23, value=z2.get('habitaciones', 0) or 0)
             ws_r2.cell(row=row, column=24, value=z2.get('banos', 0) or 0)
             ws_r2.cell(row=row, column=25, value=z2.get('locales', 0) or 0)
@@ -9445,9 +9445,9 @@ async def export_predios_excel(
             ws_r2.cell(row=row, column=27, value=z2.get('tipificacion', 0) or 0)
             ws_r2.cell(row=row, column=28, value=z2.get('uso', 0) or 0)
             ws_r2.cell(row=row, column=29, value=z2.get('puntaje', 0) or 0)
-            ws_r2.cell(row=row, column=30, value=z2.get('area_construida', 0) or 0)
+            ws_r2.cell(row=row, column=30, value=formatear_area(z2.get('area_construida', 0)))
             
-            # Construcción 3 (columnas 31-38)
+            # Construcción 3 (columnas 31-38) - área construida con 2 decimales
             z3 = zonas[2] if len(zonas) >= 3 else {}
             ws_r2.cell(row=row, column=31, value=z3.get('habitaciones', 0) or 0)
             ws_r2.cell(row=row, column=32, value=z3.get('banos', 0) or 0)
@@ -9456,7 +9456,7 @@ async def export_predios_excel(
             ws_r2.cell(row=row, column=35, value=z3.get('tipificacion', 0) or 0)
             ws_r2.cell(row=row, column=36, value=z3.get('uso', 0) or 0)
             ws_r2.cell(row=row, column=37, value=z3.get('puntaje', 0) or 0)
-            ws_r2.cell(row=row, column=38, value=z3.get('area_construida', 0) or 0)
+            ws_r2.cell(row=row, column=38, value=formatear_area(z3.get('area_construida', 0)))
             
             # Vigencia
             ws_r2.cell(row=row, column=39, value=predio.get('vigencia', datetime.now().year))
