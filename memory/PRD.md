@@ -5,7 +5,45 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Última Actualización (26 Febrero 2026)
+## 🔧 Última Actualización (02 Marzo 2026)
+
+### ✅ IMPLEMENTADO: Módulo Sandbox (Entorno de Pruebas)
+
+**Descripción:**
+Módulo completo para consultar datos de producción (solo lectura) y realizar operaciones CRUD en colecciones separadas (`predios_sandbox`) sin afectar la base de datos real. Solo accesible para administradores.
+
+**Funcionalidades:**
+1. **Consultas BD (Solo Lectura):**
+   - Consulta a colecciones: predios, users, petitions, predios_cambios, predios_eliminados
+   - Filtros JSON personalizados
+   - Límite de resultados configurable (máx 100)
+   - Exclusión automática de datos sensibles (contraseñas, códigos de verificación)
+
+2. **Pruebas (Sandbox):**
+   - Crear predios de prueba que se guardan en `predios_sandbox`
+   - Eliminar predios individuales o limpiar todo el sandbox
+   - Estadísticas de producción vs sandbox
+
+**Endpoints Implementados:**
+- `POST /api/sandbox/consultar` - Consultar colecciones de producción
+- `GET /api/sandbox/datos` - Obtener datos del sandbox
+- `POST /api/sandbox/crear-predio` - Crear predio de prueba
+- `DELETE /api/sandbox/predio/{id}` - Eliminar predio específico
+- `DELETE /api/sandbox/limpiar` - Limpiar todo el sandbox
+- `GET /api/sandbox/estadisticas` - Estadísticas producción vs sandbox
+
+**Archivos modificados:**
+- `/app/backend/server.py` - 6 nuevos endpoints de sandbox
+- `/app/frontend/src/pages/Sandbox.js` - Componente completo del módulo
+- `/app/frontend/src/App.js` - Ruta `/dashboard/sandbox` añadida
+- `/app/frontend/src/pages/DashboardLayout.js` - Enlace en menú de administración
+
+**Tests:**
+- `/app/backend/tests/test_sandbox_module.py` - 17 tests (100% pasados)
+
+---
+
+## 🔧 Actualización Anterior (26 Febrero 2026)
 
 ### ✅ IMPLEMENTADO: Lógica de Predios Nuevos vs Viejos
 
@@ -58,17 +96,20 @@ El modal de edición debe comportarse diferente según:
 - Ninguno actualmente
 
 ### P1 - Alta Prioridad
-- **Implementar UI condicional del modal:** Cuando `creado_en_plataforma=true` OR `area_editada_en_plataforma=true`, mostrar modal con sincronización automática R2→R1. De lo contrario, modo manual.
+- **Error al aprobar cambios en "Conservación"** - Reportado por usuario, pendiente de reproducción
+- **Formulario de visita lento en móvil** - Optimizar rendimiento
 
 ### P2 - Media Prioridad
+- Verificar sincronización offline-to-online
+- Investigar error `checkInitialSync is not defined`
 - Implementar exportación XTF
 - Desarrollar App de Correspondencia
-- Verificar sincronización offline-to-online
 
 ### P3 - Baja Prioridad
 - Refactorizar archivos grandes
 - UI para reportes GDB
 - Gráficos en dashboards
+- Excel export para datos de visitas
 
 ---
 
@@ -84,6 +125,7 @@ El modal de edición debe comportarse diferente según:
 - `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
 - `/app/frontend/src/pages/Pendientes.js` - UI de pendientes y historial
 - `/app/frontend/src/pages/VisorActualizacion.js` - Visor de predios actualización
+- `/app/frontend/src/pages/Sandbox.js` - Módulo Sandbox (pruebas)
 
 ---
 
