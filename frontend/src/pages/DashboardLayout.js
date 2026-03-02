@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell } from 'lucide-react';
+import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell, Code } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
@@ -308,6 +308,10 @@ export default function DashboardLayout() {
     }
     if (isCoordAdmin) {
       adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
+    }
+    // Sandbox solo para administradores
+    if (user.role === 'administrador') {
+      adminItems.push({ path: '/dashboard/sandbox', label: 'Sandbox (Pruebas)', icon: Code });
     }
 
     return { baseMenuItems, conservacionItems, actualizacionItems, adminItems };

@@ -889,7 +889,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1027,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1093,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1131,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1170,7 +1170,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmación de Radicación",
@@ -1200,7 +1200,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1233,7 +1233,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -10782,7 +10782,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del certificado.
     No requiere autenticación.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-mgmt-hub-6.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Buscar certificado
@@ -23259,6 +23259,218 @@ async def descargar_archivo_servidor(filename: str):
         filename=safe_filename,
         media_type="application/octet-stream"
     )
+
+
+# ===== SANDBOX MODULE - Entorno de Pruebas Aislado =====
+
+class SandboxConsultaRequest(BaseModel):
+    """Modelo para consultas de solo lectura al sandbox"""
+    coleccion: str
+    filtro: dict = {}
+    limite: int = 10
+
+class SandboxPredioCreate(BaseModel):
+    """Modelo para crear predio de prueba en sandbox"""
+    codigo_predial_nacional: str = ""
+    municipio: str = ""
+    nombre_propietario: str = ""
+    direccion: str = ""
+    area_terreno: float = 0
+    area_construida: float = 0
+    avaluo: float = 0
+
+@api_router.post("/sandbox/consultar")
+async def sandbox_consultar(request: SandboxConsultaRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Consultar datos de PRODUCCIÓN (solo lectura).
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    # Colecciones permitidas para consulta
+    colecciones_permitidas = {
+        'predios': db.predios,
+        'users': db.users,
+        'petitions': db.petitions,
+        'predios_cambios': db.predios_cambios,
+        'predios_eliminados': db.predios_eliminados,
+        'cambios_pendientes': db.cambios_pendientes,
+        'predios_nuevos': db.predios_nuevos,
+        'historial_cambios_predios': db.historial_cambios_predios,
+    }
+    
+    if request.coleccion not in colecciones_permitidas:
+        raise HTTPException(status_code=400, detail=f"Colección '{request.coleccion}' no permitida")
+    
+    collection = colecciones_permitidas[request.coleccion]
+    
+    # Proyección para excluir datos sensibles
+    projection = {"_id": 0}
+    if request.coleccion == 'users':
+        projection["password_hash"] = 0
+        projection["verification_code"] = 0
+    
+    try:
+        # Contar total
+        total = await collection.count_documents(request.filtro)
+        
+        # Obtener resultados con límite
+        limite = min(request.limite, 100)  # Máximo 100 resultados
+        resultados = await collection.find(request.filtro, projection).limit(limite).to_list(limite)
+        
+        return {
+            "success": True,
+            "coleccion": request.coleccion,
+            "total": total,
+            "mostrando": len(resultados),
+            "resultados": resultados
+        }
+    except Exception as e:
+        logging.error(f"Error en consulta sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error ejecutando consulta: {str(e)}")
+
+
+@api_router.get("/sandbox/datos")
+async def sandbox_obtener_datos(current_user: dict = Depends(get_current_user)):
+    """
+    Obtener todos los datos del sandbox (colección separada).
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    try:
+        datos = await db.predios_sandbox.find({}, {"_id": 0}).to_list(None)
+        return {
+            "success": True,
+            "total": len(datos),
+            "datos": datos
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo datos sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo datos: {str(e)}")
+
+
+@api_router.post("/sandbox/crear-predio")
+async def sandbox_crear_predio(predio: SandboxPredioCreate, current_user: dict = Depends(get_current_user)):
+    """
+    Crear un predio de prueba en la colección SANDBOX (no afecta producción).
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    try:
+        nuevo_predio = {
+            "id": str(uuid.uuid4()),
+            "codigo_predial_nacional": predio.codigo_predial_nacional or f"SANDBOX-{str(uuid.uuid4())[:8]}",
+            "municipio": predio.municipio or "Municipio de Prueba",
+            "nombre_propietario": predio.nombre_propietario or "Propietario de Prueba",
+            "direccion": predio.direccion or "Dirección de Prueba",
+            "area_terreno": predio.area_terreno or 100.0,
+            "area_construida": predio.area_construida or 0.0,
+            "avaluo": predio.avaluo or 50000000,
+            "es_sandbox": True,
+            "creado_por": current_user['id'],
+            "creado_por_nombre": current_user.get('full_name', ''),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.predios_sandbox.insert_one(nuevo_predio)
+        
+        # Remover _id antes de retornar
+        nuevo_predio.pop('_id', None)
+        
+        return {
+            "success": True,
+            "message": "Predio de prueba creado en Sandbox",
+            "predio": nuevo_predio
+        }
+    except Exception as e:
+        logging.error(f"Error creando predio sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creando predio: {str(e)}")
+
+
+@api_router.delete("/sandbox/predio/{predio_id}")
+async def sandbox_eliminar_predio(predio_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Eliminar un predio de prueba del sandbox.
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    try:
+        result = await db.predios_sandbox.delete_one({"id": predio_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Predio no encontrado en Sandbox")
+        
+        return {
+            "success": True,
+            "message": "Predio eliminado del Sandbox"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error eliminando predio sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error eliminando predio: {str(e)}")
+
+
+@api_router.delete("/sandbox/limpiar")
+async def sandbox_limpiar(current_user: dict = Depends(get_current_user)):
+    """
+    Eliminar TODOS los datos del sandbox.
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    try:
+        result = await db.predios_sandbox.delete_many({})
+        
+        return {
+            "success": True,
+            "message": f"Sandbox limpiado. {result.deleted_count} registros eliminados."
+        }
+    except Exception as e:
+        logging.error(f"Error limpiando sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error limpiando sandbox: {str(e)}")
+
+
+@api_router.get("/sandbox/estadisticas")
+async def sandbox_estadisticas(current_user: dict = Depends(get_current_user)):
+    """
+    Obtener estadísticas del sandbox y de producción para comparación.
+    Solo administradores pueden usar este endpoint.
+    """
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder al Sandbox")
+    
+    try:
+        # Estadísticas de producción
+        total_predios_prod = await db.predios.count_documents({})
+        total_usuarios_prod = await db.users.count_documents({})
+        total_peticiones_prod = await db.petitions.count_documents({})
+        
+        # Estadísticas de sandbox
+        total_predios_sandbox = await db.predios_sandbox.count_documents({})
+        
+        return {
+            "success": True,
+            "produccion": {
+                "predios": total_predios_prod,
+                "usuarios": total_usuarios_prod,
+                "peticiones": total_peticiones_prod
+            },
+            "sandbox": {
+                "predios": total_predios_sandbox
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo estadísticas sandbox: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo estadísticas: {str(e)}")
 
 
 # Include the router in the main app
