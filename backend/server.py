@@ -23489,16 +23489,70 @@ class PlantillaResolucionRequest(BaseModel):
     cierre: str = ""
     firmante_nombre: str = ""
     firmante_cargo: str = ""
+    # Configuración visual
+    config_visual: dict = {}
+
+class ConfigVisualRequest(BaseModel):
+    """Configuración visual del documento"""
+    # Márgenes (en mm)
+    margen_superior: int = 50
+    margen_inferior: int = 80
+    margen_izquierdo: int = 50
+    margen_derecho: int = 50
+    # Encabezado
+    encabezado_altura: int = 60
+    encabezado_mostrar: bool = True
+    # Pie de página
+    pie_altura: int = 50
+    pie_mostrar: bool = True
+    # Firma
+    firma_posicion: str = "centro"  # izquierda, centro, derecha
+    firma_altura: int = 60
+    firma_ancho: int = 100
+    firma_offset_y: int = 40  # Distancia desde el cierre
+    firma_mostrar: bool = True
+    # Fuentes
+    fuente_titulo: int = 11
+    fuente_cuerpo: int = 9
+    fuente_tabla: int = 7
+    # Espaciados
+    espaciado_parrafos: int = 12
+    espaciado_secciones: int = 20
 
 class GenerarResolucionPruebaRequest(BaseModel):
     """Request para generar PDF de prueba"""
     predio_id: str = ""
     plantilla: dict = {}
+    config_visual: dict = {}
     # Datos del trámite
     tipo_tramite: str = "Cambio de Propietario"
     radicado: str = ""
     # Propietarios nuevos (para simular el cambio)
     propietarios_nuevos: list = []
+
+
+def get_config_visual_default() -> dict:
+    """Retorna la configuración visual por defecto"""
+    return {
+        "margen_superior": 50,
+        "margen_inferior": 80,
+        "margen_izquierdo": 50,
+        "margen_derecho": 50,
+        "encabezado_altura": 60,
+        "encabezado_mostrar": True,
+        "pie_altura": 50,
+        "pie_mostrar": True,
+        "firma_posicion": "centro",
+        "firma_altura": 60,
+        "firma_ancho": 100,
+        "firma_offset_y": 40,
+        "firma_mostrar": True,
+        "fuente_titulo": 11,
+        "fuente_cuerpo": 9,
+        "fuente_tabla": 7,
+        "espaciado_parrafos": 12,
+        "espaciado_secciones": 20
+    }
 
 
 def get_plantilla_default() -> dict:
@@ -23527,7 +23581,8 @@ def get_plantilla_default() -> dict:
         "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
         "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
-        "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
+        "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
+        "config_visual": get_config_visual_default()
     }
 
 
@@ -23596,6 +23651,174 @@ async def guardar_plantilla_resolucion(
     except Exception as e:
         logging.error(f"Error guardando plantilla: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error guardando plantilla: {str(e)}")
+
+
+@api_router.post("/sandbox/plantilla-resolucion/subir-imagen")
+async def subir_imagen_plantilla(
+    tipo: str = Form(...),  # encabezado, pie, firma
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Subir imagen personalizada para la plantilla de resolución"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    tipos_validos = ['encabezado', 'pie', 'firma']
+    if tipo not in tipos_validos:
+        raise HTTPException(status_code=400, detail=f"Tipo debe ser uno de: {tipos_validos}")
+    
+    try:
+        import base64
+        
+        # Leer archivo
+        content = await file.read()
+        content_b64 = base64.b64encode(content).decode('utf-8')
+        
+        # Determinar tipo MIME
+        extension = file.filename.split('.')[-1].lower() if file.filename else 'png'
+        mime_types = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif'}
+        mime_type = mime_types.get(extension, 'image/png')
+        
+        # Guardar en base de datos
+        await db.config_sistema.update_one(
+            {"tipo": f"imagen_resolucion_{tipo}"},
+            {"$set": {
+                "tipo": f"imagen_resolucion_{tipo}",
+                "imagen_base64": content_b64,
+                "mime_type": mime_type,
+                "filename": file.filename,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user['id']
+            }},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": f"Imagen de {tipo} subida correctamente",
+            "tipo": tipo
+        }
+    except Exception as e:
+        logging.error(f"Error subiendo imagen: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error subiendo imagen: {str(e)}")
+
+
+@api_router.get("/sandbox/plantilla-resolucion/imagenes")
+async def obtener_imagenes_plantilla(current_user: dict = Depends(get_current_user)):
+    """Obtener las imágenes personalizadas guardadas"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        imagenes = {}
+        for tipo in ['encabezado', 'pie', 'firma']:
+            img_doc = await db.config_sistema.find_one(
+                {"tipo": f"imagen_resolucion_{tipo}"},
+                {"_id": 0}
+            )
+            if img_doc:
+                imagenes[tipo] = {
+                    "tiene_personalizada": True,
+                    "filename": img_doc.get("filename", ""),
+                    "mime_type": img_doc.get("mime_type", "image/png"),
+                    # No enviamos la imagen completa aquí por tamaño
+                }
+            else:
+                imagenes[tipo] = {
+                    "tiene_personalizada": False,
+                    "filename": f"{tipo}_default.png"
+                }
+        
+        return {
+            "success": True,
+            "imagenes": imagenes
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo imágenes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.delete("/sandbox/plantilla-resolucion/imagen/{tipo}")
+async def eliminar_imagen_plantilla(
+    tipo: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Eliminar imagen personalizada y volver a la por defecto"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    tipos_validos = ['encabezado', 'pie', 'firma']
+    if tipo not in tipos_validos:
+        raise HTTPException(status_code=400, detail=f"Tipo debe ser uno de: {tipos_validos}")
+    
+    try:
+        await db.config_sistema.delete_one({"tipo": f"imagen_resolucion_{tipo}"})
+        return {
+            "success": True,
+            "message": f"Imagen de {tipo} eliminada. Se usará la imagen por defecto."
+        }
+    except Exception as e:
+        logging.error(f"Error eliminando imagen: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/sandbox/plantilla-resolucion/config-visual")
+async def obtener_config_visual(current_user: dict = Depends(get_current_user)):
+    """Obtener la configuración visual guardada o por defecto"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        config_doc = await db.config_sistema.find_one(
+            {"tipo": "config_visual_resolucion"},
+            {"_id": 0}
+        )
+        
+        if config_doc:
+            return {
+                "success": True,
+                "config": config_doc.get("datos", get_config_visual_default()),
+                "guardada": True
+            }
+        else:
+            return {
+                "success": True,
+                "config": get_config_visual_default(),
+                "guardada": False
+            }
+    except Exception as e:
+        logging.error(f"Error obteniendo config visual: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/sandbox/plantilla-resolucion/config-visual")
+async def guardar_config_visual(
+    config: ConfigVisualRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Guardar la configuración visual del documento"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        await db.config_sistema.update_one(
+            {"tipo": "config_visual_resolucion"},
+            {"$set": {
+                "tipo": "config_visual_resolucion",
+                "datos": config.dict(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": current_user['id']
+            }},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Configuración visual guardada correctamente"
+        }
+    except Exception as e:
+        logging.error(f"Error guardando config visual: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @api_router.get("/sandbox/predios-para-prueba")
@@ -23699,8 +23922,29 @@ async def generar_resolucion_prueba(
             {"nombre": "NUEVO PROPIETARIO EJEMPLO", "documento": "C 99999999"}
         ]
         
+        # Obtener configuración visual
+        config_visual = request.config_visual if request.config_visual else {}
+        config_doc = await db.config_sistema.find_one({"tipo": "config_visual_resolucion"}, {"_id": 0})
+        if config_doc:
+            config_visual = {**config_doc.get("datos", {}), **config_visual}
+        
+        # Obtener imágenes personalizadas
+        imagen_encabezado_b64 = None
+        imagen_pie_b64 = None
+        imagen_firma_b64 = None
+        
+        for tipo_img, var_name in [('encabezado', 'imagen_encabezado_b64'), ('pie', 'imagen_pie_b64'), ('firma', 'imagen_firma_b64')]:
+            img_doc = await db.config_sistema.find_one({"tipo": f"imagen_resolucion_{tipo_img}"}, {"_id": 0})
+            if img_doc and img_doc.get("imagen_base64"):
+                if tipo_img == 'encabezado':
+                    imagen_encabezado_b64 = img_doc.get("imagen_base64")
+                elif tipo_img == 'pie':
+                    imagen_pie_b64 = img_doc.get("imagen_base64")
+                elif tipo_img == 'firma':
+                    imagen_firma_b64 = img_doc.get("imagen_base64")
+        
         # Importar función de generación de PDF
-        from test_resolucion_pdf import generate_resolucion_pdf
+        from resolucion_pdf_generator import generate_resolucion_pdf
         
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
@@ -23718,6 +23962,12 @@ async def generar_resolucion_prueba(
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),
             reviso="Coordinador",
+            # Configuración personalizable
+            config_visual=config_visual,
+            plantilla=plantilla,
+            imagen_encabezado_b64=imagen_encabezado_b64,
+            imagen_pie_b64=imagen_pie_b64,
+            imagen_firma_b64=imagen_firma_b64,
         )
         
         # Guardar PDF temporal y retornar URL

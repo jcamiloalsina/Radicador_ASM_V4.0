@@ -78,6 +78,35 @@ export default function Sandbox() {
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [plantillaGuardada, setPlantillaGuardada] = useState(false);
   
+  // Estados para configuración visual
+  const [configVisual, setConfigVisual] = useState({
+    margen_superior: 50,
+    margen_inferior: 80,
+    margen_izquierdo: 50,
+    margen_derecho: 50,
+    encabezado_altura: 60,
+    encabezado_mostrar: true,
+    pie_altura: 50,
+    pie_mostrar: true,
+    firma_posicion: 'centro',
+    firma_altura: 60,
+    firma_ancho: 100,
+    firma_offset_y: 40,
+    firma_mostrar: true,
+    fuente_titulo: 11,
+    fuente_cuerpo: 9,
+    fuente_tabla: 7,
+    espaciado_parrafos: 12,
+    espaciado_secciones: 20
+  });
+  const [imagenesInfo, setImagenesInfo] = useState({
+    encabezado: { tiene_personalizada: false },
+    pie: { tiene_personalizada: false },
+    firma: { tiene_personalizada: false }
+  });
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [tabEditor, setTabEditor] = useState('textos'); // textos, visual, imagenes
+  
   // Colecciones disponibles para consulta (solo lectura)
   const colecciones = [
     { id: 'predios', nombre: 'Predios', icono: Building, descripcion: 'Base de datos de predios' },
@@ -284,6 +313,7 @@ export default function Sandbox() {
       const response = await axios.post(`${API}/sandbox/generar-resolucion-prueba`, {
         predio_id: predioSeleccionado?.id || '',
         plantilla: plantilla,
+        config_visual: configVisual,
         tipo_tramite: tipoTramite,
         radicado: radicadoPrueba || `RASMGC-XXXX-${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}`,
         propietarios_nuevos: propietariosNuevos.filter(p => p.nombre)
@@ -325,8 +355,92 @@ export default function Sandbox() {
     if (activeTab === 'plantillas') {
       cargarPlantilla();
       cargarPrediosPrueba();
+      cargarConfigVisual();
+      cargarImagenesInfo();
     }
   }, [activeTab]);
+
+  // Cargar configuración visual
+  const cargarConfigVisual = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/sandbox/plantilla-resolucion/config-visual`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setConfigVisual(prev => ({ ...prev, ...response.data.config }));
+      }
+    } catch (error) {
+      console.error('Error cargando config visual:', error);
+    }
+  };
+
+  // Cargar info de imágenes personalizadas
+  const cargarImagenesInfo = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/sandbox/plantilla-resolucion/imagenes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setImagenesInfo(response.data.imagenes);
+      }
+    } catch (error) {
+      console.error('Error cargando info de imágenes:', error);
+    }
+  };
+
+  // Guardar configuración visual
+  const guardarConfigVisual = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/sandbox/plantilla-resolucion/config-visual`, configVisual, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Configuración visual guardada');
+    } catch (error) {
+      toast.error('Error guardando configuración visual');
+    }
+  };
+
+  // Subir imagen personalizada
+  const subirImagen = async (tipo, file) => {
+    setSubiendoImagen(true);
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('tipo', tipo);
+      formData.append('file', file);
+      
+      await axios.post(`${API}/sandbox/plantilla-resolucion/subir-imagen`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      toast.success(`Imagen de ${tipo} subida correctamente`);
+      cargarImagenesInfo();
+    } catch (error) {
+      toast.error(`Error subiendo imagen de ${tipo}`);
+    } finally {
+      setSubiendoImagen(false);
+    }
+  };
+
+  // Eliminar imagen personalizada
+  const eliminarImagen = async (tipo) => {
+    if (!window.confirm(`¿Eliminar la imagen personalizada de ${tipo} y volver a la por defecto?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/sandbox/plantilla-resolucion/imagen/${tipo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(`Imagen de ${tipo} eliminada. Se usará la imagen por defecto.`);
+      cargarImagenesInfo();
+    } catch (error) {
+      toast.error(`Error eliminando imagen de ${tipo}`);
+    }
+  };
 
   // Copiar JSON al portapapeles
   const copiarJSON = (data) => {
@@ -673,147 +787,546 @@ export default function Sandbox() {
         {/* Tab: Editor de Plantillas de Resolución */}
         {activeTab === 'plantillas' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Panel izquierdo: Editor de textos */}
+            {/* Panel izquierdo: Editor */}
             <div className="space-y-4">
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-slate-800 text-lg flex items-center gap-2">
                     <FileEdit className="w-5 h-5 text-purple-600" />
-                    Editar Plantilla de Resolución
+                    Editor de Plantilla
                   </h3>
                   <div className="flex gap-2">
                     {plantillaGuardada && (
                       <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                        Plantilla guardada
+                        Guardada
                       </span>
                     )}
+                  </div>
+                </div>
+
+                {/* Sub-tabs del editor */}
+                <div className="flex border-b mb-4">
+                  <button
+                    onClick={() => setTabEditor('textos')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      tabEditor === 'textos' 
+                        ? 'text-purple-600 border-purple-600' 
+                        : 'text-slate-500 border-transparent hover:text-slate-700'
+                    }`}
+                  >
+                    Textos
+                  </button>
+                  <button
+                    onClick={() => setTabEditor('visual')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      tabEditor === 'visual' 
+                        ? 'text-purple-600 border-purple-600' 
+                        : 'text-slate-500 border-transparent hover:text-slate-700'
+                    }`}
+                  >
+                    Layout / Diseño
+                  </button>
+                  <button
+                    onClick={() => setTabEditor('imagenes')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      tabEditor === 'imagenes' 
+                        ? 'text-purple-600 border-purple-600' 
+                        : 'text-slate-500 border-transparent hover:text-slate-700'
+                    }`}
+                  >
+                    Imágenes
+                  </button>
+                </div>
+
+                {/* Tab: Textos */}
+                {tabEditor === 'textos' && (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    {/* Preámbulo */}
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Preámbulo</Label>
+                      <Textarea
+                        value={plantilla.preambulo}
+                        onChange={(e) => setPlantilla({...plantilla, preambulo: e.target.value})}
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    {/* Considerando 1 */}
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Considerando 1 
+                        <span className="text-xs text-slate-400 ml-2">Variables: {'{tipo_tramite}'}, {'{radicado}'}</span>
+                      </Label>
+                      <Textarea
+                        value={plantilla.considerando_1}
+                        onChange={(e) => setPlantilla({...plantilla, considerando_1: e.target.value})}
+                        rows={2}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    {/* Considerando 3 */}
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Considerando 3 
+                        <span className="text-xs text-slate-400 ml-2">Variables: {'{codigo_catastral}'}, {'{npn}'}</span>
+                      </Label>
+                      <Textarea
+                        value={plantilla.considerando_3}
+                        onChange={(e) => setPlantilla({...plantilla, considerando_3: e.target.value})}
+                        rows={2}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    {/* Considerando final */}
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Considerando Final</Label>
+                      <Textarea
+                        value={plantilla.considerando_final}
+                        onChange={(e) => setPlantilla({...plantilla, considerando_final: e.target.value})}
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
+
+                    {/* Artículos */}
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">Artículo 2</Label>
+                        <Input
+                          value={plantilla.articulo_2}
+                          onChange={(e) => setPlantilla({...plantilla, articulo_2: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">
+                          Artículo 3 
+                          <span className="text-xs text-slate-400 ml-2">Variable: {'{vigencia_fiscal}'}</span>
+                        </Label>
+                        <Input
+                          value={plantilla.articulo_3}
+                          onChange={(e) => setPlantilla({...plantilla, articulo_3: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">Artículo 4</Label>
+                        <Input
+                          value={plantilla.articulo_4}
+                          onChange={(e) => setPlantilla({...plantilla, articulo_4: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cierre y firmante */}
+                    <div className="border-t pt-4 mt-4">
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700">Cierre</Label>
+                          <Input
+                            value={plantilla.cierre}
+                            onChange={(e) => setPlantilla({...plantilla, cierre: e.target.value})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700">Nombre del Firmante</Label>
+                          <Input
+                            value={plantilla.firmante_nombre}
+                            onChange={(e) => setPlantilla({...plantilla, firmante_nombre: e.target.value})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700">Cargo del Firmante</Label>
+                          <Input
+                            value={plantilla.firmante_cargo}
+                            onChange={(e) => setPlantilla({...plantilla, firmante_cargo: e.target.value})}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
                     <Button 
                       onClick={guardarPlantilla} 
                       disabled={guardandoPlantilla}
-                      className="bg-emerald-600 hover:bg-emerald-700"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4"
                     >
-                      {guardandoPlantilla ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="w-4 h-4 mr-2" />
-                      )}
-                      Guardar Plantilla
+                      {guardandoPlantilla ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Guardar Textos
                     </Button>
                   </div>
-                </div>
+                )}
 
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {/* Preámbulo */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Preámbulo</Label>
-                    <Textarea
-                      value={plantilla.preambulo}
-                      onChange={(e) => setPlantilla({...plantilla, preambulo: e.target.value})}
-                      rows={3}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  {/* Considerando 1 */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">
-                      Considerando 1 
-                      <span className="text-xs text-slate-400 ml-2">Variables: {'{tipo_tramite}'}, {'{radicado}'}</span>
-                    </Label>
-                    <Textarea
-                      value={plantilla.considerando_1}
-                      onChange={(e) => setPlantilla({...plantilla, considerando_1: e.target.value})}
-                      rows={2}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  {/* Considerando 3 */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">
-                      Considerando 3 
-                      <span className="text-xs text-slate-400 ml-2">Variables: {'{codigo_catastral}'}, {'{npn}'}</span>
-                    </Label>
-                    <Textarea
-                      value={plantilla.considerando_3}
-                      onChange={(e) => setPlantilla({...plantilla, considerando_3: e.target.value})}
-                      rows={2}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  {/* Considerando final */}
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Considerando Final</Label>
-                    <Textarea
-                      value={plantilla.considerando_final}
-                      onChange={(e) => setPlantilla({...plantilla, considerando_final: e.target.value})}
-                      rows={3}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  {/* Artículos */}
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">Artículo 2</Label>
-                      <Input
-                        value={plantilla.articulo_2}
-                        onChange={(e) => setPlantilla({...plantilla, articulo_2: e.target.value})}
-                        className="mt-1"
-                      />
+                {/* Tab: Layout / Diseño Visual */}
+                {tabEditor === 'visual' && (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    {/* Márgenes */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Márgenes (px)</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-slate-500">Superior</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.margen_superior}
+                            onChange={(e) => setConfigVisual({...configVisual, margen_superior: parseInt(e.target.value) || 50})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Inferior</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.margen_inferior}
+                            onChange={(e) => setConfigVisual({...configVisual, margen_inferior: parseInt(e.target.value) || 80})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Izquierdo</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.margen_izquierdo}
+                            onChange={(e) => setConfigVisual({...configVisual, margen_izquierdo: parseInt(e.target.value) || 50})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Derecho</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.margen_derecho}
+                            onChange={(e) => setConfigVisual({...configVisual, margen_derecho: parseInt(e.target.value) || 50})}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">
-                        Artículo 3 
-                        <span className="text-xs text-slate-400 ml-2">Variable: {'{vigencia_fiscal}'}</span>
-                      </Label>
-                      <Input
-                        value={plantilla.articulo_3}
-                        onChange={(e) => setPlantilla({...plantilla, articulo_3: e.target.value})}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">Artículo 4</Label>
-                      <Input
-                        value={plantilla.articulo_4}
-                        onChange={(e) => setPlantilla({...plantilla, articulo_4: e.target.value})}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
 
-                  {/* Cierre y firmante */}
-                  <div className="border-t pt-4 mt-4">
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Cierre</Label>
-                        <Input
-                          value={plantilla.cierre}
-                          onChange={(e) => setPlantilla({...plantilla, cierre: e.target.value})}
-                          className="mt-1"
-                        />
+                    {/* Encabezado */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-slate-700">Encabezado</h4>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={configVisual.encabezado_mostrar}
+                            onChange={(e) => setConfigVisual({...configVisual, encabezado_mostrar: e.target.checked})}
+                            className="rounded"
+                          />
+                          Mostrar
+                        </label>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-slate-700">Nombre del Firmante</Label>
+                        <Label className="text-xs text-slate-500">Altura (px)</Label>
                         <Input
-                          value={plantilla.firmante_nombre}
-                          onChange={(e) => setPlantilla({...plantilla, firmante_nombre: e.target.value})}
+                          type="number"
+                          value={configVisual.encabezado_altura}
+                          onChange={(e) => setConfigVisual({...configVisual, encabezado_altura: parseInt(e.target.value) || 60})}
                           className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Cargo del Firmante</Label>
-                        <Input
-                          value={plantilla.firmante_cargo}
-                          onChange={(e) => setPlantilla({...plantilla, firmante_cargo: e.target.value})}
-                          className="mt-1"
+                          disabled={!configVisual.encabezado_mostrar}
                         />
                       </div>
                     </div>
+
+                    {/* Firma */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-slate-700">Firma</h4>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={configVisual.firma_mostrar}
+                            onChange={(e) => setConfigVisual({...configVisual, firma_mostrar: e.target.checked})}
+                            className="rounded"
+                          />
+                          Mostrar
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Posición</Label>
+                          <Select
+                            value={configVisual.firma_posicion}
+                            onValueChange={(v) => setConfigVisual({...configVisual, firma_posicion: v})}
+                            disabled={!configVisual.firma_mostrar}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="izquierda">Izquierda</SelectItem>
+                              <SelectItem value="centro">Centro</SelectItem>
+                              <SelectItem value="derecha">Derecha</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Ancho (px)</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.firma_ancho}
+                            onChange={(e) => setConfigVisual({...configVisual, firma_ancho: parseInt(e.target.value) || 100})}
+                            className="mt-1"
+                            disabled={!configVisual.firma_mostrar}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Altura (px)</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.firma_altura}
+                            onChange={(e) => setConfigVisual({...configVisual, firma_altura: parseInt(e.target.value) || 60})}
+                            className="mt-1"
+                            disabled={!configVisual.firma_mostrar}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs text-slate-500">Distancia desde cierre (px)</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.firma_offset_y}
+                            onChange={(e) => setConfigVisual({...configVisual, firma_offset_y: parseInt(e.target.value) || 40})}
+                            className="mt-1"
+                            disabled={!configVisual.firma_mostrar}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pie de página */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-slate-700">Pie de Página</h4>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={configVisual.pie_mostrar}
+                            onChange={(e) => setConfigVisual({...configVisual, pie_mostrar: e.target.checked})}
+                            className="rounded"
+                          />
+                          Mostrar
+                        </label>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Altura (px)</Label>
+                        <Input
+                          type="number"
+                          value={configVisual.pie_altura}
+                          onChange={(e) => setConfigVisual({...configVisual, pie_altura: parseInt(e.target.value) || 50})}
+                          className="mt-1"
+                          disabled={!configVisual.pie_mostrar}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fuentes */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Tamaño de Fuentes (pt)</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs text-slate-500">Títulos</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.fuente_titulo}
+                            onChange={(e) => setConfigVisual({...configVisual, fuente_titulo: parseInt(e.target.value) || 11})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Cuerpo</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.fuente_cuerpo}
+                            onChange={(e) => setConfigVisual({...configVisual, fuente_cuerpo: parseInt(e.target.value) || 9})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Tablas</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.fuente_tabla}
+                            onChange={(e) => setConfigVisual({...configVisual, fuente_tabla: parseInt(e.target.value) || 7})}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Espaciados */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Espaciados (px)</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-slate-500">Entre párrafos</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.espaciado_parrafos}
+                            onChange={(e) => setConfigVisual({...configVisual, espaciado_parrafos: parseInt(e.target.value) || 12})}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Entre secciones</Label>
+                          <Input
+                            type="number"
+                            value={configVisual.espaciado_secciones}
+                            onChange={(e) => setConfigVisual({...configVisual, espaciado_secciones: parseInt(e.target.value) || 20})}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={guardarConfigVisual}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Guardar Configuración Visual
+                    </Button>
                   </div>
-                </div>
+                )}
+
+                {/* Tab: Imágenes */}
+                {tabEditor === 'imagenes' && (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    {/* Imagen de Encabezado */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Imagen de Encabezado</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          {imagenesInfo.encabezado?.tiene_personalizada ? (
+                            <div className="flex items-center gap-2 text-sm text-emerald-600">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Imagen personalizada: {imagenesInfo.encabezado.filename}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-500">Usando imagen por defecto</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && subirImagen('encabezado', e.target.files[0])}
+                              disabled={subiendoImagen}
+                            />
+                            <span className="inline-flex items-center px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700">
+                              {subiendoImagen ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Subir'}
+                            </span>
+                          </label>
+                          {imagenesInfo.encabezado?.tiene_personalizada && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => eliminarImagen('encabezado')}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Imagen de Firma */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Imagen de Firma</h4>
+                      <p className="text-xs text-slate-500 mb-2">Esta firma se coloca automáticamente según la posición configurada en "Layout"</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          {imagenesInfo.firma?.tiene_personalizada ? (
+                            <div className="flex items-center gap-2 text-sm text-emerald-600">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Imagen personalizada: {imagenesInfo.firma.filename}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-500">Usando firma de Dalgie (por defecto)</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && subirImagen('firma', e.target.files[0])}
+                              disabled={subiendoImagen}
+                            />
+                            <span className="inline-flex items-center px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700">
+                              {subiendoImagen ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Subir'}
+                            </span>
+                          </label>
+                          {imagenesInfo.firma?.tiene_personalizada && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => eliminarImagen('firma')}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Imagen de Pie de Página */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium text-slate-700 mb-3">Imagen de Pie de Página</h4>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          {imagenesInfo.pie?.tiene_personalizada ? (
+                            <div className="flex items-center gap-2 text-sm text-emerald-600">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Imagen personalizada: {imagenesInfo.pie.filename}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-500">Usando imagen por defecto</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => e.target.files?.[0] && subirImagen('pie', e.target.files[0])}
+                              disabled={subiendoImagen}
+                            />
+                            <span className="inline-flex items-center px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700">
+                              {subiendoImagen ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Subir'}
+                            </span>
+                          </label>
+                          {imagenesInfo.pie?.tiene_personalizada && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => eliminarImagen('pie')}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                      <p><strong>Nota:</strong> Las imágenes subidas reemplazarán las imágenes por defecto del sistema. Formatos soportados: PNG, JPG, GIF.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
