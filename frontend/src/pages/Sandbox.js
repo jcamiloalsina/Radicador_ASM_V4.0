@@ -5,17 +5,26 @@ import { toast } from 'sonner';
 import { 
   Search, Database, FileText, Building, Users, RefreshCw, 
   Eye, Play, Trash2, Plus, Download, AlertTriangle, Code,
-  ChevronDown, ChevronRight, Copy, CheckCircle
+  ChevronDown, ChevronRight, Copy, CheckCircle, Save, FileEdit,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -44,6 +53,30 @@ export default function Sandbox() {
     area_construida: '',
     avaluo: ''
   });
+  
+  // Estados para editor de plantillas de resolución
+  const [plantilla, setPlantilla] = useState({
+    preambulo: '',
+    considerando_1: '',
+    considerando_2_docs: [],
+    considerando_3: '',
+    considerando_final: '',
+    articulo_2: '',
+    articulo_3: '',
+    articulo_4: '',
+    cierre: '',
+    firmante_nombre: '',
+    firmante_cargo: ''
+  });
+  const [prediosPrueba, setPrediosPrueba] = useState([]);
+  const [predioSeleccionado, setPredioSeleccionado] = useState(null);
+  const [tipoTramite, setTipoTramite] = useState('Cambio de Propietario');
+  const [radicadoPrueba, setRadicadoPrueba] = useState('');
+  const [propietariosNuevos, setPropietariosNuevos] = useState([{ nombre: '', documento: '' }]);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [plantillaGuardada, setPlantillaGuardada] = useState(false);
   
   // Colecciones disponibles para consulta (solo lectura)
   const colecciones = [
@@ -180,6 +213,121 @@ export default function Sandbox() {
     }
   };
 
+  // ===== FUNCIONES PARA EDITOR DE PLANTILLAS =====
+  
+  // Cargar plantilla guardada o default
+  const cargarPlantilla = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/sandbox/plantilla-resolucion/guardada`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setPlantilla(response.data.plantilla);
+        setPlantillaGuardada(response.data.guardada);
+      }
+    } catch (error) {
+      console.error('Error cargando plantilla:', error);
+      // Cargar plantilla default
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API}/sandbox/plantilla-resolucion/default`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setPlantilla(response.data.plantilla);
+        }
+      } catch (e) {
+        toast.error('Error cargando plantilla');
+      }
+    }
+  };
+
+  // Cargar predios para prueba
+  const cargarPrediosPrueba = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/sandbox/predios-para-prueba?limite=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setPrediosPrueba(response.data.predios);
+      }
+    } catch (error) {
+      console.error('Error cargando predios:', error);
+    }
+  };
+
+  // Guardar plantilla
+  const guardarPlantilla = async () => {
+    setGuardandoPlantilla(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/sandbox/plantilla-resolucion/guardar`, plantilla, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Plantilla guardada correctamente');
+      setPlantillaGuardada(true);
+    } catch (error) {
+      toast.error('Error guardando plantilla');
+    } finally {
+      setGuardandoPlantilla(false);
+    }
+  };
+
+  // Generar PDF de prueba
+  const generarPdfPrueba = async () => {
+    setGenerandoPdf(true);
+    setPdfUrl('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/sandbox/generar-resolucion-prueba`, {
+        predio_id: predioSeleccionado?.id || '',
+        plantilla: plantilla,
+        tipo_tramite: tipoTramite,
+        radicado: radicadoPrueba || `RASMGC-XXXX-${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}`,
+        propietarios_nuevos: propietariosNuevos.filter(p => p.nombre)
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setPdfUrl(process.env.REACT_APP_BACKEND_URL + response.data.pdf_url);
+        toast.success('PDF generado correctamente');
+      }
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      toast.error('Error generando PDF de prueba');
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
+  // Agregar propietario nuevo
+  const agregarPropietario = () => {
+    setPropietariosNuevos([...propietariosNuevos, { nombre: '', documento: '' }]);
+  };
+
+  // Eliminar propietario
+  const eliminarPropietario = (index) => {
+    setPropietariosNuevos(propietariosNuevos.filter((_, i) => i !== index));
+  };
+
+  // Actualizar propietario
+  const actualizarPropietario = (index, campo, valor) => {
+    const nuevos = [...propietariosNuevos];
+    nuevos[index][campo] = valor;
+    setPropietariosNuevos(nuevos);
+  };
+
+  // Cargar datos cuando se activa la pestaña de plantillas
+  useEffect(() => {
+    if (activeTab === 'plantillas') {
+      cargarPlantilla();
+      cargarPrediosPrueba();
+    }
+  }, [activeTab]);
+
   // Copiar JSON al portapapeles
   const copiarJSON = (data) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -237,7 +385,7 @@ export default function Sandbox() {
               }`}
             >
               <Database className="w-5 h-5 inline-block mr-2" />
-              Consultas BD (Solo Lectura)
+              Consultas BD
             </button>
             <button
               onClick={() => setActiveTab('pruebas')}
@@ -249,6 +397,17 @@ export default function Sandbox() {
             >
               <Play className="w-5 h-5 inline-block mr-2" />
               Pruebas (Sandbox)
+            </button>
+            <button
+              onClick={() => setActiveTab('plantillas')}
+              className={`flex-1 py-4 px-6 text-center font-medium transition-colors ${
+                activeTab === 'plantillas'
+                  ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+              }`}
+            >
+              <FileEdit className="w-5 h-5 inline-block mr-2" />
+              Editor de Resoluciones
             </button>
           </div>
         </div>
@@ -506,6 +665,322 @@ export default function Sandbox() {
                   Todos los datos creados en este Sandbox se almacenan en la colección <code className="bg-emerald-100 px-1 rounded">predios_sandbox</code>, 
                   completamente separada de los datos de producción. Puedes experimentar libremente.
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Editor de Plantillas de Resolución */}
+        {activeTab === 'plantillas' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Panel izquierdo: Editor de textos */}
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-slate-800 text-lg flex items-center gap-2">
+                    <FileEdit className="w-5 h-5 text-purple-600" />
+                    Editar Plantilla de Resolución
+                  </h3>
+                  <div className="flex gap-2">
+                    {plantillaGuardada && (
+                      <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                        Plantilla guardada
+                      </span>
+                    )}
+                    <Button 
+                      onClick={guardarPlantilla} 
+                      disabled={guardandoPlantilla}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {guardandoPlantilla ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                      )}
+                      Guardar Plantilla
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                  {/* Preámbulo */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Preámbulo</Label>
+                    <Textarea
+                      value={plantilla.preambulo}
+                      onChange={(e) => setPlantilla({...plantilla, preambulo: e.target.value})}
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Considerando 1 */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">
+                      Considerando 1 
+                      <span className="text-xs text-slate-400 ml-2">Variables: {'{tipo_tramite}'}, {'{radicado}'}</span>
+                    </Label>
+                    <Textarea
+                      value={plantilla.considerando_1}
+                      onChange={(e) => setPlantilla({...plantilla, considerando_1: e.target.value})}
+                      rows={2}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Considerando 3 */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">
+                      Considerando 3 
+                      <span className="text-xs text-slate-400 ml-2">Variables: {'{codigo_catastral}'}, {'{npn}'}</span>
+                    </Label>
+                    <Textarea
+                      value={plantilla.considerando_3}
+                      onChange={(e) => setPlantilla({...plantilla, considerando_3: e.target.value})}
+                      rows={2}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Considerando final */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Considerando Final</Label>
+                    <Textarea
+                      value={plantilla.considerando_final}
+                      onChange={(e) => setPlantilla({...plantilla, considerando_final: e.target.value})}
+                      rows={3}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Artículos */}
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Artículo 2</Label>
+                      <Input
+                        value={plantilla.articulo_2}
+                        onChange={(e) => setPlantilla({...plantilla, articulo_2: e.target.value})}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">
+                        Artículo 3 
+                        <span className="text-xs text-slate-400 ml-2">Variable: {'{vigencia_fiscal}'}</span>
+                      </Label>
+                      <Input
+                        value={plantilla.articulo_3}
+                        onChange={(e) => setPlantilla({...plantilla, articulo_3: e.target.value})}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Artículo 4</Label>
+                      <Input
+                        value={plantilla.articulo_4}
+                        onChange={(e) => setPlantilla({...plantilla, articulo_4: e.target.value})}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cierre y firmante */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">Cierre</Label>
+                        <Input
+                          value={plantilla.cierre}
+                          onChange={(e) => setPlantilla({...plantilla, cierre: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">Nombre del Firmante</Label>
+                        <Input
+                          value={plantilla.firmante_nombre}
+                          onChange={(e) => setPlantilla({...plantilla, firmante_nombre: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-slate-700">Cargo del Firmante</Label>
+                        <Input
+                          value={plantilla.firmante_cargo}
+                          onChange={(e) => setPlantilla({...plantilla, firmante_cargo: e.target.value})}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Panel derecho: Vista previa y generación */}
+            <div className="space-y-4">
+              {/* Selector de predio para prueba */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <Building className="w-5 h-5 text-purple-600" />
+                  Datos de Prueba
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Seleccionar predio */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Predio de Prueba</Label>
+                    <Select
+                      value={predioSeleccionado?.id || ''}
+                      onValueChange={(value) => {
+                        const predio = prediosPrueba.find(p => p.id === value);
+                        setPredioSeleccionado(predio || null);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Seleccionar predio..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ejemplo">-- Usar datos de ejemplo --</SelectItem>
+                        {prediosPrueba.map(predio => (
+                          <SelectItem key={predio.id} value={predio.id}>
+                            {predio.codigo_predial_nacional?.substring(0, 15)}... - {predio.municipio}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {predioSeleccionado && (
+                      <div className="mt-2 p-2 bg-slate-50 rounded text-xs">
+                        <p><strong>Propietario:</strong> {predioSeleccionado.nombre_propietario || predioSeleccionado.propietarios?.[0]?.nombre_propietario}</p>
+                        <p><strong>Dirección:</strong> {predioSeleccionado.direccion}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tipo de trámite */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Tipo de Trámite</Label>
+                    <Select value={tipoTramite} onValueChange={setTipoTramite}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cambio de Propietario">Cambio de Propietario</SelectItem>
+                        <SelectItem value="Cambio de Dirección">Cambio de Dirección</SelectItem>
+                        <SelectItem value="Mutación de Primera">Mutación de Primera</SelectItem>
+                        <SelectItem value="Mutación de Segunda">Mutación de Segunda</SelectItem>
+                        <SelectItem value="Rectificación de Área">Rectificación de Área</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Radicado */}
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Radicado (opcional)</Label>
+                    <Input
+                      value={radicadoPrueba}
+                      onChange={(e) => setRadicadoPrueba(e.target.value)}
+                      placeholder="RASMGC-XXXX-DD-MM-AAAA"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Propietarios nuevos */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label className="text-sm font-medium text-slate-700">Propietarios Nuevos</Label>
+                      <Button variant="ghost" size="sm" onClick={agregarPropietario}>
+                        <Plus className="w-4 h-4 mr-1" /> Agregar
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {propietariosNuevos.map((prop, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            placeholder="Nombre completo"
+                            value={prop.nombre}
+                            onChange={(e) => actualizarPropietario(index, 'nombre', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Input
+                            placeholder="Documento"
+                            value={prop.documento}
+                            onChange={(e) => actualizarPropietario(index, 'documento', e.target.value)}
+                            className="w-32"
+                          />
+                          {propietariosNuevos.length > 1 && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => eliminarPropietario(index)}
+                              className="text-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={generarPdfPrueba} 
+                  disabled={generandoPdf}
+                  className="w-full mt-4 bg-purple-600 hover:bg-purple-700"
+                >
+                  {generandoPdf ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generar PDF de Prueba
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Vista previa del PDF */}
+              {pdfUrl && (
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                      <Eye className="w-5 h-5 text-purple-600" />
+                      Vista Previa
+                    </h3>
+                    <a 
+                      href={pdfUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:text-purple-700 text-sm flex items-center gap-1"
+                    >
+                      <Download className="w-4 h-4" />
+                      Descargar PDF
+                    </a>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden bg-slate-100">
+                    <iframe
+                      src={pdfUrl}
+                      className="w-full h-[500px]"
+                      title="Vista previa de resolución"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Información */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-800">Modo de Prueba</h4>
+                  <p className="text-sm text-amber-700">
+                    Los PDFs generados aquí son de prueba con número de resolución "XXXX". 
+                    El número real se asignará automáticamente al aprobar cambios en producción.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

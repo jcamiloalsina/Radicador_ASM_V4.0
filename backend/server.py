@@ -23473,6 +23473,281 @@ async def sandbox_estadisticas(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Error obteniendo estadísticas: {str(e)}")
 
 
+# ===== EDITOR DE PLANTILLAS DE RESOLUCIÓN (SANDBOX) =====
+
+class PlantillaResolucionRequest(BaseModel):
+    """Modelo para la plantilla de resolución editable"""
+    # Textos editables
+    preambulo: str = ""
+    considerando_1: str = ""
+    considerando_2_docs: list = []
+    considerando_3: str = ""
+    considerando_final: str = ""
+    articulo_2: str = ""
+    articulo_3: str = ""
+    articulo_4: str = ""
+    cierre: str = ""
+    firmante_nombre: str = ""
+    firmante_cargo: str = ""
+
+class GenerarResolucionPruebaRequest(BaseModel):
+    """Request para generar PDF de prueba"""
+    predio_id: str = ""
+    plantilla: dict = {}
+    # Datos del trámite
+    tipo_tramite: str = "Cambio de Propietario"
+    radicado: str = ""
+    # Propietarios nuevos (para simular el cambio)
+    propietarios_nuevos: list = []
+
+
+def get_plantilla_default() -> dict:
+    """Retorna la plantilla por defecto para resoluciones"""
+    return {
+        "preambulo": (
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
+            "(ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la "
+            "ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso "
+            "de sus facultades legales y,"
+        ),
+        "considerando_1": "Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.",
+        "considerando_2_docs": [
+            "Oficio de solicitud.",
+            "Cédula de ciudadanía.",
+            "Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}."
+        ],
+        "considerando_3": "Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.",
+        "considerando_final": (
+            "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, "
+            "amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación "
+            "técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:"
+        ),
+        "articulo_2": "El presente acto administrativo rige a partir de la fecha de su expedición.",
+        "articulo_3": "Los avalúos incorporados tienen vigencia fiscal a partir del {vigencia_fiscal}.",
+        "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
+        "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
+        "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+        "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
+    }
+
+
+@api_router.get("/sandbox/plantilla-resolucion/default")
+async def get_plantilla_resolucion_default(current_user: dict = Depends(get_current_user)):
+    """Obtener la plantilla por defecto de resolución"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    return {
+        "success": True,
+        "plantilla": get_plantilla_default()
+    }
+
+
+@api_router.get("/sandbox/plantilla-resolucion/guardada")
+async def get_plantilla_resolucion_guardada(current_user: dict = Depends(get_current_user)):
+    """Obtener la plantilla guardada (si existe)"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    plantilla = await db.config_sistema.find_one({"tipo": "plantilla_resolucion"}, {"_id": 0})
+    
+    if plantilla:
+        return {
+            "success": True,
+            "plantilla": plantilla.get("datos", get_plantilla_default()),
+            "guardada": True
+        }
+    else:
+        return {
+            "success": True,
+            "plantilla": get_plantilla_default(),
+            "guardada": False
+        }
+
+
+@api_router.post("/sandbox/plantilla-resolucion/guardar")
+async def guardar_plantilla_resolucion(
+    plantilla: PlantillaResolucionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Guardar la plantilla de resolución personalizada"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        datos = {
+            "tipo": "plantilla_resolucion",
+            "datos": plantilla.dict(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user['id'],
+            "updated_by_nombre": current_user.get('full_name', '')
+        }
+        
+        await db.config_sistema.update_one(
+            {"tipo": "plantilla_resolucion"},
+            {"$set": datos},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Plantilla guardada correctamente"
+        }
+    except Exception as e:
+        logging.error(f"Error guardando plantilla: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error guardando plantilla: {str(e)}")
+
+
+@api_router.get("/sandbox/predios-para-prueba")
+async def get_predios_para_prueba(
+    municipio: str = "",
+    limite: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener predios de producción para usar en pruebas de resolución"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    filtro = {}
+    if municipio:
+        filtro["municipio"] = municipio
+    
+    try:
+        predios = await db.predios.find(
+            filtro,
+            {
+                "_id": 0,
+                "id": 1,
+                "codigo_predial_nacional": 1,
+                "municipio": 1,
+                "nombre_propietario": 1,
+                "propietarios": 1,
+                "direccion": 1,
+                "avaluo": 1,
+                "matricula_inmobiliaria": 1,
+                "area_terreno": 1,
+                "area_construida": 1
+            }
+        ).limit(limite).to_list(limite)
+        
+        return {
+            "success": True,
+            "predios": predios
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo predios para prueba: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/sandbox/generar-resolucion-prueba")
+async def generar_resolucion_prueba(
+    request: GenerarResolucionPruebaRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generar un PDF de resolución de prueba"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        # Obtener datos del predio
+        predio = None
+        if request.predio_id:
+            predio = await db.predios.find_one({"id": request.predio_id}, {"_id": 0})
+        
+        if not predio:
+            # Usar datos de ejemplo
+            predio = {
+                "codigo_predial_nacional": "540030004000000020197000000000",
+                "municipio": "Ábrego",
+                "nombre_propietario": "PROPIETARIO DE EJEMPLO",
+                "propietarios": [{"nombre_propietario": "PROPIETARIO DE EJEMPLO", "documento": "12345678"}],
+                "direccion": "DIRECCIÓN DE EJEMPLO",
+                "avaluo": 50000000,
+                "matricula_inmobiliaria": "270-00000",
+                "area_terreno": 100,
+                "area_construida": 0
+            }
+        
+        # Obtener plantilla (guardada o default)
+        plantilla = request.plantilla if request.plantilla else get_plantilla_default()
+        
+        # Generar número de resolución de prueba
+        codigo_municipio = predio.get("codigo_predial_nacional", "")[:5] if predio.get("codigo_predial_nacional") else "54003"
+        depto = codigo_municipio[:2] if len(codigo_municipio) >= 2 else "54"
+        mpio = codigo_municipio[2:5] if len(codigo_municipio) >= 5 else "003"
+        anio = datetime.now().year
+        numero_resolucion = f"RES-{depto}-{mpio}-XXXX-{anio}"
+        
+        fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
+        
+        # Extraer propietarios actuales
+        propietarios_anteriores = []
+        if predio.get("propietarios"):
+            for p in predio["propietarios"]:
+                propietarios_anteriores.append({
+                    "nombre": p.get("nombre_propietario", ""),
+                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                })
+        elif predio.get("nombre_propietario"):
+            propietarios_anteriores.append({
+                "nombre": predio["nombre_propietario"],
+                "documento": "C --------"
+            })
+        
+        # Propietarios nuevos (del request o de ejemplo)
+        propietarios_nuevos = request.propietarios_nuevos if request.propietarios_nuevos else [
+            {"nombre": "NUEVO PROPIETARIO EJEMPLO", "documento": "C 99999999"}
+        ]
+        
+        # Importar función de generación de PDF
+        from test_resolucion_pdf import generate_resolucion_pdf
+        
+        pdf_bytes = generate_resolucion_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=predio.get("municipio", "Ábrego"),
+            tipo_tramite=request.tipo_tramite or "Cambio de Propietario",
+            radicado=request.radicado or f"RASMGC-XXXX-{datetime.now().strftime('%d-%m-%Y')}",
+            codigo_catastral_anterior=predio.get("codigo_predial_nacional", "")[:15] if predio.get("codigo_predial_nacional") else "000000000000000",
+            npn=predio.get("codigo_predial_nacional", ""),
+            matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
+            direccion=predio.get("direccion", ""),
+            avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            vigencia_fiscal=f"01/01/{anio}",
+            propietarios_anteriores=propietarios_anteriores,
+            propietarios_nuevos=propietarios_nuevos,
+            elaboro=current_user.get('full_name', 'Usuario'),
+            reviso="Coordinador",
+        )
+        
+        # Guardar PDF temporal y retornar URL
+        import base64
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # También guardar en archivo para descarga
+        filename = f"resolucion_prueba_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"/app/frontend/public/{filename}"
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
+        
+        return {
+            "success": True,
+            "pdf_base64": pdf_base64,
+            "pdf_url": f"/{filename}",
+            "numero_resolucion": numero_resolucion,
+            "predio_usado": {
+                "codigo": predio.get("codigo_predial_nacional", ""),
+                "municipio": predio.get("municipio", ""),
+                "propietario": predio.get("nombre_propietario", "")
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error generando resolución de prueba: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
