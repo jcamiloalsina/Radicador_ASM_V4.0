@@ -2067,6 +2067,12 @@ export default function Predios() {
       return;
     }
     
+    // Validar radicado requerido para creación de predios nuevos (excepto coordinadores/admin)
+    if (usarNuevoFlujo && !radicadoNumero && !['coordinador', 'administrador'].includes(user?.role)) {
+      toast.error('Debe ingresar un número de radicado para justificar la creación del predio');
+      return;
+    }
+    
     // Calcular áreas desde R2
     const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
     
@@ -3995,12 +4001,15 @@ export default function Predios() {
                   </select>
                 </div>
                 
-                {/* Radicado relacionado */}
-                <div>
-                  <Label className="text-sm font-medium">Radicado Relacionado (Opcional)</Label>
-                  <p className="text-xs text-slate-500 mb-1">Formato: RASMGC-XXXX-DD-MM-AAAA (solo ingrese XXXX)</p>
+                {/* Radicado relacionado - REQUERIDO */}
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <Label className="text-blue-800 font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Radicado Asociado (Requerido) *
+                  </Label>
+                  <p className="text-xs text-blue-600 mt-1 mb-2">Formato: RASMGC-XXXX-DD-MM-AAAA (solo ingrese los 4 dígitos)</p>
                   <div className="flex gap-2">
-                    <div className="flex items-center bg-slate-100 px-3 py-2 rounded-l border border-r-0 text-sm text-slate-600">
+                    <div className="flex items-center bg-white px-3 py-2 rounded-l border border-r-0 text-sm text-slate-600">
                       RASMGC-
                     </div>
                     <Input 
@@ -4012,9 +4021,9 @@ export default function Predios() {
                       }}
                       placeholder="5511"
                       maxLength={4}
-                      className="w-24 text-center font-mono"
+                      className="w-24 text-center font-mono border-blue-300"
                     />
-                    <div className="flex items-center bg-slate-100 px-3 py-2 border text-sm text-slate-600">
+                    <div className="flex items-center bg-white px-3 py-2 border text-sm text-slate-600">
                       -{radicadoInfo?.encontrado ? radicadoInfo.fecha : 'DD-MM-AAAA'}
                     </div>
                     <Button 
@@ -4023,6 +4032,7 @@ export default function Predios() {
                       size="sm"
                       onClick={() => buscarRadicado(radicadoNumero)}
                       disabled={buscandoRadicado || !radicadoNumero}
+                      className="border-blue-300"
                     >
                       {buscandoRadicado ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     </Button>
@@ -4039,6 +4049,11 @@ export default function Predios() {
                         <p>{radicadoInfo.mensaje}</p>
                       )}
                     </div>
+                  )}
+                  {!radicadoNumero && (
+                    <p className="text-xs text-amber-600 mt-2">
+                      ⚠️ Debe ingresar un número de radicado para justificar la creación del predio
+                    </p>
                   )}
                 </div>
                 
@@ -4145,7 +4160,10 @@ export default function Predios() {
             <Button 
               onClick={handleCreate} 
               className="bg-emerald-700 hover:bg-emerald-800"
-              disabled={isSavingCreate}
+              disabled={
+                isSavingCreate || 
+                (usarNuevoFlujo && !radicadoNumero && !['coordinador', 'administrador'].includes(user?.role))
+              }
             >
               {isSavingCreate ? 'Creando...' : (usarNuevoFlujo ? 'Crear y Asignar a Flujo' : 'Crear Predio')}
             </Button>

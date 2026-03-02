@@ -7,6 +7,24 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Última Actualización (02 Marzo 2026)
 
+### ✅ FIX: Radicado Requerido en Creación de Predios Nuevos
+
+**Cambio:**
+El campo "Radicado Asociado" ahora es **REQUERIDO** (antes era opcional) cuando se crea un predio nuevo con el flujo de trabajo de Conservación.
+
+**Comportamiento:**
+- Para gestores: Deben ingresar un número de radicado para justificar la creación
+- Para coordinadores/administradores: Pueden crear sin radicado (tienen autorización directa)
+- Consistente con la edición de predios existentes que ya requería radicado
+
+**Validación:**
+- El botón "Crear y Asignar a Flujo" se deshabilita si no hay radicado
+- Mensaje de advertencia: "⚠️ Debe ingresar un número de radicado para justificar la creación del predio"
+
+**Archivo modificado:** `/app/frontend/src/pages/Predios.js`
+
+---
+
 ### ✅ IMPLEMENTADO: Módulo Sandbox (Entorno de Pruebas)
 
 **Descripción:**
