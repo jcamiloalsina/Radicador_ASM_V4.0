@@ -8924,32 +8924,63 @@ async def import_predios_excel(
         # Obtener campos especiales de predios existentes para preservarlos
         # (creado_en_plataforma y area_editada_en_plataforma no deben sobrescribirse)
         existing_special_fields = {}
+        predios_protegidos = []  # Predios que NO deben ser sobrescritos
+        predios_a_eliminar = []  # Solo predios viejos (no creados/editados en plataforma)
+        
         for p in existing_predios_vigencia_actual:
             cnp = p.get('codigo_predial_nacional')
+            es_creado_en_plataforma = p.get('creado_en_plataforma', False)
+            es_editado_en_plataforma = p.get('area_editada_en_plataforma', False)
+            tiene_historial = len(p.get('historial', [])) > 0
+            
             if cnp:
                 existing_special_fields[cnp] = {
-                    'creado_en_plataforma': p.get('creado_en_plataforma', False),
-                    'area_editada_en_plataforma': p.get('area_editada_en_plataforma', False)
+                    'creado_en_plataforma': es_creado_en_plataforma,
+                    'area_editada_en_plataforma': es_editado_en_plataforma,
+                    'tiene_historial': tiene_historial
                 }
+                
+                # Si fue creado o editado en plataforma, PROTEGER (no eliminar)
+                if es_creado_en_plataforma or es_editado_en_plataforma or tiene_historial:
+                    predios_protegidos.append(cnp)
+                    logger.info(f"[Import] Predio PROTEGIDO (no se sobrescribe): {cnp} - creado={es_creado_en_plataforma}, editado={es_editado_en_plataforma}, historial={tiene_historial}")
+                else:
+                    predios_a_eliminar.append(cnp)
         
-        # Eliminar predios actuales de este municipio SOLO PARA ESTA VIGENCIA
-        await db.predios.delete_many({"municipio": municipio, "vigencia": vigencia_int})
+        # Eliminar SOLO predios viejos de este municipio (no creados/editados en plataforma)
+        if predios_a_eliminar:
+            await db.predios.delete_many({
+                "municipio": municipio, 
+                "vigencia": vigencia_int,
+                "codigo_predial_nacional": {"$in": predios_a_eliminar}
+            })
+            logger.info(f"[Import] Eliminados {len(predios_a_eliminar)} predios viejos")
         
-        # Insertar nuevos predios preservando campos especiales
+        logger.info(f"[Import] Predios protegidos (creados/editados en plataforma): {len(predios_protegidos)}")
+        
+        # Insertar nuevos predios del Excel (solo los que NO están protegidos)
         predios_list = list(r1_data.values())
+        predios_a_insertar = []
+        predios_omitidos = 0
+        
         for predio in predios_list:
             cnp = predio.get('codigo_predial_nacional')
-            if cnp and cnp in existing_special_fields:
-                # Preservar campos especiales si el predio existía
-                predio['creado_en_plataforma'] = existing_special_fields[cnp].get('creado_en_plataforma', False)
-                predio['area_editada_en_plataforma'] = existing_special_fields[cnp].get('area_editada_en_plataforma', False)
-            else:
-                # Predios nuevos desde importación = no creados en plataforma
-                predio['creado_en_plataforma'] = False
-                predio['area_editada_en_plataforma'] = False
+            
+            # Si el predio está protegido, NO insertarlo (ya existe y no debe sobrescribirse)
+            if cnp in predios_protegidos:
+                predios_omitidos += 1
+                continue
+            
+            # Si el predio existía pero no estaba protegido, ya fue eliminado, así que insertar el nuevo
+            # Si es completamente nuevo, también insertar
+            predio['creado_en_plataforma'] = False
+            predio['area_editada_en_plataforma'] = False
+            predios_a_insertar.append(predio)
         
-        if predios_list:
-            await db.predios.insert_many(predios_list)
+        if predios_a_insertar:
+            await db.predios.insert_many(predios_a_insertar)
+        
+        logger.info(f"[Import] Predios insertados: {len(predios_a_insertar)}, Predios omitidos (protegidos): {predios_omitidos}")
         
         # Calcular predios nuevos (CNP que no estaban en ninguna vigencia anterior)
         predios_nuevos_count = len(new_codigos - all_previous_cnp)
@@ -8985,7 +9016,8 @@ async def import_predios_excel(
         return {
             "message": f"Importación exitosa para {municipio}",
             "vigencia": vigencia_int,
-            "predios_importados": len(predios_list),
+            "predios_importados": len(predios_a_insertar),
+            "predios_protegidos": len(predios_protegidos),
             "predios_anteriores": len(existing_predios_vigencia_actual),
             "predios_eliminados": predios_eliminados_count,
             "predios_nuevos": predios_nuevos_count,
