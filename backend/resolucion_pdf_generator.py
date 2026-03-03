@@ -497,10 +497,13 @@ def generate_resolucion_pdf(
             c.drawCentredString(x + cancel_cols[0]/2, y - 9, npn[:30])
             c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES - centrado
+            # APELLIDOS Y NOMBRES - centrado (permitir hasta 40 caracteres)
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')[:25]
+            nombre = prop.get('nombre', '')[:40]
+            if len(nombre) > 28:
+                c.setFont(font_normal, fuente_tabla - 2)
             c.drawCentredString(x + cancel_cols[1]/2, y - 9, nombre)
+            c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[1]
             # TIPO DOC. - centrado
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
@@ -575,10 +578,13 @@ def generate_resolucion_pdf(
             c.drawCentredString(x + cancel_cols[0]/2, y - 9, npn[:30])
             c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES - centrado
+            # APELLIDOS Y NOMBRES - centrado (permitir hasta 40 caracteres)
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')[:25]
+            nombre = prop.get('nombre', '')[:40]
+            if len(nombre) > 28:
+                c.setFont(font_normal, fuente_tabla - 2)
             c.drawCentredString(x + cancel_cols[1]/2, y - 9, nombre)
+            c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[1]
             # TIPO DOC. - centrado
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
