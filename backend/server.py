@@ -24882,6 +24882,28 @@ async def obtener_historial_resoluciones(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@api_router.get("/resoluciones/por-radicado/{radicado}")
+async def obtener_resoluciones_por_radicado(
+    radicado: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener todas las resoluciones generadas para un radicado específico"""
+    try:
+        resoluciones = await db.resoluciones.find(
+            {"radicado": radicado},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+        
+        return {
+            "success": True,
+            "total": len(resoluciones),
+            "resoluciones": resoluciones
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo resoluciones por radicado: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 @api_router.get("/resoluciones/siguiente-numero/{codigo_municipio}")
 async def obtener_siguiente_numero_resolucion(
     codigo_municipio: str,
