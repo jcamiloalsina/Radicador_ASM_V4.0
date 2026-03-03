@@ -218,6 +218,16 @@ export default function Predios() {
     motivo: ''
   });
   
+  // Estados para información de resolución en editar predio
+  const [infoResolucion, setInfoResolucion] = useState({
+    tipo_mutacion: '',
+    numero_resolucion: '',
+    fecha_resolucion: '',
+    radicado_peticion: ''
+  });
+  const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
+  const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
+  
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 100; // Mostrar 100 predios por página
@@ -426,6 +436,49 @@ export default function Predios() {
       prop.segundo_nombre
     ].filter(p => p && p.trim());
     return partes.join(' ');
+  };
+  
+  // Función para cargar el siguiente número de resolución
+  const cargarSiguienteNumeroResolucion = async (codigoMunicipio) => {
+    if (!codigoMunicipio) return;
+    setCargandoNumeroResolucion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API}/resoluciones/siguiente-numero/${codigoMunicipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInfoResolucion(prev => ({
+          ...prev,
+          numero_resolucion: data.numero_resolucion,
+          fecha_resolucion: data.fecha_resolucion
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando número de resolución:', error);
+    } finally {
+      setCargandoNumeroResolucion(false);
+    }
+  };
+  
+  // Función para cargar radicados disponibles
+  const cargarRadicadosDisponibles = async (municipio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = municipio 
+        ? `${API}/resoluciones/radicados-disponibles?municipio=${encodeURIComponent(municipio)}`
+        : `${API}/resoluciones/radicados-disponibles`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRadicadosDisponibles(data.radicados || []);
+      }
+    } catch (error) {
+      console.error('Error cargando radicados:', error);
+    }
   };
   
   // Función para parsear números en formato colombiano (200.000 = doscientos mil)
@@ -4280,6 +4333,116 @@ export default function Predios() {
                 </div>
               )}
             </div>
+            
+            {/* Sección de Información de Resolución - Solo para coordinadores y administradores */}
+            {canEditCodigoPredial && (
+              <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                <h4 className="font-semibold text-purple-800 flex items-center gap-2 mb-4">
+                  <FileText className="w-4 h-4" />
+                  Información de Resolución
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Tipo de Mutación */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Tipo de Mutación</Label>
+                    <select
+                      value={infoResolucion.tipo_mutacion}
+                      onChange={async (e) => {
+                        const tipo = e.target.value;
+                        setInfoResolucion(prev => ({ ...prev, tipo_mutacion: tipo }));
+                        if (tipo === 'M1' && selectedPredio) {
+                          // Obtener código de municipio del predio
+                          const codigo = selectedPredio.codigo_predial_nacional || '';
+                          const codigoMunicipio = codigo.substring(0, 5);
+                          await cargarSiguienteNumeroResolucion(codigoMunicipio);
+                          await cargarRadicadosDisponibles(selectedPredio.municipio);
+                        } else {
+                          setInfoResolucion(prev => ({ ...prev, numero_resolucion: '', fecha_resolucion: '' }));
+                        }
+                      }}
+                      className="w-full mt-1 px-3 py-2 border border-purple-300 rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="M1">M1 - Mutación Primera</option>
+                      <option value="M2" disabled>M2 - Mutación Segunda (Próximamente)</option>
+                      <option value="M3" disabled>M3 - Mutación Tercera (Próximamente)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Número de Resolución - Auto generado */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Número de Resolución</Label>
+                    <div className="relative">
+                      <Input 
+                        value={infoResolucion.numero_resolucion}
+                        readOnly
+                        className="mt-1 bg-purple-100 font-mono text-purple-800"
+                        placeholder={cargandoNumeroResolucion ? "Generando..." : "Seleccione tipo de mutación"}
+                      />
+                      {cargandoNumeroResolucion && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">Se genera automáticamente</p>
+                  </div>
+                  
+                  {/* Fecha de Resolución */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Fecha de Resolución</Label>
+                    <Input 
+                      type="date"
+                      value={infoResolucion.fecha_resolucion ? 
+                        infoResolucion.fecha_resolucion.split('/').reverse().join('-') : 
+                        new Date().toISOString().split('T')[0]
+                      }
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        const partes = fecha.split('-');
+                        const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                        setInfoResolucion(prev => ({ ...prev, fecha_resolucion: fechaFormateada }));
+                      }}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  {/* Radicado de Petición */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Radicado de Petición</Label>
+                    <select
+                      value={infoResolucion.radicado_peticion}
+                      onChange={(e) => setInfoResolucion(prev => ({ ...prev, radicado_peticion: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-purple-300 rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Seleccionar radicado...</option>
+                      {radicadosDisponibles.map(rad => (
+                        <option key={rad.id} value={rad.radicado}>
+                          {rad.radicado} - {rad.tipo_tramite} ({rad.nombre_completo?.substring(0, 20)})
+                        </option>
+                      ))}
+                    </select>
+                    {radicadosDisponibles.length === 0 && infoResolucion.tipo_mutacion && (
+                      <p className="text-xs text-amber-600 mt-1">No hay radicados disponibles</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Preview del número de resolución */}
+                {infoResolucion.numero_resolucion && (
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
+                    <p className="text-xs text-purple-600 mb-1">Vista previa:</p>
+                    <p className="font-mono text-lg font-bold text-purple-800">
+                      {infoResolucion.numero_resolucion}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Fecha: {infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO')}
+                      {infoResolucion.radicado_peticion && ` | Radicado: ${infoResolucion.radicado_peticion}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Sección de Propietarios */}
             <div className="border border-slate-200 rounded-lg p-4">

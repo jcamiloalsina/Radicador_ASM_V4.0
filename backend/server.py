@@ -24687,63 +24687,85 @@ async def obtener_historial_resoluciones(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-@api_router.get("/resoluciones/siguiente-numero/{municipio}")
+@api_router.get("/resoluciones/siguiente-numero/{codigo_municipio}")
 async def obtener_siguiente_numero_resolucion(
-    municipio: str,
+    codigo_municipio: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtener el siguiente número de resolución para un municipio"""
+    """Obtener el siguiente número de resolución para un municipio por código"""
     try:
         año = datetime.now().year
         
-        # Obtener configuración inicial
-        config = await db.resolucion_configuracion.find_one({"id": "config_general"})
-        numero_inicial = config.get("ultimo_numero_2026", 0) if config else 0
+        # Validar que el código de municipio sea válido
+        if codigo_municipio not in MUNICIPIOS_R1R2:
+            # Intentar buscar por nombre
+            codigo_encontrado = None
+            for codigo, nombre in MUNICIPIOS_R1R2.items():
+                if nombre.lower() in codigo_municipio.lower() or codigo_municipio.lower() in nombre.lower():
+                    codigo_encontrado = codigo
+                    break
+            if codigo_encontrado:
+                codigo_municipio = codigo_encontrado
+            else:
+                codigo_municipio = "54003"  # Default Ábrego
         
-        # Contar resoluciones ya generadas este año
+        # Obtener configuración por municipio
+        config = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
+        numero_inicial = config.get(codigo_municipio, 0) if config else 0
+        
+        # Contar resoluciones ya generadas este año PARA ESTE MUNICIPIO
         count = await db.resoluciones.count_documents({
-            "año": año
+            "año": año,
+            "codigo_municipio": codigo_municipio
         })
         
         siguiente = numero_inicial + count + 1
         
-        # Formato del número de resolución
-        # Obtener código del municipio (primeros 5 dígitos del código DANE)
-        codigo_mpio = "54003"  # Default Ábrego
-        municipio_lower = municipio.lower()
-        
-        # Mapeo de municipios a códigos (simplificado)
-        codigos_municipios = {
-            "ábrego": "54003", "abrego": "54003",
-            "bucarasica": "54109",
-            "cachirá": "54128", "cachira": "54128",
-            "convención": "54206", "convencion": "54206",
-            "el carmen": "54245",
-            "el tarra": "54250",
-            "hacarí": "54344", "hacari": "54344",
-            "la playa": "54398",
-            "ocaña": "54498", "ocana": "54498",
-            "san calixto": "54670",
-            "teorama": "54800",
-            "la esperanza": "54385",
-        }
-        
-        for nombre, codigo in codigos_municipios.items():
-            if nombre in municipio_lower:
-                codigo_mpio = codigo
-                break
-        
-        numero_resolucion = f"RES-{codigo_mpio}-{año}-{str(siguiente).zfill(4)}"
+        # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
+        depto = codigo_municipio[:2]
+        mpio = codigo_municipio[2:]
+        numero_resolucion = f"RES-{depto}-{mpio}-{año}-{str(siguiente).zfill(4)}"
         
         return {
             "success": True,
             "siguiente_numero": siguiente,
             "numero_resolucion": numero_resolucion,
             "año": año,
-            "municipio": municipio
+            "codigo_municipio": codigo_municipio,
+            "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
+            "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
         }
     except Exception as e:
         logging.error(f"Error obteniendo siguiente número: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/resoluciones/radicados-disponibles")
+async def obtener_radicados_disponibles(
+    municipio: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener lista de radicados/peticiones que pueden asociarse a una resolución"""
+    try:
+        query = {
+            "estado": {"$in": ["pendiente", "en_proceso", "asignado"]}
+        }
+        
+        if municipio:
+            query["municipio"] = {"$regex": municipio, "$options": "i"}
+        
+        peticiones = await db.petitions.find(
+            query,
+            {"_id": 0, "id": 1, "radicado": 1, "municipio": 1, "tipo_tramite": 1, 
+             "nombre_completo": 1, "estado": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(100).to_list(100)
+        
+        return {
+            "success": True,
+            "radicados": peticiones
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo radicados: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
