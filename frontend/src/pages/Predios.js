@@ -2453,6 +2453,7 @@ export default function Predios() {
       }
       
       // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
+      let resolucionGenerada = false;
       if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
         // Generar resolución manualmente
         const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
@@ -2467,7 +2468,10 @@ export default function Predios() {
         });
         
         if (resolucionResponse.data.success) {
-          let mensaje = `Resolución ${infoResolucion.numero_resolucion} generada exitosamente.`;
+          resolucionGenerada = true;
+          let mensaje = resolucionResponse.data.duplicado 
+            ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
+            : `Resolución ${infoResolucion.numero_resolucion} generada exitosamente.`;
           if (resolucionResponse.data.peticion_finalizada) {
             mensaje += ' Petición marcada como finalizada.';
           }
@@ -2483,6 +2487,13 @@ export default function Predios() {
             fecha_resolucion: '',
             radicado_peticion: ''
           });
+          
+          // Si se generó resolución, actualizar lista y cerrar modal
+          await forceRefreshPredios();
+          fetchCambiosStats();
+          setIsEditModalOpen(false);
+          setIsSavingUpdate(false);
+          return; // Salir aquí, no continuar con proponer cambios
         }
       }
       
