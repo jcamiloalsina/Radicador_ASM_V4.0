@@ -2456,7 +2456,7 @@ export default function Predios() {
       let resolucionGenerada = false;
       if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
         try {
-          // Generar resolución manualmente
+          // Generar resolución manualmente (timeout extendido porque incluye envío de email)
           const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
             predio_id: selectedPredio.id,
             tipo_mutacion: infoResolucion.tipo_mutacion,
@@ -2465,7 +2465,8 @@ export default function Predios() {
             radicado_peticion: infoResolucion.radicado_peticion || null,
             datos_predio: updateData
           }, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 60 segundos de timeout porque puede incluir envío de email
           });
           
           if (resolucionResponse.data.success) {
@@ -2499,9 +2500,20 @@ export default function Predios() {
             setIsEditModalOpen(false);
             setIsSavingUpdate(false);
             return; // Salir aquí, no continuar con proponer cambios
+          } else {
+            // Respuesta pero sin success - mostrar mensaje pero continuar
+            console.warn('Respuesta sin success:', resolucionResponse.data);
           }
         } catch (resolucionError) {
-          // Si hay error generando la resolución, mostrar mensaje específico
+          // Verificar si es error de timeout o de red (la resolución pudo haberse generado)
+          if (resolucionError.code === 'ECONNABORTED' || resolucionError.message?.includes('timeout')) {
+            toast.warning('La solicitud tardó mucho tiempo. Verifica si la resolución se generó correctamente.');
+            setIsEditModalOpen(false);
+            setIsSavingUpdate(false);
+            try { await forceRefreshPredios(); } catch {}
+            return;
+          }
+          // Si hay error real generando la resolución, mostrar mensaje específico
           console.error('Error generando resolución:', resolucionError);
           toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
           setIsSavingUpdate(false);
