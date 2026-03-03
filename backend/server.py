@@ -24276,7 +24276,7 @@ async def generar_preview_resolucion(
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),
-            reviso="Coordinador",
+            aprobo="",  # Se llenará cuando se apruebe el cambio
             plantilla=plantilla_textos,
         )
         

@@ -68,8 +68,8 @@ def generate_resolucion_pdf(
     codigo_homologado: str = "",   # Código alfanumérico tipo BPP0002BUUC
     propietarios_anteriores: list = None,
     propietarios_nuevos: list = None,
-    elaboro: str = "",
-    reviso: str = "",
+    elaboro: str = "",      # Nombre del usuario que solicitó el cambio
+    aprobo: str = "",       # Nombre del usuario que aprobó el cambio
     plantilla: dict = None,
     imagen_encabezado_b64: str = None,
     imagen_pie_b64: str = None,
@@ -589,12 +589,12 @@ def generate_resolucion_pdf(
     c.drawCentredString(width/2, y - 5, textos['firmante_cargo'])
     y -= espaciado_secciones + 20
     
-    # === ELABORÓ / REVISÓ ===
+    # === ELABORÓ / APROBÓ ===
     y = check_page_break(y, 30)
     c.setFont(font_normal, fuente_tabla)
     c.drawString(left_margin, y, f"Elaboró: {elaboro}")
     y -= 12
-    c.drawString(left_margin, y, f"Revisó:  {reviso}")
+    c.drawString(left_margin, y, f"Aprobó:  {aprobo}")
     
     # === PIE DE PÁGINA ===
     draw_footer()
@@ -634,8 +634,8 @@ if __name__ == "__main__":
             "documento": "87654321",
             "estado_civil": "SOLTERO"
         }],
-        elaboro="Usuario Prueba",
-        reviso="Coordinador",
+        elaboro="Armando Cárdenas",
+        aprobo="Juan Carlos Alsina",
     )
     
     with open("/app/backend/test_resolucion.pdf", "wb") as f:
