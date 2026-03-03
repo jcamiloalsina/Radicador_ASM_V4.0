@@ -606,7 +606,24 @@ def generate_resolucion_pdf(
     y -= espaciado_secciones + 40
     
     # === FIRMA ===
-    y = check_page_break(y, 100)
+    y = check_page_break(y, 120)
+    
+    # Cargar imagen de firma de Dalgie
+    firma_dalgie = None
+    try:
+        firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
+        if os.path.exists(firma_path):
+            firma_dalgie = ImageReader(firma_path)
+    except:
+        firma_dalgie = None
+    
+    # Dibujar imagen de firma si existe
+    if firma_dalgie:
+        firma_width = 120
+        firma_height = 60
+        c.drawImage(firma_dalgie, width/2 - firma_width/2, y - firma_height + 10,
+                   width=firma_width, height=firma_height, mask='auto')
+        y -= firma_height - 5
     
     # Línea encima del nombre
     linea_width = 200
@@ -626,6 +643,34 @@ def generate_resolucion_pdf(
     c.drawString(left_margin, y, f"Elaboró: {elaboro}")
     y -= 12
     c.drawString(left_margin, y, f"Aprobó:  {aprobo}")
+    
+    # === QR DE VALIDACIÓN ===
+    # Generar QR con el número de resolución para validación
+    try:
+        import qrcode
+        qr_data = f"https://asomunicipios.gov.co/validar-resolucion/{numero_resolucion}"
+        qr = qrcode.QRCode(version=1, box_size=3, border=1)
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convertir a formato compatible con ReportLab
+        qr_buffer = io.BytesIO()
+        qr_img.save(qr_buffer, format='PNG')
+        qr_buffer.seek(0)
+        qr_reader = ImageReader(qr_buffer)
+        
+        # Dibujar QR en la esquina inferior derecha
+        qr_size = 50
+        qr_x = right_margin - qr_size
+        qr_y = footer_limit + 10
+        c.drawImage(qr_reader, qr_x, qr_y, width=qr_size, height=qr_size)
+        
+        # Texto de validación
+        c.setFont(font_normal, 5)
+        c.drawString(qr_x - 10, qr_y - 8, "Escanee para validar")
+    except Exception as e:
+        print(f"Error generando QR: {e}")
     
     # === PIE DE PÁGINA ===
     draw_footer()

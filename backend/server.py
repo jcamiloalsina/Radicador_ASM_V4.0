@@ -889,7 +889,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1027,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1093,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1131,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1170,7 +1170,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmación de Radicación",
@@ -1200,7 +1200,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1233,7 +1233,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -10782,7 +10782,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del certificado.
     No requiere autenticación.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Buscar certificado
@@ -12848,6 +12848,174 @@ async def get_cambios_pendientes(
     }
 
 
+# ===== GENERACIÓN AUTOMÁTICA DE RESOLUCIONES =====
+
+async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
+    """
+    Genera un PDF de resolución final para un cambio aprobado.
+    Retorna los datos de la resolución generada o None si no aplica.
+    """
+    try:
+        # Determinar si el cambio requiere resolución (por ahora solo M1 para cambios de propietario)
+        tipo_cambio = cambio.get("tipo_cambio", "")
+        datos_propuestos = cambio.get("datos_propuestos", {})
+        
+        # Por ahora generamos resolución M1 para cambios de propietario/modificaciones
+        if tipo_cambio not in ["modificacion", "creacion"]:
+            logging.info(f"Tipo de cambio '{tipo_cambio}' no requiere resolución automática")
+            return None
+        
+        # Obtener predio actual para datos completos
+        predio = None
+        if cambio.get("predio_id"):
+            predio = await db.predios.find_one({"id": cambio["predio_id"]}, {"_id": 0})
+        
+        # Combinar datos del predio con datos propuestos
+        if predio:
+            datos_predio = {**predio, **datos_propuestos}
+        else:
+            datos_predio = datos_propuestos
+        
+        # Obtener configuración de numeración
+        año_actual = datetime.now().year
+        config = await db.resolucion_configuracion.find_one({"id": "config_general"})
+        numero_inicial = config.get("ultimo_numero_2026", 0) if config else 0
+        
+        # Contar resoluciones existentes este año
+        count_resoluciones = await db.resoluciones.count_documents({"año": año_actual})
+        siguiente_numero = numero_inicial + count_resoluciones + 1
+        
+        # Obtener código de municipio
+        codigo = datos_predio.get("codigo_predial_nacional", "")
+        depto = codigo[0:2] if len(codigo) >= 2 else "54"
+        mpio = codigo[2:5] if len(codigo) >= 5 else "003"
+        
+        # Formato número de resolución
+        numero_resolucion = f"RES-{depto}-{mpio}-{año_actual}-{str(siguiente_numero).zfill(4)}"
+        fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
+        
+        # Obtener plantilla M1
+        plantilla = await db.resolucion_plantillas.find_one({"tipo": "M1"}, {"_id": 0})
+        plantilla_textos = {}
+        if plantilla:
+            plantilla_textos = {
+                "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
+                "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
+            }
+        
+        # Extraer propietarios anteriores del predio original
+        propietarios_anteriores = []
+        predio_original = await db.predios.find_one({"id": cambio.get("predio_id")}, {"_id": 0}) if cambio.get("predio_id") else None
+        if predio_original:
+            if predio_original.get("propietarios"):
+                for p in predio_original["propietarios"]:
+                    propietarios_anteriores.append({
+                        "nombre": p.get("nombre_propietario", ""),
+                        "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                    })
+            elif predio_original.get("nombre_propietario"):
+                propietarios_anteriores.append({
+                    "nombre": predio_original["nombre_propietario"],
+                    "documento": "C --------"
+                })
+        
+        # Extraer propietarios nuevos de datos propuestos
+        propietarios_nuevos = []
+        if datos_propuestos.get("propietarios"):
+            for p in datos_propuestos["propietarios"]:
+                propietarios_nuevos.append({
+                    "nombre": p.get("nombre_propietario", ""),
+                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                })
+        elif datos_propuestos.get("nombre_propietario"):
+            propietarios_nuevos.append({
+                "nombre": datos_propuestos["nombre_propietario"],
+                "documento": "C --------"
+            })
+        
+        # Si no hay cambio en propietarios, usar los mismos
+        if not propietarios_nuevos and propietarios_anteriores:
+            propietarios_nuevos = propietarios_anteriores
+        
+        # Obtener usuario que propuso el cambio
+        proponente = await db.users.find_one({"id": cambio.get("propuesto_por")}, {"_id": 0, "full_name": 1})
+        elaboro = proponente.get("full_name", "") if proponente else ""
+        
+        # Importar y generar PDF
+        from resolucion_pdf_generator import generate_resolucion_pdf
+        
+        pdf_bytes = generate_resolucion_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=datos_predio.get("municipio", ""),
+            tipo_tramite="Mutación Primera",
+            radicado=cambio.get("radicado", datos_predio.get("radicado", f"RASMGC-{datetime.now().strftime('%Y%m%d')}")),
+            codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
+            npn=codigo,
+            matricula_inmobiliaria=datos_predio.get("matricula_inmobiliaria", "---"),
+            direccion=datos_predio.get("direccion", ""),
+            avaluo=f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            vigencia_fiscal=f"01/01/{año_actual}",
+            area_terreno=str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
+            area_construida=str(datos_predio.get("area_construida", datos_predio.get("area_construida_r1", 0))),
+            destino_economico=datos_predio.get("destino_economico", "A"),
+            codigo_homologado=datos_predio.get("codigo_homologado", datos_predio.get("codigo_anterior", "")),
+            propietarios_anteriores=propietarios_anteriores,
+            propietarios_nuevos=propietarios_nuevos,
+            elaboro=elaboro,
+            aprobo=aprobador.get("full_name", ""),
+            plantilla=plantilla_textos,
+        )
+        
+        # Crear directorio si no existe
+        resoluciones_dir = "/app/frontend/public/resoluciones"
+        import os
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        # Guardar el PDF
+        filename = f"resolucion_{numero_resolucion.replace('/', '-')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"{resoluciones_dir}/{filename}"
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
+        
+        # Registrar la resolución en la base de datos
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "tipo": "M1",
+            "año": año_actual,
+            "consecutivo": siguiente_numero,
+            "cambio_id": cambio.get("id"),
+            "predio_id": cambio.get("predio_id"),
+            "codigo_predial": codigo,
+            "municipio": datos_predio.get("municipio", ""),
+            "pdf_path": f"/resoluciones/{filename}",
+            "aprobado_por": aprobador.get("id"),
+            "aprobado_por_nombre": aprobador.get("full_name", ""),
+            "elaborado_por": cambio.get("propuesto_por"),
+            "elaborado_por_nombre": elaboro,
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.resoluciones.insert_one(resolucion_doc.copy())
+        
+        logging.info(f"Resolución {numero_resolucion} generada y guardada en {filepath}")
+        
+        return {
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/resoluciones/{filename}",
+            "consecutivo": siguiente_numero,
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en generar_resolucion_final: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 @api_router.post("/predios/cambios/aprobar")
 async def aprobar_rechazar_cambio(
     request: CambioAprobacionRequest,
@@ -12904,6 +13072,16 @@ async def aprobar_rechazar_cambio(
     if request.aprobado:
         resultado = await aplicar_cambio_predio(cambio, current_user)
         update_data["resultado"] = resultado
+        
+        # === GENERAR RESOLUCIÓN PDF AUTOMÁTICAMENTE ===
+        try:
+            resolucion_data = await generar_resolucion_final(cambio, current_user)
+            if resolucion_data:
+                update_data["resolucion"] = resolucion_data
+                logging.info(f"Resolución generada: {resolucion_data.get('numero_resolucion')}")
+        except Exception as e:
+            logging.error(f"Error generando resolución automática: {str(e)}")
+            # No interrumpir el flujo si falla la generación del PDF
     
     await db.predios_cambios.update_one(
         {"id": request.cambio_id},
@@ -24176,6 +24354,133 @@ async def actualizar_plantilla_resolucion(
         }
     except Exception as e:
         logging.error(f"Error actualizando plantilla {tipo}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+class ConfiguracionResolucionesRequest(BaseModel):
+    """Request para actualizar configuración de resoluciones"""
+    ultimo_numero_2026: int = 0
+
+
+@api_router.get("/resoluciones/configuracion")
+async def obtener_configuracion_resoluciones(current_user: dict = Depends(get_current_user)):
+    """Obtener configuración de numeración de resoluciones"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        config = await db.resolucion_configuracion.find_one(
+            {"id": "config_general"},
+            {"_id": 0}
+        )
+        
+        if not config:
+            # Crear configuración por defecto
+            config = {
+                "id": "config_general",
+                "año_actual": datetime.now().year,
+                "ultimo_numero_2026": 0,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.resolucion_configuracion.insert_one(config.copy())
+        
+        return {
+            "success": True,
+            "configuracion": config
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo configuración: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.put("/resoluciones/configuracion")
+async def actualizar_configuracion_resoluciones(
+    request: ConfiguracionResolucionesRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualizar configuración de numeración de resoluciones"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar")
+    
+    try:
+        await db.resolucion_configuracion.update_one(
+            {"id": "config_general"},
+            {
+                "$set": {
+                    "ultimo_numero_2026": request.ultimo_numero_2026,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_by": current_user.get("full_name", "")
+                }
+            },
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Configuración actualizada correctamente"
+        }
+    except Exception as e:
+        logging.error(f"Error actualizando configuración: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/resoluciones/siguiente-numero/{municipio}")
+async def obtener_siguiente_numero_resolucion(
+    municipio: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener el siguiente número de resolución para un municipio"""
+    try:
+        año = datetime.now().year
+        
+        # Obtener configuración inicial
+        config = await db.resolucion_configuracion.find_one({"id": "config_general"})
+        numero_inicial = config.get("ultimo_numero_2026", 0) if config else 0
+        
+        # Contar resoluciones ya generadas este año
+        count = await db.resoluciones.count_documents({
+            "año": año
+        })
+        
+        siguiente = numero_inicial + count + 1
+        
+        # Formato del número de resolución
+        # Obtener código del municipio (primeros 5 dígitos del código DANE)
+        codigo_mpio = "54003"  # Default Ábrego
+        municipio_lower = municipio.lower()
+        
+        # Mapeo de municipios a códigos (simplificado)
+        codigos_municipios = {
+            "ábrego": "54003", "abrego": "54003",
+            "bucarasica": "54109",
+            "cachirá": "54128", "cachira": "54128",
+            "convención": "54206", "convencion": "54206",
+            "el carmen": "54245",
+            "el tarra": "54250",
+            "hacarí": "54344", "hacari": "54344",
+            "la playa": "54398",
+            "ocaña": "54498", "ocana": "54498",
+            "san calixto": "54670",
+            "teorama": "54800",
+            "la esperanza": "54385",
+        }
+        
+        for nombre, codigo in codigos_municipios.items():
+            if nombre in municipio_lower:
+                codigo_mpio = codigo
+                break
+        
+        numero_resolucion = f"RES-{codigo_mpio}-{año}-{str(siguiente).zfill(4)}"
+        
+        return {
+            "success": True,
+            "siguiente_numero": siguiente,
+            "numero_resolucion": numero_resolucion,
+            "año": año,
+            "municipio": municipio
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo siguiente número: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 

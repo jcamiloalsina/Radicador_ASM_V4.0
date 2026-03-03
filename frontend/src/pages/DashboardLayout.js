@@ -309,9 +309,9 @@ export default function DashboardLayout() {
     if (isCoordAdmin) {
       adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
     }
-    // Sandbox solo para administradores
+    // Configuración de Resoluciones solo para administradores
     if (user.role === 'administrador') {
-      adminItems.push({ path: '/dashboard/sandbox', label: 'Sandbox (Pruebas)', icon: Code });
+      adminItems.push({ path: '/dashboard/configuracion-resoluciones', label: 'Config. Resoluciones', icon: FileText });
     }
 
     return { baseMenuItems, conservacionItems, actualizacionItems, adminItems };
