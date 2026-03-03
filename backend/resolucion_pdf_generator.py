@@ -142,8 +142,26 @@ def generate_resolucion_pdf(
     try:
         logo_path = "/app/frontend/public/logo-asomunicipios-solo.png"
         if os.path.exists(logo_path):
-            logo_watermark = ImageReader(logo_path)
-    except:
+            # Convertir a escala de grises
+            from PIL import Image
+            img = Image.open(logo_path).convert('RGBA')
+            # Convertir a gris
+            gray_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
+            for x in range(img.width):
+                for y in range(img.height):
+                    r, g, b, a = img.getpixel((x, y))
+                    # Convertir a gris
+                    gray = int(0.299 * r + 0.587 * g + 0.114 * b)
+                    # Hacer más claro para marca de agua
+                    gray = min(255, gray + 100)
+                    gray_img.putpixel((x, y), (gray, gray, gray, a))
+            # Guardar en buffer
+            img_buffer = io.BytesIO()
+            gray_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            logo_watermark = ImageReader(img_buffer)
+    except Exception as e:
+        print(f"Error cargando logo: {e}")
         logo_watermark = None
     
     # Configuración de fuentes
@@ -154,7 +172,7 @@ def generate_resolucion_pdf(
     espaciado_secciones = 18
     
     def draw_watermark():
-        """Dibuja la marca de agua con el logo de Asomunicipios"""
+        """Dibuja la marca de agua con el logo de Asomunicipios en gris"""
         if logo_watermark:
             c.saveState()
             # Tamaño y posición del logo (centrado en la página)
@@ -162,8 +180,8 @@ def generate_resolucion_pdf(
             watermark_height = 350
             watermark_x = (width - watermark_width) / 2
             watermark_y = (height - watermark_height) / 2
-            # Aplicar transparencia
-            c.setFillAlpha(0.08)  # Muy transparente para marca de agua
+            # Aplicar transparencia uniforme
+            c.setFillAlpha(0.12)
             c.drawImage(logo_watermark, watermark_x, watermark_y,
                        width=watermark_width, height=watermark_height,
                        preserveAspectRatio=True, mask='auto')
