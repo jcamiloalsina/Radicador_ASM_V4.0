@@ -76,11 +76,36 @@ def generate_resolucion_pdf(
     imagen_pie_b64: str = None,
     imagen_firma_b64: str = None,
     config_visual: dict = None,
+    # Datos anteriores del predio (para la sección CANCELACIÓN)
+    area_terreno_anterior: str = None,
+    area_construida_anterior: str = None,
+    avaluo_anterior: str = None,
+    direccion_anterior: str = None,
+    destino_economico_anterior: str = None,
+    codigo_homologado_anterior: str = None,
+    matricula_anterior: str = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
     y posiciones que el certificado catastral.
     """
+    
+    # Helper para formatear área con unidades de medida
+    def formatear_area(area_str):
+        """Convierte área en m² a formato 'X Ha Y m²' """
+        try:
+            area = float(area_str or 0)
+            if area >= 10000:
+                ha = int(area // 10000)
+                m2 = int(area % 10000)
+                if m2 > 0:
+                    return f"{ha} Ha {m2:,} m²".replace(",", ".")
+                else:
+                    return f"{ha} Ha"
+            else:
+                return f"{int(area):,} m²".replace(",", ".")
+        except:
+            return str(area_str or "0")
     
     # Usar plantilla por defecto si no se proporciona
     textos = {**get_default_plantilla(), **(plantilla or {})}
@@ -341,9 +366,27 @@ def generate_resolucion_pdf(
     # ============================================================
     # FUNCIÓN HELPER: Dibujar datos del predio
     # ============================================================
-    def dibujar_datos_predio(y_pos):
-        """Dibuja la fila de datos del predio (usado en cancelación e inscripción)"""
+    def dibujar_datos_predio(y_pos, datos_predio=None, es_cancelacion=False):
+        """
+        Dibuja la fila de datos del predio (usado en cancelación e inscripción)
+        - Para CANCELACIÓN: usa datos_predio con valores anteriores
+        - Para INSCRIPCIÓN: usa datos_predio con valores nuevos
+        """
         y = y_pos
+        
+        # Usar datos proporcionados o valores por defecto (nuevos)
+        if datos_predio is None:
+            datos_predio = {}
+        
+        # Obtener valores con fallback a los datos actuales
+        p_codigo_homologado = datos_predio.get('codigo_homologado', codigo_homologado) or ""
+        p_direccion = datos_predio.get('direccion', direccion) or ""
+        p_destino = datos_predio.get('destino_economico', destino_economico) or "A"
+        p_area_terreno = datos_predio.get('area_terreno', area_terreno)
+        p_area_construida = datos_predio.get('area_construida', area_construida)
+        p_avaluo = datos_predio.get('avaluo', avaluo) or ""
+        p_matricula = datos_predio.get('matricula', matricula_inmobiliaria) or ""
+        
         # Headers: CÓDIGO HOMOLOGADO | DIRECCIÓN O VEREDA | DES | A-TERRENO | A-CONS | AVALÚO | VIGENCIA FISCAL
         y = check_page_break(y, 30)
         c.setFillColor(colors.HexColor('#e8e8e8'))
@@ -351,7 +394,7 @@ def generate_resolucion_pdf(
         c.setFillColor(negro)
         c.setFont(font_bold, fuente_tabla - 1)
         
-        predio_cols = [content_width * 0.18, content_width * 0.22, content_width * 0.08, content_width * 0.12, content_width * 0.10, content_width * 0.15, content_width * 0.15]
+        predio_cols = [content_width * 0.15, content_width * 0.17, content_width * 0.06, content_width * 0.18, content_width * 0.14, content_width * 0.15, content_width * 0.15]
         predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "DES", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
         x = left_margin
         for i, header in enumerate(predio_headers):
@@ -360,36 +403,38 @@ def generate_resolucion_pdf(
             x += predio_cols[i]
         y -= 12
         
-        # Datos del predio
+        # Datos del predio - centrados
         y = check_page_break(y, 15)
-        c.setFont(font_normal, fuente_tabla - 1)
+        c.setFont(font_normal, fuente_tabla - 2)
         x = left_margin
-        # CÓDIGO HOMOLOGADO (alfanumérico tipo BPP0002BUUC)
+        # CÓDIGO HOMOLOGADO (alfanumérico tipo BPP0002BUUC) - centrado
         c.rect(x, y - 12, predio_cols[0], 12, fill=0, stroke=1)
-        c.drawString(x + 1, y - 9, codigo_homologado if codigo_homologado else "")
+        c.drawCentredString(x + predio_cols[0]/2, y - 9, p_codigo_homologado[:12] if len(p_codigo_homologado) > 12 else p_codigo_homologado)
         x += predio_cols[0]
-        # DIRECCIÓN O VEREDA
+        # DIRECCIÓN O VEREDA - centrado
         c.rect(x, y - 12, predio_cols[1], 12, fill=0, stroke=1)
-        dir_corta = direccion[:18] if len(direccion) > 18 else direccion
-        c.drawString(x + 1, y - 9, dir_corta)
+        dir_corta = p_direccion[:15] if len(p_direccion) > 15 else p_direccion
+        c.drawCentredString(x + predio_cols[1]/2, y - 9, dir_corta)
         x += predio_cols[1]
-        # DES (Destino Económico - letra: A, B, C, D, etc.)
+        # DES (Destino Económico - letra: A, B, C, D, etc.) - centrado
         c.rect(x, y - 12, predio_cols[2], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[2]/2, y - 9, destino_economico[:1] if destino_economico else "A")
+        c.drawCentredString(x + predio_cols[2]/2, y - 9, p_destino[:1] if p_destino else "A")
         x += predio_cols[2]
-        # A-TERRENO
+        # A-TERRENO - con formato de unidades y centrado
         c.rect(x, y - 12, predio_cols[3], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[3]/2, y - 9, str(area_terreno))
+        area_terr_fmt = formatear_area(p_area_terreno)
+        c.drawCentredString(x + predio_cols[3]/2, y - 9, area_terr_fmt)
         x += predio_cols[3]
-        # A-CONS
+        # A-CONS - con formato de unidades y centrado
         c.rect(x, y - 12, predio_cols[4], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[4]/2, y - 9, str(area_construida))
+        area_cons_fmt = formatear_area(p_area_construida)
+        c.drawCentredString(x + predio_cols[4]/2, y - 9, area_cons_fmt)
         x += predio_cols[4]
-        # AVALÚO
+        # AVALÚO - centrado
         c.rect(x, y - 12, predio_cols[5], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[5]/2, y - 9, avaluo[:12] if len(avaluo) > 12 else avaluo)
+        c.drawCentredString(x + predio_cols[5]/2, y - 9, p_avaluo[:12] if len(str(p_avaluo)) > 12 else str(p_avaluo))
         x += predio_cols[5]
-        # VIGENCIA FISCAL
+        # VIGENCIA FISCAL - centrado
         c.rect(x, y - 12, predio_cols[6], 12, fill=0, stroke=1)
         c.drawCentredString(x + predio_cols[6]/2, y - 9, vigencia_fiscal)
         y -= 12
@@ -403,7 +448,7 @@ def generate_resolucion_pdf(
         c.drawCentredString(left_margin + (content_width * 0.3)/2, y - 9, "MATRÍCULA INMOBILIARIA")
         c.setFont(font_normal, fuente_tabla)
         c.rect(left_margin + content_width * 0.3, y - 12, content_width * 0.7, 12, fill=0, stroke=1)
-        c.drawString(left_margin + content_width * 0.3 + 5, y - 9, matricula_inmobiliaria)
+        c.drawCentredString(left_margin + content_width * 0.3 + (content_width * 0.7)/2, y - 9, p_matricula)
         y -= 12
         
         return y
@@ -474,8 +519,17 @@ def generate_resolucion_pdf(
         y -= 12
     y -= 5
     
-    # Datos del predio en CANCELACIÓN
-    y = dibujar_datos_predio(y)
+    # Datos del predio en CANCELACIÓN (usa datos ANTERIORES)
+    datos_cancelacion = {
+        'codigo_homologado': codigo_homologado_anterior if codigo_homologado_anterior else codigo_homologado,
+        'direccion': direccion_anterior if direccion_anterior else direccion,
+        'destino_economico': destino_economico_anterior if destino_economico_anterior else destino_economico,
+        'area_terreno': area_terreno_anterior if area_terreno_anterior else area_terreno,
+        'area_construida': area_construida_anterior if area_construida_anterior else area_construida,
+        'avaluo': avaluo_anterior if avaluo_anterior else avaluo,
+        'matricula': matricula_anterior if matricula_anterior else matricula_inmobiliaria,
+    }
+    y = dibujar_datos_predio(y, datos_cancelacion, es_cancelacion=True)
     y -= 8
     
     # ============================================================
@@ -541,8 +595,17 @@ def generate_resolucion_pdf(
         y -= 12
     y -= 5
     
-    # Datos del predio en INSCRIPCIÓN
-    y = dibujar_datos_predio(y)
+    # Datos del predio en INSCRIPCIÓN (usa datos NUEVOS/ACTUALES)
+    datos_inscripcion = {
+        'codigo_homologado': codigo_homologado,
+        'direccion': direccion,
+        'destino_economico': destino_economico,
+        'area_terreno': area_terreno,
+        'area_construida': area_construida,
+        'avaluo': avaluo,
+        'matricula': matricula_inmobiliaria,
+    }
+    y = dibujar_datos_predio(y, datos_inscripcion, es_cancelacion=False)
     
     y -= espaciado_secciones
     

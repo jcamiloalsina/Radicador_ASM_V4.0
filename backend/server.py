@@ -13038,18 +13038,33 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         # Extraer propietarios anteriores del predio original
         propietarios_anteriores = []
+        datos_anteriores = {}
         predio_original = await db.predios.find_one({"id": cambio.get("predio_id")}, {"_id": 0}) if cambio.get("predio_id") else None
         if predio_original:
+            # Guardar datos anteriores para la sección CANCELACIÓN
+            datos_anteriores = {
+                "area_terreno": str(predio_original.get("area_terreno") or predio_original.get("area_terreno_r1") or 0),
+                "area_construida": str(predio_original.get("area_construida") or predio_original.get("area_construida_r1") or 0),
+                "avaluo": f"${predio_original.get('avaluo', 0):,.0f}".replace(",", "."),
+                "direccion": predio_original.get("direccion") or "",
+                "destino_economico": predio_original.get("destino_economico") or "A",
+                "codigo_homologado": predio_original.get("codigo_homologado") or predio_original.get("codigo_anterior") or "",
+                "matricula_inmobiliaria": predio_original.get("matricula_inmobiliaria") or "---",
+            }
             if predio_original.get("propietarios"):
                 for p in predio_original["propietarios"]:
                     propietarios_anteriores.append({
                         "nombre": p.get("nombre_propietario", ""),
-                        "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": p.get("numero_documento", ""),
+                        "estado_civil": p.get("estado_civil", ""),
                     })
             elif predio_original.get("nombre_propietario"):
                 propietarios_anteriores.append({
                     "nombre": predio_original["nombre_propietario"],
-                    "documento": "C --------"
+                    "tipo_documento": predio_original.get("tipo_documento", "CC"),
+                    "documento": predio_original.get("numero_documento", ""),
+                    "estado_civil": predio_original.get("estado_civil", ""),
                 })
         
         # Extraer propietarios nuevos de datos propuestos
@@ -13058,12 +13073,16 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             for p in datos_propuestos["propietarios"]:
                 propietarios_nuevos.append({
                     "nombre": p.get("nombre_propietario", ""),
-                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": p.get("numero_documento", ""),
+                    "estado_civil": p.get("estado_civil", ""),
                 })
         elif datos_propuestos.get("nombre_propietario"):
             propietarios_nuevos.append({
                 "nombre": datos_propuestos["nombre_propietario"],
-                "documento": "C --------"
+                "tipo_documento": datos_propuestos.get("tipo_documento", "CC"),
+                "documento": datos_propuestos.get("numero_documento", ""),
+                "estado_civil": datos_propuestos.get("estado_civil", ""),
             })
         
         # Si no hay cambio en propietarios, usar los mismos
@@ -13098,6 +13117,14 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             elaboro=elaboro,
             aprobo=aprobador.get("full_name", ""),
             plantilla=plantilla_textos,
+            # Datos anteriores para la sección CANCELACIÓN
+            area_terreno_anterior=datos_anteriores.get("area_terreno"),
+            area_construida_anterior=datos_anteriores.get("area_construida"),
+            avaluo_anterior=datos_anteriores.get("avaluo"),
+            direccion_anterior=datos_anteriores.get("direccion"),
+            destino_economico_anterior=datos_anteriores.get("destino_economico"),
+            codigo_homologado_anterior=datos_anteriores.get("codigo_homologado"),
+            matricula_anterior=datos_anteriores.get("matricula_inmobiliaria"),
         )
         
         # Crear directorio si no existe
@@ -24868,12 +24895,43 @@ async def generar_resolucion_manual(
         raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden generar resoluciones")
     
     try:
-        # 1. Obtener el predio
+        # 1. Obtener el predio ORIGINAL (sin los cambios propuestos)
         predio = await db.predios.find_one({"id": request.predio_id}, {"_id": 0})
         if not predio:
             raise HTTPException(status_code=404, detail="Predio no encontrado")
         
-        # Combinar datos del predio con datos actualizados si se proporcionaron
+        # Guardar los datos ANTERIORES para la sección CANCELACIÓN
+        datos_anteriores = {
+            "area_terreno": str(predio.get("area_terreno") or predio.get("area_terreno_r1") or 0),
+            "area_construida": str(predio.get("area_construida") or predio.get("area_construida_r1") or 0),
+            "avaluo": f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            "direccion": predio.get("direccion") or "",
+            "destino_economico": predio.get("destino_economico") or "A",
+            "codigo_homologado": predio.get("codigo_homologado") or predio.get("codigo_anterior") or "",
+            "matricula_inmobiliaria": predio.get("matricula_inmobiliaria") or "---",
+        }
+        
+        # Propietarios anteriores (del predio original)
+        propietarios_anteriores = []
+        if predio.get("propietarios"):
+            for p in predio["propietarios"]:
+                prop_data = {
+                    "nombre": p.get("nombre_propietario", ""),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": p.get("numero_documento", ""),
+                    "estado_civil": p.get("estado_civil", ""),
+                }
+                propietarios_anteriores.append(prop_data)
+        elif predio.get("nombre_propietario"):
+            prop_data = {
+                "nombre": predio["nombre_propietario"],
+                "tipo_documento": predio.get("tipo_documento", "CC"),
+                "documento": predio.get("numero_documento", ""),
+                "estado_civil": predio.get("estado_civil", ""),
+            }
+            propietarios_anteriores.append(prop_data)
+        
+        # Combinar datos del predio con datos actualizados (NUEVOS) si se proporcionaron
         datos_predio = {**predio}
         if request.datos_predio:
             datos_predio.update(request.datos_predio)
@@ -24899,24 +24957,25 @@ async def generar_resolucion_manual(
                 "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
             }
         
-        # 5. Extraer propietarios
-        propietarios_anteriores = []
+        # 5. Extraer propietarios NUEVOS (de los datos actualizados)
         propietarios_nuevos = []
         
         if datos_predio.get("propietarios"):
             for p in datos_predio["propietarios"]:
                 prop_data = {
                     "nombre": p.get("nombre_propietario", ""),
-                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('numero_documento', '')}"
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": p.get("numero_documento", ""),
+                    "estado_civil": p.get("estado_civil", ""),
                 }
-                propietarios_anteriores.append(prop_data)
                 propietarios_nuevos.append(prop_data)
         elif datos_predio.get("nombre_propietario"):
             prop_data = {
                 "nombre": datos_predio["nombre_propietario"],
-                "documento": f"{datos_predio.get('tipo_documento', 'C')} {datos_predio.get('numero_documento', '')}"
+                "tipo_documento": datos_predio.get("tipo_documento", "CC"),
+                "documento": datos_predio.get("numero_documento", ""),
+                "estado_civil": datos_predio.get("estado_civil", ""),
             }
-            propietarios_anteriores.append(prop_data)
             propietarios_nuevos.append(prop_data)
         
         # 6. Generar el PDF
@@ -24947,6 +25006,14 @@ async def generar_resolucion_manual(
             elaboro=current_user.get("full_name", ""),
             aprobo=current_user.get("full_name", ""),
             plantilla=plantilla_textos,
+            # Datos anteriores para la sección CANCELACIÓN
+            area_terreno_anterior=datos_anteriores["area_terreno"],
+            area_construida_anterior=datos_anteriores["area_construida"],
+            avaluo_anterior=datos_anteriores["avaluo"],
+            direccion_anterior=datos_anteriores["direccion"],
+            destino_economico_anterior=datos_anteriores["destino_economico"],
+            codigo_homologado_anterior=datos_anteriores["codigo_homologado"],
+            matricula_anterior=datos_anteriores["matricula_inmobiliaria"],
         )
         
         # 7. Guardar el PDF
