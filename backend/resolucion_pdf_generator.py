@@ -143,22 +143,27 @@ def generate_resolucion_pdf(
         # Usar la imagen de marca de agua con logo completo
         logo_path = "/app/frontend/public/watermark-asomunicipios.png"
         if os.path.exists(logo_path):
-            from PIL import Image
+            from PIL import Image, ImageEnhance
             img = Image.open(logo_path).convert('RGBA')
-            # Normalizar: detectar el logo (pixels no blancos) y darles gris uniforme
-            normalized_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
-            gray_color = 180  # Gris uniforme para la marca de agua
-            for x in range(img.width):
-                for y in range(img.height):
-                    r, g, b, a = img.getpixel((x, y))
-                    # Si el pixel NO es blanco/casi blanco (es parte del logo)
-                    # El fondo blanco tiene r,g,b cercanos a 255
-                    if r < 245 or g < 245 or b < 245:
-                        # Es parte del logo - usar gris uniforme
-                        normalized_img.putpixel((x, y), (gray_color, gray_color, gray_color, 255))
+            
+            # Convertir a escala de grises manteniendo calidad
+            # Separar canales
+            r, g, b, a = img.split()
+            
+            # Crear imagen en escala de grises
+            gray = img.convert('L')
+            
+            # Reconstruir con el canal alpha original
+            # Hacer el gris más claro para marca de agua
+            gray_rgba = Image.merge('RGBA', (gray, gray, gray, a))
+            
+            # Ajustar brillo para que sea más sutil
+            enhancer = ImageEnhance.Brightness(gray_rgba)
+            gray_rgba = enhancer.enhance(1.3)  # Más claro
+            
             # Guardar en buffer
             img_buffer = io.BytesIO()
-            normalized_img.save(img_buffer, format='PNG')
+            gray_rgba.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             logo_watermark = ImageReader(img_buffer)
     except Exception as e:
