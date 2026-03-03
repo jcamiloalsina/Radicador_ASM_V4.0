@@ -2133,7 +2133,7 @@ export default function MutacionesResoluciones() {
                           {/* Fila 2: Datos de Construcción */}
                           <div className="border-t border-purple-200 pt-2 mt-2">
                             <p className="text-xs font-medium text-purple-800 mb-2">Datos de Construcción</p>
-                            <div className="grid grid-cols-7 gap-2">
+                            <div className="grid grid-cols-6 gap-2">
                               <div>
                                 <Label className="text-xs">Pisos</Label>
                                 <Input
@@ -2162,15 +2162,6 @@ export default function MutacionesResoluciones() {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Cocinas</Label>
-                                <Input
-                                  type="number"
-                                  value={zona.cocinas || 0}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'cocinas', Number(e.target.value))}
-                                  className="h-7 text-xs"
-                                />
-                              </div>
-                              <div>
                                 <Label className="text-xs">Locales</Label>
                                 <Input
                                   type="number"
@@ -2180,11 +2171,10 @@ export default function MutacionesResoluciones() {
                                 />
                               </div>
                               <div>
-                                <Label className="text-xs">Garajes</Label>
+                                <Label className="text-xs">Uso</Label>
                                 <Input
-                                  type="number"
-                                  value={zona.garajes || 0}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'garajes', Number(e.target.value))}
+                                  value={zona.uso || ''}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'uso', e.target.value)}
                                   className="h-7 text-xs"
                                 />
                               </div>
