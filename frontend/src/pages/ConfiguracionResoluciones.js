@@ -13,6 +13,22 @@ import { Textarea } from '../components/ui/textarea';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
+// Lista de municipios con R1/R2
+const MUNICIPIOS = [
+  { codigo: '54003', nombre: 'Ábrego' },
+  { codigo: '54109', nombre: 'Bucarasica' },
+  { codigo: '54128', nombre: 'Cáchira' },
+  { codigo: '54206', nombre: 'Convención' },
+  { codigo: '54245', nombre: 'El Carmen' },
+  { codigo: '54250', nombre: 'El Tarra' },
+  { codigo: '54344', nombre: 'Hacarí' },
+  { codigo: '54398', nombre: 'La Playa' },
+  { codigo: '54498', nombre: 'Ocaña' },
+  { codigo: '20614', nombre: 'Río de Oro' },
+  { codigo: '54670', nombre: 'San Calixto' },
+  { codigo: '54800', nombre: 'Teorama' },
+];
+
 export default function ConfiguracionResoluciones() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -26,12 +42,10 @@ export default function ConfiguracionResoluciones() {
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [generandoPreview, setGenerandoPreview] = useState(false);
   
-  // Estados para configuración de numeración
-  const [configuracion, setConfiguracion] = useState({
-    año_actual: new Date().getFullYear(),
-    ultimo_numero_2026: 0,
-  });
+  // Estados para configuración de numeración por municipio
+  const [numeracionMunicipios, setNumeracionMunicipios] = useState({});
   const [guardandoConfig, setGuardandoConfig] = useState(false);
+  const [cargandoConfig, setCargandoConfig] = useState(true);
 
   // Cargar plantillas
   const cargarPlantillas = async () => {
@@ -52,19 +66,35 @@ export default function ConfiguracionResoluciones() {
     }
   };
 
-  // Cargar configuración
+  // Cargar configuración por municipio
   const cargarConfiguracion = async () => {
+    setCargandoConfig(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/resoluciones/configuracion`, {
+      const response = await axios.get(`${API}/resoluciones/configuracion-municipios`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
-        setConfiguracion(response.data.configuracion);
+        setNumeracionMunicipios(response.data.configuracion || {});
       }
     } catch (error) {
       console.error('Error cargando configuración:', error);
+      // Inicializar con valores vacíos si falla
+      const inicial = {};
+      MUNICIPIOS.forEach(m => {
+        inicial[m.codigo] = 0;
+      });
+      setNumeracionMunicipios(inicial);
+    } finally {
+      setCargandoConfig(false);
     }
+  };
+
+  const actualizarNumeroMunicipio = (codigo, valor) => {
+    setNumeracionMunicipios(prev => ({
+      ...prev,
+      [codigo]: parseInt(valor) || 0
+    }));
   };
 
   const seleccionarPlantilla = (plantilla) => {
@@ -103,9 +133,10 @@ export default function ConfiguracionResoluciones() {
     setGuardandoConfig(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`${API}/resoluciones/configuracion`, configuracion, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.put(`${API}/resoluciones/configuracion-municipios`, 
+        { municipios: numeracionMunicipios },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       toast.success('Configuración guardada correctamente');
     } catch (error) {
       console.error('Error guardando configuración:', error);
@@ -345,57 +376,74 @@ export default function ConfiguracionResoluciones() {
       {/* Tab: Numeración */}
       {activeTab === 'numeracion' && (
         <div className="bg-white rounded-xl shadow-sm p-6" data-testid="numeracion-content">
-          <div className="max-w-xl">
+          <div className="max-w-4xl">
             <h3 className="font-semibold text-slate-800 flex items-center gap-2 mb-6">
               <Hash className="w-5 h-5 text-purple-600" />
-              Configuración de Numeración 2026
+              Configuración de Numeración 2026 por Municipio
             </h3>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800">
-                <strong>Nota:</strong> Si ya ha generado resoluciones manualmente en 2026, 
-                ingrese el último número utilizado. El sistema continuará desde el siguiente número.
+                <strong>Nota:</strong> Si ya ha generado resoluciones manualmente en 2026 para algún municipio, 
+                ingrese el último número utilizado. El sistema continuará desde el siguiente número para cada municipio.
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Último número de resolución generado manualmente en 2026
-                </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={configuracion.ultimo_numero_2026}
-                  onChange={(e) => setConfiguracion({
-                    ...configuracion,
-                    ultimo_numero_2026: parseInt(e.target.value) || 0
+            {cargandoConfig ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                <span className="ml-2 text-slate-600">Cargando configuración...</span>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {MUNICIPIOS.map((municipio) => {
+                    const valorActual = numeracionMunicipios[municipio.codigo] || 0;
+                    const depto = municipio.codigo.substring(0, 2);
+                    const mpio = municipio.codigo.substring(2);
+                    return (
+                      <div 
+                        key={municipio.codigo} 
+                        className="bg-slate-50 rounded-lg p-4 border border-slate-200"
+                        data-testid={`municipio-config-${municipio.codigo}`}
+                      >
+                        <Label className="text-sm font-medium text-slate-700 block mb-2">
+                          {municipio.nombre}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={valorActual}
+                          onChange={(e) => actualizarNumeroMunicipio(municipio.codigo, e.target.value)}
+                          placeholder="0"
+                          className="mb-2"
+                          data-testid={`input-numero-${municipio.codigo}`}
+                        />
+                        <p className="text-xs text-slate-500">
+                          Próxima: <strong>RES-{depto}-{mpio}-2026-{String(valorActual + 1).padStart(4, '0')}</strong>
+                        </p>
+                      </div>
+                    );
                   })}
-                  placeholder="Ej: 50"
-                  className="max-w-xs"
-                  data-testid="input-ultimo-numero"
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  La próxima resolución automática será: <strong>RES-XXXX-{(configuracion.ultimo_numero_2026 || 0) + 1}</strong>
-                </p>
-              </div>
+                </div>
 
-              <div className="pt-4 border-t">
-                <Button
-                  onClick={guardarConfiguracion}
-                  disabled={guardandoConfig}
-                  className="bg-purple-600 hover:bg-purple-700"
-                  data-testid="btn-guardar-config"
-                >
-                  {guardandoConfig ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Guardar Configuración
-                </Button>
-              </div>
-            </div>
+                <div className="pt-4 border-t">
+                  <Button
+                    onClick={guardarConfiguracion}
+                    disabled={guardandoConfig}
+                    className="bg-purple-600 hover:bg-purple-700"
+                    data-testid="btn-guardar-config"
+                  >
+                    {guardandoConfig ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Guardar Configuración
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -12876,19 +12876,23 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         else:
             datos_predio = datos_propuestos
         
-        # Obtener configuración de numeración
-        año_actual = datetime.now().year
-        config = await db.resolucion_configuracion.find_one({"id": "config_general"})
-        numero_inicial = config.get("ultimo_numero_2026", 0) if config else 0
-        
-        # Contar resoluciones existentes este año
-        count_resoluciones = await db.resoluciones.count_documents({"año": año_actual})
-        siguiente_numero = numero_inicial + count_resoluciones + 1
-        
-        # Obtener código de municipio
+        # Obtener código de municipio del código predial nacional
         codigo = datos_predio.get("codigo_predial_nacional", "")
+        codigo_municipio = codigo[0:5] if len(codigo) >= 5 else "54003"
         depto = codigo[0:2] if len(codigo) >= 2 else "54"
         mpio = codigo[2:5] if len(codigo) >= 5 else "003"
+        
+        # Obtener configuración de numeración POR MUNICIPIO
+        año_actual = datetime.now().year
+        config_municipios = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
+        numero_inicial = config_municipios.get(codigo_municipio, 0) if config_municipios else 0
+        
+        # Contar resoluciones existentes este año PARA ESTE MUNICIPIO
+        count_resoluciones = await db.resoluciones.count_documents({
+            "año": año_actual,
+            "codigo_municipio": codigo_municipio
+        })
+        siguiente_numero = numero_inicial + count_resoluciones + 1
         
         # Formato número de resolución
         numero_resolucion = f"RES-{depto}-{mpio}-{año_actual}-{str(siguiente_numero).zfill(4)}"
@@ -12985,6 +12989,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "tipo": "M1",
             "año": año_actual,
             "consecutivo": siguiente_numero,
+            "codigo_municipio": codigo_municipio,  # Para filtrar por municipio
             "cambio_id": cambio.get("id"),
             "predio_id": cambio.get("predio_id"),
             "codigo_predial": codigo,
@@ -24421,6 +24426,100 @@ async def actualizar_configuracion_resoluciones(
         }
     except Exception as e:
         logging.error(f"Error actualizando configuración: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# Lista oficial de municipios con R1/R2
+MUNICIPIOS_R1R2 = {
+    "54003": "Ábrego",
+    "54109": "Bucarasica",
+    "54128": "Cáchira",
+    "54206": "Convención",
+    "54245": "El Carmen",
+    "54250": "El Tarra",
+    "54344": "Hacarí",
+    "54398": "La Playa",
+    "54498": "Ocaña",
+    "20614": "Río de Oro",
+    "54670": "San Calixto",
+    "54800": "Teorama",
+}
+
+
+class ConfiguracionMunicipiosRequest(BaseModel):
+    """Request para actualizar configuración de resoluciones por municipio"""
+    municipios: dict = {}
+
+
+@api_router.get("/resoluciones/configuracion-municipios")
+async def obtener_configuracion_municipios(current_user: dict = Depends(get_current_user)):
+    """Obtener configuración de numeración de resoluciones por municipio"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    
+    try:
+        config = await db.resolucion_configuracion_municipios.find_one(
+            {"id": "config_municipios"},
+            {"_id": 0}
+        )
+        
+        if not config:
+            # Crear configuración por defecto con todos los municipios en 0
+            config = {
+                "id": "config_municipios",
+                "año": datetime.now().year,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            for codigo in MUNICIPIOS_R1R2.keys():
+                config[codigo] = 0
+            await db.resolucion_configuracion_municipios.insert_one(config.copy())
+        
+        # Extraer solo los valores de numeración
+        configuracion = {}
+        for codigo in MUNICIPIOS_R1R2.keys():
+            configuracion[codigo] = config.get(codigo, 0)
+        
+        return {
+            "success": True,
+            "configuracion": configuracion
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo configuración municipios: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.put("/resoluciones/configuracion-municipios")
+async def actualizar_configuracion_municipios(
+    request: ConfiguracionMunicipiosRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualizar configuración de numeración de resoluciones por municipio"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar")
+    
+    try:
+        update_data = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user.get("full_name", "")
+        }
+        
+        # Solo actualizar municipios válidos
+        for codigo, valor in request.municipios.items():
+            if codigo in MUNICIPIOS_R1R2:
+                update_data[codigo] = int(valor) if valor else 0
+        
+        await db.resolucion_configuracion_municipios.update_one(
+            {"id": "config_municipios"},
+            {"$set": update_data},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Configuración por municipio actualizada correctamente"
+        }
+    except Exception as e:
+        logging.error(f"Error actualizando configuración municipios: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 

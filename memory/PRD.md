@@ -7,7 +7,7 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ## 🔧 Última Actualización (03 Marzo 2026 - Sesión 2)
 
-### ✅ IMPLEMENTADO: Sistema Completo de Resoluciones Automáticas
+### ✅ IMPLEMENTADO: Sistema Completo de Resoluciones Automáticas - Numeración por Municipio
 
 **Descripción:**
 Sistema integral para la generación automática de resoluciones PDF (M1 - Mutación Primera) cuando se aprueba un cambio de predio. El sistema incluye:
@@ -15,31 +15,31 @@ Sistema integral para la generación automática de resoluciones PDF (M1 - Mutac
 1. **Página de Configuración de Resoluciones** (`/dashboard/configuracion-resoluciones`):
    - Solo accesible para administradores
    - **Tab "Plantillas de Texto":** Editar texto legal M1, nombre y cargo del firmante
-   - **Tab "Numeración 2026":** Establecer último número de resolución manual (el sistema continúa desde ahí)
+   - **Tab "Numeración 2026":** Configuración de numeración POR MUNICIPIO (12 municipios con R1/R2)
    - Preview PDF para verificar cambios antes de aplicar
 
-2. **Generación Automática al Aprobar:**
+2. **Municipios con Numeración Independiente:**
+   - Ábrego (54003), Bucarasica (54109), Cáchira (54128), Convención (54206)
+   - El Carmen (54245), El Tarra (54250), Hacarí (54344), La Playa (54398)
+   - Ocaña (54498), Río de Oro (20614), San Calixto (54670), Teorama (54800)
+
+3. **Generación Automática al Aprobar:**
    - Cuando se aprueba un cambio de tipo `modificacion` o `creacion`, el sistema genera automáticamente el PDF M1
    - PDF incluye: encabezado institucional, marca de agua, tablas de cancelación/inscripción, firma de Dalgie, QR de validación
    - El PDF se guarda en `/resoluciones/` y se registra en colección `resoluciones`
-   - Numeración automática: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
+   - Numeración automática POR MUNICIPIO: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
 
 **Nuevos Endpoints:**
-- `GET /api/resoluciones/configuracion` - Obtener configuración de numeración
-- `PUT /api/resoluciones/configuracion` - Actualizar número inicial para 2026
-- `GET /api/resoluciones/siguiente-numero/{municipio}` - Consultar próximo número
+- `GET /api/resoluciones/configuracion-municipios` - Obtener configuración por municipio
+- `PUT /api/resoluciones/configuracion-municipios` - Actualizar números por municipio
 
 **Nuevas Colecciones MongoDB:**
-- `resolucion_configuracion` - Almacena `{ id, ultimo_numero_2026, ... }`
-- `resoluciones` - Registra cada resolución generada con número, PDF path, cambio_id, etc.
+- `resolucion_configuracion_municipios` - Almacena números iniciales por código de municipio
+- `resoluciones` - Registra cada resolución generada con numero, pdf_path, cambio_id, codigo_municipio
 
 **Archivos Modificados:**
-- `/app/backend/server.py` - Función `generar_resolucion_final()` y lógica en `aprobar_rechazar_cambio()`
-- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - Nueva página completa
-- `/app/frontend/src/App.js` - Nueva ruta
-- `/app/frontend/src/pages/DashboardLayout.js` - Link de navegación
-
-**Tests:** 27 tests (100% pasados) - `/app/test_reports/iteration_55.json`
+- `/app/backend/server.py` - Función `generar_resolucion_final()` con numeración por municipio
+- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - UI con grid de 12 municipios
 
 ---
 
