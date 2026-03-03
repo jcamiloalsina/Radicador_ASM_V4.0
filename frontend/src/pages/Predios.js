@@ -4388,16 +4388,24 @@ export default function Predios() {
                     <p className="text-xs text-purple-600 mt-1">Se genera automáticamente</p>
                   </div>
                   
-                  {/* Fecha de Resolución - Auto generada */}
+                  {/* Fecha de Resolución - Auto generada con opción manual */}
                   <div>
                     <Label className="text-xs text-purple-700">Fecha de Resolución</Label>
                     <Input 
-                      type="text"
-                      value={infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO')}
-                      readOnly
-                      className="mt-1 bg-purple-100 text-purple-800"
+                      type="date"
+                      value={infoResolucion.fecha_resolucion ? 
+                        infoResolucion.fecha_resolucion.split('/').reverse().join('-') : 
+                        new Date().toISOString().split('T')[0]
+                      }
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        const partes = fecha.split('-');
+                        const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                        setInfoResolucion(prev => ({ ...prev, fecha_resolucion: fechaFormateada }));
+                      }}
+                      className="mt-1"
                     />
-                    <p className="text-xs text-purple-600 mt-1">Se genera automáticamente</p>
+                    <p className="text-xs text-purple-600 mt-1">Automática, puede modificar si requiere</p>
                   </div>
                   
                   {/* Radicado de Petición - Búsqueda manual o selección */}
