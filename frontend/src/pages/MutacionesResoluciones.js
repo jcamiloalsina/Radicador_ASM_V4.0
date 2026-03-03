@@ -391,6 +391,19 @@ export default function MutacionesResoluciones() {
     }
   };
 
+  // Seleccionar radicado para M2 (carga datos del solicitante)
+  const seleccionarRadicadoM2 = (radicado) => {
+    setM2Data(prev => ({
+      ...prev,
+      radicado: radicado.radicado,
+      solicitante: {
+        ...prev.solicitante,
+        nombre: radicado.nombre_completo || radicado.creator_name || ''
+      }
+    }));
+    setRadicadosDisponiblesM2([]);
+  };
+
   // Agregar propietario nuevo
   const agregarPropietarioNuevo = () => {
     setM1Data(prev => ({
@@ -868,14 +881,14 @@ export default function MutacionesResoluciones() {
                   <button
                     key={rad.id}
                     type="button"
-                    onClick={() => {
-                      setM2Data(prev => ({ ...prev, radicado: rad.radicado }));
-                      setRadicadosDisponiblesM2([]);
-                    }}
+                    onClick={() => seleccionarRadicadoM2(rad)}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b last:border-0"
                   >
                     <span className="font-mono text-purple-700">{rad.radicado}</span>
                     <span className="text-slate-500 ml-2">- {rad.tipo_tramite}</span>
+                    {rad.nombre_completo && (
+                      <span className="block text-xs text-slate-400">Solicitante: {rad.nombre_completo}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -884,41 +897,45 @@ export default function MutacionesResoluciones() {
         </div>
       </div>
 
-      {/* Solicitante */}
-      <Card className="border-slate-200">
-        <CardHeader className="py-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Datos del Solicitante
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="py-2">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <Label className="text-xs">Nombre Completo</Label>
-              <Input
-                value={m2Data.solicitante.nombre}
-                onChange={(e) => setM2Data(prev => ({
-                  ...prev,
-                  solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
-                }))}
-                placeholder="NOMBRE COMPLETO"
-              />
+      {/* Solicitante - Se carga automáticamente del radicado */}
+      {m2Data.radicado && (
+        <Card className="border-purple-200 bg-purple-50/30">
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+              <Users className="w-4 h-4" />
+              Datos del Solicitante (del Radicado)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <Label className="text-xs">Nombre Completo</Label>
+                <Input
+                  value={m2Data.solicitante.nombre}
+                  onChange={(e) => setM2Data(prev => ({
+                    ...prev,
+                    solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
+                  }))}
+                  placeholder="NOMBRE COMPLETO"
+                  className="bg-white"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Cédula</Label>
+                <Input
+                  value={m2Data.solicitante.documento}
+                  onChange={(e) => setM2Data(prev => ({
+                    ...prev,
+                    solicitante: { ...prev.solicitante, documento: e.target.value }
+                  }))}
+                  placeholder="12345678"
+                  className="bg-white"
+                />
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">Cédula</Label>
-              <Input
-                value={m2Data.solicitante.documento}
-                onChange={(e) => setM2Data(prev => ({
-                  ...prev,
-                  solicitante: { ...prev.solicitante, documento: e.target.value }
-                }))}
-                placeholder="12345678"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Predios a Cancelar (Origen) */}
       <Card className="border-red-200 bg-red-50/30">
