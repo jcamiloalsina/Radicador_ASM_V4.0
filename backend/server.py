@@ -24978,6 +24978,9 @@ class GenerarResolucionManualRequest(BaseModel):
     fecha_resolucion: str
     radicado_peticion: Optional[str] = None
     datos_predio: Optional[dict] = None
+    # Campos opcionales para propietarios (si se conocen los anteriores/nuevos explícitamente)
+    propietarios_anteriores: Optional[list] = None
+    propietarios_nuevos: Optional[list] = None
 
 
 @api_router.post("/resoluciones/generar-manual")
@@ -25017,30 +25020,118 @@ async def generar_resolucion_manual(
             "matricula_inmobiliaria": predio.get("matricula_inmobiliaria") or "---",
         }
         
-        # Propietarios anteriores (del predio original)
+        # Propietarios: Intentar obtenerlos del cambio/petición asociado al radicado
         propietarios_anteriores = []
-        if predio.get("propietarios"):
-            for p in predio["propietarios"]:
-                prop_data = {
-                    "nombre": p.get("nombre_propietario", ""),
+        propietarios_nuevos = []
+        
+        # Si se pasaron explícitamente en el request, usarlos
+        if request.propietarios_anteriores:
+            for p in request.propietarios_anteriores:
+                propietarios_anteriores.append({
+                    "nombre": p.get("nombre", p.get("nombre_propietario", "")),
                     "tipo_documento": p.get("tipo_documento", "CC"),
-                    "documento": p.get("numero_documento", ""),
+                    "documento": p.get("documento", p.get("numero_documento", "")),
                     "estado_civil": p.get("estado_civil", ""),
-                }
-                propietarios_anteriores.append(prop_data)
-        elif predio.get("nombre_propietario"):
-            prop_data = {
-                "nombre": predio["nombre_propietario"],
-                "tipo_documento": predio.get("tipo_documento", "CC"),
-                "documento": predio.get("numero_documento", ""),
-                "estado_civil": predio.get("estado_civil", ""),
-            }
-            propietarios_anteriores.append(prop_data)
+                })
+        
+        if request.propietarios_nuevos:
+            for p in request.propietarios_nuevos:
+                propietarios_nuevos.append({
+                    "nombre": p.get("nombre", p.get("nombre_propietario", "")),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": p.get("documento", p.get("numero_documento", "")),
+                    "estado_civil": p.get("estado_civil", ""),
+                })
+        
+        # Si hay radicado y no se pasaron propietarios, buscar en cambios/peticiones
+        if request.radicado_peticion and (not propietarios_anteriores or not propietarios_nuevos):
+            # Buscar cambio asociado
+            cambio = await db.cambios.find_one({"radicado": request.radicado_peticion})
+            if cambio:
+                # Propietarios anteriores del cambio
+                if not propietarios_anteriores:
+                    props_ant = cambio.get("datos_anteriores", {}).get("propietarios", [])
+                    if props_ant:
+                        for p in props_ant:
+                            propietarios_anteriores.append({
+                                "nombre": p.get("nombre_propietario", ""),
+                                "tipo_documento": p.get("tipo_documento", "CC"),
+                                "documento": p.get("numero_documento", ""),
+                                "estado_civil": p.get("estado_civil", ""),
+                            })
+                # Propietarios nuevos del cambio
+                if not propietarios_nuevos:
+                    props_new = cambio.get("datos_nuevos", {}).get("propietarios", [])
+                    if props_new:
+                        for p in props_new:
+                            propietarios_nuevos.append({
+                                "nombre": p.get("nombre_propietario", ""),
+                                "tipo_documento": p.get("tipo_documento", "CC"),
+                                "documento": p.get("numero_documento", ""),
+                                "estado_civil": p.get("estado_civil", ""),
+                            })
+            
+            # También buscar en peticiones
+            if not propietarios_anteriores or not propietarios_nuevos:
+                peticion = await db.peticiones.find_one({"radicado": request.radicado_peticion})
+                if peticion:
+                    if not propietarios_anteriores and peticion.get("propietarios_anteriores"):
+                        for p in peticion["propietarios_anteriores"]:
+                            propietarios_anteriores.append({
+                                "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                                "tipo_documento": p.get("tipo_documento", "CC"),
+                                "documento": p.get("numero_documento", p.get("documento", "")),
+                                "estado_civil": p.get("estado_civil", ""),
+                            })
+                    if not propietarios_nuevos and peticion.get("propietarios_nuevos"):
+                        for p in peticion["propietarios_nuevos"]:
+                            propietarios_nuevos.append({
+                                "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                                "tipo_documento": p.get("tipo_documento", "CC"),
+                                "documento": p.get("numero_documento", p.get("documento", "")),
+                                "estado_civil": p.get("estado_civil", ""),
+                            })
+        
+        # Fallback: usar propietarios del predio actual si no se encontraron
+        if not propietarios_anteriores:
+            if predio.get("propietarios"):
+                for p in predio["propietarios"]:
+                    propietarios_anteriores.append({
+                        "nombre": p.get("nombre_propietario", ""),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": p.get("numero_documento", ""),
+                        "estado_civil": p.get("estado_civil", ""),
+                    })
+            elif predio.get("nombre_propietario"):
+                propietarios_anteriores.append({
+                    "nombre": predio["nombre_propietario"],
+                    "tipo_documento": predio.get("tipo_documento", "CC"),
+                    "documento": predio.get("numero_documento", ""),
+                    "estado_civil": predio.get("estado_civil", ""),
+                })
         
         # Combinar datos del predio con datos actualizados (NUEVOS) si se proporcionaron
         datos_predio = {**predio}
         if request.datos_predio:
             datos_predio.update(request.datos_predio)
+        
+        # Si no hay propietarios nuevos, obtenerlos de datos_predio
+        if not propietarios_nuevos:
+            if datos_predio.get("propietarios"):
+                for p in datos_predio["propietarios"]:
+                    propietarios_nuevos.append({
+                        "nombre": p.get("nombre_propietario", ""),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "documento": p.get("numero_documento", ""),
+                        "estado_civil": p.get("estado_civil", ""),
+                    })
+            elif datos_predio.get("nombre_propietario"):
+                propietarios_nuevos.append({
+                    "nombre": datos_predio["nombre_propietario"],
+                    "tipo_documento": datos_predio.get("tipo_documento", "CC"),
+                    "documento": datos_predio.get("numero_documento", ""),
+                    "estado_civil": datos_predio.get("estado_civil", ""),
+                })
         
         # 2. Extraer información del código predial
         codigo = datos_predio.get("codigo_predial_nacional", "")
@@ -25049,12 +25140,24 @@ async def generar_resolucion_manual(
         mpio = codigo[2:5] if len(codigo) >= 5 else "003"
         año_actual = datetime.now().year
         
-        # 3. Parsear el número de resolución para obtener el consecutivo
+        # 3. Verificar que no exista ya una resolución con este número (prevenir doble clic)
+        resolucion_existente = await db.resoluciones.find_one({"numero_resolucion": request.numero_resolucion})
+        if resolucion_existente:
+            # Ya existe, devolver los datos de la existente sin crear duplicado
+            return {
+                "success": True,
+                "message": "La resolución ya existe",
+                "numero_resolucion": request.numero_resolucion,
+                "pdf_url": resolucion_existente.get("pdf_path"),
+                "duplicado": True
+            }
+        
+        # 4. Parsear el número de resolución para obtener el consecutivo
         # Formato: RES-{DEPTO}-{MPIO}-{NUM}-{AÑO}
         partes = request.numero_resolucion.split('-')
         consecutivo = int(partes[3]) if len(partes) >= 4 and partes[3].isdigit() else 1
         
-        # 4. Obtener plantilla M1
+        # 5. Obtener plantilla M1
         plantilla = await db.resolucion_plantillas.find_one({"tipo": request.tipo_mutacion.upper()}, {"_id": 0})
         plantilla_textos = {}
         if plantilla:
@@ -25063,28 +25166,7 @@ async def generar_resolucion_manual(
                 "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
             }
         
-        # 5. Extraer propietarios NUEVOS (de los datos actualizados)
-        propietarios_nuevos = []
-        
-        if datos_predio.get("propietarios"):
-            for p in datos_predio["propietarios"]:
-                prop_data = {
-                    "nombre": p.get("nombre_propietario", ""),
-                    "tipo_documento": p.get("tipo_documento", "CC"),
-                    "documento": p.get("numero_documento", ""),
-                    "estado_civil": p.get("estado_civil", ""),
-                }
-                propietarios_nuevos.append(prop_data)
-        elif datos_predio.get("nombre_propietario"):
-            prop_data = {
-                "nombre": datos_predio["nombre_propietario"],
-                "tipo_documento": datos_predio.get("tipo_documento", "CC"),
-                "documento": datos_predio.get("numero_documento", ""),
-                "estado_civil": datos_predio.get("estado_civil", ""),
-            }
-            propietarios_nuevos.append(prop_data)
-        
-        # 6. Generar el PDF
+        # 5. Generar el PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
         # Generar código de verificación para QR (igual que certificado catastral)
