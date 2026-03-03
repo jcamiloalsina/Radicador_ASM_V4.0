@@ -4407,24 +4407,29 @@ export default function Predios() {
                     />
                   </div>
                   
-                  {/* Radicado de Petición */}
+                  {/* Radicado de Petición - Búsqueda manual o selección */}
                   <div>
                     <Label className="text-xs text-purple-700">Radicado de Petición</Label>
-                    <select
-                      value={infoResolucion.radicado_peticion}
-                      onChange={(e) => setInfoResolucion(prev => ({ ...prev, radicado_peticion: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-purple-300 rounded-lg text-sm bg-white"
-                    >
-                      <option value="">Seleccionar radicado...</option>
-                      {radicadosDisponibles.map(rad => (
-                        <option key={rad.id} value={rad.radicado}>
-                          {rad.radicado} - {rad.tipo_tramite} ({rad.nombre_completo?.substring(0, 20)})
-                        </option>
-                      ))}
-                    </select>
-                    {radicadosDisponibles.length === 0 && infoResolucion.tipo_mutacion && (
-                      <p className="text-xs text-amber-600 mt-1">No hay radicados disponibles</p>
-                    )}
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={infoResolucion.radicado_peticion}
+                        onChange={(e) => setInfoResolucion(prev => ({ ...prev, radicado_peticion: e.target.value.toUpperCase() }))}
+                        placeholder="Escribir o seleccionar radicado..."
+                        list="radicados-list"
+                        className="mt-1"
+                      />
+                      <datalist id="radicados-list">
+                        {radicadosDisponibles.map(rad => (
+                          <option key={rad.id} value={rad.radicado}>
+                            {rad.radicado} - {rad.tipo_tramite}
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Escriba el radicado o seleccione de la lista
+                    </p>
                   </div>
                 </div>
                 
