@@ -5751,6 +5751,50 @@ export default function Predios() {
                 </Card>
               )}
               
+              {/* Historial de Resoluciones */}
+              {selectedPredio.historial_resoluciones && selectedPredio.historial_resoluciones.length > 0 && (
+                <Card>
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Resoluciones Generadas ({selectedPredio.historial_resoluciones.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {selectedPredio.historial_resoluciones.slice().reverse().map((r, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <FileText className="w-4 h-4 text-emerald-600" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-emerald-800">
+                                {r.tipo_mutacion && `${r.tipo_mutacion} - `}{r.numero_resolucion}
+                              </div>
+                              <div className="text-xs text-emerald-600">
+                                {r.fecha_resolucion && `Fecha: ${r.fecha_resolucion}`}
+                                {r.radicado && ` | Radicado: ${r.radicado}`}
+                              </div>
+                            </div>
+                          </div>
+                          {r.pdf_path && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white hover:bg-emerald-100"
+                              onClick={() => window.open(`${BACKEND_URL}${r.pdf_path}`, '_blank')}
+                            >
+                              <Download className="w-4 h-4 mr-1" />
+                              PDF
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               {/* Historial */}
               {selectedPredio.historial && selectedPredio.historial.length > 0 && (
                 <Card>
