@@ -275,10 +275,18 @@ export default function MutacionesResoluciones() {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m1Data.municipio)?.nombre || '';
       
+      // Primero obtener la vigencia actual del sistema
+      const statsResponse = await axios.get(`${API}/predios/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia;
+      
+      // Buscar predios con la vigencia actual
       const response = await axios.get(`${API}/predios`, {
         params: { 
           search: searchPredioM1,
           municipio: municipioNombre,
+          vigencia: vigenciaActual,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
@@ -475,16 +483,29 @@ export default function MutacionesResoluciones() {
     setSearchingPredios(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/predios/buscar`, {
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
+      
+      // Primero obtener la vigencia actual del sistema
+      const statsResponse = await axios.get(`${API}/predios/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia;
+      
+      // Buscar predios con la vigencia actual
+      const response = await axios.get(`${API}/predios`, {
         params: { 
-          q: searchPredio,
-          municipio: m2Data.municipio,
+          search: searchPredio,
+          municipio: municipioNombre,
+          vigencia: vigenciaActual,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
       });
       
       setSearchResults(response.data.predios || []);
+      if (response.data.predios?.length === 0) {
+        toast.info('No se encontraron predios con ese criterio');
+      }
     } catch (error) {
       toast.error('Error buscando predios');
     } finally {
