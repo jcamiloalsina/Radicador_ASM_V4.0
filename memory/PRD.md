@@ -18,7 +18,22 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (03-03-2026) - Fix Búsqueda Radicado
+### Última Sesión (03-03-2026) - Modal Nuevo Predio para M2
+- **FEATURE P0 - Modal Nuevo Predio para M2 COMPLETO**:
+  - **Problema**: Usuario necesitaba que el formulario de crear predio en M2 fuera idéntico al original
+  - **Solución**: Implementado modal completo con 3 tabs:
+    - **Tab 1 - Código Nacional (30 dígitos)**: Constructor de código predial con prefijo de municipio, campos editables para zona, sector, comuna, barrio, manzana, terreno, condición, edificio, piso, unidad. Visualización en tiempo real del código. Botón "Verificar Código"
+    - **Tab 2 - Propietario (R1)**: Lista de propietarios con nombre, tipo doc, número doc. Agregar/eliminar propietarios. Información del predio (dirección, destino económico, matrícula, avalúo). Áreas calculadas automáticamente desde R2
+    - **Tab 3 - Físico (R2)**: Zonas de terreno con zona física, económica, área. Construcciones con piso, habitaciones, baños, locales, tipificación, uso, puntaje, área. Botones agregar/eliminar. Subtotales automáticos
+  - **Archivos modificados**: 
+    - `/app/frontend/src/pages/MutacionesResoluciones.js` (+1084 líneas)
+    - `/app/backend/server.py` (endpoint estructura-codigo actualizado para aceptar código de municipio)
+  - **Bugs corregidos durante testing**:
+    - Endpoint verificar-codigo cambiado a verificar-codigo-completo
+    - Agregado parámetro municipio a la llamada del endpoint
+  - **Estado**: ✅ VERIFICADO - Testing agent confirmó 100% funcional
+
+### Sesión Anterior (03-03-2026) - Fix Búsqueda Radicado
 - **BUG FIX P0 - Búsqueda de Radicado no funcionaba**:
   - **Problema**: En módulo Mutaciones y Resoluciones, escribir "5531" o cualquier número no mostraba resultados
   - **Causa Raíz**: Frontend enviaba parámetro `q` pero backend esperaba `busqueda`
@@ -108,10 +123,10 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 ### P0 - Crítico
 - ✅ RESUELTO: Error "Error al generar resolución" (bug setIsEditModalOpen)
 - ✅ RESUELTO (03-03-2026): Búsqueda de Radicado no funcionaba en módulo Mutaciones y Resoluciones
-  - **Causa**: Frontend enviaba parámetro `q` pero backend esperaba `busqueda`
-  - **Fix**: Corregido en `MutacionesResoluciones.js` línea 362
+- ✅ RESUELTO (03-03-2026): Modal Nuevo Predio para M2 implementado idéntico al original
 
 ### P1 - Alto
+- **Script importación R1-R2 peligroso**: Causa pérdida de datos (~11,000 predios). Requiere cambiar de "delete-then-insert" a "upsert". Archivo: `/app/backend/server.py` endpoint `/api/predios/import-r1-r2`
 - **Contador de resoluciones frágil**: Requiere correcciones manuales frecuentes. Propuesta: usar findOneAndUpdate atómico
 - **PDF descargado desde historial muestra datos incorrectos**: Propietarios cancelados/inscritos no aparecen correctamente
 
@@ -125,10 +140,12 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 - **Formulario de visita lento en móvil**: Optimización de rendimiento
 
 ## Future Tasks
+- **(P1 URGENTE)** Corregir script de importación R1-R2 que causa pérdida de datos
+- **(P1)** Refactorizar contador de resoluciones para ser atómico
 - Exportación Excel para formulario de visitas
 - Exportación XTF
 - App de Gestión de Correspondencia
-- Refactorización de archivos grandes (server.py, Predios.js)
+- Refactorización de MutacionesResoluciones.js (>3000 líneas) en componentes más pequeños
 - UI para reportes GDB
 - Gráficos en dashboards
 
