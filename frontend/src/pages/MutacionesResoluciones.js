@@ -142,6 +142,11 @@ export default function MutacionesResoluciones() {
   const [showMunicipioDropdown, setShowMunicipioDropdown] = useState(false);
   const [showMunicipioDropdownM2, setShowMunicipioDropdownM2] = useState(false);
 
+  // Estado para modal de edición de predio (Cancelación Parcial)
+  const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
+  const [predioEditando, setPredioEditando] = useState(null); // datos del predio en edición
+  const [tabEdicion, setTabEdicion] = useState('r1'); // pestaña activa: 'r1' o 'r2'
+
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
     setLoadingHistorial(true);
@@ -612,6 +617,122 @@ export default function MutacionesResoluciones() {
     }));
   };
 
+  // Abrir modal de edición completa de predio (Cancelación Parcial)
+  const abrirEdicionPredio = (index) => {
+    const predio = m2Data.predios_cancelados[index];
+    // Crear copia profunda del predio para edición
+    setPredioEditando({
+      ...predio,
+      // Asegurar estructura de propietarios
+      propietarios: predio.propietarios?.length > 0 
+        ? predio.propietarios.map(p => ({...p}))
+        : [{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado: '' }],
+      // Asegurar estructura de zonas homogéneas
+      zonas_homogeneas: predio.zonas_homogeneas?.length > 0
+        ? predio.zonas_homogeneas.map(z => ({...z}))
+        : [{ zona_fisica: '0', zona_economica: '0', area_terreno: predio.area_terreno || 0, area_construida: predio.area_construida || 0, avaluo: predio.avaluo || 0 }],
+      // Campo para indicar que fue editado en plataforma
+      editado_en_plataforma: true
+    });
+    setEditandoPredio(index);
+    setTabEdicion('r1');
+  };
+
+  // Cerrar modal de edición
+  const cerrarEdicionPredio = () => {
+    setEditandoPredio(null);
+    setPredioEditando(null);
+  };
+
+  // Guardar cambios del predio editado
+  const guardarEdicionPredio = () => {
+    if (editandoPredio === null || !predioEditando) return;
+    
+    // Calcular áreas desde zonas R2 si fue editado en plataforma
+    let areaTerreno = predioEditando.nueva_area_terreno;
+    let areaConstruida = predioEditando.nueva_area_construida;
+    let avaluoTotal = predioEditando.nuevo_avaluo;
+    
+    if (predioEditando.zonas_homogeneas?.length > 0) {
+      areaTerreno = predioEditando.zonas_homogeneas.reduce((sum, z) => sum + (Number(z.area_terreno) || 0), 0);
+      areaConstruida = predioEditando.zonas_homogeneas.reduce((sum, z) => sum + (Number(z.area_construida) || 0), 0);
+      avaluoTotal = predioEditando.zonas_homogeneas.reduce((sum, z) => sum + (Number(z.avaluo) || 0), 0);
+    }
+    
+    const predioActualizado = {
+      ...predioEditando,
+      nueva_area_terreno: areaTerreno,
+      nueva_area_construida: areaConstruida,
+      nuevo_avaluo: avaluoTotal
+    };
+    
+    setM2Data(prev => ({
+      ...prev,
+      predios_cancelados: prev.predios_cancelados.map((p, i) => 
+        i === editandoPredio ? predioActualizado : p
+      )
+    }));
+    
+    cerrarEdicionPredio();
+    toast.success('Cambios guardados');
+  };
+
+  // Actualizar propietario en edición
+  const actualizarPropietarioEdicion = (propIndex, campo, valor) => {
+    setPredioEditando(prev => ({
+      ...prev,
+      propietarios: prev.propietarios.map((p, i) => 
+        i === propIndex ? { ...p, [campo]: valor } : p
+      )
+    }));
+  };
+
+  // Agregar propietario en edición
+  const agregarPropietarioEdicion = () => {
+    setPredioEditando(prev => ({
+      ...prev,
+      propietarios: [...prev.propietarios, { nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado: '' }]
+    }));
+  };
+
+  // Eliminar propietario en edición
+  const eliminarPropietarioEdicion = (propIndex) => {
+    setPredioEditando(prev => ({
+      ...prev,
+      propietarios: prev.propietarios.filter((_, i) => i !== propIndex)
+    }));
+  };
+
+  // Actualizar zona homogénea en edición
+  const actualizarZonaEdicion = (zonaIndex, campo, valor) => {
+    setPredioEditando(prev => ({
+      ...prev,
+      zonas_homogeneas: prev.zonas_homogeneas.map((z, i) => 
+        i === zonaIndex ? { ...z, [campo]: valor } : z
+      )
+    }));
+  };
+
+  // Agregar zona homogénea en edición
+  const agregarZonaEdicion = () => {
+    setPredioEditando(prev => ({
+      ...prev,
+      zonas_homogeneas: [...prev.zonas_homogeneas, { zona_fisica: '0', zona_economica: '0', area_terreno: 0, area_construida: 0, avaluo: 0 }]
+    }));
+  };
+
+  // Eliminar zona homogénea en edición
+  const eliminarZonaEdicion = (zonaIndex) => {
+    if (predioEditando.zonas_homogeneas.length <= 1) {
+      toast.error('Debe haber al menos una zona');
+      return;
+    }
+    setPredioEditando(prev => ({
+      ...prev,
+      zonas_homogeneas: prev.zonas_homogeneas.filter((_, i) => i !== zonaIndex)
+    }));
+  };
+
   // Agregar nuevo predio inscrito (destino)
   const agregarPredioDestino = () => {
     const nuevoPredio = {
@@ -1042,46 +1163,55 @@ export default function MutacionesResoluciones() {
                       className="w-4 h-4 text-amber-600"
                     />
                     <span className="text-sm text-amber-700 font-medium">Cancelación PARCIAL</span>
-                    <span className="text-xs text-slate-500">(el predio permanece con menos área)</span>
+                    <span className="text-xs text-slate-500">(el predio permanece modificado)</span>
                   </label>
                 </div>
                 
-                {/* Campos de cancelación parcial */}
+                {/* Cancelación TOTAL - Descripción */}
+                {predio.tipo_cancelacion === 'total' && (
+                  <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-xs text-red-700">
+                      El predio será enviado a la lista de eliminación y quedará pendiente de aprobación.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Cancelación PARCIAL - Botón para editar completo */}
                 {predio.tipo_cancelacion === 'parcial' && (
                   <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                    <p className="text-xs font-medium text-amber-800 mb-2">Nuevos valores del predio (después de segregar):</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs">Nueva área terreno (m²)</Label>
-                        <Input
-                          type="number"
-                          value={predio.nueva_area_terreno}
-                          onChange={(e) => actualizarPredioCancelado(idx, 'nueva_area_terreno', Number(e.target.value))}
-                          className="h-8 text-sm"
-                        />
-                        <p className="text-xs text-slate-500 mt-1">
-                          Segregado: {(predio.area_terreno - predio.nueva_area_terreno).toLocaleString()} m²
-                        </p>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-xs font-medium text-amber-800">
+                        El predio permanecerá con los datos modificados (R1 y R2)
+                      </p>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => abrirEdicionPredio(idx)}
+                        className="border-amber-500 text-amber-700 hover:bg-amber-100"
+                      >
+                        <Edit className="w-4 h-4 mr-1" /> Editar Predio Completo
+                      </Button>
+                    </div>
+                    {/* Resumen de nuevos valores */}
+                    <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                      <div className="bg-white p-2 rounded border">
+                        <span className="text-slate-500">Nueva Área Terreno:</span>
+                        <span className="font-medium block">{Number(predio.nueva_area_terreno || 0).toLocaleString()} m²</span>
                       </div>
-                      <div>
-                        <Label className="text-xs">Nueva área construida (m²)</Label>
-                        <Input
-                          type="number"
-                          value={predio.nueva_area_construida}
-                          onChange={(e) => actualizarPredioCancelado(idx, 'nueva_area_construida', Number(e.target.value))}
-                          className="h-8 text-sm"
-                        />
+                      <div className="bg-white p-2 rounded border">
+                        <span className="text-slate-500">Nueva Área Construida:</span>
+                        <span className="font-medium block">{Number(predio.nueva_area_construida || 0).toLocaleString()} m²</span>
                       </div>
-                      <div>
-                        <Label className="text-xs">Nuevo avalúo ($)</Label>
-                        <Input
-                          type="number"
-                          value={predio.nuevo_avaluo}
-                          onChange={(e) => actualizarPredioCancelado(idx, 'nuevo_avaluo', Number(e.target.value))}
-                          className="h-8 text-sm"
-                        />
+                      <div className="bg-white p-2 rounded border">
+                        <span className="text-slate-500">Nuevo Avalúo:</span>
+                        <span className="font-medium block">${Number(predio.nuevo_avaluo || 0).toLocaleString()}</span>
                       </div>
                     </div>
+                    {predio.editado_en_plataforma && (
+                      <p className="text-xs text-amber-600 mt-2">
+                        * Editado en plataforma - Las áreas se calculan automáticamente desde R2
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1708,6 +1838,282 @@ export default function MutacionesResoluciones() {
                 {generando ? 'Generando...' : 'Generar Resolución M2'}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edición Completa de Predio (Cancelación Parcial) */}
+      <Dialog open={editandoPredio !== null} onOpenChange={(open) => !open && cerrarEdicionPredio()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-800">
+              <Edit className="w-5 h-5" />
+              Editar Predio - Cancelación Parcial
+            </DialogTitle>
+          </DialogHeader>
+          
+          {predioEditando && (
+            <div className="flex-1 overflow-y-auto">
+              {/* Info del predio */}
+              <div className="bg-slate-100 p-3 rounded-lg mb-4">
+                <p className="font-mono font-medium">{predioEditando.codigo_predial}</p>
+                <p className="text-sm text-slate-600">{predioEditando.direccion}</p>
+              </div>
+              
+              {/* Tabs R1 / R2 */}
+              <Tabs value={tabEdicion} onValueChange={setTabEdicion} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="r1" className="data-[state=active]:bg-blue-100">
+                    R1 - Propietarios
+                  </TabsTrigger>
+                  <TabsTrigger value="r2" className="data-[state=active]:bg-purple-100">
+                    R2 - Zonas y Áreas
+                  </TabsTrigger>
+                </TabsList>
+                
+                {/* TAB R1 - Propietarios */}
+                <TabsContent value="r1" className="mt-4 space-y-4">
+                  {/* Datos básicos del predio */}
+                  <Card>
+                    <CardHeader className="py-2">
+                      <CardTitle className="text-sm">Datos del Predio</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Dirección</Label>
+                        <Input
+                          value={predioEditando.direccion || ''}
+                          onChange={(e) => setPredioEditando(prev => ({...prev, direccion: e.target.value}))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                        <Input
+                          value={predioEditando.matricula_inmobiliaria || ''}
+                          onChange={(e) => setPredioEditando(prev => ({...prev, matricula_inmobiliaria: e.target.value}))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Destino Económico</Label>
+                        <Select 
+                          value={predioEditando.destino_economico || 'A'}
+                          onValueChange={(v) => setPredioEditando(prev => ({...prev, destino_economico: v}))}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="A">A - Habitacional</SelectItem>
+                            <SelectItem value="B">B - Industrial</SelectItem>
+                            <SelectItem value="C">C - Comercial</SelectItem>
+                            <SelectItem value="D">D - Agropecuario</SelectItem>
+                            <SelectItem value="E">E - Minero</SelectItem>
+                            <SelectItem value="L">L - Agrícola</SelectItem>
+                            <SelectItem value="R">R - Residencial</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Código Homologado</Label>
+                        <Input
+                          value={predioEditando.codigo_homologado || ''}
+                          onChange={(e) => setPredioEditando(prev => ({...prev, codigo_homologado: e.target.value}))}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Propietarios */}
+                  <Card>
+                    <CardHeader className="py-2">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-sm">Propietarios ({predioEditando.propietarios?.length || 0})</CardTitle>
+                        <Button size="sm" onClick={agregarPropietarioEdicion} variant="outline">
+                          <Plus className="w-4 h-4 mr-1" /> Agregar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {predioEditando.propietarios?.map((prop, propIdx) => (
+                        <div key={propIdx} className="bg-slate-50 p-3 rounded border">
+                          <div className="flex justify-between items-center mb-2">
+                            <Badge variant="outline">Propietario {propIdx + 1}</Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => eliminarPropietarioEdicion(propIdx)}
+                              className="text-red-600 h-6"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nombre Completo</Label>
+                              <Input
+                                value={prop.nombre_propietario || ''}
+                                onChange={(e) => actualizarPropietarioEdicion(propIdx, 'nombre_propietario', e.target.value.toUpperCase())}
+                                className="h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tipo Doc.</Label>
+                              <Select 
+                                value={prop.tipo_documento || 'C'}
+                                onValueChange={(v) => actualizarPropietarioEdicion(propIdx, 'tipo_documento', v)}
+                              >
+                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="C">Cédula</SelectItem>
+                                  <SelectItem value="N">NIT</SelectItem>
+                                  <SelectItem value="E">Cédula Ext.</SelectItem>
+                                  <SelectItem value="T">Tarjeta Id.</SelectItem>
+                                  <SelectItem value="S">Secuencial</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Número Doc.</Label>
+                              <Input
+                                value={prop.numero_documento || ''}
+                                onChange={(e) => actualizarPropietarioEdicion(propIdx, 'numero_documento', e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Label className="text-xs">Estado Civil</Label>
+                              <Select 
+                                value={prop.estado || 'sin_especificar'}
+                                onValueChange={(v) => actualizarPropietarioEdicion(propIdx, 'estado', v === 'sin_especificar' ? '' : v)}
+                              >
+                                <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="sin_especificar">Sin especificar</SelectItem>
+                                  <SelectItem value="SOLTERO">Soltero(a)</SelectItem>
+                                  <SelectItem value="CASADO">Casado(a)</SelectItem>
+                                  <SelectItem value="UNION LIBRE">Unión Libre</SelectItem>
+                                  <SelectItem value="DIVORCIADO">Divorciado(a)</SelectItem>
+                                  <SelectItem value="VIUDO">Viudo(a)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                {/* TAB R2 - Zonas y Áreas */}
+                <TabsContent value="r2" className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader className="py-2">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-sm">Zonas Homogéneas ({predioEditando.zonas_homogeneas?.length || 0})</CardTitle>
+                        <Button size="sm" onClick={agregarZonaEdicion} variant="outline">
+                          <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500">Las áreas totales se calculan sumando todas las zonas</p>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {predioEditando.zonas_homogeneas?.map((zona, zonaIdx) => (
+                        <div key={zonaIdx} className="bg-purple-50 p-3 rounded border border-purple-200">
+                          <div className="flex justify-between items-center mb-2">
+                            <Badge className="bg-purple-100 text-purple-800">Zona {zonaIdx + 1}</Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => eliminarZonaEdicion(zonaIdx)}
+                              className="text-red-600 h-6"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-5 gap-2">
+                            <div>
+                              <Label className="text-xs">Zona Física</Label>
+                              <Input
+                                value={zona.zona_fisica || ''}
+                                onChange={(e) => actualizarZonaEdicion(zonaIdx, 'zona_fisica', e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Zona Económica</Label>
+                              <Input
+                                value={zona.zona_economica || ''}
+                                onChange={(e) => actualizarZonaEdicion(zonaIdx, 'zona_economica', e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Área Terreno (m²)</Label>
+                              <Input
+                                type="number"
+                                value={zona.area_terreno || 0}
+                                onChange={(e) => actualizarZonaEdicion(zonaIdx, 'area_terreno', Number(e.target.value))}
+                                className="h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Área Construida (m²)</Label>
+                              <Input
+                                type="number"
+                                value={zona.area_construida || 0}
+                                onChange={(e) => actualizarZonaEdicion(zonaIdx, 'area_construida', Number(e.target.value))}
+                                className="h-8"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Avalúo ($)</Label>
+                              <Input
+                                type="number"
+                                value={zona.avaluo || 0}
+                                onChange={(e) => actualizarZonaEdicion(zonaIdx, 'avaluo', Number(e.target.value))}
+                                className="h-8"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Totales calculados */}
+                      <div className="bg-slate-100 p-3 rounded-lg mt-4">
+                        <p className="text-sm font-medium mb-2">Totales (calculados de R2):</p>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <span className="text-xs text-slate-500">Área Terreno Total:</span>
+                            <span className="font-bold block">
+                              {predioEditando.zonas_homogeneas?.reduce((sum, z) => sum + (Number(z.area_terreno) || 0), 0).toLocaleString()} m²
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500">Área Construida Total:</span>
+                            <span className="font-bold block">
+                              {predioEditando.zonas_homogeneas?.reduce((sum, z) => sum + (Number(z.area_construida) || 0), 0).toLocaleString()} m²
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500">Avalúo Total:</span>
+                            <span className="font-bold block">
+                              ${predioEditando.zonas_homogeneas?.reduce((sum, z) => sum + (Number(z.avaluo) || 0), 0).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={cerrarEdicionPredio}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarEdicionPredio} className="bg-amber-600 hover:bg-amber-700">
+              Guardar Cambios
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
