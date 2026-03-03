@@ -146,7 +146,9 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
-      if (filtroMunicipio) params.append('codigo_municipio', filtroMunicipio);
+      if (filtroMunicipio && filtroMunicipio !== 'todos') {
+        params.append('codigo_municipio', filtroMunicipio);
+      }
       
       const response = await axios.get(`${API}/resoluciones/historial?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -951,7 +953,7 @@ export default function MutacionesResoluciones() {
               <SelectValue placeholder="Todos los municipios" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="todos">Todos</SelectItem>
               {MUNICIPIOS.map(m => (
                 <SelectItem key={m.codigo} value={m.codigo}>{m.nombre}</SelectItem>
               ))}
