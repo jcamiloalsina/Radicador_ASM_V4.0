@@ -12886,6 +12886,18 @@ async def proponer_cambio_predio(
                     {"id": cambio_doc["id"]},
                     {"$set": {"resolucion": resolucion_data}}
                 )
+                
+                # Actualizar el historial del predio con el pdf_path de la resolución
+                if cambio_doc.get("predio_id") and resolucion_data.get("pdf_path"):
+                    await db.predios.update_one(
+                        {"id": cambio_doc["predio_id"], "historial.cambio_id": cambio_doc["id"]},
+                        {"$set": {
+                            "historial.$.pdf_path": resolucion_data.get("pdf_path"),
+                            "historial.$.numero_resolucion": resolucion_data.get("numero_resolucion"),
+                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion", "M1")
+                        }}
+                    )
+                
                 logging.info(f"Resolución generada (aprobación directa): {resolucion_data.get('numero_resolucion')}")
         except Exception as e:
             logging.error(f"Error generando resolución automática (aprobación directa): {str(e)}")
@@ -13206,8 +13218,9 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         return {
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/resoluciones/{filename}",
-            "pdf_path": filepath,
+            "pdf_path": f"/resoluciones/{filename}",
             "consecutivo": siguiente_numero,
+            "tipo_mutacion": "M1",
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
         }
         
@@ -13280,6 +13293,18 @@ async def aprobar_rechazar_cambio(
             resolucion_data = await generar_resolucion_final(cambio, current_user)
             if resolucion_data:
                 update_data["resolucion"] = resolucion_data
+                
+                # Actualizar el historial del predio con el pdf_path de la resolución
+                if cambio.get("predio_id") and resolucion_data.get("pdf_path"):
+                    await db.predios.update_one(
+                        {"id": cambio["predio_id"], "historial.cambio_id": cambio["id"]},
+                        {"$set": {
+                            "historial.$.pdf_path": resolucion_data.get("pdf_path"),
+                            "historial.$.numero_resolucion": resolucion_data.get("numero_resolucion"),
+                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion", "M1")
+                        }}
+                    )
+                
                 logging.info(f"Resolución generada: {resolucion_data.get('numero_resolucion')}")
         except Exception as e:
             logging.error(f"Error generando resolución automática: {str(e)}")
@@ -13619,8 +13644,23 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
                 if campo in datos:
                     valor_anterior = predio_actual.get(campo)
                     valor_nuevo = datos.get(campo)
-                    # Comparar como strings normalizados
-                    if str(valor_anterior or '').strip() != str(valor_nuevo or '').strip():
+                    
+                    # Normalizar valores para comparación precisa
+                    def normalizar(v):
+                        if v is None:
+                            return ''
+                        # Si es número, comparar como número
+                        try:
+                            num = float(v)
+                            return num
+                        except (ValueError, TypeError):
+                            return str(v).strip().upper()
+                    
+                    val_ant_norm = normalizar(valor_anterior)
+                    val_nuevo_norm = normalizar(valor_nuevo)
+                    
+                    # Solo agregar si realmente son diferentes
+                    if val_ant_norm != val_nuevo_norm:
                         campos_modificados.append({
                             "campo": nombre,
                             "campo_key": campo,
@@ -13664,7 +13704,9 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         # Agregar detalles de modificación al historial
         historial_entry["accion"] = "Predio modificado"
         historial_entry["tipo_mutacion"] = datos.get("tipo_mutacion") or ""
+        historial_entry["numero_resolucion"] = numero_resolucion or datos.get("numero_resolucion") or ""
         historial_entry["fecha_resolucion"] = datos.get("fecha_resolucion") or datetime.now().strftime("%Y-%m-%d")
+        # Nota: pdf_path se actualizará después si se genera resolución
         historial_entry["detalles"] = {
             "campos_modificados": campos_modificados,
             "total_campos": len(campos_modificados)

@@ -5771,13 +5771,37 @@ export default function Predios() {
                           
                           {/* Acto Administrativo / Resolución */}
                           {(h.acto_administrativo || h.numero_resolucion || h.resolucion) && (
-                            <div className="flex items-center gap-2 text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded mb-2">
+                            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-2 py-1 mb-2">
+                              <div className="flex items-center gap-2 text-xs text-blue-800">
+                                <FileText className="w-3 h-3" />
+                                <span className="font-medium">
+                                  {h.tipo_mutacion && `${h.tipo_mutacion} - `}
+                                  {h.acto_administrativo && `Acto: ${h.acto_administrativo}`}
+                                  {h.numero_resolucion && `Resolución: ${h.numero_resolucion}`}
+                                  {h.resolucion && `Resolución: ${h.resolucion}`}
+                                  {h.fecha_resolucion && ` (${h.fecha_resolucion})`}
+                                </span>
+                              </div>
+                              {h.pdf_path && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-xs bg-white"
+                                  onClick={() => window.open(`${BACKEND_URL}${h.pdf_path}`, '_blank')}
+                                >
+                                  <Download className="w-3 h-3 mr-1" />
+                                  PDF
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Tipo de Mutación (si no hay resolución pero sí tipo) */}
+                          {h.tipo_mutacion && !h.numero_resolucion && !h.resolucion && (
+                            <div className="flex items-center gap-2 text-xs bg-purple-50 text-purple-800 px-2 py-1 rounded mb-2">
                               <FileText className="w-3 h-3" />
                               <span className="font-medium">
-                                {h.acto_administrativo && `Acto: ${h.acto_administrativo}`}
-                                {h.numero_resolucion && `Resolución: ${h.numero_resolucion}`}
-                                {h.resolucion && `Resolución: ${h.resolucion}`}
-                                {h.fecha_resolucion && ` (${h.fecha_resolucion})`}
+                                Tipo de Mutación: {h.tipo_mutacion}
                               </span>
                             </div>
                           )}

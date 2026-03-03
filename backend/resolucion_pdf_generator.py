@@ -316,14 +316,14 @@ def generate_resolucion_pdf(
     # Lista de documentos
     for doc in textos['considerando_2_docs']:
         y = check_page_break(y, 15)
-        doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria)
+        doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or '---')
         c.drawString(left_margin + 15, y, f"• {doc_texto}")
         y -= espaciado_parrafos
     y -= 8
     
     # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
     y = check_page_break(y, 30)
-    texto_c3 = textos['considerando_3'].replace('{npn}', npn)
+    texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
     lines = simpleSplit(texto_c3, font_normal, fuente_cuerpo, content_width)
     for line in lines:
         y = check_page_break(y, 15)
