@@ -3213,28 +3213,8 @@ export default function Predios() {
                     {gdbStats.por_municipio[filterMunicipio]?.total || 0} en Base Gráfica
                   </Badge>
                 )}
-                {canModifyPredios && (
-                  <Button onClick={() => { resetForm(); setTerrenoInfo(null); setShowCreateDialog(true); }} className="bg-emerald-700 hover:bg-emerald-800">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Predio
-                  </Button>
-                )}
-                {canModifyPredios && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Predios Eliminados
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Predios Eliminados - {filterMunicipio}</DialogTitle>
-                    </DialogHeader>
-                    <PrediosEliminadosView municipio={filterMunicipio} />
-                  </DialogContent>
-                </Dialog>
-                )}
+                {/* Nota: Botones de Nuevo Predio y Predios Eliminados removidos.
+                    Toda edición se hace desde Mutaciones y Resoluciones */}
                 {/* Botón de Subsanaciones - Para gestores y coordinadores */}
                 {user && ['gestor', 'coordinador', 'administrador'].includes(user.role) && subsanacionesConteo > 0 && (
                   <Button 
@@ -3374,19 +3354,9 @@ export default function Predios() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)}>
+                              <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)} title="Ver detalles">
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {canModifyPredios && (
-                                <>
-                                  <Button variant="ghost" size="sm" onClick={() => openEditDialog(predio)}>
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleDelete(predio)} className="text-red-600 hover:text-red-700">
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -5466,6 +5436,14 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
+              {/* Nota informativa sobre edición */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                  Para modificar este predio, vaya a <strong>Conservación → Mutaciones y Resoluciones</strong>. Todo cambio genera una resolución.
+                </p>
+              </div>
+              
               {/* Botón Generar Certificado Catastral */}
               {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
                 <div className="flex justify-end">

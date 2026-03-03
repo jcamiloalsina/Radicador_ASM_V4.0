@@ -18,7 +18,27 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (03-03-2026) - Fix Bug Crítico
+### Última Sesión (03-03-2026) - Módulo Mutaciones y Resoluciones
+- **NUEVO MÓDULO: Mutaciones y Resoluciones**
+  - Ubicación: Conservación → Mutaciones y Resoluciones
+  - M1 - Mutación Primera (Cambio de propietario): COMPLETO
+    - Selector de municipio (12 municipios R1/R2)
+    - Búsqueda de predios
+    - Gestión de propietarios (cancelar/inscribir)
+    - Generación automática de número de resolución
+    - Generación de PDF con QR verificable
+  - M2 - Mutación Segunda (Englobe/Desengloble): COMPLETO
+    - Formulario completo para predios a cancelar e inscribir
+    - Generador de PDF específico para M2
+  - M3 a M6 y Complementación: Próximamente
+
+- **Gestión de Predios ahora es SOLO CONSULTA**
+  - Removido: Botón "Editar", "Nuevo Predio", "Predios Eliminados"
+  - Solo lectura: Ver datos del predio e historial
+  - Nota informativa: "Para modificar este predio, vaya a Mutaciones y Resoluciones"
+  - Regla de oro: Todo cambio genera resolución
+
+### Sesión Anterior - Fix Bug Crítico
 - **BUG FIX P0 - Error al generar resolución**:
   - **Problema**: Al guardar cambios con resolución manual, aparecía "Error al generar resolución" aunque el backend funcionaba correctamente
   - **Causa Raíz**: En `Predios.js` línea 2472, se usaba `setIsEditModalOpen(false)` pero esa variable de estado NO existía
