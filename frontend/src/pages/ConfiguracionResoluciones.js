@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   FileText, Save, Eye, Settings, RefreshCw, AlertTriangle,
-  ChevronDown, ChevronRight, Loader2, Hash
+  ChevronDown, ChevronRight, Loader2, Hash, History, Download, ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -46,6 +46,12 @@ export default function ConfiguracionResoluciones() {
   const [numeracionMunicipios, setNumeracionMunicipios] = useState({});
   const [guardandoConfig, setGuardandoConfig] = useState(false);
   const [cargandoConfig, setCargandoConfig] = useState(true);
+  
+  // Estados para historial de resoluciones
+  const [historial, setHistorial] = useState([]);
+  const [estadisticasMunicipios, setEstadisticasMunicipios] = useState([]);
+  const [filtroMunicipio, setFiltroMunicipio] = useState('');
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
   // Cargar plantillas
   const cargarPlantillas = async () => {
@@ -95,6 +101,30 @@ export default function ConfiguracionResoluciones() {
       ...prev,
       [codigo]: parseInt(valor) || 0
     }));
+  };
+
+  // Cargar historial de resoluciones
+  const cargarHistorial = async (codigoMunicipio = '') => {
+    setCargandoHistorial(true);
+    try {
+      const token = localStorage.getItem('token');
+      let url = `${API}/resoluciones/historial?año=${new Date().getFullYear()}`;
+      if (codigoMunicipio) {
+        url += `&codigo_municipio=${codigoMunicipio}`;
+      }
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setHistorial(response.data.resoluciones || []);
+        setEstadisticasMunicipios(response.data.estadisticas_por_municipio || []);
+      }
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      toast.error('Error al cargar historial de resoluciones');
+    } finally {
+      setCargandoHistorial(false);
+    }
   };
 
   const seleccionarPlantilla = (plantilla) => {
@@ -232,6 +262,21 @@ export default function ConfiguracionResoluciones() {
           >
             <Hash className="w-5 h-5 inline-block mr-2" />
             Numeración 2026
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('historial');
+              cargarHistorial(filtroMunicipio);
+            }}
+            className={`flex-1 py-4 px-6 text-center font-medium transition-colors ${
+              activeTab === 'historial'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+            }`}
+            data-testid="tab-historial"
+          >
+            <History className="w-5 h-5 inline-block mr-2" />
+            Historial
           </button>
         </div>
       </div>
@@ -445,6 +490,111 @@ export default function ConfiguracionResoluciones() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab: Historial */}
+      {activeTab === 'historial' && (
+        <div className="bg-white rounded-xl shadow-sm p-6" data-testid="historial-content">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              <History className="w-5 h-5 text-purple-600" />
+              Historial de Resoluciones 2026
+            </h3>
+            <div className="flex gap-3 items-center">
+              <select
+                value={filtroMunicipio}
+                onChange={(e) => {
+                  setFiltroMunicipio(e.target.value);
+                  cargarHistorial(e.target.value);
+                }}
+                className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                data-testid="select-municipio-filtro"
+              >
+                <option value="">Todos los municipios</option>
+                {MUNICIPIOS.map(m => (
+                  <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
+                ))}
+              </select>
+              <Button variant="outline" onClick={() => cargarHistorial(filtroMunicipio)} size="sm">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualizar
+              </Button>
+            </div>
+          </div>
+
+          {/* Estadísticas por municipio */}
+          {estadisticasMunicipios.length > 0 && !filtroMunicipio && (
+            <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Resoluciones por Municipio (2026)</h4>
+              <div className="flex flex-wrap gap-2">
+                {estadisticasMunicipios.map(stat => (
+                  <span 
+                    key={stat._id} 
+                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"
+                  >
+                    {stat.municipio || MUNICIPIOS.find(m => m.codigo === stat._id)?.nombre || stat._id}: <strong>{stat.total}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {cargandoHistorial ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+              <span className="ml-2 text-slate-600">Cargando historial...</span>
+            </div>
+          ) : historial.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No hay resoluciones generadas {filtroMunicipio ? 'para este municipio' : ''}</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-100">
+                    <th className="px-4 py-3 text-left font-medium text-slate-700">N° Resolución</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-700">Municipio</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-700">Código Predio</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-700">Aprobado Por</th>
+                    <th className="px-4 py-3 text-left font-medium text-slate-700">Fecha</th>
+                    <th className="px-4 py-3 text-center font-medium text-slate-700">PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historial.map((res, idx) => (
+                    <tr key={res.id || idx} className="border-b hover:bg-slate-50">
+                      <td className="px-4 py-3 font-mono text-purple-700 font-medium">
+                        {res.numero_resolucion}
+                      </td>
+                      <td className="px-4 py-3">{res.municipio}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{res.codigo_predial?.substring(0, 20)}...</td>
+                      <td className="px-4 py-3">{res.aprobado_por_nombre}</td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {res.fecha_generacion ? new Date(res.fecha_generacion).toLocaleDateString('es-CO') : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {res.pdf_path && (
+                          <a
+                            href={`${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800"
+                            data-testid={`pdf-link-${res.id}`}
+                          >
+                            <Download className="w-4 h-4" />
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

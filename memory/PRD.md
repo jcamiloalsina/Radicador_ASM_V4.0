@@ -16,6 +16,7 @@ Sistema integral para la generación automática de resoluciones PDF (M1 - Mutac
    - Solo accesible para administradores
    - **Tab "Plantillas de Texto":** Editar texto legal M1, nombre y cargo del firmante
    - **Tab "Numeración 2026":** Configuración de numeración POR MUNICIPIO (12 municipios con R1/R2)
+   - **Tab "Historial":** Ver todas las resoluciones generadas con filtro por municipio, estadísticas y enlaces a PDFs
    - Preview PDF para verificar cambios antes de aplicar
 
 2. **Municipios con Numeración Independiente:**
@@ -29,9 +30,15 @@ Sistema integral para la generación automática de resoluciones PDF (M1 - Mutac
    - El PDF se guarda en `/resoluciones/` y se registra en colección `resoluciones`
    - Numeración automática POR MUNICIPIO: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
 
+4. **Envío Automático de Correo:**
+   - Cuando se genera una resolución, el sistema busca si hay una petición asociada al radicado
+   - Si existe correo del solicitante, se envía automáticamente el PDF de la resolución como adjunto
+   - Correo HTML con diseño profesional incluyendo número de resolución, municipio y código predial
+
 **Nuevos Endpoints:**
 - `GET /api/resoluciones/configuracion-municipios` - Obtener configuración por municipio
 - `PUT /api/resoluciones/configuracion-municipios` - Actualizar números por municipio
+- `GET /api/resoluciones/historial` - Obtener historial de resoluciones con filtros y estadísticas
 
 **Nuevas Colecciones MongoDB:**
 - `resolucion_configuracion_municipios` - Almacena números iniciales por código de municipio

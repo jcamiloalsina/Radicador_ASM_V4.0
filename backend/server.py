@@ -1143,8 +1143,61 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     )
 
 
+def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_solicitante: str, municipio: str, codigo_predio: str, tipo_mutacion: str = "M1") -> str:
+    """Genera el correo de notificacion de resolucion aprobada para el solicitante."""
+    contenido = f'''
+    <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
+    
+    <p>Nos complace informarle que su tramite de <strong>{tipo_mutacion} - Mutacion Primera</strong> ha sido 
+    <strong style="color: #22c55e;">aprobado exitosamente</strong>.</p>
+    
+    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 0 12px 12px 0;">
+        <h3 style="margin: 0 0 15px 0; color: #166534;">Resolucion Aprobada</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px 0; color: #64748b; width: 160px;">No. Resolucion:</td>
+                <td style="padding: 8px 0; font-weight: 700; color: #166534; font-size: 16px;">{numero_resolucion}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; color: #64748b;">Municipio:</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #1e293b;">{municipio}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; color: #64748b;">Codigo Predial:</td>
+                <td style="padding: 8px 0; font-family: monospace; color: #475569;">{codigo_predio[:20]}...</td>
+            </tr>
+        </table>
+    </div>
+    
+    <p><strong>Documento adjunto:</strong> Se ha incluido la resolucion en formato PDF en este correo. 
+    Por favor descargue y conserve este documento para sus registros.</p>
+    
+    <p style="background: #fef3c7; padding: 12px; border-radius: 8px; margin: 15px 0;">
+        <strong>Importante:</strong> Este documento tiene validez legal y debe ser conservado. 
+        Puede verificar su autenticidad escaneando el codigo QR incluido en la resolucion.
+    </p>
+    
+    <p>Si tiene alguna pregunta o requiere informacion adicional, no dude en contactarnos.</p>
+    
+    <p style="margin-top: 25px;">Atentamente,<br>
+    <strong>Equipo de Gestion Catastral</strong><br>
+    <span style="color: #64748b;">Asomunicipios</span></p>
+    '''
+    
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    
+    return get_email_template(
+        titulo="Su Resolucion ha sido Aprobada",
+        contenido=contenido,
+        radicado=radicado,
+        tipo_notificacion="success",
+        boton_texto="Ver Mis Tramites",
+        boton_url=f"{frontend_url}/mis-peticiones"
+    )
+
+
 def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo_tramite: str, municipio: str) -> str:
-    """Genera el correo de confirmación de petición para el solicitante."""
+    """Genera el correo de confirmacion de peticion para el solicitante."""
     contenido = f'''
     <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
     
@@ -1153,31 +1206,31 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #10b981;">
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding: 8px 0; color: #64748b; width: 160px;">📋 Tipo de Trámite:</td>
+                <td style="padding: 8px 0; color: #64748b; width: 160px;">Tipo de Tramite:</td>
                 <td style="padding: 8px 0; font-weight: 600; color: #1e293b;">{tipo_tramite}</td>
             </tr>
             <tr>
-                <td style="padding: 8px 0; color: #64748b;">📍 Municipio:</td>
+                <td style="padding: 8px 0; color: #64748b;">Municipio:</td>
                 <td style="padding: 8px 0; font-weight: 600; color: #1e293b;">{municipio}</td>
             </tr>
         </table>
     </div>
     
-    <p>Puede hacer seguimiento a su trámite ingresando a la plataforma con su usuario y contraseña.</p>
+    <p>Puede hacer seguimiento a su tramite ingresando a la plataforma con su usuario y contrasena.</p>
     
     <p style="color: #64748b; font-size: 14px;">
-        <strong>Nota:</strong> Recibirá notificaciones por correo electrónico cuando haya actualizaciones en su trámite.
+        <strong>Nota:</strong> Recibira notificaciones por correo electronico cuando haya actualizaciones en su tramite.
     </p>
     '''
     
     frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
     
     return get_email_template(
-        titulo="Confirmación de Radicación",
+        titulo="Confirmacion de Radicacion",
         contenido=contenido,
         radicado=radicado,
         tipo_notificacion="success",
-        boton_texto="Ver Mi Trámite",
+        boton_texto="Ver Mi Tramite",
         boton_url=f"{frontend_url}/dashboard/peticiones"
     )
 
@@ -12760,6 +12813,20 @@ async def proponer_cambio_predio(
     if aprueba_directo:
         resultado = await aplicar_cambio_predio(cambio_doc, current_user)
         cambio_doc["resultado"] = resultado
+        
+        # === GENERAR RESOLUCIÓN PDF AUTOMÁTICAMENTE PARA APROBACIÓN DIRECTA ===
+        try:
+            resolucion_data = await generar_resolucion_final(cambio_doc, current_user)
+            if resolucion_data:
+                cambio_doc["resolucion"] = resolucion_data
+                # Actualizar el documento con los datos de resolución
+                await db.predios_cambios.update_one(
+                    {"id": cambio_doc["id"]},
+                    {"$set": {"resolucion": resolucion_data}}
+                )
+                logging.info(f"Resolución generada (aprobación directa): {resolucion_data.get('numero_resolucion')}")
+        except Exception as e:
+            logging.error(f"Error generando resolución automática (aprobación directa): {str(e)}")
     
     # Guardar el cambio en la colección de cambios
     await db.predios_cambios.insert_one(cambio_doc)
@@ -13007,9 +13074,50 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         logging.info(f"Resolución {numero_resolucion} generada y guardada en {filepath}")
         
+        # === ENVIAR CORREO CON LA RESOLUCIÓN AL PROPIETARIO/SOLICITANTE ===
+        try:
+            # Buscar si hay una petición asociada para obtener el correo del solicitante
+            peticion = None
+            radicado = cambio.get("radicado", cambio.get("radicado_numero", ""))
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            # Si hay petición con correo del solicitante, enviar el correo
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                
+                # Generar el contenido del correo
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=datos_predio.get("municipio", ""),
+                    codigo_predio=codigo,
+                    tipo_mutacion="M1"
+                )
+                
+                # Enviar correo con el PDF adjunto
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución Aprobada - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                
+                logging.info(f"Correo de resolución enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para enviar resolución {numero_resolucion}")
+                
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución: {str(email_error)}")
+            # No interrumpir el flujo si falla el envío de correo
+        
         return {
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/resoluciones/{filename}",
+            "pdf_path": filepath,
             "consecutivo": siguiente_numero,
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
         }
@@ -24520,6 +24628,62 @@ async def actualizar_configuracion_municipios(
         }
     except Exception as e:
         logging.error(f"Error actualizando configuración municipios: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/resoluciones/historial")
+async def obtener_historial_resoluciones(
+    municipio: str = None,
+    codigo_municipio: str = None,
+    año: int = None,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener historial de resoluciones generadas, con filtros opcionales por municipio y año"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden ver el historial")
+    
+    try:
+        query = {}
+        
+        if codigo_municipio:
+            query["codigo_municipio"] = codigo_municipio
+        elif municipio:
+            # Buscar por nombre de municipio
+            query["municipio"] = {"$regex": municipio, "$options": "i"}
+        
+        if año:
+            query["año"] = año
+        else:
+            query["año"] = datetime.now().year
+        
+        total = await db.resoluciones.count_documents(query)
+        resoluciones = await db.resoluciones.find(
+            query, 
+            {"_id": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+        
+        # Agrupar estadísticas por municipio
+        pipeline = [
+            {"$match": {"año": año or datetime.now().year}},
+            {"$group": {
+                "_id": "$codigo_municipio",
+                "total": {"$sum": 1},
+                "municipio": {"$first": "$municipio"}
+            }},
+            {"$sort": {"total": -1}}
+        ]
+        stats_por_municipio = await db.resoluciones.aggregate(pipeline).to_list(100)
+        
+        return {
+            "success": True,
+            "total": total,
+            "resoluciones": resoluciones,
+            "estadisticas_por_municipio": stats_por_municipio
+        }
+    except Exception as e:
+        logging.error(f"Error obteniendo historial de resoluciones: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
