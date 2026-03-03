@@ -164,8 +164,8 @@ def generate_resolucion_pdf(
             watermark_height = 180
             watermark_x = (width - watermark_width) / 2
             watermark_y = (height - watermark_height) / 2
-            # Aplicar transparencia uniforme (75%)
-            c.setFillAlpha(0.75)
+            # Aplicar transparencia uniforme (35%)
+            c.setFillAlpha(0.35)
             c.drawImage(logo_watermark, watermark_x, watermark_y,
                        width=watermark_width, height=watermark_height,
                        preserveAspectRatio=True, mask='auto')
