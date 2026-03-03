@@ -528,12 +528,16 @@ export default function ConfiguracionResoluciones() {
             <div className="mb-6 p-4 bg-slate-50 rounded-lg">
               <h4 className="text-sm font-medium text-slate-700 mb-3">Resoluciones por Municipio (2026)</h4>
               <div className="flex flex-wrap gap-2">
-                {estadisticasMunicipios.map(stat => (
+                {estadisticasMunicipios.map((stat, idx) => (
                   <span 
-                    key={stat._id} 
-                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"
+                    key={stat.codigo_municipio || idx} 
+                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm cursor-pointer hover:bg-purple-200"
+                    onClick={() => {
+                      setFiltroMunicipio(stat.codigo_municipio);
+                      cargarHistorial(stat.codigo_municipio);
+                    }}
                   >
-                    {stat.municipio || MUNICIPIOS.find(m => m.codigo === stat._id)?.nombre || stat._id}: <strong>{stat.total}</strong>
+                    {stat.municipio || MUNICIPIOS.find(m => m.codigo === stat.codigo_municipio)?.nombre || stat.codigo_municipio}: <strong>{stat.total}</strong>
                   </span>
                 ))}
               </div>

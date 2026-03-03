@@ -24776,18 +24776,15 @@ async def obtener_historial_resoluciones(
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden ver el historial")
     
     try:
-        query = {}
+        año_actual = año or datetime.now().year
+        query = {"año": año_actual}
         
+        # Filtrar por código de municipio o nombre
         if codigo_municipio:
             query["codigo_municipio"] = codigo_municipio
         elif municipio:
             # Buscar por nombre de municipio
             query["municipio"] = {"$regex": municipio, "$options": "i"}
-        
-        if año:
-            query["año"] = año
-        else:
-            query["año"] = datetime.now().year
         
         total = await db.resoluciones.count_documents(query)
         resoluciones = await db.resoluciones.find(
@@ -24795,13 +24792,19 @@ async def obtener_historial_resoluciones(
             {"_id": 0}
         ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
         
-        # Agrupar estadísticas por municipio
+        # Agrupar estadísticas por municipio - SIN FILTRO para mostrar todos los municipios
+        # Esto permite ver el resumen completo de todos los municipios
         pipeline = [
-            {"$match": {"año": año or datetime.now().year}},
+            {"$match": {"año": año_actual}},
             {"$group": {
-                "_id": "$codigo_municipio",
-                "total": {"$sum": 1},
-                "municipio": {"$first": "$municipio"}
+                "_id": {"codigo": "$codigo_municipio", "nombre": "$municipio"},
+                "total": {"$sum": 1}
+            }},
+            {"$project": {
+                "_id": 0,
+                "codigo_municipio": "$_id.codigo",
+                "municipio": "$_id.nombre",
+                "total": 1
             }},
             {"$sort": {"total": -1}}
         ]
