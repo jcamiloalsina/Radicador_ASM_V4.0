@@ -41,10 +41,10 @@ def get_default_plantilla():
             'actualización, conservación y difusión catastral con enfoque multipropósito", se:'
         ),
         "articulo_1_intro": "Ordenar la inscripción en el catastro del Municipio de {municipio} los siguientes cambios:",
-        "articulo_2": "El presente acto administrativo rige a partir de la fecha de su expedición.",
-        "articulo_3": "Los avalúos incorporados tienen vigencia fiscal a partir del {vigencia_fiscal}.",
+        "articulo_2": "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023 y el artículo 70 de la ley 1437 de 2011, el presente acto administrativo rige a partir de la fecha de su expedición.",
+        "articulo_3": "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en los artículos 4.7.13 y 4.7.14 de la resolución 1040 de 2023.",
         "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
-        "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
+        "cierre": "COMUNIQUESE,NOTIFIQUESEYCUMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
         "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
     }
@@ -516,71 +516,85 @@ def generate_resolucion_pdf(
     y -= espaciado_secciones
     
     # Artículo 2
-    y = check_page_break(y, 30)
+    y = check_page_break(y, 50)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(left_margin, y, "ARTÍCULO 2.")
+    c.drawString(left_margin, y, "Artículo 2.")
     c.setFont(font_normal, fuente_cuerpo)
-    x_offset = left_margin + c.stringWidth("ARTÍCULO 2. ", font_bold, fuente_cuerpo)
-    c.drawString(x_offset, y, textos['articulo_2'])
-    y -= espaciado_parrafos + 5
+    texto_art2 = textos['articulo_2']
+    lines_art2 = simpleSplit(texto_art2, font_normal, fuente_cuerpo, content_width - 60)
+    x_offset = left_margin + c.stringWidth("Artículo 2. ", font_bold, fuente_cuerpo)
+    if lines_art2:
+        c.drawString(x_offset, y, lines_art2[0])
+        y -= espaciado_parrafos
+        for line in lines_art2[1:]:
+            c.drawString(left_margin, y, line)
+            y -= espaciado_parrafos
+    y -= 5
     
     # Artículo 3
-    y = check_page_break(y, 30)
+    y = check_page_break(y, 50)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(left_margin, y, "ARTÍCULO 3.")
+    c.drawString(left_margin, y, "Artículo 3.")
     c.setFont(font_normal, fuente_cuerpo)
-    texto_art3 = textos['articulo_3'].replace('{vigencia_fiscal}', vigencia_fiscal)
-    x_offset = left_margin + c.stringWidth("ARTÍCULO 3. ", font_bold, fuente_cuerpo)
-    c.drawString(x_offset, y, texto_art3)
-    y -= espaciado_parrafos + 5
+    texto_art3 = textos['articulo_3']
+    lines_art3 = simpleSplit(texto_art3, font_normal, fuente_cuerpo, content_width - 60)
+    x_offset = left_margin + c.stringWidth("Artículo 3. ", font_bold, fuente_cuerpo)
+    if lines_art3:
+        c.drawString(x_offset, y, lines_art3[0])
+        y -= espaciado_parrafos
+        for line in lines_art3[1:]:
+            c.drawString(left_margin, y, line)
+            y -= espaciado_parrafos
+    y -= 5
     
     # Artículo 4
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(left_margin, y, "ARTÍCULO 4.")
+    c.drawString(left_margin, y, "Artículo 4.")
     c.setFont(font_normal, fuente_cuerpo)
-    x_offset = left_margin + c.stringWidth("ARTÍCULO 4. ", font_bold, fuente_cuerpo)
+    x_offset = left_margin + c.stringWidth("Artículo 4. ", font_bold, fuente_cuerpo)
     c.drawString(x_offset, y, textos['articulo_4'])
     y -= espaciado_secciones + 5
     
     # === CIERRE ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawCentredString(width/2, y, textos['cierre'])
+    # COMUNIQUESE,NOTIFIQUESEYCUMPLASE con espaciado entre letras
+    cierre_espaciado = " ".join(textos['cierre'].replace(" ", ""))
+    c.drawCentredString(width/2, y, cierre_espaciado)
     y -= espaciado_secciones
     
-    # Fecha de expedición
+    # Fecha de expedición - en mayúsculas
     y = check_page_break(y, 20)
-    c.setFont(font_normal, fuente_cuerpo)
-    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    c.setFont(font_bold, fuente_cuerpo)
+    meses_may = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 
+                 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
     fecha_actual = datetime.now()
-    fecha_texto = f"Dada en Ocaña a los {fecha_actual.day} días del mes de {meses[fecha_actual.month-1]} de {fecha_actual.year}"
-    c.drawCentredString(width/2, y, fecha_texto)
-    y -= espaciado_secciones + 10
+    fecha_texto = f"DADA EN OCAÑA A LOS {fecha_actual.day} DÍAS DE {meses_may[fecha_actual.month-1]} DE {fecha_actual.year}"
+    c.drawString(left_margin, y, fecha_texto)
+    y -= espaciado_secciones + 40
     
     # === FIRMA ===
-    y = check_page_break(y, 80)
-    if firma_img:
-        firma_width = 100
-        firma_height = 50
-        c.drawImage(firma_img, width/2 - firma_width/2, y - firma_height, 
-                    width=firma_width, height=firma_height, mask='auto')
-        y -= firma_height + 5
+    y = check_page_break(y, 100)
+    
+    # Línea encima del nombre
+    linea_width = 200
+    c.setStrokeColor(negro)
+    c.line(width/2 - linea_width/2, y + 5, width/2 + linea_width/2, y + 5)
     
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawCentredString(width/2, y, textos['firmante_nombre'])
-    y -= espaciado_parrafos
-    c.setFont(font_normal, fuente_cuerpo - 1)
-    c.drawCentredString(width/2, y, textos['firmante_cargo'])
-    y -= espaciado_secciones
+    c.drawCentredString(width/2, y - 10, textos['firmante_nombre'])
+    y -= espaciado_parrafos + 10
+    c.setFont(font_bold, fuente_cuerpo - 1)
+    c.drawCentredString(width/2, y - 5, textos['firmante_cargo'])
+    y -= espaciado_secciones + 20
     
     # === ELABORÓ / REVISÓ ===
     y = check_page_break(y, 30)
     c.setFont(font_normal, fuente_tabla)
     c.drawString(left_margin, y, f"Elaboró: {elaboro}")
-    y -= 10
-    c.drawString(left_margin, y, f"Revisó: {reviso}")
+    y -= 12
+    c.drawString(left_margin, y, f"Revisó:  {reviso}")
     
     # === PIE DE PÁGINA ===
     draw_footer()
