@@ -9197,15 +9197,39 @@ async def export_predios_excel(
     ws_r1 = wb.active
     ws_r1.title = "REGISTRO_R1"
     
-    # Headers R1 - Formato actualizado con campos XTF
-    headers_r1 = [
+    # Calcular el máximo de resoluciones que tiene cualquier predio
+    max_resoluciones = 1
+    for predio in predios:
+        historial_res = predio.get('historial_resoluciones', [])
+        if historial_res:
+            max_resoluciones = max(max_resoluciones, len(historial_res))
+        else:
+            # Contar resoluciones concatenadas con "|"
+            num_res = predio.get('numero_resolucion', '')
+            if num_res and '|' in str(num_res):
+                count = len(str(num_res).split('|'))
+                max_resoluciones = max(max_resoluciones, count)
+    
+    # Headers R1 - Base (sin resoluciones)
+    headers_r1_base = [
         "DEPARTAMENTO", "MUNICIPIO", "NUMERO_DEL_PREDIO", "CODIGO_PREDIAL_NACIONAL", 
         "CODIGO_HOMOLOGADO", "TIPO_DE_REGISTRO", "NUMERO_DE_ORDEN", "TOTAL_REGISTROS",
         "PRIMER_APELLIDO", "SEGUNDO_APELLIDO", "PRIMER_NOMBRE", "SEGUNDO_NOMBRE",
         "NOMBRE", "ESTADO", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO", "DIRECCION",
         "COMUNA", "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", "AVALUO",
-        "VIGENCIA", "TIPO_MUTACION", "NO_RESOLUCION", "FECHA_RESOLUCION"
+        "VIGENCIA"
     ]
+    
+    # Agregar columnas dinámicas de resoluciones
+    headers_r1 = headers_r1_base.copy()
+    for i in range(1, max_resoluciones + 1):
+        suffix = f"_{i}" if max_resoluciones > 1 else ""
+        headers_r1.append(f"TIPO_MUTACION{suffix}")
+        headers_r1.append(f"NO_RESOLUCION{suffix}")
+        headers_r1.append(f"FECHA_RESOLUCION{suffix}")
+    
+    # Guardar la columna donde empiezan las resoluciones
+    col_resolucion_inicio = len(headers_r1_base) + 1  # Columna 24
     
     for col, header in enumerate(headers_r1, 1):
         cell = ws_r1.cell(row=1, column=col, value=header)
@@ -9415,9 +9439,35 @@ async def export_predios_excel(
             else:
                 vigencia = vigencia_raw
             ws_r1.cell(row=row, column=23, value=vigencia)
-            ws_r1.cell(row=row, column=24, value=predio.get('tipo_mutacion', ''))
-            ws_r1.cell(row=row, column=25, value=predio.get('numero_resolucion', ''))
-            ws_r1.cell(row=row, column=26, value=predio.get('fecha_resolucion', ''))
+            
+            # Resoluciones: usar historial_resoluciones si existe, sino campos legacy
+            historial_res = predio.get('historial_resoluciones', [])
+            if historial_res:
+                # Escribir cada resolución en columnas separadas
+                for res_idx, resol in enumerate(historial_res):
+                    col_offset = res_idx * 3  # 3 columnas por resolución
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset, value=resol.get('tipo_mutacion', ''))
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset + 1, value=resol.get('numero_resolucion', ''))
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset + 2, value=resol.get('fecha_resolucion', ''))
+            else:
+                # Usar campos legacy (pueden estar concatenados con "|")
+                tipo_mut = predio.get('tipo_mutacion', '')
+                num_res = predio.get('numero_resolucion', '')
+                fecha_res = predio.get('fecha_resolucion', '')
+                
+                # Si están concatenados, separar y escribir en columnas
+                tipos = str(tipo_mut).split(' | ') if tipo_mut and ' | ' in str(tipo_mut) else [tipo_mut]
+                nums = str(num_res).split(' | ') if num_res and ' | ' in str(num_res) else [num_res]
+                fechas = str(fecha_res).split(' | ') if fecha_res and ' | ' in str(fecha_res) else [fecha_res]
+                
+                # Escribir cada resolución en columnas separadas
+                max_res = max(len(tipos), len(nums), len(fechas))
+                for res_idx in range(max_res):
+                    col_offset = res_idx * 3
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset, value=tipos[res_idx] if res_idx < len(tipos) else '')
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset + 1, value=nums[res_idx] if res_idx < len(nums) else '')
+                    ws_r1.cell(row=row, column=col_resolucion_inicio + col_offset + 2, value=fechas[res_idx] if res_idx < len(fechas) else '')
+            
             row += 1
     
     # === HOJA REGISTRO_R2 (Físico - Formato original con columnas horizontales) ===
