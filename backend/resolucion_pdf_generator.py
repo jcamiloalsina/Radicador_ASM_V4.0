@@ -143,7 +143,23 @@ def generate_resolucion_pdf(
         # Usar la imagen de marca de agua con logo completo
         logo_path = "/app/frontend/public/watermark-asomunicipios.png"
         if os.path.exists(logo_path):
-            logo_watermark = ImageReader(logo_path)
+            from PIL import Image
+            img = Image.open(logo_path).convert('RGBA')
+            # Normalizar: hacer todo el contenido visible con el mismo gris
+            normalized_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
+            gray_color = 180  # Gris uniforme
+            for x in range(img.width):
+                for y in range(img.height):
+                    r, g, b, a = img.getpixel((x, y))
+                    # Si el pixel tiene algo de contenido (no es completamente transparente)
+                    if a > 10:
+                        # Usar un gris uniforme con la misma opacidad
+                        normalized_img.putpixel((x, y), (gray_color, gray_color, gray_color, 255))
+            # Guardar en buffer
+            img_buffer = io.BytesIO()
+            normalized_img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            logo_watermark = ImageReader(img_buffer)
     except Exception as e:
         print(f"Error cargando logo: {e}")
         logo_watermark = None
