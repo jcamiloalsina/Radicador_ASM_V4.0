@@ -2452,6 +2452,40 @@ export default function Predios() {
         };
       }
       
+      // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
+      if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
+        // Generar resolución manualmente
+        const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
+          predio_id: selectedPredio.id,
+          tipo_mutacion: infoResolucion.tipo_mutacion,
+          numero_resolucion: infoResolucion.numero_resolucion,
+          fecha_resolucion: infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
+          radicado_peticion: infoResolucion.radicado_peticion || null,
+          datos_predio: updateData
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (resolucionResponse.data.success) {
+          let mensaje = `Resolución ${infoResolucion.numero_resolucion} generada exitosamente.`;
+          if (resolucionResponse.data.peticion_finalizada) {
+            mensaje += ' Petición marcada como finalizada.';
+          }
+          if (resolucionResponse.data.email_enviado) {
+            mensaje += ' Correo enviado al solicitante.';
+          }
+          toast.success(mensaje);
+          
+          // Limpiar el estado de resolución
+          setInfoResolucion({
+            tipo_mutacion: '',
+            numero_resolucion: '',
+            fecha_resolucion: '',
+            radicado_peticion: ''
+          });
+        }
+      }
+      
       // Obtener info del radicado seleccionado
       const radicadoInfo = peticionesDisponibles.find(p => p.id === radicadoSeleccionado);
       
@@ -2482,7 +2516,10 @@ export default function Predios() {
       } else if (res.data.requiere_aprobacion) {
         toast.success('Modificación propuesta. Pendiente de aprobación del coordinador.');
       } else {
-        toast.success('Predio actualizado exitosamente');
+        // Solo mostrar si no hubo ya mensaje de resolución
+        if (!infoResolucion.numero_resolucion) {
+          toast.success('Predio actualizado exitosamente');
+        }
       }
       
       setShowEditDialog(false);
@@ -2720,6 +2757,14 @@ export default function Predios() {
     setPropietarios(newPropietarios);
     setZonasFisicas(newZonasFisicas);
     setFormData(newFormData);
+    // Resetear estado de resolución para que el coordinador pueda generar una nueva
+    setInfoResolucion({
+      tipo_mutacion: '',
+      numero_resolucion: '',
+      fecha_resolucion: '',
+      radicado_peticion: ''
+    });
+    setRadicadosDisponibles([]);
     setShowEditDialog(true);
   };
 

@@ -889,7 +889,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1027,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1093,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1131,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1184,7 +1184,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1223,7 +1223,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1253,7 +1253,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1286,7 +1286,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -9547,8 +9547,70 @@ async def export_predios_excel(
             ws_r2.cell(row=row, column=39, value=predio.get('vigencia', datetime.now().year))
             row += 1
     
+    # === HOJA HISTORIAL_RESOLUCIONES (Nueva) ===
+    ws_resol = wb.create_sheet(title="HISTORIAL_RESOLUCIONES")
+    
+    # Headers para historial de resoluciones
+    headers_resol = [
+        "CODIGO_PREDIAL_NACIONAL", "MUNICIPIO", "NUMERO_RESOLUCION", "TIPO_MUTACION",
+        "FECHA_RESOLUCION", "RADICADO", "GENERADO_POR", "FECHA_GENERACION",
+        "PROPIETARIO", "DIRECCION", "AVALUO"
+    ]
+    
+    for col, header in enumerate(headers_resol, 1):
+        cell = ws_resol.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal='center')
+    
+    # Escribir datos de historial de resoluciones
+    row_resol = 2
+    for predio in predios:
+        historial_resoluciones = predio.get('historial_resoluciones', [])
+        
+        # Si hay historial de resoluciones, crear una fila por cada resolución
+        if historial_resoluciones:
+            for resol in historial_resoluciones:
+                ws_resol.cell(row=row_resol, column=1, value=predio.get('codigo_predial_nacional', ''))
+                ws_resol.cell(row=row_resol, column=2, value=predio.get('municipio', ''))
+                ws_resol.cell(row=row_resol, column=3, value=resol.get('numero_resolucion', ''))
+                ws_resol.cell(row=row_resol, column=4, value=resol.get('tipo_mutacion', ''))
+                ws_resol.cell(row=row_resol, column=5, value=resol.get('fecha_resolucion', ''))
+                ws_resol.cell(row=row_resol, column=6, value=resol.get('radicado', ''))
+                ws_resol.cell(row=row_resol, column=7, value=resol.get('generado_por', ''))
+                # Formatear fecha de generación
+                fecha_gen = resol.get('fecha_generacion', '')
+                if fecha_gen:
+                    try:
+                        if isinstance(fecha_gen, str) and 'T' in fecha_gen:
+                            fecha_gen = fecha_gen.split('T')[0]
+                    except:
+                        pass
+                ws_resol.cell(row=row_resol, column=8, value=fecha_gen)
+                # Datos del predio al momento de la resolución
+                ws_resol.cell(row=row_resol, column=9, value=predio.get('nombre_propietario', ''))
+                ws_resol.cell(row=row_resol, column=10, value=predio.get('direccion', ''))
+                ws_resol.cell(row=row_resol, column=11, value=predio.get('avaluo', 0))
+                row_resol += 1
+        
+        # También incluir predios que tengan tipo_mutacion/numero_resolucion pero sin historial
+        elif predio.get('numero_resolucion') and predio.get('tipo_mutacion'):
+            ws_resol.cell(row=row_resol, column=1, value=predio.get('codigo_predial_nacional', ''))
+            ws_resol.cell(row=row_resol, column=2, value=predio.get('municipio', ''))
+            ws_resol.cell(row=row_resol, column=3, value=predio.get('numero_resolucion', ''))
+            ws_resol.cell(row=row_resol, column=4, value=predio.get('tipo_mutacion', ''))
+            ws_resol.cell(row=row_resol, column=5, value=predio.get('fecha_resolucion', ''))
+            ws_resol.cell(row=row_resol, column=6, value='')  # Sin radicado
+            ws_resol.cell(row=row_resol, column=7, value='')  # Sin generado_por
+            ws_resol.cell(row=row_resol, column=8, value='')  # Sin fecha generación
+            ws_resol.cell(row=row_resol, column=9, value=predio.get('nombre_propietario', ''))
+            ws_resol.cell(row=row_resol, column=10, value=predio.get('direccion', ''))
+            ws_resol.cell(row=row_resol, column=11, value=predio.get('avaluo', 0))
+            row_resol += 1
+    
     # Ajustar anchos de columna
-    for ws in [ws_r1, ws_r2]:
+    for ws in [ws_r1, ws_r2, ws_resol]:
         for column in ws.columns:
             max_length = 0
             column_letter = column[0].column_letter
@@ -10835,7 +10897,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del certificado.
     No requiere autenticación.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-gen.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Buscar certificado
@@ -24773,6 +24835,254 @@ async def obtener_radicados_disponibles(
     except Exception as e:
         logging.error(f"Error obteniendo radicados: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+class GenerarResolucionManualRequest(BaseModel):
+    """Modelo para generar resolución manualmente desde el formulario de edición"""
+    predio_id: str
+    tipo_mutacion: str
+    numero_resolucion: str
+    fecha_resolucion: str
+    radicado_peticion: Optional[str] = None
+    datos_predio: Optional[dict] = None
+
+
+@api_router.post("/resoluciones/generar-manual")
+async def generar_resolucion_manual(
+    request: GenerarResolucionManualRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera una resolución manualmente desde el formulario de edición del predio.
+    Solo coordinadores y administradores pueden usar este endpoint.
+    
+    Flujo:
+    1. Genera el PDF de resolución
+    2. Guarda el PDF y registra en colección 'resoluciones'
+    3. Actualiza el historial de resoluciones del predio
+    4. Si hay radicado asociado, actualiza la petición a 'finalizado'
+    5. Envía correo al solicitante con el PDF adjunto
+    """
+    # Verificar permisos
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden generar resoluciones")
+    
+    try:
+        # 1. Obtener el predio
+        predio = await db.predios.find_one({"id": request.predio_id}, {"_id": 0})
+        if not predio:
+            raise HTTPException(status_code=404, detail="Predio no encontrado")
+        
+        # Combinar datos del predio con datos actualizados si se proporcionaron
+        datos_predio = {**predio}
+        if request.datos_predio:
+            datos_predio.update(request.datos_predio)
+        
+        # 2. Extraer información del código predial
+        codigo = datos_predio.get("codigo_predial_nacional", "")
+        codigo_municipio = codigo[0:5] if len(codigo) >= 5 else "54003"
+        depto = codigo[0:2] if len(codigo) >= 2 else "54"
+        mpio = codigo[2:5] if len(codigo) >= 5 else "003"
+        año_actual = datetime.now().year
+        
+        # 3. Parsear el número de resolución para obtener el consecutivo
+        # Formato: RES-{DEPTO}-{MPIO}-{NUM}-{AÑO}
+        partes = request.numero_resolucion.split('-')
+        consecutivo = int(partes[3]) if len(partes) >= 4 and partes[3].isdigit() else 1
+        
+        # 4. Obtener plantilla M1
+        plantilla = await db.resolucion_plantillas.find_one({"tipo": request.tipo_mutacion.upper()}, {"_id": 0})
+        plantilla_textos = {}
+        if plantilla:
+            plantilla_textos = {
+                "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
+                "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
+            }
+        
+        # 5. Extraer propietarios
+        propietarios_anteriores = []
+        propietarios_nuevos = []
+        
+        if datos_predio.get("propietarios"):
+            for p in datos_predio["propietarios"]:
+                prop_data = {
+                    "nombre": p.get("nombre_propietario", ""),
+                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('numero_documento', '')}"
+                }
+                propietarios_anteriores.append(prop_data)
+                propietarios_nuevos.append(prop_data)
+        elif datos_predio.get("nombre_propietario"):
+            prop_data = {
+                "nombre": datos_predio["nombre_propietario"],
+                "documento": f"{datos_predio.get('tipo_documento', 'C')} {datos_predio.get('numero_documento', '')}"
+            }
+            propietarios_anteriores.append(prop_data)
+            propietarios_nuevos.append(prop_data)
+        
+        # 6. Generar el PDF
+        from resolucion_pdf_generator import generate_resolucion_pdf
+        
+        # Formatear fecha con valores por defecto si está vacía
+        fecha_resolucion = request.fecha_resolucion or datetime.now().strftime('%d/%m/%Y')
+        fecha_formateada = fecha_resolucion.replace('/', '-')
+        
+        pdf_bytes = generate_resolucion_pdf(
+            numero_resolucion=request.numero_resolucion,
+            fecha_resolucion=fecha_formateada,
+            municipio=datos_predio.get("municipio", ""),
+            tipo_tramite="Mutación Primera" if request.tipo_mutacion == "M1" else f"Mutación {request.tipo_mutacion}",
+            radicado=request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
+            codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
+            npn=codigo or "",
+            matricula_inmobiliaria=datos_predio.get("matricula_inmobiliaria") or "---",
+            direccion=datos_predio.get("direccion") or "",
+            avaluo=f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            vigencia_fiscal=f"01/01/{año_actual}",
+            area_terreno=str(datos_predio.get("area_terreno") or datos_predio.get("area_terreno_r1") or 0),
+            area_construida=str(datos_predio.get("area_construida") or datos_predio.get("area_construida_r1") or 0),
+            destino_economico=datos_predio.get("destino_economico") or "A",
+            codigo_homologado=datos_predio.get("codigo_homologado") or datos_predio.get("codigo_anterior") or "",
+            propietarios_anteriores=propietarios_anteriores,
+            propietarios_nuevos=propietarios_nuevos,
+            elaboro=current_user.get("full_name", ""),
+            aprobo=current_user.get("full_name", ""),
+            plantilla=plantilla_textos,
+        )
+        
+        # 7. Guardar el PDF
+        resoluciones_dir = "/app/frontend/public/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        filename = f"resolucion_{request.numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"{resoluciones_dir}/{filename}"
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
+        
+        # 8. Registrar la resolución en la base de datos
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": request.numero_resolucion,
+            "tipo": request.tipo_mutacion.upper(),
+            "año": año_actual,
+            "consecutivo": consecutivo,
+            "codigo_municipio": codigo_municipio,
+            "predio_id": request.predio_id,
+            "codigo_predial": codigo,
+            "municipio": datos_predio.get("municipio", ""),
+            "pdf_path": f"/resoluciones/{filename}",
+            "radicado": request.radicado_peticion,
+            "generado_por": current_user.get("id"),
+            "generado_por_nombre": current_user.get("full_name", ""),
+            "generacion_manual": True,  # Marcar como generación manual
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.resoluciones.insert_one(resolucion_doc.copy())
+        
+        # 9. Actualizar el historial de resoluciones del predio
+        resolucion_historial = {
+            "numero_resolucion": request.numero_resolucion,
+            "tipo_mutacion": request.tipo_mutacion,
+            "fecha_resolucion": request.fecha_resolucion,
+            "radicado": request.radicado_peticion,
+            "pdf_path": f"/resoluciones/{filename}",
+            "generado_por": current_user.get("full_name", ""),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.predios.update_one(
+            {"id": request.predio_id},
+            {
+                "$push": {"historial_resoluciones": resolucion_historial},
+                "$set": {
+                    "tipo_mutacion": request.tipo_mutacion,
+                    "numero_resolucion": request.numero_resolucion,
+                    "fecha_resolucion": request.fecha_resolucion,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # 10. Si hay radicado, buscar la petición y actualizarla a 'finalizado'
+        email_enviado = False
+        peticion = None
+        if request.radicado_peticion:
+            peticion = await db.petitions.find_one(
+                {"radicado": request.radicado_peticion},
+                {"_id": 0}
+            )
+            
+            if peticion:
+                # Actualizar estado de la petición a finalizado
+                await db.petitions.update_one(
+                    {"id": peticion["id"]},
+                    {
+                        "$set": {
+                            "estado": "finalizado",
+                            "finalizado_por": current_user.get("id"),
+                            "finalizado_por_nombre": current_user.get("full_name", ""),
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "resolucion_numero": request.numero_resolucion,
+                            "resolucion_pdf": f"/resoluciones/{filename}",
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        },
+                        "$push": {
+                            "historial": {
+                                "accion": "finalizado",
+                                "estado_anterior": peticion.get("estado", ""),
+                                "estado_nuevo": "finalizado",
+                                "usuario_id": current_user.get("id"),
+                                "usuario_nombre": current_user.get("full_name", ""),
+                                "fecha": datetime.now(timezone.utc).isoformat(),
+                                "observaciones": f"Resolución {request.numero_resolucion} generada"
+                            }
+                        }
+                    }
+                )
+                
+                # Enviar correo al solicitante
+                if peticion.get("correo"):
+                    try:
+                        email_body = get_resolucion_aprobada_email(
+                            numero_resolucion=request.numero_resolucion,
+                            radicado=request.radicado_peticion,
+                            nombre_solicitante=peticion.get("nombre_completo", "Estimado usuario"),
+                            municipio=datos_predio.get("municipio", ""),
+                            codigo_predio=codigo,
+                            tipo_mutacion=request.tipo_mutacion
+                        )
+                        
+                        await send_email(
+                            to_email=peticion.get("correo"),
+                            subject=f"Resolución Aprobada - {request.numero_resolucion}",
+                            body=email_body,
+                            attachment_path=filepath,
+                            attachment_name=f"Resolucion_{request.numero_resolucion.replace('/', '-')}.pdf"
+                        )
+                        email_enviado = True
+                        logging.info(f"Correo de resolución enviado a {peticion.get('correo')}")
+                    except Exception as email_error:
+                        logging.error(f"Error enviando correo: {str(email_error)}")
+        
+        logging.info(f"Resolución manual {request.numero_resolucion} generada para predio {request.predio_id}")
+        
+        return {
+            "success": True,
+            "numero_resolucion": request.numero_resolucion,
+            "pdf_url": f"/resoluciones/{filename}",
+            "peticion_finalizada": peticion is not None,
+            "email_enviado": email_enviado,
+            "mensaje": f"Resolución {request.numero_resolucion} generada exitosamente"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generando resolución manual: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generando resolución: {str(e)}")
 
 
 @api_router.post("/resoluciones/generar-preview")
