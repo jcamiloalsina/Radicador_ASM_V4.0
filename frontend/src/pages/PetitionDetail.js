@@ -1803,11 +1803,13 @@ export default function PetitionDetail() {
                         </div>
                         <p className="text-sm text-slate-600 mb-1">
                           Por: <span className="font-medium">{entry.usuario}</span>
-                          <span className="text-xs text-slate-500 ml-2">
-                            ({entry.usuario_rol === 'atencion_usuario' ? 'Atención al Usuario' : 
-                              entry.usuario_rol === 'gestor_auxiliar' ? 'Gestor Auxiliar' : 
-                              entry.usuario_rol.charAt(0).toUpperCase() + entry.usuario_rol.slice(1)})
-                          </span>
+                          {entry.usuario_rol && (
+                            <span className="text-xs text-slate-500 ml-2">
+                              ({entry.usuario_rol === 'atencion_usuario' ? 'Atención al Usuario' : 
+                                entry.usuario_rol === 'gestor_auxiliar' ? 'Gestor Auxiliar' : 
+                                entry.usuario_rol.charAt(0).toUpperCase() + entry.usuario_rol.slice(1)})
+                            </span>
+                          )}
                         </p>
                         {entry.notas && (
                           <p className="text-sm text-slate-700 mt-2 p-2 bg-white rounded border border-slate-200">
