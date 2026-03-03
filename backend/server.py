@@ -25312,9 +25312,19 @@ async def generar_resolucion_manual(
                 if campo in request.datos_predio and request.datos_predio[campo] is not None:
                     update_predio[campo] = request.datos_predio[campo]
             
-            # Si se actualizaron áreas, marcar para sincronización R2→R1
+            # Si se actualizaron áreas REALMENTE (valor cambió), marcar para sincronización R2→R1
             campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros']
-            if any(campo in request.datos_predio for campo in campos_area):
+            area_realmente_cambio = False
+            for campo in campos_area:
+                if campo in request.datos_predio:
+                    valor_anterior = predio.get(campo)
+                    valor_nuevo = request.datos_predio[campo]
+                    # Comparar valores (convertir a string para comparación consistente)
+                    if str(valor_anterior) != str(valor_nuevo) and valor_nuevo is not None:
+                        area_realmente_cambio = True
+                        break
+            
+            if area_realmente_cambio:
                 update_predio["area_editada_en_plataforma"] = True
         
         await db.predios.update_one(

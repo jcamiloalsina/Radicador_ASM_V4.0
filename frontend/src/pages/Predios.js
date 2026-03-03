@@ -5822,7 +5822,8 @@ export default function Predios() {
                                     {r.propietarios_anteriores.map((p, pIdx) => (
                                       <div key={pIdx} className="text-xs text-red-600">
                                         • {p.nombre || p.nombre_propietario} 
-                                        {(p.tipo_documento || p.documento) && ` (${p.tipo_documento || 'CC'}: ${p.documento || p.numero_documento})`}
+                                        {(p.tipo_documento || p.documento || p.numero_documento) && 
+                                          ` (${p.tipo_documento || 'CC'}: ${String(p.documento || p.numero_documento || '').padStart(10, '0')})`}
                                       </div>
                                     ))}
                                   </div>
@@ -5836,7 +5837,8 @@ export default function Predios() {
                                     {r.propietarios_nuevos.map((p, pIdx) => (
                                       <div key={pIdx} className="text-xs text-emerald-600">
                                         • {p.nombre || p.nombre_propietario} 
-                                        {(p.tipo_documento || p.documento) && ` (${p.tipo_documento || 'CC'}: ${p.documento || p.numero_documento})`}
+                                        {(p.tipo_documento || p.documento || p.numero_documento) && 
+                                          ` (${p.tipo_documento || 'CC'}: ${String(p.documento || p.numero_documento || '').padStart(10, '0')})`}
                                       </div>
                                     ))}
                                   </div>
@@ -5844,39 +5846,10 @@ export default function Predios() {
                               </div>
                             )}
                             
-                            {/* Campos modificados */}
-                            {r.campos_modificados?.length > 0 && (
-                              <div className="bg-amber-50 border border-amber-200 rounded p-2">
-                                <p className="text-xs font-semibold text-amber-700 mb-1">
-                                  Campos modificados ({r.campos_modificados.length}):
-                                </p>
-                                <div className="space-y-1">
-                                  {r.campos_modificados.filter(cm => 
-                                    cm.campo !== 'propietarios' && cm.campo !== 'nombre_propietario'
-                                  ).map((cm, cmIdx) => (
-                                    <div key={cmIdx} className="text-xs flex flex-wrap items-center gap-1">
-                                      <span className="font-medium text-amber-700">{cm.campo}:</span>
-                                      <span className="text-red-600 line-through">
-                                        {typeof cm.valor_anterior === 'object' 
-                                          ? JSON.stringify(cm.valor_anterior).slice(0, 30) 
-                                          : String(cm.valor_anterior || 'N/A').slice(0, 30)}
-                                      </span>
-                                      <span className="text-slate-400">→</span>
-                                      <span className="text-emerald-700">
-                                        {typeof cm.valor_nuevo === 'object' 
-                                          ? JSON.stringify(cm.valor_nuevo).slice(0, 30) 
-                                          : String(cm.valor_nuevo || 'N/A').slice(0, 30)}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Si no hay detalles, mostrar mensaje */}
-                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && !r.campos_modificados?.length && (
+                            {/* Si no hay propietarios mostrados, indicar */}
+                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && (
                               <p className="text-xs text-slate-500 italic">
-                                Sin detalles de cambios registrados
+                                Sin detalles de propietarios registrados
                               </p>
                             )}
                           </div>
