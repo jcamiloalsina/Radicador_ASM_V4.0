@@ -5751,7 +5751,7 @@ export default function Predios() {
                 </Card>
               )}
               
-              {/* Historial de Resoluciones */}
+              {/* Historial de Resoluciones con detalles de cambios */}
               {selectedPredio.historial_resoluciones && selectedPredio.historial_resoluciones.length > 0 && (
                 <Card>
                   <CardHeader className="py-3">
@@ -5760,212 +5760,126 @@ export default function Predios() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {selectedPredio.historial_resoluciones.slice().reverse().map((r, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                              <FileText className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div>
-                              <div className="font-semibold text-emerald-800">
-                                {r.tipo_mutacion && `${r.tipo_mutacion} - `}{r.numero_resolucion}
-                              </div>
-                              <div className="text-xs text-emerald-600">
-                                {r.fecha_resolucion && `Fecha: ${r.fecha_resolucion}`}
-                                {r.radicado && ` | Radicado: ${r.radicado}`}
-                              </div>
-                            </div>
-                          </div>
-                          {r.pdf_path && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="bg-white hover:bg-emerald-100"
-                              onClick={() => window.open(`${BACKEND_URL}${r.pdf_path}`, '_blank')}
-                            >
-                              <Download className="w-4 h-4 mr-1" />
-                              PDF
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Historial */}
-              {selectedPredio.historial && selectedPredio.historial.length > 0 && (
-                <Card>
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <History className="w-4 h-4" /> Historial de Cambios ({selectedPredio.historial.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
                     <div className="space-y-3">
-                      {selectedPredio.historial.slice().reverse().map((h, idx) => (
-                        <div key={idx} className="border rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
-                          {/* Encabezado con acción */}
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                h.accion?.toLowerCase().includes('aprobad') ? 'bg-emerald-500' :
-                                h.accion?.toLowerCase().includes('rechaz') ? 'bg-red-500' :
-                                h.accion?.toLowerCase().includes('devuel') ? 'bg-amber-500' :
-                                h.accion?.toLowerCase().includes('crea') ? 'bg-blue-500' :
-                                'bg-slate-400'
-                              }`} />
-                              <span className="font-semibold text-slate-800">{h.accion || 'Acción'}</span>
+                      {selectedPredio.historial_resoluciones.slice().reverse().map((r, idx) => (
+                        <div key={idx} className="border border-emerald-200 rounded-lg overflow-hidden">
+                          {/* Encabezado de la resolución */}
+                          <div className="flex items-center justify-between bg-emerald-50 p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-emerald-800">
+                                  {r.tipo_mutacion && `${r.tipo_mutacion} - `}{r.numero_resolucion}
+                                </div>
+                                <div className="text-xs text-emerald-600 flex items-center gap-2 flex-wrap">
+                                  {r.fecha_resolucion && (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {r.fecha_resolucion}
+                                    </span>
+                                  )}
+                                  {r.radicado && (
+                                    <span className="flex items-center gap-1">
+                                      <Hash className="w-3 h-3" />
+                                      {r.radicado}
+                                    </span>
+                                  )}
+                                  {r.generado_por && (
+                                    <span className="flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      {r.generado_por}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            {h.estado_nuevo && (
-                              <Badge variant="outline" className="text-xs">
-                                {h.estado_anterior && `${h.estado_anterior} → `}{h.estado_nuevo}
-                              </Badge>
+                            {r.pdf_path && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700"
+                                onClick={() => window.open(`${BACKEND_URL}${r.pdf_path}`, '_blank')}
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                PDF
+                              </Button>
                             )}
                           </div>
                           
-                          {/* Información del usuario y fecha */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs text-slate-600 mb-2">
-                            <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              <span>{h.usuario || h.usuario_nombre || 'Usuario'}</span>
-                              {h.rol && <span className="text-slate-400">({h.rol})</span>}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>{h.fecha ? new Date(h.fecha).toLocaleString('es-CO') : 'Sin fecha'}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Acto Administrativo / Resolución */}
-                          {(h.acto_administrativo || h.numero_resolucion || h.resolucion) && (
-                            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-2 py-1 mb-2">
-                              <div className="flex items-center gap-2 text-xs text-blue-800">
-                                <FileText className="w-3 h-3" />
-                                <span className="font-medium">
-                                  {h.tipo_mutacion && `${h.tipo_mutacion} - `}
-                                  {h.acto_administrativo && `Acto: ${h.acto_administrativo}`}
-                                  {h.numero_resolucion && `Resolución: ${h.numero_resolucion}`}
-                                  {h.resolucion && `Resolución: ${h.resolucion}`}
-                                  {h.fecha_resolucion && ` (${h.fecha_resolucion})`}
-                                </span>
-                              </div>
-                              {h.pdf_path && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 text-xs bg-white"
-                                  onClick={() => window.open(`${BACKEND_URL}${h.pdf_path}`, '_blank')}
-                                >
-                                  <Download className="w-3 h-3 mr-1" />
-                                  PDF
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Tipo de Mutación (si no hay resolución pero sí tipo) */}
-                          {h.tipo_mutacion && !h.numero_resolucion && !h.resolucion && (
-                            <div className="flex items-center gap-2 text-xs bg-purple-50 text-purple-800 px-2 py-1 rounded mb-2">
-                              <FileText className="w-3 h-3" />
-                              <span className="font-medium">
-                                Tipo de Mutación: {h.tipo_mutacion}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Radicado */}
-                          {(h.radicado || h.numero_radicado || h.petition_radicado) && (
-                            <div className="flex items-center gap-2 text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded mb-2">
-                              <Hash className="w-3 h-3" />
-                              <span className="font-medium">
-                                Radicado: {h.radicado || h.numero_radicado || h.petition_radicado}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Notas / Observaciones / Motivo */}
-                          {(h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario) && (
-                            <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded p-2 mb-2">
-                              <span className="font-medium text-slate-700">Observaciones: </span>
-                              {h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario}
-                            </div>
-                          )}
-                          
-                          {/* Detalles de creación */}
-                          {h.tipo_cambio === 'creacion' && h.detalles && (
-                            <div className="text-xs bg-emerald-50 border border-emerald-200 rounded p-2 mb-2">
-                              <p className="font-medium text-emerald-800 mb-1">Datos del predio creado:</p>
-                              <div className="grid grid-cols-2 gap-1 text-emerald-700">
-                                {h.detalles.propietario && <p>• Propietario: {h.detalles.propietario}</p>}
-                                {h.detalles.area_terreno && <p>• Área Terreno: {h.detalles.area_terreno} m²</p>}
-                                {h.detalles.area_construida !== undefined && <p>• Área Construida: {h.detalles.area_construida} m²</p>}
-                                {h.detalles.avaluo && <p>• Avalúo: ${h.detalles.avaluo?.toLocaleString('es-CO')}</p>}
-                                {h.detalles.direccion && <p>• Dirección: {h.detalles.direccion}</p>}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Detalles de modificación - Campos cambiados */}
-                          {h.tipo_cambio === 'modificacion' && h.detalles?.campos_modificados && h.detalles.campos_modificados.length > 0 && (
-                            <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 mb-2">
-                              <p className="font-medium text-amber-800 mb-1">Campos modificados ({h.detalles.total_campos}):</p>
-                              <div className="space-y-1">
-                                {h.detalles.campos_modificados.map((cm, cmIdx) => (
-                                  <div key={cmIdx} className="flex items-start gap-2 text-amber-700">
-                                    <span className="font-medium">{cm.campo}:</span>
-                                    <span className="text-red-600 line-through">
-                                      {typeof cm.valor_anterior === 'object' ? JSON.stringify(cm.valor_anterior).slice(0, 50) : String(cm.valor_anterior || 'N/A').slice(0, 50)}
-                                    </span>
-                                    <span>→</span>
-                                    <span className="text-emerald-700">
-                                      {typeof cm.valor_nuevo === 'object' ? JSON.stringify(cm.valor_nuevo).slice(0, 50) : String(cm.valor_nuevo || 'N/A').slice(0, 50)}
-                                    </span>
+                          {/* Detalles del cambio */}
+                          <div className="p-3 bg-white border-t border-emerald-100 space-y-2">
+                            {/* Propietarios anteriores y nuevos */}
+                            {(r.propietarios_anteriores?.length > 0 || r.propietarios_nuevos?.length > 0) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {/* Propietarios cancelados */}
+                                {r.propietarios_anteriores?.length > 0 && (
+                                  <div className="bg-red-50 border border-red-200 rounded p-2">
+                                    <p className="text-xs font-semibold text-red-700 mb-1">
+                                      Propietarios Cancelados ({r.propietarios_anteriores.length}):
+                                    </p>
+                                    {r.propietarios_anteriores.map((p, pIdx) => (
+                                      <div key={pIdx} className="text-xs text-red-600">
+                                        • {p.nombre || p.nombre_propietario} 
+                                        {(p.tipo_documento || p.documento) && ` (${p.tipo_documento || 'CC'}: ${p.documento || p.numero_documento})`}
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
+                                {/* Propietarios inscritos */}
+                                {r.propietarios_nuevos?.length > 0 && (
+                                  <div className="bg-emerald-50 border border-emerald-200 rounded p-2">
+                                    <p className="text-xs font-semibold text-emerald-700 mb-1">
+                                      Propietarios Inscritos ({r.propietarios_nuevos.length}):
+                                    </p>
+                                    {r.propietarios_nuevos.map((p, pIdx) => (
+                                      <div key={pIdx} className="text-xs text-emerald-600">
+                                        • {p.nombre || p.nombre_propietario} 
+                                        {(p.tipo_documento || p.documento) && ` (${p.tipo_documento || 'CC'}: ${p.documento || p.numero_documento})`}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* Documentos adjuntos */}
-                          {h.documentos && h.documentos.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-slate-600 mb-1">Documentos:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {h.documentos.map((doc, docIdx) => (
-                                  <Button
-                                    key={docIdx}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => {
-                                      if (doc.url || doc.path) {
-                                        window.open(doc.url || `${BACKEND_URL}${doc.path}`, '_blank');
-                                      }
-                                    }}
-                                  >
-                                    <Download className="w-3 h-3 mr-1" />
-                                    {doc.nombre || doc.filename || `Documento ${docIdx + 1}`}
-                                  </Button>
-                                ))}
+                            )}
+                            
+                            {/* Campos modificados */}
+                            {r.campos_modificados?.length > 0 && (
+                              <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                                <p className="text-xs font-semibold text-amber-700 mb-1">
+                                  Campos modificados ({r.campos_modificados.length}):
+                                </p>
+                                <div className="space-y-1">
+                                  {r.campos_modificados.filter(cm => 
+                                    cm.campo !== 'propietarios' && cm.campo !== 'nombre_propietario'
+                                  ).map((cm, cmIdx) => (
+                                    <div key={cmIdx} className="text-xs flex flex-wrap items-center gap-1">
+                                      <span className="font-medium text-amber-700">{cm.campo}:</span>
+                                      <span className="text-red-600 line-through">
+                                        {typeof cm.valor_anterior === 'object' 
+                                          ? JSON.stringify(cm.valor_anterior).slice(0, 30) 
+                                          : String(cm.valor_anterior || 'N/A').slice(0, 30)}
+                                      </span>
+                                      <span className="text-slate-400">→</span>
+                                      <span className="text-emerald-700">
+                                        {typeof cm.valor_nuevo === 'object' 
+                                          ? JSON.stringify(cm.valor_nuevo).slice(0, 30) 
+                                          : String(cm.valor_nuevo || 'N/A').slice(0, 30)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* Documento único (si existe como campo directo) */}
-                          {(h.documento_url || h.archivo_url) && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs mt-2"
-                              onClick={() => window.open(h.documento_url || h.archivo_url, '_blank')}
-                            >
-                              <Download className="w-3 h-3 mr-1" />
-                              Descargar documento
-                            </Button>
-                          )}
+                            )}
+                            
+                            {/* Si no hay detalles, mostrar mensaje */}
+                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && !r.campos_modificados?.length && (
+                              <p className="text-xs text-slate-500 italic">
+                                Sin detalles de cambios registrados
+                              </p>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

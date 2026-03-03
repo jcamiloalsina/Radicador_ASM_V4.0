@@ -25265,6 +25265,18 @@ async def generar_resolucion_manual(
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
         # 9. Actualizar el historial de resoluciones del predio Y LOS DATOS DEL PREDIO
+        # Calcular campos modificados para guardar en el historial
+        campos_modificados = []
+        if request.datos_predio:
+            for campo, valor_nuevo in request.datos_predio.items():
+                valor_anterior = predio.get(campo)
+                if valor_anterior != valor_nuevo and valor_nuevo is not None:
+                    campos_modificados.append({
+                        "campo": campo,
+                        "valor_anterior": valor_anterior,
+                        "valor_nuevo": valor_nuevo
+                    })
+        
         resolucion_historial = {
             "numero_resolucion": request.numero_resolucion,
             "tipo_mutacion": request.tipo_mutacion,
@@ -25272,7 +25284,11 @@ async def generar_resolucion_manual(
             "radicado": request.radicado_peticion,
             "pdf_path": f"/resoluciones/{filename}",
             "generado_por": current_user.get("full_name", ""),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            # Detalles de los cambios
+            "propietarios_anteriores": propietarios_anteriores,
+            "propietarios_nuevos": propietarios_nuevos,
+            "campos_modificados": campos_modificados,
         }
         
         # Preparar los datos a actualizar en el predio
