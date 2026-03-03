@@ -5,7 +5,47 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Última Actualización (03 Marzo 2026 - Sesión 2)
+## 🔧 Última Actualización (03 Marzo 2026 - Sesión 3)
+
+### ✅ IMPLEMENTADO: Generación Manual de Resoluciones desde Edición de Predios
+
+**Descripción:**
+Los coordinadores y administradores ahora pueden generar resoluciones manualmente desde el modal de edición de predios, vinculándolas opcionalmente a un radicado/petición existente.
+
+**Funcionalidades Implementadas:**
+
+1. **Sección "Información de Resolución" en Modal de Editar Predio:**
+   - **Tipo de Mutación:** Selector con opciones M1, M2, M3
+   - **Número de Resolución:** Se auto-genera basado en municipio (RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO})
+   - **Fecha de Resolución:** Se auto-genera con fecha actual, pero es editable
+   - **Radicado de Petición:** Campo con búsqueda en vivo de radicados disponibles
+
+2. **Nuevo Endpoint POST /api/resoluciones/generar-manual:**
+   - Genera el PDF de resolución
+   - Guarda la resolución en la colección `resoluciones`
+   - Actualiza el historial del predio (`historial_resoluciones`)
+   - Si hay radicado vinculado, actualiza la petición a estado "finalizado"
+   - Intenta enviar correo al solicitante con el PDF adjunto
+
+3. **Historial de Resoluciones por Predio:**
+   - Cada predio tiene un array `historial_resoluciones[]`
+   - Cada entrada contiene: numero_resolucion, tipo_mutacion, fecha_resolucion, radicado, pdf_path, generado_por
+
+4. **Exportación Excel con Resoluciones:**
+   - Nueva hoja **HISTORIAL_RESOLUCIONES** en el Excel exportado
+   - Incluye: código predial, municipio, número resolución, tipo mutación, fecha, radicado, generado por, propietario, dirección, avalúo
+   - Soporta múltiples resoluciones por predio (una fila por resolución)
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - Nuevo endpoint `POST /api/resoluciones/generar-manual`, nueva hoja en Excel export
+- `/app/frontend/src/pages/Predios.js` - Sección "Información de Resolución", integración con handleUpdate
+
+**Tests:**
+- `/app/backend/tests/test_resoluciones_manual.py` - 15 tests (100% pasados)
+
+---
+
+## 🔧 Actualización (03 Marzo 2026 - Sesión 2)
 
 ### ✅ IMPLEMENTADO: Sistema Completo de Resoluciones Automáticas - Numeración por Municipio
 
@@ -211,9 +251,10 @@ El modal de edición debe comportarse diferente según:
 - Implementar exportación XTF
 - Desarrollar App de Correspondencia
 - Exportación Excel para datos de visitas
+- Refactorizar `Predios.js` (6,300+ líneas) en componentes más pequeños
 
 ### P3 - Baja Prioridad
-- Refactorizar `server.py` (25,000+ líneas) usando FastAPI APIRouter
+- Refactorizar `server.py` (25,500+ líneas) usando FastAPI APIRouter
 - UI para reportes GDB
 - Gráficos en dashboards
 
