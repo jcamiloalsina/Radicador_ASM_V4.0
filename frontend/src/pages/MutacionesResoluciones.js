@@ -138,7 +138,9 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosM1, setSearchingPrediosM1] = useState(false);
   const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
   const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
+  const [radicadosDisponiblesM2, setRadicadosDisponiblesM2] = useState([]);
   const [showMunicipioDropdown, setShowMunicipioDropdown] = useState(false);
+  const [showMunicipioDropdownM2, setShowMunicipioDropdownM2] = useState(false);
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -349,7 +351,7 @@ export default function MutacionesResoluciones() {
     }
   };
 
-  // Buscar radicados
+  // Buscar radicados para M1
   const buscarRadicados = async (query) => {
     if (query.length < 3) {
       setRadicadosDisponibles([]);
@@ -366,6 +368,26 @@ export default function MutacionesResoluciones() {
       setRadicadosDisponibles(response.data.radicados || []);
     } catch (error) {
       console.error('Error buscando radicados:', error);
+    }
+  };
+
+  // Buscar radicados para M2
+  const buscarRadicadosM2 = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesM2([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setRadicadosDisponiblesM2(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados M2:', error);
     }
   };
 
@@ -633,6 +655,10 @@ export default function MutacionesResoluciones() {
       toast.error('Seleccione el municipio');
       return;
     }
+    if (!m2Data.radicado) {
+      toast.error('El número de radicado es obligatorio');
+      return;
+    }
     if (m2Data.predios_cancelados.length === 0) {
       toast.error('Agregue al menos un predio a cancelar');
       return;
@@ -743,51 +769,118 @@ export default function MutacionesResoluciones() {
   // Renderizar formulario M2
   const renderFormularioM2 = () => (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-      {/* Tipo de M2 */}
+      {/* Tipo de M2 - Descripción mejorada */}
       <div className="grid grid-cols-2 gap-4">
-        <Button
-          variant={m2Data.subtipo === 'desengloble' ? 'default' : 'outline'}
-          className={m2Data.subtipo === 'desengloble' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m2Data.subtipo === 'desengloble' 
+              ? 'border-purple-600 bg-purple-50' 
+              : 'border-slate-200 hover:border-purple-300'
+          }`}
           onClick={() => setM2Data(prev => ({ ...prev, subtipo: 'desengloble' }))}
         >
-          <ChevronDown className="w-4 h-4 mr-2" />
-          Desengloble (División)
-        </Button>
-        <Button
-          variant={m2Data.subtipo === 'englobe' ? 'default' : 'outline'}
-          className={m2Data.subtipo === 'englobe' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m2Data.subtipo === 'desengloble' ? 'border-purple-600 bg-purple-600' : 'border-slate-300'
+            }`}>
+              {m2Data.subtipo === 'desengloble' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m2Data.subtipo === 'desengloble' ? 'text-purple-700' : 'text-slate-700'}`}>
+              Desenglobe (División)
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Un predio se divide en múltiples predios resultantes
+          </p>
+        </div>
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m2Data.subtipo === 'englobe' 
+              ? 'border-purple-600 bg-purple-50' 
+              : 'border-slate-200 hover:border-purple-300'
+          }`}
           onClick={() => setM2Data(prev => ({ ...prev, subtipo: 'englobe' }))}
         >
-          <ChevronUp className="w-4 h-4 mr-2" />
-          Englobe (Fusión)
-        </Button>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m2Data.subtipo === 'englobe' ? 'border-purple-600 bg-purple-600' : 'border-slate-300'
+            }`}>
+              {m2Data.subtipo === 'englobe' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m2Data.subtipo === 'englobe' ? 'text-purple-700' : 'text-slate-700'}`}>
+              Englobe (Fusión)
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Múltiples predios se fusionan en un solo predio
+          </p>
+        </div>
       </div>
 
-      {/* Municipio y Radicado */}
+      {/* Municipio - Dropdown personalizado */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="relative">
           <Label>Municipio *</Label>
-          <Select 
-            value={m2Data.municipio} 
-            onValueChange={(v) => setM2Data(prev => ({ ...prev, municipio: v }))}
+          <div 
+            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+            onClick={() => setShowMunicipioDropdownM2(!showMunicipioDropdownM2)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar municipio" />
-            </SelectTrigger>
-            <SelectContent>
+            <span className={m2Data.municipio ? 'text-slate-900' : 'text-slate-500'}>
+              {m2Data.municipio ? MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre : 'Seleccionar municipio'}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </div>
+          {showMunicipioDropdownM2 && (
+            <div className="absolute z-[99999] mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
               {MUNICIPIOS.map(m => (
-                <SelectItem key={m.codigo} value={m.codigo}>{m.nombre}</SelectItem>
+                <div
+                  key={m.codigo}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-purple-50 ${m2Data.municipio === m.codigo ? 'bg-purple-100 text-purple-800' : ''}`}
+                  onClick={() => {
+                    setM2Data(prev => ({ ...prev, municipio: m.codigo }));
+                    setShowMunicipioDropdownM2(false);
+                  }}
+                >
+                  {m.nombre}
+                </div>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          )}
         </div>
+
+        {/* Radicado - Obligatorio con búsqueda */}
         <div>
-          <Label>Número de Radicado</Label>
-          <Input
-            value={m2Data.radicado}
-            onChange={(e) => setM2Data(prev => ({ ...prev, radicado: e.target.value }))}
-            placeholder="Ej: RASOGC-3773-28-08-2024"
-          />
+          <Label className="text-purple-700">Número de Radicado *</Label>
+          <div className="relative">
+            <Input
+              value={m2Data.radicado}
+              onChange={(e) => {
+                const valor = e.target.value.toUpperCase();
+                setM2Data(prev => ({ ...prev, radicado: valor }));
+                buscarRadicadosM2(valor);
+              }}
+              placeholder="Escribir número de radicado..."
+              className={!m2Data.radicado ? 'border-red-300' : ''}
+            />
+            {radicadosDisponiblesM2.length > 0 && (
+              <div className="absolute z-[99999] w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {radicadosDisponiblesM2.map(rad => (
+                  <button
+                    key={rad.id}
+                    type="button"
+                    onClick={() => {
+                      setM2Data(prev => ({ ...prev, radicado: rad.radicado }));
+                      setRadicadosDisponiblesM2([]);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b last:border-0"
+                  >
+                    <span className="font-mono text-purple-700">{rad.radicado}</span>
+                    <span className="text-slate-500 ml-2">- {rad.tipo_tramite}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
