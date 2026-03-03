@@ -14,7 +14,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
-  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash
+  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -5436,12 +5436,21 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
-              {/* Nota informativa sobre edición */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+              {/* Nota informativa sobre edición - Link clickeable */}
+              <div 
+                className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                onClick={() => {
+                  // Guardar el predio seleccionado en sessionStorage para pre-cargar en Mutaciones
+                  sessionStorage.setItem('predioParaMutacion', JSON.stringify(selectedPredio));
+                  setShowDetailDialog(false);
+                  navigate('/dashboard/mutaciones-resoluciones');
+                }}
+              >
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
                 <p className="text-sm text-blue-700">
-                  Para modificar este predio, vaya a <strong>Conservación → Mutaciones y Resoluciones</strong>. Todo cambio genera una resolución.
+                  Para modificar este predio, haga clic aquí para ir a <strong className="underline">Mutaciones y Resoluciones</strong>. Todo cambio genera una resolución.
                 </p>
+                <ArrowRight className="w-5 h-5 text-blue-600 flex-shrink-0" />
               </div>
               
               {/* Botón Generar Certificado Catastral */}

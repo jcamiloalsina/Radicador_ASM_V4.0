@@ -170,6 +170,48 @@ export default function MutacionesResoluciones() {
     }
   }, [activeTab, fetchHistorial]);
 
+  // Cargar predio pre-seleccionado desde Gestión de Predios
+  useEffect(() => {
+    const predioGuardado = sessionStorage.getItem('predioParaMutacion');
+    if (predioGuardado) {
+      try {
+        const predio = JSON.parse(predioGuardado);
+        // Limpiar sessionStorage
+        sessionStorage.removeItem('predioParaMutacion');
+        
+        // Abrir M1 con el predio pre-cargado
+        setTipoMutacionSeleccionado(TIPOS_MUTACION.M1);
+        setShowMutacionDialog(true);
+        
+        // Determinar el municipio del predio
+        const codigoMunicipio = predio.codigo_predial_nacional?.substring(0, 5) || '';
+        
+        // Pre-cargar datos del predio
+        setTimeout(() => {
+          setM1Data(prev => ({
+            ...prev,
+            municipio: codigoMunicipio,
+            predio: predio,
+            propietarios_anteriores: predio.propietarios || [{
+              nombre_propietario: predio.nombre_propietario || '',
+              tipo_documento: predio.tipo_documento || 'C',
+              numero_documento: predio.numero_documento || ''
+            }]
+          }));
+          
+          // Cargar número de resolución
+          if (codigoMunicipio) {
+            cargarSiguienteNumeroResolucion(codigoMunicipio);
+          }
+        }, 100);
+        
+        toast.success(`Predio ${predio.codigo_predial_nacional || predio.numero_predio} cargado para mutación`);
+      } catch (e) {
+        console.error('Error cargando predio pre-seleccionado:', e);
+      }
+    }
+  }, []);
+
   // =====================
   // FUNCIONES PARA M1
   // =====================
