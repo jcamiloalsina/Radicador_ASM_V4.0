@@ -145,15 +145,16 @@ def generate_resolucion_pdf(
         if os.path.exists(logo_path):
             from PIL import Image
             img = Image.open(logo_path).convert('RGBA')
-            # Normalizar: hacer todo el contenido visible con el mismo gris
+            # Normalizar: detectar el logo (pixels no blancos) y darles gris uniforme
             normalized_img = Image.new('RGBA', img.size, (255, 255, 255, 0))
-            gray_color = 180  # Gris uniforme
+            gray_color = 180  # Gris uniforme para la marca de agua
             for x in range(img.width):
                 for y in range(img.height):
                     r, g, b, a = img.getpixel((x, y))
-                    # Si el pixel tiene algo de contenido (no es completamente transparente)
-                    if a > 10:
-                        # Usar un gris uniforme con la misma opacidad
+                    # Si el pixel NO es blanco/casi blanco (es parte del logo)
+                    # El fondo blanco tiene r,g,b cercanos a 255
+                    if r < 245 or g < 245 or b < 245:
+                        # Es parte del logo - usar gris uniforme
                         normalized_img.putpixel((x, y), (gray_color, gray_color, gray_color, 255))
             # Guardar en buffer
             img_buffer = io.BytesIO()
