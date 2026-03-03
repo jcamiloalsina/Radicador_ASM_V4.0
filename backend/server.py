@@ -25220,6 +25220,114 @@ async def generar_resolucion_m2(
         }
         await db.certificados_verificables.insert_one(certificado_verificable)
         
+        # Procesar predios cancelados según tipo de cancelación
+        for predio_cancelado in request.predios_cancelados:
+            predio_id = predio_cancelado.get('id')
+            tipo_cancelacion = predio_cancelado.get('tipo_cancelacion', 'total')
+            
+            if tipo_cancelacion == 'total':
+                # Cancelación total: marcar para eliminación (pendiente de aprobación)
+                await db.predios.update_one(
+                    {"id": predio_id},
+                    {"$set": {
+                        "pendiente_eliminacion": True,
+                        "resolucion_eliminacion": numero_resolucion,
+                        "fecha_resolucion_eliminacion": fecha_resolucion,
+                        "historial_resoluciones": {
+                            "$ifNull": ["$historial_resoluciones", []]
+                        }
+                    },
+                    "$push": {
+                        "historial_resoluciones": {
+                            "tipo_mutacion": "M2",
+                            "subtipo": request.subtipo,
+                            "numero_resolucion": numero_resolucion,
+                            "fecha_resolucion": fecha_resolucion,
+                            "accion": "cancelacion_total"
+                        }
+                    }}
+                )
+            elif tipo_cancelacion == 'parcial':
+                # Cancelación parcial: actualizar predio con nuevos datos
+                update_data = {
+                    "area_terreno": predio_cancelado.get('nueva_area_terreno', predio_cancelado.get('area_terreno')),
+                    "area_construida": predio_cancelado.get('nueva_area_construida', predio_cancelado.get('area_construida')),
+                    "avaluo": predio_cancelado.get('nuevo_avaluo', predio_cancelado.get('avaluo')),
+                    "area_editada_en_plataforma": True,  # Marcar como editado en plataforma
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                # Si hay propietarios editados, actualizarlos
+                if predio_cancelado.get('propietarios'):
+                    update_data["propietarios"] = predio_cancelado['propietarios']
+                
+                # Si hay zonas homogéneas editadas, actualizarlas
+                if predio_cancelado.get('zonas_homogeneas'):
+                    update_data["zonas_homogeneas"] = predio_cancelado['zonas_homogeneas']
+                
+                # Si hay dirección editada
+                if predio_cancelado.get('direccion'):
+                    update_data["direccion"] = predio_cancelado['direccion']
+                
+                # Si hay matrícula editada
+                if predio_cancelado.get('matricula_inmobiliaria'):
+                    update_data["matricula_inmobiliaria"] = predio_cancelado['matricula_inmobiliaria']
+                
+                # Si hay destino económico editado
+                if predio_cancelado.get('destino_economico'):
+                    update_data["destino_economico"] = predio_cancelado['destino_economico']
+                
+                await db.predios.update_one(
+                    {"id": predio_id},
+                    {
+                        "$set": update_data,
+                        "$push": {
+                            "historial_resoluciones": {
+                                "tipo_mutacion": "M2",
+                                "subtipo": request.subtipo,
+                                "numero_resolucion": numero_resolucion,
+                                "fecha_resolucion": fecha_resolucion,
+                                "accion": "cancelacion_parcial",
+                                "area_anterior": predio_cancelado.get('area_terreno'),
+                                "area_nueva": predio_cancelado.get('nueva_area_terreno')
+                            }
+                        }
+                    }
+                )
+        
+        # Procesar predios inscritos (crear nuevos predios)
+        for predio_inscrito in request.predios_inscritos:
+            nuevo_predio = {
+                "id": str(uuid.uuid4()),
+                "codigo_predial_nacional": predio_inscrito.get('npn', predio_inscrito.get('codigo_predial')),
+                "codigo_homologado": predio_inscrito.get('codigo_homologado', ''),
+                "numero_predio": predio_inscrito.get('codigo_predial', ''),
+                "direccion": predio_inscrito.get('direccion', ''),
+                "destino_economico": predio_inscrito.get('destino_economico', 'A'),
+                "area_terreno": predio_inscrito.get('area_terreno', 0),
+                "area_construida": predio_inscrito.get('area_construida', 0),
+                "avaluo": predio_inscrito.get('avaluo', 0),
+                "matricula_inmobiliaria": predio_inscrito.get('matricula_inmobiliaria', ''),
+                "propietarios": predio_inscrito.get('propietarios', []),
+                "zonas_homogeneas": predio_inscrito.get('zonas_homogeneas', []),
+                "municipio": municipio_nombre,
+                "codigo_municipio": request.municipio,
+                "vigencia": datetime.now().year,
+                "creado_en_plataforma": True,
+                "area_editada_en_plataforma": True,
+                "status": "pendiente_aprobacion",
+                "resolucion_creacion": numero_resolucion,
+                "historial_resoluciones": [{
+                    "tipo_mutacion": "M2",
+                    "subtipo": request.subtipo,
+                    "numero_resolucion": numero_resolucion,
+                    "fecha_resolucion": fecha_resolucion,
+                    "accion": "inscripcion"
+                }],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.predios.insert_one(nuevo_predio)
+        
         logging.info(f"Resolución M2 {numero_resolucion} generada por {current_user.get('email')}")
         
         return {
