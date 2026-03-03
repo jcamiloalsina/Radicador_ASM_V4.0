@@ -1,288 +1,107 @@
-# Asomunicipios - Sistema de Gestión Catastral
+# Sistema de Gestión Catastral - Asomunicipios
 
-## Descripción General
-Sistema web para gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (Asomunicipios).
+## Original Problem Statement
+Sistema integral de gestión catastral para la Asociación de Municipios del Catatumbo que incluye:
+- Gestión de predios y propietarios
+- Sistema de trámites (PQRS) con radicación
+- Generación de certificados catastrales y resoluciones PDF
+- Aprobación de cambios con workflow de manager
+- Exportación a Excel con historial de resoluciones
+- Sincronización offline/online para trabajo en campo
 
----
+## Core Requirements
+1. **Gestión de Predios**: CRUD completo de predios con historial de cambios
+2. **Sistema de Trámites**: Radicación, asignación, seguimiento
+3. **Generación de PDFs**: Certificados catastrales y resoluciones con QR verificable
+4. **Workflow de Aprobación**: Gestor propone → Manager aprueba → Sistema genera resolución
+5. **Verificación de Documentos**: QR con código único verificable en línea
 
-## 🔧 Última Actualización (03 Marzo 2026 - Sesión 3)
+## What's Been Implemented
 
-### ✅ IMPLEMENTADO: Generación Manual de Resoluciones desde Edición de Predios
+### Última Sesión (03-03-2026)
+- **QR de Resolución Idéntico al Certificado**: 
+  - Modificado `resolucion_pdf_generator.py` para usar mismo formato de QR
+  - URL: `{VERIFICACION_BASE_URL}/api/verificar/{codigo_verificacion}`
+  - Color verde institucional (#009846)
+  - Cuadro de verificación con código, fecha, hash
+  - Nueva función `generar_codigo_verificacion_resolucion()` con formato `ASM-{año}-RES-{aleatorio}`
+  - Código se guarda en BD con cada resolución
+  - Endpoint `/api/verificar/{codigo}` detecta automáticamente certificado vs resolución
 
-**Descripción:**
-Los coordinadores y administradores ahora pueden generar resoluciones manualmente desde el modal de edición de predios, vinculándolas opcionalmente a un radicado/petición existente.
+### Sesiones Anteriores
+- Numeración de resoluciones por municipio (12 municipios)
+- Flujo de generación manual de resoluciones desde "Editar Predio"
+- PDF muestra datos anteriores en CANCELACIÓN y nuevos en INSCRIPCIÓN
+- Formato de áreas con unidades (Ha y m²)
+- Datos centrados en tablas del PDF
+- Filtro y estadísticas de resoluciones por municipio corregido
+- Exportación Excel con hoja HISTORIAL_RESOLUCIONES
+- Tipo de mutación mostrado en historial de predio
 
-**Funcionalidades Implementadas:**
+## Architecture
 
-1. **Sección "Información de Resolución" en Modal de Editar Predio:**
-   - **Tipo de Mutación:** Selector con opciones M1, M2, M3
-   - **Número de Resolución:** Se auto-genera basado en municipio (RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO})
-   - **Fecha de Resolución:** Se auto-genera con fecha actual, pero es editable
-   - **Radicado de Petición:** Campo con búsqueda en vivo de radicados disponibles
+```
+/app/
+├── backend/
+│   ├── server.py                    # API principal FastAPI
+│   ├── resolucion_pdf_generator.py  # Generador de PDF de resoluciones
+│   └── certificado_images.py        # Imágenes embebidas para PDFs
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── Predios.js                    # Gestión de predios
+        │   └── ConfiguracionResoluciones.js  # Config y historial resoluciones
+        └── components/
+            └── PetitionDetail.js             # Detalle de peticiones
+```
 
-2. **Nuevo Endpoint POST /api/resoluciones/generar-manual:**
-   - Genera el PDF de resolución
-   - Guarda la resolución en la colección `resoluciones`
-   - Actualiza el historial del predio (`historial_resoluciones`)
-   - Si hay radicado vinculado, actualiza la petición a estado "finalizado"
-   - Intenta enviar correo al solicitante con el PDF adjunto
+## Key APIs
+- `POST /api/predios/generar-resolucion-manual`: Generación manual de resolución
+- `GET /api/resoluciones/historial`: Historial filtrable por municipio
+- `GET /api/verificar/{codigo_verificacion}`: Verificación pública de documentos
+- `PUT /api/cambios/aprobar/{cambio_id}`: Aprobación con generación de resolución
+- `GET /api/exportar-predios-excel`: Exportación con hoja de resoluciones
 
-3. **Historial de Resoluciones por Predio:**
-   - Cada predio tiene un array `historial_resoluciones[]`
-   - Cada entrada contiene: numero_resolucion, tipo_mutacion, fecha_resolucion, radicado, pdf_path, generado_por
+## Database Schema
+- **predios**: Incluye `historial_resoluciones[]` con `numero_resolucion`, `fecha_resolucion`, `radicado`, `tipo_mutacion`, `pdf_path`
+- **resoluciones**: `numero_resolucion`, `codigo_verificacion`, `codigo_municipio`, `pdf_path`, etc.
+- **certificados_verificables**: `codigo_verificacion`, `fecha_generacion`, `estado`, etc.
+- **peticiones**: `radicado`, `status`, `tipo_tramite`, etc.
 
-4. **Exportación Excel con Resoluciones:**
-   - Nueva hoja **HISTORIAL_RESOLUCIONES** en el Excel exportado
-   - Incluye: código predial, municipio, número resolución, tipo mutación, fecha, radicado, generado por, propietario, dirección, avalúo
-   - Soporta múltiples resoluciones por predio (una fila por resolución)
-
-**Archivos Modificados:**
-- `/app/backend/server.py` - Nuevo endpoint `POST /api/resoluciones/generar-manual`, nueva hoja en Excel export
-- `/app/frontend/src/pages/Predios.js` - Sección "Información de Resolución", integración con handleUpdate
-
-**Tests:**
-- `/app/backend/tests/test_resoluciones_manual.py` - 15 tests (100% pasados)
-
----
-
-## 🔧 Actualización (03 Marzo 2026 - Sesión 2)
-
-### ✅ IMPLEMENTADO: Sistema Completo de Resoluciones Automáticas - Numeración por Municipio
-
-**Descripción:**
-Sistema integral para la generación automática de resoluciones PDF (M1 - Mutación Primera) cuando se aprueba un cambio de predio. El sistema incluye:
-
-1. **Página de Configuración de Resoluciones** (`/dashboard/configuracion-resoluciones`):
-   - Solo accesible para administradores
-   - **Tab "Plantillas de Texto":** Editar texto legal M1, nombre y cargo del firmante
-   - **Tab "Numeración 2026":** Configuración de numeración POR MUNICIPIO (12 municipios con R1/R2)
-   - **Tab "Historial":** Ver todas las resoluciones generadas con filtro por municipio, estadísticas y enlaces a PDFs
-   - Preview PDF para verificar cambios antes de aplicar
-
-2. **Municipios con Numeración Independiente:**
-   - Ábrego (54003), Bucarasica (54109), Cáchira (54128), Convención (54206)
-   - El Carmen (54245), El Tarra (54250), Hacarí (54344), La Playa (54398)
-   - Ocaña (54498), Río de Oro (20614), San Calixto (54670), Teorama (54800)
-
-3. **Generación Automática al Aprobar:**
-   - Cuando se aprueba un cambio de tipo `modificacion` o `creacion`, el sistema genera automáticamente el PDF M1
-   - PDF incluye: encabezado institucional, marca de agua, tablas de cancelación/inscripción, firma de Dalgie, QR de validación
-   - El PDF se guarda en `/resoluciones/` y se registra en colección `resoluciones`
-   - Numeración automática POR MUNICIPIO: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
-
-4. **Envío Automático de Correo:**
-   - Cuando se genera una resolución, el sistema busca si hay una petición asociada al radicado
-   - Si existe correo del solicitante, se envía automáticamente el PDF de la resolución como adjunto
-   - Correo HTML con diseño profesional incluyendo número de resolución, municipio y código predial
-
-**Nuevos Endpoints:**
-- `GET /api/resoluciones/configuracion-municipios` - Obtener configuración por municipio
-- `PUT /api/resoluciones/configuracion-municipios` - Actualizar números por municipio
-- `GET /api/resoluciones/historial` - Obtener historial de resoluciones con filtros y estadísticas
-
-**Nuevas Colecciones MongoDB:**
-- `resolucion_configuracion_municipios` - Almacena números iniciales por código de municipio
-- `resoluciones` - Registra cada resolución generada con numero, pdf_path, cambio_id, codigo_municipio
-
-**Archivos Modificados:**
-- `/app/backend/server.py` - Función `generar_resolucion_final()` con numeración por municipio
-- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - UI con grid de 12 municipios
-
----
-
-## 🔧 Actualización (03 Marzo 2026 - Sesión 1)
-
-### ✅ IMPLEMENTADO: Sistema de Plantillas de Resolución M1
-
-**Descripción:**
-Sistema simplificado para gestionar plantillas de texto para resoluciones catastrales. El administrador puede editar el texto legal de las resoluciones desde un textarea simple, sin necesidad de modificar código. Inicialmente en Sandbox, ahora migrado a ConfiguracionResoluciones.
-
-**Funcionalidades:**
-1. **Gestión de Plantillas:**
-   - Ver y listar todas las plantillas disponibles (M1 por defecto)
-   - Editar el texto legal de cada plantilla
-   - Modificar nombre y cargo del firmante
-   - Guardar cambios que persisten en base de datos
-
-2. **Generación de Preview PDF:**
-   - Genera un PDF de ejemplo usando la plantilla seleccionada
-   - Usa datos de un predio real o datos de ejemplo
-   - Abre el PDF en una nueva pestaña del navegador
-
-3. **Variables Dinámicas:**
-   - `{tipo_tramite}`, `{radicado}`, `{matricula_inmobiliaria}`
-   - `{codigo_catastral}`, `{npn}`, `{municipio}`
-   - `{vigencia_fiscal}`, `{fecha_resolucion_texto}`
-
-**Endpoints Implementados:**
-- `GET /api/resoluciones/plantillas` - Listar todas las plantillas
-- `GET /api/resoluciones/plantillas/{tipo}` - Obtener plantilla específica (M1, M2, etc.)
-- `PUT /api/resoluciones/plantillas/{tipo}` - Actualizar texto y firmante de plantilla
-- `POST /api/resoluciones/generar-preview?tipo=M1` - Generar PDF preview
-
-**Archivos modificados:**
-- `/app/backend/server.py` - 4 nuevos endpoints de plantillas de resolución
-- `/app/frontend/src/pages/Sandbox.js` - Nueva pestaña "Resoluciones" con UI completa
-
-**Tests:**
-- `/app/backend/tests/test_resoluciones_plantillas.py` - 18 tests (100% pasados)
-
-**Colección MongoDB:**
-- `resolucion_plantillas` - Almacena plantillas con campos: id, tipo, nombre, descripcion, texto, firmante_nombre, firmante_cargo
-
----
-
-## 🔧 Actualización (02 Marzo 2026)
-
-### ✅ FIX: Radicado Requerido en Creación de Predios Nuevos
-
-**Cambio:**
-El campo "Radicado Asociado" ahora es **REQUERIDO** (antes era opcional) cuando se crea un predio nuevo con el flujo de trabajo de Conservación.
-
-**Comportamiento:**
-- Para gestores: Deben ingresar un número de radicado para justificar la creación
-- Para coordinadores/administradores: Pueden crear sin radicado (tienen autorización directa)
-- Consistente con la edición de predios existentes que ya requería radicado
-
-**Validación:**
-- El botón "Crear y Asignar a Flujo" se deshabilita si no hay radicado
-- Mensaje de advertencia: "⚠️ Debe ingresar un número de radicado para justificar la creación del predio"
-
-**Archivo modificado:** `/app/frontend/src/pages/Predios.js`
-
----
-
-### ✅ IMPLEMENTADO: Módulo Sandbox (Entorno de Pruebas)
-
-**Descripción:**
-Módulo completo para consultar datos de producción (solo lectura) y realizar operaciones CRUD en colecciones separadas (`predios_sandbox`) sin afectar la base de datos real. Solo accesible para administradores.
-
-**Funcionalidades:**
-1. **Consultas BD (Solo Lectura):**
-   - Consulta a colecciones: predios, users, petitions, predios_cambios, predios_eliminados
-   - Filtros JSON personalizados
-   - Límite de resultados configurable (máx 100)
-   - Exclusión automática de datos sensibles (contraseñas, códigos de verificación)
-
-2. **Pruebas (Sandbox):**
-   - Crear predios de prueba que se guardan en `predios_sandbox`
-   - Eliminar predios individuales o limpiar todo el sandbox
-   - Estadísticas de producción vs sandbox
-
-**Endpoints Implementados:**
-- `POST /api/sandbox/consultar` - Consultar colecciones de producción
-- `GET /api/sandbox/datos` - Obtener datos del sandbox
-- `POST /api/sandbox/crear-predio` - Crear predio de prueba
-- `DELETE /api/sandbox/predio/{id}` - Eliminar predio específico
-- `DELETE /api/sandbox/limpiar` - Limpiar todo el sandbox
-- `GET /api/sandbox/estadisticas` - Estadísticas producción vs sandbox
-
-**Archivos modificados:**
-- `/app/backend/server.py` - 6 nuevos endpoints de sandbox
-- `/app/frontend/src/pages/Sandbox.js` - Componente completo del módulo
-- `/app/frontend/src/App.js` - Ruta `/dashboard/sandbox` añadida
-- `/app/frontend/src/pages/DashboardLayout.js` - Enlace en menú de administración
-
-**Tests:**
-- `/app/backend/tests/test_sandbox_module.py` - 17 tests (100% pasados)
-
----
-
-## 🔧 Actualización Anterior (26 Febrero 2026)
-
-### ✅ IMPLEMENTADO: Lógica de Predios Nuevos vs Viejos
-
-**Nuevos campos en predios:**
-- `creado_en_plataforma: true/false` - Indica si el predio fue creado manualmente en la plataforma
-- `area_editada_en_plataforma: true/false` - Indica si el área fue editada en la plataforma
-
-**Sincronización automática R2→R1:**
-El modal de edición debe comportarse diferente según:
-- Si `creado_en_plataforma = true` OR `area_editada_en_plataforma = true` → Sincronización AUTOMÁTICA R2→R1
-- Si ambos son `false` → Modo MANUAL (áreas R1 y R2 independientes)
-
-**Comportamiento al importar Excel:**
-- Si el predio YA EXISTE en BD → PRESERVA valores de `creado_en_plataforma` y `area_editada_en_plataforma`
-- Si el predio NO EXISTE en BD → Se crea con ambos campos en `false`
-
-### ✅ FIX: Piso inicial = 0
-- Corregido en `Predios.js`: El campo "Piso" ahora inicia en 0 (antes era 1)
-
-### ✅ FIX: Radicado en eliminaciones
-- El radicado ingresado al eliminar un predio ahora se guarda y muestra correctamente
-
-### ✅ FIX: Certificado catastral usa datos actualizados
-- El sistema ahora busca los datos más recientes del predio al generar certificados
-
----
-
-## Stack Tecnológico
-- **Backend:** FastAPI (Python) + MongoDB (asomunicipios_db)
-- **Frontend:** React + Tailwind CSS + shadcn/ui
-- **Mapas:** Leaflet + react-leaflet
-- **PDFs:** ReportLab
-- **Excel:** openpyxl
-- **PWA:** Service Worker + IndexedDB (modo offline)
-
-## Roles de Usuario
-1. `usuario` - Usuario externo
-2. `atencion_usuario` - Atiende peticiones iniciales
-3. `gestor` - Gestiona peticiones y predios
-4. `coordinador` - Aprueba cambios
-5. `administrador` - Control total
-6. `comunicaciones` - Solo lectura
-7. `empresa` - Solo lectura restringida
-
----
-
-## 📋 Backlog y Tareas Pendientes
+## Pending Issues
 
 ### P0 - Crítico
-- Ninguno actualmente
+- (Ninguno actualmente)
 
-### P1 - Alta Prioridad
-- **Error al aprobar cambios en "Conservación"** - Reportado por usuario, pendiente de reproducción
-- **Formulario de visita lento en móvil** - Optimizar rendimiento (`VisitaFormModal.js`)
+### P1 - Alto
+- **Historial en Predios.js**: Agregar botón de descarga PDF, mejorar formato de texto
 
-### P2 - Media Prioridad
-- Verificar sincronización offline-to-online
-- Investigar error `checkInitialSync is not defined`
-- **Expandir sistema de resoluciones:** Agregar plantillas M2, M3, etc.
-- Implementar exportación XTF
-- Desarrollar App de Correspondencia
-- Exportación Excel para datos de visitas
-- Refactorizar `Predios.js` (6,300+ líneas) en componentes más pequeños
+### P2 - Medio
+- **Lógica de campos modificados**: Verificar que solo se muestren campos realmente cambiados
+- **Sincronización offline-to-online**: Testing completo
+- **Error checkInitialSync**: Investigar y corregir
 
-### P3 - Baja Prioridad
-- Refactorizar `server.py` (25,500+ líneas) usando FastAPI APIRouter
+### P3 - Bajo
+- **Error en Conservación**: Bug al aprobar cambios
+- **Formulario de visita lento en móvil**: Optimización de rendimiento
+
+## Future Tasks
+- Exportación Excel para formulario de visitas
+- Exportación XTF
+- App de Gestión de Correspondencia
+- Refactorización de archivos grandes (server.py, Predios.js)
 - UI para reportes GDB
 - Gráficos en dashboards
 
----
-
-## Credenciales de Prueba
-- **Administrador:** `catastro@asomunicipios.gov.co` / `Asm*123*`
-- **Coordinador:** `Camilo.alsina1@hotmail.com` / `Asm*123*`
-- **Gestor:** `gestor@emergent.co` / `Asm*123*`
-
----
-
-## Archivos Clave
-- `/app/backend/server.py` - Lógica principal del backend (25,000+ líneas)
-- `/app/backend/resolucion_pdf_generator.py` - Generador de PDFs de resolución
-- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - Configuración de resoluciones (admin)
-- `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
-- `/app/frontend/src/pages/Pendientes.js` - UI de pendientes y historial
-- `/app/frontend/src/pages/VisorActualizacion.js` - Visor de predios actualización
-
----
+## Credentials for Testing
+- **Administrator**: catastro@asomunicipios.gov.co / Asm*123*
+- **Gestor**: gestor@emergent.co / Asm*123*
 
 ## 3rd Party Integrations
-- Leaflet.js (Maps)
-- proj4js (Coordinate conversion)
-- Dexie.js (IndexedDB wrapper)
-- ReportLab (Backend PDF generation)
-- Pillow (Image processing for watermark)
-- openpyxl (Backend Excel generation)
-- qrcode (QR code generation)
-- Sonner (Frontend toast notifications)
+- Leaflet.js (mapas)
+- proj4js (proyecciones)
+- Dexie.js (IndexedDB)
+- ReportLab (PDF)
+- openpyxl (Excel)
+- qrcode (códigos QR)
+- Pillow (imágenes)

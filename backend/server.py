@@ -889,7 +889,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1027,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1093,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1131,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1184,7 +1184,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1223,7 +1223,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1253,7 +1253,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1286,7 +1286,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -9648,6 +9648,12 @@ def generar_codigo_verificacion():
     aleatorio = uuid.uuid4().hex[:8].upper()
     return f"ASM-{año}-CC-{aleatorio}"
 
+def generar_codigo_verificacion_resolucion():
+    """Genera un código único de verificación para la resolución (igual formato que certificado)"""
+    año = datetime.now().year
+    aleatorio = uuid.uuid4().hex[:8].upper()
+    return f"ASM-{año}-RES-{aleatorio}"
+
 def generar_hash_documento(contenido: str) -> str:
     """Genera hash SHA256 del contenido para verificar integridad"""
     return hashlib.sha256(contenido.encode()).hexdigest()[:16].upper()
@@ -10893,21 +10899,36 @@ async def descargar_certificado_peticion(
 @api_router.get("/verificar/{codigo_verificacion}", response_class=HTMLResponse)
 async def verificar_certificado_publico(codigo_verificacion: str):
     """
-    Endpoint PÚBLICO para verificar un certificado catastral.
-    Devuelve una página HTML con la información del certificado.
+    Endpoint PÚBLICO para verificar un certificado catastral o resolución.
+    Devuelve una página HTML con la información del documento.
     No requiere autenticación.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolution-engine.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
-    # Buscar certificado
-    certificado = await db.certificados_verificables.find_one(
-        {"codigo_verificacion": codigo_verificacion},
-        {"_id": 0}
-    )
+    # Determinar tipo de documento por el código
+    es_resolucion = codigo_verificacion.startswith("ASM-") and "-RES-" in codigo_verificacion
+    
+    # Buscar en la colección apropiada
+    if es_resolucion:
+        # Buscar resolución
+        documento = await db.resoluciones.find_one(
+            {"codigo_verificacion": codigo_verificacion},
+            {"_id": 0}
+        )
+        tipo_documento = "RESOLUCIÓN"
+    else:
+        # Buscar certificado
+        documento = await db.certificados_verificables.find_one(
+            {"codigo_verificacion": codigo_verificacion},
+            {"_id": 0}
+        )
+        tipo_documento = "CERTIFICADO"
+    
+    certificado = documento  # Para mantener compatibilidad con el código existente
     
     if not certificado:
-        # Certificado no encontrado
+        # Documento no encontrado
         html_content = f"""
         <!DOCTYPE html>
         <html lang="es">
@@ -10929,11 +10950,11 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <div class="container">
                 <div class="header">
                     <img src="{logo_url}" alt="Asomunicipios">
-                    <h1>⚠️ Certificado NO Encontrado</h1>
+                    <h1>⚠️ Documento NO Encontrado</h1>
                 </div>
                 <div class="content">
                     <div class="icon">❌</div>
-                    <p>El código de verificación no corresponde a ningún certificado emitido por Asomunicipios.</p>
+                    <p>El código de verificación no corresponde a ningún {tipo_documento.lower()} emitido por Asomunicipios.</p>
                     <p class="code">{codigo_verificacion}</p>
                     <p style="margin-top: 20px; color: #666;">
                         Si cree que esto es un error, contacte a:<br>
@@ -13105,6 +13126,9 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         proponente = await db.users.find_one({"id": cambio.get("propuesto_por")}, {"_id": 0, "full_name": 1})
         elaboro = proponente.get("full_name", "") if proponente else ""
         
+        # Generar código de verificación para el QR (igual que certificado catastral)
+        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+        
         # Importar y generar PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
@@ -13137,6 +13161,9 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             destino_economico_anterior=datos_anteriores.get("destino_economico"),
             codigo_homologado_anterior=datos_anteriores.get("codigo_homologado"),
             matricula_anterior=datos_anteriores.get("matricula_inmobiliaria"),
+            # Código de verificación para QR idéntico al certificado catastral
+            codigo_verificacion=codigo_verificacion_res,
+            verificacion_base_url=VERIFICACION_BASE_URL,
         )
         
         # Crear directorio si no existe
@@ -13163,6 +13190,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
             "pdf_path": f"/resoluciones/{filename}",
+            "codigo_verificacion": codigo_verificacion_res,  # Código QR igual que certificado
             "aprobado_por": aprobador.get("id"),
             "aprobado_por_nombre": aprobador.get("full_name", ""),
             "elaborado_por": cambio.get("propuesto_por"),
@@ -24368,6 +24396,9 @@ async def generar_resolucion_prueba(
         # Importar función de generación de PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
+        # Generar código de verificación para QR (igual que certificado catastral)
+        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
             fecha_resolucion=fecha_resolucion,
@@ -24390,6 +24421,9 @@ async def generar_resolucion_prueba(
             imagen_encabezado_b64=imagen_encabezado_b64,
             imagen_pie_b64=imagen_pie_b64,
             imagen_firma_b64=imagen_firma_b64,
+            # Código de verificación para QR idéntico al certificado catastral
+            codigo_verificacion=codigo_verificacion_res,
+            verificacion_base_url=VERIFICACION_BASE_URL,
         )
         
         # Guardar PDF temporal y retornar URL
@@ -25026,6 +25060,9 @@ async def generar_resolucion_manual(
         # 6. Generar el PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
+        # Generar código de verificación para QR (igual que certificado catastral)
+        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+        
         # Formatear fecha con valores por defecto si está vacía
         fecha_resolucion = request.fecha_resolucion or datetime.now().strftime('%d/%m/%Y')
         fecha_formateada = fecha_resolucion.replace('/', '-')
@@ -25059,6 +25096,9 @@ async def generar_resolucion_manual(
             destino_economico_anterior=datos_anteriores["destino_economico"],
             codigo_homologado_anterior=datos_anteriores["codigo_homologado"],
             matricula_anterior=datos_anteriores["matricula_inmobiliaria"],
+            # Código de verificación para QR idéntico al certificado catastral
+            codigo_verificacion=codigo_verificacion_res,
+            verificacion_base_url=VERIFICACION_BASE_URL,
         )
         
         # 7. Guardar el PDF
@@ -25082,6 +25122,7 @@ async def generar_resolucion_manual(
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
             "pdf_path": f"/resoluciones/{filename}",
+            "codigo_verificacion": codigo_verificacion_res,  # Código QR igual que certificado
             "radicado": request.radicado_peticion,
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name", ""),
@@ -25275,6 +25316,9 @@ async def generar_preview_resolucion(
         destino_economico = predio.get("destino_economico", "A")
         codigo_homologado = predio.get("codigo_homologado", predio.get("codigo_anterior", ""))
         
+        # Generar código de verificación para QR (preview)
+        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
             fecha_resolucion=fecha_resolucion,
@@ -25296,6 +25340,9 @@ async def generar_preview_resolucion(
             elaboro=current_user.get('full_name', 'Usuario'),
             aprobo="",  # Se llenará cuando se apruebe el cambio
             plantilla=plantilla_textos,
+            # Código de verificación para QR idéntico al certificado catastral
+            codigo_verificacion=codigo_verificacion_res,
+            verificacion_base_url=VERIFICACION_BASE_URL,
         )
         
         import base64

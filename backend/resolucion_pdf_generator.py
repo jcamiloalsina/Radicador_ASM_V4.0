@@ -84,6 +84,9 @@ def generate_resolucion_pdf(
     destino_economico_anterior: str = None,
     codigo_homologado_anterior: str = None,
     matricula_anterior: str = None,
+    # Código de verificación para QR idéntico al certificado catastral
+    codigo_verificacion: str = None,
+    verificacion_base_url: str = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -711,15 +714,34 @@ def generate_resolucion_pdf(
     y -= 12
     c.drawString(left_margin, y, f"Aprobó:  {aprobo}")
     
-    # === QR DE VALIDACIÓN ===
-    # Generar QR con el número de resolución para validación
+    # === QR DE VALIDACIÓN - IDÉNTICO AL CERTIFICADO CATASTRAL ===
+    # Generar QR con código de verificación (mismo formato que certificado catastral)
     try:
         import qrcode
-        qr_data = f"https://asomunicipios.gov.co/validar-resolucion/{numero_resolucion}"
-        qr = qrcode.QRCode(version=1, box_size=3, border=1)
+        import hashlib
+        
+        # Determinar URL base de verificación
+        base_url = verificacion_base_url or "https://certificados.asomunicipios.gov.co"
+        
+        # Si hay código de verificación, usar el mismo formato que certificado catastral
+        if codigo_verificacion:
+            qr_data = f"{base_url}/api/verificar/{codigo_verificacion}"
+        else:
+            # Fallback: usar número de resolución
+            qr_data = f"{base_url}/api/verificar-resolucion/{numero_resolucion}"
+        
+        # QR con misma configuración que certificado catastral
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
         qr.add_data(qr_data)
         qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Color verde institucional idéntico al certificado catastral
+        qr_img = qr.make_image(fill_color="#009846", back_color="white")
         
         # Convertir a formato compatible con ReportLab
         qr_buffer = io.BytesIO()
@@ -727,15 +749,58 @@ def generate_resolucion_pdf(
         qr_buffer.seek(0)
         qr_reader = ImageReader(qr_buffer)
         
-        # Dibujar QR en la esquina inferior derecha
-        qr_size = 50
-        qr_x = right_margin - qr_size
-        qr_y = footer_limit + 10
-        c.drawImage(qr_reader, qr_x, qr_y, width=qr_size, height=qr_size)
+        # === CUADRO DE VERIFICACIÓN - IGUAL QUE CERTIFICADO CATASTRAL ===
+        gris_claro = colors.HexColor('#666666')
+        fecha_hora_gen = datetime.now().strftime("%d/%m/%Y %H:%M")
         
-        # Texto de validación
-        c.setFont(font_normal, 5)
-        c.drawString(qr_x - 10, qr_y - 8, "Escanee para validar")
+        # Hash del documento
+        hash_input = f"{npn}-{codigo_verificacion or numero_resolucion}-{fecha_hora_gen}"
+        hash_doc = hashlib.sha256(hash_input.encode()).hexdigest()
+        
+        # Dimensiones del marco de verificación
+        marco_width = 185
+        marco_height = 58
+        marco_x = right_margin - marco_width
+        marco_y = footer_limit + 10
+        
+        # Fondo del marco (verde muy claro)
+        c.setFillColor(colors.HexColor('#f0fdf4'))
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=1, stroke=0)
+        
+        # Borde verde institucional
+        c.setStrokeColor(verde_institucional)
+        c.setLineWidth(1.5)
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=0, stroke=1)
+        
+        # QR dentro del marco (izquierda)
+        qr_size = 46
+        c.drawImage(qr_reader, marco_x + 5, marco_y + 6, width=qr_size, height=qr_size, mask='auto')
+        
+        # Información de verificación (derecha del QR)
+        info_x = marco_x + 55
+        
+        # Título
+        c.setFillColor(verde_institucional)
+        c.setFont(font_bold, 8)
+        c.drawString(info_x, marco_y + marco_height - 11, "RESOLUCIÓN VERIFICABLE")
+        
+        # Código
+        c.setFillColor(negro)
+        c.setFont(font_bold, 7)
+        codigo_mostrar = codigo_verificacion or numero_resolucion
+        c.drawString(info_x, marco_y + 36, f"Código: {codigo_mostrar}")
+        
+        # Detalles
+        c.setFont(font_normal, 6)
+        c.setFillColor(gris_claro)
+        c.drawString(info_x, marco_y + 26, f"Generado: {fecha_hora_gen}")
+        c.drawString(info_x, marco_y + 17, f"Hash: SHA256:{hash_doc[:12]}...")
+        
+        # URL de verificación
+        c.setFillColor(verde_institucional)
+        c.setFont(font_normal, 6)
+        c.drawString(info_x, marco_y + 8, "Escanear QR para verificar")
+        
     except Exception as e:
         print(f"Error generando QR: {e}")
     
