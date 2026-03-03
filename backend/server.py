@@ -25264,7 +25264,7 @@ async def generar_resolucion_manual(
         }
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
-        # 9. Actualizar el historial de resoluciones del predio
+        # 9. Actualizar el historial de resoluciones del predio Y LOS DATOS DEL PREDIO
         resolucion_historial = {
             "numero_resolucion": request.numero_resolucion,
             "tipo_mutacion": request.tipo_mutacion,
@@ -25275,16 +25275,37 @@ async def generar_resolucion_manual(
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
         }
         
+        # Preparar los datos a actualizar en el predio
+        update_predio = {
+            "tipo_mutacion": request.tipo_mutacion,
+            "numero_resolucion": request.numero_resolucion,
+            "fecha_resolucion": request.fecha_resolucion,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Si se enviaron datos del predio, actualizarlos también
+        if request.datos_predio:
+            campos_actualizables = [
+                'nombre_propietario', 'tipo_documento', 'numero_documento', 'estado_civil',
+                'propietarios', 'direccion', 'comuna', 'barrio', 'vereda',
+                'area_terreno', 'area_construida', 'avaluo', 'destino_economico',
+                'matricula_inmobiliaria', 'codigo_homologado', 'zonas', 'construcciones',
+                'area_terreno_r1', 'area_construida_r1', 'zonas_fisicas', 'r2_registros'
+            ]
+            for campo in campos_actualizables:
+                if campo in request.datos_predio and request.datos_predio[campo] is not None:
+                    update_predio[campo] = request.datos_predio[campo]
+            
+            # Si se actualizaron áreas, marcar para sincronización R2→R1
+            campos_area = ['area_terreno', 'area_construida', 'zonas', 'construcciones', 'zonas_fisicas', 'r2_registros']
+            if any(campo in request.datos_predio for campo in campos_area):
+                update_predio["area_editada_en_plataforma"] = True
+        
         await db.predios.update_one(
             {"id": request.predio_id},
             {
                 "$push": {"historial_resoluciones": resolucion_historial},
-                "$set": {
-                    "tipo_mutacion": request.tipo_mutacion,
-                    "numero_resolucion": request.numero_resolucion,
-                    "fecha_resolucion": request.fecha_resolucion,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
+                "$set": update_predio
             }
         )
         
