@@ -24251,6 +24251,11 @@ async def generar_preview_resolucion(
             "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
         }
         
+        # Obtener áreas del predio
+        area_terreno = str(predio.get("area_terreno", predio.get("area_terreno_r1", 0)))
+        area_construida = str(predio.get("area_construida", predio.get("area_construida_r1", 0)))
+        destino = predio.get("destino_economico", "URB")
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
             fecha_resolucion=fecha_resolucion,
@@ -24263,6 +24268,9 @@ async def generar_preview_resolucion(
             direccion=predio.get("direccion", ""),
             avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
             vigencia_fiscal=f"01/01/{anio}",
+            area_terreno=area_terreno,
+            area_construida=area_construida,
+            destino=destino,
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),

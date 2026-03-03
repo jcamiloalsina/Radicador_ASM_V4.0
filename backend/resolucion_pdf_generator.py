@@ -62,6 +62,9 @@ def generate_resolucion_pdf(
     direccion: str,
     avaluo: str,
     vigencia_fiscal: str,
+    area_terreno: str = "0",
+    area_construida: str = "0",
+    destino: str = "URB",
     propietarios_anteriores: list = None,
     propietarios_nuevos: list = None,
     elaboro: str = "",
@@ -303,90 +306,198 @@ def generate_resolucion_pdf(
             y -= espaciado_parrafos
     y -= 10
     
-    # Tabla de cancelación/inscripción
-    y = check_page_break(y, 100)
+    # ============================================================
+    # TABLA CANCELACIÓN - Propietarios anteriores
+    # ============================================================
+    y = check_page_break(y, 80)
     
-    # --- Tabla CANCELACIÓN ---
+    # Título CANCELACIÓN
     c.setFillColor(verde_institucional)
     c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
     c.setFont(font_bold, fuente_tabla + 1)
     c.drawCentredString(width/2, y - 12, "CANCELACIÓN")
-    y -= 20
+    y -= 18
     
-    # Encabezado tabla cancelación
-    c.setFillColor(colors.HexColor('#f0f0f0'))
-    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=0)
+    # Fila 1: N° PREDIAL | APELLIDOS Y NOMBRES | TIPO DOC. | NRO. DOC. | ESTADO
+    c.setFillColor(colors.HexColor('#e8e8e8'))
+    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
     c.setFillColor(negro)
     c.setFont(font_bold, fuente_tabla)
     
-    col_widths = [content_width * 0.25, content_width * 0.35, content_width * 0.20, content_width * 0.20]
-    headers = ["NPN / CÓDIGO", "PROPIETARIO", "DOCUMENTO", "AVALÚO"]
+    cancel_cols = [content_width * 0.22, content_width * 0.35, content_width * 0.13, content_width * 0.15, content_width * 0.15]
+    cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "TIPO DOC.", "NRO. DOC.", "ESTADO"]
     x = left_margin
-    for i, header in enumerate(headers):
-        c.drawCentredString(x + col_widths[i]/2, y - 9, header)
-        x += col_widths[i]
-    y -= 15
+    for i, header in enumerate(cancel_headers):
+        c.drawCentredString(x + cancel_cols[i]/2, y - 9, header)
+        c.rect(x, y - 12, cancel_cols[i], 12, fill=0, stroke=1)
+        x += cancel_cols[i]
+    y -= 12
     
-    # Datos cancelación
+    # Datos de propietarios anteriores (cancelación)
     c.setFont(font_normal, fuente_tabla)
     if propietarios_anteriores:
         for prop in propietarios_anteriores:
-            y = check_page_break(y, 20)
+            y = check_page_break(y, 15)
             x = left_margin
-            c.drawString(x + 2, y - 9, npn[:20] + "..." if len(npn) > 20 else npn)
-            x += col_widths[0]
-            nombre = prop.get('nombre', '')[:25]
+            # N° PREDIAL
+            c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
+            c.drawString(x + 2, y - 9, npn[:18] if len(npn) > 18 else npn)
+            x += cancel_cols[0]
+            # APELLIDOS Y NOMBRES
+            c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
+            nombre = prop.get('nombre', '')[:30]
             c.drawString(x + 2, y - 9, nombre)
-            x += col_widths[1]
-            c.drawString(x + 2, y - 9, prop.get('documento', ''))
-            x += col_widths[2]
-            c.drawString(x + 2, y - 9, avaluo)
+            x += cancel_cols[1]
+            # TIPO DOC.
+            c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
+            tipo_doc = prop.get('tipo_documento', 'CC')
+            c.drawCentredString(x + cancel_cols[2]/2, y - 9, tipo_doc)
+            x += cancel_cols[2]
+            # NRO. DOC.
+            c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
+            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
+            c.drawString(x + 2, y - 9, str(nro_doc)[:12])
+            x += cancel_cols[3]
+            # ESTADO
+            c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
+            estado = prop.get('estado', 'Propietario')
+            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado[:12])
             y -= 12
     else:
+        y = check_page_break(y, 15)
+        c.rect(left_margin, y - 12, content_width, 12, fill=0, stroke=1)
         c.drawString(left_margin + 5, y - 9, "Sin datos de propietario anterior")
         y -= 12
-    y -= 10
+    y -= 8
     
-    # --- Tabla INSCRIPCIÓN ---
-    y = check_page_break(y, 60)
+    # ============================================================
+    # TABLA INSCRIPCIÓN - Nuevos propietarios + datos del predio
+    # ============================================================
+    y = check_page_break(y, 100)
+    
+    # Título INSCRIPCIÓN
     c.setFillColor(verde_institucional)
     c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
     c.setFillColor(blanco)
     c.setFont(font_bold, fuente_tabla + 1)
     c.drawCentredString(width/2, y - 12, "INSCRIPCIÓN")
-    y -= 20
+    y -= 18
     
-    # Encabezado tabla inscripción
-    c.setFillColor(colors.HexColor('#f0f0f0'))
-    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=0)
+    # Fila 1: N° PREDIAL | APELLIDOS Y NOMBRES | TIPO DOC. | NRO. DOC. | ESTADO
+    c.setFillColor(colors.HexColor('#e8e8e8'))
+    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
     c.setFillColor(negro)
     c.setFont(font_bold, fuente_tabla)
     
     x = left_margin
-    for i, header in enumerate(headers):
-        c.drawCentredString(x + col_widths[i]/2, y - 9, header)
-        x += col_widths[i]
-    y -= 15
+    for i, header in enumerate(cancel_headers):
+        c.drawCentredString(x + cancel_cols[i]/2, y - 9, header)
+        c.rect(x, y - 12, cancel_cols[i], 12, fill=0, stroke=1)
+        x += cancel_cols[i]
+    y -= 12
     
-    # Datos inscripción
+    # Datos de nuevos propietarios (inscripción)
     c.setFont(font_normal, fuente_tabla)
     if propietarios_nuevos:
         for prop in propietarios_nuevos:
-            y = check_page_break(y, 20)
+            y = check_page_break(y, 15)
             x = left_margin
-            c.drawString(x + 2, y - 9, npn[:20] + "..." if len(npn) > 20 else npn)
-            x += col_widths[0]
-            nombre = prop.get('nombre', '')[:25]
+            # N° PREDIAL
+            c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
+            c.drawString(x + 2, y - 9, npn[:18] if len(npn) > 18 else npn)
+            x += cancel_cols[0]
+            # APELLIDOS Y NOMBRES
+            c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
+            nombre = prop.get('nombre', '')[:30]
             c.drawString(x + 2, y - 9, nombre)
-            x += col_widths[1]
-            c.drawString(x + 2, y - 9, prop.get('documento', ''))
-            x += col_widths[2]
-            c.drawString(x + 2, y - 9, avaluo)
+            x += cancel_cols[1]
+            # TIPO DOC.
+            c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
+            tipo_doc = prop.get('tipo_documento', 'CC')
+            c.drawCentredString(x + cancel_cols[2]/2, y - 9, tipo_doc)
+            x += cancel_cols[2]
+            # NRO. DOC.
+            c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
+            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
+            c.drawString(x + 2, y - 9, str(nro_doc)[:12])
+            x += cancel_cols[3]
+            # ESTADO
+            c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
+            estado = prop.get('estado', 'Propietario')
+            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado[:12])
             y -= 12
     else:
+        y = check_page_break(y, 15)
+        c.rect(left_margin, y - 12, content_width, 12, fill=0, stroke=1)
         c.drawString(left_margin + 5, y - 9, "Sin datos de nuevo propietario")
         y -= 12
+    y -= 5
+    
+    # Fila de datos del predio (parte inferior de inscripción)
+    # Headers: NUPRE/CODIGO HOMOLOGADO | DIRECCIÓN O VEREDA | DES | A-TERRENO | A-CONS | AVALÚO | VIGENCIA FISCAL
+    y = check_page_break(y, 30)
+    c.setFillColor(colors.HexColor('#e8e8e8'))
+    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
+    c.setFillColor(negro)
+    c.setFont(font_bold, fuente_tabla - 1)
+    
+    predio_cols = [content_width * 0.18, content_width * 0.22, content_width * 0.08, content_width * 0.12, content_width * 0.10, content_width * 0.15, content_width * 0.15]
+    predio_headers = ["NUPRE/CODIGO", "DIRECCIÓN", "DES", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
+    x = left_margin
+    for i, header in enumerate(predio_headers):
+        c.drawCentredString(x + predio_cols[i]/2, y - 9, header)
+        c.rect(x, y - 12, predio_cols[i], 12, fill=0, stroke=1)
+        x += predio_cols[i]
+    y -= 12
+    
+    # Datos del predio
+    y = check_page_break(y, 15)
+    c.setFont(font_normal, fuente_tabla - 1)
+    x = left_margin
+    # NUPRE/CODIGO HOMOLOGADO
+    c.rect(x, y - 12, predio_cols[0], 12, fill=0, stroke=1)
+    codigo_corto = npn[:15] if len(npn) > 15 else npn
+    c.drawString(x + 1, y - 9, codigo_corto)
+    x += predio_cols[0]
+    # DIRECCIÓN O VEREDA
+    c.rect(x, y - 12, predio_cols[1], 12, fill=0, stroke=1)
+    dir_corta = direccion[:18] if len(direccion) > 18 else direccion
+    c.drawString(x + 1, y - 9, dir_corta)
+    x += predio_cols[1]
+    # DES (Destino)
+    c.rect(x, y - 12, predio_cols[2], 12, fill=0, stroke=1)
+    c.drawCentredString(x + predio_cols[2]/2, y - 9, destino)
+    x += predio_cols[2]
+    # A-TERRENO
+    c.rect(x, y - 12, predio_cols[3], 12, fill=0, stroke=1)
+    c.drawCentredString(x + predio_cols[3]/2, y - 9, str(area_terreno))
+    x += predio_cols[3]
+    # A-CONS
+    c.rect(x, y - 12, predio_cols[4], 12, fill=0, stroke=1)
+    c.drawCentredString(x + predio_cols[4]/2, y - 9, str(area_construida))
+    x += predio_cols[4]
+    # AVALÚO
+    c.rect(x, y - 12, predio_cols[5], 12, fill=0, stroke=1)
+    c.drawCentredString(x + predio_cols[5]/2, y - 9, avaluo[:12] if len(avaluo) > 12 else avaluo)
+    x += predio_cols[5]
+    # VIGENCIA FISCAL
+    c.rect(x, y - 12, predio_cols[6], 12, fill=0, stroke=1)
+    c.drawCentredString(x + predio_cols[6]/2, y - 9, vigencia_fiscal)
+    y -= 12
+    
+    # Fila MATRÍCULA INMOBILIARIA
+    y = check_page_break(y, 15)
+    c.setFillColor(colors.HexColor('#e8e8e8'))
+    c.rect(left_margin, y - 12, content_width * 0.3, 12, fill=1, stroke=1)
+    c.setFillColor(negro)
+    c.setFont(font_bold, fuente_tabla - 1)
+    c.drawCentredString(left_margin + (content_width * 0.3)/2, y - 9, "MATRÍCULA INMOBILIARIA")
+    c.setFont(font_normal, fuente_tabla)
+    c.rect(left_margin + content_width * 0.3, y - 12, content_width * 0.7, 12, fill=0, stroke=1)
+    c.drawString(left_margin + content_width * 0.3 + 5, y - 9, matricula_inmobiliaria)
+    y -= 12
+    
     y -= espaciado_secciones
     
     # Artículo 2
