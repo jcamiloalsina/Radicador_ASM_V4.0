@@ -1802,7 +1802,7 @@ export default function PetitionDetail() {
                           <span className="text-xs text-slate-500">{fechaFormateada}</span>
                         </div>
                         <p className="text-sm text-slate-600 mb-1">
-                          Por: <span className="font-medium">{entry.usuario}</span>
+                          Por: <span className="font-medium">{entry.usuario_nombre || entry.usuario || 'N/A'}</span>
                           {entry.usuario_rol && (
                             <span className="text-xs text-slate-500 ml-2">
                               ({entry.usuario_rol === 'atencion_usuario' ? 'Atención al Usuario' : 
