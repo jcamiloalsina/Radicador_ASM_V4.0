@@ -488,26 +488,28 @@ def generate_resolucion_pdf(
         for prop in propietarios_anteriores:
             y = check_page_break(y, 15)
             x = left_margin
-            # N° PREDIAL (30 dígitos completo)
+            # N° PREDIAL (30 dígitos completo) - centrado
             c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
-            c.drawString(x + 1, y - 9, npn)
+            c.setFont(font_normal, fuente_tabla - 2)  # Fuente más pequeña para el código
+            c.drawCentredString(x + cancel_cols[0]/2, y - 9, npn[:30])
+            c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES
+            # APELLIDOS Y NOMBRES - centrado
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
             nombre = prop.get('nombre', '')[:25]
-            c.drawString(x + 1, y - 9, nombre)
+            c.drawCentredString(x + cancel_cols[1]/2, y - 9, nombre)
             x += cancel_cols[1]
-            # TIPO DOC.
+            # TIPO DOC. - centrado
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
             tipo_doc = prop.get('tipo_documento', 'CC')
             c.drawCentredString(x + cancel_cols[2]/2, y - 9, tipo_doc)
             x += cancel_cols[2]
-            # NRO. DOC.
+            # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawString(x + 1, y - 9, str(nro_doc)[:15])
+            c.drawCentredString(x + cancel_cols[3]/2, y - 9, str(nro_doc)[:15])
             x += cancel_cols[3]
-            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.)
+            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
             estado_civil = prop.get('estado_civil', prop.get('estado', ''))
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
@@ -515,7 +517,7 @@ def generate_resolucion_pdf(
     else:
         y = check_page_break(y, 15)
         c.rect(left_margin, y - 12, content_width, 12, fill=0, stroke=1)
-        c.drawString(left_margin + 5, y - 9, "Sin datos de propietario anterior")
+        c.drawCentredString(left_margin + content_width/2, y - 9, "Sin datos de propietario anterior")
         y -= 12
     y -= 5
     
@@ -564,26 +566,28 @@ def generate_resolucion_pdf(
         for prop in propietarios_nuevos:
             y = check_page_break(y, 15)
             x = left_margin
-            # N° PREDIAL (30 dígitos completo)
+            # N° PREDIAL (30 dígitos completo) - centrado
             c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
-            c.drawString(x + 1, y - 9, npn)
+            c.setFont(font_normal, fuente_tabla - 2)  # Fuente más pequeña para el código
+            c.drawCentredString(x + cancel_cols[0]/2, y - 9, npn[:30])
+            c.setFont(font_normal, fuente_tabla - 1)
             x += cancel_cols[0]
-            # APELLIDOS Y NOMBRES
+            # APELLIDOS Y NOMBRES - centrado
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
             nombre = prop.get('nombre', '')[:25]
-            c.drawString(x + 1, y - 9, nombre)
+            c.drawCentredString(x + cancel_cols[1]/2, y - 9, nombre)
             x += cancel_cols[1]
-            # TIPO DOC.
+            # TIPO DOC. - centrado
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
             tipo_doc = prop.get('tipo_documento', 'CC')
             c.drawCentredString(x + cancel_cols[2]/2, y - 9, tipo_doc)
             x += cancel_cols[2]
-            # NRO. DOC.
+            # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawString(x + 1, y - 9, str(nro_doc)[:15])
+            c.drawCentredString(x + cancel_cols[3]/2, y - 9, str(nro_doc)[:15])
             x += cancel_cols[3]
-            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.)
+            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
             estado_civil = prop.get('estado_civil', prop.get('estado', ''))
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
@@ -591,7 +595,7 @@ def generate_resolucion_pdf(
     else:
         y = check_page_break(y, 15)
         c.rect(left_margin, y - 12, content_width, 12, fill=0, stroke=1)
-        c.drawString(left_margin + 5, y - 9, "Sin datos de nuevo propietario")
+        c.drawCentredString(left_margin + content_width/2, y - 9, "Sin datos de nuevo propietario")
         y -= 12
     y -= 5
     
