@@ -462,13 +462,14 @@ export default function Predios() {
     }
   };
   
-  // Función para cargar radicados disponibles
-  const cargarRadicadosDisponibles = async (municipio) => {
+  // Función para cargar radicados disponibles con búsqueda
+  const cargarRadicadosDisponibles = async (municipio, busqueda = '') => {
     try {
       const token = localStorage.getItem('token');
-      const url = municipio 
-        ? `${API}/resoluciones/radicados-disponibles?municipio=${encodeURIComponent(municipio)}`
-        : `${API}/resoluciones/radicados-disponibles`;
+      let url = `${API}/resoluciones/radicados-disponibles?`;
+      if (municipio) url += `municipio=${encodeURIComponent(municipio)}&`;
+      if (busqueda) url += `busqueda=${encodeURIComponent(busqueda)}`;
+      
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -4415,21 +4416,44 @@ export default function Predios() {
                       <Input
                         type="text"
                         value={infoResolucion.radicado_peticion}
-                        onChange={(e) => setInfoResolucion(prev => ({ ...prev, radicado_peticion: e.target.value.toUpperCase() }))}
-                        placeholder="Escribir o seleccionar radicado..."
-                        list="radicados-list"
+                        onChange={async (e) => {
+                          const valor = e.target.value.toUpperCase();
+                          setInfoResolucion(prev => ({ ...prev, radicado_peticion: valor }));
+                          // Buscar radicados mientras escribe (mínimo 3 caracteres)
+                          if (valor.length >= 3) {
+                            await cargarRadicadosDisponibles('', valor); // Sin filtrar por municipio
+                          } else {
+                            setRadicadosDisponibles([]);
+                          }
+                        }}
+                        placeholder="Escribir número de radicado..."
                         className="mt-1"
                       />
-                      <datalist id="radicados-list">
-                        {radicadosDisponibles.map(rad => (
-                          <option key={rad.id} value={rad.radicado}>
-                            {rad.radicado} - {rad.tipo_tramite}
-                          </option>
-                        ))}
-                      </datalist>
+                      {/* Lista de resultados de búsqueda */}
+                      {radicadosDisponibles.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                          {radicadosDisponibles.map(rad => (
+                            <button
+                              key={rad.id}
+                              type="button"
+                              onClick={() => {
+                                setInfoResolucion(prev => ({ ...prev, radicado_peticion: rad.radicado }));
+                                setRadicadosDisponibles([]);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b border-slate-100 last:border-0"
+                            >
+                              <span className="font-mono text-purple-700">{rad.radicado}</span>
+                              <span className="text-slate-500 ml-2">- {rad.tipo_tramite}</span>
+                              {rad.nombre_completo && (
+                                <span className="text-slate-400 text-xs block">{rad.nombre_completo}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-purple-600 mt-1">
-                      Escriba el radicado o seleccione de la lista
+                      Escriba al menos 3 caracteres para buscar
                     </p>
                   </div>
                 </div>

@@ -24743,13 +24743,19 @@ async def obtener_siguiente_numero_resolucion(
 @api_router.get("/resoluciones/radicados-disponibles")
 async def obtener_radicados_disponibles(
     municipio: str = None,
+    busqueda: str = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Obtener lista de radicados/peticiones que pueden asociarse a una resolución"""
     try:
-        query = {
-            "estado": {"$in": ["pendiente", "en_proceso", "asignado"]}
-        }
+        query = {}
+        
+        # Si hay búsqueda, buscar en radicado
+        if busqueda:
+            query["radicado"] = {"$regex": busqueda, "$options": "i"}
+        else:
+            # Solo mostrar peticiones pendientes si no hay búsqueda específica
+            query["estado"] = {"$in": ["pendiente", "en_proceso", "asignado"]}
         
         if municipio:
             query["municipio"] = {"$regex": municipio, "$options": "i"}
@@ -24758,7 +24764,7 @@ async def obtener_radicados_disponibles(
             query,
             {"_id": 0, "id": 1, "radicado": 1, "municipio": 1, "tipo_tramite": 1, 
              "nombre_completo": 1, "estado": 1, "created_at": 1}
-        ).sort("created_at", -1).limit(100).to_list(100)
+        ).sort("created_at", -1).limit(50).to_list(50)
         
         return {
             "success": True,
