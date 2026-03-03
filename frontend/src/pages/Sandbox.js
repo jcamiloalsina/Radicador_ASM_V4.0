@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import EditorVisualResolucion from '../components/EditorVisualResolucion';
+import EditorWordResolucion from '../components/EditorWordResolucion';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -106,7 +107,89 @@ export default function Sandbox() {
     firma: { tiene_personalizada: false }
   });
   const [subiendoImagen, setSubiendoImagen] = useState(false);
-  const [tabEditor, setTabEditor] = useState('textos'); // textos, visual, imagenes
+  const [tabEditor, setTabEditor] = useState('documento'); // documento, visual, imagenes
+  
+  // Contenido HTML del editor tipo Word
+  const [contenidoDocumento, setContenidoDocumento] = useState('');
+  
+  // Plantilla por defecto en HTML
+  const plantillaDefaultHTML = `
+<h2 style="text-align: center;">RESOLUCIÓN No: RES-{depto}-{mpio}-{consecutivo}-{año}</h2>
+<p style="text-align: center;"><strong>FECHA RESOLUCIÓN: {fecha}</strong></p>
+
+<p style="text-align: center;"><strong>POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE {tipo_tramite}.</strong></p>
+
+<p style="text-align: justify;">La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso de sus facultades legales y,</p>
+
+<h3 style="text-align: center;">CONSIDERANDO</h3>
+
+<p style="text-align: justify;">Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.</p>
+
+<p style="text-align: justify;">Que, se aportaron como soportes los siguientes documentos:</p>
+<ul>
+  <li>Oficio de solicitud.</li>
+  <li>Cédula de ciudadanía.</li>
+  <li>Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}.</li>
+</ul>
+
+<p style="text-align: justify;">Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.</p>
+
+<p style="text-align: justify;">En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:</p>
+
+<h3 style="text-align: center;">RESUELVE</h3>
+
+<p><strong>Art. 001.</strong> Ordenar la inscripción en el catastro del Municipio de {municipio} los siguientes cambios:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>CONCEPTO</th>
+      <th>NPN</th>
+      <th>PROPIETARIO</th>
+      <th>DOCUMENTO</th>
+      <th>DIRECCIÓN</th>
+      <th>AVALÚO</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>CANCELACIÓN</strong></td>
+      <td>{npn}</td>
+      <td>{propietario_anterior}</td>
+      <td>{documento_anterior}</td>
+      <td>{direccion}</td>
+      <td>{avaluo}</td>
+    </tr>
+    <tr>
+      <td><strong>INSCRIPCIÓN</strong></td>
+      <td>{npn}</td>
+      <td>{propietario_nuevo}</td>
+      <td>{documento_nuevo}</td>
+      <td>{direccion}</td>
+      <td>{avaluo}</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>ARTÍCULO 2.</strong> El presente acto administrativo rige a partir de la fecha de su expedición.</p>
+
+<p><strong>ARTÍCULO 3.</strong> Los avalúos incorporados tienen vigencia fiscal a partir del {vigencia_fiscal}.</p>
+
+<p><strong>ARTÍCULO 4.</strong> Contra el presente acto administrativo no procede recurso alguno.</p>
+
+<h3 style="text-align: center;">COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE</h3>
+
+<p style="text-align: center;">DADA EN OCAÑA A LOS {fecha_texto}</p>
+
+<p style="text-align: center;">&nbsp;</p>
+<p style="text-align: center;"><strong>DALGIE ESPERANZA TORRADO RIZO</strong></p>
+<p style="text-align: center;">SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA</p>
+
+<p style="text-align: left; font-size: 10px; margin-top: 40px;">
+Elaboró: {elaboro}<br/>
+Revisó: {reviso}
+</p>
+  `.trim();
   
   // Colecciones disponibles para consulta (solo lectura)
   const colecciones = [
@@ -808,14 +891,14 @@ export default function Sandbox() {
                 {/* Sub-tabs del editor */}
                 <div className="flex border-b mb-4">
                   <button
-                    onClick={() => setTabEditor('textos')}
+                    onClick={() => setTabEditor('documento')}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                      tabEditor === 'textos' 
+                      tabEditor === 'documento' 
                         ? 'text-purple-600 border-purple-600' 
                         : 'text-slate-500 border-transparent hover:text-slate-700'
                     }`}
                   >
-                    Textos
+                    Editor de Documento
                   </button>
                   <button
                     onClick={() => setTabEditor('visual')}
@@ -839,128 +922,41 @@ export default function Sandbox() {
                   </button>
                 </div>
 
-                {/* Tab: Textos */}
-                {tabEditor === 'textos' && (
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    {/* Preámbulo */}
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">Preámbulo</Label>
-                      <Textarea
-                        value={plantilla.preambulo}
-                        onChange={(e) => setPlantilla({...plantilla, preambulo: e.target.value})}
-                        rows={3}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Considerando 1 */}
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">
-                        Considerando 1 
-                        <span className="text-xs text-slate-400 ml-2">Variables: {'{tipo_tramite}'}, {'{radicado}'}</span>
-                      </Label>
-                      <Textarea
-                        value={plantilla.considerando_1}
-                        onChange={(e) => setPlantilla({...plantilla, considerando_1: e.target.value})}
-                        rows={2}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Considerando 3 */}
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">
-                        Considerando 3 
-                        <span className="text-xs text-slate-400 ml-2">Variables: {'{codigo_catastral}'}, {'{npn}'}</span>
-                      </Label>
-                      <Textarea
-                        value={plantilla.considerando_3}
-                        onChange={(e) => setPlantilla({...plantilla, considerando_3: e.target.value})}
-                        rows={2}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Considerando final */}
-                    <div>
-                      <Label className="text-sm font-medium text-slate-700">Considerando Final</Label>
-                      <Textarea
-                        value={plantilla.considerando_final}
-                        onChange={(e) => setPlantilla({...plantilla, considerando_final: e.target.value})}
-                        rows={3}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Artículos */}
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Artículo 2</Label>
-                        <Input
-                          value={plantilla.articulo_2}
-                          onChange={(e) => setPlantilla({...plantilla, articulo_2: e.target.value})}
-                          className="mt-1"
-                        />
+                {/* Tab: Editor de Documento tipo Word */}
+                {tabEditor === 'documento' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-slate-500">
+                        <span className="font-medium">Variables disponibles:</span> {'{municipio}'}, {'{tipo_tramite}'}, {'{radicado}'}, {'{npn}'}, {'{propietario_anterior}'}, {'{propietario_nuevo}'}, etc.
                       </div>
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">
-                          Artículo 3 
-                          <span className="text-xs text-slate-400 ml-2">Variable: {'{vigencia_fiscal}'}</span>
-                        </Label>
-                        <Input
-                          value={plantilla.articulo_3}
-                          onChange={(e) => setPlantilla({...plantilla, articulo_3: e.target.value})}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Artículo 4</Label>
-                        <Input
-                          value={plantilla.articulo_4}
-                          onChange={(e) => setPlantilla({...plantilla, articulo_4: e.target.value})}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Cierre y firmante */}
-                    <div className="border-t pt-4 mt-4">
-                      <div className="grid grid-cols-1 gap-3">
-                        <div>
-                          <Label className="text-sm font-medium text-slate-700">Cierre</Label>
-                          <Input
-                            value={plantilla.cierre}
-                            onChange={(e) => setPlantilla({...plantilla, cierre: e.target.value})}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-slate-700">Nombre del Firmante</Label>
-                          <Input
-                            value={plantilla.firmante_nombre}
-                            onChange={(e) => setPlantilla({...plantilla, firmante_nombre: e.target.value})}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-slate-700">Cargo del Firmante</Label>
-                          <Input
-                            value={plantilla.firmante_cargo}
-                            onChange={(e) => setPlantilla({...plantilla, firmante_cargo: e.target.value})}
-                            className="mt-1"
-                          />
-                        </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setContenidoDocumento(plantillaDefaultHTML)}
+                        >
+                          Restaurar plantilla
+                        </Button>
+                        <Button 
+                          onClick={guardarPlantilla} 
+                          disabled={guardandoPlantilla}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          size="sm"
+                        >
+                          {guardandoPlantilla ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          Guardar
+                        </Button>
                       </div>
                     </div>
                     
-                    <Button 
-                      onClick={guardarPlantilla} 
-                      disabled={guardandoPlantilla}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4"
-                    >
-                      {guardandoPlantilla ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Guardar Textos
-                    </Button>
+                    <EditorWordResolucion
+                      contenido={contenidoDocumento || plantillaDefaultHTML}
+                      onChange={(html) => {
+                        setContenidoDocumento(html);
+                        setPlantilla(prev => ({ ...prev, contenido_html: html }));
+                      }}
+                      placeholder="Escribe el contenido de la resolución aquí..."
+                    />
                   </div>
                 )}
 
