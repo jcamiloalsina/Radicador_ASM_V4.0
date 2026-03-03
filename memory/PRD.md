@@ -22,16 +22,23 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 - **FEATURE P0 - Modal Nuevo Predio para M2 COMPLETO**:
   - **Problema**: Usuario necesitaba que el formulario de crear predio en M2 fuera idéntico al original
   - **Solución**: Implementado modal completo con 3 tabs:
-    - **Tab 1 - Código Nacional (30 dígitos)**: Constructor de código predial con prefijo de municipio, campos editables para zona, sector, comuna, barrio, manzana, terreno, condición, edificio, piso, unidad. Visualización en tiempo real del código. Botón "Verificar Código"
-    - **Tab 2 - Propietario (R1)**: Lista de propietarios con nombre, tipo doc, número doc. Agregar/eliminar propietarios. Información del predio (dirección, destino económico, matrícula, avalúo). Áreas calculadas automáticamente desde R2
+    - **Tab 1 - Código Nacional (30 dígitos)**: 
+      - Constructor de código predial con prefijo de municipio
+      - Campos editables para zona, sector, comuna, barrio, manzana, terreno, condición, edificio, piso, unidad
+      - Visualización en tiempo real del código
+      - Botón "Verificar Código"
+      - **Código Homologado auto-generado** con contador de disponibles (ej: "BPP0002BUUC - 3088 disponibles")
+      - **Últimos 5 predios en la manzana** con siguiente terreno sugerido
+    - **Tab 2 - Propietario (R1)**: Lista de propietarios con nombre, tipo doc, número doc. Información del predio (dirección, destino económico, matrícula, avalúo). Áreas calculadas automáticamente desde R2
     - **Tab 3 - Físico (R2)**: Zonas de terreno con zona física, económica, área. Construcciones con piso, habitaciones, baños, locales, tipificación, uso, puntaje, área. Botones agregar/eliminar. Subtotales automáticos
   - **Archivos modificados**: 
-    - `/app/frontend/src/pages/MutacionesResoluciones.js` (+1084 líneas)
-    - `/app/backend/server.py` (endpoint estructura-codigo actualizado para aceptar código de municipio)
-  - **Bugs corregidos durante testing**:
-    - Endpoint verificar-codigo cambiado a verificar-codigo-completo
-    - Agregado parámetro municipio a la llamada del endpoint
-  - **Estado**: ✅ VERIFICADO - Testing agent confirmó 100% funcional
+    - `/app/frontend/src/pages/MutacionesResoluciones.js` (funciones handleCodigoChangeNuevo, handleCodigoBlurNuevo, fetchSiguienteCodigoHomologadoNuevo)
+    - `/app/backend/server.py` (endpoint estructura-codigo actualizado con MUNICIPIOS_POR_CODIGO)
+  - **Bugs corregidos**:
+    - Inputs no dejaban escribir números → Corregido con onBlur para padding
+    - Código homologado no aparecía → Agregado estado y función para cargarlo
+    - Últimos 5 predios no aparecían → Corregida condición de visualización
+  - **Estado**: ✅ VERIFICADO
 
 ### Sesión Anterior (03-03-2026) - Fix Búsqueda Radicado
 - **BUG FIX P0 - Búsqueda de Radicado no funcionaba**:

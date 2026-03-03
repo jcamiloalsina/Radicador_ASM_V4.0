@@ -172,6 +172,7 @@ export default function MutacionesResoluciones() {
   const [prediosEnManzanaNuevo, setPrediosEnManzanaNuevo] = useState([]);
   const [buscandoPrediosManzanaNuevo, setBuscandoPrediosManzanaNuevo] = useState(false);
   const [siguienteTerrenoSugeridoNuevo, setSiguienteTerrenoSugeridoNuevo] = useState('0001');
+  const [siguienteCodigoHomologadoNuevo, setSiguienteCodigoHomologadoNuevo] = useState(null);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
   const [construcciones, setConstrucciones] = useState([{
     id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
@@ -801,6 +802,10 @@ export default function MutacionesResoluciones() {
     }]);
     setVerificacionCodigoNuevo(null);
     setPrediosEnManzanaNuevo([]);
+    setSiguienteTerrenoSugeridoNuevo('0001');
+    
+    // Cargar siguiente código homologado
+    fetchSiguienteCodigoHomologadoNuevo(m2Data.municipio);
     
     // Crear predio nuevo vacío
     const nuevoPredio = {
@@ -825,16 +830,47 @@ export default function MutacionesResoluciones() {
   };
 
   // Construir código completo de 30 dígitos
+  // Construir código completo de 30 dígitos (con padding automático)
   const construirCodigoCompletoNuevo = () => {
     if (!estructuraCodigoNuevo) return '';
-    return `${estructuraCodigoNuevo.prefijo_fijo}${codigoManualNuevo.zona}${codigoManualNuevo.sector}${codigoManualNuevo.comuna}${codigoManualNuevo.barrio}${codigoManualNuevo.manzana_vereda}${codigoManualNuevo.terreno}${codigoManualNuevo.condicion}${codigoManualNuevo.edificio}${codigoManualNuevo.piso}${codigoManualNuevo.unidad}`;
+    return `${estructuraCodigoNuevo.prefijo_fijo}${(codigoManualNuevo.zona || '').padStart(2, '0')}${(codigoManualNuevo.sector || '').padStart(2, '0')}${(codigoManualNuevo.comuna || '').padStart(2, '0')}${(codigoManualNuevo.barrio || '').padStart(2, '0')}${(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}${(codigoManualNuevo.terreno || '').padStart(4, '0')}${codigoManualNuevo.condicion || '0'}${(codigoManualNuevo.edificio || '').padStart(2, '0')}${(codigoManualNuevo.piso || '').padStart(2, '0')}${(codigoManualNuevo.unidad || '').padStart(4, '0')}`;
   };
 
-  // Manejar cambio en campos del código
+  // Manejar cambio en campos del código (sin padding automático para permitir escribir)
   const handleCodigoChangeNuevo = (campo, valor, maxLen) => {
-    const soloNumeros = valor.replace(/\D/g, '').slice(0, maxLen);
-    const valorPadded = soloNumeros.padStart(maxLen, '0');
-    setCodigoManualNuevo(prev => ({ ...prev, [campo]: valorPadded }));
+    // Solo permitir números
+    const soloNumeros = valor.replace(/[^0-9]/g, '');
+    // Limitar al máximo de dígitos
+    const valorFinal = soloNumeros.slice(0, maxLen);
+    setCodigoManualNuevo(prev => ({ ...prev, [campo]: valorFinal }));
+  };
+
+  // Aplicar padding cuando el campo pierde el foco
+  const handleCodigoBlurNuevo = (campo, maxLen) => {
+    setCodigoManualNuevo(prev => ({
+      ...prev,
+      [campo]: (prev[campo] || '').padStart(maxLen, '0')
+    }));
+  };
+
+  // Obtener siguiente código homologado para el municipio
+  const fetchSiguienteCodigoHomologadoNuevo = async (municipioCodigo) => {
+    if (!municipioCodigo) {
+      setSiguienteCodigoHomologadoNuevo(null);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === municipioCodigo)?.nombre || '';
+      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(municipioNombre)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSiguienteCodigoHomologadoNuevo(res.data);
+    } catch (error) {
+      console.error('Error obteniendo siguiente código homologado:', error);
+      setSiguienteCodigoHomologadoNuevo(null);
+    }
   };
 
   // Verificar código completo
@@ -1020,25 +1056,31 @@ export default function MutacionesResoluciones() {
       return;
     }
     
-    // Generar código homologado automáticamente
+    // Usar el código homologado ya cargado o generar uno nuevo
     setGenerandoCodigo(true);
-    let codigoHomologado = '';
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
-        municipio: m2Data.municipio,
-        codigo_predial: codigo.substring(0, 21) // Primeros 21 dígitos
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data.codigo_homologado) {
-        codigoHomologado = response.data.codigo_homologado;
+    let codigoHomologado = siguienteCodigoHomologadoNuevo?.codigo || '';
+    
+    if (!codigoHomologado) {
+      // Si no hay código pre-cargado, intentar generar uno
+      try {
+        const token = localStorage.getItem('token');
+        const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
+        const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
+          municipio: municipioNombre,
+          codigo_predial: codigo.substring(0, 21) // Primeros 21 dígitos
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data.codigo_homologado) {
+          codigoHomologado = response.data.codigo_homologado;
+        }
+      } catch (error) {
+        console.log('Error generando código homologado, se usará formato básico');
+        // Generar un código básico si falla
+        const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || m2Data.municipio;
+        codigoHomologado = `${municipioNombre}-${Date.now().toString().slice(-6)}`;
       }
-    } catch (error) {
-      console.log('Error generando código homologado, se generará con formato básico');
-      // Generar un código básico si falla
-      codigoHomologado = `${m2Data.municipio}-${Date.now().toString().slice(-6)}`;
     }
     setGenerandoCodigo(false);
     
@@ -2641,19 +2683,36 @@ export default function MutacionesResoluciones() {
                       Código Predial Nacional (30 dígitos)
                     </h4>
                     
+                    {/* Código Homologado */}
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-4">
+                      <Label className="text-sm text-emerald-700 font-semibold">Código Homologado (auto-generado)</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input 
+                          value={siguienteCodigoHomologadoNuevo?.codigo || 'Cargando...'} 
+                          disabled 
+                          className="font-mono text-emerald-800 bg-emerald-100 font-bold"
+                        />
+                        {siguienteCodigoHomologadoNuevo?.disponibles && (
+                          <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                            {siguienteCodigoHomologadoNuevo.disponibles} disponibles
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
                     {/* Visualización del código completo */}
                     <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
                       <span className="text-blue-600 font-bold" title="Departamento + Municipio">{estructuraCodigoNuevo.prefijo_fijo}</span>
-                      <span className="text-emerald-600" title="Zona">{codigoManualNuevo.zona}</span>
-                      <span className="text-amber-600" title="Sector">{codigoManualNuevo.sector}</span>
-                      <span className="text-purple-600" title="Comuna">{codigoManualNuevo.comuna}</span>
-                      <span className="text-pink-600" title="Barrio">{codigoManualNuevo.barrio}</span>
-                      <span className="text-cyan-600" title="Manzana/Vereda">{codigoManualNuevo.manzana_vereda}</span>
-                      <span className="text-red-600 font-bold" title="Terreno">{codigoManualNuevo.terreno}</span>
-                      <span className="text-orange-600" title="Condición">{codigoManualNuevo.condicion}</span>
-                      <span className="text-slate-500" title="Edificio">{codigoManualNuevo.edificio}</span>
-                      <span className="text-slate-500" title="Piso">{codigoManualNuevo.piso}</span>
-                      <span className="text-slate-500" title="Unidad">{codigoManualNuevo.unidad}</span>
+                      <span className="text-emerald-600" title="Zona">{(codigoManualNuevo.zona || '').padStart(2, '0')}</span>
+                      <span className="text-amber-600" title="Sector">{(codigoManualNuevo.sector || '').padStart(2, '0')}</span>
+                      <span className="text-purple-600" title="Comuna">{(codigoManualNuevo.comuna || '').padStart(2, '0')}</span>
+                      <span className="text-pink-600" title="Barrio">{(codigoManualNuevo.barrio || '').padStart(2, '0')}</span>
+                      <span className="text-cyan-600" title="Manzana/Vereda">{(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}</span>
+                      <span className="text-red-600 font-bold" title="Terreno">{(codigoManualNuevo.terreno || '').padStart(4, '0')}</span>
+                      <span className="text-orange-600" title="Condición">{codigoManualNuevo.condicion || '0'}</span>
+                      <span className="text-slate-500" title="Edificio">{(codigoManualNuevo.edificio || '').padStart(2, '0')}</span>
+                      <span className="text-slate-500" title="Piso">{(codigoManualNuevo.piso || '').padStart(2, '0')}</span>
+                      <span className="text-slate-500" title="Unidad">{(codigoManualNuevo.unidad || '').padStart(4, '0')}</span>
                       <span className="text-xs text-slate-500 ml-2">({construirCodigoCompletoNuevo().length}/30)</span>
                     </div>
 
@@ -2668,6 +2727,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.zona} 
                           onChange={(e) => handleCodigoChangeNuevo('zona', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('zona', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2679,6 +2739,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.sector} 
                           onChange={(e) => handleCodigoChangeNuevo('sector', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('sector', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2689,6 +2750,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.comuna} 
                           onChange={(e) => handleCodigoChangeNuevo('comuna', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('comuna', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2699,6 +2761,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.barrio} 
                           onChange={(e) => handleCodigoChangeNuevo('barrio', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('barrio', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2709,6 +2772,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.manzana_vereda} 
                           onChange={(e) => handleCodigoChangeNuevo('manzana_vereda', e.target.value, 4)}
+                          onBlur={() => handleCodigoBlurNuevo('manzana_vereda', 4)}
                           maxLength={4}
                           className="font-mono text-center h-8"
                           placeholder="0000"
@@ -2716,35 +2780,36 @@ export default function MutacionesResoluciones() {
                       </div>
                     </div>
 
-                    {/* Mostrar últimos predios existentes en la manzana */}
-                    {codigoManualNuevo.manzana_vereda !== '0000' && (
+                    {/* Mostrar últimos 5 predios existentes en la manzana */}
+                    {codigoManualNuevo.manzana_vereda && codigoManualNuevo.manzana_vereda !== '0000' && codigoManualNuevo.manzana_vereda !== '' && (
                       <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
                             <FileText className="w-3 h-3" />
-                            Terrenos existentes en manzana {codigoManualNuevo.manzana_vereda}
+                            Últimos 5 predios en manzana {(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}
                           </p>
                           {buscandoPrediosManzanaNuevo && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
                         </div>
                         {prediosEnManzanaNuevo.length > 0 ? (
                           <div className="space-y-1">
-                            {prediosEnManzanaNuevo.map((p, idx) => (
+                            {prediosEnManzanaNuevo.slice(0, 5).map((p, idx) => (
                               <div 
                                 key={idx} 
                                 className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100"
                               >
-                                <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
-                                <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
+                                <span className="font-mono font-bold text-cyan-700 w-12">{p.terreno}</span>
+                                <span className="text-slate-700 truncate flex-1">{p.direccion || 'Sin dirección'}</span>
+                                <span className="text-slate-500 text-xs">{p.propietario || ''}</span>
                               </div>
                             ))}
                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
                               <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                💡 Siguiente sugerido: <span className="font-mono font-bold">{siguienteTerrenoSugeridoNuevo}</span>
+                                Siguiente sugerido: <span className="font-mono font-bold">{siguienteTerrenoSugeridoNuevo}</span>
                               </p>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => handleCodigoChangeNuevo('terreno', siguienteTerrenoSugeridoNuevo, 4)}
+                                onClick={() => setCodigoManualNuevo(prev => ({...prev, terreno: siguienteTerrenoSugeridoNuevo}))}
                                 className="h-6 text-xs"
                               >
                                 Usar sugerido
@@ -2752,7 +2817,7 @@ export default function MutacionesResoluciones() {
                             </div>
                           </div>
                         ) : !buscandoPrediosManzanaNuevo ? (
-                          <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
+                          <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana. Sugerido: 0001</p>
                         ) : null}
                       </div>
                     )}
@@ -2764,6 +2829,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.terreno} 
                           onChange={(e) => handleCodigoChangeNuevo('terreno', e.target.value, 4)}
+                          onBlur={() => handleCodigoBlurNuevo('terreno', 4)}
                           maxLength={4}
                           className="font-mono font-bold text-red-700 text-center h-8"
                           placeholder="0001"
@@ -2772,11 +2838,14 @@ export default function MutacionesResoluciones() {
                       <div>
                         <Label className="text-xs text-orange-700">Condición (22)</Label>
                         <Input 
-                          type="number"
-                          min="0"
-                          max="9"
                           value={codigoManualNuevo.condicion} 
-                          onChange={(e) => setCodigoManualNuevo(prev => ({...prev, condicion: e.target.value.slice(0, 1)}))}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 1);
+                            setCodigoManualNuevo(prev => ({...prev, condicion: val}));
+                          }}
+                          onBlur={() => {
+                            setCodigoManualNuevo(prev => ({...prev, condicion: prev.condicion || '0'}));
+                          }}
                           maxLength={1}
                           className="font-mono text-center h-8"
                           placeholder="0"
@@ -2787,6 +2856,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.edificio} 
                           onChange={(e) => handleCodigoChangeNuevo('edificio', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('edificio', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2797,6 +2867,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.piso} 
                           onChange={(e) => handleCodigoChangeNuevo('piso', e.target.value, 2)}
+                          onBlur={() => handleCodigoBlurNuevo('piso', 2)}
                           maxLength={2}
                           className="font-mono text-center h-8"
                           placeholder="00"
@@ -2807,6 +2878,7 @@ export default function MutacionesResoluciones() {
                         <Input 
                           value={codigoManualNuevo.unidad} 
                           onChange={(e) => handleCodigoChangeNuevo('unidad', e.target.value, 4)}
+                          onBlur={() => handleCodigoBlurNuevo('unidad', 4)}
                           maxLength={4}
                           className="font-mono text-center h-8"
                           placeholder="0000"
