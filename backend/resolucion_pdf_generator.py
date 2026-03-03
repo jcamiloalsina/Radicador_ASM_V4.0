@@ -44,7 +44,7 @@ def get_default_plantilla():
         "articulo_2": "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023 y el artículo 70 de la ley 1437 de 2011, el presente acto administrativo rige a partir de la fecha de su expedición.",
         "articulo_3": "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en los artículos 4.7.13 y 4.7.14 de la resolución 1040 de 2023.",
         "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
-        "cierre": "COMUNIQUESE,NOTIFIQUESEYCUMPLASE",
+        "cierre": "COMUNÍQUESE,NOTIFÍQUESEYCÚMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
         "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
     }

@@ -24028,7 +24028,7 @@ ARTÍCULO 3. Los avalúos inscritos con posterioridad al primero de enero tendr�
 
 ARTÍCULO 4. Contra el presente acto administrativo no procede recurso alguno.
 
-COMUNIQUESE,NOTIFIQUESEYCUMPLASE
+COMUNÍQUESE,NOTIFÍQUESEYCÚMPLASE
 
 Dada en Ocaña a los {fecha_resolucion_texto}"""
 
