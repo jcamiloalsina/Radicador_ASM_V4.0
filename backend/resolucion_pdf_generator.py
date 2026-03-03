@@ -1,11 +1,13 @@
 """
-Generador de PDF de Resolución Catastral con configuración visual personalizable
+Generador de PDF de Resolución Catastral
+Usa los mismos márgenes y posiciones que el Certificado Catastral
 """
 import io
 import base64
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
+from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit, ImageReader
 from reportlab.pdfbase import pdfmetrics
@@ -13,30 +15,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # Importar imágenes por defecto
 from certificado_images import get_encabezado_image, get_pie_pagina_image, get_firma_dalgie_image
-
-
-def get_default_config():
-    """Retorna la configuración visual por defecto"""
-    return {
-        "margen_superior": 50,
-        "margen_inferior": 80,
-        "margen_izquierdo": 50,
-        "margen_derecho": 50,
-        "encabezado_altura": 60,
-        "encabezado_mostrar": True,
-        "pie_altura": 50,
-        "pie_mostrar": True,
-        "firma_posicion": "centro",  # izquierda, centro, derecha
-        "firma_altura": 60,
-        "firma_ancho": 100,
-        "firma_offset_y": 40,
-        "firma_mostrar": True,
-        "fuente_titulo": 11,
-        "fuente_cuerpo": 9,
-        "fuente_tabla": 7,
-        "espaciado_parrafos": 12,
-        "espaciado_secciones": 20
-    }
 
 
 def get_default_plantilla():
@@ -83,24 +61,22 @@ def generate_resolucion_pdf(
     direccion: str,
     avaluo: str,
     vigencia_fiscal: str,
-    propietarios_anteriores: list,
-    propietarios_nuevos: list,
-    elaboro: str,
-    reviso: str,
-    # Configuración personalizable
-    config_visual: dict = None,
+    propietarios_anteriores: list = None,
+    propietarios_nuevos: list = None,
+    elaboro: str = "",
+    reviso: str = "",
     plantilla: dict = None,
-    # Imágenes personalizadas (base64)
     imagen_encabezado_b64: str = None,
     imagen_pie_b64: str = None,
     imagen_firma_b64: str = None,
+    config_visual: dict = None,
 ) -> bytes:
     """
-    Genera un PDF de resolución catastral con configuración visual personalizable.
+    Genera un PDF de resolución catastral usando los mismos márgenes
+    y posiciones que el certificado catastral.
     """
     
-    # Usar configuración por defecto si no se proporciona
-    config = {**get_default_config(), **(config_visual or {})}
+    # Usar plantilla por defecto si no se proporciona
     textos = {**get_default_plantilla(), **(plantilla or {})}
     
     # Registrar fuentes
@@ -117,14 +93,27 @@ def generate_resolucion_pdf(
     width, height = letter
     c = canvas.Canvas(buffer, pagesize=letter)
     
+    # === MÁRGENES IDÉNTICOS AL CERTIFICADO CATASTRAL ===
+    left_margin = 2.0 * cm
+    right_margin = width - 2.0 * cm
+    content_width = right_margin - left_margin
+    footer_limit = 2.5 * cm  # Límite inferior para contenido
+    
+    # Colores
+    verde_institucional = colors.HexColor('#009846')
+    negro = colors.HexColor('#000000')
+    blanco = colors.HexColor('#FFFFFF')
+    
     # Cargar imágenes (personalizadas o por defecto)
     try:
         if imagen_encabezado_b64:
             encabezado_img = ImageReader(io.BytesIO(base64.b64decode(imagen_encabezado_b64)))
         else:
             encabezado_img = ImageReader(get_encabezado_image())
+        imagenes_ok = True
     except:
         encabezado_img = None
+        imagenes_ok = False
     
     try:
         if imagen_pie_b64:
@@ -142,41 +131,84 @@ def generate_resolucion_pdf(
     except:
         firma_img = None
     
-    # Extraer configuración
-    margin_left = config['margen_izquierdo']
-    margin_right = config['margen_derecho']
-    margin_top = config['margen_superior']
-    margin_bottom = config['margen_inferior']
-    content_width = width - margin_left - margin_right
+    # Configuración de fuentes
+    fuente_titulo = 11
+    fuente_cuerpo = 9
+    fuente_tabla = 7
+    espaciado_parrafos = 12
+    espaciado_secciones = 18
     
-    fuente_titulo = config['fuente_titulo']
-    fuente_cuerpo = config['fuente_cuerpo']
-    fuente_tabla = config['fuente_tabla']
-    espaciado_parrafos = config['espaciado_parrafos']
-    espaciado_secciones = config['espaciado_secciones']
+    def draw_header():
+        """Dibuja el encabezado IDÉNTICO al certificado catastral"""
+        if imagenes_ok and encabezado_img:
+            encabezado_width = content_width + 1 * cm
+            encabezado_height = 2.0 * cm
+            encabezado_x = left_margin - 0.5 * cm
+            encabezado_y = height - 2.2 * cm
+            c.drawImage(encabezado_img, encabezado_x, encabezado_y, 
+                        width=encabezado_width, height=encabezado_height, 
+                        preserveAspectRatio=True, mask='auto')
+        else:
+            # Encabezado alternativo
+            c.setFillColor(verde_institucional)
+            c.setFont(font_bold, 14)
+            c.drawCentredString(width/2, height - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+        return height - 2.8 * cm
     
-    y = height - margin_top
+    def draw_footer():
+        """Dibuja el pie de página IDÉNTICO al certificado catastral"""
+        if pie_pagina_img:
+            footer_height = 2.0 * cm
+            c.drawImage(pie_pagina_img, 0, 0, 
+                        width=width, height=footer_height, 
+                        preserveAspectRatio=False, mask='auto')
+        else:
+            c.setFillColor(verde_institucional)
+            c.rect(0, 0, width, 28, fill=1, stroke=0)
+            c.setFillColor(blanco)
+            c.setFont(font_normal, 8)
+            c.drawCentredString(width/2, 10, "comunicaciones@asomunicipios.gov.co")
     
-    # === ENCABEZADO ===
-    if config['encabezado_mostrar'] and encabezado_img:
-        img_width = 500
-        img_height = config['encabezado_altura']
-        c.drawImage(encabezado_img, margin_left, y - img_height, width=img_width, height=img_height, mask='auto')
-        y -= img_height + 20
-    elif config['encabezado_mostrar']:
-        c.setFont(font_bold, 14)
-        c.drawCentredString(width/2, y, "ASOCIACIÓN DE MUNICIPIOS DEL CATATUMBO")
-        y -= 15
-        c.setFont(font_normal, 10)
-        c.drawCentredString(width/2, y, "Provincia de Ocaña y Sur del Cesar - Gestor Catastral")
-        y -= 30
+    current_page = 1
+    
+    def new_page():
+        """Crea una nueva página con encabezado y pie de página"""
+        nonlocal current_page
+        draw_footer()
+        c.showPage()
+        current_page += 1
+        y = draw_header()
+        
+        # Título de continuación
+        c.setFillColor(negro)
+        c.setFont(font_bold, 11)
+        c.drawCentredString(width/2, y, "RESOLUCIÓN (Continuación)")
+        y -= 14
+        c.setFont(font_normal, 9)
+        c.drawCentredString(width/2, y, f"Resolución No: {numero_resolucion}")
+        y -= 20
+        
+        return y
+    
+    def check_page_break(y, needed_space=20):
+        """Verifica si hay espacio suficiente, si no, crea nueva página"""
+        if y < footer_limit + needed_space:
+            return new_page()
+        return y
+    
+    # ===============================================
+    # === CONTENIDO DE LA RESOLUCIÓN ===
+    # ===============================================
+    
+    y = draw_header()
     
     # === TÍTULO DE LA RESOLUCIÓN ===
+    c.setFillColor(negro)
     c.setFont(font_bold, fuente_titulo)
     c.drawCentredString(width/2, y, f"RESOLUCIÓN No: {numero_resolucion}")
-    y -= 15
+    y -= 14
     c.drawCentredString(width/2, y, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y -= espaciado_secciones + 5
+    y -= espaciado_secciones
     
     # Asunto
     c.setFont(font_bold, fuente_cuerpo)
@@ -191,208 +223,238 @@ def generate_resolucion_pdf(
     c.setFont(font_normal, fuente_cuerpo)
     lines = simpleSplit(textos['preambulo'], font_normal, fuente_cuerpo, content_width)
     for line in lines:
-        c.drawString(margin_left, y, line)
+        y = check_page_break(y, 15)
+        c.drawString(left_margin, y, line)
         y -= espaciado_parrafos
-    y -= 10
+    y -= 8
     
     # === CONSIDERANDO ===
+    y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
     c.drawCentredString(width/2, y, "CONSIDERANDO")
     y -= espaciado_secciones
     
+    # Considerando 1
     c.setFont(font_normal, fuente_cuerpo)
-    
-    # Considerando 1 - reemplazar variables
-    cons1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite.lower()).replace('{radicado}', radicado)
-    lines = simpleSplit(cons1, font_normal, fuente_cuerpo, content_width)
+    texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
+    lines = simpleSplit(texto_c1, font_normal, fuente_cuerpo, content_width)
     for line in lines:
-        c.drawString(margin_left, y, line)
+        y = check_page_break(y, 15)
+        c.drawString(left_margin, y, line)
         y -= espaciado_parrafos
-    y -= 5
+    y -= 8
     
-    # Considerando 2 - documentos
-    c.drawString(margin_left, y, textos.get('considerando_2_intro', "Que, se aportaron como soportes los siguientes documentos:"))
-    y -= espaciado_parrafos
-    for doc in textos.get('considerando_2_docs', []):
-        doc_text = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria)
-        c.drawString(margin_left + 20, y, f"• {doc_text}")
+    # Considerando 2 - Intro
+    y = check_page_break(y, 30)
+    lines = simpleSplit(textos['considerando_2_intro'], font_normal, fuente_cuerpo, content_width)
+    for line in lines:
+        c.drawString(left_margin, y, line)
         y -= espaciado_parrafos
-    y -= 5
+    
+    # Lista de documentos
+    for doc in textos['considerando_2_docs']:
+        y = check_page_break(y, 15)
+        doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria)
+        c.drawString(left_margin + 15, y, f"• {doc_texto}")
+        y -= espaciado_parrafos
+    y -= 8
     
     # Considerando 3
-    cons3 = textos['considerando_3'].replace('{codigo_catastral}', codigo_catastral_anterior).replace('{npn}', npn)
-    lines = simpleSplit(cons3, font_normal, fuente_cuerpo, content_width)
+    y = check_page_break(y, 30)
+    texto_c3 = textos['considerando_3'].replace('{codigo_catastral}', codigo_catastral_anterior).replace('{npn}', npn)
+    lines = simpleSplit(texto_c3, font_normal, fuente_cuerpo, content_width)
     for line in lines:
-        c.drawString(margin_left, y, line)
+        y = check_page_break(y, 15)
+        c.drawString(left_margin, y, line)
         y -= espaciado_parrafos
-    y -= 5
+    y -= 8
     
     # Considerando final
+    y = check_page_break(y, 40)
     lines = simpleSplit(textos['considerando_final'], font_normal, fuente_cuerpo, content_width)
     for line in lines:
-        c.drawString(margin_left, y, line)
+        y = check_page_break(y, 15)
+        c.drawString(left_margin, y, line)
         y -= espaciado_parrafos
-    y -= 10
+    y -= espaciado_secciones
     
     # === RESUELVE ===
+    y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
     c.drawCentredString(width/2, y, "RESUELVE")
     y -= espaciado_secciones
     
+    # Artículo 1
+    y = check_page_break(y, 50)
+    c.setFont(font_bold, fuente_cuerpo)
+    c.drawString(left_margin, y, "ARTÍCULO 1.")
     c.setFont(font_normal, fuente_cuerpo)
-    art1_intro = textos.get('articulo_1_intro', '').replace('{municipio}', municipio)
-    c.drawString(margin_left, y, f"Art. 001. {art1_intro}")
-    y -= espaciado_secciones
-    
-    # === TABLA DE CANCELACIÓN ===
-    c.setFont(font_bold, fuente_tabla + 1)
-    c.setFillColor(colors.Color(0.9, 0.9, 0.9))
-    c.rect(margin_left, y - 15, content_width, 15, fill=1)
-    c.setFillColor(colors.black)
-    c.drawString(margin_left + 5, y - 12, "CANCELACIÓN")
-    y -= 20
-    
-    col_widths = [80, 120, 80, 60, 80, 80]
-    headers = ["NPN", "PROPIETARIO", "DOCUMENTO", "DIRECCIÓN", "AVALÚO", "MATRÍCULA"]
-    
-    c.setFont(font_bold, fuente_tabla)
-    x = margin_left
-    for i, header in enumerate(headers):
-        c.drawString(x + 2, y, header)
-        x += col_widths[i]
-    y -= espaciado_parrafos
-    
-    c.setFont(font_normal, fuente_tabla)
-    for prop in propietarios_anteriores:
-        x = margin_left
-        c.drawString(x + 2, y, npn[:20] + "...")
-        x += col_widths[0]
-        c.drawString(x + 2, y, prop.get('nombre', '')[:20])
-        x += col_widths[1]
-        c.drawString(x + 2, y, prop.get('documento', ''))
-        x += col_widths[2]
-        c.drawString(x + 2, y, direccion[:10])
-        x += col_widths[3]
-        c.drawString(x + 2, y, avaluo)
-        x += col_widths[4]
-        c.drawString(x + 2, y, matricula_inmobiliaria)
+    texto_art1 = textos['articulo_1_intro'].replace('{municipio}', municipio)
+    lines = simpleSplit(texto_art1, font_normal, fuente_cuerpo, content_width - 70)
+    x_offset = left_margin + c.stringWidth("ARTÍCULO 1. ", font_bold, fuente_cuerpo)
+    if lines:
+        c.drawString(x_offset, y, lines[0])
         y -= espaciado_parrafos
+        for line in lines[1:]:
+            c.drawString(left_margin, y, line)
+            y -= espaciado_parrafos
     y -= 10
     
-    # === TABLA DE INSCRIPCIÓN ===
+    # Tabla de cancelación/inscripción
+    y = check_page_break(y, 100)
+    
+    # --- Tabla CANCELACIÓN ---
+    c.setFillColor(verde_institucional)
+    c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
+    c.setFillColor(blanco)
     c.setFont(font_bold, fuente_tabla + 1)
-    c.setFillColor(colors.Color(0.9, 0.95, 0.9))
-    c.rect(margin_left, y - 15, content_width, 15, fill=1)
-    c.setFillColor(colors.black)
-    c.drawString(margin_left + 5, y - 12, "INSCRIPCIÓN")
+    c.drawCentredString(width/2, y - 12, "CANCELACIÓN")
     y -= 20
     
+    # Encabezado tabla cancelación
+    c.setFillColor(colors.HexColor('#f0f0f0'))
+    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=0)
+    c.setFillColor(negro)
     c.setFont(font_bold, fuente_tabla)
-    x = margin_left
-    for i, header in enumerate(headers):
-        c.drawString(x + 2, y, header)
-        x += col_widths[i]
-    y -= espaciado_parrafos
     
+    col_widths = [content_width * 0.25, content_width * 0.35, content_width * 0.20, content_width * 0.20]
+    headers = ["NPN / CÓDIGO", "PROPIETARIO", "DOCUMENTO", "AVALÚO"]
+    x = left_margin
+    for i, header in enumerate(headers):
+        c.drawCentredString(x + col_widths[i]/2, y - 9, header)
+        x += col_widths[i]
+    y -= 15
+    
+    # Datos cancelación
     c.setFont(font_normal, fuente_tabla)
-    for prop in propietarios_nuevos:
-        x = margin_left
-        c.drawString(x + 2, y, npn[:20] + "...")
-        x += col_widths[0]
-        c.drawString(x + 2, y, prop.get('nombre', '')[:20])
-        x += col_widths[1]
-        c.drawString(x + 2, y, prop.get('documento', ''))
-        x += col_widths[2]
-        c.drawString(x + 2, y, direccion[:10])
-        x += col_widths[3]
-        c.drawString(x + 2, y, avaluo)
-        x += col_widths[4]
-        c.drawString(x + 2, y, matricula_inmobiliaria)
-        y -= espaciado_parrafos
+    if propietarios_anteriores:
+        for prop in propietarios_anteriores:
+            y = check_page_break(y, 20)
+            x = left_margin
+            c.drawString(x + 2, y - 9, npn[:20] + "..." if len(npn) > 20 else npn)
+            x += col_widths[0]
+            nombre = prop.get('nombre', '')[:25]
+            c.drawString(x + 2, y - 9, nombre)
+            x += col_widths[1]
+            c.drawString(x + 2, y - 9, prop.get('documento', ''))
+            x += col_widths[2]
+            c.drawString(x + 2, y - 9, avaluo)
+            y -= 12
+    else:
+        c.drawString(left_margin + 5, y - 9, "Sin datos de propietario anterior")
+        y -= 12
+    y -= 10
+    
+    # --- Tabla INSCRIPCIÓN ---
+    y = check_page_break(y, 60)
+    c.setFillColor(verde_institucional)
+    c.rect(left_margin, y - 15, content_width, 15, fill=1, stroke=0)
+    c.setFillColor(blanco)
+    c.setFont(font_bold, fuente_tabla + 1)
+    c.drawCentredString(width/2, y - 12, "INSCRIPCIÓN")
+    y -= 20
+    
+    # Encabezado tabla inscripción
+    c.setFillColor(colors.HexColor('#f0f0f0'))
+    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=0)
+    c.setFillColor(negro)
+    c.setFont(font_bold, fuente_tabla)
+    
+    x = left_margin
+    for i, header in enumerate(headers):
+        c.drawCentredString(x + col_widths[i]/2, y - 9, header)
+        x += col_widths[i]
+    y -= 15
+    
+    # Datos inscripción
+    c.setFont(font_normal, fuente_tabla)
+    if propietarios_nuevos:
+        for prop in propietarios_nuevos:
+            y = check_page_break(y, 20)
+            x = left_margin
+            c.drawString(x + 2, y - 9, npn[:20] + "..." if len(npn) > 20 else npn)
+            x += col_widths[0]
+            nombre = prop.get('nombre', '')[:25]
+            c.drawString(x + 2, y - 9, nombre)
+            x += col_widths[1]
+            c.drawString(x + 2, y - 9, prop.get('documento', ''))
+            x += col_widths[2]
+            c.drawString(x + 2, y - 9, avaluo)
+            y -= 12
+    else:
+        c.drawString(left_margin + 5, y - 9, "Sin datos de nuevo propietario")
+        y -= 12
     y -= espaciado_secciones
     
-    # === ARTÍCULOS ADICIONALES ===
+    # Artículo 2
+    y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(margin_left, y, "ARTÍCULO 2.")
+    c.drawString(left_margin, y, "ARTÍCULO 2.")
     c.setFont(font_normal, fuente_cuerpo)
-    c.drawString(margin_left + 60, y, f" {textos['articulo_2']}")
-    y -= espaciado_parrafos + 3
+    x_offset = left_margin + c.stringWidth("ARTÍCULO 2. ", font_bold, fuente_cuerpo)
+    c.drawString(x_offset, y, textos['articulo_2'])
+    y -= espaciado_parrafos + 5
     
+    # Artículo 3
+    y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(margin_left, y, "ARTÍCULO 3.")
+    c.drawString(left_margin, y, "ARTÍCULO 3.")
     c.setFont(font_normal, fuente_cuerpo)
-    art3 = textos['articulo_3'].replace('{vigencia_fiscal}', vigencia_fiscal)
-    c.drawString(margin_left + 60, y, f" {art3}")
-    y -= espaciado_parrafos + 3
+    texto_art3 = textos['articulo_3'].replace('{vigencia_fiscal}', vigencia_fiscal)
+    x_offset = left_margin + c.stringWidth("ARTÍCULO 3. ", font_bold, fuente_cuerpo)
+    c.drawString(x_offset, y, texto_art3)
+    y -= espaciado_parrafos + 5
     
+    # Artículo 4
+    y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(margin_left, y, "ARTÍCULO 4.")
+    c.drawString(left_margin, y, "ARTÍCULO 4.")
     c.setFont(font_normal, fuente_cuerpo)
-    c.drawString(margin_left + 60, y, f" {textos['articulo_4']}")
-    y -= espaciado_secciones + 10
+    x_offset = left_margin + c.stringWidth("ARTÍCULO 4. ", font_bold, fuente_cuerpo)
+    c.drawString(x_offset, y, textos['articulo_4'])
+    y -= espaciado_secciones + 5
     
     # === CIERRE ===
-    c.setFont(font_bold, fuente_cuerpo + 1)
+    y = check_page_break(y, 30)
+    c.setFont(font_bold, fuente_cuerpo)
     c.drawCentredString(width/2, y, textos['cierre'])
     y -= espaciado_secciones
     
+    # Fecha de expedición
+    y = check_page_break(y, 20)
     c.setFont(font_normal, fuente_cuerpo)
-    try:
-        fecha_dt = datetime.strptime(fecha_resolucion, "%d-%m-%Y")
-        meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 
-                 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
-        fecha_texto = f"{fecha_dt.day} DÍAS DE {meses[fecha_dt.month-1]} DE {fecha_dt.year}"
-    except:
-        fecha_texto = fecha_resolucion
-    c.drawCentredString(width/2, y, f"DADA EN OCAÑA A LOS {fecha_texto}")
-    y -= config['firma_offset_y']
-    
-    # === FIRMA ===
-    if config['firma_mostrar'] and firma_img:
-        firma_width = config['firma_ancho']
-        firma_height = config['firma_altura']
-        
-        # Calcular posición X según configuración
-        if config['firma_posicion'] == 'izquierda':
-            firma_x = margin_left
-        elif config['firma_posicion'] == 'derecha':
-            firma_x = width - margin_right - firma_width
-        else:  # centro
-            firma_x = width/2 - firma_width/2
-        
-        c.drawImage(firma_img, firma_x, y - firma_height, width=firma_width, height=firma_height, mask='auto')
-        y -= firma_height + 10
-    
-    # Nombre y cargo del firmante
-    c.setFont(font_bold, fuente_cuerpo)
-    if config['firma_posicion'] == 'izquierda':
-        c.drawString(margin_left, y, textos['firmante_nombre'])
-        y -= espaciado_parrafos
-        c.setFont(font_normal, fuente_cuerpo - 1)
-        c.drawString(margin_left, y, textos['firmante_cargo'])
-    elif config['firma_posicion'] == 'derecha':
-        c.drawRightString(width - margin_right, y, textos['firmante_nombre'])
-        y -= espaciado_parrafos
-        c.setFont(font_normal, fuente_cuerpo - 1)
-        c.drawRightString(width - margin_right, y, textos['firmante_cargo'])
-    else:  # centro
-        c.drawCentredString(width/2, y, textos['firmante_nombre'])
-        y -= espaciado_parrafos
-        c.setFont(font_normal, fuente_cuerpo - 1)
-        c.drawCentredString(width/2, y, textos['firmante_cargo'])
+    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    fecha_actual = datetime.now()
+    fecha_texto = f"Dada en Ocaña a los {fecha_actual.day} días del mes de {meses[fecha_actual.month-1]} de {fecha_actual.year}"
+    c.drawCentredString(width/2, y, fecha_texto)
     y -= espaciado_secciones + 10
     
+    # === FIRMA ===
+    y = check_page_break(y, 80)
+    if firma_img:
+        firma_width = 100
+        firma_height = 50
+        c.drawImage(firma_img, width/2 - firma_width/2, y - firma_height, 
+                    width=firma_width, height=firma_height, mask='auto')
+        y -= firma_height + 5
+    
+    c.setFont(font_bold, fuente_cuerpo)
+    c.drawCentredString(width/2, y, textos['firmante_nombre'])
+    y -= espaciado_parrafos
+    c.setFont(font_normal, fuente_cuerpo - 1)
+    c.drawCentredString(width/2, y, textos['firmante_cargo'])
+    y -= espaciado_secciones
+    
     # === ELABORÓ / REVISÓ ===
+    y = check_page_break(y, 30)
     c.setFont(font_normal, fuente_tabla)
-    c.drawString(margin_left, y, f"Elaboró: {elaboro}")
+    c.drawString(left_margin, y, f"Elaboró: {elaboro}")
     y -= 10
-    c.drawString(margin_left, y, f"Revisó: {reviso}")
+    c.drawString(left_margin, y, f"Revisó: {reviso}")
     
     # === PIE DE PÁGINA ===
-    if config['pie_mostrar'] and pie_pagina_img:
-        img_width = 500
-        img_height = config['pie_altura']
-        c.drawImage(pie_pagina_img, margin_left, margin_bottom - 40, width=img_width, height=img_height, mask='auto')
+    draw_footer()
     
     c.save()
     buffer.seek(0)
@@ -419,7 +481,7 @@ if __name__ == "__main__":
         reviso="Coordinador",
     )
     
-    with open("/app/backend/test_resolucion_configurable.pdf", "wb") as f:
+    with open("/app/backend/test_resolucion.pdf", "wb") as f:
         f.write(pdf_bytes)
     
     print(f"PDF generado: {len(pdf_bytes)} bytes")
