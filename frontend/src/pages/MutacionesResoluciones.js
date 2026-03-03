@@ -575,7 +575,12 @@ export default function MutacionesResoluciones() {
         nombre_propietario: predio.nombre_propietario || '',
         tipo_documento: predio.tipo_documento || 'C',
         numero_documento: predio.numero_documento || ''
-      }]
+      }],
+      // Nuevos campos para tipo de cancelación
+      tipo_cancelacion: 'total', // 'total' o 'parcial'
+      nueva_area_terreno: predio.area_terreno || 0,
+      nueva_area_construida: predio.area_construida || 0,
+      nuevo_avaluo: predio.avaluo || 0
     };
     
     setM2Data(prev => ({
@@ -587,6 +592,16 @@ export default function MutacionesResoluciones() {
     setSearchPredio('');
     setSearchResults([]);
     toast.success('Predio agregado a la lista de cancelación');
+  };
+
+  // Actualizar predio cancelado
+  const actualizarPredioCancelado = (index, campo, valor) => {
+    setM2Data(prev => ({
+      ...prev,
+      predios_cancelados: prev.predios_cancelados.map((p, i) => 
+        i === index ? { ...p, [campo]: valor } : p
+      )
+    }));
   };
 
   // Eliminar predio de cancelados
@@ -980,14 +995,18 @@ export default function MutacionesResoluciones() {
           
           {/* Lista de predios agregados */}
           {m2Data.predios_cancelados.map((predio, idx) => (
-            <div key={idx} className="bg-white p-3 rounded-lg border border-red-200">
+            <div key={idx} className="bg-white p-3 rounded-lg border border-red-200 space-y-3">
+              {/* Header del predio */}
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-medium">{predio.codigo_predial}</p>
+                  <p className="font-mono font-medium text-sm">{predio.codigo_predial}</p>
                   <p className="text-xs text-slate-600">{predio.direccion}</p>
                   <p className="text-xs text-slate-500">
-                    Área: {predio.area_terreno} m² | Matrícula: {predio.matricula_inmobiliaria}
+                    Área terreno: {Number(predio.area_terreno).toLocaleString()} m² | 
+                    Construida: {Number(predio.area_construida).toLocaleString()} m² | 
+                    Avalúo: ${Number(predio.avaluo).toLocaleString()}
                   </p>
+                  <p className="text-xs text-slate-500">Matrícula: {predio.matricula_inmobiliaria || 'N/A'}</p>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -997,6 +1016,74 @@ export default function MutacionesResoluciones() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
+              </div>
+              
+              {/* Tipo de cancelación */}
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-medium text-slate-700">Tipo de cancelación:</p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`tipo_cancelacion_${idx}`}
+                      checked={predio.tipo_cancelacion === 'total'}
+                      onChange={() => actualizarPredioCancelado(idx, 'tipo_cancelacion', 'total')}
+                      className="w-4 h-4 text-red-600"
+                    />
+                    <span className="text-sm text-red-700 font-medium">Cancelación TOTAL</span>
+                    <span className="text-xs text-slate-500">(el predio desaparece)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`tipo_cancelacion_${idx}`}
+                      checked={predio.tipo_cancelacion === 'parcial'}
+                      onChange={() => actualizarPredioCancelado(idx, 'tipo_cancelacion', 'parcial')}
+                      className="w-4 h-4 text-amber-600"
+                    />
+                    <span className="text-sm text-amber-700 font-medium">Cancelación PARCIAL</span>
+                    <span className="text-xs text-slate-500">(el predio permanece con menos área)</span>
+                  </label>
+                </div>
+                
+                {/* Campos de cancelación parcial */}
+                {predio.tipo_cancelacion === 'parcial' && (
+                  <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <p className="text-xs font-medium text-amber-800 mb-2">Nuevos valores del predio (después de segregar):</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Nueva área terreno (m²)</Label>
+                        <Input
+                          type="number"
+                          value={predio.nueva_area_terreno}
+                          onChange={(e) => actualizarPredioCancelado(idx, 'nueva_area_terreno', Number(e.target.value))}
+                          className="h-8 text-sm"
+                        />
+                        <p className="text-xs text-slate-500 mt-1">
+                          Segregado: {(predio.area_terreno - predio.nueva_area_terreno).toLocaleString()} m²
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Nueva área construida (m²)</Label>
+                        <Input
+                          type="number"
+                          value={predio.nueva_area_construida}
+                          onChange={(e) => actualizarPredioCancelado(idx, 'nueva_area_construida', Number(e.target.value))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Nuevo avalúo ($)</Label>
+                        <Input
+                          type="number"
+                          value={predio.nuevo_avaluo}
+                          onChange={(e) => actualizarPredioCancelado(idx, 'nuevo_avaluo', Number(e.target.value))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
