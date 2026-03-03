@@ -5,7 +5,49 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Última Actualización (02 Marzo 2026)
+## 🔧 Última Actualización (03 Marzo 2026)
+
+### ✅ IMPLEMENTADO: Sistema de Plantillas de Resolución M1
+
+**Descripción:**
+Sistema simplificado para gestionar plantillas de texto para resoluciones catastrales. El administrador puede editar el texto legal de las resoluciones desde un textarea simple, sin necesidad de modificar código. La funcionalidad se implementó en la pestaña "Resoluciones" del módulo Sandbox.
+
+**Funcionalidades:**
+1. **Gestión de Plantillas:**
+   - Ver y listar todas las plantillas disponibles (M1 por defecto)
+   - Editar el texto legal de cada plantilla
+   - Modificar nombre y cargo del firmante
+   - Guardar cambios que persisten en base de datos
+
+2. **Generación de Preview PDF:**
+   - Genera un PDF de ejemplo usando la plantilla seleccionada
+   - Usa datos de un predio real o datos de ejemplo
+   - Abre el PDF en una nueva pestaña del navegador
+
+3. **Variables Dinámicas:**
+   - `{tipo_tramite}`, `{radicado}`, `{matricula_inmobiliaria}`
+   - `{codigo_catastral}`, `{npn}`, `{municipio}`
+   - `{vigencia_fiscal}`, `{fecha_resolucion_texto}`
+
+**Endpoints Implementados:**
+- `GET /api/resoluciones/plantillas` - Listar todas las plantillas
+- `GET /api/resoluciones/plantillas/{tipo}` - Obtener plantilla específica (M1, M2, etc.)
+- `PUT /api/resoluciones/plantillas/{tipo}` - Actualizar texto y firmante de plantilla
+- `POST /api/resoluciones/generar-preview?tipo=M1` - Generar PDF preview
+
+**Archivos modificados:**
+- `/app/backend/server.py` - 4 nuevos endpoints de plantillas de resolución
+- `/app/frontend/src/pages/Sandbox.js` - Nueva pestaña "Resoluciones" con UI completa
+
+**Tests:**
+- `/app/backend/tests/test_resoluciones_plantillas.py` - 18 tests (100% pasados)
+
+**Colección MongoDB:**
+- `resolucion_plantillas` - Almacena plantillas con campos: id, tipo, nombre, descripcion, texto, firmante_nombre, firmante_cargo
+
+---
+
+## 🔧 Actualización (02 Marzo 2026)
 
 ### ✅ FIX: Radicado Requerido en Creación de Predios Nuevos
 
@@ -115,16 +157,17 @@ El modal de edición debe comportarse diferente según:
 
 ### P1 - Alta Prioridad
 - **Error al aprobar cambios en "Conservación"** - Reportado por usuario, pendiente de reproducción
-- **Formulario de visita lento en móvil** - Optimizar rendimiento
+- **Formulario de visita lento en móvil** - Optimizar rendimiento (`VisitaFormModal.js`)
 
 ### P2 - Media Prioridad
 - Verificar sincronización offline-to-online
 - Investigar error `checkInitialSync is not defined`
+- **Expandir sistema de resoluciones:** Agregar plantillas M2, M3, etc.
 - Implementar exportación XTF
 - Desarrollar App de Correspondencia
 
 ### P3 - Baja Prioridad
-- Refactorizar archivos grandes
+- Refactorizar `server.py` (24,700+ líneas) usando FastAPI APIRouter
 - UI para reportes GDB
 - Gráficos en dashboards
 - Excel export para datos de visitas
@@ -139,11 +182,12 @@ El modal de edición debe comportarse diferente según:
 ---
 
 ## Archivos Clave
-- `/app/backend/server.py` - Lógica principal del backend
+- `/app/backend/server.py` - Lógica principal del backend (24,700+ líneas)
+- `/app/backend/resolucion_pdf_generator.py` - Generador de PDFs de resolución
 - `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
 - `/app/frontend/src/pages/Pendientes.js` - UI de pendientes y historial
 - `/app/frontend/src/pages/VisorActualizacion.js` - Visor de predios actualización
-- `/app/frontend/src/pages/Sandbox.js` - Módulo Sandbox (pruebas)
+- `/app/frontend/src/pages/Sandbox.js` - Módulo Sandbox (pruebas + plantillas resolución)
 
 ---
 
