@@ -18,7 +18,14 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (03-03-2026)
+### Última Sesión (03-03-2026) - Fix Bug Crítico
+- **BUG FIX P0 - Error al generar resolución**:
+  - **Problema**: Al guardar cambios con resolución manual, aparecía "Error al generar resolución" aunque el backend funcionaba correctamente
+  - **Causa Raíz**: En `Predios.js` línea 2472, se usaba `setIsEditModalOpen(false)` pero esa variable de estado NO existía
+  - **Solución**: Reemplazado por `setShowEditDialog(false)` que es el setter correcto
+  - **Estado**: ✅ VERIFICADO - Testing agent confirmó que no hay errores de JavaScript
+
+### Sesión Anterior (QR Resolución)
 - **QR de Resolución Idéntico al Certificado**: 
   - Modificado `resolucion_pdf_generator.py` para usar mismo formato de QR
   - URL: `{VERIFICACION_BASE_URL}/api/verificar/{codigo_verificacion}`
@@ -71,10 +78,11 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 ## Pending Issues
 
 ### P0 - Crítico
-- (Ninguno actualmente)
+- ✅ RESUELTO: Error "Error al generar resolución" (bug setIsEditModalOpen)
 
 ### P1 - Alto
-- **Historial en Predios.js**: Agregar botón de descarga PDF, mejorar formato de texto
+- **Contador de resoluciones frágil**: Requiere correcciones manuales frecuentes. Propuesta: usar findOneAndUpdate atómico
+- **PDF descargado desde historial muestra datos incorrectos**: Propietarios cancelados/inscritos no aparecen correctamente
 
 ### P2 - Medio
 - **Lógica de campos modificados**: Verificar que solo se muestren campos realmente cambiados
