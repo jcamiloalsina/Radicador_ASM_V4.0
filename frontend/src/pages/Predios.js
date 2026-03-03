@@ -2455,51 +2455,57 @@ export default function Predios() {
       // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
       let resolucionGenerada = false;
       if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
-        // Generar resolución manualmente
-        const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
-          predio_id: selectedPredio.id,
-          tipo_mutacion: infoResolucion.tipo_mutacion,
-          numero_resolucion: infoResolucion.numero_resolucion,
-          fecha_resolucion: infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
-          radicado_peticion: infoResolucion.radicado_peticion || null,
-          datos_predio: updateData
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (resolucionResponse.data.success) {
-          resolucionGenerada = true;
-          let mensaje = resolucionResponse.data.duplicado 
-            ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
-            : `Resolución ${infoResolucion.numero_resolucion} generada exitosamente.`;
-          if (resolucionResponse.data.peticion_finalizada) {
-            mensaje += ' Petición marcada como finalizada.';
-          }
-          if (resolucionResponse.data.email_enviado) {
-            mensaje += ' Correo enviado al solicitante.';
-          }
-          toast.success(mensaje);
-          
-          // Limpiar el estado de resolución
-          setInfoResolucion({
-            tipo_mutacion: '',
-            numero_resolucion: '',
-            fecha_resolucion: '',
-            radicado_peticion: ''
+        try {
+          // Generar resolución manualmente
+          const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
+            predio_id: selectedPredio.id,
+            tipo_mutacion: infoResolucion.tipo_mutacion,
+            numero_resolucion: infoResolucion.numero_resolucion,
+            fecha_resolucion: infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
+            radicado_peticion: infoResolucion.radicado_peticion || null,
+            datos_predio: updateData
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
           });
           
-          // Si se generó resolución, actualizar lista y cerrar modal
-          // Usar try-catch para que errores de actualización no afecten el mensaje de éxito
-          try {
-            await forceRefreshPredios();
-            fetchCambiosStats();
-          } catch (refreshError) {
-            console.error('Error al refrescar lista:', refreshError);
-            // No mostrar error al usuario, la resolución ya se generó
+          if (resolucionResponse.data.success) {
+            resolucionGenerada = true;
+            let mensaje = resolucionResponse.data.duplicado 
+              ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
+              : `Resolución ${infoResolucion.numero_resolucion} generada y predio actualizado exitosamente.`;
+            if (resolucionResponse.data.peticion_finalizada) {
+              mensaje += ' Petición marcada como finalizada.';
+            }
+            if (resolucionResponse.data.email_enviado) {
+              mensaje += ' Correo enviado al solicitante.';
+            }
+            toast.success(mensaje);
+            
+            // Limpiar el estado de resolución
+            setInfoResolucion({
+              tipo_mutacion: '',
+              numero_resolucion: '',
+              fecha_resolucion: '',
+              radicado_peticion: ''
+            });
+            
+            // Si se generó resolución, actualizar lista y cerrar modal
+            try {
+              await forceRefreshPredios();
+              fetchCambiosStats();
+            } catch (refreshError) {
+              console.error('Error al refrescar lista:', refreshError);
+            }
+            setIsEditModalOpen(false);
+            setIsSavingUpdate(false);
+            return; // Salir aquí, no continuar con proponer cambios
           }
-          setIsEditModalOpen(false);
+        } catch (resolucionError) {
+          // Si hay error generando la resolución, mostrar mensaje específico
+          console.error('Error generando resolución:', resolucionError);
+          toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
           setIsSavingUpdate(false);
-          return; // Salir aquí, no continuar con proponer cambios
+          return; // Salir sin continuar
         }
       }
       
