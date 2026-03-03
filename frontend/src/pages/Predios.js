@@ -3370,7 +3370,7 @@ export default function Predios() {
                                 </Badge>
                               )}
                               <p className="text-xs text-slate-500">
-                                {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {predio.propietarios?.[0]?.numero_documento || predio.numero_documento}
+                                {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {String(predio.propietarios?.[0]?.numero_documento || predio.numero_documento || '').padStart(10, '0')}
                               </p>
                             </div>
                           </td>
@@ -5577,7 +5577,7 @@ export default function Predios() {
                             <Badge variant="outline" className="text-xs">{idx + 1}/{selectedPredio.propietarios.length}</Badge>
                             <strong>{prop.nombre_propietario}</strong>
                           </div>
-                          <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[prop.tipo_documento]} {prop.numero_documento}</strong></div>
+                          <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[prop.tipo_documento]} {String(prop.numero_documento || '').padStart(10, '0')}</strong></div>
                           <div><span className="text-slate-500">Estado Civil:</span> <strong>{catalogos?.estado_civil?.[prop.estado_civil] || 'N/A'}</strong></div>
                         </div>
                       ))}
@@ -5585,7 +5585,7 @@ export default function Predios() {
                   ) : (
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="col-span-2"><span className="text-slate-500">Nombre:</span> <strong>{selectedPredio.nombre_propietario}</strong></div>
-                      <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[selectedPredio.tipo_documento]} {selectedPredio.numero_documento}</strong></div>
+                      <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[selectedPredio.tipo_documento]} {String(selectedPredio.numero_documento || '').padStart(10, '0')}</strong></div>
                       <div><span className="text-slate-500">Estado Civil:</span> <strong>{catalogos?.estado_civil?.[selectedPredio.estado_civil] || 'N/A'}</strong></div>
                     </div>
                   )}
