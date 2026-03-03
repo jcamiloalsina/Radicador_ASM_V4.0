@@ -307,6 +307,77 @@ def generate_resolucion_pdf(
     y -= 10
     
     # ============================================================
+    # FUNCIÓN HELPER: Dibujar datos del predio
+    # ============================================================
+    def dibujar_datos_predio(y_pos):
+        """Dibuja la fila de datos del predio (usado en cancelación e inscripción)"""
+        y = y_pos
+        # Headers: CÓDIGO HOMOLOGADO | DIRECCIÓN O VEREDA | DES | A-TERRENO | A-CONS | AVALÚO | VIGENCIA FISCAL
+        y = check_page_break(y, 30)
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
+        c.setFillColor(negro)
+        c.setFont(font_bold, fuente_tabla - 1)
+        
+        predio_cols = [content_width * 0.18, content_width * 0.22, content_width * 0.08, content_width * 0.12, content_width * 0.10, content_width * 0.15, content_width * 0.15]
+        predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "DES", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
+        x = left_margin
+        for i, header in enumerate(predio_headers):
+            c.drawCentredString(x + predio_cols[i]/2, y - 9, header)
+            c.rect(x, y - 12, predio_cols[i], 12, fill=0, stroke=1)
+            x += predio_cols[i]
+        y -= 12
+        
+        # Datos del predio
+        y = check_page_break(y, 15)
+        c.setFont(font_normal, fuente_tabla - 1)
+        x = left_margin
+        # CÓDIGO HOMOLOGADO
+        c.rect(x, y - 12, predio_cols[0], 12, fill=0, stroke=1)
+        codigo_corto = npn[:15] if len(npn) > 15 else npn
+        c.drawString(x + 1, y - 9, codigo_corto)
+        x += predio_cols[0]
+        # DIRECCIÓN O VEREDA
+        c.rect(x, y - 12, predio_cols[1], 12, fill=0, stroke=1)
+        dir_corta = direccion[:18] if len(direccion) > 18 else direccion
+        c.drawString(x + 1, y - 9, dir_corta)
+        x += predio_cols[1]
+        # DES (Destino)
+        c.rect(x, y - 12, predio_cols[2], 12, fill=0, stroke=1)
+        c.drawCentredString(x + predio_cols[2]/2, y - 9, destino)
+        x += predio_cols[2]
+        # A-TERRENO
+        c.rect(x, y - 12, predio_cols[3], 12, fill=0, stroke=1)
+        c.drawCentredString(x + predio_cols[3]/2, y - 9, str(area_terreno))
+        x += predio_cols[3]
+        # A-CONS
+        c.rect(x, y - 12, predio_cols[4], 12, fill=0, stroke=1)
+        c.drawCentredString(x + predio_cols[4]/2, y - 9, str(area_construida))
+        x += predio_cols[4]
+        # AVALÚO
+        c.rect(x, y - 12, predio_cols[5], 12, fill=0, stroke=1)
+        c.drawCentredString(x + predio_cols[5]/2, y - 9, avaluo[:12] if len(avaluo) > 12 else avaluo)
+        x += predio_cols[5]
+        # VIGENCIA FISCAL
+        c.rect(x, y - 12, predio_cols[6], 12, fill=0, stroke=1)
+        c.drawCentredString(x + predio_cols[6]/2, y - 9, vigencia_fiscal)
+        y -= 12
+        
+        # Fila MATRÍCULA INMOBILIARIA
+        y = check_page_break(y, 15)
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(left_margin, y - 12, content_width * 0.3, 12, fill=1, stroke=1)
+        c.setFillColor(negro)
+        c.setFont(font_bold, fuente_tabla - 1)
+        c.drawCentredString(left_margin + (content_width * 0.3)/2, y - 9, "MATRÍCULA INMOBILIARIA")
+        c.setFont(font_normal, fuente_tabla)
+        c.rect(left_margin + content_width * 0.3, y - 12, content_width * 0.7, 12, fill=0, stroke=1)
+        c.drawString(left_margin + content_width * 0.3 + 5, y - 9, matricula_inmobiliaria)
+        y -= 12
+        
+        return y
+    
+    # ============================================================
     # TABLA CANCELACIÓN - Propietarios anteriores
     # ============================================================
     y = check_page_break(y, 80)
@@ -369,6 +440,10 @@ def generate_resolucion_pdf(
         c.rect(left_margin, y - 12, content_width, 12, fill=0, stroke=1)
         c.drawString(left_margin + 5, y - 9, "Sin datos de propietario anterior")
         y -= 12
+    y -= 5
+    
+    # Datos del predio en CANCELACIÓN
+    y = dibujar_datos_predio(y)
     y -= 8
     
     # ============================================================
@@ -434,69 +509,8 @@ def generate_resolucion_pdf(
         y -= 12
     y -= 5
     
-    # Fila de datos del predio (parte inferior de inscripción)
-    # Headers: NUPRE/CODIGO HOMOLOGADO | DIRECCIÓN O VEREDA | DES | A-TERRENO | A-CONS | AVALÚO | VIGENCIA FISCAL
-    y = check_page_break(y, 30)
-    c.setFillColor(colors.HexColor('#e8e8e8'))
-    c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
-    c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla - 1)
-    
-    predio_cols = [content_width * 0.18, content_width * 0.22, content_width * 0.08, content_width * 0.12, content_width * 0.10, content_width * 0.15, content_width * 0.15]
-    predio_headers = ["NUPRE/CODIGO", "DIRECCIÓN", "DES", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
-    x = left_margin
-    for i, header in enumerate(predio_headers):
-        c.drawCentredString(x + predio_cols[i]/2, y - 9, header)
-        c.rect(x, y - 12, predio_cols[i], 12, fill=0, stroke=1)
-        x += predio_cols[i]
-    y -= 12
-    
-    # Datos del predio
-    y = check_page_break(y, 15)
-    c.setFont(font_normal, fuente_tabla - 1)
-    x = left_margin
-    # NUPRE/CODIGO HOMOLOGADO
-    c.rect(x, y - 12, predio_cols[0], 12, fill=0, stroke=1)
-    codigo_corto = npn[:15] if len(npn) > 15 else npn
-    c.drawString(x + 1, y - 9, codigo_corto)
-    x += predio_cols[0]
-    # DIRECCIÓN O VEREDA
-    c.rect(x, y - 12, predio_cols[1], 12, fill=0, stroke=1)
-    dir_corta = direccion[:18] if len(direccion) > 18 else direccion
-    c.drawString(x + 1, y - 9, dir_corta)
-    x += predio_cols[1]
-    # DES (Destino)
-    c.rect(x, y - 12, predio_cols[2], 12, fill=0, stroke=1)
-    c.drawCentredString(x + predio_cols[2]/2, y - 9, destino)
-    x += predio_cols[2]
-    # A-TERRENO
-    c.rect(x, y - 12, predio_cols[3], 12, fill=0, stroke=1)
-    c.drawCentredString(x + predio_cols[3]/2, y - 9, str(area_terreno))
-    x += predio_cols[3]
-    # A-CONS
-    c.rect(x, y - 12, predio_cols[4], 12, fill=0, stroke=1)
-    c.drawCentredString(x + predio_cols[4]/2, y - 9, str(area_construida))
-    x += predio_cols[4]
-    # AVALÚO
-    c.rect(x, y - 12, predio_cols[5], 12, fill=0, stroke=1)
-    c.drawCentredString(x + predio_cols[5]/2, y - 9, avaluo[:12] if len(avaluo) > 12 else avaluo)
-    x += predio_cols[5]
-    # VIGENCIA FISCAL
-    c.rect(x, y - 12, predio_cols[6], 12, fill=0, stroke=1)
-    c.drawCentredString(x + predio_cols[6]/2, y - 9, vigencia_fiscal)
-    y -= 12
-    
-    # Fila MATRÍCULA INMOBILIARIA
-    y = check_page_break(y, 15)
-    c.setFillColor(colors.HexColor('#e8e8e8'))
-    c.rect(left_margin, y - 12, content_width * 0.3, 12, fill=1, stroke=1)
-    c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla - 1)
-    c.drawCentredString(left_margin + (content_width * 0.3)/2, y - 9, "MATRÍCULA INMOBILIARIA")
-    c.setFont(font_normal, fuente_tabla)
-    c.rect(left_margin + content_width * 0.3, y - 12, content_width * 0.7, 12, fill=0, stroke=1)
-    c.drawString(left_margin + content_width * 0.3 + 5, y - 9, matricula_inmobiliaria)
-    y -= 12
+    # Datos del predio en INSCRIPCIÓN
+    y = dibujar_datos_predio(y)
     
     y -= espaciado_secciones
     
