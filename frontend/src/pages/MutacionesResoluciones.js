@@ -409,6 +409,10 @@ export default function MutacionesResoluciones() {
       toast.error('No se ha generado el número de resolución');
       return;
     }
+    if (!m1Data.radicado_peticion) {
+      toast.error('El número de radicado es obligatorio');
+      return;
+    }
     if (m1Data.propietarios_nuevos.length === 0) {
       toast.error('Agregue al menos un propietario nuevo');
       return;
@@ -1329,9 +1333,9 @@ export default function MutacionesResoluciones() {
                         </div>
                       </div>
                       
-                      {/* Radicado */}
+                      {/* Radicado - OBLIGATORIO */}
                       <div>
-                        <Label className="text-xs text-purple-700">Radicado de Petición (opcional)</Label>
+                        <Label className="text-xs text-purple-700">Radicado de Petición *</Label>
                         <div className="relative">
                           <Input
                             value={m1Data.radicado_peticion}
@@ -1341,9 +1345,10 @@ export default function MutacionesResoluciones() {
                               buscarRadicados(valor);
                             }}
                             placeholder="Escribir número de radicado..."
+                            className={!m1Data.radicado_peticion ? 'border-red-300' : ''}
                           />
                           {radicadosDisponibles.length > 0 && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                            <div className="absolute z-[99999] w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                               {radicadosDisponibles.map(rad => (
                                 <button
                                   key={rad.id}
@@ -1491,7 +1496,7 @@ export default function MutacionesResoluciones() {
             {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predio && (
               <Button 
                 onClick={generarResolucionM1} 
-                disabled={generando || !m1Data.numero_resolucion || m1Data.propietarios_nuevos.length === 0}
+                disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {generando ? 'Generando...' : 'Generar Resolución M1'}
