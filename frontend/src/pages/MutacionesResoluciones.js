@@ -146,6 +146,11 @@ export default function MutacionesResoluciones() {
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
   const [predioEditando, setPredioEditando] = useState(null); // datos del predio en edición
   const [tabEdicion, setTabEdicion] = useState('r1'); // pestaña activa: 'r1' o 'r2'
+  
+  // Dropdowns del modal de edición
+  const [showDestinoDropdown, setShowDestinoDropdown] = useState(false);
+  const [showTipoDocDropdown, setShowTipoDocDropdown] = useState({});
+  const [showEstadoCivilDropdown, setShowEstadoCivilDropdown] = useState({});
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -1904,29 +1909,48 @@ export default function MutacionesResoluciones() {
                           onChange={(e) => setPredioEditando(prev => ({...prev, matricula_inmobiliaria: e.target.value}))}
                         />
                       </div>
-                      <div>
+                      {/* Destino Económico - Dropdown personalizado */}
+                      <div className="relative">
                         <Label className="text-xs">Destino Económico</Label>
-                        <Select 
-                          value={predioEditando.destino_economico || 'A'}
-                          onValueChange={(v) => setPredioEditando(prev => ({...prev, destino_economico: v}))}
+                        <div 
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                          onClick={() => setShowDestinoDropdown(!showDestinoDropdown)}
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="A">A - Habitacional</SelectItem>
-                            <SelectItem value="B">B - Industrial</SelectItem>
-                            <SelectItem value="C">C - Comercial</SelectItem>
-                            <SelectItem value="D">D - Agropecuario</SelectItem>
-                            <SelectItem value="E">E - Minero</SelectItem>
-                            <SelectItem value="L">L - Agrícola</SelectItem>
-                            <SelectItem value="R">R - Residencial</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <span>
+                            {predioEditando.destino_economico === 'A' ? 'A - Habitacional' :
+                             predioEditando.destino_economico === 'B' ? 'B - Industrial' :
+                             predioEditando.destino_economico === 'C' ? 'C - Comercial' :
+                             predioEditando.destino_economico === 'D' ? 'D - Agropecuario' :
+                             predioEditando.destino_economico === 'E' ? 'E - Minero' :
+                             predioEditando.destino_economico === 'L' ? 'L - Agrícola' :
+                             predioEditando.destino_economico === 'R' ? 'R - Residencial' : 'Seleccionar'}
+                          </span>
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </div>
+                        {showDestinoDropdown && (
+                          <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {[
+                              {v: 'A', l: 'A - Habitacional'}, {v: 'B', l: 'B - Industrial'},
+                              {v: 'C', l: 'C - Comercial'}, {v: 'D', l: 'D - Agropecuario'},
+                              {v: 'E', l: 'E - Minero'}, {v: 'L', l: 'L - Agrícola'}, {v: 'R', l: 'R - Residencial'}
+                            ].map(opt => (
+                              <div
+                                key={opt.v}
+                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${predioEditando.destino_economico === opt.v ? 'bg-blue-100' : ''}`}
+                                onClick={() => { setPredioEditando(prev => ({...prev, destino_economico: opt.v})); setShowDestinoDropdown(false); }}
+                              >
+                                {opt.l}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <Label className="text-xs">Código Homologado</Label>
                         <Input
                           value={predioEditando.codigo_homologado || ''}
-                          onChange={(e) => setPredioEditando(prev => ({...prev, codigo_homologado: e.target.value}))}
+                          onChange={(e) => setPredioEditando(prev => ({...prev, codigo_homologado: e.target.value.toUpperCase()}))}
+                          placeholder="Ej: ABR001"
                         />
                       </div>
                     </CardContent>
@@ -1942,7 +1966,7 @@ export default function MutacionesResoluciones() {
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">
                       {predioEditando.propietarios?.map((prop, propIdx) => (
                         <div key={propIdx} className="bg-slate-50 p-3 rounded border">
                           <div className="flex justify-between items-center mb-2">
@@ -1965,21 +1989,35 @@ export default function MutacionesResoluciones() {
                                 className="h-8"
                               />
                             </div>
-                            <div>
+                            {/* Tipo Doc - Dropdown personalizado */}
+                            <div className="relative">
                               <Label className="text-xs">Tipo Doc.</Label>
-                              <Select 
-                                value={prop.tipo_documento || 'C'}
-                                onValueChange={(v) => actualizarPropietarioEdicion(propIdx, 'tipo_documento', v)}
+                              <div 
+                                className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-white px-2 py-1 text-sm cursor-pointer hover:bg-slate-50"
+                                onClick={() => setShowTipoDocDropdown(prev => ({...prev, [propIdx]: !prev[propIdx]}))}
                               >
-                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="C">Cédula</SelectItem>
-                                  <SelectItem value="N">NIT</SelectItem>
-                                  <SelectItem value="E">Cédula Ext.</SelectItem>
-                                  <SelectItem value="T">Tarjeta Id.</SelectItem>
-                                  <SelectItem value="S">Secuencial</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <span className="text-xs">
+                                  {prop.tipo_documento === 'C' ? 'Cédula' :
+                                   prop.tipo_documento === 'N' ? 'NIT' :
+                                   prop.tipo_documento === 'E' ? 'Céd. Ext.' :
+                                   prop.tipo_documento === 'T' ? 'Tarjeta' :
+                                   prop.tipo_documento === 'S' ? 'Secuencial' : 'Cédula'}
+                                </span>
+                                <ChevronDown className="h-3 w-3 opacity-50" />
+                              </div>
+                              {showTipoDocDropdown[propIdx] && (
+                                <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg">
+                                  {[{v:'C',l:'Cédula'},{v:'N',l:'NIT'},{v:'E',l:'Céd. Ext.'},{v:'T',l:'Tarjeta'},{v:'S',l:'Secuencial'}].map(opt => (
+                                    <div
+                                      key={opt.v}
+                                      className={`px-2 py-1 text-xs cursor-pointer hover:bg-blue-50 ${prop.tipo_documento === opt.v ? 'bg-blue-100' : ''}`}
+                                      onClick={() => { actualizarPropietarioEdicion(propIdx, 'tipo_documento', opt.v); setShowTipoDocDropdown(prev => ({...prev, [propIdx]: false})); }}
+                                    >
+                                      {opt.l}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div>
                               <Label className="text-xs">Número Doc.</Label>
@@ -1989,22 +2027,29 @@ export default function MutacionesResoluciones() {
                                 className="h-8"
                               />
                             </div>
-                            <div className="col-span-2">
+                            {/* Estado Civil - Dropdown personalizado */}
+                            <div className="relative col-span-2">
                               <Label className="text-xs">Estado Civil</Label>
-                              <Select 
-                                value={prop.estado || 'sin_especificar'}
-                                onValueChange={(v) => actualizarPropietarioEdicion(propIdx, 'estado', v === 'sin_especificar' ? '' : v)}
+                              <div 
+                                className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-white px-2 py-1 text-sm cursor-pointer hover:bg-slate-50"
+                                onClick={() => setShowEstadoCivilDropdown(prev => ({...prev, [propIdx]: !prev[propIdx]}))}
                               >
-                                <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="sin_especificar">Sin especificar</SelectItem>
-                                  <SelectItem value="SOLTERO">Soltero(a)</SelectItem>
-                                  <SelectItem value="CASADO">Casado(a)</SelectItem>
-                                  <SelectItem value="UNION LIBRE">Unión Libre</SelectItem>
-                                  <SelectItem value="DIVORCIADO">Divorciado(a)</SelectItem>
-                                  <SelectItem value="VIUDO">Viudo(a)</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <span className="text-xs">{prop.estado || 'Sin especificar'}</span>
+                                <ChevronDown className="h-3 w-3 opacity-50" />
+                              </div>
+                              {showEstadoCivilDropdown[propIdx] && (
+                                <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg">
+                                  {['Sin especificar','SOLTERO','CASADO','UNION LIBRE','DIVORCIADO','VIUDO'].map(opt => (
+                                    <div
+                                      key={opt}
+                                      className={`px-2 py-1 text-xs cursor-pointer hover:bg-blue-50 ${prop.estado === opt || (!prop.estado && opt === 'Sin especificar') ? 'bg-blue-100' : ''}`}
+                                      onClick={() => { actualizarPropietarioEdicion(propIdx, 'estado', opt === 'Sin especificar' ? '' : opt); setShowEstadoCivilDropdown(prev => ({...prev, [propIdx]: false})); }}
+                                    >
+                                      {opt}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2014,7 +2059,7 @@ export default function MutacionesResoluciones() {
                 </TabsContent>
                 
                 {/* TAB R2 - Zonas y Áreas */}
-                <TabsContent value="r2" className="mt-4 space-y-4">
+                <TabsContent value="r2" className="mt-4 space-y-4 max-h-[50vh] overflow-y-auto">
                   <Card>
                     <CardHeader className="py-2">
                       <div className="flex justify-between items-center">
@@ -2039,7 +2084,8 @@ export default function MutacionesResoluciones() {
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
-                          <div className="grid grid-cols-5 gap-2">
+                          {/* Fila 1: Zonas y Áreas */}
+                          <div className="grid grid-cols-5 gap-2 mb-2">
                             <div>
                               <Label className="text-xs">Zona Física</Label>
                               <Input
@@ -2082,6 +2128,104 @@ export default function MutacionesResoluciones() {
                                 onChange={(e) => actualizarZonaEdicion(zonaIdx, 'avaluo', Number(e.target.value))}
                                 className="h-8"
                               />
+                            </div>
+                          </div>
+                          {/* Fila 2: Datos de Construcción */}
+                          <div className="border-t border-purple-200 pt-2 mt-2">
+                            <p className="text-xs font-medium text-purple-800 mb-2">Datos de Construcción</p>
+                            <div className="grid grid-cols-6 gap-2">
+                              <div>
+                                <Label className="text-xs">Pisos</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.pisos || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'pisos', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Habitaciones</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.habitaciones || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'habitaciones', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Baños</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.banos || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'banos', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Cocinas</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.cocinas || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'cocinas', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Locales</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.locales || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'locales', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Garajes</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.garajes || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'garajes', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                              <div>
+                                <Label className="text-xs">Edad Construcción</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.edad_construccion || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'edad_construccion', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Puntaje</Label>
+                                <Input
+                                  type="number"
+                                  value={zona.puntaje || 0}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'puntaje', Number(e.target.value))}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Tipo Construcción</Label>
+                                <Input
+                                  value={zona.tipo_construccion || ''}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'tipo_construccion', e.target.value)}
+                                  className="h-7 text-xs"
+                                  placeholder="Ej: CONVENCIONAL"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Estado Conservación</Label>
+                                <Input
+                                  value={zona.estado_conservacion || ''}
+                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'estado_conservacion', e.target.value)}
+                                  className="h-7 text-xs"
+                                  placeholder="Ej: BUENO"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
