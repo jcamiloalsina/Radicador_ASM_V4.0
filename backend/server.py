@@ -889,7 +889,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1027,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1093,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1131,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1170,7 +1170,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmación de Radicación",
@@ -1200,7 +1200,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1233,7 +1233,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -10782,7 +10782,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del certificado.
     No requiere autenticación.
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://sandbox-vault-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-m1.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Buscar certificado
@@ -23996,6 +23996,304 @@ async def generar_resolucion_prueba(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
+
+
+# ===== SISTEMA SIMPLIFICADO DE PLANTILLAS DE RESOLUCIÓN =====
+
+# Plantilla M1 por defecto (Mutación Primera - Cambio de Propietario)
+PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso de sus facultades legales y,
+
+CONSIDERANDO
+
+Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.
+
+Que, se aportaron como soportes los siguientes documentos:
+• Oficio de solicitud.
+• Cédula de ciudadanía.
+• Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}.
+
+Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.
+
+En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:
+
+RESUELVE
+
+ARTÍCULO 1. Ordenar la inscripción en el catastro del Municipio de {municipio} los siguientes cambios:
+
+[TABLA DE CANCELACIÓN/INSCRIPCIÓN SE GENERA AUTOMÁTICAMENTE]
+
+ARTÍCULO 2. El presente acto administrativo rige a partir de la fecha de su expedición.
+
+ARTÍCULO 3. Los avalúos incorporados tienen vigencia fiscal a partir del {vigencia_fiscal}.
+
+ARTÍCULO 4. Contra el presente acto administrativo no procede recurso alguno.
+
+COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE
+
+Dada en Ocaña a los {fecha_resolucion_texto}"""
+
+
+class PlantillaTipoRequest(BaseModel):
+    """Request para actualizar plantilla de tipo de resolución"""
+    texto: str
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    firmante_nombre: Optional[str] = "DALGIE ESPERANZA TORRADO RIZO"
+    firmante_cargo: Optional[str] = "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
+
+
+@api_router.get("/resoluciones/plantillas")
+async def listar_plantillas_resolucion(current_user: dict = Depends(get_current_user)):
+    """Listar todas las plantillas de resolución disponibles"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden acceder")
+    
+    try:
+        plantillas = await db.resolucion_plantillas.find(
+            {},
+            {"_id": 0}
+        ).to_list(100)
+        
+        # Si no hay plantillas, crear las por defecto
+        if not plantillas:
+            plantilla_m1 = {
+                "id": "M1",
+                "tipo": "M1",
+                "nombre": "Mutación Primera (M1)",
+                "descripcion": "Cambio de propietario o poseedor",
+                "texto": PLANTILLA_M1_DEFAULT,
+                "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+                "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.resolucion_plantillas.insert_one(plantilla_m1.copy())
+            # No incluir _id en la respuesta
+            plantillas = [{k: v for k, v in plantilla_m1.items() if k != '_id'}]
+        
+        return {
+            "success": True,
+            "plantillas": plantillas
+        }
+    except Exception as e:
+        logging.error(f"Error listando plantillas: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/resoluciones/plantillas/{tipo}")
+async def obtener_plantilla_resolucion(
+    tipo: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener una plantilla específica por tipo (M1, M2, etc.)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden acceder")
+    
+    try:
+        plantilla = await db.resolucion_plantillas.find_one(
+            {"tipo": tipo.upper()},
+            {"_id": 0}
+        )
+        
+        if not plantilla and tipo.upper() == "M1":
+            # Crear M1 por defecto si no existe
+            plantilla_data = {
+                "id": "M1",
+                "tipo": "M1",
+                "nombre": "Mutación Primera (M1)",
+                "descripcion": "Cambio de propietario o poseedor",
+                "texto": PLANTILLA_M1_DEFAULT,
+                "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+                "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.resolucion_plantillas.insert_one(plantilla_data.copy())
+            plantilla = {k: v for k, v in plantilla_data.items() if k != '_id'}
+        
+        if not plantilla:
+            raise HTTPException(status_code=404, detail=f"Plantilla {tipo} no encontrada")
+        
+        return {
+            "success": True,
+            "plantilla": plantilla
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error obteniendo plantilla {tipo}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.put("/resoluciones/plantillas/{tipo}")
+async def actualizar_plantilla_resolucion(
+    tipo: str,
+    request: PlantillaTipoRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualizar el texto de una plantilla de resolución"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar plantillas")
+    
+    try:
+        tipo_upper = tipo.upper()
+        
+        # Verificar si existe la plantilla
+        existente = await db.resolucion_plantillas.find_one({"tipo": tipo_upper})
+        
+        update_data = {
+            "texto": request.texto,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": current_user.get("full_name", "")
+        }
+        
+        if request.nombre:
+            update_data["nombre"] = request.nombre
+        if request.descripcion:
+            update_data["descripcion"] = request.descripcion
+        if request.firmante_nombre:
+            update_data["firmante_nombre"] = request.firmante_nombre
+        if request.firmante_cargo:
+            update_data["firmante_cargo"] = request.firmante_cargo
+        
+        if existente:
+            await db.resolucion_plantillas.update_one(
+                {"tipo": tipo_upper},
+                {"$set": update_data}
+            )
+        else:
+            # Crear nueva plantilla
+            update_data["id"] = tipo_upper
+            update_data["tipo"] = tipo_upper
+            update_data["nombre"] = request.nombre or f"Plantilla {tipo_upper}"
+            update_data["descripcion"] = request.descripcion or ""
+            update_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            await db.resolucion_plantillas.insert_one(update_data)
+        
+        return {
+            "success": True,
+            "message": f"Plantilla {tipo_upper} actualizada correctamente"
+        }
+    except Exception as e:
+        logging.error(f"Error actualizando plantilla {tipo}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/resoluciones/generar-preview")
+async def generar_preview_resolucion(
+    tipo: str = "M1",
+    predio_id: str = "",
+    current_user: dict = Depends(get_current_user)
+):
+    """Generar un PDF preview de una resolución usando la plantilla y datos de un predio"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden generar")
+    
+    try:
+        # Obtener plantilla
+        plantilla = await db.resolucion_plantillas.find_one(
+            {"tipo": tipo.upper()},
+            {"_id": 0}
+        )
+        
+        if not plantilla:
+            raise HTTPException(status_code=404, detail=f"Plantilla {tipo} no encontrada")
+        
+        # Obtener predio (si no se proporciona, usar uno de ejemplo)
+        predio = None
+        if predio_id:
+            predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        if not predio:
+            # Buscar cualquier predio de ejemplo
+            predio = await db.predios.find_one({}, {"_id": 0})
+        
+        if not predio:
+            predio = {
+                "codigo_predial_nacional": "540030001000000010001000000000",
+                "municipio": "Ábrego",
+                "nombre_propietario": "PROPIETARIO EJEMPLO",
+                "direccion": "CALLE EJEMPLO 123",
+                "avaluo": 50000000,
+                "matricula_inmobiliaria": "270-00000"
+            }
+        
+        # Generar datos para el PDF
+        from resolucion_pdf_generator import generate_resolucion_pdf
+        
+        codigo = predio.get("codigo_predial_nacional", "")
+        depto = codigo[0:2] if len(codigo) >= 2 else "54"
+        mpio = codigo[2:5] if len(codigo) >= 5 else "003"
+        anio = datetime.now().year
+        numero_resolucion = f"RES-{depto}-{mpio}-PREVIEW-{anio}"
+        fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
+        
+        # Propietarios
+        propietarios_anteriores = []
+        if predio.get("propietarios"):
+            for p in predio["propietarios"]:
+                propietarios_anteriores.append({
+                    "nombre": p.get("nombre_propietario", ""),
+                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                })
+        elif predio.get("nombre_propietario"):
+            propietarios_anteriores.append({
+                "nombre": predio["nombre_propietario"],
+                "documento": "C --------"
+            })
+        
+        propietarios_nuevos = [{"nombre": "NUEVO PROPIETARIO PREVIEW", "documento": "C 99999999"}]
+        
+        # Construir la plantilla con el texto personalizado
+        plantilla_textos = {
+            "preambulo": plantilla.get("texto", PLANTILLA_M1_DEFAULT).split("CONSIDERANDO")[0].strip(),
+            "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
+            "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
+        }
+        
+        pdf_bytes = generate_resolucion_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=predio.get("municipio", "Ábrego"),
+            tipo_tramite="Cambio de Propietario",
+            radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
+            codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
+            npn=codigo,
+            matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
+            direccion=predio.get("direccion", ""),
+            avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            vigencia_fiscal=f"01/01/{anio}",
+            propietarios_anteriores=propietarios_anteriores,
+            propietarios_nuevos=propietarios_nuevos,
+            elaboro=current_user.get('full_name', 'Usuario'),
+            reviso="Coordinador",
+            plantilla=plantilla_textos,
+        )
+        
+        import base64
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # Guardar archivo temporal
+        filename = f"resolucion_preview_{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"/app/frontend/public/{filename}"
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
+        
+        return {
+            "success": True,
+            "pdf_base64": pdf_base64,
+            "pdf_url": f"/{filename}",
+            "tipo_plantilla": tipo,
+            "predio_usado": predio.get("codigo_predial_nacional", "Preview")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generando preview: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 # Include the router in the main app

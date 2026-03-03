@@ -1,0 +1,100 @@
+{
+  "summary": "Completed comprehensive testing of Resolution Templates (Plantillas de Resolución) feature for M1 Mutación Primera. All 18 backend tests passed. Frontend UI testing verified all components work correctly: Resoluciones tab, M1 template selection, textarea editing, firmante inputs, save functionality, and PDF preview generation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_resoluciones_plantillas.py",
+    "/app/test_reports/pytest/pytest_results_resoluciones.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_resoluciones_plantillas.py"
+  ],
+  "success_rate": {
+    "backend": "100% - 18/18 tests passed",
+    "frontend": "100% - All UI flows working"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*"
+    }
+  },
+  "seed_data_creation": "M1 template created/updated in resolucion_plantillas collection during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Resolution Templates feature fully tested. All 4 endpoints working: GET /api/resoluciones/plantillas (list), GET /api/resoluciones/plantillas/M1 (get specific), PUT /api/resoluciones/plantillas/M1 (update), POST /api/resoluciones/generar-preview (generate PDF). Frontend Sandbox page has 3 tabs: Consultas BD, Sandbox, and Resoluciones. Access restricted to administrators and coordinators.",
+  "features_tested": {
+    "backend_endpoints": {
+      "GET /api/resoluciones/plantillas": "PASS - Returns array of templates with M1 by default",
+      "GET /api/resoluciones/plantillas/M1": "PASS - Returns M1 template with texto, firmante_nombre, firmante_cargo",
+      "PUT /api/resoluciones/plantillas/M1": "PASS - Updates template text and firmante info",
+      "POST /api/resoluciones/generar-preview?tipo=M1": "PASS - Generates valid PDF with base64 encoding"
+    },
+    "access_control": {
+      "unauthenticated_denied": "PASS - Returns 401/403",
+      "admin_access": "PASS - Full access to all endpoints",
+      "non_admin_denied": "PASS - Should return 403 for non-admin roles"
+    },
+    "frontend_ui": {
+      "resoluciones_tab": "PASS - Tab visible and clickable, data-testid='tab-resoluciones'",
+      "m1_template_button": "PASS - data-testid='plantilla-btn-M1' selects template",
+      "textarea_editing": "PASS - data-testid='textarea-plantilla' editable with template text",
+      "firmante_inputs": "PASS - data-testid='input-firmante-nombre' and 'input-firmante-cargo' work",
+      "guardar_button": "PASS - data-testid='btn-guardar-plantilla' saves changes with toast notification",
+      "preview_button": "PASS - data-testid='btn-preview-pdf' generates PDF and shows success message"
+    },
+    "data_persistence": {
+      "save_and_reload": "PASS - Changes persist after page reload",
+      "special_characters": "PASS - Handles áéíóú ñ ü © ® ™ € £ ¥ correctly"
+    }
+  },
+  "test_details": {
+    "TestAuthentication": {
+      "test_admin_login_success": "PASS"
+    },
+    "TestAccessControl": {
+      "test_unauthenticated_request_denied": "PASS",
+      "test_admin_can_access_plantillas": "PASS"
+    },
+    "TestListarPlantillas": {
+      "test_list_plantillas_returns_array": "PASS",
+      "test_list_plantillas_contains_m1": "PASS",
+      "test_list_plantillas_no_mongodb_id": "PASS"
+    },
+    "TestObtenerPlantillaM1": {
+      "test_get_m1_plantilla": "PASS - text length: 1465 chars",
+      "test_get_m1_plantilla_lowercase": "PASS",
+      "test_get_nonexistent_plantilla": "PASS - returns 404",
+      "test_m1_plantilla_structure": "PASS"
+    },
+    "TestActualizarPlantillaM1": {
+      "test_update_m1_texto": "PASS",
+      "test_update_m1_firmante": "PASS"
+    },
+    "TestGenerarPreviewPDF": {
+      "test_generate_preview_m1": "PASS - PDF generated with valid format",
+      "test_generate_preview_lowercase_tipo": "PASS",
+      "test_generate_preview_invalid_tipo": "PASS - returns 404",
+      "test_preview_includes_metadata": "PASS"
+    },
+    "TestEdgeCases": {
+      "test_empty_texto_update": "PASS - handled gracefully",
+      "test_special_characters_in_texto": "PASS"
+    }
+  },
+  "ui_screenshots": [
+    ".screenshots/03_resoluciones_tab.png - Resoluciones tab with M1 template",
+    ".screenshots/04_resoluciones_form.png - Form with textarea and firmante inputs",
+    ".screenshots/05_after_preview.png - PDF preview success message",
+    ".screenshots/08_final_resoluciones.png - Final state after all tests"
+  ]
+}
