@@ -171,6 +171,8 @@ export default function MutacionesResoluciones() {
   }, [activeTab, fetchHistorial]);
 
   // Cargar predio pre-seleccionado desde Gestión de Predios
+  const [predioPreCargado, setPredioPreCargado] = useState(null);
+  
   useEffect(() => {
     const predioGuardado = sessionStorage.getItem('predioParaMutacion');
     if (predioGuardado) {
@@ -179,38 +181,83 @@ export default function MutacionesResoluciones() {
         // Limpiar sessionStorage
         sessionStorage.removeItem('predioParaMutacion');
         
-        // Abrir M1 con el predio pre-cargado
-        setTipoMutacionSeleccionado(TIPOS_MUTACION.M1);
-        setShowMutacionDialog(true);
+        // Guardar predio pre-cargado para usar cuando seleccione tipo de mutación
+        setPredioPreCargado(predio);
         
-        // Determinar el municipio del predio
-        const codigoMunicipio = predio.codigo_predial_nacional?.substring(0, 5) || '';
-        
-        // Pre-cargar datos del predio
-        setTimeout(() => {
-          setM1Data(prev => ({
-            ...prev,
-            municipio: codigoMunicipio,
-            predio: predio,
-            propietarios_anteriores: predio.propietarios || [{
-              nombre_propietario: predio.nombre_propietario || '',
-              tipo_documento: predio.tipo_documento || 'C',
-              numero_documento: predio.numero_documento || ''
-            }]
-          }));
-          
-          // Cargar número de resolución
-          if (codigoMunicipio) {
-            cargarSiguienteNumeroResolucion(codigoMunicipio);
-          }
-        }, 100);
-        
-        toast.success(`Predio ${predio.codigo_predial_nacional || predio.numero_predio} cargado para mutación`);
+        toast.success(`Predio ${predio.codigo_predial_nacional || predio.numero_predio} listo. Seleccione el tipo de mutación.`);
       } catch (e) {
         console.error('Error cargando predio pre-seleccionado:', e);
       }
     }
   }, []);
+
+  // Función para cargar predio en M1 cuando se abre el diálogo
+  const cargarPredioEnM1 = (predio) => {
+    const codigoMunicipio = predio.codigo_predial_nacional?.substring(0, 5) || '';
+    
+    setM1Data(prev => ({
+      ...prev,
+      municipio: codigoMunicipio,
+      predio: predio,
+      propietarios_anteriores: predio.propietarios || [{
+        nombre_propietario: predio.nombre_propietario || '',
+        tipo_documento: predio.tipo_documento || 'C',
+        numero_documento: predio.numero_documento || ''
+      }]
+    }));
+    
+    if (codigoMunicipio) {
+      cargarSiguienteNumeroResolucion(codigoMunicipio);
+    }
+  };
+
+  // Función para cargar predio en M2 cuando se abre el diálogo
+  const cargarPredioEnM2 = (predio) => {
+    const codigoMunicipio = predio.codigo_predial_nacional?.substring(0, 5) || '';
+    
+    const predioFormateado = {
+      id: predio.id,
+      codigo_predial: predio.codigo_predial_nacional || predio.numero_predio,
+      npn: predio.codigo_predial_nacional,
+      codigo_homologado: predio.codigo_homologado || '',
+      direccion: predio.direccion || '',
+      destino_economico: predio.destino_economico || 'A',
+      area_terreno: predio.area_terreno || 0,
+      area_construida: predio.area_construida || 0,
+      avaluo: predio.avaluo || 0,
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      propietarios: predio.propietarios || [{
+        nombre_propietario: predio.nombre_propietario || '',
+        tipo_documento: predio.tipo_documento || 'C',
+        numero_documento: predio.numero_documento || ''
+      }]
+    };
+    
+    setM2Data(prev => ({
+      ...prev,
+      municipio: codigoMunicipio,
+      predios_cancelados: [predioFormateado]
+    }));
+  };
+
+  // Manejar apertura de diálogo de mutación
+  const handleAbrirMutacion = (tipo) => {
+    setTipoMutacionSeleccionado(tipo);
+    setShowMutacionDialog(true);
+    
+    // Si hay predio pre-cargado, cargarlo según el tipo de mutación
+    if (predioPreCargado) {
+      setTimeout(() => {
+        if (tipo.codigo === 'M1') {
+          cargarPredioEnM1(predioPreCargado);
+        } else if (tipo.codigo === 'M2') {
+          cargarPredioEnM2(predioPreCargado);
+        }
+        // Limpiar predio pre-cargado después de usarlo
+        setPredioPreCargado(null);
+      }, 100);
+    }
+  };
 
   // =====================
   // FUNCIONES PARA M1
@@ -614,37 +661,57 @@ export default function MutacionesResoluciones() {
 
   // Renderizar selector de tipo de mutación
   const renderSelectorTipo = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Object.values(TIPOS_MUTACION).map((tipo) => (
-        <Card 
-          key={tipo.codigo}
-          data-testid={`mutacion-card-${tipo.codigo}`}
-          className={`cursor-pointer transition-all hover:shadow-lg ${
-            !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500'
-          }`}
-          onClick={() => {
-            if (tipo.enabled) {
-              setTipoMutacionSeleccionado(tipo);
-              setShowMutacionDialog(true);
-            }
-          }}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <Badge className={tipo.color}>{tipo.codigo}</Badge>
-                <h3 className="font-semibold text-lg mt-2">{tipo.nombre}</h3>
-                <p className="text-sm text-slate-600 mt-1">{tipo.descripcion}</p>
+    <div className="space-y-4">
+      {/* Mostrar predio pre-cargado si existe */}
+      {predioPreCargado && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-emerald-600 font-medium">Predio seleccionado:</p>
+            <p className="font-bold text-emerald-800">{predioPreCargado.codigo_predial_nacional || predioPreCargado.numero_predio}</p>
+            <p className="text-xs text-emerald-600">{predioPreCargado.direccion} - {predioPreCargado.nombre_propietario}</p>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setPredioPreCargado(null)}
+            className="text-emerald-700"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Object.values(TIPOS_MUTACION).map((tipo) => (
+          <Card 
+            key={tipo.codigo}
+            data-testid={`mutacion-card-${tipo.codigo}`}
+            className={`cursor-pointer transition-all hover:shadow-lg ${
+              !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500'
+            }`}
+            onClick={() => {
+              if (tipo.enabled) {
+                handleAbrirMutacion(tipo);
+              }
+            }}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <Badge className={tipo.color}>{tipo.codigo}</Badge>
+                  <h3 className="font-semibold text-lg mt-2">{tipo.nombre}</h3>
+                  <p className="text-sm text-slate-600 mt-1">{tipo.descripcion}</p>
+                </div>
+                {tipo.enabled ? (
+                  <ArrowRight className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <Badge variant="outline" className="text-xs">Próximamente</Badge>
+                )}
               </div>
-              {tipo.enabled ? (
-                <ArrowRight className="w-5 h-5 text-emerald-600" />
-              ) : (
-                <Badge variant="outline" className="text-xs">Próximamente</Badge>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 
