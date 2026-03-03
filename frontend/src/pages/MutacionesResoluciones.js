@@ -1098,19 +1098,25 @@ export default function MutacionesResoluciones() {
           {/* Resultados de búsqueda */}
           {searchResults.length > 0 && (
             <div className="border rounded-lg max-h-40 overflow-y-auto">
-              {searchResults.map((predio, idx) => (
-                <div 
-                  key={idx}
-                  className="p-2 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
-                  onClick={() => agregarPredioOrigen(predio)}
-                >
-                  <div>
-                    <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
-                    <p className="text-xs text-slate-600">{predio.direccion} - {predio.nombre_propietario}</p>
+              {searchResults.map((predio, idx) => {
+                // Obtener nombre del propietario actual (del array propietarios o campo legacy)
+                const nombrePropietario = predio.propietarios?.length > 0 
+                  ? predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre
+                  : predio.nombre_propietario || '';
+                return (
+                  <div 
+                    key={idx}
+                    className="p-2 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                    onClick={() => agregarPredioOrigen(predio)}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                      <p className="text-xs text-slate-600">{predio.direccion} - {nombrePropietario}</p>
+                    </div>
+                    <Plus className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <Plus className="w-4 h-4 text-emerald-600" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           
@@ -1569,19 +1575,24 @@ export default function MutacionesResoluciones() {
                   {/* Resultados de búsqueda */}
                   {searchResultsM1.length > 0 && (
                     <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
-                      {searchResultsM1.map((predio, idx) => (
-                        <div 
-                          key={idx}
-                          className="p-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
-                          onClick={() => seleccionarPredioM1(predio)}
-                        >
-                          <div>
-                            <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
-                            <p className="text-xs text-slate-600">{predio.direccion} - {predio.nombre_propietario}</p>
+                      {searchResultsM1.map((predio, idx) => {
+                        const nombrePropietario = predio.propietarios?.length > 0 
+                          ? predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre
+                          : predio.nombre_propietario || '';
+                        return (
+                          <div 
+                            key={idx}
+                            className="p-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                            onClick={() => seleccionarPredioM1(predio)}
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                              <p className="text-xs text-slate-600">{predio.direccion} - {nombrePropietario}</p>
+                            </div>
+                            <Plus className="w-4 h-4 text-blue-600" />
                           </div>
-                          <Plus className="w-4 h-4 text-blue-600" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   
