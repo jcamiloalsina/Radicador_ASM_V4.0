@@ -138,6 +138,7 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosM1, setSearchingPrediosM1] = useState(false);
   const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
   const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
+  const [showMunicipioDropdown, setShowMunicipioDropdown] = useState(false);
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -1050,22 +1051,34 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-              {/* Selección de Municipio */}
-              <div>
+              {/* Selección de Municipio - Dropdown personalizado */}
+              <div className="relative">
                 <Label>Municipio *</Label>
-                <Select 
-                  value={m1Data.municipio} 
-                  onValueChange={(v) => setM1Data(prev => ({ ...prev, municipio: v, predio: null }))}
+                <div 
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                  onClick={() => setShowMunicipioDropdown(!showMunicipioDropdown)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar municipio" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  <span className={m1Data.municipio ? 'text-slate-900' : 'text-slate-500'}>
+                    {m1Data.municipio ? MUNICIPIOS.find(m => m.codigo === m1Data.municipio)?.nombre : 'Seleccionar municipio'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </div>
+                {showMunicipioDropdown && (
+                  <div className="absolute z-[99999] mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {MUNICIPIOS.map(m => (
-                      <SelectItem key={m.codigo} value={m.codigo}>{m.nombre}</SelectItem>
+                      <div
+                        key={m.codigo}
+                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-emerald-50 ${m1Data.municipio === m.codigo ? 'bg-emerald-100 text-emerald-800' : ''}`}
+                        onClick={() => {
+                          setM1Data(prev => ({ ...prev, municipio: m.codigo, predio: null }));
+                          setShowMunicipioDropdown(false);
+                        }}
+                      >
+                        {m.nombre}
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
 
               {/* Búsqueda de Predio */}
