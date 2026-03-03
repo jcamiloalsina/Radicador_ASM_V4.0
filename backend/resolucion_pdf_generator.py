@@ -64,7 +64,8 @@ def generate_resolucion_pdf(
     vigencia_fiscal: str,
     area_terreno: str = "0",
     area_construida: str = "0",
-    destino: str = "URB",
+    destino_economico: str = "A",  # A-Habitacional, B-Industrial, C-Comercial, etc.
+    codigo_homologado: str = "",   # Código alfanumérico tipo BPP0002BUUC
     propietarios_anteriores: list = None,
     propietarios_nuevos: list = None,
     elaboro: str = "",
@@ -332,19 +333,18 @@ def generate_resolucion_pdf(
         y = check_page_break(y, 15)
         c.setFont(font_normal, fuente_tabla - 1)
         x = left_margin
-        # CÓDIGO HOMOLOGADO
+        # CÓDIGO HOMOLOGADO (alfanumérico tipo BPP0002BUUC)
         c.rect(x, y - 12, predio_cols[0], 12, fill=0, stroke=1)
-        codigo_corto = npn[:15] if len(npn) > 15 else npn
-        c.drawString(x + 1, y - 9, codigo_corto)
+        c.drawString(x + 1, y - 9, codigo_homologado if codigo_homologado else "")
         x += predio_cols[0]
         # DIRECCIÓN O VEREDA
         c.rect(x, y - 12, predio_cols[1], 12, fill=0, stroke=1)
         dir_corta = direccion[:18] if len(direccion) > 18 else direccion
         c.drawString(x + 1, y - 9, dir_corta)
         x += predio_cols[1]
-        # DES (Destino)
+        # DES (Destino Económico - letra: A, B, C, D, etc.)
         c.rect(x, y - 12, predio_cols[2], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[2]/2, y - 9, destino)
+        c.drawCentredString(x + predio_cols[2]/2, y - 9, destino_economico[:1] if destino_economico else "A")
         x += predio_cols[2]
         # A-TERRENO
         c.rect(x, y - 12, predio_cols[3], 12, fill=0, stroke=1)
@@ -394,9 +394,10 @@ def generate_resolucion_pdf(
     c.setFillColor(colors.HexColor('#e8e8e8'))
     c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
     c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla)
+    c.setFont(font_bold, fuente_tabla - 1)
     
-    cancel_cols = [content_width * 0.22, content_width * 0.35, content_width * 0.13, content_width * 0.15, content_width * 0.15]
+    # Ajustar columnas para NPN de 30 dígitos
+    cancel_cols = [content_width * 0.32, content_width * 0.30, content_width * 0.10, content_width * 0.18, content_width * 0.10]
     cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "TIPO DOC.", "NRO. DOC.", "ESTADO"]
     x = left_margin
     for i, header in enumerate(cancel_headers):
@@ -406,19 +407,19 @@ def generate_resolucion_pdf(
     y -= 12
     
     # Datos de propietarios anteriores (cancelación)
-    c.setFont(font_normal, fuente_tabla)
+    c.setFont(font_normal, fuente_tabla - 1)
     if propietarios_anteriores:
         for prop in propietarios_anteriores:
             y = check_page_break(y, 15)
             x = left_margin
-            # N° PREDIAL
+            # N° PREDIAL (30 dígitos completo)
             c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
-            c.drawString(x + 2, y - 9, npn[:18] if len(npn) > 18 else npn)
+            c.drawString(x + 1, y - 9, npn)
             x += cancel_cols[0]
             # APELLIDOS Y NOMBRES
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')[:30]
-            c.drawString(x + 2, y - 9, nombre)
+            nombre = prop.get('nombre', '')[:25]
+            c.drawString(x + 1, y - 9, nombre)
             x += cancel_cols[1]
             # TIPO DOC.
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
@@ -428,12 +429,12 @@ def generate_resolucion_pdf(
             # NRO. DOC.
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawString(x + 2, y - 9, str(nro_doc)[:12])
+            c.drawString(x + 1, y - 9, str(nro_doc)[:15])
             x += cancel_cols[3]
-            # ESTADO
+            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.)
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado = prop.get('estado', 'Propietario')
-            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado[:12])
+            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:
         y = check_page_break(y, 15)
@@ -463,7 +464,7 @@ def generate_resolucion_pdf(
     c.setFillColor(colors.HexColor('#e8e8e8'))
     c.rect(left_margin, y - 12, content_width, 12, fill=1, stroke=1)
     c.setFillColor(negro)
-    c.setFont(font_bold, fuente_tabla)
+    c.setFont(font_bold, fuente_tabla - 1)
     
     x = left_margin
     for i, header in enumerate(cancel_headers):
@@ -473,19 +474,19 @@ def generate_resolucion_pdf(
     y -= 12
     
     # Datos de nuevos propietarios (inscripción)
-    c.setFont(font_normal, fuente_tabla)
+    c.setFont(font_normal, fuente_tabla - 1)
     if propietarios_nuevos:
         for prop in propietarios_nuevos:
             y = check_page_break(y, 15)
             x = left_margin
-            # N° PREDIAL
+            # N° PREDIAL (30 dígitos completo)
             c.rect(x, y - 12, cancel_cols[0], 12, fill=0, stroke=1)
-            c.drawString(x + 2, y - 9, npn[:18] if len(npn) > 18 else npn)
+            c.drawString(x + 1, y - 9, npn)
             x += cancel_cols[0]
             # APELLIDOS Y NOMBRES
             c.rect(x, y - 12, cancel_cols[1], 12, fill=0, stroke=1)
-            nombre = prop.get('nombre', '')[:30]
-            c.drawString(x + 2, y - 9, nombre)
+            nombre = prop.get('nombre', '')[:25]
+            c.drawString(x + 1, y - 9, nombre)
             x += cancel_cols[1]
             # TIPO DOC.
             c.rect(x, y - 12, cancel_cols[2], 12, fill=0, stroke=1)
@@ -495,12 +496,12 @@ def generate_resolucion_pdf(
             # NRO. DOC.
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawString(x + 2, y - 9, str(nro_doc)[:12])
+            c.drawString(x + 1, y - 9, str(nro_doc)[:15])
             x += cancel_cols[3]
-            # ESTADO
+            # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.)
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado = prop.get('estado', 'Propietario')
-            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado[:12])
+            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:
         y = check_page_break(y, 15)
@@ -603,11 +604,30 @@ if __name__ == "__main__":
         direccion="LO 1 EL DIAMANTE",
         avaluo="$42.023.000",
         vigencia_fiscal="01/01/2026",
-        propietarios_anteriores=[{"nombre": "PROPIETARIO ANTERIOR", "documento": "C 12345678"}],
-        propietarios_nuevos=[{"nombre": "PROPIETARIO NUEVO", "documento": "C 87654321"}],
+        area_terreno="150",
+        area_construida="80",
+        destino_economico="A",  # A-Habitacional
+        codigo_homologado="BPP0002BUUC",
+        propietarios_anteriores=[{
+            "nombre": "PROPIETARIO ANTERIOR",
+            "tipo_documento": "CC",
+            "documento": "12345678",
+            "estado_civil": "CASADO"
+        }],
+        propietarios_nuevos=[{
+            "nombre": "PROPIETARIO NUEVO",
+            "tipo_documento": "CC",
+            "documento": "87654321",
+            "estado_civil": "SOLTERO"
+        }],
         elaboro="Usuario Prueba",
         reviso="Coordinador",
     )
+    
+    with open("/app/backend/test_resolucion.pdf", "wb") as f:
+        f.write(pdf_bytes)
+    
+    print(f"PDF generado: {len(pdf_bytes)} bytes")
     
     with open("/app/backend/test_resolucion.pdf", "wb") as f:
         f.write(pdf_bytes)

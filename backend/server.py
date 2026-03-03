@@ -24254,7 +24254,8 @@ async def generar_preview_resolucion(
         # Obtener áreas del predio
         area_terreno = str(predio.get("area_terreno", predio.get("area_terreno_r1", 0)))
         area_construida = str(predio.get("area_construida", predio.get("area_construida_r1", 0)))
-        destino = predio.get("destino_economico", "URB")
+        destino_economico = predio.get("destino_economico", "A")
+        codigo_homologado = predio.get("codigo_homologado", predio.get("codigo_anterior", ""))
         
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
@@ -24270,7 +24271,8 @@ async def generar_preview_resolucion(
             vigencia_fiscal=f"01/01/{anio}",
             area_terreno=area_terreno,
             area_construida=area_construida,
-            destino=destino,
+            destino_economico=destino_economico,
+            codigo_homologado=codigo_homologado,
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),
