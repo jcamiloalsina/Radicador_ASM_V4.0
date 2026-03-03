@@ -2469,7 +2469,7 @@ export default function Predios() {
           });
           
           // Cerrar modal y limpiar estado ANTES de mostrar mensaje
-          setIsEditModalOpen(false);
+          setShowEditDialog(false);
           setIsSavingUpdate(false);
           setInfoResolucion({ tipo_mutacion: '', numero_resolucion: '', fecha_resolucion: '', radicado_peticion: '' });
           
