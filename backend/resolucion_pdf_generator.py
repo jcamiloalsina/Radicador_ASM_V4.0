@@ -707,15 +707,10 @@ def generate_resolucion_pdf(
     c.drawCentredString(width/2, y - 5, textos['firmante_cargo'])
     y -= espaciado_secciones + 20
     
-    # === ELABORÓ / APROBÓ ===
-    y = check_page_break(y, 30)
-    c.setFont(font_normal, fuente_tabla)
-    c.drawString(left_margin, y, f"Elaboró: {elaboro}")
-    y -= 12
-    c.drawString(left_margin, y, f"Aprobó:  {aprobo}")
+    # === SECCIÓN DE FIRMA Y VERIFICACIÓN (lado a lado, centrados) - IGUAL QUE CERTIFICADO ===
+    y = check_page_break(y, 110)
     
-    # === QR DE VALIDACIÓN - IDÉNTICO AL CERTIFICADO CATASTRAL ===
-    # Generar QR con código de verificación (mismo formato que certificado catastral)
+    # Generar QR de verificación
     try:
         import qrcode
         import hashlib
@@ -747,21 +742,38 @@ def generate_resolucion_pdf(
         qr_buffer = io.BytesIO()
         qr_img.save(qr_buffer, format='PNG')
         qr_buffer.seek(0)
-        qr_reader = ImageReader(qr_buffer)
+        qr_image = ImageReader(qr_buffer)
         
-        # === CUADRO DE VERIFICACIÓN - IGUAL QUE CERTIFICADO CATASTRAL ===
-        gris_claro = colors.HexColor('#666666')
+        # Calcular fecha/hora de generación
         fecha_hora_gen = datetime.now().strftime("%d/%m/%Y %H:%M")
         
         # Hash del documento
         hash_input = f"{npn}-{codigo_verificacion or numero_resolucion}-{fecha_hora_gen}"
         hash_doc = hashlib.sha256(hash_input.encode()).hexdigest()
         
-        # Dimensiones del marco de verificación
-        marco_width = 185
+        # === CALCULAR POSICIONES CENTRADAS PARA AMBOS BLOQUES (IGUAL QUE CERTIFICADO) ===
+        gris_claro = colors.HexColor('#666666')
+        firma_block_width = 180  # Ancho del bloque de firma/elaboró
+        verif_block_width = 185  # Ancho del bloque de verificación
+        gap_between = 30  # Espacio entre ambos bloques
+        
+        # Calcular inicio para centrar ambos bloques
+        total_blocks_width = firma_block_width + gap_between + verif_block_width
+        start_x = left_margin + (content_width - total_blocks_width) / 2
+        
+        # === BLOQUE IZQUIERDO: ELABORÓ/APROBÓ ===
+        firma_block_y = y - 45
+        
+        c.setFont(font_normal, fuente_tabla)
+        c.setFillColor(negro)
+        c.drawString(start_x, firma_block_y + 20, f"Elaboró: {elaboro}")
+        c.drawString(start_x, firma_block_y + 8, f"Aprobó:  {aprobo}")
+        
+        # === BLOQUE DERECHO: CUADRO DE VERIFICACIÓN (IDÉNTICO AL CERTIFICADO) ===
+        marco_width = verif_block_width
         marco_height = 58
-        marco_x = right_margin - marco_width
-        marco_y = footer_limit + 10
+        marco_x = start_x + firma_block_width + gap_between
+        marco_y = y - 68
         
         # Fondo del marco (verde muy claro)
         c.setFillColor(colors.HexColor('#f0fdf4'))
@@ -772,9 +784,9 @@ def generate_resolucion_pdf(
         c.setLineWidth(1.5)
         c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=0, stroke=1)
         
-        # QR dentro del marco (izquierda)
+        # QR dentro del marco (izquierda del bloque)
         qr_size = 46
-        c.drawImage(qr_reader, marco_x + 5, marco_y + 6, width=qr_size, height=qr_size, mask='auto')
+        c.drawImage(qr_image, marco_x + 5, marco_y + 6, width=qr_size, height=qr_size, mask='auto')
         
         # Información de verificación (derecha del QR)
         info_x = marco_x + 55
@@ -803,6 +815,11 @@ def generate_resolucion_pdf(
         
     except Exception as e:
         print(f"Error generando QR: {e}")
+        # Si falla el QR, solo mostrar Elaboró/Aprobó
+        c.setFont(font_normal, fuente_tabla)
+        c.drawString(left_margin, y, f"Elaboró: {elaboro}")
+        y -= 12
+        c.drawString(left_margin, y, f"Aprobó:  {aprobo}")
     
     # === PIE DE PÁGINA ===
     draw_footer()

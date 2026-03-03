@@ -10903,27 +10903,31 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     Devuelve una página HTML con la información del documento.
     No requiere autenticación.
     """
+    import logging
+    logging.info(f"🔍 Verificando código: {codigo_verificacion}")
+    
     frontend_url = os.environ.get('FRONTEND_URL', 'https://historial-predios.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
     es_resolucion = codigo_verificacion.startswith("ASM-") and "-RES-" in codigo_verificacion
+    tipo_documento = "RESOLUCIÓN" if es_resolucion else "CERTIFICADO"
+    logging.info(f"  Es resolución: {es_resolucion}, Tipo: {tipo_documento}")
     
-    # Buscar en la colección apropiada
-    if es_resolucion:
-        # Buscar resolución
+    # Buscar primero en certificados_verificables (ahí están tanto certificados como resoluciones)
+    documento = await db.certificados_verificables.find_one(
+        {"codigo_verificacion": codigo_verificacion},
+        {"_id": 0}
+    )
+    logging.info(f"  Encontrado en certificados_verificables: {documento is not None}")
+    
+    # Si no se encuentra, buscar también en resoluciones (por retrocompatibilidad)
+    if not documento:
         documento = await db.resoluciones.find_one(
             {"codigo_verificacion": codigo_verificacion},
             {"_id": 0}
         )
-        tipo_documento = "RESOLUCIÓN"
-    else:
-        # Buscar certificado
-        documento = await db.certificados_verificables.find_one(
-            {"codigo_verificacion": codigo_verificacion},
-            {"_id": 0}
-        )
-        tipo_documento = "CERTIFICADO"
+        logging.info(f"  Encontrado en resoluciones: {documento is not None}")
     
     certificado = documento  # Para mantener compatibilidad con el código existente
     
@@ -11027,14 +11031,15 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
     
     if es_valido:
-        # Certificado VÁLIDO
+        # Documento VÁLIDO (Certificado o Resolución)
+        titulo_documento = tipo_documento.title()  # "Certificado" o "Resolución"
         html_content = f"""
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>✅ Certificado Válido - Asomunicipios</title>
+            <title>✅ {titulo_documento} Válido - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
                 .container {{ max-width: 650px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
@@ -11066,7 +11071,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <div class="container">
                 <div class="header">
                     <img src="{logo_url}" alt="Asomunicipios">
-                    <h1>✅ CERTIFICADO VÁLIDO</h1>
+                    <h1>✅ {tipo_documento} VÁLIDO</h1>
                     <span class="badge">Verificado por Asomunicipios</span>
                 </div>
                 <div class="content">
@@ -11075,7 +11080,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         {codigo_verificacion}
                     </div>
                     
-                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos Originales del Certificado</h3>
+                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos del {titulo_documento}</h3>
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Compare estos datos con su documento físico o digital</p>
                     
                     <div class="info-row">
@@ -13200,6 +13205,28 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         }
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
+        
+        # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
+        verificacion_doc = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion_res,
+            "tipo_documento": "resolucion",
+            "numero_resolucion": numero_resolucion,
+            "predio_id": cambio.get("predio_id"),
+            "codigo_predial": codigo,
+            "municipio": datos_predio.get("municipio", ""),
+            "propietarios": [datos_predio.get("nombre_propietario", "")],
+            "area_terreno": str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
+            "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_vencimiento": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),  # 1 año de validez
+            "estado": "activo",
+            "generado_por": aprobador.get("id"),
+            "generado_por_nombre": aprobador.get("full_name", ""),
+            "pdf_path": f"/resoluciones/{filename}",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
         logging.info(f"Resolución {numero_resolucion} generada y guardada en {filepath}")
         
@@ -25132,6 +25159,28 @@ async def generar_resolucion_manual(
         }
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
+        
+        # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
+        verificacion_doc = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion_res,
+            "tipo_documento": "resolucion",
+            "numero_resolucion": request.numero_resolucion,
+            "predio_id": request.predio_id,
+            "codigo_predial": codigo,
+            "municipio": datos_predio.get("municipio", ""),
+            "propietarios": [datos_predio.get("nombre_propietario", "")],
+            "area_terreno": str(datos_predio.get("area_terreno") or datos_predio.get("area_terreno_r1") or 0),
+            "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_vencimiento": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
+            "estado": "activo",
+            "generado_por": current_user.get("id"),
+            "generado_por_nombre": current_user.get("full_name", ""),
+            "pdf_path": f"/resoluciones/{filename}",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
         # 9. Actualizar el historial de resoluciones del predio
         resolucion_historial = {
