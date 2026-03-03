@@ -34,7 +34,7 @@ def get_default_plantilla():
             "Cedula de ciudadanía.",
             "Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria})."
         ],
-        "considerando_3": "Qué, según estudio de oficina se hace necesario efectuar una (mutación de primera), para el predio con código catastral NPN ({npn}).",
+        "considerando_3": "Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional ({npn}).",
         "considerando_final": (
             "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la "
             'resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, '
