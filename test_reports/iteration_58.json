@@ -1,0 +1,105 @@
+{
+  "summary": "Frontend testing completed for M2 Nuevo Predio Modal. All required functionalities verified: modal opens correctly, 3 tabs (Código Nacional, Propietario R1, Físico R2), 30-digit code constructor with municipality prefix pre-loaded, real-time code visualization, multiple propietarios support, zonas terreno and construcciones with add/remove functionality, automatic area calculation, Verificar Código button (fixed endpoint mismatch), and Agregar Predio button.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "M2 Dialog and Nuevo Predio Modal",
+        "issues": [
+          "Minor: React console warning - Missing `Description` or `aria-describedby` for DialogContent components"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/frontend/src/pages/MutacionesResoluciones.js"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: API endpoint mismatch - verificar-codigo was calling non-existent endpoint, changed to verificar-codigo-completo",
+    "Fixed: Missing municipio query parameter in verificar-codigo-completo API call"
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/MutacionesResoluciones.js (2 fixes: API endpoint name and municipio param)"
+  ],
+  "success_rate": {
+    "backend": "N/A - frontend only test",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*"
+    }
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "M2 Nuevo Predio Modal fully tested. All features working: 3 tabs (Código Nacional 30 dígitos, Propietario R1, Físico R2), municipality prefix pre-loaded (54498 for Ocaña), real-time code construction, multiple propietarios, zonas and construcciones with add/delete, automatic area calculation from R2 data, Verificar Código button functional (fixed endpoint), Agregar Predio button visible.",
+  "tests_performed": {
+    "flow_navigation": {
+      "login": "PASS",
+      "navigate_to_mutaciones": "PASS",
+      "click_m2_card": "PASS",
+      "select_desenglobe": "PASS",
+      "select_municipio_ocana": "PASS",
+      "click_nuevo_predio_button": "PASS"
+    },
+    "modal_structure": {
+      "modal_opens": "PASS - Title 'Nuevo Predio a Inscribir'",
+      "tab_codigo_nacional": "PASS - Tab visible and active by default",
+      "tab_propietario_r1": "PASS - Tab visible",
+      "tab_fisico_r2": "PASS - Tab visible"
+    },
+    "tab1_codigo_nacional": {
+      "municipio_prefix_preloaded": "PASS - 54498 for Ocaña",
+      "30_digit_code_display": "PASS - Shows real-time constructed code (30/30)",
+      "editable_fields": "PASS - Zona, Sector, Comuna, Barrio, Manzana, Terreno, Condición, Edificio, Piso, Unidad",
+      "verificar_codigo_button": "PASS - Fixed endpoint, shows Código disponible"
+    },
+    "tab2_propietario_r1": {
+      "propietarios_section": "PASS",
+      "nombre_propietario_field": "PASS",
+      "tipo_documento_field": "PASS",
+      "numero_documento_field": "PASS",
+      "direccion_field": "PASS",
+      "agregar_propietario_button": "PASS - Multiple propietarios supported",
+      "eliminar_propietario_button": "PASS"
+    },
+    "tab3_fisico_r2": {
+      "zonas_terreno_section": "PASS",
+      "construcciones_section": "PASS",
+      "agregar_zona_button": "PASS - Zona 2 added",
+      "eliminar_zona_button": "PASS",
+      "agregar_construccion_button": "PASS - Construcción B added",
+      "eliminar_construccion_button": "PASS",
+      "subtotal_area_terreno": "PASS - Auto-calculated",
+      "subtotal_area_construida": "PASS - Auto-calculated"
+    },
+    "footer_buttons": {
+      "cancelar_button": "PASS",
+      "agregar_predio_button": "PASS"
+    }
+  },
+  "bugs_fixed_during_testing": [
+    {
+      "issue": "Verificar Código returning 404 error",
+      "root_cause": "Frontend calling /api/predios/verificar-codigo/{codigo} but backend endpoint is /api/predios/verificar-codigo-completo/{codigo}",
+      "fix": "Changed API endpoint from verificar-codigo to verificar-codigo-completo",
+      "file": "/app/frontend/src/pages/MutacionesResoluciones.js",
+      "line": 853
+    },
+    {
+      "issue": "Verificar Código returning 422 Unprocessable Entity",
+      "root_cause": "Backend endpoint requires municipio query parameter but frontend wasn't sending it",
+      "fix": "Added params: { municipio: municipioNombre } to axios.get call",
+      "file": "/app/frontend/src/pages/MutacionesResoluciones.js",
+      "line": 850-854
+    }
+  ]
+}

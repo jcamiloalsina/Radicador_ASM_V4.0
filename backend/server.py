@@ -374,19 +374,23 @@ class Petition(BaseModel):
 
 # Catalogo de municipios con codigo catastral nacional
 MUNICIPIOS_DIVIPOLA = {
-    "Ábrego": {"departamento": "54", "municipio": "003"},
-    "Bucarasica": {"departamento": "54", "municipio": "109"},
-    "Cáchira": {"departamento": "54", "municipio": "128"},
-    "Convención": {"departamento": "54", "municipio": "206"},
-    "El Carmen": {"departamento": "54", "municipio": "245"},
-    "El Tarra": {"departamento": "54", "municipio": "250"},
-    "Hacarí": {"departamento": "54", "municipio": "344"},
-    "La Playa": {"departamento": "54", "municipio": "398"},
-    "Río de Oro": {"departamento": "47", "municipio": "545"},  # Cesar
-    "San Calixto": {"departamento": "54", "municipio": "670"},
-    "Sardinata": {"departamento": "54", "municipio": "720"},
-    "Teorama": {"departamento": "54", "municipio": "800"}
+    "Ábrego": {"departamento": "54", "municipio": "003", "codigo": "54003"},
+    "Bucarasica": {"departamento": "54", "municipio": "109", "codigo": "54109"},
+    "Cáchira": {"departamento": "54", "municipio": "128", "codigo": "54128"},
+    "Convención": {"departamento": "54", "municipio": "206", "codigo": "54206"},
+    "El Carmen": {"departamento": "54", "municipio": "245", "codigo": "54245"},
+    "El Tarra": {"departamento": "54", "municipio": "250", "codigo": "54250"},
+    "Hacarí": {"departamento": "54", "municipio": "344", "codigo": "54344"},
+    "La Playa": {"departamento": "54", "municipio": "398", "codigo": "54398"},
+    "Ocaña": {"departamento": "54", "municipio": "498", "codigo": "54498"},
+    "Río de Oro": {"departamento": "47", "municipio": "545", "codigo": "20614"},  # Cesar
+    "San Calixto": {"departamento": "54", "municipio": "670", "codigo": "54670"},
+    "Sardinata": {"departamento": "54", "municipio": "720", "codigo": "54720"},
+    "Teorama": {"departamento": "54", "municipio": "800", "codigo": "54800"}
 }
+
+# Mapa inverso por código
+MUNICIPIOS_POR_CODIGO = {v["codigo"]: {"nombre": k, **v} for k, v in MUNICIPIOS_DIVIPOLA.items()}
 
 # Catálogo de destino económico
 DESTINO_ECONOMICO = {
@@ -889,7 +893,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1027,7 +1031,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1093,7 +1097,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1131,7 +1135,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1184,7 +1188,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1223,7 +1227,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1253,7 +1257,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1286,7 +1290,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -6603,11 +6607,20 @@ async def get_estructura_codigo_predial(
     """
     Retorna la estructura del código predial nacional para un municipio.
     Incluye los primeros 5 dígitos fijos (departamento + municipio).
+    Acepta tanto el nombre como el código del municipio.
     """
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    divipola = MUNICIPIOS_DIVIPOLA.get(municipio)
+    # Intentar buscar por código primero
+    divipola = MUNICIPIOS_POR_CODIGO.get(municipio)
+    
+    # Si no encontramos por código, buscar por nombre
+    if not divipola:
+        divipola_data = MUNICIPIOS_DIVIPOLA.get(municipio)
+        if divipola_data:
+            divipola = {"nombre": municipio, **divipola_data}
+    
     if not divipola:
         raise HTTPException(status_code=404, detail=f"Municipio {municipio} no encontrado")
     
@@ -6630,6 +6643,7 @@ async def get_estructura_codigo_predial(
     
     return {
         "municipio": municipio,
+        "nombre_municipio": divipola.get("nombre", municipio),
         "prefijo_fijo": prefijo,
         "estructura": estructura,
         "total_digitos": 30
@@ -10956,7 +10970,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://property-resolutions.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código

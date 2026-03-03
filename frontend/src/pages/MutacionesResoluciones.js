@@ -13,9 +13,10 @@ import {
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
-  ChevronDown, ChevronUp, Trash2, Edit
+  ChevronDown, ChevronUp, Trash2, Edit, Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -151,6 +152,34 @@ export default function MutacionesResoluciones() {
   const [showDestinoDropdown, setShowDestinoDropdown] = useState(false);
   const [showTipoDocDropdown, setShowTipoDocDropdown] = useState({});
   const [showEstadoCivilDropdown, setShowEstadoCivilDropdown] = useState({});
+  
+  // Estado para modal de nuevo predio inscrito (M2)
+  const [showNuevoPredioModal, setShowNuevoPredioModal] = useState(false);
+  const [nuevoPredioInscrito, setNuevoPredioInscrito] = useState(null);
+  const [tabNuevoPredio, setTabNuevoPredio] = useState('ubicacion');
+  const [showDestinoDropdownNuevo, setShowDestinoDropdownNuevo] = useState(false);
+  const [showTipoDocDropdownNuevo, setShowTipoDocDropdownNuevo] = useState({});
+  const [generandoCodigo, setGenerandoCodigo] = useState(false);
+  
+  // Estados para el constructor de código predial del nuevo predio
+  const [codigoManualNuevo, setCodigoManualNuevo] = useState({
+    zona: '00', sector: '00', comuna: '00', barrio: '00',
+    manzana_vereda: '0000', terreno: '0001', condicion: '0',
+    edificio: '00', piso: '00', unidad: '0000'
+  });
+  const [estructuraCodigoNuevo, setEstructuraCodigoNuevo] = useState(null);
+  const [verificacionCodigoNuevo, setVerificacionCodigoNuevo] = useState(null);
+  const [prediosEnManzanaNuevo, setPrediosEnManzanaNuevo] = useState([]);
+  const [buscandoPrediosManzanaNuevo, setBuscandoPrediosManzanaNuevo] = useState(false);
+  const [siguienteTerrenoSugeridoNuevo, setSiguienteTerrenoSugeridoNuevo] = useState('0001');
+  const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  const [construcciones, setConstrucciones] = useState([{
+    id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+    tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+  }]);
+  const [propietariosNuevo, setPropietariosNuevo] = useState([{
+    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
+  }]);
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -739,7 +768,41 @@ export default function MutacionesResoluciones() {
   };
 
   // Agregar nuevo predio inscrito (destino)
-  const agregarPredioDestino = () => {
+  const agregarPredioDestino = async () => {
+    // Primero cargar la estructura del código para el municipio seleccionado
+    if (!m2Data.municipio) {
+      toast.error('Primero seleccione un municipio');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/estructura-codigo/${m2Data.municipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEstructuraCodigoNuevo(res.data);
+    } catch (error) {
+      console.error('Error cargando estructura:', error);
+    }
+    
+    // Reset de estados del modal
+    setCodigoManualNuevo({
+      zona: '00', sector: '00', comuna: '00', barrio: '00',
+      manzana_vereda: '0000', terreno: '0001', condicion: '0',
+      edificio: '00', piso: '00', unidad: '0000'
+    });
+    setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+    setConstrucciones([{
+      id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+      tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+    }]);
+    setPropietariosNuevo([{
+      nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
+    }]);
+    setVerificacionCodigoNuevo(null);
+    setPrediosEnManzanaNuevo([]);
+    
+    // Crear predio nuevo vacío
     const nuevoPredio = {
       id: `nuevo_${Date.now()}`,
       codigo_predial: '',
@@ -751,20 +814,359 @@ export default function MutacionesResoluciones() {
       area_construida: 0,
       avaluo: 0,
       matricula_inmobiliaria: '',
-      propietarios: [{
-        nombre_propietario: '',
-        tipo_documento: 'C',
-        numero_documento: ''
-      }],
-      // Historial de avalúos
-      inscripcion_catastral: { valor: 0, fecha: '' },
-      decretos: []
+      propietarios: [],
+      zonas_homogeneas: [],
+      _editIndex: undefined
     };
     
-    setM2Data(prev => ({
-      ...prev,
-      predios_inscritos: [...prev.predios_inscritos, nuevoPredio]
-    }));
+    setNuevoPredioInscrito(nuevoPredio);
+    setTabNuevoPredio('ubicacion');
+    setShowNuevoPredioModal(true);
+  };
+
+  // Construir código completo de 30 dígitos
+  const construirCodigoCompletoNuevo = () => {
+    if (!estructuraCodigoNuevo) return '';
+    return `${estructuraCodigoNuevo.prefijo_fijo}${codigoManualNuevo.zona}${codigoManualNuevo.sector}${codigoManualNuevo.comuna}${codigoManualNuevo.barrio}${codigoManualNuevo.manzana_vereda}${codigoManualNuevo.terreno}${codigoManualNuevo.condicion}${codigoManualNuevo.edificio}${codigoManualNuevo.piso}${codigoManualNuevo.unidad}`;
+  };
+
+  // Manejar cambio en campos del código
+  const handleCodigoChangeNuevo = (campo, valor, maxLen) => {
+    const soloNumeros = valor.replace(/\D/g, '').slice(0, maxLen);
+    const valorPadded = soloNumeros.padStart(maxLen, '0');
+    setCodigoManualNuevo(prev => ({ ...prev, [campo]: valorPadded }));
+  };
+
+  // Verificar código completo
+  const verificarCodigoCompletoNuevo = async () => {
+    const codigo = construirCodigoCompletoNuevo();
+    if (codigo.length !== 30) {
+      toast.error('El código debe tener 30 dígitos');
+      return;
+    }
+    
+    // Obtener el nombre del municipio para el query param
+    const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/verificar-codigo-completo/${codigo}`, {
+        params: { municipio: municipioNombre },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVerificacionCodigoNuevo(res.data);
+      
+      if (res.data.estado === 'existente') {
+        toast.error('Este código ya existe en la base de datos');
+      } else if (res.data.estado === 'disponible') {
+        toast.success('Código disponible');
+      } else if (res.data.estado === 'eliminado') {
+        toast.warning('Este código perteneció a un predio eliminado');
+      }
+    } catch (error) {
+      toast.error('Error verificando código');
+    }
+  };
+
+  // Buscar predios en manzana para nuevo predio
+  const fetchPrediosEnManzanaNuevo = async () => {
+    if (!m2Data.municipio || !codigoManualNuevo.manzana_vereda || codigoManualNuevo.manzana_vereda === '0000') {
+      setPrediosEnManzanaNuevo([]);
+      return;
+    }
+    
+    setBuscandoPrediosManzanaNuevo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManualNuevo.zona,
+        sector: codigoManualNuevo.sector,
+        comuna: codigoManualNuevo.comuna,
+        barrio: codigoManualNuevo.barrio,
+        manzana_vereda: codigoManualNuevo.manzana_vereda,
+        limit: 5
+      });
+      const res = await axios.get(`${API}/predios/por-manzana/${m2Data.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEnManzanaNuevo(res.data.predios || []);
+      setSiguienteTerrenoSugeridoNuevo(res.data.siguiente_terreno || '0001');
+    } catch (error) {
+      console.log('Error buscando predios en manzana:', error);
+      setPrediosEnManzanaNuevo([]);
+      setSiguienteTerrenoSugeridoNuevo('0001');
+    } finally {
+      setBuscandoPrediosManzanaNuevo(false);
+    }
+  };
+
+  // Effect para buscar predios cuando cambia la manzana
+  useEffect(() => {
+    if (showNuevoPredioModal && m2Data.municipio && codigoManualNuevo.manzana_vereda && codigoManualNuevo.manzana_vereda !== '0000') {
+      const timer = setTimeout(() => {
+        fetchPrediosEnManzanaNuevo();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [showNuevoPredioModal, codigoManualNuevo.zona, codigoManualNuevo.sector, codigoManualNuevo.manzana_vereda, m2Data.municipio]);
+
+  // Funciones para zonas de terreno
+  const agregarZonaTerreno = () => {
+    setZonasTerreno(prev => [...prev, { zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  };
+  
+  const eliminarZonaTerreno = (index) => {
+    if (zonasTerreno.length > 1) {
+      setZonasTerreno(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+  
+  const actualizarZonaTerreno = (index, campo, valor) => {
+    setZonasTerreno(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Funciones para construcciones
+  const generarIdConstruccion = (index) => {
+    if (index < 26) {
+      return String.fromCharCode(65 + index);
+    } else {
+      const firstChar = String.fromCharCode(65 + Math.floor((index - 26) / 26));
+      const secondChar = String.fromCharCode(65 + ((index - 26) % 26));
+      return firstChar + secondChar;
+    }
+  };
+
+  const agregarConstruccion = () => {
+    setConstrucciones(prev => {
+      const nuevoId = generarIdConstruccion(prev.length);
+      return [...prev, {
+        id: nuevoId, piso: '1', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+      }];
+    });
+  };
+
+  const eliminarConstruccion = (index) => {
+    if (construcciones.length > 1) {
+      setConstrucciones(prev => {
+        const nuevas = prev.filter((_, i) => i !== index);
+        return nuevas.map((c, i) => ({ ...c, id: generarIdConstruccion(i) }));
+      });
+    }
+  };
+
+  const actualizarConstruccion = (index, campo, valor) => {
+    setConstrucciones(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Funciones para propietarios del nuevo predio
+  const agregarPropietarioNuevoPredio = () => {
+    setPropietariosNuevo(prev => [...prev, {
+      nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
+    }]);
+  };
+
+  const eliminarPropietarioNuevoPredio = (index) => {
+    if (propietariosNuevo.length > 1) {
+      setPropietariosNuevo(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarPropietarioNuevoPredio = (index, campo, valor) => {
+    setPropietariosNuevo(prev => {
+      const nuevos = [...prev];
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      return nuevos;
+    });
+  };
+
+  // Calcular áreas totales
+  const calcularAreasTotalesNuevo = () => {
+    const areaTerrenoTotal = zonasTerreno.reduce((sum, zona) => sum + (parseFloat(zona.area_terreno) || 0), 0);
+    const areaConstruidaTotal = construcciones.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
+    return { areaTerrenoTotal, areaConstruidaTotal };
+  };
+
+  // Guardar nuevo predio inscrito (versión mejorada)
+  const guardarNuevoPredioInscritoCompleto = async () => {
+    const codigo = construirCodigoCompletoNuevo();
+    
+    // Validaciones
+    if (codigo.length !== 30) {
+      toast.error('El código predial debe tener 30 dígitos');
+      return;
+    }
+    
+    if (!verificacionCodigoNuevo || verificacionCodigoNuevo.estado === 'existente') {
+      toast.error('Verifique que el código esté disponible');
+      return;
+    }
+    
+    if (!propietariosNuevo[0]?.nombre_propietario || !propietariosNuevo[0]?.numero_documento) {
+      toast.error('Ingrese al menos un propietario con nombre y documento');
+      return;
+    }
+    
+    if (!nuevoPredioInscrito?.direccion) {
+      toast.error('La dirección es obligatoria');
+      return;
+    }
+    
+    // Generar código homologado automáticamente
+    setGenerandoCodigo(true);
+    let codigoHomologado = '';
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
+        municipio: m2Data.municipio,
+        codigo_predial: codigo.substring(0, 21) // Primeros 21 dígitos
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.codigo_homologado) {
+        codigoHomologado = response.data.codigo_homologado;
+      }
+    } catch (error) {
+      console.log('Error generando código homologado, se generará con formato básico');
+      // Generar un código básico si falla
+      codigoHomologado = `${m2Data.municipio}-${Date.now().toString().slice(-6)}`;
+    }
+    setGenerandoCodigo(false);
+    
+    // Calcular áreas
+    const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotalesNuevo();
+    
+    // Construir objeto del predio
+    const predioFinal = {
+      id: nuevoPredioInscrito.id,
+      codigo_predial: codigo,
+      npn: codigo, // El NPN es el mismo código de 30 dígitos
+      codigo_homologado: codigoHomologado,
+      direccion: nuevoPredioInscrito.direccion,
+      destino_economico: nuevoPredioInscrito.destino_economico || 'R',
+      area_terreno: areaTerrenoTotal,
+      area_construida: areaConstruidaTotal,
+      avaluo: parseFloat(nuevoPredioInscrito.avaluo) || 0,
+      matricula_inmobiliaria: nuevoPredioInscrito.matricula_inmobiliaria || '',
+      propietarios: propietariosNuevo.filter(p => p.nombre_propietario && p.numero_documento).map(p => ({
+        nombre_propietario: p.nombre_propietario,
+        tipo_documento: p.tipo_documento,
+        numero_documento: p.numero_documento.padStart(12, '0'),
+        estado: p.estado_civil || ''
+      })),
+      zonas_homogeneas: zonasTerreno.map((z, idx) => ({
+        zona_fisica: z.zona_fisica || '0',
+        zona_economica: z.zona_economica || '0',
+        area_terreno: parseFloat(z.area_terreno) || 0,
+        area_construida: construcciones[idx] ? parseFloat(construcciones[idx].area_construida) || 0 : 0,
+        avaluo: 0,
+        pisos: construcciones[idx] ? parseInt(construcciones[idx].piso) || 0 : 0,
+        habitaciones: construcciones[idx] ? parseInt(construcciones[idx].habitaciones) || 0 : 0,
+        banos: construcciones[idx] ? parseInt(construcciones[idx].banos) || 0 : 0,
+        locales: construcciones[idx] ? parseInt(construcciones[idx].locales) || 0 : 0,
+        uso: construcciones[idx]?.uso || '',
+        puntaje: construcciones[idx] ? parseFloat(construcciones[idx].puntaje) || 0 : 0
+      })),
+      zonas: zonasTerreno.map(z => ({
+        zona_fisica: z.zona_fisica || '0',
+        zona_economica: z.zona_economica || '0',
+        area_terreno: parseFloat(z.area_terreno) || 0
+      })),
+      construcciones: construcciones.map(c => ({
+        id: c.id,
+        piso: parseInt(c.piso) || 1,
+        habitaciones: parseInt(c.habitaciones) || 0,
+        banos: parseInt(c.banos) || 0,
+        locales: parseInt(c.locales) || 0,
+        tipificacion: c.tipificacion || '',
+        uso: c.uso || '',
+        puntaje: parseFloat(c.puntaje) || 0,
+        area_construida: parseFloat(c.area_construida) || 0
+      })),
+      creado_en_plataforma: true,
+      _editIndex: nuevoPredioInscrito._editIndex
+    };
+    
+    // Si es edición, actualizar; si no, agregar
+    if (nuevoPredioInscrito._editIndex !== undefined) {
+      setM2Data(prev => ({
+        ...prev,
+        predios_inscritos: prev.predios_inscritos.map((p, i) => 
+          i === nuevoPredioInscrito._editIndex ? predioFinal : p
+        )
+      }));
+      toast.success('Predio actualizado');
+    } else {
+      setM2Data(prev => ({
+        ...prev,
+        predios_inscritos: [...prev.predios_inscritos, predioFinal]
+      }));
+      toast.success('Predio agregado a la lista');
+    }
+    
+    setShowNuevoPredioModal(false);
+    setNuevoPredioInscrito(null);
+  };
+
+  // Generar NPN desde código predial (20 dígitos → 30 dígitos)
+  const generarNPN = (codigoPredial) => {
+    if (!codigoPredial || codigoPredial.length < 20) return '';
+    // Formato: DDDMMMZZSSSSPRRRRRRRR0000000000 (30 dígitos)
+    // Agregar 10 ceros al final
+    return codigoPredial.padEnd(30, '0');
+  };
+
+  // Generar código homologado automáticamente
+  const generarCodigoHomologado = async () => {
+    if (!m2Data.municipio || !nuevoPredioInscrito?.codigo_predial) {
+      toast.error('Complete el municipio y código predial primero');
+      return;
+    }
+    
+    setGenerandoCodigo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
+        municipio: m2Data.municipio,
+        codigo_predial: nuevoPredioInscrito.codigo_predial
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.codigo_homologado) {
+        setNuevoPredioInscrito(prev => ({
+          ...prev,
+          codigo_homologado: response.data.codigo_homologado
+        }));
+        toast.success('Código homologado generado');
+      }
+    } catch (error) {
+      console.error('Error generando código homologado:', error);
+      toast.error('Error al generar código homologado');
+    } finally {
+      setGenerandoCodigo(false);
+    }
+  };
+
+  // Actualizar campo del nuevo predio inscrito
+  const actualizarNuevoPredioInscrito = (campo, valor) => {
+    setNuevoPredioInscrito(prev => {
+      const updated = { ...prev, [campo]: valor };
+      // Auto-generar NPN cuando cambia el código predial
+      if (campo === 'codigo_predial' && valor.length === 20) {
+        updated.npn = generarNPN(valor);
+      }
+      return updated;
+    });
   };
 
   // Actualizar predio inscrito
@@ -1239,165 +1641,137 @@ export default function MutacionesResoluciones() {
               <Check className="w-4 h-4" />
               Predios a INSCRIBIR ({m2Data.predios_inscritos.length})
             </CardTitle>
-            <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4 mr-1" /> Agregar Predio
+            <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
+              <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="py-2 space-y-4">
+        <CardContent className="py-2 space-y-3">
           {m2Data.predios_inscritos.map((predio, idx) => (
-            <div key={idx} className="bg-white p-4 rounded-lg border border-emerald-200 space-y-3">
-              <div className="flex justify-between items-center">
-                <Badge className="bg-emerald-100 text-emerald-800">Predio {idx + 1}</Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => eliminarPredioDestino(idx)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Código Predial (20 dígitos)</Label>
-                  <Input
-                    value={predio.codigo_predial}
-                    onChange={(e) => actualizarPredioDestino(idx, 'codigo_predial', e.target.value)}
-                    placeholder="54003010100320136000"
-                    maxLength={20}
-                  />
+            <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge className="bg-emerald-100 text-emerald-800">#{idx + 1}</Badge>
+                    <span className="font-mono font-medium text-sm">{predio.codigo_homologado || 'Sin código'}</span>
+                  </div>
+                  <p className="text-xs text-slate-600">{predio.direccion || 'Sin dirección'}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    NPN: {predio.npn || 'N/A'} | Matrícula: {predio.matricula_inmobiliaria || 'N/A'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Área: {Number(predio.area_terreno || 0).toLocaleString()} m² | 
+                    Construida: {Number(predio.area_construida || 0).toLocaleString()} m² | 
+                    Avalúo: ${Number(predio.avaluo || 0).toLocaleString()}
+                  </p>
+                  {predio.propietarios?.[0]?.nombre_propietario && (
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Propietario: {predio.propietarios[0].nombre_propietario}
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <Label className="text-xs">NPN (30 dígitos)</Label>
-                  <Input
-                    value={predio.npn}
-                    onChange={(e) => actualizarPredioDestino(idx, 'npn', e.target.value)}
-                    placeholder="540030101000000320136000000000"
-                    maxLength={30}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs">Código Homologado</Label>
-                  <Input
-                    value={predio.codigo_homologado}
-                    onChange={(e) => actualizarPredioDestino(idx, 'codigo_homologado', e.target.value)}
-                    placeholder="BPP0001BFAD"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Matrícula Inmobiliaria</Label>
-                  <Input
-                    value={predio.matricula_inmobiliaria}
-                    onChange={(e) => actualizarPredioDestino(idx, 'matricula_inmobiliaria', e.target.value)}
-                    placeholder="270-88010"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Destino Económico</Label>
-                  <Select 
-                    value={predio.destino_economico}
-                    onValueChange={(v) => actualizarPredioDestino(idx, 'destino_economico', v)}
+                <div className="flex gap-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={async () => {
+                      // Cargar estructura del código
+                      if (m2Data.municipio) {
+                        try {
+                          const token = localStorage.getItem('token');
+                          const res = await axios.get(`${API}/predios/estructura-codigo/${m2Data.municipio}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          setEstructuraCodigoNuevo(res.data);
+                        } catch (error) {
+                          console.error('Error cargando estructura:', error);
+                        }
+                      }
+                      
+                      // Extraer partes del código predial si existe
+                      if (predio.codigo_predial && predio.codigo_predial.length >= 21) {
+                        const codigo = predio.codigo_predial;
+                        setCodigoManualNuevo({
+                          zona: codigo.substring(5, 7) || '00',
+                          sector: codigo.substring(7, 9) || '00',
+                          comuna: codigo.substring(9, 11) || '00',
+                          barrio: codigo.substring(11, 13) || '00',
+                          manzana_vereda: codigo.substring(13, 17) || '0000',
+                          terreno: codigo.substring(17, 21) || '0001',
+                          condicion: codigo.substring(21, 22) || '0',
+                          edificio: codigo.substring(22, 24) || '00',
+                          piso: codigo.substring(24, 26) || '00',
+                          unidad: codigo.substring(26, 30) || '0000'
+                        });
+                      }
+                      
+                      // Cargar zonas y construcciones existentes
+                      if (predio.zonas?.length > 0) {
+                        setZonasTerreno(predio.zonas.map(z => ({
+                          zona_fisica: z.zona_fisica || '',
+                          zona_economica: z.zona_economica || '',
+                          area_terreno: String(z.area_terreno || 0)
+                        })));
+                      } else if (predio.zonas_homogeneas?.length > 0) {
+                        setZonasTerreno(predio.zonas_homogeneas.map(z => ({
+                          zona_fisica: z.zona_fisica || '',
+                          zona_economica: z.zona_economica || '',
+                          area_terreno: String(z.area_terreno || 0)
+                        })));
+                      } else {
+                        setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+                      }
+                      
+                      if (predio.construcciones?.length > 0) {
+                        setConstrucciones(predio.construcciones.map((c, i) => ({
+                          id: c.id || generarIdConstruccion(i),
+                          piso: String(c.piso || 1),
+                          habitaciones: String(c.habitaciones || 0),
+                          banos: String(c.banos || 0),
+                          locales: String(c.locales || 0),
+                          tipificacion: c.tipificacion || '',
+                          uso: c.uso || '',
+                          puntaje: String(c.puntaje || 0),
+                          area_construida: String(c.area_construida || 0)
+                        })));
+                      } else {
+                        setConstrucciones([{
+                          id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+                          tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+                        }]);
+                      }
+                      
+                      // Cargar propietarios
+                      if (predio.propietarios?.length > 0) {
+                        setPropietariosNuevo(predio.propietarios.map(p => ({
+                          nombre_propietario: p.nombre_propietario || '',
+                          tipo_documento: p.tipo_documento || 'C',
+                          numero_documento: p.numero_documento?.replace(/^0+/, '') || '',
+                          estado_civil: p.estado || ''
+                        })));
+                      } else {
+                        setPropietariosNuevo([{
+                          nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
+                        }]);
+                      }
+                      
+                      setVerificacionCodigoNuevo({ estado: 'disponible' }); // Ya existe, permitir editar
+                      setNuevoPredioInscrito({...predio, _editIndex: idx});
+                      setTabNuevoPredio('ubicacion');
+                      setShowNuevoPredioModal(true);
+                    }}
+                    className="text-emerald-600"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="A">A - Habitacional</SelectItem>
-                      <SelectItem value="B">B - Industrial</SelectItem>
-                      <SelectItem value="C">C - Comercial</SelectItem>
-                      <SelectItem value="D">D - Agropecuario</SelectItem>
-                      <SelectItem value="E">E - Minero</SelectItem>
-                      <SelectItem value="F">F - Cultural</SelectItem>
-                      <SelectItem value="G">G - Recreacional</SelectItem>
-                      <SelectItem value="H">H - Salubridad</SelectItem>
-                      <SelectItem value="I">I - Institucional</SelectItem>
-                      <SelectItem value="J">J - Educativo</SelectItem>
-                      <SelectItem value="K">K - Religioso</SelectItem>
-                      <SelectItem value="L">L - Agrícola</SelectItem>
-                      <SelectItem value="M">M - Pecuario</SelectItem>
-                      <SelectItem value="N">N - Forestal</SelectItem>
-                      <SelectItem value="O">O - Uso Público</SelectItem>
-                      <SelectItem value="P">P - Servicios Especiales</SelectItem>
-                      <SelectItem value="R">R - Residencial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <Label className="text-xs">Dirección</Label>
-                <Input
-                  value={predio.direccion}
-                  onChange={(e) => actualizarPredioDestino(idx, 'direccion', e.target.value.toUpperCase())}
-                  placeholder="C 14 10 58 72 80 Lo 76 BR SAN ANTONIO"
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs">Área Terreno (m²)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={predio.area_terreno}
-                    onChange={(e) => actualizarPredioDestino(idx, 'area_terreno', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Área Construida (m²)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={predio.area_construida}
-                    onChange={(e) => actualizarPredioDestino(idx, 'area_construida', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Avalúo ($)</Label>
-                  <Input
-                    type="number"
-                    value={predio.avaluo}
-                    onChange={(e) => actualizarPredioDestino(idx, 'avaluo', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-              
-              {/* Propietario */}
-              <div className="grid grid-cols-3 gap-3 pt-2 border-t">
-                <div className="col-span-2">
-                  <Label className="text-xs">Propietario</Label>
-                  <Input
-                    value={predio.propietarios[0]?.nombre_propietario || ''}
-                    onChange={(e) => {
-                      const nuevos = [...m2Data.predios_inscritos];
-                      nuevos[idx].propietarios[0] = {
-                        ...nuevos[idx].propietarios[0],
-                        nombre_propietario: e.target.value.toUpperCase()
-                      };
-                      setM2Data(prev => ({ ...prev, predios_inscritos: nuevos }));
-                    }}
-                    placeholder="NOMBRE COMPLETO"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Cédula</Label>
-                  <Input
-                    value={predio.propietarios[0]?.numero_documento || ''}
-                    onChange={(e) => {
-                      const nuevos = [...m2Data.predios_inscritos];
-                      nuevos[idx].propietarios[0] = {
-                        ...nuevos[idx].propietarios[0],
-                        numero_documento: e.target.value
-                      };
-                      setM2Data(prev => ({ ...prev, predios_inscritos: nuevos }));
-                    }}
-                    placeholder="12345678"
-                  />
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => eliminarPredioDestino(idx)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1405,7 +1779,7 @@ export default function MutacionesResoluciones() {
           
           {m2Data.predios_inscritos.length === 0 && (
             <p className="text-center text-slate-500 py-4">
-              Haga clic en "Agregar Predio" para añadir predios a inscribir
+              Haga clic en "Nuevo Predio" para añadir predios a inscribir
             </p>
           )}
         </CardContent>
@@ -2229,6 +2603,544 @@ export default function MutacionesResoluciones() {
             </Button>
             <Button onClick={guardarEdicionPredio} className="bg-amber-600 hover:bg-amber-700">
               Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Nuevo Predio Inscrito (M2) - Completo como en Predios.js */}
+      <Dialog open={showNuevoPredioModal} onOpenChange={(open) => !open && setShowNuevoPredioModal(false)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-800">
+              <Building className="w-5 h-5" />
+              {nuevoPredioInscrito?._editIndex !== undefined ? 'Editar Predio a Inscribir' : 'Nuevo Predio a Inscribir'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto pr-2">
+            <Tabs value={tabNuevoPredio} onValueChange={setTabNuevoPredio} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="ubicacion" className="data-[state=active]:bg-blue-100">
+                  Código Nacional (30 dígitos)
+                </TabsTrigger>
+                <TabsTrigger value="propietario" className="data-[state=active]:bg-emerald-100">
+                  Propietario (R1)
+                </TabsTrigger>
+                <TabsTrigger value="fisico" className="data-[state=active]:bg-purple-100">
+                  Físico (R2)
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* TAB: Código Predial Nacional */}
+              <TabsContent value="ubicacion" className="mt-4 space-y-4">
+                {estructuraCodigoNuevo && (
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Código Predial Nacional (30 dígitos)
+                    </h4>
+                    
+                    {/* Visualización del código completo */}
+                    <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
+                      <span className="text-blue-600 font-bold" title="Departamento + Municipio">{estructuraCodigoNuevo.prefijo_fijo}</span>
+                      <span className="text-emerald-600" title="Zona">{codigoManualNuevo.zona}</span>
+                      <span className="text-amber-600" title="Sector">{codigoManualNuevo.sector}</span>
+                      <span className="text-purple-600" title="Comuna">{codigoManualNuevo.comuna}</span>
+                      <span className="text-pink-600" title="Barrio">{codigoManualNuevo.barrio}</span>
+                      <span className="text-cyan-600" title="Manzana/Vereda">{codigoManualNuevo.manzana_vereda}</span>
+                      <span className="text-red-600 font-bold" title="Terreno">{codigoManualNuevo.terreno}</span>
+                      <span className="text-orange-600" title="Condición">{codigoManualNuevo.condicion}</span>
+                      <span className="text-slate-500" title="Edificio">{codigoManualNuevo.edificio}</span>
+                      <span className="text-slate-500" title="Piso">{codigoManualNuevo.piso}</span>
+                      <span className="text-slate-500" title="Unidad">{codigoManualNuevo.unidad}</span>
+                      <span className="text-xs text-slate-500 ml-2">({construirCodigoCompletoNuevo().length}/30)</span>
+                    </div>
+
+                    {/* Campos editables - Fila 1: Ubicación geográfica */}
+                    <div className="grid grid-cols-6 gap-2 mb-3">
+                      <div className="bg-blue-100 p-2 rounded">
+                        <Label className="text-xs text-blue-700">Dpto+Mpio (1-5)</Label>
+                        <Input value={estructuraCodigoNuevo.prefijo_fijo} disabled className="font-mono bg-blue-50 text-blue-800 font-bold text-center h-8" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-emerald-700">Zona (6-7)</Label>
+                        <Input 
+                          value={codigoManualNuevo.zona} 
+                          onChange={(e) => handleCodigoChangeNuevo('zona', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                        <span className="text-xs text-slate-400">00=Rural, 01=Urbano</span>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-amber-700">Sector (8-9)</Label>
+                        <Input 
+                          value={codigoManualNuevo.sector} 
+                          onChange={(e) => handleCodigoChangeNuevo('sector', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
+                        <Input 
+                          value={codigoManualNuevo.comuna} 
+                          onChange={(e) => handleCodigoChangeNuevo('comuna', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-pink-700">Barrio (12-13)</Label>
+                        <Input 
+                          value={codigoManualNuevo.barrio} 
+                          onChange={(e) => handleCodigoChangeNuevo('barrio', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-cyan-700">Manzana (14-17)</Label>
+                        <Input 
+                          value={codigoManualNuevo.manzana_vereda} 
+                          onChange={(e) => handleCodigoChangeNuevo('manzana_vereda', e.target.value, 4)}
+                          maxLength={4}
+                          className="font-mono text-center h-8"
+                          placeholder="0000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Mostrar últimos predios existentes en la manzana */}
+                    {codigoManualNuevo.manzana_vereda !== '0000' && (
+                      <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            Terrenos existentes en manzana {codigoManualNuevo.manzana_vereda}
+                          </p>
+                          {buscandoPrediosManzanaNuevo && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
+                        </div>
+                        {prediosEnManzanaNuevo.length > 0 ? (
+                          <div className="space-y-1">
+                            {prediosEnManzanaNuevo.map((p, idx) => (
+                              <div 
+                                key={idx} 
+                                className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100"
+                              >
+                                <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
+                                <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
+                              <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                💡 Siguiente sugerido: <span className="font-mono font-bold">{siguienteTerrenoSugeridoNuevo}</span>
+                              </p>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleCodigoChangeNuevo('terreno', siguienteTerrenoSugeridoNuevo, 4)}
+                                className="h-6 text-xs"
+                              >
+                                Usar sugerido
+                              </Button>
+                            </div>
+                          </div>
+                        ) : !buscandoPrediosManzanaNuevo ? (
+                          <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Campos editables - Fila 2: Predio y PH */}
+                    <div className="grid grid-cols-5 gap-2">
+                      <div className="bg-red-50 p-2 rounded border border-red-200">
+                        <Label className="text-xs text-red-700 font-semibold">Terreno (18-21) *</Label>
+                        <Input 
+                          value={codigoManualNuevo.terreno} 
+                          onChange={(e) => handleCodigoChangeNuevo('terreno', e.target.value, 4)}
+                          maxLength={4}
+                          className="font-mono font-bold text-red-700 text-center h-8"
+                          placeholder="0001"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-orange-700">Condición (22)</Label>
+                        <Input 
+                          type="number"
+                          min="0"
+                          max="9"
+                          value={codigoManualNuevo.condicion} 
+                          onChange={(e) => setCodigoManualNuevo(prev => ({...prev, condicion: e.target.value.slice(0, 1)}))}
+                          maxLength={1}
+                          className="font-mono text-center h-8"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
+                        <Input 
+                          value={codigoManualNuevo.edificio} 
+                          onChange={(e) => handleCodigoChangeNuevo('edificio', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-600">Piso (25-26)</Label>
+                        <Input 
+                          value={codigoManualNuevo.piso} 
+                          onChange={(e) => handleCodigoChangeNuevo('piso', e.target.value, 2)}
+                          maxLength={2}
+                          className="font-mono text-center h-8"
+                          placeholder="00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-600">Unidad (27-30)</Label>
+                        <Input 
+                          value={codigoManualNuevo.unidad} 
+                          onChange={(e) => handleCodigoChangeNuevo('unidad', e.target.value, 4)}
+                          maxLength={4}
+                          className="font-mono text-center h-8"
+                          placeholder="0000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Botón de verificar */}
+                    <div className="mt-4 flex gap-3">
+                      <Button onClick={verificarCodigoCompletoNuevo} variant="outline" className="flex-1">
+                        <Search className="w-4 h-4 mr-2" />
+                        Verificar Código
+                      </Button>
+                    </div>
+                    
+                    {/* Estado de verificación */}
+                    {verificacionCodigoNuevo && (
+                      <div className={`mt-3 p-3 rounded-lg ${
+                        verificacionCodigoNuevo.estado === 'disponible' ? 'bg-emerald-100 border border-emerald-300' :
+                        verificacionCodigoNuevo.estado === 'existente' ? 'bg-red-100 border border-red-300' :
+                        'bg-amber-100 border border-amber-300'
+                      }`}>
+                        <p className={`text-sm font-medium ${
+                          verificacionCodigoNuevo.estado === 'disponible' ? 'text-emerald-800' :
+                          verificacionCodigoNuevo.estado === 'existente' ? 'text-red-800' :
+                          'text-amber-800'
+                        }`}>
+                          {verificacionCodigoNuevo.estado === 'disponible' && '✓ Código disponible'}
+                          {verificacionCodigoNuevo.estado === 'existente' && '✗ Este código ya existe'}
+                          {verificacionCodigoNuevo.estado === 'eliminado' && '⚠ Código de predio eliminado'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+              
+              {/* TAB: Propietario (R1) */}
+              <TabsContent value="propietario" className="mt-4 space-y-4">
+                {/* Lista de propietarios */}
+                <Card>
+                  <CardHeader className="py-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-sm">Propietarios ({propietariosNuevo.length})</CardTitle>
+                      <Button size="sm" onClick={agregarPropietarioNuevoPredio} variant="outline">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 max-h-48 overflow-y-auto">
+                    {propietariosNuevo.map((prop, index) => (
+                      <div key={index} className="bg-slate-50 p-3 rounded border">
+                        <div className="flex justify-between items-center mb-2">
+                          <Badge variant="outline">Propietario {index + 1}</Badge>
+                          {propietariosNuevo.length > 1 && (
+                            <Button variant="ghost" size="sm" onClick={() => eliminarPropietarioNuevoPredio(index)} className="text-red-600 h-6">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="col-span-2">
+                            <Label className="text-xs">Nombre Completo *</Label>
+                            <Input
+                              value={prop.nombre_propietario}
+                              onChange={(e) => actualizarPropietarioNuevoPredio(index, 'nombre_propietario', e.target.value.toUpperCase())}
+                              placeholder="APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2"
+                              className="h-8"
+                            />
+                          </div>
+                          <div className="relative">
+                            <Label className="text-xs">Tipo Doc.</Label>
+                            <div 
+                              className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-white px-2 py-1 text-sm cursor-pointer hover:bg-slate-50"
+                              onClick={() => setShowTipoDocDropdownNuevo(prev => ({...prev, [index]: !prev[index]}))}
+                            >
+                              <span className="text-xs">
+                                {prop.tipo_documento === 'C' ? 'Cédula' :
+                                 prop.tipo_documento === 'N' ? 'NIT' :
+                                 prop.tipo_documento === 'E' ? 'Céd. Ext.' :
+                                 prop.tipo_documento === 'T' ? 'Tarjeta' : 'Cédula'}
+                              </span>
+                              <ChevronDown className="h-3 w-3 opacity-50" />
+                            </div>
+                            {showTipoDocDropdownNuevo[index] && (
+                              <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg">
+                                {[{v:'C',l:'Cédula'},{v:'N',l:'NIT'},{v:'E',l:'Céd. Ext.'},{v:'T',l:'Tarjeta'}].map(opt => (
+                                  <div
+                                    key={opt.v}
+                                    className={`px-2 py-1 text-xs cursor-pointer hover:bg-blue-50 ${prop.tipo_documento === opt.v ? 'bg-blue-100' : ''}`}
+                                    onClick={() => { actualizarPropietarioNuevoPredio(index, 'tipo_documento', opt.v); setShowTipoDocDropdownNuevo(prev => ({...prev, [index]: false})); }}
+                                  >
+                                    {opt.l}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Número Doc. *</Label>
+                            <Input
+                              value={prop.numero_documento}
+                              onChange={(e) => actualizarPropietarioNuevoPredio(index, 'numero_documento', e.target.value.replace(/\D/g, ''))}
+                              placeholder="12345678"
+                              className="h-8"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                
+                {/* Información del predio */}
+                <Card>
+                  <CardHeader className="py-2">
+                    <CardTitle className="text-sm">Información del Predio</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">Dirección *</Label>
+                      <Input
+                        value={nuevoPredioInscrito?.direccion || ''}
+                        onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, direccion: e.target.value.toUpperCase()}))}
+                        placeholder="Ej: CL 5 # 3-45"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Label className="text-xs">Destino Económico</Label>
+                      <div 
+                        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                        onClick={() => setShowDestinoDropdownNuevo(!showDestinoDropdownNuevo)}
+                      >
+                        <span>
+                          {nuevoPredioInscrito?.destino_economico === 'A' ? 'A - Habitacional' :
+                           nuevoPredioInscrito?.destino_economico === 'B' ? 'B - Industrial' :
+                           nuevoPredioInscrito?.destino_economico === 'C' ? 'C - Comercial' :
+                           nuevoPredioInscrito?.destino_economico === 'D' ? 'D - Agropecuario' :
+                           nuevoPredioInscrito?.destino_economico === 'L' ? 'L - Agrícola' :
+                           nuevoPredioInscrito?.destino_economico === 'R' ? 'R - Residencial' : 'Seleccionar'}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </div>
+                      {showDestinoDropdownNuevo && (
+                        <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg">
+                          {[
+                            {v: 'A', l: 'A - Habitacional'}, {v: 'B', l: 'B - Industrial'},
+                            {v: 'C', l: 'C - Comercial'}, {v: 'D', l: 'D - Agropecuario'},
+                            {v: 'L', l: 'L - Agrícola'}, {v: 'R', l: 'R - Residencial'}
+                          ].map(opt => (
+                            <div
+                              key={opt.v}
+                              className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${nuevoPredioInscrito?.destino_economico === opt.v ? 'bg-blue-100' : ''}`}
+                              onClick={() => { setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v})); setShowDestinoDropdownNuevo(false); }}
+                            >
+                              {opt.l}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                      <Input
+                        value={nuevoPredioInscrito?.matricula_inmobiliaria || ''}
+                        onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, matricula_inmobiliaria: e.target.value}))}
+                        placeholder="Ej: 270-8920"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Avalúo (COP)</Label>
+                      <Input
+                        type="number"
+                        value={nuevoPredioInscrito?.avaluo || 0}
+                        onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, avaluo: e.target.value}))}
+                        placeholder="200000"
+                      />
+                    </div>
+                    
+                    {/* Áreas calculadas */}
+                    <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm font-medium text-blue-800 mb-2">Áreas (calculadas del R2)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-xs text-blue-600">Área Terreno:</span>
+                          <span className="font-bold block">{calcularAreasTotalesNuevo().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-blue-600">Área Construida:</span>
+                          <span className="font-bold block">{calcularAreasTotalesNuevo().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              {/* TAB: Físico (R2) */}
+              <TabsContent value="fisico" className="mt-4 space-y-4">
+                {/* Zonas de Terreno */}
+                <Card>
+                  <CardHeader className="py-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-sm">Zonas de Terreno ({zonasTerreno.length})</CardTitle>
+                      <Button size="sm" onClick={agregarZonaTerreno} variant="outline" className="text-emerald-700">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {zonasTerreno.map((zona, index) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
+                          {zonasTerreno.length > 1 && (
+                            <Button variant="ghost" size="sm" onClick={() => eliminarZonaTerreno(index)} className="text-red-600 h-6 w-6 p-0">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs">Zona Física</Label>
+                            <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno(index, 'zona_fisica', e.target.value)} placeholder="Ej: 03" className="h-8" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Zona Económica</Label>
+                            <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno(index, 'zona_economica', e.target.value)} placeholder="Ej: 05" className="h-8" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Área Terreno (m²)</Label>
+                            <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno(index, 'area_terreno', e.target.value)} className="h-8" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Subtotal Área Terreno */}
+                    <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                      <p className="text-sm text-blue-800">
+                        📊 <strong>Subtotal Área Terreno:</strong> {calcularAreasTotalesNuevo().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Construcciones */}
+                <Card>
+                  <CardHeader className="py-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-sm">Construcciones ({construcciones.length})</CardTitle>
+                      <Button size="sm" onClick={agregarConstruccion} variant="outline" className="text-amber-700">
+                        <Plus className="w-4 h-4 mr-1" /> Agregar Construcción
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                    {construcciones.map((const_, index) => (
+                      <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-amber-800">Construcción {const_.id}</span>
+                          {construcciones.length > 1 && (
+                            <Button variant="ghost" size="sm" onClick={() => eliminarConstruccion(index)} className="text-red-600 h-6 w-6 p-0">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <Label className="text-xs">Piso</Label>
+                            <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion(index, 'piso', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Habitaciones</Label>
+                            <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion(index, 'habitaciones', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Baños</Label>
+                            <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion(index, 'banos', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Locales</Label>
+                            <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccion(index, 'locales', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Tipificación</Label>
+                            <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccion(index, 'tipificacion', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Uso</Label>
+                            <Input value={const_.uso} onChange={(e) => actualizarConstruccion(index, 'uso', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Puntaje</Label>
+                            <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccion(index, 'puntaje', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Área Construida (m²)</Label>
+                            <Input type="number" value={const_.area_construida} onChange={(e) => actualizarConstruccion(index, 'area_construida', e.target.value)} className="h-7 text-xs" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Subtotal Área Construida */}
+                    <div className="bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                      <p className="text-sm text-amber-800">
+                        📊 <strong>Subtotal Área Construida:</strong> {calcularAreasTotalesNuevo().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNuevoPredioModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={guardarNuevoPredioInscritoCompleto} 
+              disabled={generandoCodigo}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {generandoCodigo ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generando código...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  {nuevoPredioInscrito?._editIndex !== undefined ? 'Actualizar Predio' : 'Agregar Predio'}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
