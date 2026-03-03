@@ -5,12 +5,50 @@ Sistema web para gestión catastral de la Asociación de Municipios del Catatumb
 
 ---
 
-## 🔧 Última Actualización (03 Marzo 2026)
+## 🔧 Última Actualización (03 Marzo 2026 - Sesión 2)
+
+### ✅ IMPLEMENTADO: Sistema Completo de Resoluciones Automáticas
+
+**Descripción:**
+Sistema integral para la generación automática de resoluciones PDF (M1 - Mutación Primera) cuando se aprueba un cambio de predio. El sistema incluye:
+
+1. **Página de Configuración de Resoluciones** (`/dashboard/configuracion-resoluciones`):
+   - Solo accesible para administradores
+   - **Tab "Plantillas de Texto":** Editar texto legal M1, nombre y cargo del firmante
+   - **Tab "Numeración 2026":** Establecer último número de resolución manual (el sistema continúa desde ahí)
+   - Preview PDF para verificar cambios antes de aplicar
+
+2. **Generación Automática al Aprobar:**
+   - Cuando se aprueba un cambio de tipo `modificacion` o `creacion`, el sistema genera automáticamente el PDF M1
+   - PDF incluye: encabezado institucional, marca de agua, tablas de cancelación/inscripción, firma de Dalgie, QR de validación
+   - El PDF se guarda en `/resoluciones/` y se registra en colección `resoluciones`
+   - Numeración automática: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
+
+**Nuevos Endpoints:**
+- `GET /api/resoluciones/configuracion` - Obtener configuración de numeración
+- `PUT /api/resoluciones/configuracion` - Actualizar número inicial para 2026
+- `GET /api/resoluciones/siguiente-numero/{municipio}` - Consultar próximo número
+
+**Nuevas Colecciones MongoDB:**
+- `resolucion_configuracion` - Almacena `{ id, ultimo_numero_2026, ... }`
+- `resoluciones` - Registra cada resolución generada con número, PDF path, cambio_id, etc.
+
+**Archivos Modificados:**
+- `/app/backend/server.py` - Función `generar_resolucion_final()` y lógica en `aprobar_rechazar_cambio()`
+- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - Nueva página completa
+- `/app/frontend/src/App.js` - Nueva ruta
+- `/app/frontend/src/pages/DashboardLayout.js` - Link de navegación
+
+**Tests:** 27 tests (100% pasados) - `/app/test_reports/iteration_55.json`
+
+---
+
+## 🔧 Actualización (03 Marzo 2026 - Sesión 1)
 
 ### ✅ IMPLEMENTADO: Sistema de Plantillas de Resolución M1
 
 **Descripción:**
-Sistema simplificado para gestionar plantillas de texto para resoluciones catastrales. El administrador puede editar el texto legal de las resoluciones desde un textarea simple, sin necesidad de modificar código. La funcionalidad se implementó en la pestaña "Resoluciones" del módulo Sandbox.
+Sistema simplificado para gestionar plantillas de texto para resoluciones catastrales. El administrador puede editar el texto legal de las resoluciones desde un textarea simple, sin necesidad de modificar código. Inicialmente en Sandbox, ahora migrado a ConfiguracionResoluciones.
 
 **Funcionalidades:**
 1. **Gestión de Plantillas:**
@@ -165,12 +203,12 @@ El modal de edición debe comportarse diferente según:
 - **Expandir sistema de resoluciones:** Agregar plantillas M2, M3, etc.
 - Implementar exportación XTF
 - Desarrollar App de Correspondencia
+- Exportación Excel para datos de visitas
 
 ### P3 - Baja Prioridad
-- Refactorizar `server.py` (24,700+ líneas) usando FastAPI APIRouter
+- Refactorizar `server.py` (25,000+ líneas) usando FastAPI APIRouter
 - UI para reportes GDB
 - Gráficos en dashboards
-- Excel export para datos de visitas
 
 ---
 
@@ -182,12 +220,12 @@ El modal de edición debe comportarse diferente según:
 ---
 
 ## Archivos Clave
-- `/app/backend/server.py` - Lógica principal del backend (24,700+ líneas)
+- `/app/backend/server.py` - Lógica principal del backend (25,000+ líneas)
 - `/app/backend/resolucion_pdf_generator.py` - Generador de PDFs de resolución
+- `/app/frontend/src/pages/ConfiguracionResoluciones.js` - Configuración de resoluciones (admin)
 - `/app/frontend/src/pages/Predios.js` - Gestión de predios conservación
 - `/app/frontend/src/pages/Pendientes.js` - UI de pendientes y historial
 - `/app/frontend/src/pages/VisorActualizacion.js` - Visor de predios actualización
-- `/app/frontend/src/pages/Sandbox.js` - Módulo Sandbox (pruebas + plantillas resolución)
 
 ---
 
@@ -196,5 +234,7 @@ El modal de edición debe comportarse diferente según:
 - proj4js (Coordinate conversion)
 - Dexie.js (IndexedDB wrapper)
 - ReportLab (Backend PDF generation)
+- Pillow (Image processing for watermark)
 - openpyxl (Backend Excel generation)
+- qrcode (QR code generation)
 - Sonner (Frontend toast notifications)
