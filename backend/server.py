@@ -24005,12 +24005,12 @@ PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia 
 
 C O N S I D E R A N D O
 
-Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo ({radicado})
+Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}
 
 Qué, se aportaron como soportes los siguientes documentos:
 • Oficio de solicitud.
 • Cedula de ciudadanía.
-• Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria}).
+• Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}.
 
 Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional {npn}.
 

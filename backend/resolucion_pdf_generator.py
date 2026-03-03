@@ -27,12 +27,12 @@ def get_default_plantilla():
             '"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y '
             'difusión catastral con enfoque multipropósito", y'
         ),
-        "considerando_1": "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo ({radicado})",
+        "considerando_1": "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
         "considerando_2_intro": "Qué, se aportaron como soportes los siguientes documentos:",
         "considerando_2_docs": [
             "Oficio de solicitud.",
             "Cedula de ciudadanía.",
-            "Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria})."
+            "Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}."
         ],
         "considerando_3": "Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional {npn}.",
         "considerando_final": (
