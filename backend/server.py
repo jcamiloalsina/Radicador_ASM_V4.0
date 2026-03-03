@@ -24904,6 +24904,50 @@ async def obtener_resoluciones_por_radicado(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> dict:
+    """Función interna para obtener el siguiente número de resolución"""
+    año = datetime.now().year
+    
+    # Validar que el código de municipio sea válido
+    if codigo_municipio not in MUNICIPIOS_R1R2:
+        codigo_encontrado = None
+        for codigo, nombre in MUNICIPIOS_R1R2.items():
+            if nombre.lower() in codigo_municipio.lower() or codigo_municipio.lower() in nombre.lower():
+                codigo_encontrado = codigo
+                break
+        if codigo_encontrado:
+            codigo_municipio = codigo_encontrado
+        else:
+            codigo_municipio = "54003"  # Default Ábrego
+    
+    # Obtener configuración por municipio
+    config = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
+    numero_inicial = config.get(codigo_municipio, 0) if config else 0
+    
+    # Contar resoluciones ya generadas este año PARA ESTE MUNICIPIO
+    count = await db.resoluciones.count_documents({
+        "año": año,
+        "codigo_municipio": codigo_municipio
+    })
+    
+    siguiente = numero_inicial + count + 1
+    
+    # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
+    depto = codigo_municipio[:2]
+    mpio = codigo_municipio[2:]
+    numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
+    
+    return {
+        "success": True,
+        "siguiente_numero": siguiente,
+        "numero_resolucion": numero_resolucion,
+        "año": año,
+        "codigo_municipio": codigo_municipio,
+        "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
+        "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+    }
+
+
 @api_router.get("/resoluciones/siguiente-numero/{codigo_municipio}")
 async def obtener_siguiente_numero_resolucion(
     codigo_municipio: str,
@@ -24990,6 +25034,159 @@ async def obtener_radicados_disponibles(
     except Exception as e:
         logging.error(f"Error obteniendo radicados: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ========================================
+# ENDPOINT M2 - ENGLOBE / DESENGLOBLE
+# ========================================
+
+class SolicitanteM2(BaseModel):
+    nombre: str
+    documento: str
+    tipo_documento: str = "C"
+
+class PropietarioM2(BaseModel):
+    nombre_propietario: str
+    tipo_documento: str = "C"
+    numero_documento: str = ""
+
+class PredioM2(BaseModel):
+    id: Optional[str] = None
+    codigo_predial: str
+    npn: str = ""
+    codigo_homologado: str = ""
+    direccion: str = ""
+    destino_economico: str = "R"
+    area_terreno: float = 0
+    area_construida: float = 0
+    avaluo: float = 0
+    matricula_inmobiliaria: str = ""
+    propietarios: List[dict] = []
+
+class GenerarResolucionM2Request(BaseModel):
+    subtipo: str  # 'englobe' o 'desengloble'
+    municipio: str  # código municipio
+    radicado: str = ""
+    solicitante: SolicitanteM2
+    predios_cancelados: List[dict]
+    predios_inscritos: List[dict]
+    documentos_soporte: List[str] = []
+
+
+@api_router.post("/resoluciones/generar-m2")
+async def generar_resolucion_m2(
+    request: GenerarResolucionM2Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera una resolución M2 (Englobe o Desengloble)
+    """
+    try:
+        # Solo coordinadores y administradores
+        if current_user.get('role') not in ['coordinador', 'administrador']:
+            if not await check_permission(current_user, 'approve_changes'):
+                raise HTTPException(status_code=403, detail="No tiene permisos para generar resoluciones")
+        
+        # Obtener nombre del municipio
+        municipio_nombres = {
+            '54003': 'Ábrego', '54223': 'El Carmen', '54128': 'Cachirá',
+            '54172': 'Convención', '54239': 'El Tarra', '54245': 'El Zulia',
+            '54250': 'González', '54261': 'Hacarí', '54344': 'La Esperanza',
+            '54377': 'La Playa', '54553': 'Río de Oro', '54599': 'San Calixto'
+        }
+        municipio_nombre = municipio_nombres.get(request.municipio, request.municipio)
+        
+        # Obtener siguiente número de resolución
+        siguiente_data = await obtener_siguiente_numero_resolucion_interno(request.municipio)
+        numero_resolucion = siguiente_data["numero_resolucion"]
+        fecha_resolucion = siguiente_data["fecha_resolucion"]
+        
+        # Generar código de verificación
+        codigo_verificacion = generar_codigo_verificacion_resolucion()
+        
+        # Importar el generador de PDF M2
+        from resolucion_m2_pdf_generator import generate_resolucion_m2_pdf
+        
+        # Generar el PDF
+        pdf_content = generate_resolucion_m2_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=municipio_nombre,
+            subtipo=request.subtipo,
+            radicado=request.radicado,
+            solicitante=request.solicitante.dict(),
+            predios_cancelados=request.predios_cancelados,
+            predios_inscritos=request.predios_inscritos,
+            documentos_soporte=request.documentos_soporte,
+            codigo_verificacion=codigo_verificacion,
+            verificacion_base_url=VERIFICACION_BASE_URL
+        )
+        
+        # Guardar el PDF
+        resoluciones_dir = "/app/frontend/public/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"resolucion_{numero_resolucion.replace('-', '_')}_{timestamp}.pdf"
+        pdf_path_full = os.path.join(resoluciones_dir, filename)
+        pdf_path_relative = f"/resoluciones/{filename}"
+        
+        with open(pdf_path_full, 'wb') as f:
+            f.write(pdf_content)
+        
+        # Guardar en colección resoluciones
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "tipo_mutacion": "M2",
+            "subtipo": request.subtipo,
+            "municipio": municipio_nombre,
+            "codigo_municipio": request.municipio,
+            "radicado": request.radicado,
+            "solicitante": request.solicitante.dict(),
+            "predios_cancelados": request.predios_cancelados,
+            "predios_inscritos": request.predios_inscritos,
+            "pdf_path": pdf_path_relative,
+            "codigo_verificacion": codigo_verificacion,
+            "generado_por": current_user.get("id"),
+            "generado_por_nombre": current_user.get("full_name"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Guardar código de verificación
+        certificado_verificable = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion,
+            "tipo_documento": "resolucion",
+            "numero_resolucion": numero_resolucion,
+            "tipo_mutacion": "M2",
+            "municipio": municipio_nombre,
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "estado": "activo",
+            "pdf_path": pdf_path_relative
+        }
+        await db.certificados_verificables.insert_one(certificado_verificable)
+        
+        logging.info(f"Resolución M2 {numero_resolucion} generada por {current_user.get('email')}")
+        
+        return {
+            "success": True,
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": pdf_path_relative,
+            "codigo_verificacion": codigo_verificacion,
+            "mensaje": f"Resolución {numero_resolucion} generada exitosamente"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generando resolución M2: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generando resolución: {str(e)}")
 
 
 class GenerarResolucionManualRequest(BaseModel):

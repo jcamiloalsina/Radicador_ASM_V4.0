@@ -27,6 +27,7 @@ import CertificadosGestion from "./pages/CertificadosGestion";
 import PrediosEnProceso from "./pages/PrediosEnProceso";
 import GestionPrediosActualizacion from "./pages/GestionPrediosActualizacion";
 import ConfiguracionResoluciones from "./pages/ConfiguracionResoluciones";
+import MutacionesResoluciones from "./pages/MutacionesResoluciones";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
@@ -70,6 +71,7 @@ function App() {
             <Route path="certificados" element={<CertificadosGestion />} />
             <Route path="predios-en-proceso" element={<PrediosEnProceso />} />
             <Route path="configuracion-resoluciones" element={<ConfiguracionResoluciones />} />
+            <Route path="mutaciones-resoluciones" element={<MutacionesResoluciones />} />
           </Route>
         </Routes>
         </BrowserRouter>

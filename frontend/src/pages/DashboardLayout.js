@@ -277,6 +277,7 @@ export default function DashboardLayout() {
     if (isStaff) {
       conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
       conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+      conservacionItems.push({ path: '/dashboard/mutaciones-resoluciones', label: 'Mutaciones y Resoluciones', icon: FileText });
       // Certificados solo para administrador, coordinador y atención al usuario
       const canSeeCertificados = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
       if (canSeeCertificados) {
