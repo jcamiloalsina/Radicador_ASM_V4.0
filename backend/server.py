@@ -12962,7 +12962,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         siguiente_numero = numero_inicial + count_resoluciones + 1
         
         # Formato número de resolución
-        numero_resolucion = f"RES-{depto}-{mpio}-{año_actual}-{str(siguiente_numero).zfill(4)}"
+        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente_numero).zfill(4)}-{año_actual}"
         fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
         
         # Obtener plantilla M1
@@ -24721,10 +24721,10 @@ async def obtener_siguiente_numero_resolucion(
         
         siguiente = numero_inicial + count + 1
         
-        # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{AÑO}-{CONSECUTIVO}
+        # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
         depto = codigo_municipio[:2]
         mpio = codigo_municipio[2:]
-        numero_resolucion = f"RES-{depto}-{mpio}-{año}-{str(siguiente).zfill(4)}"
+        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
         
         return {
             "success": True,
