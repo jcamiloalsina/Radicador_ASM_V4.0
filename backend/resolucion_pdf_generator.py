@@ -18,26 +18,27 @@ from certificado_images import get_encabezado_image, get_pie_pagina_image, get_f
 
 
 def get_default_plantilla():
-    """Retorna la plantilla de textos por defecto"""
+    """Retorna la plantilla de textos por defecto - Basada en documento oficial M1"""
     return {
         "preambulo": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "(ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la "
-            "ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso "
-            "de sus facultades legales y,"
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – "
+            "Asomunicipios en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
+            "en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "
+            '"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y '
+            'difusión catastral con enfoque multipropósito", y'
         ),
-        "considerando_1": "Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.",
-        "considerando_2_intro": "Que, se aportaron como soportes los siguientes documentos:",
+        "considerando_1": "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo ({radicado})",
+        "considerando_2_intro": "Qué, se aportaron como soportes los siguientes documentos:",
         "considerando_2_docs": [
             "Oficio de solicitud.",
-            "Cédula de ciudadanía.",
-            "Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}."
+            "Cedula de ciudadanía.",
+            "Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria})."
         ],
-        "considerando_3": "Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.",
+        "considerando_3": "Qué, según estudio de oficina se hace necesario efectuar una (mutación de primera), para el predio con código catastral NPN ({npn}).",
         "considerando_final": (
-            "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, "
-            "amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación "
-            "técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:"
+            "En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la "
+            'resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, '
+            'actualización, conservación y difusión catastral con enfoque multipropósito", se:'
         ),
         "articulo_1_intro": "Ordenar la inscripción en el catastro del Municipio de {municipio} los siguientes cambios:",
         "articulo_2": "El presente acto administrativo rige a partir de la fecha de su expedición.",
@@ -231,7 +232,8 @@ def generate_resolucion_pdf(
     # === CONSIDERANDO ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
-    c.drawCentredString(width/2, y, "CONSIDERANDO")
+    # CONSIDERANDO con espaciado entre letras
+    c.drawCentredString(width/2, y, "C O N S I D E R A N D O")
     y -= espaciado_secciones
     
     # Considerando 1
@@ -259,9 +261,9 @@ def generate_resolucion_pdf(
         y -= espaciado_parrafos
     y -= 8
     
-    # Considerando 3
+    # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
     y = check_page_break(y, 30)
-    texto_c3 = textos['considerando_3'].replace('{codigo_catastral}', codigo_catastral_anterior).replace('{npn}', npn)
+    texto_c3 = textos['considerando_3'].replace('{npn}', npn)
     lines = simpleSplit(texto_c3, font_normal, fuente_cuerpo, content_width)
     for line in lines:
         y = check_page_break(y, 15)

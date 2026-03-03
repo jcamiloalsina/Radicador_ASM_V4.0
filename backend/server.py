@@ -24001,20 +24001,20 @@ async def generar_resolucion_prueba(
 # ===== SISTEMA SIMPLIFICADO DE PLANTILLAS DE RESOLUCIÓN =====
 
 # Plantilla M1 por defecto (Mutación Primera - Cambio de Propietario)
-PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar (ASOMUNICIPIOS), actuando en calidad de Gestor Catastral, en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1204 del 2021, en uso de sus facultades legales y,
+PLANTILLA_M1_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito", y
 
-CONSIDERANDO
+C O N S I D E R A N D O
 
-Que, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}.
+Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo ({radicado})
 
-Que, se aportaron como soportes los siguientes documentos:
+Qué, se aportaron como soportes los siguientes documentos:
 • Oficio de solicitud.
-• Cédula de ciudadanía.
-• Certificado de Tradición y Libertad con número de matrícula inmobiliaria {matricula_inmobiliaria}.
+• Cedula de ciudadanía.
+• Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria}).
 
-Que, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con código catastral anterior número {codigo_catastral} y NPN {npn}.
+Qué, según estudio de oficina se hace necesario efectuar una (mutación de primera), para el predio con código catastral NPN ({npn}).
 
-En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: 'por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito', se:
+En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito", se:
 
 RESUELVE
 
