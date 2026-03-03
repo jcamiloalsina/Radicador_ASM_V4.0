@@ -1949,8 +1949,8 @@ export default function MutacionesResoluciones() {
                         <Label className="text-xs">Código Homologado</Label>
                         <Input
                           value={predioEditando.codigo_homologado || ''}
-                          onChange={(e) => setPredioEditando(prev => ({...prev, codigo_homologado: e.target.value.toUpperCase()}))}
-                          placeholder="Ej: ABR001"
+                          disabled
+                          className="bg-slate-100 cursor-not-allowed"
                         />
                       </div>
                     </CardContent>
@@ -2186,44 +2186,6 @@ export default function MutacionesResoluciones() {
                                   value={zona.garajes || 0}
                                   onChange={(e) => actualizarZonaEdicion(zonaIdx, 'garajes', Number(e.target.value))}
                                   className="h-7 text-xs"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2 mt-2">
-                              <div>
-                                <Label className="text-xs">Edad Construcción</Label>
-                                <Input
-                                  type="number"
-                                  value={zona.edad_construccion || 0}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'edad_construccion', Number(e.target.value))}
-                                  className="h-7 text-xs"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Puntaje</Label>
-                                <Input
-                                  type="number"
-                                  value={zona.puntaje || 0}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'puntaje', Number(e.target.value))}
-                                  className="h-7 text-xs"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Tipo Construcción</Label>
-                                <Input
-                                  value={zona.tipo_construccion || ''}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'tipo_construccion', e.target.value)}
-                                  className="h-7 text-xs"
-                                  placeholder="Ej: CONVENCIONAL"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Estado Conservación</Label>
-                                <Input
-                                  value={zona.estado_conservacion || ''}
-                                  onChange={(e) => actualizarZonaEdicion(zonaIdx, 'estado_conservacion', e.target.value)}
-                                  className="h-7 text-xs"
-                                  placeholder="Ej: BUENO"
                                 />
                               </div>
                             </div>
