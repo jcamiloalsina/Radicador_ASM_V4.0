@@ -2453,8 +2453,10 @@ export default function Predios() {
       }
       
       // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
-      let resolucionGenerada = false;
       if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
+        let resolucionExitosa = false;
+        let mensajeExito = '';
+        
         try {
           // Generar resolución manualmente (timeout extendido porque incluye envío de email)
           const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
@@ -2466,58 +2468,47 @@ export default function Predios() {
             datos_predio: updateData
           }, {
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 60000 // 60 segundos de timeout porque puede incluir envío de email
+            timeout: 60000
           });
           
           if (resolucionResponse.data.success) {
-            resolucionGenerada = true;
-            let mensaje = resolucionResponse.data.duplicado 
+            resolucionExitosa = true;
+            mensajeExito = resolucionResponse.data.duplicado 
               ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
               : `Resolución ${infoResolucion.numero_resolucion} generada y predio actualizado exitosamente.`;
             if (resolucionResponse.data.peticion_finalizada) {
-              mensaje += ' Petición marcada como finalizada.';
+              mensajeExito += ' Petición marcada como finalizada.';
             }
             if (resolucionResponse.data.email_enviado) {
-              mensaje += ' Correo enviado al solicitante.';
+              mensajeExito += ' Correo enviado al solicitante.';
             }
-            toast.success(mensaje);
-            
-            // Limpiar el estado de resolución
-            setInfoResolucion({
-              tipo_mutacion: '',
-              numero_resolucion: '',
-              fecha_resolucion: '',
-              radicado_peticion: ''
-            });
-            
-            // Si se generó resolución, actualizar lista y cerrar modal
-            try {
-              await forceRefreshPredios();
-              fetchCambiosStats();
-            } catch (refreshError) {
-              console.error('Error al refrescar lista:', refreshError);
-            }
-            setIsEditModalOpen(false);
-            setIsSavingUpdate(false);
-            return; // Salir aquí, no continuar con proponer cambios
-          } else {
-            // Respuesta pero sin success - mostrar mensaje pero continuar
-            console.warn('Respuesta sin success:', resolucionResponse.data);
           }
         } catch (resolucionError) {
-          // Verificar si es error de timeout o de red (la resolución pudo haberse generado)
+          // Verificar si es error de timeout (la resolución pudo haberse generado)
           if (resolucionError.code === 'ECONNABORTED' || resolucionError.message?.includes('timeout')) {
             toast.warning('La solicitud tardó mucho tiempo. Verifica si la resolución se generó correctamente.');
-            setIsEditModalOpen(false);
-            setIsSavingUpdate(false);
-            try { await forceRefreshPredios(); } catch {}
-            return;
+          } else {
+            toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
           }
-          // Si hay error real generando la resolución, mostrar mensaje específico
-          console.error('Error generando resolución:', resolucionError);
-          toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
           setIsSavingUpdate(false);
-          return; // Salir sin continuar
+          return;
+        }
+        
+        // Si la resolución fue exitosa, mostrar mensaje, limpiar y salir
+        if (resolucionExitosa) {
+          toast.success(mensajeExito);
+          setInfoResolucion({
+            tipo_mutacion: '',
+            numero_resolucion: '',
+            fecha_resolucion: '',
+            radicado_peticion: ''
+          });
+          setIsEditModalOpen(false);
+          setIsSavingUpdate(false);
+          // Refrescar en segundo plano sin esperar
+          forceRefreshPredios().catch(() => {});
+          fetchCambiosStats();
+          return;
         }
       }
       
