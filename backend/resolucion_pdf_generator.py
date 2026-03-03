@@ -513,7 +513,8 @@ def generate_resolucion_pdf(
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawCentredString(x + cancel_cols[3]/2, y - 9, str(nro_doc)[:15])
+            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
@@ -594,7 +595,8 @@ def generate_resolucion_pdf(
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
             nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            c.drawCentredString(x + cancel_cols[3]/2, y - 9, str(nro_doc)[:15])
+            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)

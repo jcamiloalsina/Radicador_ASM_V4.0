@@ -2454,9 +2454,6 @@ export default function Predios() {
       
       // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
       if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
-        let resolucionExitosa = false;
-        let mensajeExito = '';
-        
         try {
           // Generar resolución manualmente (timeout extendido porque incluye envío de email)
           const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
@@ -2471,45 +2468,34 @@ export default function Predios() {
             timeout: 60000
           });
           
+          // Cerrar modal y limpiar estado ANTES de mostrar mensaje
+          setIsEditModalOpen(false);
+          setIsSavingUpdate(false);
+          setInfoResolucion({ tipo_mutacion: '', numero_resolucion: '', fecha_resolucion: '', radicado_peticion: '' });
+          
+          // Mostrar mensaje de éxito
           if (resolucionResponse.data.success) {
-            resolucionExitosa = true;
-            mensajeExito = resolucionResponse.data.duplicado 
+            let msg = resolucionResponse.data.duplicado 
               ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
               : `Resolución ${infoResolucion.numero_resolucion} generada y predio actualizado exitosamente.`;
-            if (resolucionResponse.data.peticion_finalizada) {
-              mensajeExito += ' Petición marcada como finalizada.';
-            }
-            if (resolucionResponse.data.email_enviado) {
-              mensajeExito += ' Correo enviado al solicitante.';
-            }
+            if (resolucionResponse.data.peticion_finalizada) msg += ' Petición marcada como finalizada.';
+            if (resolucionResponse.data.email_enviado) msg += ' Correo enviado al solicitante.';
+            toast.success(msg);
           }
+          
+          // Refrescar en segundo plano
+          forceRefreshPredios().catch(() => {});
+          fetchCambiosStats();
         } catch (resolucionError) {
-          // Verificar si es error de timeout (la resolución pudo haberse generado)
+          setIsSavingUpdate(false);
           if (resolucionError.code === 'ECONNABORTED' || resolucionError.message?.includes('timeout')) {
-            toast.warning('La solicitud tardó mucho tiempo. Verifica si la resolución se generó correctamente.');
+            toast.warning('La solicitud tardó mucho. Verifica si la resolución se generó.');
           } else {
             toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
           }
-          setIsSavingUpdate(false);
-          return;
         }
-        
-        // Si la resolución fue exitosa, mostrar mensaje, limpiar y salir
-        if (resolucionExitosa) {
-          toast.success(mensajeExito);
-          setInfoResolucion({
-            tipo_mutacion: '',
-            numero_resolucion: '',
-            fecha_resolucion: '',
-            radicado_peticion: ''
-          });
-          setIsEditModalOpen(false);
-          setIsSavingUpdate(false);
-          // Refrescar en segundo plano sin esperar
-          forceRefreshPredios().catch(() => {});
-          fetchCambiosStats();
-          return;
-        }
+        // SIEMPRE salir después de intentar generar resolución (éxito o error)
+        return;
       }
       
       // Obtener info del radicado seleccionado
