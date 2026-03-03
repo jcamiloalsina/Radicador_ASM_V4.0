@@ -216,13 +216,10 @@ export default function Predios() {
   const [isSavingDelete, setIsSavingDelete] = useState(false);
   const [isApprovingChange, setIsApprovingChange] = useState(false);
   
-  // Estado para múltiples propietarios (formato XTF)
+  // Estado para múltiples propietarios (formato simplificado)
   const [propietarios, setPropietarios] = useState([{
-    primer_apellido: '',
-    segundo_apellido: '',
-    primer_nombre: '',
-    segundo_nombre: '',
-    estado: '',  // Campo libre: casado, viudo, soltero, etc.
+    nombre_propietario: '',
+    estado_civil: 'sin_especificar',
     tipo_documento: 'C',
     numero_documento: ''
   }]);
@@ -350,11 +347,8 @@ export default function Predios() {
   // Funciones para manejar múltiples propietarios
   const agregarPropietario = () => {
     setPropietarios([...propietarios, {
-      primer_apellido: '',
-      segundo_apellido: '',
-      primer_nombre: '',
-      segundo_nombre: '',
-      estado: '',
+      nombre_propietario: '',
+      estado_civil: 'sin_especificar',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -812,23 +806,19 @@ export default function Predios() {
           if (predioNuevo.propietarios && predioNuevo.propietarios.length > 0) {
             // Convertir propietarios existentes al nuevo formato si es necesario
             const propietariosConvertidos = predioNuevo.propietarios.map(p => ({
-              primer_apellido: p.primer_apellido || '',
-              segundo_apellido: p.segundo_apellido || '',
-              primer_nombre: p.primer_nombre || '',
-              segundo_nombre: p.segundo_nombre || '',
-              estado: p.estado || p.estado_civil || '',
+              nombre_propietario: p.nombre_propietario || generarNombreCompleto(p) || '',
+              estado_civil: p.estado_civil || p.estado || 'sin_especificar',
               tipo_documento: p.tipo_documento || 'C',
               numero_documento: p.numero_documento || ''
             }));
             setPropietarios(propietariosConvertidos);
-          } else if (predioNuevo.primer_apellido || predioNuevo.nombre_propietario) {
+          } else if (predioNuevo.nombre_propietario || predioNuevo.primer_apellido) {
             // Si no hay array de propietarios pero hay datos del propietario principal
+            const nombreCompleto = predioNuevo.nombre_propietario || 
+              [predioNuevo.primer_apellido, predioNuevo.segundo_apellido, predioNuevo.primer_nombre, predioNuevo.segundo_nombre].filter(Boolean).join(' ');
             setPropietarios([{
-              primer_apellido: predioNuevo.primer_apellido || '',
-              segundo_apellido: predioNuevo.segundo_apellido || '',
-              primer_nombre: predioNuevo.primer_nombre || '',
-              segundo_nombre: predioNuevo.segundo_nombre || '',
-              estado: predioNuevo.estado || predioNuevo.estado_civil || '',
+              nombre_propietario: nombreCompleto,
+              estado_civil: predioNuevo.estado_civil || predioNuevo.estado || 'sin_especificar',
               tipo_documento: predioNuevo.tipo_documento || 'C',
               numero_documento: predioNuevo.numero_documento || ''
             }]);
@@ -1193,8 +1183,7 @@ export default function Predios() {
                              codigoManual.terreno !== '0001';
     
     // Verificar si hay datos de propietario (nuevo formato)
-    const tienePropietario = propietarios[0]?.primer_apellido?.trim() || 
-                             propietarios[0]?.primer_nombre?.trim() ||
+    const tienePropietario = propietarios[0]?.nombre_propietario?.trim() || 
                              propietarios[0]?.numero_documento?.trim();
     
     // Verificar si hay datos del predio
@@ -2055,9 +2044,9 @@ export default function Predios() {
       return;
     }
 
-    // Validar que haya al menos un propietario con datos (nuevo formato)
-    if (!propietarios[0].primer_apellido || !propietarios[0].primer_nombre || !propietarios[0].numero_documento) {
-      toast.error('Debe ingresar al menos un propietario con primer apellido, primer nombre y número de documento');
+    // Validar que haya al menos un propietario con datos (nuevo formato simplificado)
+    if (!propietarios[0].nombre_propietario || !propietarios[0].numero_documento) {
+      toast.error('Debe ingresar al menos un propietario con nombre completo y número de documento');
       return;
     }
 
@@ -2076,18 +2065,14 @@ export default function Predios() {
     // Calcular áreas desde R2
     const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
     
-    // Preparar propietarios con formato correcto y documento con padding
+    // Preparar propietarios con formato correcto y documento con padding de 12 dígitos
     const propietariosFormateados = propietarios
-      .filter(p => p.primer_apellido && p.primer_nombre && p.numero_documento)
+      .filter(p => p.nombre_propietario && p.numero_documento)
       .map(p => ({
-        primer_apellido: p.primer_apellido,
-        segundo_apellido: p.segundo_apellido || '',
-        primer_nombre: p.primer_nombre,
-        segundo_nombre: p.segundo_nombre || '',
-        nombre_propietario: generarNombreCompleto(p), // Campo de compatibilidad
-        estado: p.estado || '',
+        nombre_propietario: p.nombre_propietario,
+        estado_civil: p.estado_civil || 'sin_especificar',
         tipo_documento: p.tipo_documento,
-        numero_documento: formatearNumeroDocumento(p.numero_documento)
+        numero_documento: p.numero_documento.padStart(12, '0')
       }));
 
     setIsSavingCreate(true); // Activar estado de guardado
@@ -2109,13 +2094,9 @@ export default function Predios() {
             terreno: codigoManual.terreno,
             condicion_predio: codigoManual.condicion,
             predio_horizontal: `${codigoManual.edificio}${codigoManual.piso}${codigoManual.unidad}`.padEnd(5, '0'),
-            // Nuevo formato de propietario
-            primer_apellido: propietariosFormateados[0].primer_apellido,
-            segundo_apellido: propietariosFormateados[0].segundo_apellido,
-            primer_nombre: propietariosFormateados[0].primer_nombre,
-            segundo_nombre: propietariosFormateados[0].segundo_nombre,
+            // Formato de propietario simplificado
             nombre_propietario: propietariosFormateados[0].nombre_propietario,
-            estado: propietariosFormateados[0].estado,
+            estado_civil: propietariosFormateados[0].estado_civil,
             tipo_documento: propietariosFormateados[0].tipo_documento,
             numero_documento: propietariosFormateados[0].numero_documento,
             direccion: formData.direccion,
@@ -2227,13 +2208,9 @@ export default function Predios() {
           : 'Creación de nuevo predio',
         // Marcar como creado en plataforma para sincronización automática R2→R1
         creado_en_plataforma: true,
-        // Usar el primer propietario como principal (para compatibilidad)
-        primer_apellido: propietariosFormateados[0].primer_apellido,
-        segundo_apellido: propietariosFormateados[0].segundo_apellido,
-        primer_nombre: propietariosFormateados[0].primer_nombre,
-        segundo_nombre: propietariosFormateados[0].segundo_nombre,
+        // Usar el primer propietario como principal (formato simplificado)
         nombre_propietario: propietariosFormateados[0].nombre_propietario,
-        estado: propietariosFormateados[0].estado,
+        estado_civil: propietariosFormateados[0].estado_civil,
         tipo_documento: propietariosFormateados[0].tipo_documento,
         numero_documento: propietariosFormateados[0].numero_documento,
         // Lista completa de propietarios
@@ -2694,11 +2671,8 @@ export default function Predios() {
       unidad: '0000'
     });
     setPropietarios([{
-      primer_apellido: '',
-      segundo_apellido: '',
-      primer_nombre: '',
-      segundo_nombre: '',
-      estado: '',
+      nombre_propietario: '',
+      estado_civil: 'sin_especificar',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -3665,48 +3639,50 @@ export default function Predios() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Nombres según formato XTF */}
-                    <div>
-                      <Label className="text-xs">Primer Apellido *</Label>
+                    {/* Nombre Completo - Un solo campo */}
+                    <div className="col-span-2">
+                      <Label className="text-xs">Nombre Completo *</Label>
                       <Input 
-                        value={prop.primer_apellido || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())}
-                        placeholder="PÉREZ"
+                        value={prop.nombre_propietario || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'nombre_propietario', e.target.value.toUpperCase())}
+                        placeholder="PÉREZ GARCÍA JUAN CARLOS"
                       />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Segundo Apellido</Label>
-                      <Input 
-                        value={prop.segundo_apellido || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())}
-                        placeholder="GARCÍA"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Primer Nombre *</Label>
-                      <Input 
-                        value={prop.primer_nombre || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())}
-                        placeholder="JUAN"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Segundo Nombre</Label>
-                      <Input 
-                        value={prop.segundo_nombre || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())}
-                        placeholder="CARLOS"
-                      />
+                      <p className="text-xs text-slate-400 mt-1">Formato: APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2</p>
                     </div>
                     
                     {/* Estado (campo libre) */}
                     <div className="col-span-2">
-                      <Label className="text-xs">Estado</Label>
-                      <Input 
-                        value={prop.estado || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'estado', e.target.value.toUpperCase())}
-                        placeholder="Ej: CASADO, SOLTERO, VIUDO, E (Estado), etc."
-                      />
+                      <Label className="text-xs">Estado Civil</Label>
+                      <RadioGroup 
+                        value={prop.estado_civil || 'sin_especificar'} 
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        className="flex flex-wrap gap-2 mt-1"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="sin_especificar" id={`estado_${index}_sin`} />
+                          <Label htmlFor={`estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="soltero" id={`estado_${index}_soltero`} />
+                          <Label htmlFor={`estado_${index}_soltero`} className="text-xs cursor-pointer">Soltero/a</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="casado_con" id={`estado_${index}_casado_con`} />
+                          <Label htmlFor={`estado_${index}_casado_con`} className="text-xs cursor-pointer">Casado/a con sociedad conyugal</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="casado_sin" id={`estado_${index}_casado_sin`} />
+                          <Label htmlFor={`estado_${index}_casado_sin`} className="text-xs cursor-pointer">Casado/a sin sociedad conyugal</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="separacion" id={`estado_${index}_sep`} />
+                          <Label htmlFor={`estado_${index}_sep`} className="text-xs cursor-pointer">Separación de bienes</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="union_marital" id={`estado_${index}_union`} />
+                          <Label htmlFor={`estado_${index}_union`} className="text-xs cursor-pointer">Unión marital de hecho</Label>
+                        </div>
+                      </RadioGroup>
                     </div>
                     
                     {/* Tipo y Número de Documento */}
@@ -3726,7 +3702,7 @@ export default function Predios() {
                       </RadioGroup>
                     </div>
                     <div>
-                      <Label className="text-xs">Número Documento * (máx 12 dígitos)</Label>
+                      <Label className="text-xs">Número Documento *</Label>
                       <Input 
                         value={prop.numero_documento || ''} 
                         onChange={(e) => {
@@ -3734,23 +3710,14 @@ export default function Predios() {
                           const valor = e.target.value.replace(/\D/g, '').slice(0, 12);
                           actualizarPropietario(index, 'numero_documento', valor);
                         }}
-                        placeholder="Se rellenará con 0s (ej: 001091672736)"
+                        placeholder="Ej: 1091672736"
                       />
                       {prop.numero_documento && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          Formato final: {formatearNumeroDocumento(prop.numero_documento)}
+                        <p className="text-xs text-emerald-600 mt-1">
+                          Formato final: <strong>{prop.numero_documento.padStart(12, '0')}</strong>
                         </p>
                       )}
                     </div>
-                    
-                    {/* Preview del nombre completo */}
-                    {(prop.primer_apellido || prop.primer_nombre) && (
-                      <div className="col-span-2 bg-emerald-50 p-2 rounded border border-emerald-200">
-                        <p className="text-xs text-emerald-700">
-                          <strong>Nombre completo:</strong> {generarNombreCompleto(prop) || 'Complete los campos'}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
