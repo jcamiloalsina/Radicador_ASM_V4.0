@@ -18,7 +18,15 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (03-03-2026) - Módulo Mutaciones y Resoluciones
+### Última Sesión (03-03-2026) - Fix Búsqueda Radicado
+- **BUG FIX P0 - Búsqueda de Radicado no funcionaba**:
+  - **Problema**: En módulo Mutaciones y Resoluciones, escribir "5531" o cualquier número no mostraba resultados
+  - **Causa Raíz**: Frontend enviaba parámetro `q` pero backend esperaba `busqueda`
+  - **Archivo**: `/app/frontend/src/pages/MutacionesResoluciones.js` línea 362
+  - **Solución**: Cambiado `params: { q: query }` a `params: { busqueda: query }`
+  - **Estado**: ✅ VERIFICADO - Screenshot confirma resultados correctos
+
+### Sesión Anterior (03-03-2026) - Módulo Mutaciones y Resoluciones
 - **NUEVO MÓDULO: Mutaciones y Resoluciones**
   - Ubicación: Conservación → Mutaciones y Resoluciones
   - M1 - Mutación Primera (Cambio de propietario): COMPLETO
@@ -99,6 +107,9 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ### P0 - Crítico
 - ✅ RESUELTO: Error "Error al generar resolución" (bug setIsEditModalOpen)
+- ✅ RESUELTO (03-03-2026): Búsqueda de Radicado no funcionaba en módulo Mutaciones y Resoluciones
+  - **Causa**: Frontend enviaba parámetro `q` pero backend esperaba `busqueda`
+  - **Fix**: Corregido en `MutacionesResoluciones.js` línea 362
 
 ### P1 - Alto
 - **Contador de resoluciones frágil**: Requiere correcciones manuales frecuentes. Propuesta: usar findOneAndUpdate atómico

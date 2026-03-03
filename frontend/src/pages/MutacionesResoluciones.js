@@ -359,7 +359,7 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
-        params: { q: query },
+        params: { busqueda: query },
         headers: { Authorization: `Bearer ${token}` }
       });
       
