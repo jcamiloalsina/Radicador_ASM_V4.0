@@ -4663,7 +4663,10 @@ export default function Predios() {
               <div className="space-y-4">
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                   <p className="text-sm text-emerald-800 font-medium">
-                    ✅ Predio creado en plataforma - Las áreas de R2 se sincronizan automáticamente a R1
+                    {selectedPredio?.area_editada_en_plataforma && !selectedPredio?.creado_en_plataforma
+                      ? '✅ Área modificada en plataforma - Las áreas de R2 se sincronizan automáticamente a R1'
+                      : '✅ Predio creado en plataforma - Las áreas de R2 se sincronizan automáticamente a R1'
+                    }
                   </p>
                 </div>
                 
