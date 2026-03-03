@@ -72,20 +72,20 @@ const TIPOS_MUTACION = {
   }
 };
 
-// Municipios disponibles
+// Municipios R1/R2 - Los 12 municipios del sistema
 const MUNICIPIOS = [
   { codigo: '54003', nombre: 'Ábrego' },
-  { codigo: '54223', nombre: 'El Carmen' },
-  { codigo: '54128', nombre: 'Cachirá' },
-  { codigo: '54172', nombre: 'Convención' },
-  { codigo: '54239', nombre: 'El Tarra' },
-  { codigo: '54245', nombre: 'El Zulia' },
-  { codigo: '54250', nombre: 'González' },
-  { codigo: '54261', nombre: 'Hacarí' },
-  { codigo: '54344', nombre: 'La Esperanza' },
-  { codigo: '54377', nombre: 'La Playa' },
-  { codigo: '54553', nombre: 'Río de Oro' },
-  { codigo: '54599', nombre: 'San Calixto' }
+  { codigo: '54109', nombre: 'Bucarasica' },
+  { codigo: '54128', nombre: 'Cáchira' },
+  { codigo: '54206', nombre: 'Convención' },
+  { codigo: '54245', nombre: 'El Carmen' },
+  { codigo: '54250', nombre: 'El Tarra' },
+  { codigo: '54344', nombre: 'Hacarí' },
+  { codigo: '54398', nombre: 'La Playa' },
+  { codigo: '54498', nombre: 'Ocaña' },
+  { codigo: '20614', nombre: 'Río de Oro' },
+  { codigo: '54670', nombre: 'San Calixto' },
+  { codigo: '54800', nombre: 'Teorama' }
 ];
 
 export default function MutacionesResoluciones() {
