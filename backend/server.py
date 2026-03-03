@@ -24012,7 +24012,7 @@ Qué, se aportaron como soportes los siguientes documentos:
 • Cedula de ciudadanía.
 • Certificado de Tradición y Libertad con número de matrícula inmobiliaria ({matricula_inmobiliaria}).
 
-Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional ({npn}).
+Qué, según estudio de oficina se hace necesario efectuar una mutación de primera, para el predio con Código Predial Nacional {npn}.
 
 En consecuencia y dado que se aportaron y verificaron los soportes pertinentes, amparados en la resolución IGAC 1040 del 2023: "por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y difusión catastral con enfoque multipropósito", se:
 
