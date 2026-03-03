@@ -2489,8 +2489,14 @@ export default function Predios() {
           });
           
           // Si se generó resolución, actualizar lista y cerrar modal
-          await forceRefreshPredios();
-          fetchCambiosStats();
+          // Usar try-catch para que errores de actualización no afecten el mensaje de éxito
+          try {
+            await forceRefreshPredios();
+            fetchCambiosStats();
+          } catch (refreshError) {
+            console.error('Error al refrescar lista:', refreshError);
+            // No mostrar error al usuario, la resolución ya se generó
+          }
           setIsEditModalOpen(false);
           setIsSavingUpdate(false);
           return; // Salir aquí, no continuar con proponer cambios
