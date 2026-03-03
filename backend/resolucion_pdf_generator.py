@@ -283,17 +283,18 @@ def generate_resolucion_pdf(
     # === RESUELVE ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
-    c.drawCentredString(width/2, y, "RESUELVE")
+    # RESUELVE con espaciado entre letras
+    c.drawCentredString(width/2, y, "R E S U E L V E")
     y -= espaciado_secciones
     
-    # Artículo 1
+    # Artículo 001
     y = check_page_break(y, 50)
     c.setFont(font_bold, fuente_cuerpo)
-    c.drawString(left_margin, y, "ARTÍCULO 1.")
+    c.drawString(left_margin, y, "Artículo. 001.")
     c.setFont(font_normal, fuente_cuerpo)
     texto_art1 = textos['articulo_1_intro'].replace('{municipio}', municipio)
     lines = simpleSplit(texto_art1, font_normal, fuente_cuerpo, content_width - 70)
-    x_offset = left_margin + c.stringWidth("ARTÍCULO 1. ", font_bold, fuente_cuerpo)
+    x_offset = left_margin + c.stringWidth("Artículo. 001. ", font_bold, fuente_cuerpo)
     if lines:
         c.drawString(x_offset, y, lines[0])
         y -= espaciado_parrafos
