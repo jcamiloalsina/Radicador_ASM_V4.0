@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -45,6 +45,48 @@ import {
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Componente memoizado para la guía visual del nombre - evita re-renders innecesarios
+const GuiaNombre = memo(({ nombre }) => {
+  const partes = (nombre || '').trim().split(/\s+/).filter(Boolean);
+  const apellido1 = partes[0] || '________';
+  const apellido2 = partes[1] || '________';
+  const nombre1 = partes[2] || '________';
+  const nombre2 = partes[3] || '';
+  const extras = partes.slice(4).join(' ');
+  
+  return (
+    <div className="mt-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
+      <div className="flex flex-wrap gap-1 text-xs font-mono">
+        <span className={`px-2 py-1 rounded ${partes[0] ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-200 text-slate-400'}`}>
+          {apellido1}
+        </span>
+        <span className={`px-2 py-1 rounded ${partes[1] ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-slate-200 text-slate-400'}`}>
+          {apellido2}
+        </span>
+        <span className={`px-2 py-1 rounded ${partes[2] ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-slate-200 text-slate-400'}`}>
+          {nombre1}
+        </span>
+        {(partes[3] || partes.length >= 3) && (
+          <span className={`px-2 py-1 rounded ${partes[3] ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-slate-200 text-slate-400'}`}>
+            {nombre2 || '________'}
+          </span>
+        )}
+        {extras && (
+          <span className="px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300">
+            {extras} (extra)
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1 text-[10px] mt-1 text-slate-500">
+        <span className="px-2">↑ Apellido 1</span>
+        <span className="px-2">↑ Apellido 2</span>
+        <span className="px-2">↑ Nombre 1</span>
+        <span className="px-2">↑ Nombre 2</span>
+      </div>
+    </div>
+  );
+});
 
 // Helper function para obtener la zona del código predial y formatear texto
 const getZonaFromCodigo = (codigoPredial) => {
@@ -3648,47 +3690,7 @@ export default function Predios() {
                         placeholder="PÉREZ GARCÍA JUAN CARLOS"
                         className="font-mono"
                       />
-                      {/* Guía interactiva que muestra cómo se interpreta el nombre */}
-                      {(() => {
-                        const partes = (prop.nombre_propietario || '').trim().split(/\s+/).filter(Boolean);
-                        const apellido1 = partes[0] || '________';
-                        const apellido2 = partes[1] || '________';
-                        const nombre1 = partes[2] || '________';
-                        const nombre2 = partes[3] || '';
-                        const extras = partes.slice(4).join(' ');
-                        
-                        return (
-                          <div className="mt-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
-                            <div className="flex flex-wrap gap-1 text-xs font-mono">
-                              <span className={`px-2 py-1 rounded ${partes[0] ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {apellido1}
-                              </span>
-                              <span className={`px-2 py-1 rounded ${partes[1] ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {apellido2}
-                              </span>
-                              <span className={`px-2 py-1 rounded ${partes[2] ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {nombre1}
-                              </span>
-                              {(partes[3] || partes.length === 3) && (
-                                <span className={`px-2 py-1 rounded ${partes[3] ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-slate-200 text-slate-400'}`}>
-                                  {nombre2 || '________'}
-                                </span>
-                              )}
-                              {extras && (
-                                <span className="px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300">
-                                  {extras} (extra)
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-1 text-[10px] mt-1 text-slate-500">
-                              <span className="px-2">↑ Apellido 1</span>
-                              <span className="px-2">↑ Apellido 2</span>
-                              <span className="px-2">↑ Nombre 1</span>
-                              <span className="px-2">↑ Nombre 2</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <GuiaNombre nombre={prop.nombre_propietario} />
                     </div>
                     
                     {/* Estado (campo libre) */}
@@ -4307,47 +4309,7 @@ export default function Predios() {
                         placeholder="PÉREZ GARCÍA JUAN CARLOS"
                         className="font-mono"
                       />
-                      {/* Guía interactiva que muestra cómo se interpreta el nombre */}
-                      {(() => {
-                        const partes = (prop.nombre_propietario || '').trim().split(/\s+/).filter(Boolean);
-                        const apellido1 = partes[0] || '________';
-                        const apellido2 = partes[1] || '________';
-                        const nombre1 = partes[2] || '________';
-                        const nombre2 = partes[3] || '';
-                        const extras = partes.slice(4).join(' ');
-                        
-                        return (
-                          <div className="mt-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
-                            <div className="flex flex-wrap gap-1 text-xs font-mono">
-                              <span className={`px-2 py-1 rounded ${partes[0] ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {apellido1}
-                              </span>
-                              <span className={`px-2 py-1 rounded ${partes[1] ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {apellido2}
-                              </span>
-                              <span className={`px-2 py-1 rounded ${partes[2] ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-slate-200 text-slate-400'}`}>
-                                {nombre1}
-                              </span>
-                              {(partes[3] || partes.length === 3) && (
-                                <span className={`px-2 py-1 rounded ${partes[3] ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-slate-200 text-slate-400'}`}>
-                                  {nombre2 || '________'}
-                                </span>
-                              )}
-                              {extras && (
-                                <span className="px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300">
-                                  {extras} (extra)
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-1 text-[10px] mt-1 text-slate-500">
-                              <span className="px-2">↑ Apellido 1</span>
-                              <span className="px-2">↑ Apellido 2</span>
-                              <span className="px-2">↑ Nombre 1</span>
-                              <span className="px-2">↑ Nombre 2</span>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <GuiaNombre nombre={prop.nombre_propietario} />
                     </div>
                     <div>
                       <Label className="text-xs mb-2 block">Tipo Documento *</Label>
