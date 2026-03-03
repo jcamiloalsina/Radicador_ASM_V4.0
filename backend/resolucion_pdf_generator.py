@@ -3,6 +3,7 @@ Generador de PDF de Resolución Catastral
 Usa los mismos márgenes y posiciones que el Certificado Catastral
 """
 import io
+import os
 import base64
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
@@ -136,6 +137,15 @@ def generate_resolucion_pdf(
     except:
         firma_img = None
     
+    # Cargar logo para marca de agua
+    logo_watermark = None
+    try:
+        logo_path = "/app/frontend/public/logo-asomunicipios-solo.png"
+        if os.path.exists(logo_path):
+            logo_watermark = ImageReader(logo_path)
+    except:
+        logo_watermark = None
+    
     # Configuración de fuentes
     fuente_titulo = 11
     fuente_cuerpo = 9
@@ -143,8 +153,27 @@ def generate_resolucion_pdf(
     espaciado_parrafos = 12
     espaciado_secciones = 18
     
+    def draw_watermark():
+        """Dibuja la marca de agua con el logo de Asomunicipios"""
+        if logo_watermark:
+            c.saveState()
+            # Tamaño y posición del logo (centrado en la página)
+            watermark_width = 350
+            watermark_height = 350
+            watermark_x = (width - watermark_width) / 2
+            watermark_y = (height - watermark_height) / 2
+            # Aplicar transparencia
+            c.setFillAlpha(0.08)  # Muy transparente para marca de agua
+            c.drawImage(logo_watermark, watermark_x, watermark_y,
+                       width=watermark_width, height=watermark_height,
+                       preserveAspectRatio=True, mask='auto')
+            c.restoreState()
+    
     def draw_header():
         """Dibuja el encabezado IDÉNTICO al certificado catastral"""
+        # Primero dibujar la marca de agua (detrás del contenido)
+        draw_watermark()
+        
         if imagenes_ok and encabezado_img:
             encabezado_width = content_width + 1 * cm
             encabezado_height = 2.0 * cm
