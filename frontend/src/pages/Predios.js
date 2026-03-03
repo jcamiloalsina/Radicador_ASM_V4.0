@@ -5849,10 +5849,48 @@ export default function Predios() {
                               </div>
                             )}
                             
+                            {/* Otros campos modificados (matrícula, dirección, avalúo, etc.) */}
+                            {r.campos_modificados?.filter(cm => 
+                              ['matricula_inmobiliaria', 'direccion', 'avaluo', 'area_terreno', 'area_construida', 'destino_economico', 'codigo_homologado'].includes(cm.campo)
+                            ).length > 0 && (
+                              <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                                <p className="text-xs font-semibold text-blue-700 mb-1">
+                                  Otros datos modificados:
+                                </p>
+                                <div className="space-y-1">
+                                  {r.campos_modificados.filter(cm => 
+                                    ['matricula_inmobiliaria', 'direccion', 'avaluo', 'area_terreno', 'area_construida', 'destino_economico', 'codigo_homologado'].includes(cm.campo)
+                                  ).map((cm, cmIdx) => {
+                                    const nombresCampos = {
+                                      'matricula_inmobiliaria': 'Matrícula',
+                                      'direccion': 'Dirección',
+                                      'avaluo': 'Avalúo',
+                                      'area_terreno': 'Área Terreno',
+                                      'area_construida': 'Área Construida',
+                                      'destino_economico': 'Destino Económico',
+                                      'codigo_homologado': 'Código Homologado'
+                                    };
+                                    return (
+                                      <div key={cmIdx} className="text-xs flex flex-wrap items-center gap-1">
+                                        <span className="font-medium text-blue-700">{nombresCampos[cm.campo] || cm.campo}:</span>
+                                        <span className="text-red-600 line-through">
+                                          {String(cm.valor_anterior || 'N/A').slice(0, 50)}
+                                        </span>
+                                        <span className="text-slate-400">→</span>
+                                        <span className="text-emerald-700 font-medium">
+                                          {String(cm.valor_nuevo || 'N/A').slice(0, 50)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            
                             {/* Si no hay propietarios mostrados, indicar */}
-                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && (
+                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && !r.campos_modificados?.length && (
                               <p className="text-xs text-slate-500 italic">
-                                Sin detalles de propietarios registrados
+                                Sin detalles de cambios registrados
                               </p>
                             )}
                           </div>
