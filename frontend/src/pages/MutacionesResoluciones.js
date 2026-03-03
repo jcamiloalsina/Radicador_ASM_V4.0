@@ -123,6 +123,22 @@ export default function MutacionesResoluciones() {
   // Estado para generación
   const [generando, setGenerando] = useState(false);
 
+  // Estado para M1
+  const [m1Data, setM1Data] = useState({
+    municipio: '',
+    predio: null,
+    numero_resolucion: '',
+    fecha_resolucion: '',
+    radicado_peticion: '',
+    propietarios_anteriores: [],
+    propietarios_nuevos: []
+  });
+  const [searchPredioM1, setSearchPredioM1] = useState('');
+  const [searchResultsM1, setSearchResultsM1] = useState([]);
+  const [searchingPrediosM1, setSearchingPrediosM1] = useState(false);
+  const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
+  const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
+
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
     setLoadingHistorial(true);
@@ -150,6 +166,212 @@ export default function MutacionesResoluciones() {
       fetchHistorial();
     }
   }, [activeTab, fetchHistorial]);
+
+  // =====================
+  // FUNCIONES PARA M1
+  // =====================
+  
+  // Buscar predios para M1
+  const buscarPrediosM1 = async () => {
+    if (!searchPredioM1 || searchPredioM1.length < 3) {
+      toast.error('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosM1(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m1Data.municipio)?.nombre || '';
+      
+      const response = await axios.get(`${API}/predios`, {
+        params: { 
+          search: searchPredioM1,
+          municipio: municipioNombre,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setSearchResultsM1(response.data.predios || []);
+      if (response.data.predios?.length === 0) {
+        toast.info('No se encontraron predios con ese criterio');
+      }
+    } catch (error) {
+      toast.error('Error buscando predios');
+      console.error(error);
+    } finally {
+      setSearchingPrediosM1(false);
+    }
+  };
+
+  // Seleccionar predio para M1
+  const seleccionarPredioM1 = async (predio) => {
+    setM1Data(prev => ({
+      ...prev,
+      predio: predio,
+      propietarios_anteriores: predio.propietarios || [{
+        nombre_propietario: predio.nombre_propietario || '',
+        tipo_documento: predio.tipo_documento || 'C',
+        numero_documento: predio.numero_documento || ''
+      }],
+      propietarios_nuevos: []
+    }));
+    setSearchResultsM1([]);
+    setSearchPredioM1('');
+    
+    // Cargar siguiente número de resolución
+    if (predio.codigo_predial_nacional) {
+      const codigoMunicipio = predio.codigo_predial_nacional.substring(0, 5);
+      await cargarSiguienteNumeroResolucion(codigoMunicipio);
+    }
+  };
+
+  // Cargar siguiente número de resolución
+  const cargarSiguienteNumeroResolucion = async (codigoMunicipio) => {
+    setCargandoNumeroResolucion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/siguiente-numero/${codigoMunicipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setM1Data(prev => ({
+          ...prev,
+          numero_resolucion: response.data.numero_resolucion,
+          fecha_resolucion: response.data.fecha_resolucion
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando número de resolución:', error);
+    } finally {
+      setCargandoNumeroResolucion(false);
+    }
+  };
+
+  // Buscar radicados
+  const buscarRadicados = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponibles([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { q: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setRadicadosDisponibles(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados:', error);
+    }
+  };
+
+  // Agregar propietario nuevo
+  const agregarPropietarioNuevo = () => {
+    setM1Data(prev => ({
+      ...prev,
+      propietarios_nuevos: [...prev.propietarios_nuevos, {
+        nombre_propietario: '',
+        tipo_documento: 'C',
+        numero_documento: ''
+      }]
+    }));
+  };
+
+  // Actualizar propietario nuevo
+  const actualizarPropietarioNuevo = (index, campo, valor) => {
+    setM1Data(prev => {
+      const nuevos = [...prev.propietarios_nuevos];
+      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      return { ...prev, propietarios_nuevos: nuevos };
+    });
+  };
+
+  // Eliminar propietario nuevo
+  const eliminarPropietarioNuevo = (index) => {
+    setM1Data(prev => ({
+      ...prev,
+      propietarios_nuevos: prev.propietarios_nuevos.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Generar resolución M1
+  const generarResolucionM1 = async () => {
+    // Validaciones
+    if (!m1Data.predio) {
+      toast.error('Seleccione un predio');
+      return;
+    }
+    if (!m1Data.numero_resolucion) {
+      toast.error('No se ha generado el número de resolución');
+      return;
+    }
+    if (m1Data.propietarios_nuevos.length === 0) {
+      toast.error('Agregue al menos un propietario nuevo');
+      return;
+    }
+    
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/resoluciones/generar-manual`, {
+        predio_id: m1Data.predio.id,
+        tipo_mutacion: 'M1',
+        numero_resolucion: m1Data.numero_resolucion,
+        fecha_resolucion: m1Data.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
+        radicado_peticion: m1Data.radicado_peticion || null,
+        propietarios_anteriores: m1Data.propietarios_anteriores,
+        propietarios_nuevos: m1Data.propietarios_nuevos,
+        datos_predio: {
+          ...m1Data.predio,
+          propietarios: m1Data.propietarios_nuevos
+        }
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
+        
+        // Abrir PDF en nueva pestaña
+        if (response.data.pdf_url) {
+          window.open(response.data.pdf_url, '_blank');
+        }
+        
+        // Limpiar formulario
+        resetFormularioM1();
+        setShowMutacionDialog(false);
+        setTipoMutacionSeleccionado(null);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error generando resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario M1
+  const resetFormularioM1 = () => {
+    setM1Data({
+      municipio: '',
+      predio: null,
+      numero_resolucion: '',
+      fecha_resolucion: '',
+      radicado_peticion: '',
+      propietarios_anteriores: [],
+      propietarios_nuevos: []
+    });
+    setSearchPredioM1('');
+    setSearchResultsM1([]);
+    setRadicadosDisponibles([]);
+  };
+
+  // =====================
+  // FUNCIONES PARA M2
+  // =====================
 
   // Buscar predios
   const buscarPredios = async () => {
@@ -827,9 +1049,289 @@ export default function MutacionesResoluciones() {
           {tipoMutacionSeleccionado?.codigo === 'M2' && renderFormularioM2()}
           
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
-            <div className="py-8 text-center text-slate-500">
-              <p>Para M1, use el formulario de edición de predio en Gestión de Predios.</p>
-              <p className="text-sm mt-2">Esta funcionalidad se migrará próximamente a este módulo.</p>
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+              {/* Selección de Municipio */}
+              <div>
+                <Label>Municipio *</Label>
+                <Select 
+                  value={m1Data.municipio} 
+                  onValueChange={(v) => setM1Data(prev => ({ ...prev, municipio: v, predio: null }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar municipio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MUNICIPIOS.map(m => (
+                      <SelectItem key={m.codigo} value={m.codigo}>{m.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Búsqueda de Predio */}
+              <Card className="border-blue-200 bg-blue-50/30">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                    <Search className="w-4 h-4" />
+                    Buscar Predio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-2 space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={searchPredioM1}
+                      onChange={(e) => setSearchPredioM1(e.target.value)}
+                      placeholder="Buscar por código predial, matrícula o propietario..."
+                      onKeyDown={(e) => e.key === 'Enter' && buscarPrediosM1()}
+                      disabled={!m1Data.municipio}
+                    />
+                    <Button onClick={buscarPrediosM1} disabled={searchingPrediosM1 || !m1Data.municipio}>
+                      <Search className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Resultados de búsqueda */}
+                  {searchResultsM1.length > 0 && (
+                    <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
+                      {searchResultsM1.map((predio, idx) => (
+                        <div 
+                          key={idx}
+                          className="p-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                          onClick={() => seleccionarPredioM1(predio)}
+                        >
+                          <div>
+                            <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                            <p className="text-xs text-slate-600">{predio.direccion} - {predio.nombre_propietario}</p>
+                          </div>
+                          <Plus className="w-4 h-4 text-blue-600" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Predio seleccionado */}
+                  {m1Data.predio && (
+                    <div className="bg-white p-4 rounded-lg border border-blue-300">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <Badge className="bg-blue-100 text-blue-800">Predio Seleccionado</Badge>
+                          <p className="font-bold text-lg mt-2">{m1Data.predio.codigo_predial_nacional}</p>
+                          <p className="text-sm text-slate-600">{m1Data.predio.direccion}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Matrícula: {m1Data.predio.matricula_inmobiliaria || 'N/A'} | 
+                            Área: {m1Data.predio.area_terreno || 0} m²
+                          </p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setM1Data(prev => ({ ...prev, predio: null, propietarios_anteriores: [], propietarios_nuevos: [] }))}
+                          className="text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Información de Resolución */}
+              {m1Data.predio && (
+                <>
+                  <Card className="border-purple-200 bg-purple-50/30">
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                        <FileText className="w-4 h-4" />
+                        Información de Resolución
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-purple-700">Número de Resolución</Label>
+                          <div className="relative">
+                            <Input 
+                              value={m1Data.numero_resolucion}
+                              readOnly
+                              className="bg-purple-100 font-mono text-purple-800"
+                              placeholder={cargandoNumeroResolucion ? "Generando..." : "Seleccione un predio"}
+                            />
+                            {cargandoNumeroResolucion && (
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-purple-600 mt-1">Se genera automáticamente</p>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-xs text-purple-700">Fecha de Resolución</Label>
+                          <Input 
+                            type="date"
+                            value={m1Data.fecha_resolucion ? 
+                              m1Data.fecha_resolucion.split('/').reverse().join('-') : 
+                              new Date().toISOString().split('T')[0]
+                            }
+                            onChange={(e) => {
+                              const fecha = e.target.value;
+                              const partes = fecha.split('-');
+                              const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                              setM1Data(prev => ({ ...prev, fecha_resolucion: fechaFormateada }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Radicado */}
+                      <div>
+                        <Label className="text-xs text-purple-700">Radicado de Petición (opcional)</Label>
+                        <div className="relative">
+                          <Input
+                            value={m1Data.radicado_peticion}
+                            onChange={(e) => {
+                              const valor = e.target.value.toUpperCase();
+                              setM1Data(prev => ({ ...prev, radicado_peticion: valor }));
+                              buscarRadicados(valor);
+                            }}
+                            placeholder="Escribir número de radicado..."
+                          />
+                          {radicadosDisponibles.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                              {radicadosDisponibles.map(rad => (
+                                <button
+                                  key={rad.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setM1Data(prev => ({ ...prev, radicado_peticion: rad.radicado }));
+                                    setRadicadosDisponibles([]);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b last:border-0"
+                                >
+                                  <span className="font-mono text-purple-700">{rad.radicado}</span>
+                                  <span className="text-slate-500 ml-2">- {rad.tipo_tramite}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Propietarios Anteriores (CANCELAR) */}
+                  <Card className="border-red-200 bg-red-50/30">
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm flex items-center gap-2 text-red-800">
+                        <X className="w-4 h-4" />
+                        Propietarios a CANCELAR ({m1Data.propietarios_anteriores.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      {m1Data.propietarios_anteriores.map((prop, idx) => (
+                        <div key={idx} className="bg-white p-3 rounded-lg border border-red-200 mb-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nombre</Label>
+                              <Input value={prop.nombre_propietario} readOnly className="bg-slate-50" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Documento</Label>
+                              <Input value={`${prop.tipo_documento} ${prop.numero_documento}`} readOnly className="bg-slate-50" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  {/* Propietarios Nuevos (INSCRIBIR) */}
+                  <Card className="border-emerald-200 bg-emerald-50/30">
+                    <CardHeader className="py-3">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
+                          <Check className="w-4 h-4" />
+                          Propietarios a INSCRIBIR ({m1Data.propietarios_nuevos.length})
+                        </CardTitle>
+                        <Button size="sm" onClick={agregarPropietarioNuevo} className="bg-emerald-600 hover:bg-emerald-700">
+                          <Plus className="w-4 h-4 mr-1" /> Agregar
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      {m1Data.propietarios_nuevos.length === 0 ? (
+                        <p className="text-center text-slate-500 py-4">
+                          Haga clic en "Agregar" para añadir los nuevos propietarios
+                        </p>
+                      ) : (
+                        m1Data.propietarios_nuevos.map((prop, idx) => (
+                          <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200 mb-2">
+                            <div className="flex justify-between items-center mb-2">
+                              <Badge className="bg-emerald-100 text-emerald-800">Propietario {idx + 1}</Badge>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => eliminarPropietarioNuevo(idx)}
+                                className="text-red-600 h-6"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              <div className="col-span-2">
+                                <Label className="text-xs">Nombre Completo *</Label>
+                                <Input 
+                                  value={prop.nombre_propietario}
+                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'nombre_propietario', e.target.value.toUpperCase())}
+                                  placeholder="NOMBRE COMPLETO"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Tipo Doc</Label>
+                                <Select 
+                                  value={prop.tipo_documento}
+                                  onValueChange={(v) => actualizarPropietarioNuevo(idx, 'tipo_documento', v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="C">CC</SelectItem>
+                                    <SelectItem value="N">NIT</SelectItem>
+                                    <SelectItem value="T">TI</SelectItem>
+                                    <SelectItem value="E">CE</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Número *</Label>
+                                <Input 
+                                  value={prop.numero_documento}
+                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value)}
+                                  placeholder="12345678"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Preview */}
+                  {m1Data.numero_resolucion && (
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border">
+                      <p className="text-xs text-purple-600 mb-1">Vista previa de la resolución:</p>
+                      <p className="font-mono text-xl font-bold text-purple-800">{m1Data.numero_resolucion}</p>
+                      <p className="text-sm text-slate-600">
+                        Fecha: {m1Data.fecha_resolucion || new Date().toLocaleDateString('es-CO')}
+                        {m1Data.radicado_peticion && ` | Radicado: ${m1Data.radicado_peticion}`}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
           
@@ -837,9 +1339,19 @@ export default function MutacionesResoluciones() {
             <Button variant="outline" onClick={() => {
               setShowMutacionDialog(false);
               resetFormularioM2();
+              resetFormularioM1();
             }}>
               Cancelar
             </Button>
+            {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predio && (
+              <Button 
+                onClick={generarResolucionM1} 
+                disabled={generando || !m1Data.numero_resolucion || m1Data.propietarios_nuevos.length === 0}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {generando ? 'Generando...' : 'Generar Resolución M1'}
+              </Button>
+            )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
               <Button 
                 onClick={generarResolucionM2} 
