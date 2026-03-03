@@ -276,10 +276,10 @@ export default function MutacionesResoluciones() {
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m1Data.municipio)?.nombre || '';
       
       // Primero obtener la vigencia actual del sistema
-      const statsResponse = await axios.get(`${API}/predios/stats`, {
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const vigenciaActual = statsResponse.data.vigencia;
+      const vigenciaActual = statsResponse.data.vigencia_actual;
       
       // Buscar predios con la vigencia actual
       const response = await axios.get(`${API}/predios`, {
@@ -486,10 +486,10 @@ export default function MutacionesResoluciones() {
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
       
       // Primero obtener la vigencia actual del sistema
-      const statsResponse = await axios.get(`${API}/predios/stats`, {
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const vigenciaActual = statsResponse.data.vigencia;
+      const vigenciaActual = statsResponse.data.vigencia_actual;
       
       // Buscar predios con la vigencia actual
       const response = await axios.get(`${API}/predios`, {
