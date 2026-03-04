@@ -13,7 +13,7 @@ import {
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
-  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock
+  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -113,7 +113,11 @@ export default function MutacionesResoluciones() {
     },
     predios_cancelados: [],
     predios_inscritos: [],
-    documentos_soporte: []
+    documentos_soporte: [],
+    // Campos específicos para Englobe
+    tipo_englobe: '', // 'total' o 'absorcion'
+    predio_matriz_id: null, // ID del predio que absorbe (solo para absorción)
+    predio_resultante: null // Datos del predio resultante (editable)
   });
   
   // Estado para búsqueda de predios
@@ -1304,9 +1308,31 @@ export default function MutacionesResoluciones() {
       toast.error('Agregue al menos un predio a cancelar');
       return;
     }
-    if (m2Data.predios_inscritos.length === 0) {
-      toast.error('Agregue al menos un predio a inscribir');
-      return;
+    
+    // Validaciones específicas para Englobe
+    if (m2Data.subtipo === 'englobe') {
+      if (m2Data.predios_cancelados.length < 2) {
+        toast.error('Para englobe necesita al menos 2 predios a cancelar');
+        return;
+      }
+      if (!m2Data.tipo_englobe) {
+        toast.error('Seleccione el tipo de englobe (Total o Absorción)');
+        return;
+      }
+      if (m2Data.tipo_englobe === 'absorcion' && !m2Data.predio_matriz_id) {
+        toast.error('Seleccione el predio matriz que absorberá a los demás');
+        return;
+      }
+      if (!m2Data.predio_resultante) {
+        toast.error('Complete los datos del predio resultante');
+        return;
+      }
+    } else {
+      // Validación para Desengloble
+      if (m2Data.predios_inscritos.length === 0) {
+        toast.error('Agregue al menos un predio a inscribir');
+        return;
+      }
     }
     
     setGenerando(true);
@@ -1363,6 +1389,11 @@ export default function MutacionesResoluciones() {
         predios_inscritos: prediosInscribirOrdenados
       };
       
+      // Para ENGLOBE: usar el predio_resultante como único predio inscrito
+      if (m2Data.subtipo === 'englobe' && m2Data.predio_resultante) {
+        dataToSend.predios_inscritos = [m2Data.predio_resultante];
+      }
+      
       const response = await axios.post(`${API}/resoluciones/generar-m2`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1396,7 +1427,10 @@ export default function MutacionesResoluciones() {
       solicitante: { nombre: '', documento: '', tipo_documento: 'C' },
       predios_cancelados: [],
       predios_inscritos: [],
-      documentos_soporte: []
+      documentos_soporte: [],
+      tipo_englobe: '',
+      predio_matriz_id: null,
+      predio_resultante: null
     });
     setSearchPredio('');
     setSearchResults([]);
@@ -1769,45 +1803,434 @@ export default function MutacionesResoluciones() {
         </CardContent>
       </Card>
 
-      {/* Predios a Inscribir (Destino) */}
-      <Card className="border-emerald-200 bg-emerald-50/30">
-        <CardHeader className="py-3">
-          <div className="flex justify-between items-center">
+      {/* ======================== */}
+      {/* CONFIGURACIÓN DE ENGLOBE */}
+      {/* ======================== */}
+      {m2Data.subtipo === 'englobe' && m2Data.predios_cancelados.length >= 2 && (
+        <Card className="border-purple-200 bg-purple-50/30">
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+              <Layers className="w-4 h-4" />
+              Configuración del Englobe
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-3 space-y-4">
+            {/* Tipo de Englobe */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Tipo de Englobe</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div
+                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                    m2Data.tipo_englobe === 'total' 
+                      ? 'border-purple-500 bg-purple-100' 
+                      : 'border-slate-200 hover:border-purple-300'
+                  }`}
+                  onClick={() => setM2Data(prev => ({ 
+                    ...prev, 
+                    tipo_englobe: 'total',
+                    predio_matriz_id: null,
+                    predio_resultante: null 
+                  }))}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      m2Data.tipo_englobe === 'total' ? 'border-purple-600 bg-purple-600' : 'border-slate-300'
+                    }`}>
+                      {m2Data.tipo_englobe === 'total' && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="font-semibold text-sm">Englobe TOTAL</span>
+                  </div>
+                  <p className="text-xs text-slate-600 ml-6">
+                    Los predios se fusionan en un predio NUEVO (nuevo NPN, nueva matrícula)
+                  </p>
+                </div>
+                
+                <div
+                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                    m2Data.tipo_englobe === 'absorcion' 
+                      ? 'border-purple-500 bg-purple-100' 
+                      : 'border-slate-200 hover:border-purple-300'
+                  }`}
+                  onClick={() => setM2Data(prev => ({ 
+                    ...prev, 
+                    tipo_englobe: 'absorcion',
+                    predio_resultante: null 
+                  }))}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      m2Data.tipo_englobe === 'absorcion' ? 'border-purple-600 bg-purple-600' : 'border-slate-300'
+                    }`}>
+                      {m2Data.tipo_englobe === 'absorcion' && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="font-semibold text-sm">Englobe por ABSORCIÓN</span>
+                  </div>
+                  <p className="text-xs text-slate-600 ml-6">
+                    Un predio matriz absorbe a los demás (mismo NPN, área aumentada)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Selector de Predio Matriz (solo para absorción) */}
+            {m2Data.tipo_englobe === 'absorcion' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">
+                  Seleccionar Predio Matriz (el que absorbe)
+                </label>
+                <div className="space-y-2">
+                  {m2Data.predios_cancelados.map((predio, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        m2Data.predio_matriz_id === predio.id 
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-slate-200 hover:border-amber-300'
+                      }`}
+                      onClick={() => {
+                        // Al seleccionar matriz, pre-cargar sus datos en predio_resultante
+                        const areaTotal = m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0);
+                        const areaConstruidaTotal = m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_construida || 0), 0);
+                        const avaluoTotal = m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.avaluo || 0), 0);
+                        
+                        setM2Data(prev => ({ 
+                          ...prev, 
+                          predio_matriz_id: predio.id,
+                          predio_resultante: {
+                            ...predio,
+                            area_terreno: areaTotal,
+                            area_construida: areaConstruidaTotal,
+                            avaluo: avaluoTotal,
+                            es_matriz_absorbente: true
+                          }
+                        }));
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            m2Data.predio_matriz_id === predio.id ? 'border-amber-600 bg-amber-600' : 'border-slate-300'
+                          }`}>
+                            {m2Data.predio_matriz_id === predio.id && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="font-mono font-medium text-sm">{predio.codigo_predial}</p>
+                            <p className="text-xs text-slate-600">{predio.direccion}</p>
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-slate-500">
+                          <p>Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                          <p>Matrícula: {predio.matricula_inmobiliaria || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resumen de áreas combinadas */}
+            {m2Data.tipo_englobe && (
+              <div className="bg-slate-100 p-3 rounded-lg">
+                <p className="text-sm font-medium text-slate-700 mb-2">Resumen de Predios a Fusionar:</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-white p-2 rounded">
+                    <p className="text-xs text-slate-500">Área Terreno Total</p>
+                    <p className="font-bold text-emerald-700">
+                      {m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0).toLocaleString()} m²
+                    </p>
+                  </div>
+                  <div className="bg-white p-2 rounded">
+                    <p className="text-xs text-slate-500">Área Construida Total</p>
+                    <p className="font-bold text-emerald-700">
+                      {m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_construida || 0), 0).toLocaleString()} m²
+                    </p>
+                  </div>
+                  <div className="bg-white p-2 rounded">
+                    <p className="text-xs text-slate-500">Avalúo Total</p>
+                    <p className="font-bold text-emerald-700">
+                      ${m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.avaluo || 0), 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Predios a Inscribir (Destino) - Diferente para Englobe vs Desengloble */}
+      {m2Data.subtipo === 'englobe' ? (
+        /* ======================== */
+        /* INSCRIPCIÓN PARA ENGLOBE */
+        /* ======================== */
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardHeader className="py-3">
             <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
               <Check className="w-4 h-4" />
-              Predios a INSCRIBIR ({m2Data.predios_inscritos.length})
+              Predio RESULTANTE del Englobe
             </CardTitle>
-            <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
-              <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="py-2 space-y-3">
-          {m2Data.predios_inscritos.map((predio, idx) => (
-            <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge className="bg-emerald-100 text-emerald-800">#{idx + 1}</Badge>
-                    <span className="font-mono font-medium text-sm">{predio.codigo_homologado || 'Sin código'}</span>
-                  </div>
-                  <p className="text-xs text-slate-600">{predio.direccion || 'Sin dirección'}</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    NPN: {predio.npn || 'N/A'} | Matrícula: {predio.matricula_inmobiliaria || 'N/A'}
+          </CardHeader>
+          <CardContent className="py-3 space-y-4">
+            {!m2Data.tipo_englobe ? (
+              <div className="text-center py-6 text-slate-500">
+                <p className="text-sm">Primero seleccione el tipo de englobe arriba</p>
+              </div>
+            ) : m2Data.tipo_englobe === 'absorcion' && !m2Data.predio_matriz_id ? (
+              <div className="text-center py-6 text-slate-500">
+                <p className="text-sm">Seleccione el predio matriz que absorberá a los demás</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Info del tipo de predio resultante */}
+                <div className={`p-3 rounded-lg border ${
+                  m2Data.tipo_englobe === 'total' 
+                    ? 'bg-blue-50 border-blue-200' 
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <p className={`text-sm font-medium ${
+                    m2Data.tipo_englobe === 'total' ? 'text-blue-800' : 'text-amber-800'
+                  }`}>
+                    {m2Data.tipo_englobe === 'total' 
+                      ? '📋 Se creará un predio NUEVO - Complete los datos del predio resultante'
+                      : '📋 El predio matriz conservará su NPN pero con datos actualizados'
+                    }
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Área: {Number(predio.area_terreno || 0).toLocaleString()} m² | 
-                    Construida: {Number(predio.area_construida || 0).toLocaleString()} m² | 
-                    Avalúo: ${Number(predio.avaluo || 0).toLocaleString()}
-                  </p>
-                  {predio.propietarios?.[0]?.nombre_propietario && (
-                    <p className="text-xs text-emerald-700 mt-1">
-                      Propietario: {predio.propietarios[0].nombre_propietario}
-                    </p>
-                  )}
                 </div>
-                <div className="flex gap-1">
-                  <Button 
+
+                {/* Formulario del predio resultante */}
+                <div className="bg-white p-4 rounded-lg border border-emerald-200 space-y-4">
+                  {/* Si es TOTAL, necesita nuevo NPN y código */}
+                  {m2Data.tipo_englobe === 'total' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">NPN (30 dígitos)</label>
+                          <Input
+                            value={m2Data.predio_resultante?.npn || ''}
+                            onChange={(e) => setM2Data(prev => ({
+                              ...prev,
+                              predio_resultante: { ...prev.predio_resultante, npn: e.target.value, codigo_predial: e.target.value }
+                            }))}
+                            placeholder="Código predial del nuevo predio"
+                            className="font-mono text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-slate-600">Código Homologado</label>
+                          <Input
+                            value={m2Data.predio_resultante?.codigo_homologado || ''}
+                            onChange={(e) => setM2Data(prev => ({
+                              ...prev,
+                              predio_resultante: { ...prev.predio_resultante, codigo_homologado: e.target.value }
+                            }))}
+                            placeholder="Código homologado"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Matrícula Inmobiliaria</label>
+                        <Input
+                          value={m2Data.predio_resultante?.matricula_inmobiliaria || ''}
+                          onChange={(e) => setM2Data(prev => ({
+                            ...prev,
+                            predio_resultante: { ...prev.predio_resultante, matricula_inmobiliaria: e.target.value }
+                          }))}
+                          placeholder="Nueva matrícula inmobiliaria"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Si es ABSORCIÓN, mostrar datos del matriz (no editables NPN/código) */}
+                  {m2Data.tipo_englobe === 'absorcion' && m2Data.predio_resultante && (
+                    <div className="bg-amber-50 p-3 rounded-lg mb-3">
+                      <p className="text-xs text-amber-700 font-medium mb-1">Predio Matriz Seleccionado:</p>
+                      <p className="font-mono text-sm">{m2Data.predio_resultante.codigo_predial}</p>
+                      <p className="text-xs text-slate-600">Matrícula: {m2Data.predio_resultante.matricula_inmobiliaria || 'N/A'}</p>
+                    </div>
+                  )}
+
+                  {/* Dirección */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Dirección</label>
+                    <Input
+                      value={m2Data.predio_resultante?.direccion || ''}
+                      onChange={(e) => setM2Data(prev => ({
+                        ...prev,
+                        predio_resultante: { ...prev.predio_resultante, direccion: e.target.value }
+                      }))}
+                      placeholder="Dirección del predio resultante"
+                    />
+                  </div>
+
+                  {/* Áreas y Avalúo */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Área Terreno (m²)</label>
+                      <Input
+                        type="number"
+                        value={m2Data.predio_resultante?.area_terreno || ''}
+                        onChange={(e) => setM2Data(prev => ({
+                          ...prev,
+                          predio_resultante: { ...prev.predio_resultante, area_terreno: e.target.value }
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Área Construida (m²)</label>
+                      <Input
+                        type="number"
+                        value={m2Data.predio_resultante?.area_construida || ''}
+                        onChange={(e) => setM2Data(prev => ({
+                          ...prev,
+                          predio_resultante: { ...prev.predio_resultante, area_construida: e.target.value }
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Avalúo ($)</label>
+                      <Input
+                        type="number"
+                        value={m2Data.predio_resultante?.avaluo || ''}
+                        onChange={(e) => setM2Data(prev => ({
+                          ...prev,
+                          predio_resultante: { ...prev.predio_resultante, avaluo: e.target.value }
+                        }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Destino Económico */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Destino Económico</label>
+                    <select
+                      className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                      value={m2Data.predio_resultante?.destino_economico || 'R'}
+                      onChange={(e) => setM2Data(prev => ({
+                        ...prev,
+                        predio_resultante: { ...prev.predio_resultante, destino_economico: e.target.value }
+                      }))}
+                    >
+                      <option value="R">R - Residencial</option>
+                      <option value="C">C - Comercial</option>
+                      <option value="I">I - Industrial</option>
+                      <option value="A">A - Agropecuario</option>
+                      <option value="L">L - Lote</option>
+                    </select>
+                  </div>
+
+                  {/* Datos del Propietario */}
+                  <div className="border-t pt-4 mt-4">
+                    <p className="text-sm font-medium text-slate-700 mb-3">Propietario del Predio Resultante</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-slate-600">Nombre Completo</label>
+                        <Input
+                          value={m2Data.predio_resultante?.propietarios?.[0]?.nombre_propietario || ''}
+                          onChange={(e) => setM2Data(prev => ({
+                            ...prev,
+                            predio_resultante: { 
+                              ...prev.predio_resultante, 
+                              propietarios: [{
+                                ...(prev.predio_resultante?.propietarios?.[0] || {}),
+                                nombre_propietario: e.target.value,
+                                nombre: e.target.value
+                              }]
+                            }
+                          }))}
+                          placeholder="Nombre del propietario"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Tipo Doc.</label>
+                        <select
+                          className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                          value={m2Data.predio_resultante?.propietarios?.[0]?.tipo_documento || 'CC'}
+                          onChange={(e) => setM2Data(prev => ({
+                            ...prev,
+                            predio_resultante: { 
+                              ...prev.predio_resultante, 
+                              propietarios: [{
+                                ...(prev.predio_resultante?.propietarios?.[0] || {}),
+                                tipo_documento: e.target.value
+                              }]
+                            }
+                          }))}
+                        >
+                          <option value="CC">CC</option>
+                          <option value="NIT">NIT</option>
+                          <option value="CE">CE</option>
+                          <option value="TI">TI</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <label className="text-xs font-medium text-slate-600">Número de Documento</label>
+                      <Input
+                        value={m2Data.predio_resultante?.propietarios?.[0]?.numero_documento || ''}
+                        onChange={(e) => setM2Data(prev => ({
+                          ...prev,
+                          predio_resultante: { 
+                            ...prev.predio_resultante, 
+                            propietarios: [{
+                              ...(prev.predio_resultante?.propietarios?.[0] || {}),
+                              numero_documento: e.target.value,
+                              documento: e.target.value
+                            }]
+                          }
+                        }))}
+                        placeholder="Número de documento"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        /* ============================ */
+        /* INSCRIPCIÓN PARA DESENGLOBLE */
+        /* ============================ */
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardHeader className="py-3">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
+                <Check className="w-4 h-4" />
+                Predios a INSCRIBIR ({m2Data.predios_inscritos.length})
+              </CardTitle>
+              <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
+                <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="py-2 space-y-3">
+            {m2Data.predios_inscritos.map((predio, idx) => (
+              <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-emerald-100 text-emerald-800">#{idx + 1}</Badge>
+                      <span className="font-mono font-medium text-sm">{predio.codigo_homologado || 'Sin código'}</span>
+                    </div>
+                    <p className="text-xs text-slate-600">{predio.direccion || 'Sin dirección'}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      NPN: {predio.npn || 'N/A'} | Matrícula: {predio.matricula_inmobiliaria || 'N/A'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Área: {Number(predio.area_terreno || 0).toLocaleString()} m² | 
+                      Construida: {Number(predio.area_construida || 0).toLocaleString()} m² | 
+                      Avalúo: ${Number(predio.avaluo || 0).toLocaleString()}
+                    </p>
+                    {predio.propietarios?.[0]?.nombre_propietario && (
+                      <p className="text-xs text-emerald-700 mt-1">
+                        Propietario: {predio.propietarios[0].nombre_propietario}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button 
                     variant="outline" 
                     size="sm"
                     onClick={async () => {
@@ -1920,6 +2343,7 @@ export default function MutacionesResoluciones() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 
