@@ -182,6 +182,48 @@
         .btn-cargar:hover {
             background: #007d3a;
         }
+        .btn-agregar {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .btn-agregar:hover {
+            background: #1565c0;
+        }
+        .btn-remove {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 22px;
+        }
+        .btn-remove:hover {
+            background: #b71c1c;
+        }
+        .fecha-row {
+            background: #fffde7;
+            border: 1px solid #fff59d;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .fecha-row .field-row {
+            margin: 0;
+        }
         .avaluo-source {
             font-size: 11px;
             color: #666;
@@ -337,32 +379,40 @@
                     </div>
                     
                     <div class="fecha-inscripcion-section">
-                        <h4>NUEVO - Fecha de Inscripción Catastral</h4>
-                        <div class="field-row">
-                            <div class="field-group">
-                                <label>📅 Año de Inscripción:</label>
-                                <select id="yearCancelado" onchange="cargarAvaluoAutomatico('cancelado')">
-                                    <option value="">Seleccione año...</option>
-                                    <option value="2015">2015</option>
-                                    <option value="2016">2016</option>
-                                    <option value="2017">2017</option>
-                                    <option value="2018">2018</option>
-                                    <option value="2019">2019</option>
-                                    <option value="2020">2020</option>
-                                    <option value="2021">2021</option>
-                                    <option value="2022">2022</option>
-                                    <option value="2023">2023</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2025" selected>2025</option>
-                                    <option value="2026">2026</option>
-                                </select>
-                            </div>
-                            <div class="field-group">
-                                <label>💰 Avalúo Vigencia <span id="labelYearCancelado">2025</span>:</label>
-                                <input type="text" value="$42,023,000" id="avaluoCancelado" placeholder="Ingrese o edite el avalúo...">
-                                <div class="avaluo-source sistema" id="sourceCancelado">✓ Cargado del sistema (editable)</div>
+                        <h4>NUEVO - Fechas de Inscripción Catastral</h4>
+                        <div id="fechasCancelado">
+                            <div class="fecha-row" data-index="0">
+                                <div class="field-row">
+                                    <div class="field-group">
+                                        <label>📅 Año de Inscripción:</label>
+                                        <select onchange="cargarAvaluoAutomatico('cancelado', 0)">
+                                            <option value="">Seleccione año...</option>
+                                            <option value="2015">2015</option>
+                                            <option value="2016">2016</option>
+                                            <option value="2017">2017</option>
+                                            <option value="2018">2018</option>
+                                            <option value="2019">2019</option>
+                                            <option value="2020">2020</option>
+                                            <option value="2021">2021</option>
+                                            <option value="2022">2022</option>
+                                            <option value="2023">2023</option>
+                                            <option value="2024">2024</option>
+                                            <option value="2025" selected>2025</option>
+                                            <option value="2026">2026</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>💰 Avalúo Vigencia <span class="label-year">2025</span>:</label>
+                                        <input type="text" value="$42,023,000" placeholder="Ingrese o edite el avalúo...">
+                                        <div class="avaluo-source sistema">✓ Cargado del sistema (editable)</div>
+                                    </div>
+                                    <button class="btn-remove" onclick="eliminarFecha('cancelado', 0)" title="Eliminar">✕</button>
+                                </div>
                             </div>
                         </div>
+                        <button class="btn-agregar" onclick="agregarFecha('cancelado')">
+                            ➕ Agregar otra fecha de inscripción
+                        </button>
                     </div>
                 </div>
             </div>
@@ -381,32 +431,68 @@
                     </div>
                     
                     <div class="fecha-inscripcion-section">
-                        <h4>NUEVO - Fecha de Inscripción Catastral</h4>
-                        <div class="field-row">
-                            <div class="field-group">
-                                <label>📅 Año de Inscripción:</label>
-                                <select id="yearInscrito" onchange="cargarAvaluoAutomatico('inscrito')">
-                                    <option value="">Seleccione año...</option>
-                                    <option value="2015">2015</option>
-                                    <option value="2016">2016</option>
-                                    <option value="2017">2017</option>
-                                    <option value="2018">2018</option>
-                                    <option value="2019">2019</option>
-                                    <option value="2020">2020</option>
-                                    <option value="2021">2021</option>
-                                    <option value="2022">2022</option>
-                                    <option value="2023" selected>2023</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2026">2026</option>
-                                </select>
+                        <h4>NUEVO - Fechas de Inscripción Catastral</h4>
+                        <div id="fechasInscrito">
+                            <div class="fecha-row" data-index="0">
+                                <div class="field-row">
+                                    <div class="field-group">
+                                        <label>📅 Año de Inscripción:</label>
+                                        <select onchange="cargarAvaluoAutomatico('inscrito', 0)">
+                                            <option value="">Seleccione año...</option>
+                                            <option value="2015">2015</option>
+                                            <option value="2016">2016</option>
+                                            <option value="2017">2017</option>
+                                            <option value="2018">2018</option>
+                                            <option value="2019">2019</option>
+                                            <option value="2020">2020</option>
+                                            <option value="2021">2021</option>
+                                            <option value="2022">2022</option>
+                                            <option value="2023" selected>2023</option>
+                                            <option value="2024">2024</option>
+                                            <option value="2025">2025</option>
+                                            <option value="2026">2026</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>💰 Avalúo Vigencia <span class="label-year">2023</span>:</label>
+                                        <input type="text" value="" placeholder="Sin datos - Ingrese manualmente...">
+                                        <div class="avaluo-source manual">⚠️ Sin avalúo para 2023 - Ingrese manualmente</div>
+                                    </div>
+                                    <button class="btn-remove" onclick="eliminarFecha('inscrito', 0)" title="Eliminar">✕</button>
+                                </div>
                             </div>
-                            <div class="field-group">
-                                <label>💰 Avalúo Vigencia <span id="labelYearInscrito">2023</span>:</label>
-                                <input type="text" value="" placeholder="Sin datos - Ingrese manualmente..." id="avaluoInscrito">
-                                <div class="avaluo-source manual" id="sourceInscrito">⚠️ Sin avalúo para 2023 - Ingrese manualmente (predio nuevo)</div>
+                            <div class="fecha-row" data-index="1">
+                                <div class="field-row">
+                                    <div class="field-group">
+                                        <label>📅 Año de Inscripción:</label>
+                                        <select onchange="cargarAvaluoAutomatico('inscrito', 1)">
+                                            <option value="">Seleccione año...</option>
+                                            <option value="2015">2015</option>
+                                            <option value="2016">2016</option>
+                                            <option value="2017">2017</option>
+                                            <option value="2018">2018</option>
+                                            <option value="2019">2019</option>
+                                            <option value="2020">2020</option>
+                                            <option value="2021">2021</option>
+                                            <option value="2022">2022</option>
+                                            <option value="2023">2023</option>
+                                            <option value="2024" selected>2024</option>
+                                            <option value="2025">2025</option>
+                                            <option value="2026">2026</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label>💰 Avalúo Vigencia <span class="label-year">2024</span>:</label>
+                                        <input type="text" value="$27,000,000" placeholder="Ingrese o edite el avalúo...">
+                                        <div class="avaluo-source sistema">✓ Cargado del sistema (editable)</div>
+                                    </div>
+                                    <button class="btn-remove" onclick="eliminarFecha('inscrito', 1)" title="Eliminar">✕</button>
+                                </div>
                             </div>
                         </div>
+                        <button class="btn-agregar" onclick="agregarFecha('inscrito')">
+                            ➕ Agregar otra fecha de inscripción
+                        </button>
                     </div>
                 </div>
             </div>
@@ -455,7 +541,7 @@
                         <td colspan="2">MATRÍCULA INMOBILIARIA</td>
                         <td colspan="3">270-52528</td>
                     </tr>
-                    <!-- NUEVA FILA -->
+                    <!-- NUEVA FILA - Múltiples fechas -->
                     <tr class="new-row">
                         <td colspan="2" style="font-weight: bold; text-align: left; padding-left: 10px;">
                             FECHA INSCRIPCIÓN CATASTRAL <span class="new-badge">NUEVO</span>
@@ -503,14 +589,22 @@
                         <td colspan="2">MATRÍCULA INMOBILIARIA</td>
                         <td colspan="3">270-52529</td>
                     </tr>
-                    <!-- NUEVA FILA -->
+                    <!-- NUEVAS FILAS - Múltiples fechas de inscripción -->
                     <tr class="new-row">
                         <td colspan="2" style="font-weight: bold; text-align: left; padding-left: 10px;">
                             FECHA INSCRIPCIÓN CATASTRAL <span class="new-badge">NUEVO</span>
                         </td>
                         <td colspan="1" style="font-weight: bold;">2023</td>
                         <td colspan="1" style="font-weight: bold;">AVALÚO:</td>
-                        <td colspan="1" style="font-weight: bold;">$25,000,000</td>
+                        <td colspan="1" style="font-weight: bold;">$22,000,000</td>
+                    </tr>
+                    <tr class="new-row">
+                        <td colspan="2" style="font-weight: bold; text-align: left; padding-left: 10px;">
+                            FECHA INSCRIPCIÓN CATASTRAL
+                        </td>
+                        <td colspan="1" style="font-weight: bold;">2024</td>
+                        <td colspan="1" style="font-weight: bold;">AVALÚO:</td>
+                        <td colspan="1" style="font-weight: bold;">$27,000,000</td>
                     </tr>
                 </table>
             </div>
@@ -540,9 +634,7 @@
 
     <script>
         // Base de datos simulada de avalúos por vigencia
-        // En producción, esto vendría del backend
         const avaluosDB = {
-            // Predio cancelado (existente) - tiene historial
             'cancelado': {
                 '2020': '$35,500,000',
                 '2021': '$37,200,000',
@@ -550,9 +642,8 @@
                 '2023': '$40,500,000',
                 '2024': '$41,200,000',
                 '2025': '$42,023,000',
-                '2026': '$43,500,000'  // Proyección
+                '2026': '$43,500,000'
             },
-            // Predio inscrito (nuevo) - solo tiene datos recientes
             'inscrito': {
                 '2024': '$27,000,000',
                 '2025': '$28,500,000',
@@ -560,15 +651,20 @@
             }
         };
 
-        // Función que se ejecuta AUTOMÁTICAMENTE al cambiar el año
-        function cargarAvaluoAutomatico(tipo) {
-            const yearSelect = document.getElementById('year' + capitalize(tipo));
-            const year = yearSelect.value;
-            const input = document.getElementById('avaluo' + capitalize(tipo));
-            const source = document.getElementById('source' + capitalize(tipo));
-            const labelYear = document.getElementById('labelYear' + capitalize(tipo));
+        let contadores = { cancelado: 1, inscrito: 2 };
+
+        // Función para cargar avalúo automáticamente
+        function cargarAvaluoAutomatico(tipo, index) {
+            const container = document.getElementById('fechas' + capitalize(tipo));
+            const row = container.querySelector(`[data-index="${index}"]`);
+            if (!row) return;
             
-            // Actualizar etiqueta del año
+            const yearSelect = row.querySelector('select');
+            const year = yearSelect.value;
+            const input = row.querySelector('input');
+            const source = row.querySelector('.avaluo-source');
+            const labelYear = row.querySelector('.label-year');
+            
             labelYear.textContent = year || '----';
             
             if (!year) {
@@ -579,19 +675,73 @@
                 return;
             }
             
-            // Buscar avalúo en la "base de datos"
             const avaluoEncontrado = avaluosDB[tipo] && avaluosDB[tipo][year];
             
             if (avaluoEncontrado) {
                 input.value = avaluoEncontrado;
-                input.placeholder = '';
                 source.className = 'avaluo-source sistema';
-                source.innerHTML = '✓ Avalúo vigencia ' + year + ' cargado del sistema <strong>(puede editarlo)</strong>';
+                source.innerHTML = '✓ Avalúo vigencia ' + year + ' cargado (editable)';
             } else {
                 input.value = '';
-                input.placeholder = 'No hay avalúo registrado - Ingrese manualmente...';
+                input.placeholder = 'Sin datos - Ingrese manualmente...';
                 source.className = 'avaluo-source manual';
-                source.textContent = '⚠️ Sin avalúo para vigencia ' + year + ' - Ingrese el valor manualmente';
+                source.textContent = '⚠️ Sin avalúo para ' + year + ' - Ingrese manualmente';
+            }
+        }
+
+        // Función para agregar nueva fecha de inscripción
+        function agregarFecha(tipo) {
+            const container = document.getElementById('fechas' + capitalize(tipo));
+            const newIndex = contadores[tipo]++;
+            
+            const newRow = document.createElement('div');
+            newRow.className = 'fecha-row';
+            newRow.setAttribute('data-index', newIndex);
+            newRow.innerHTML = `
+                <div class="field-row">
+                    <div class="field-group">
+                        <label>📅 Año de Inscripción:</label>
+                        <select onchange="cargarAvaluoAutomatico('${tipo}', ${newIndex})">
+                            <option value="">Seleccione año...</option>
+                            <option value="2015">2015</option>
+                            <option value="2016">2016</option>
+                            <option value="2017">2017</option>
+                            <option value="2018">2018</option>
+                            <option value="2019">2019</option>
+                            <option value="2020">2020</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>💰 Avalúo Vigencia <span class="label-year">----</span>:</label>
+                        <input type="text" value="" placeholder="Seleccione un año primero...">
+                        <div class="avaluo-source"></div>
+                    </div>
+                    <button class="btn-remove" onclick="eliminarFecha('${tipo}', ${newIndex})" title="Eliminar">✕</button>
+                </div>
+            `;
+            container.appendChild(newRow);
+        }
+
+        // Función para eliminar fecha
+        function eliminarFecha(tipo, index) {
+            const container = document.getElementById('fechas' + capitalize(tipo));
+            const rows = container.querySelectorAll('.fecha-row');
+            
+            // No permitir eliminar si solo queda una fila
+            if (rows.length <= 1) {
+                alert('Debe haber al menos una fecha de inscripción');
+                return;
+            }
+            
+            const row = container.querySelector(`[data-index="${index}"]`);
+            if (row) {
+                row.remove();
             }
         }
 
@@ -602,12 +752,6 @@
         // Actualizar display de configuración
         document.getElementById('yearStart').addEventListener('change', function() {
             document.getElementById('displayStart').textContent = this.value;
-        });
-
-        // Inicializar al cargar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            cargarAvaluoAutomatico('cancelado');
-            cargarAvaluoAutomatico('inscrito');
         });
     </script>
 </body>
