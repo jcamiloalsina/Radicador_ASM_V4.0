@@ -40,38 +40,38 @@ def get_m2_plantilla():
         "titulo_englobe": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UN ENGLOBE DE TERRENO",
         "preambulo": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en uso de sus facultades legales otorgadas por la por la Resolución IGAC 1204 del 2021, en "
+            "en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en "
             "concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del "
             "Instituto Geográfico Agustín Codazzi \"Por medio de la cual se expide la resolución única de la "
             "gestión catastral multipropósito\", y"
         ),
         "considerando_intro": (
-            "Que el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía. No. {solicitante_documento} "
-            "Expedida en {municipio}; en su condición de propietario de un predio que hace parte de uno de mayor "
+            "Qué, el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía No. {solicitante_documento}, "
+            "en su condición de propietario de un predio que hace parte de uno de mayor "
             "extensión identificado con el código catastral {codigo_origen}, del Municipio de {municipio}, "
-            "Radicó con el número {radicado}, ante el Gestor catastral de Asociación de Municipios del Catatumbo, "
-            "Provincia de Ocaña y Sur del Cesar – Asomunicipios Catatumbo, una solicitud de trámite catastral "
+            "radicó con el número {radicado}, ante el Gestor catastral de Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios, una solicitud de trámite catastral "
             "con Radicado {radicado} y soportado en los siguientes documentos justificativos:"
         ),
         "documentos_soporte": [
             "Fotocopia cédula de ciudadanía del propietario.",
-            "Escritura pública número {escritura} de fecha de {fecha_escritura} de la Notaria {notaria} y debidamente registrada en el folio de matrícula inmobiliaria del respectivo predio {matricula}.",
-            "Constancia de calificación del folio de matrícula inmobiliaria {matricula}.",
+            "Escritura pública.",
+            "Matrícula inmobiliaria {matricula}.",
             "Plano del predio en formato DWG."
         ],
         "considerando_estudio_desengloble": (
-            "Que con base en los documentos aportados y lo dispuesto por las normas anteriormente "
+            "Qué, con base en los documentos aportados y lo dispuesto por las normas anteriormente "
             "mencionadas, realizado el respectivo estudio de oficina y visita al predio, se procede hacer "
             "mutación de segunda desenglobe al predio identificado con el No. {codigo_origen} y "
             "NPN {npn_origen}."
         ),
         "considerando_estudio_englobe": (
-            "Que con base en los documentos aportados y lo dispuesto por las normas anteriormente "
+            "Qué, con base en los documentos aportados y lo dispuesto por las normas anteriormente "
             "mencionadas, realizado el respectivo estudio de oficina y visita al predio, se procede hacer "
             "mutación de segunda englobe a los predios identificados."
         ),
         "considerando_final": (
-            "Que, en consecuencia, procede una mutación de segunda y su correspondiente inscripción en el "
+            "Qué, en consecuencia, procede una mutación de segunda y su correspondiente inscripción en el "
             "catastro, conforme lo indican el Literal C del Artículo 2.2.2.2.2 del Decreto 148 de 2020, el Artículo "
             "4.5.1, 4.5.2, 4.6.3, y 4.7.13 de la Resolución 1040 de 2023, y lo preceptuado en la resolución sobre "
             "los requisitos para trámites y otros procedimientos administrativos."
@@ -234,13 +234,39 @@ def generate_resolucion_m2_pdf(
             nueva_pagina()
     
     def dibujar_texto_justificado(texto, font_name=None, font_size=10, line_height=14):
+        """Dibuja texto justificado (alineado a ambos márgenes)"""
         nonlocal y_position
         fname = font_name or font_normal
         c.setFont(fname, font_size)
         lines = simpleSplit(texto, fname, font_size, CONTENT_WIDTH)
-        for line in lines:
+        
+        for i, line in enumerate(lines):
             verificar_espacio(line_height)
-            c.drawString(MARGIN_LEFT, y_position, line)
+            
+            # Si es la última línea, no justificar (alinear a la izquierda)
+            if i == len(lines) - 1:
+                c.drawString(MARGIN_LEFT, y_position, line)
+            else:
+                # Justificar: distribuir espacios extra entre palabras
+                words = line.split(' ')
+                if len(words) > 1:
+                    # Calcular el ancho total de las palabras sin espacios
+                    total_words_width = sum(c.stringWidth(word, fname, font_size) for word in words)
+                    # Espacio total disponible para distribuir
+                    total_space = CONTENT_WIDTH - total_words_width
+                    # Espacio entre cada palabra
+                    space_width = total_space / (len(words) - 1)
+                    
+                    # Dibujar cada palabra con el espaciado calculado
+                    x = MARGIN_LEFT
+                    for j, word in enumerate(words):
+                        c.drawString(x, y_position, word)
+                        x += c.stringWidth(word, fname, font_size)
+                        if j < len(words) - 1:
+                            x += space_width
+                else:
+                    c.drawString(MARGIN_LEFT, y_position, line)
+            
             y_position -= line_height
     
     def dibujar_seccion_titulo(titulo):
@@ -298,14 +324,19 @@ def generate_resolucion_m2_pdf(
     y_position -= 10
     
     # Documentos soporte (bullets)
+    # Obtener las matrículas de los predios a inscribir (los nuevos)
+    matriculas_inscritos = []
+    for predio in predios_inscritos:
+        mat = predio.get("matricula_inmobiliaria", "")
+        if mat and mat not in matriculas_inscritos:
+            matriculas_inscritos.append(mat)
+    matriculas_texto = ", ".join(matriculas_inscritos) if matriculas_inscritos else matricula_origen
+    
     c.setFont(font_normal, 10)
     for doc in plantilla["documentos_soporte"]:
         verificar_espacio(20)
         doc_formateado = doc.format(
-            escritura="___",
-            fecha_escritura="___",
-            notaria="___",
-            matricula=matricula_origen
+            matricula=matriculas_texto
         )
         c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
         y_position -= 14
