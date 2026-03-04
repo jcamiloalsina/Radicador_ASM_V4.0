@@ -25946,11 +25946,11 @@ async def procesar_excel_desenglobe_masivo(
                 )
                 
                 if existe_activo:
-                    logging.warning(f"NPN {npn_propuesto} ya existe como predio ACTIVO - se usará de todas formas (el usuario lo especificó)")
-                    predio["_advertencia"] = f"NPN ya existe como predio activo"
+                    errores.append(f"Error: El NPN {npn_propuesto} ya existe como predio ACTIVO. No se puede duplicar.")
+                    continue
                 elif existe_eliminado:
-                    logging.warning(f"NPN {npn_propuesto} ya existe como predio ELIMINADO - se usará de todas formas (el usuario lo especificó)")
-                    predio["_advertencia"] = f"NPN ya fue usado en predio eliminado"
+                    errores.append(f"Error: El NPN {npn_propuesto} ya fue usado en un predio eliminado. Use otro código.")
+                    continue
                 
                 npn_completo = npn_propuesto
                 logging.info(f"NPN completo del Excel: {npn_completo}")
@@ -26082,6 +26082,42 @@ async def procesar_excel_desenglobe_masivo(
             
             if propietario.get('nombre_propietario'):
                 propietarios_por_codigo[npn_completo].setdefault('propietarios', []).append(propietario)
+        
+        # Procesar R2 para extraer matrículas y asociarlas a los predios
+        if len(df_r2) > 0:
+            col_mapping_r2 = {
+                'CODIGO_PREDIAL_NACIONAL': 'codigo_predial',
+                'CODIGO PREDIAL NACIONAL': 'codigo_predial',
+                'CODIGO_PREDIAL': 'codigo_predial',
+                'CODIGO PREDIAL': 'codigo_predial',
+                'NPN': 'codigo_predial',
+                'MATRICULA_INMOBILIARIA': 'matricula_inmobiliaria',
+                'MATRICULA INMOBILIARIA': 'matricula_inmobiliaria',
+                'MATRICULA': 'matricula_inmobiliaria',
+            }
+            
+            for _, row_r2 in df_r2.iterrows():
+                codigo_r2 = None
+                matricula_r2 = None
+                
+                for col, field in col_mapping_r2.items():
+                    if col in df_r2.columns:
+                        val = row_r2[col]
+                        if pd.notna(val):
+                            if field == 'codigo_predial':
+                                codigo_r2 = str(val).strip().replace(" ", "").replace("-", "")
+                            elif field == 'matricula_inmobiliaria':
+                                matricula_r2 = str(val).strip()
+                
+                # Buscar el predio correspondiente por código
+                if codigo_r2 and matricula_r2:
+                    for npn, predio in propietarios_por_codigo.items():
+                        # Comparar código (puede ser parcial)
+                        if npn.startswith(codigo_r2[:17]) or codigo_r2 in npn:
+                            if not predio.get('matricula_inmobiliaria'):
+                                predio['matricula_inmobiliaria'] = matricula_r2
+                                logging.info(f"Matrícula {matricula_r2} asignada a predio {npn}")
+                            break
         
         # Convertir a lista y contar advertencias
         advertencias = []
