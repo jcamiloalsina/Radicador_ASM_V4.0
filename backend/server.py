@@ -125,7 +125,7 @@ from app.routers import (
     users as users_router,
     admin as admin_router,
     catalogos as catalogos_router,
-    predios as predios_router,
+    # predios NO incluido - usa implementación legacy más completa
     petitions as petitions_router,
     notifications as notifications_router,
     certificados as certificados_router,
@@ -141,7 +141,7 @@ api_router.include_router(auth_router.router)
 api_router.include_router(users_router.router)
 api_router.include_router(admin_router.router)
 api_router.include_router(catalogos_router.router)
-api_router.include_router(predios_router.router)
+# predios usa implementación legacy de server.py (tiene lógica especial para usuarios empresa)
 api_router.include_router(petitions_router.router)
 api_router.include_router(notifications_router.router)
 api_router.include_router(certificados_router.router)
@@ -6026,7 +6026,14 @@ async def get_predios(
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    query = {"deleted": {"$ne": True}, "pendiente_eliminacion": {"$ne": True}}
+    # Filtro robusto: excluir predios eliminados o pendientes de eliminación
+    # Incluye predios donde deleted es False, null, o no existe
+    query = {
+        "$and": [
+            {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"$or": [{"pendiente_eliminacion": False}, {"pendiente_eliminacion": {"$exists": False}}, {"pendiente_eliminacion": None}]}
+        ]
+    }
     
     # Si es usuario empresa, filtrar por municipios asignados
     if current_user['role'] == UserRole.EMPRESA:
