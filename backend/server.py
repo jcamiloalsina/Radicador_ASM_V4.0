@@ -25769,28 +25769,75 @@ async def procesar_excel_desenglobe_masivo(
                         else:
                             predio[field] = str(val).strip()
             
-            # Determinar si necesita asignar NPN
+            # Determinar NPN - Lógica inteligente de completado
+            # Estructura NPN (30 dígitos):
+            # DD(2) + MMM(3) + ZZ(2) + SS(2) + MMMM(4) + TTTT(4) + CCCCC(5) + P(1) + UUUU(4) + E(1) + FF(2)
+            # O simplificado: Base(17) + Terreno(4) + Resto(9)
+            
             npn_completo = None
-            necesita_asignar_npn = True
+            codigo_excel = codigo_predial_excel or ""
+            codigo_excel = codigo_excel.replace(" ", "").replace("-", "")  # Limpiar
             
-            if codigo_predial_excel and len(codigo_predial_excel) >= 30:
-                # El Excel trae NPN completo
-                npn_completo = codigo_predial_excel
-                necesita_asignar_npn = False
-            elif codigo_predial_excel and len(codigo_predial_excel) >= 17:
-                # Tiene base parcial, completar
-                npn_completo = codigo_predial_excel
-                necesita_asignar_npn = False
-            
-            if necesita_asignar_npn and idx_numero < len(numeros_disponibles):
-                # Asignar número disponible
-                num_terreno = numeros_disponibles[idx_numero]
-                # Construir NPN: base(17) + terreno(4) + resto(9)
-                npn_completo = f"{base_npn}{num_terreno:04d}000000000"
+            if len(codigo_excel) >= 30:
+                # Excel trae NPN completo - usarlo tal cual
+                npn_completo = codigo_excel[:30]
+                logging.info(f"NPN completo del Excel: {npn_completo}")
+                
+            elif len(codigo_excel) >= 21:
+                # Excel trae hasta el terreno (21 dígitos) - completar resto con ceros
+                npn_completo = codigo_excel[:21].ljust(30, '0')
+                logging.info(f"NPN parcial (21+) del Excel: {codigo_excel} -> {npn_completo}")
+                
+            elif len(codigo_excel) >= 17:
+                # Excel trae hasta la manzana (17 dígitos) - asignar terreno disponible
+                base_excel = codigo_excel[:17]
+                
+                # Buscar terrenos disponibles para ESTA base específica
+                predios_en_base = await db.predios.find(
+                    {"codigo_predial_nacional": {"$regex": f"^{base_excel}"}},
+                    {"codigo_predial_nacional": 1, "_id": 0}
+                ).to_list(1000)
+                
+                terrenos_usados_base = set()
+                for p in predios_en_base:
+                    npn_p = p.get("codigo_predial_nacional", "")
+                    if len(npn_p) >= 21:
+                        try:
+                            terrenos_usados_base.add(int(npn_p[17:21]))
+                        except:
+                            pass
+                
+                # Encontrar siguiente terreno disponible
+                siguiente_terreno = 1
+                while siguiente_terreno in terrenos_usados_base:
+                    siguiente_terreno += 1
+                
+                npn_completo = f"{base_excel}{siguiente_terreno:04d}000000000"
+                logging.info(f"NPN parcial (17+) del Excel: {codigo_excel} -> {npn_completo}")
+                
+            elif len(codigo_excel) >= 5:
+                # Excel trae solo municipio o algo mínimo - usar base del matriz pero con esta info
+                # Usar los primeros dígitos del Excel y completar con el matriz
+                parte_excel = codigo_excel
+                parte_matriz = base_npn[len(parte_excel):]
+                base_combinada = parte_excel + parte_matriz
+                base_combinada = base_combinada[:17]
+                
+                num_terreno = numeros_disponibles[idx_numero] if idx_numero < len(numeros_disponibles) else (idx_numero + 1)
+                npn_completo = f"{base_combinada}{num_terreno:04d}000000000"
                 idx_numero += 1
-            elif not npn_completo:
-                npn_completo = f"{base_npn}{(idx_numero+1):04d}000000000"
-                idx_numero += 1
+                logging.info(f"NPN mínimo del Excel: {codigo_excel} -> {npn_completo}")
+                
+            else:
+                # Excel vacío o muy corto - asignar completamente basado en matriz
+                if idx_numero < len(numeros_disponibles):
+                    num_terreno = numeros_disponibles[idx_numero]
+                    npn_completo = f"{base_npn}{num_terreno:04d}000000000"
+                    idx_numero += 1
+                else:
+                    npn_completo = f"{base_npn}{(idx_numero+1):04d}000000000"
+                    idx_numero += 1
+                logging.info(f"NPN generado automático: {npn_completo}")
             
             predio["codigo_predial"] = npn_completo
             predio["npn"] = npn_completo
