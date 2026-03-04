@@ -95,18 +95,15 @@ def generate_resolucion_pdf(
     
     # Helper para formatear área con unidades de medida
     def formatear_area(area_str):
-        """Convierte área en m² a formato 'X Ha Y m²' """
+        """Convierte área en m² a formato 'XX Ha X.XXXX m²' """
         try:
             area = float(area_str or 0)
             if area >= 10000:
                 ha = int(area // 10000)
-                m2 = int(area % 10000)
-                if m2 > 0:
-                    return f"{ha} Ha {m2:,} m²".replace(",", ".")
-                else:
-                    return f"{ha} Ha"
+                m2 = area % 10000
+                return f"{ha} Ha {m2:.4f} m²"
             else:
-                return f"{int(area):,} m²".replace(",", ".")
+                return f"{area:.4f} m²"
         except:
             return str(area_str or "0")
     

@@ -112,6 +112,20 @@ def generate_resolucion_m2_pdf(
     
     plantilla = get_m2_plantilla()
     
+    # Helper para formatear área con unidades de medida
+    def formatear_area(area_valor):
+        """Convierte área en m² a formato 'XX Ha X.XXXX m²' """
+        try:
+            area = float(area_valor or 0)
+            if area >= 10000:
+                ha = int(area // 10000)
+                m2 = area % 10000
+                return f"{ha} Ha {m2:.4f} m²"
+            else:
+                return f"{area:.4f} m²"
+        except:
+            return str(area_valor or "0")
+    
     # Registrar fuentes
     try:
         pdfmetrics.registerFont(TTFont('Carlito', '/usr/share/fonts/truetype/crosextra/Carlito-Regular.ttf'))
@@ -477,6 +491,10 @@ def generate_resolucion_m2_pdf(
         area_construida = predio.get("area_construida", 0)
         avaluo = predio.get("avaluo", 0)
         
+        # Formatear áreas con unidades
+        area_terreno_fmt = formatear_area(area_terreno)
+        area_construida_fmt = formatear_area(area_construida)
+        
         x = MARGIN_LEFT
         c.rect(x, y_position - 12, col_widths2[0], 12, fill=0, stroke=1)
         c.drawCentredString(x + col_widths2[0]/2, y_position - 9, codigo_hom[:12])
@@ -487,11 +505,13 @@ def generate_resolucion_m2_pdf(
         x += col_widths2[1]
         
         c.rect(x, y_position - 12, col_widths2[2], 12, fill=0, stroke=1)
-        c.drawCentredString(x + col_widths2[2]/2, y_position - 9, f"{area_terreno}")
+        c.setFont(font_normal, 5)  # Reducir tamaño para que quepa
+        c.drawCentredString(x + col_widths2[2]/2, y_position - 9, area_terreno_fmt)
         x += col_widths2[2]
         
         c.rect(x, y_position - 12, col_widths2[3], 12, fill=0, stroke=1)
-        c.drawCentredString(x + col_widths2[3]/2, y_position - 9, f"{area_construida}")
+        c.drawCentredString(x + col_widths2[3]/2, y_position - 9, area_construida_fmt)
+        c.setFont(font_normal, 7)  # Restaurar tamaño
         x += col_widths2[3]
         
         c.rect(x, y_position - 12, col_widths2[4], 12, fill=0, stroke=1)
