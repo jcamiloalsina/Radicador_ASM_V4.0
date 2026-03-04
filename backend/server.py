@@ -25700,16 +25700,25 @@ async def procesar_excel_desenglobe_masivo(
         # DD=Depto(2), MMM=Mpio(3), ZZ=Zona(2), SS=Sector(2), MMM=Manzana(4), TTTT=Terreno(4), EEEEE=Edificación(5), C=Condición(1), Predio(4)
         base_npn = predio_matriz_npn[:17] if len(predio_matriz_npn) >= 17 else predio_matriz_npn
         
-        # Buscar predios existentes en esa manzana para encontrar números disponibles
+        # Buscar predios existentes en esa manzana (ACTIVOS)
         predios_existentes = await db.predios.find(
             {"codigo_predial_nacional": {"$regex": f"^{base_npn}"}},
             {"codigo_predial_nacional": 1, "codigo_homologado": 1, "_id": 0}
         ).to_list(1000)
         
-        # Extraer números de terreno usados (posiciones 17-21)
+        # Buscar predios ELIMINADOS en esa manzana (para no reutilizar sus números)
+        predios_eliminados = await db.predios_eliminados.find(
+            {"codigo_predial_nacional": {"$regex": f"^{base_npn}"}},
+            {"codigo_predial_nacional": 1, "codigo_homologado": 1, "_id": 0}
+        ).to_list(1000)
+        
+        # Combinar ambas listas
+        todos_predios = predios_existentes + predios_eliminados
+        
+        # Extraer números de terreno usados (posiciones 17-21) - incluye activos y eliminados
         numeros_usados = set()
         codigos_homologados_usados = set()
-        for p in predios_existentes:
+        for p in todos_predios:
             npn = p.get("codigo_predial_nacional", "")
             if len(npn) >= 21:
                 try:
@@ -25720,7 +25729,12 @@ async def procesar_excel_desenglobe_masivo(
             if p.get("codigo_homologado"):
                 codigos_homologados_usados.add(p["codigo_homologado"])
         
-        # Encontrar números disponibles
+        logging.info(f"Desenglobe masivo - Base NPN: {base_npn}")
+        logging.info(f"  Predios activos encontrados: {len(predios_existentes)}")
+        logging.info(f"  Predios eliminados encontrados: {len(predios_eliminados)}")
+        logging.info(f"  Números de terreno ya usados: {len(numeros_usados)}")
+        
+        # Encontrar números disponibles (que no estén en activos NI en eliminados)
         numeros_disponibles = []
         for i in range(1, 10000):
             if i not in numeros_usados:
@@ -25779,27 +25793,99 @@ async def procesar_excel_desenglobe_masivo(
             codigo_excel = codigo_excel.replace(" ", "").replace("-", "")  # Limpiar
             
             if len(codigo_excel) >= 30:
-                # Excel trae NPN completo - usarlo tal cual
-                npn_completo = codigo_excel[:30]
+                # Excel trae NPN completo - verificar si ya existe
+                npn_propuesto = codigo_excel[:30]
+                
+                # Verificar en predios activos
+                existe_activo = await db.predios.find_one(
+                    {"codigo_predial_nacional": npn_propuesto},
+                    {"_id": 1}
+                )
+                
+                # Verificar en predios eliminados
+                existe_eliminado = await db.predios_eliminados.find_one(
+                    {"codigo_predial_nacional": npn_propuesto},
+                    {"_id": 1}
+                )
+                
+                if existe_activo:
+                    logging.warning(f"NPN {npn_propuesto} ya existe como predio ACTIVO - se usará de todas formas (el usuario lo especificó)")
+                    predio["_advertencia"] = f"NPN ya existe como predio activo"
+                elif existe_eliminado:
+                    logging.warning(f"NPN {npn_propuesto} ya existe como predio ELIMINADO - se usará de todas formas (el usuario lo especificó)")
+                    predio["_advertencia"] = f"NPN ya fue usado en predio eliminado"
+                
+                npn_completo = npn_propuesto
                 logging.info(f"NPN completo del Excel: {npn_completo}")
                 
             elif len(codigo_excel) >= 21:
-                # Excel trae hasta el terreno (21 dígitos) - completar resto con ceros
-                npn_completo = codigo_excel[:21].ljust(30, '0')
+                # Excel trae hasta el terreno (21 dígitos) - verificar y completar resto con ceros
+                npn_propuesto = codigo_excel[:21].ljust(30, '0')
+                
+                # Verificar si ya existe
+                existe_activo = await db.predios.find_one(
+                    {"codigo_predial_nacional": npn_propuesto},
+                    {"_id": 1}
+                )
+                existe_eliminado = await db.predios_eliminados.find_one(
+                    {"codigo_predial_nacional": npn_propuesto},
+                    {"_id": 1}
+                )
+                
+                if existe_activo or existe_eliminado:
+                    # Ya existe, buscar siguiente disponible
+                    base_21 = codigo_excel[:17]
+                    terreno_propuesto = int(codigo_excel[17:21])
+                    
+                    predios_base = await db.predios.find(
+                        {"codigo_predial_nacional": {"$regex": f"^{base_21}"}},
+                        {"codigo_predial_nacional": 1, "_id": 0}
+                    ).to_list(1000)
+                    predios_elim_base = await db.predios_eliminados.find(
+                        {"codigo_predial_nacional": {"$regex": f"^{base_21}"}},
+                        {"codigo_predial_nacional": 1, "_id": 0}
+                    ).to_list(1000)
+                    
+                    usados = set()
+                    for p in predios_base + predios_elim_base:
+                        npn_p = p.get("codigo_predial_nacional", "")
+                        if len(npn_p) >= 21:
+                            try:
+                                usados.add(int(npn_p[17:21]))
+                            except:
+                                pass
+                    
+                    # Buscar siguiente disponible después del propuesto
+                    nuevo_terreno = terreno_propuesto
+                    while nuevo_terreno in usados:
+                        nuevo_terreno += 1
+                    
+                    npn_completo = f"{base_21}{nuevo_terreno:04d}000000000"
+                    predio["_advertencia"] = f"NPN original {npn_propuesto[:21]} ya existía, reasignado a terreno {nuevo_terreno:04d}"
+                    logging.warning(f"NPN {npn_propuesto} ya existe, reasignado a {npn_completo}")
+                else:
+                    npn_completo = npn_propuesto
+                
                 logging.info(f"NPN parcial (21+) del Excel: {codigo_excel} -> {npn_completo}")
                 
             elif len(codigo_excel) >= 17:
                 # Excel trae hasta la manzana (17 dígitos) - asignar terreno disponible
                 base_excel = codigo_excel[:17]
                 
-                # Buscar terrenos disponibles para ESTA base específica
+                # Buscar terrenos usados para ESTA base específica (activos)
                 predios_en_base = await db.predios.find(
                     {"codigo_predial_nacional": {"$regex": f"^{base_excel}"}},
                     {"codigo_predial_nacional": 1, "_id": 0}
                 ).to_list(1000)
                 
+                # Buscar también en eliminados para no reutilizar
+                predios_eliminados_base = await db.predios_eliminados.find(
+                    {"codigo_predial_nacional": {"$regex": f"^{base_excel}"}},
+                    {"codigo_predial_nacional": 1, "_id": 0}
+                ).to_list(1000)
+                
                 terrenos_usados_base = set()
-                for p in predios_en_base:
+                for p in predios_en_base + predios_eliminados_base:
                     npn_p = p.get("codigo_predial_nacional", "")
                     if len(npn_p) >= 21:
                         try:
@@ -25813,7 +25899,7 @@ async def procesar_excel_desenglobe_masivo(
                     siguiente_terreno += 1
                 
                 npn_completo = f"{base_excel}{siguiente_terreno:04d}000000000"
-                logging.info(f"NPN parcial (17+) del Excel: {codigo_excel} -> {npn_completo}")
+                logging.info(f"NPN parcial (17+) del Excel: {codigo_excel} -> {npn_completo} (evitando {len(terrenos_usados_base)} usados)")
                 
             elif len(codigo_excel) >= 5:
                 # Excel trae solo municipio o algo mínimo - usar base del matriz pero con esta info
@@ -25860,8 +25946,14 @@ async def procesar_excel_desenglobe_masivo(
             if propietario.get('nombre_propietario'):
                 propietarios_por_codigo[npn_completo].setdefault('propietarios', []).append(propietario)
         
-        # Convertir a lista
+        # Convertir a lista y contar advertencias
+        advertencias = []
         for npn, predio in propietarios_por_codigo.items():
+            if predio.get("_advertencia"):
+                advertencias.append({
+                    "npn": npn,
+                    "mensaje": predio["_advertencia"]
+                })
             predios_procesados.append(predio)
         
         # Limpiar archivo temporal
@@ -25873,7 +25965,9 @@ async def procesar_excel_desenglobe_masivo(
             "predios": predios_procesados,
             "base_npn": base_npn,
             "numeros_disponibles_usados": numeros_disponibles[:len(predios_procesados)],
-            "mensaje": f"Se procesaron {len(predios_procesados)} predios del Excel"
+            "advertencias": advertencias,
+            "total_advertencias": len(advertencias),
+            "mensaje": f"Se procesaron {len(predios_procesados)} predios del Excel" + (f" ({len(advertencias)} con advertencias)" if advertencias else "")
         }
         
     except HTTPException:
