@@ -5928,7 +5928,7 @@ async def get_predios(
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    query = {"deleted": {"$ne": True}}
+    query = {"deleted": {"$ne": True}, "pendiente_eliminacion": {"$ne": True}}
     
     # Si es usuario empresa, filtrar por municipios asignados
     if current_user['role'] == UserRole.EMPRESA:
@@ -25606,18 +25606,29 @@ async def generar_resolucion_m2(
         # Procesar predios cancelados según tipo de cancelación
         for predio_cancelado in request.predios_cancelados:
             predio_id = predio_cancelado.get('id')
+            npn_cancelado = predio_cancelado.get('npn') or predio_cancelado.get('codigo_predial_nacional') or predio_cancelado.get('codigo_predial')
             tipo_cancelacion = predio_cancelado.get('tipo_cancelacion', 'total')
+            
+            # Buscar el predio por ID o por NPN
+            query_predio = {"id": predio_id} if predio_id else {"codigo_predial_nacional": npn_cancelado}
+            predio_existente = await db.predios.find_one(query_predio, {"_id": 0, "id": 1})
+            
+            if not predio_existente:
+                logging.warning(f"No se encontró el predio a cancelar: id={predio_id}, npn={npn_cancelado}")
+                continue
+            
+            predio_id_real = predio_existente.get('id')
             
             if tipo_cancelacion == 'total':
                 # Cancelación total: marcar para eliminación (pendiente de aprobación)
                 # Primero inicializar historial_resoluciones si no existe
                 await db.predios.update_one(
-                    {"id": predio_id, "historial_resoluciones": {"$exists": False}},
+                    {"id": predio_id_real, "historial_resoluciones": {"$exists": False}},
                     {"$set": {"historial_resoluciones": []}}
                 )
                 # Luego agregar la resolución al historial
-                await db.predios.update_one(
-                    {"id": predio_id},
+                result = await db.predios.update_one(
+                    {"id": predio_id_real},
                     {
                         "$set": {
                             "pendiente_eliminacion": True,
@@ -25635,6 +25646,7 @@ async def generar_resolucion_m2(
                         }
                     }
                 )
+                logging.info(f"Predio {npn_cancelado} marcado para cancelación: {result.modified_count} documentos actualizados")
             elif tipo_cancelacion == 'parcial':
                 # Cancelación parcial: actualizar predio con nuevos datos
                 update_data = {
@@ -25667,12 +25679,12 @@ async def generar_resolucion_m2(
                 
                 # Primero inicializar historial_resoluciones si no existe
                 await db.predios.update_one(
-                    {"id": predio_id, "historial_resoluciones": {"$exists": False}},
+                    {"id": predio_id_real, "historial_resoluciones": {"$exists": False}},
                     {"$set": {"historial_resoluciones": []}}
                 )
                 # Luego actualizar el predio
                 await db.predios.update_one(
-                    {"id": predio_id},
+                    {"id": predio_id_real},
                     {
                         "$set": update_data,
                         "$push": {
