@@ -4226,80 +4226,118 @@ export default function MutacionesResoluciones() {
                   <CardHeader className="py-2">
                     <CardTitle className="text-sm">Información del Predio</CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <Label className="text-xs">Dirección *</Label>
+                  <CardContent className="space-y-4">
+                    {/* Dirección */}
+                    <div>
+                      <Label className="text-sm font-medium">Dirección *</Label>
                       <Input
                         value={nuevoPredioInscrito?.direccion || ''}
                         onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, direccion: e.target.value.toUpperCase()}))}
-                        placeholder="Ej: CL 5 # 3-45"
+                        placeholder=""
+                        className="mt-1"
                       />
                     </div>
-                    <div className="relative">
-                      <Label className="text-xs">Destino Económico</Label>
-                      <div 
-                        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
-                        onClick={() => setShowDestinoDropdownNuevo(!showDestinoDropdownNuevo)}
-                      >
-                        <span>
-                          {nuevoPredioInscrito?.destino_economico === 'A' ? 'A - Habitacional' :
-                           nuevoPredioInscrito?.destino_economico === 'B' ? 'B - Industrial' :
-                           nuevoPredioInscrito?.destino_economico === 'C' ? 'C - Comercial' :
-                           nuevoPredioInscrito?.destino_economico === 'D' ? 'D - Agropecuario' :
-                           nuevoPredioInscrito?.destino_economico === 'L' ? 'L - Agrícola' :
-                           nuevoPredioInscrito?.destino_economico === 'R' ? 'R - Residencial' : 'Seleccionar'}
-                        </span>
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </div>
-                      {showDestinoDropdownNuevo && (
-                        <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg">
-                          {[
-                            {v: 'A', l: 'A - Habitacional'}, {v: 'B', l: 'B - Industrial'},
-                            {v: 'C', l: 'C - Comercial'}, {v: 'D', l: 'D - Agropecuario'},
-                            {v: 'L', l: 'L - Agrícola'}, {v: 'R', l: 'R - Residencial'}
-                          ].map(opt => (
-                            <div
-                              key={opt.v}
-                              className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${nuevoPredioInscrito?.destino_economico === opt.v ? 'bg-blue-100' : ''}`}
-                              onClick={() => { setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v})); setShowDestinoDropdownNuevo(false); }}
+                    
+                    {/* Destino Económico - Radio buttons */}
+                    <div>
+                      <Label className="text-sm font-medium">Destino Económico *</Label>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                        {[
+                          {v: 'A', l: 'A - Habitacional'},
+                          {v: 'B', l: 'B - Industrial'},
+                          {v: 'C', l: 'C - Comercial'},
+                          {v: 'D', l: 'D - Agropecuario'},
+                          {v: 'E', l: 'E - Minero'},
+                          {v: 'F', l: 'F - Cultural'},
+                          {v: 'G', l: 'G - Recreacional'},
+                          {v: 'H', l: 'H - Salubridad'},
+                          {v: 'I', l: 'I - Institucional'},
+                          {v: 'J', l: 'J - Educativo'},
+                          {v: 'K', l: 'K - Religioso'},
+                          {v: 'L', l: 'L - Agrícola'},
+                          {v: 'M', l: 'M - Pecuario'},
+                          {v: 'N', l: 'N - Agroindustrial'},
+                          {v: 'O', l: 'O - Forestal'},
+                          {v: 'P', l: 'P - Uso Público'},
+                          {v: 'Q', l: 'Q - Lote Urbanizable No Urbanizado'},
+                          {v: 'R', l: 'R - Lote Urbanizable No Edificado'},
+                          {v: 'S', l: 'S - Lote No Urbanizable'},
+                          {v: 'T', l: 'T - Servicios Especiales'}
+                        ].map(opt => (
+                          <label 
+                            key={opt.v} 
+                            className="flex items-center gap-1.5 cursor-pointer text-sm"
+                          >
+                            <div 
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                nuevoPredioInscrito?.destino_economico === opt.v 
+                                  ? 'border-emerald-500 bg-emerald-500' 
+                                  : 'border-emerald-400'
+                              }`}
+                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v}))}
+                            >
+                              {nuevoPredioInscrito?.destino_economico === opt.v && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <span 
+                              className="text-slate-700"
+                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v}))}
                             >
                               {opt.l}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                    
+                    {/* Matrícula Inmobiliaria */}
+                    <div className="max-w-md">
+                      <Label className="text-sm font-medium">Matrícula Inmobiliaria</Label>
                       <Input
                         value={nuevoPredioInscrito?.matricula_inmobiliaria || ''}
                         onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, matricula_inmobiliaria: e.target.value}))}
                         placeholder="Ej: 270-8920"
+                        className="mt-1"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Avalúo (COP)</Label>
+                    
+                    {/* Áreas calculadas del R2 */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm font-medium text-slate-700">Áreas (calculadas del R2)</span>
+                        <span className="text-xs bg-amber-400 text-amber-900 px-2 py-0.5 rounded font-medium">Automático</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm text-slate-600">Área Terreno Total (m²)</Label>
+                          <div className="mt-1 bg-blue-100/50 border border-blue-200 rounded px-3 py-2 text-slate-700">
+                            {calcularAreasTotalesNuevo().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-slate-600">Área Construida Total (m²)</Label>
+                          <div className="mt-1 bg-blue-100/50 border border-blue-200 rounded px-3 py-2 text-slate-700">
+                            {calcularAreasTotalesNuevo().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-amber-700 mt-2 flex items-start gap-1">
+                        <span className="text-amber-500">💡</span>
+                        Estas áreas se calculan automáticamente sumando las zonas del R2. Modifique los valores en la pestaña "Físico (R2)".
+                      </p>
+                    </div>
+                    
+                    {/* Avalúo */}
+                    <div className="max-w-md">
+                      <Label className="text-sm font-medium">Avalúo (COP) *</Label>
                       <Input
                         type="number"
                         value={nuevoPredioInscrito?.avaluo || 0}
                         onChange={(e) => setNuevoPredioInscrito(prev => ({...prev, avaluo: e.target.value}))}
-                        placeholder="200000"
+                        placeholder="Ej: 200.000"
+                        className="mt-1"
                       />
-                    </div>
-                    
-                    {/* Áreas calculadas */}
-                    <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm font-medium text-blue-800 mb-2">Áreas (calculadas del R2)</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <span className="text-xs text-blue-600">Área Terreno:</span>
-                          <span className="font-bold block">{calcularAreasTotalesNuevo().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
-                        </div>
-                        <div>
-                          <span className="text-xs text-blue-600">Área Construida:</span>
-                          <span className="font-bold block">{calcularAreasTotalesNuevo().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
-                        </div>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
