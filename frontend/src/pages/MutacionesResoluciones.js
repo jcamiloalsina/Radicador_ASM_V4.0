@@ -914,15 +914,17 @@ export default function MutacionesResoluciones() {
     setBuscandoPrediosManzanaNuevo(true);
     try {
       const token = localStorage.getItem('token');
+      // Obtener nombre del municipio desde el código
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || m2Data.municipio;
       const params = new URLSearchParams({
-        zona: codigoManualNuevo.zona,
-        sector: codigoManualNuevo.sector,
-        comuna: codigoManualNuevo.comuna,
-        barrio: codigoManualNuevo.barrio,
-        manzana_vereda: codigoManualNuevo.manzana_vereda,
+        zona: (codigoManualNuevo.zona || '00').padStart(2, '0'),
+        sector: (codigoManualNuevo.sector || '00').padStart(2, '0'),
+        comuna: (codigoManualNuevo.comuna || '00').padStart(2, '0'),
+        barrio: (codigoManualNuevo.barrio || '00').padStart(2, '0'),
+        manzana_vereda: (codigoManualNuevo.manzana_vereda || '0000').padStart(4, '0'),
         limit: 5
       });
-      const res = await axios.get(`${API}/predios/por-manzana/${m2Data.municipio}?${params.toString()}`, {
+      const res = await axios.get(`${API}/predios/por-manzana/${encodeURIComponent(municipioNombre)}?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPrediosEnManzanaNuevo(res.data.predios || []);
@@ -2724,126 +2726,136 @@ export default function MutacionesResoluciones() {
                     </div>
 
                     {/* Campos editables - Fila 1: Ubicación geográfica */}
-                    <div className="grid grid-cols-6 gap-2 mb-3">
-                      <div className="bg-blue-100 p-2 rounded">
-                        <Label className="text-xs text-blue-700">Dpto+Mpio (1-5)</Label>
-                        <Input value={estructuraCodigoNuevo.prefijo_fijo} disabled className="font-mono bg-blue-50 text-blue-800 font-bold text-center h-8" />
+                    <div className="grid grid-cols-6 gap-3 mb-3">
+                      <div className="bg-slate-100 p-2 rounded">
+                        <Label className="text-xs text-slate-600">Dpto+Mpio (1-5)</Label>
+                        <Input value={estructuraCodigoNuevo.prefijo_fijo} disabled className="font-mono bg-white text-slate-700 font-bold text-center h-9 border-slate-300" />
                       </div>
                       <div>
-                        <Label className="text-xs text-emerald-700">Zona (6-7)</Label>
+                        <Label className="text-xs text-emerald-600">Zona (6-7)</Label>
                         <Input 
                           value={codigoManualNuevo.zona} 
                           onChange={(e) => handleCodigoChangeNuevo('zona', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('zona', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-emerald-700"
                           placeholder="00"
                         />
-                        <span className="text-xs text-slate-400">00=Rural, 01=Urbano</span>
+                        <span className="text-xs text-slate-400 block mt-1">00=Rural, 01=Urbano, 02-99=Correg.</span>
                       </div>
                       <div>
-                        <Label className="text-xs text-amber-700">Sector (8-9)</Label>
+                        <Label className="text-xs text-amber-600">Sector (8-9)</Label>
                         <Input 
                           value={codigoManualNuevo.sector} 
                           onChange={(e) => handleCodigoChangeNuevo('sector', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('sector', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-amber-700"
                           placeholder="00"
                         />
+                        {/* Última manzana encontrada */}
+                        {prediosEnManzanaNuevo.length > 0 && (
+                          <div className="bg-yellow-100 border border-yellow-300 rounded px-2 py-1 mt-1">
+                            <span className="text-xs text-yellow-700">Última manzana:</span>
+                            <span className="text-sm font-bold text-yellow-600 block">{(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}</span>
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
+                        <Label className="text-xs text-purple-600">Comuna (10-11)</Label>
                         <Input 
                           value={codigoManualNuevo.comuna} 
                           onChange={(e) => handleCodigoChangeNuevo('comuna', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('comuna', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-purple-700"
                           placeholder="00"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-pink-700">Barrio (12-13)</Label>
+                        <Label className="text-xs text-pink-600">Barrio (12-13)</Label>
                         <Input 
                           value={codigoManualNuevo.barrio} 
                           onChange={(e) => handleCodigoChangeNuevo('barrio', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('barrio', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-pink-700"
                           placeholder="00"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-cyan-700">Manzana (14-17)</Label>
+                        <Label className="text-xs text-cyan-600">Manzana (14-17)</Label>
                         <Input 
                           value={codigoManualNuevo.manzana_vereda} 
                           onChange={(e) => handleCodigoChangeNuevo('manzana_vereda', e.target.value, 4)}
                           onBlur={() => handleCodigoBlurNuevo('manzana_vereda', 4)}
                           maxLength={4}
-                          className="font-mono text-center h-8"
+                          className={`font-mono text-center h-9 text-cyan-700 ${codigoManualNuevo.manzana_vereda && codigoManualNuevo.manzana_vereda !== '0000' ? 'border-2 border-emerald-500 bg-emerald-50' : ''}`}
                           placeholder="0000"
                         />
                       </div>
                     </div>
 
-                    {/* Mostrar últimos 5 predios existentes en la manzana */}
+                    {/* Terrenos existentes en manzana */}
                     {codigoManualNuevo.manzana_vereda && codigoManualNuevo.manzana_vereda !== '0000' && codigoManualNuevo.manzana_vereda !== '' && (
-                      <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            Últimos 5 predios en manzana {(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}
-                          </p>
-                          {buscandoPrediosManzanaNuevo && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="w-4 h-4 text-cyan-600" />
+                          <span className="text-sm font-medium text-cyan-700">
+                            Terrenos existentes en manzana {(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}
+                          </span>
+                          {buscandoPrediosManzanaNuevo && <Loader2 className="w-4 h-4 animate-spin text-cyan-600" />}
                         </div>
+                        
                         {prediosEnManzanaNuevo.length > 0 ? (
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             {prediosEnManzanaNuevo.slice(0, 5).map((p, idx) => (
                               <div 
                                 key={idx} 
-                                className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100"
+                                className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-slate-200"
                               >
-                                <span className="font-mono font-bold text-cyan-700 w-12">{p.terreno}</span>
-                                <span className="text-slate-700 truncate flex-1">{p.direccion || 'Sin dirección'}</span>
-                                <span className="text-slate-500 text-xs">{p.propietario || ''}</span>
+                                <span className="font-mono font-bold text-cyan-600 text-sm w-12">{p.terreno}</span>
+                                <span className="text-slate-700 text-sm flex-1 truncate">{p.direccion || 'Sin dirección'}</span>
+                                <span className="text-slate-500 text-xs whitespace-nowrap">
+                                  {p.area_terreno ? `${Number(p.area_terreno).toLocaleString('es-CO', {minimumFractionDigits: 1})}m²` : ''}
+                                </span>
+                                <span className="bg-cyan-100 text-cyan-700 text-xs px-2 py-0.5 rounded font-medium">
+                                  {p.registros || 1} reg
+                                </span>
                               </div>
                             ))}
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
-                              <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                Siguiente sugerido: <span className="font-mono font-bold">{siguienteTerrenoSugeridoNuevo}</span>
-                              </p>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => setCodigoManualNuevo(prev => ({...prev, terreno: siguienteTerrenoSugeridoNuevo}))}
-                                className="h-6 text-xs"
-                              >
-                                Usar sugerido
-                              </Button>
+                            
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200">
+                              <span className="text-xs text-cyan-600">
+                                Mostrando últimos 5 terrenos únicos (Base R1/R2)
+                              </span>
+                              <div className="flex items-center gap-1 text-amber-600">
+                                <span className="text-lg">💡</span>
+                                <span className="text-sm font-semibold">Siguiente: {siguienteTerrenoSugeridoNuevo}</span>
+                              </div>
                             </div>
                           </div>
                         ) : !buscandoPrediosManzanaNuevo ? (
-                          <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana. Sugerido: 0001</p>
+                          <p className="text-sm text-slate-500">No hay predios registrados en esta manzana.</p>
                         ) : null}
                       </div>
                     )}
 
                     {/* Campos editables - Fila 2: Predio y PH */}
-                    <div className="grid grid-cols-5 gap-2">
-                      <div className="bg-red-50 p-2 rounded border border-red-200">
-                        <Label className="text-xs text-red-700 font-semibold">Terreno (18-21) *</Label>
+                    <div className="grid grid-cols-5 gap-3">
+                      <div className="bg-orange-50 p-3 rounded-lg border-2 border-orange-300">
+                        <Label className="text-xs text-orange-600 font-semibold">Terreno (18-21) *</Label>
                         <Input 
                           value={codigoManualNuevo.terreno} 
                           onChange={(e) => handleCodigoChangeNuevo('terreno', e.target.value, 4)}
                           onBlur={() => handleCodigoBlurNuevo('terreno', 4)}
                           maxLength={4}
-                          className="font-mono font-bold text-red-700 text-center h-8"
+                          className="font-mono font-bold text-orange-600 text-center h-9 text-lg border-orange-300"
                           placeholder="0001"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-orange-700">Condición (22)</Label>
+                        <Label className="text-xs text-slate-500">Condición (22)</Label>
                         <Input 
                           value={codigoManualNuevo.condicion} 
                           onChange={(e) => {
@@ -2854,40 +2866,40 @@ export default function MutacionesResoluciones() {
                             setCodigoManualNuevo(prev => ({...prev, condicion: prev.condicion || '0'}));
                           }}
                           maxLength={1}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-slate-600"
                           placeholder="0"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
+                        <Label className="text-xs text-slate-500">Edificio (23-24)</Label>
                         <Input 
                           value={codigoManualNuevo.edificio} 
                           onChange={(e) => handleCodigoChangeNuevo('edificio', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('edificio', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-slate-600"
                           placeholder="00"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-600">Piso (25-26)</Label>
+                        <Label className="text-xs text-slate-500">Piso (25-26)</Label>
                         <Input 
                           value={codigoManualNuevo.piso} 
                           onChange={(e) => handleCodigoChangeNuevo('piso', e.target.value, 2)}
                           onBlur={() => handleCodigoBlurNuevo('piso', 2)}
                           maxLength={2}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-slate-600"
                           placeholder="00"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-slate-600">Unidad (27-30)</Label>
+                        <Label className="text-xs text-slate-500">Unidad (27-30)</Label>
                         <Input 
                           value={codigoManualNuevo.unidad} 
                           onChange={(e) => handleCodigoChangeNuevo('unidad', e.target.value, 4)}
                           onBlur={() => handleCodigoBlurNuevo('unidad', 4)}
                           maxLength={4}
-                          className="font-mono text-center h-8"
+                          className="font-mono text-center h-9 text-slate-600"
                           placeholder="0000"
                         />
                       </div>
