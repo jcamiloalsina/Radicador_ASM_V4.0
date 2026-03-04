@@ -130,8 +130,8 @@ from app.routers import (
     notifications as notifications_router,
     certificados as certificados_router,
     database as database_router,
-    resoluciones as resoluciones_router,
-    actualizacion as actualizacion_router
+    resoluciones as resoluciones_router
+    # actualizacion NO incluido - usa implementación legacy con 50+ endpoints
     # gdb NO incluido - usa implementación completa de server.py
 )
 
@@ -147,7 +147,7 @@ api_router.include_router(notifications_router.router)
 api_router.include_router(certificados_router.router)
 api_router.include_router(database_router.router)
 api_router.include_router(resoluciones_router.router)
-api_router.include_router(actualizacion_router.router)
+# actualizacion usa implementación legacy (visitas, propuestas, exportaciones, etapas)
 # GDB usa implementación legacy de server.py (tiene shapely, upload, análisis complejos)
 
 # ===== BACKUP SCHEDULER =====
