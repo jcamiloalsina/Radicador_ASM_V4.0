@@ -233,17 +233,23 @@ def generate_resolucion_m2_pdf(
             nueva_pagina()
     
     def dibujar_texto_justificado(texto, font_name=None, font_size=10, line_height=14):
-        """Dibuja texto justificado (alineado a ambos márgenes)"""
+        """Dibuja texto justificado (alineado a ambos márgenes) con límite de espaciado"""
         nonlocal y_position
         fname = font_name or font_normal
         c.setFont(fname, font_size)
         lines = simpleSplit(texto, fname, font_size, CONTENT_WIDTH)
         
+        # Calcular espacio normal de referencia
+        espacio_normal = c.stringWidth(' ', fname, font_size)
+        # Límite máximo de espacio entre palabras (máx 3x el espacio normal)
+        max_space = espacio_normal * 3
+        
         for i, line in enumerate(lines):
             verificar_espacio(line_height)
             
-            # Si es la última línea, no justificar (alinear a la izquierda)
-            if i == len(lines) - 1:
+            # Si es la última línea o línea corta, no justificar (alinear a la izquierda)
+            line_width = c.stringWidth(line, fname, font_size)
+            if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
                 c.drawString(MARGIN_LEFT, y_position, line)
             else:
                 # Justificar: distribuir espacios extra entre palabras
@@ -256,13 +262,18 @@ def generate_resolucion_m2_pdf(
                     # Espacio entre cada palabra
                     space_width = total_space / (len(words) - 1)
                     
-                    # Dibujar cada palabra con el espaciado calculado
-                    x = MARGIN_LEFT
-                    for j, word in enumerate(words):
-                        c.drawString(x, y_position, word)
-                        x += c.stringWidth(word, fname, font_size)
-                        if j < len(words) - 1:
-                            x += space_width
+                    # Limitar el espacio máximo para evitar texto "estirado"
+                    if space_width > max_space:
+                        # Si el espacio es excesivo, usar alineación normal
+                        c.drawString(MARGIN_LEFT, y_position, line)
+                    else:
+                        # Dibujar cada palabra con el espaciado calculado
+                        x = MARGIN_LEFT
+                        for j, word in enumerate(words):
+                            c.drawString(x, y_position, word)
+                            x += c.stringWidth(word, fname, font_size)
+                            if j < len(words) - 1:
+                                x += space_width
                 else:
                     c.drawString(MARGIN_LEFT, y_position, line)
             
@@ -305,7 +316,7 @@ def generate_resolucion_m2_pdf(
     y_position -= 15
     
     # CONSIDERANDO
-    dibujar_seccion_titulo("C O N S I D E R A N D O")
+    dibujar_seccion_titulo("CONSIDERANDO")
     
     # Considerando intro
     codigo_origen = predios_cancelados[0]["codigo_predial"] if predios_cancelados else ""
@@ -357,7 +368,7 @@ def generate_resolucion_m2_pdf(
     y_position -= 15
     
     # RESUELVE
-    dibujar_seccion_titulo("R E S U E L V E:")
+    dibujar_seccion_titulo("RESUELVE")
     
     # Artículo 1
     c.setFont(font_bold, 10)
@@ -540,8 +551,7 @@ def generate_resolucion_m2_pdf(
     # CIERRE
     verificar_espacio(50)
     c.setFont(font_bold, 11)
-    cierre_espaciado = " ".join(plantilla["cierre"].replace(" ", ""))
-    c.drawCentredString(PAGE_WIDTH/2, y_position, cierre_espaciado)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
     y_position -= 20
     
     # Fecha de expedición

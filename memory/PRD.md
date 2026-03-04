@@ -18,7 +18,31 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (04-03-2026) - M2 Completo: PDF + Englobe + Desengloble
+### Sesión Actual (04-03-2026) - Corrección PDF Desordenado
+
+#### BUG FIX P0 - PDF M2 "Desordenado" CORREGIDO
+- **Problema reportado**: El PDF M2 mostraba texto con espacios excesivos entre palabras y letras separadas en títulos
+- **Causa raíz identificada**: 
+  1. Los títulos "CONSIDERANDO" y "RESUELVE" estaban con letras separadas (`C O N S I D E R A N D O`)
+  2. La función de justificación distribuía espacios sin límite, causando texto "estirado"
+- **Solución implementada**:
+  1. Títulos ahora se muestran como palabras completas ("CONSIDERANDO", "RESUELVE")
+  2. La justificación tiene un límite máximo de 3x el espacio normal entre palabras
+  3. Líneas cortas (<75% del ancho) no se justifican para evitar espacios excesivos
+  4. El cierre "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE" formateado correctamente
+- **Archivos corregidos**:
+  - `/app/backend/resolucion_m2_pdf_generator.py` - Función `dibujar_texto_justificado` mejorada, títulos corregidos
+  - `/app/backend/resolucion_pdf_generator.py` - Mismas correcciones aplicadas a M1
+- **Estado**: ✅ VERIFICADO - PDF generado correctamente
+
+#### BUG FIX P1 - Textarea de Plantilla M1 Auto-Expandible
+- **Problema reportado**: El texto de la plantilla M1 no se veía completo en el textarea de Configuración
+- **Causa raíz**: El textarea tenía altura fija y requería scroll para ver todo el contenido
+- **Solución implementada**: Textarea ahora se auto-expande según el contenido cargado
+- **Archivo**: `/app/frontend/src/pages/MutacionesResoluciones.js`
+- **Estado**: ✅ VERIFICADO
+
+### Sesión Anterior (04-03-2026) - M2 Completo: PDF + Englobe + Desengloble
 
 #### PDF M2 con Header/Footer Institucional
 - Encabezado y pie de página institucional idénticos al M1

@@ -2748,8 +2748,21 @@ export default function MutacionesResoluciones() {
                     <Textarea
                       value={textoPlantilla}
                       onChange={(e) => setTextoPlantilla(e.target.value)}
-                      className="min-h-[300px] font-mono text-sm"
+                      className="font-mono text-sm resize-none overflow-hidden"
+                      style={{ minHeight: '300px', height: 'auto' }}
                       placeholder="Texto de la plantilla..."
+                      onInput={(e) => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.max(300, e.target.scrollHeight) + 'px';
+                      }}
+                      ref={(el) => {
+                        if (el && textoPlantilla) {
+                          setTimeout(() => {
+                            el.style.height = 'auto';
+                            el.style.height = Math.max(300, el.scrollHeight) + 'px';
+                          }, 0);
+                        }
+                      }}
                     />
                     <p className="text-xs text-slate-500 mt-1">
                       Variables disponibles: {'{municipio}'}, {'{radicado}'}, {'{solicitante}'}, {'{documento}'}, {'{npn}'}, {'{fecha}'}

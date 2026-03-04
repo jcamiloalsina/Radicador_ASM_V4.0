@@ -261,7 +261,7 @@ def generate_resolucion_pdf(
         return y
     
     def dibujar_texto_justificado(texto, y_pos, font_name=None, font_size=None, line_height=None):
-        """Dibuja texto justificado (alineado a ambos márgenes)"""
+        """Dibuja texto justificado (alineado a ambos márgenes) con límite de espaciado"""
         fname = font_name or font_normal
         fsize = font_size or fuente_cuerpo
         lheight = line_height or espaciado_parrafos
@@ -270,11 +270,17 @@ def generate_resolucion_pdf(
         lines = simpleSplit(texto, fname, fsize, content_width)
         y = y_pos
         
+        # Calcular espacio normal de referencia
+        espacio_normal = c.stringWidth(' ', fname, fsize)
+        # Límite máximo de espacio entre palabras (máx 3x el espacio normal)
+        max_space = espacio_normal * 3
+        
         for i, line in enumerate(lines):
             y = check_page_break(y, 15)
             
-            # Si es la última línea, no justificar (alinear a la izquierda)
-            if i == len(lines) - 1:
+            # Si es la última línea o línea corta, no justificar (alinear a la izquierda)
+            line_width = c.stringWidth(line, fname, fsize)
+            if i == len(lines) - 1 or line_width < content_width * 0.75:
                 c.drawString(left_margin, y, line)
             else:
                 # Justificar: distribuir espacios extra entre palabras
@@ -284,12 +290,17 @@ def generate_resolucion_pdf(
                     total_space = content_width - total_words_width
                     space_width = total_space / (len(words) - 1)
                     
-                    x = left_margin
-                    for j, word in enumerate(words):
-                        c.drawString(x, y, word)
-                        x += c.stringWidth(word, fname, fsize)
-                        if j < len(words) - 1:
-                            x += space_width
+                    # Limitar el espacio máximo para evitar texto "estirado"
+                    if space_width > max_space:
+                        # Si el espacio es excesivo, usar alineación normal
+                        c.drawString(left_margin, y, line)
+                    else:
+                        x = left_margin
+                        for j, word in enumerate(words):
+                            c.drawString(x, y, word)
+                            x += c.stringWidth(word, fname, fsize)
+                            if j < len(words) - 1:
+                                x += space_width
                 else:
                     c.drawString(left_margin, y, line)
             
@@ -328,8 +339,8 @@ def generate_resolucion_pdf(
     # === CONSIDERANDO ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
-    # CONSIDERANDO con espaciado entre letras
-    c.drawCentredString(width/2, y, "C O N S I D E R A N D O")
+    # CONSIDERANDO como palabra completa
+    c.drawCentredString(width/2, y, "CONSIDERANDO")
     y -= espaciado_secciones
     
     # Considerando 1
@@ -364,8 +375,8 @@ def generate_resolucion_pdf(
     # === RESUELVE ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo + 1)
-    # RESUELVE con espaciado entre letras
-    c.drawCentredString(width/2, y, "R E S U E L V E")
+    # RESUELVE como palabra completa
+    c.drawCentredString(width/2, y, "RESUELVE")
     y -= espaciado_secciones
     
     # Artículo 01
@@ -692,9 +703,8 @@ def generate_resolucion_pdf(
     # === CIERRE ===
     y = check_page_break(y, 30)
     c.setFont(font_bold, fuente_cuerpo)
-    # COMUNIQUESE,NOTIFIQUESEYCUMPLASE con espaciado entre letras
-    cierre_espaciado = " ".join(textos['cierre'].replace(" ", ""))
-    c.drawCentredString(width/2, y, cierre_espaciado)
+    # COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE
+    c.drawCentredString(width/2, y, "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE")
     y -= espaciado_secciones
     
     # Fecha de expedición - en mayúsculas

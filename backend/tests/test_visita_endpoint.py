@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://m2-workflow.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
 
 # Test credentials - Coordinador user
 TEST_EMAIL = "Camilo.alsina1@hotmail.com"
