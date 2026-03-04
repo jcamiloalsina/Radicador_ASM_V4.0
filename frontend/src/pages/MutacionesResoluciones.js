@@ -961,7 +961,7 @@ export default function MutacionesResoluciones() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'Plantilla_Desenglobe_Masivo_R1R2.xlsx');
+      link.setAttribute('download', 'Plantilla_Predios_R1R2.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1012,7 +1012,7 @@ export default function MutacionesResoluciones() {
           predios_inscritos: [...prev.predios_inscritos, ...prediosProcesados]
         }));
         
-        toast.success(`${prediosProcesados.length} predios cargados desde Excel`);
+        toast.success(`${prediosProcesados.length} ${prediosProcesados.length === 1 ? 'predio cargado' : 'predios cargados'} desde Excel`);
         setShowCargaMasiva(false);
         setExcelFile(null);
       }
@@ -2723,7 +2723,7 @@ export default function MutacionesResoluciones() {
                   className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
                   data-testid="btn-carga-masiva"
                 >
-                  <Upload className="w-4 h-4 mr-1" /> Carga Masiva
+                  <Upload className="w-4 h-4 mr-1" /> Importar Excel
                 </Button>
                 <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
                   <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
@@ -2737,7 +2737,7 @@ export default function MutacionesResoluciones() {
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
               <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
                 <div className="p-4 border-b flex justify-between items-center">
-                  <h3 className="font-semibold text-lg text-emerald-800">Carga Masiva de Predios (Excel R1/R2)</h3>
+                  <h3 className="font-semibold text-lg text-emerald-800">Importar Predios desde Excel (Formato R1/R2)</h3>
                   <Button variant="ghost" size="sm" onClick={() => setShowCargaMasiva(false)}>
                     <X className="w-4 h-4" />
                   </Button>
