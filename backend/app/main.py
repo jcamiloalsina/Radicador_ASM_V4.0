@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .core.database import db, close_database
-from .routers import auth, users, admin, catalogos
+from .routers import auth, users, admin, catalogos, predios, petitions, notifications
 
 # Configurar logging
 logging.basicConfig(
@@ -56,6 +56,9 @@ def create_app() -> FastAPI:
     api_router.include_router(users.router)
     api_router.include_router(admin.router)
     api_router.include_router(catalogos.router)
+    api_router.include_router(predios.router)
+    api_router.include_router(petitions.router)
+    api_router.include_router(notifications.router)
     
     # Montar router en la app
     app.include_router(api_router)

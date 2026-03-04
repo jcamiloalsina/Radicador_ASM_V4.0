@@ -20,19 +20,24 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ### Sesión Actual (04-03-2026) - Seguridad y Performance de Base de Datos
 
-#### Refactorización Backend Modular v2.0
+#### Refactorización Backend Modular v2.0 (EN PROGRESO - 2,500+ líneas migradas)
 - **Nueva estructura modular** creada en `/app/backend/app/`:
   - `core/config.py`: Configuración centralizada, catálogos DIVIPOLA, roles y permisos
   - `core/database.py`: Conexión MongoDB reutilizable
   - `core/security.py`: JWT, autenticación, validación de permisos
-  - `routers/auth.py`: Login, registro, verificación email, recuperación contraseña
-  - `routers/users.py`: Gestión de usuarios, roles, permisos
-  - `routers/admin.py`: Administración del sistema, municipios empresa
-  - `routers/catalogos.py`: Catálogos del sistema, health check
-  - `services/email_service.py`: Envío de correos con templates HTML
-  - `utils/helpers.py`: Funciones de utilidad (nombres, seguridad de archivos)
+  - `routers/auth.py`: Login, registro, verificación email, recuperación contraseña (~450 líneas)
+  - `routers/users.py`: Gestión de usuarios, roles, permisos (~170 líneas)
+  - `routers/admin.py`: Administración del sistema, municipios empresa (~90 líneas)
+  - `routers/catalogos.py`: Catálogos del sistema, health check (~60 líneas)
+  - `routers/predios.py`: CRUD de predios, búsquedas, estadísticas (~280 líneas)
+  - `routers/petitions.py`: Crear/listar peticiones, asignar gestores (~400 líneas)
+  - `routers/notifications.py`: Sistema de notificaciones (~130 líneas)
+  - `services/email_service.py`: Envío de correos con templates HTML (~250 líneas)
+  - `utils/helpers.py`: Funciones de utilidad (nombres, seguridad de archivos) (~100 líneas)
+- **Aplicación modular standalone**: 52 rutas API funcionando en `/app/backend/app/main.py`
 - **Migración gradual**: Los routers pueden importarse en `server.py` para reemplazo progresivo
 - **Documentación actualizada**: `/app/backend/docs/README.md` con nueva arquitectura
+- **Pendiente**: Migrar endpoints de resoluciones, actualización, certificados, backups
 
 #### Database Security, Performance & Schema Hardening
 - **JWT Secret**: Reemplazado el secreto predeterminado por uno criptográficamente seguro de 64 caracteres hex
