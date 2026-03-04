@@ -6729,6 +6729,85 @@ async def get_ultima_manzana_sector(
     }
 
 
+@api_router.get("/predios/ultima-manzana/{municipio}")
+async def get_ultima_manzana(
+    municipio: str,
+    zona: str = "00",
+    sector: str = "00",
+    comuna: str = "00",
+    barrio: str = "00",
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene la última manzana registrada para una zona/sector específico.
+    Útil para saber cuál es el siguiente número de manzana disponible.
+    """
+    try:
+        # Construir el prefijo del código predial para buscar
+        # Formato: XX XXX ZZ SS CC BB MMMM (primeros 17 dígitos)
+        divipola = MUNICIPIOS_POR_CODIGO.get(municipio)
+        if not divipola:
+            divipola_data = MUNICIPIOS_DIVIPOLA.get(municipio)
+            if divipola_data:
+                prefijo = divipola_data["departamento"] + divipola_data["municipio"]
+            else:
+                prefijo = ""
+        else:
+            prefijo = divipola["departamento"] + divipola["municipio"]
+        
+        # Buscar predios que coincidan con zona, sector, comuna, barrio
+        # y obtener la manzana más alta
+        codigo_prefijo = f"^{prefijo}{zona.zfill(2)}{sector.zfill(2)}{comuna.zfill(2)}{barrio.zfill(2)}"
+        
+        pipeline = [
+            {
+                "$match": {
+                    "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+                    "codigo_predial_nacional": {"$regex": codigo_prefijo},
+                    "deleted": {"$ne": True}
+                }
+            },
+            {
+                "$project": {
+                    "manzana": {"$substr": ["$codigo_predial_nacional", 13, 4]}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$manzana"
+                }
+            },
+            {
+                "$sort": {"_id": -1}
+            },
+            {
+                "$limit": 1
+            }
+        ]
+        
+        result = await db.predios.aggregate(pipeline).to_list(1)
+        
+        if result:
+            return {
+                "ultima_manzana": result[0]["_id"],
+                "municipio": municipio,
+                "zona": zona,
+                "sector": sector
+            }
+        else:
+            return {
+                "ultima_manzana": None,
+                "municipio": municipio,
+                "zona": zona,
+                "sector": sector,
+                "mensaje": "No se encontraron predios en esta zona/sector"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error buscando última manzana: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/predios/por-manzana/{municipio}")
 async def get_predios_por_manzana(
     municipio: str,

@@ -173,6 +173,8 @@ export default function MutacionesResoluciones() {
   const [buscandoPrediosManzanaNuevo, setBuscandoPrediosManzanaNuevo] = useState(false);
   const [siguienteTerrenoSugeridoNuevo, setSiguienteTerrenoSugeridoNuevo] = useState('0001');
   const [siguienteCodigoHomologadoNuevo, setSiguienteCodigoHomologadoNuevo] = useState(null);
+  const [ultimaManzanaEncontrada, setUltimaManzanaEncontrada] = useState(null);
+  const [buscandoUltimaManzana, setBuscandoUltimaManzana] = useState(false);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
   const [construcciones, setConstrucciones] = useState([{
     id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
@@ -937,6 +939,45 @@ export default function MutacionesResoluciones() {
       setBuscandoPrediosManzanaNuevo(false);
     }
   };
+
+  // Buscar la última manzana en la zona/sector actual
+  const fetchUltimaManzana = async () => {
+    if (!m2Data.municipio || !codigoManualNuevo.zona || !codigoManualNuevo.sector) {
+      setUltimaManzanaEncontrada(null);
+      return;
+    }
+    
+    setBuscandoUltimaManzana(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || m2Data.municipio;
+      const params = new URLSearchParams({
+        zona: (codigoManualNuevo.zona || '00').padStart(2, '0'),
+        sector: (codigoManualNuevo.sector || '00').padStart(2, '0'),
+        comuna: (codigoManualNuevo.comuna || '00').padStart(2, '0'),
+        barrio: (codigoManualNuevo.barrio || '00').padStart(2, '0')
+      });
+      const res = await axios.get(`${API}/predios/ultima-manzana/${encodeURIComponent(municipioNombre)}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUltimaManzanaEncontrada(res.data.ultima_manzana || null);
+    } catch (error) {
+      console.log('Error buscando última manzana:', error);
+      setUltimaManzanaEncontrada(null);
+    } finally {
+      setBuscandoUltimaManzana(false);
+    }
+  };
+
+  // Effect para buscar última manzana cuando cambia zona/sector
+  useEffect(() => {
+    if (showNuevoPredioModal && m2Data.municipio && codigoManualNuevo.zona) {
+      const timer = setTimeout(() => {
+        fetchUltimaManzana();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [showNuevoPredioModal, codigoManualNuevo.zona, codigoManualNuevo.sector, codigoManualNuevo.comuna, codigoManualNuevo.barrio, m2Data.municipio]);
 
   // Effect para buscar predios cuando cambia la manzana
   useEffect(() => {
@@ -2753,11 +2794,17 @@ export default function MutacionesResoluciones() {
                           className="font-mono text-center h-9 text-amber-700"
                           placeholder="00"
                         />
-                        {/* Última manzana encontrada */}
-                        {prediosEnManzanaNuevo.length > 0 && (
+                        {/* Última manzana encontrada en esta zona/sector */}
+                        {ultimaManzanaEncontrada && (
                           <div className="bg-yellow-100 border border-yellow-300 rounded px-2 py-1 mt-1">
                             <span className="text-xs text-yellow-700">Última manzana:</span>
-                            <span className="text-sm font-bold text-yellow-600 block">{(codigoManualNuevo.manzana_vereda || '').padStart(4, '0')}</span>
+                            <span className="text-sm font-bold text-yellow-800 ml-1">{ultimaManzanaEncontrada}</span>
+                          </div>
+                        )}
+                        {buscandoUltimaManzana && (
+                          <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Buscando...
                           </div>
                         )}
                       </div>
