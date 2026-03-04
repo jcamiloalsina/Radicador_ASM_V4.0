@@ -9054,81 +9054,60 @@ async def import_predios_excel(
                 for p in existing_predios_vigencia_actual
             ])
         
-        # Obtener campos especiales de predios existentes para preservarlos
-        # LÓGICA DE PROTECCIÓN:
-        # - creado_en_plataforma=True: Predio creado en M2, NO existe en Excel original
-        # - area_editada_en_plataforma=True: Áreas editadas manualmente, edición manual tiene prioridad
-        # - Solo historial: SÍ se actualiza, pero se conserva el historial
-        existing_special_fields = {}
-        predios_protegidos = []  # Predios que NO deben ser sobrescritos (creados/editados en plataforma)
-        predios_con_historial = {}  # Predios que tienen historial pero SÍ se actualizan
-        predios_a_eliminar = []  # Predios viejos a eliminar (no protegidos)
+        # === LÓGICA SIMPLIFICADA: EL EXCEL SIEMPRE GANA ===
+        
+        # 1. Extraer historial y guardar predios con áreas modificadas para respaldo
+        historiales_por_cnp = {}
+        predios_areas_modificadas = []
         
         for p in existing_predios_vigencia_actual:
             cnp = p.get('codigo_predial_nacional')
-            es_creado_en_plataforma = p.get('creado_en_plataforma', False)
-            es_editado_en_plataforma = p.get('area_editada_en_plataforma', False)
-            historial = p.get('historial', [])
-            tiene_historial = len(historial) > 0
-            
             if cnp:
-                existing_special_fields[cnp] = {
-                    'creado_en_plataforma': es_creado_en_plataforma,
-                    'area_editada_en_plataforma': es_editado_en_plataforma,
-                    'tiene_historial': tiene_historial,
-                    'historial': historial  # Guardar historial para preservarlo
-                }
+                # Guardar historial para transferirlo al nuevo predio
+                historial = p.get('historial', [])
+                if historial:
+                    historiales_por_cnp[cnp] = historial
                 
-                # SOLO proteger si fue CREADO o EDITADO en plataforma (NO por historial)
-                if es_creado_en_plataforma or es_editado_en_plataforma:
-                    predios_protegidos.append(cnp)
-                    logger.info(f"[Import] Predio PROTEGIDO (no se sobrescribe): {cnp} - creado={es_creado_en_plataforma}, editado={es_editado_en_plataforma}")
-                else:
-                    # Este predio se puede actualizar
-                    predios_a_eliminar.append(cnp)
-                    if tiene_historial:
-                        predios_con_historial[cnp] = historial
-                        logger.debug(f"[Import] Predio con historial se ACTUALIZARÁ: {cnp} - {len(historial)} registros de historial")
+                # Si tenía áreas modificadas manualmente, guardar respaldo
+                if p.get('area_editada_en_plataforma') or p.get('creado_en_plataforma'):
+                    predios_areas_modificadas.append({
+                        **p,
+                        "respaldado_en": datetime.now(timezone.utc).isoformat(),
+                        "motivo": "Reemplazado por importación R1-R2"
+                    })
         
-        # Eliminar predios viejos de este municipio (no creados/editados en plataforma)
-        if predios_a_eliminar:
-            await db.predios.delete_many({
-                "municipio": municipio, 
-                "vigencia": vigencia_int,
-                "codigo_predial_nacional": {"$in": predios_a_eliminar}
-            })
-            logger.info(f"[Import] Eliminados {len(predios_a_eliminar)} predios viejos (incluyendo {len(predios_con_historial)} con historial que se actualizarán)")
+        # Guardar respaldo de predios con áreas modificadas
+        if predios_areas_modificadas:
+            await db.predios_areas_respaldo.insert_many(predios_areas_modificadas)
+            logger.info(f"[Import] Respaldados {len(predios_areas_modificadas)} predios con áreas modificadas manualmente")
         
-        logger.info(f"[Import] Predios protegidos (creados/editados en plataforma): {len(predios_protegidos)}")
+        # 2. ELIMINAR TODOS los predios de esta vigencia y municipio
+        delete_result = await db.predios.delete_many({
+            "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+            "vigencia": vigencia_int
+        })
+        logger.info(f"[Import] Eliminados {delete_result.deleted_count} predios existentes")
         
-        # Insertar nuevos predios del Excel
+        # 3. INSERTAR TODOS los predios del Excel
         predios_list = list(r1_data.values())
-        predios_a_insertar = []
-        predios_omitidos = 0
-        predios_actualizados_con_historial = 0
+        predios_con_historial_transferido = 0
         
         for predio in predios_list:
             cnp = predio.get('codigo_predial_nacional')
             
-            # Si el predio está protegido (creado/editado en plataforma), NO insertarlo
-            if cnp in predios_protegidos:
-                predios_omitidos += 1
-                continue
+            # Transferir historial si el CNP coincide
+            if cnp and cnp in historiales_por_cnp:
+                predio['historial'] = historiales_por_cnp[cnp]
+                predios_con_historial_transferido += 1
             
-            # Si el predio tenía historial, PRESERVARLO
-            if cnp in predios_con_historial:
-                predio['historial'] = predios_con_historial[cnp]
-                predios_actualizados_con_historial += 1
-            
-            # Marcar que NO fue creado/editado en plataforma
+            # Marcar como NO creado/editado en plataforma (viene del Excel)
             predio['creado_en_plataforma'] = False
             predio['area_editada_en_plataforma'] = False
-            predios_a_insertar.append(predio)
         
-        if predios_a_insertar:
-            await db.predios.insert_many(predios_a_insertar)
+        if predios_list:
+            await db.predios.insert_many(predios_list)
         
-        logger.info(f"[Import] Predios insertados: {len(predios_a_insertar)}, Omitidos (protegidos): {predios_omitidos}, Actualizados con historial: {predios_actualizados_con_historial}")
+        logger.info(f"[Import] Insertados {len(predios_list)} predios, {predios_con_historial_transferido} con historial transferido")
         
         # ========== VERIFICACIÓN POST-IMPORTACIÓN ==========
         # Verificar que los predios se insertaron correctamente
@@ -9138,7 +9117,7 @@ async def import_predios_excel(
             "deleted": {"$ne": True}
         })
         
-        predios_esperados = len(predios_a_insertar) + len(predios_protegidos)
+        predios_esperados = len(predios_list)
         
         if predios_despues < predios_esperados * 0.9:  # Si hay más del 10% de diferencia
             logger.error(f"[SEGURIDAD] VERIFICACIÓN FALLIDA - Predios después de importación: {predios_despues}, esperados: {predios_esperados}")
@@ -9173,6 +9152,8 @@ async def import_predios_excel(
             "predios_anteriores": len(existing_predios_vigencia_actual),
             "predios_eliminados": predios_eliminados_count,
             "predios_nuevos": predios_nuevos_count,
+            "predios_areas_respaldados": len(predios_areas_modificadas),
+            "predios_historial_transferido": predios_con_historial_transferido,
             "archivo": file.filename,
             "importado_por": current_user['id'],
             "importado_por_nombre": current_user['full_name'],
@@ -9194,9 +9175,9 @@ async def import_predios_excel(
         return {
             "message": f"Importación exitosa para {municipio}",
             "vigencia": vigencia_int,
-            "predios_importados": len(predios_a_insertar),
-            "predios_protegidos": len(predios_protegidos),
-            "predios_actualizados_con_historial": predios_actualizados_con_historial,
+            "predios_importados": len(predios_list),
+            "predios_areas_respaldados": len(predios_areas_modificadas),
+            "predios_historial_transferido": predios_con_historial_transferido,
             "predios_anteriores": len(existing_predios_vigencia_actual),
             "predios_eliminados": predios_eliminados_count,
             "predios_nuevos": predios_nuevos_count,
