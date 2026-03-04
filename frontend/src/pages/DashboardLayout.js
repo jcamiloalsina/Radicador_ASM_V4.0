@@ -310,10 +310,6 @@ export default function DashboardLayout() {
     if (isCoordAdmin) {
       adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
     }
-    // Configuración de Resoluciones solo para administradores
-    if (user.role === 'administrador') {
-      adminItems.push({ path: '/dashboard/configuracion-resoluciones', label: 'Config. Resoluciones', icon: FileText });
-    }
 
     return { baseMenuItems, conservacionItems, actualizacionItems, adminItems };
   }, [user, cambiosPendientesCount]);

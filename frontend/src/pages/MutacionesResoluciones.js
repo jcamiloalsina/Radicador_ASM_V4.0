@@ -13,10 +13,12 @@ import {
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
-  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers
+  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
+  Settings, Save, Eye, RefreshCw, Hash
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Textarea } from '../components/ui/textarea';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -100,6 +102,18 @@ export default function MutacionesResoluciones() {
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [filtroMunicipio, setFiltroMunicipio] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
+  
+  // Estados para configuración de resoluciones (solo admin/coordinador)
+  const [configTab, setConfigTab] = useState('plantillas');
+  const [plantillas, setPlantillas] = useState([]);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(null);
+  const [textoPlantilla, setTextoPlantilla] = useState('');
+  const [firmante, setFirmante] = useState({ nombre: '', cargo: '' });
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [generandoPreview, setGenerandoPreview] = useState(false);
+  const [numeracionMunicipios, setNumeracionMunicipios] = useState({});
+  const [guardandoConfig, setGuardandoConfig] = useState(false);
+  const [cargandoConfig, setCargandoConfig] = useState(false);
   
   // Estado para M2
   const [m2Data, setM2Data] = useState({
@@ -217,7 +231,127 @@ export default function MutacionesResoluciones() {
     if (activeTab === 'historial') {
       fetchHistorial();
     }
+    if (activeTab === 'configuracion') {
+      cargarPlantillas();
+      cargarConfiguracionNumeracion();
+    }
   }, [activeTab, fetchHistorial]);
+
+  // ========== FUNCIONES DE CONFIGURACIÓN (solo admin/coordinador) ==========
+  
+  const cargarPlantillas = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/plantillas`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setPlantillas(response.data.plantillas);
+        if (response.data.plantillas.length > 0 && !plantillaSeleccionada) {
+          seleccionarPlantilla(response.data.plantillas[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando plantillas:', error);
+    }
+  };
+
+  const cargarConfiguracionNumeracion = async () => {
+    setCargandoConfig(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/configuracion-municipios`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setNumeracionMunicipios(response.data.configuracion || {});
+      }
+    } catch (error) {
+      console.error('Error cargando configuración:', error);
+      const inicial = {};
+      MUNICIPIOS.forEach(m => { inicial[m.codigo] = 0; });
+      setNumeracionMunicipios(inicial);
+    } finally {
+      setCargandoConfig(false);
+    }
+  };
+
+  const seleccionarPlantilla = (plantilla) => {
+    setPlantillaSeleccionada(plantilla);
+    setTextoPlantilla(plantilla.texto || '');
+    setFirmante({
+      nombre: plantilla.firmante_nombre || '',
+      cargo: plantilla.firmante_cargo || ''
+    });
+  };
+
+  const guardarPlantilla = async () => {
+    if (!plantillaSeleccionada) return;
+    setGuardandoPlantilla(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/resoluciones/plantillas/${plantillaSeleccionada.tipo}`, {
+        texto: textoPlantilla,
+        firmante_nombre: firmante.nombre,
+        firmante_cargo: firmante.cargo
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Plantilla guardada correctamente');
+      cargarPlantillas();
+    } catch (error) {
+      console.error('Error guardando plantilla:', error);
+      toast.error('Error al guardar plantilla');
+    } finally {
+      setGuardandoPlantilla(false);
+    }
+  };
+
+  const guardarConfiguracionNumeracion = async () => {
+    setGuardandoConfig(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/resoluciones/configuracion-municipios`, 
+        { municipios: numeracionMunicipios },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Configuración guardada correctamente');
+    } catch (error) {
+      console.error('Error guardando configuración:', error);
+      toast.error('Error al guardar configuración');
+    } finally {
+      setGuardandoConfig(false);
+    }
+  };
+
+  const generarPreviewPdf = async () => {
+    if (!plantillaSeleccionada) return;
+    setGenerandoPreview(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/resoluciones/generar-preview?tipo=${plantillaSeleccionada.tipo}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        const pdfBase64 = response.data.pdf_base64;
+        const byteCharacters = atob(pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        toast.success('Preview generado');
+      }
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      toast.error('Error al generar preview');
+    } finally {
+      setGenerandoPreview(false);
+    }
+  };
+
+  const puedeVerConfiguracion = user?.role === 'administrador' || user?.role === 'coordinador';
 
   // Cargar predio pre-seleccionado desde Gestión de Predios
   const [predioPreCargado, setPredioPreCargado] = useState(null);
@@ -2523,6 +2657,210 @@ export default function MutacionesResoluciones() {
     </div>
   );
 
+  // Renderizar configuración (solo admin/coordinador)
+  const renderConfiguracion = () => (
+    <div className="space-y-6">
+      {/* Sub-tabs de configuración */}
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
+        <Button
+          variant={configTab === 'plantillas' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setConfigTab('plantillas')}
+          className={configTab === 'plantillas' ? 'bg-emerald-600' : ''}
+        >
+          <FileText className="w-4 h-4 mr-2" />
+          Plantillas de Texto
+        </Button>
+        <Button
+          variant={configTab === 'numeracion' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setConfigTab('numeracion')}
+          className={configTab === 'numeracion' ? 'bg-emerald-600' : ''}
+        >
+          <Hash className="w-4 h-4 mr-2" />
+          Numeración {new Date().getFullYear()}
+        </Button>
+      </div>
+
+      {/* Contenido de Plantillas */}
+      {configTab === 'plantillas' && (
+        <div className="grid grid-cols-4 gap-6">
+          {/* Lista de plantillas */}
+          <div className="col-span-1 space-y-2">
+            <h3 className="font-medium text-sm text-slate-700 mb-3">Tipos de Resolución</h3>
+            {plantillas.map((plantilla) => (
+              <div
+                key={plantilla.tipo}
+                className={`p-3 rounded-lg cursor-pointer transition-all border ${
+                  plantillaSeleccionada?.tipo === plantilla.tipo
+                    ? 'bg-emerald-50 border-emerald-500'
+                    : 'bg-white border-slate-200 hover:border-emerald-300'
+                }`}
+                onClick={() => seleccionarPlantilla(plantilla)}
+              >
+                <p className="font-medium text-sm">{plantilla.nombre}</p>
+                <p className="text-xs text-slate-500">{plantilla.descripcion}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Editor de plantilla */}
+          <div className="col-span-3 space-y-4">
+            {plantillaSeleccionada ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium text-lg">
+                    {plantillaSeleccionada.nombre}
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generarPreviewPdf}
+                      disabled={generandoPreview}
+                    >
+                      {generandoPreview ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Eye className="w-4 h-4 mr-2" />
+                      )}
+                      Preview PDF
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={guardarPlantilla}
+                      disabled={guardandoPlantilla}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {guardandoPlantilla ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                      )}
+                      Guardar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm">Texto de la Resolución</Label>
+                    <Textarea
+                      value={textoPlantilla}
+                      onChange={(e) => setTextoPlantilla(e.target.value)}
+                      className="min-h-[300px] font-mono text-sm"
+                      placeholder="Texto de la plantilla..."
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Variables disponibles: {'{municipio}'}, {'{radicado}'}, {'{solicitante}'}, {'{documento}'}, {'{npn}'}, {'{fecha}'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm">Nombre del Firmante</Label>
+                      <Input
+                        value={firmante.nombre}
+                        onChange={(e) => setFirmante(prev => ({ ...prev, nombre: e.target.value }))}
+                        placeholder="Nombre completo del firmante"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Cargo del Firmante</Label>
+                      <Input
+                        value={firmante.cargo}
+                        onChange={(e) => setFirmante(prev => ({ ...prev, cargo: e.target.value }))}
+                        placeholder="Cargo del firmante"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 text-slate-500">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Seleccione una plantilla para editar</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Contenido de Numeración */}
+      {configTab === 'numeracion' && (
+        <Card>
+          <CardHeader className="py-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Hash className="w-5 h-5" />
+                Numeración de Resoluciones {new Date().getFullYear()}
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cargarConfiguracionNumeracion}
+                  disabled={cargandoConfig}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${cargandoConfig ? 'animate-spin' : ''}`} />
+                  Actualizar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={guardarConfiguracionNumeracion}
+                  disabled={guardandoConfig}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {guardandoConfig ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Guardar Cambios
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-600 mb-4">
+              Configure el número actual de resolución para cada municipio. La siguiente resolución generada usará el número consecutivo.
+            </p>
+            
+            {cargandoConfig ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 mx-auto animate-spin text-emerald-600" />
+                <p className="text-sm text-slate-500 mt-2">Cargando configuración...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {MUNICIPIOS.map((mun) => (
+                  <div key={mun.codigo} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{mun.nombre}</p>
+                      <p className="text-xs text-slate-500">Código: {mun.codigo}</p>
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={numeracionMunicipios[mun.codigo] || 0}
+                        onChange={(e) => setNumeracionMunicipios(prev => ({
+                          ...prev,
+                          [mun.codigo]: parseInt(e.target.value) || 0
+                        }))}
+                        className="text-center font-mono"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -2535,7 +2873,7 @@ export default function MutacionesResoluciones() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className={`grid w-full ${puedeVerConfiguracion ? 'grid-cols-3' : 'grid-cols-2'} max-w-lg`}>
           <TabsTrigger value="nueva" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Nueva Mutación
@@ -2544,6 +2882,12 @@ export default function MutacionesResoluciones() {
             <History className="w-4 h-4" />
             Historial
           </TabsTrigger>
+          {puedeVerConfiguracion && (
+            <TabsTrigger value="configuracion" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Configuración
+            </TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="nueva" className="mt-6">
@@ -2553,6 +2897,12 @@ export default function MutacionesResoluciones() {
         <TabsContent value="historial" className="mt-6">
           {renderHistorial()}
         </TabsContent>
+        
+        {puedeVerConfiguracion && (
+          <TabsContent value="configuracion" className="mt-6">
+            {renderConfiguracion()}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Dialog para crear mutación */}
