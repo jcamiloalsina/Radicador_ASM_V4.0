@@ -18,7 +18,29 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Sesión Actual (04-03-2026) - Corrección PDF Desordenado
+### Sesión Actual (04-03-2026) - Bug Fix Sincronización + Pestaña Mutaciones
+
+#### BUG FIX CRÍTICO - Predios Aprobados no aparecían en Gestión de Predios
+- **Problema reportado**: Cuando se aprobaba un predio en la página "Pendientes", el predio aparecía en el Visor de Predios (`predios_actualizacion`) pero NO en la lista de "Gestión de Predios" (`predios`)
+- **Causa raíz**: La función `ejecutar_accion_predio_nuevo` en `server.py` solo insertaba en `db.predios` pero no en `db.predios_actualizacion`
+- **Solución implementada**: Se agregó inserción dual en la función de aprobación:
+  - Línea 12843: `await db.predios.insert_one(predio_aprobado)` (existente)
+  - Línea 12871: `await db.predios_actualizacion.insert_one(predio_para_visor)` (NUEVO)
+- **Archivo corregido**: `/app/backend/server.py` (función `ejecutar_accion_predio_nuevo`)
+- **Estado**: ✅ VERIFICADO por testing agent
+
+#### FEATURE - Nueva Pestaña "Mutaciones" en Pendientes
+- **Requerimiento**: Los coordinadores necesitan aprobar/rechazar solicitudes de mutación M1/M2 desde la página de Pendientes
+- **Solución implementada**:
+  - Agregada nueva pestaña "Mutaciones" en TabsList (ahora son 5 tabs para aprobadores)
+  - Función `fetchMutacionesPendientes` que consume `/api/solicitudes-mutacion/pendientes-aprobacion`
+  - Función `handleMutacionAccion` para aprobar/devolver/rechazar solicitudes
+  - Modal de detalle de mutación con información de predios cancelados/inscritos
+  - Badges con contador de mutaciones pendientes
+- **Archivo modificado**: `/app/frontend/src/pages/Pendientes.js`
+- **Estado**: ✅ VERIFICADO por testing agent
+
+### Sesión Anterior (04-03-2026) - Corrección PDF Desordenado
 
 #### BUG FIX P0 - PDF M2 "Desordenado" CORREGIDO
 - **Problema reportado**: El PDF M2 mostraba texto con espacios excesivos entre palabras y letras separadas en títulos
@@ -202,14 +224,15 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 - **Lógica de campos modificados**: Verificar que solo se muestren campos realmente cambiados
 - **Sincronización offline-to-online**: Testing completo
 - **Error checkInitialSync**: Investigar y corregir
+- **PDF histórico incorrecto**: El endpoint de descarga de PDFs históricos puede mostrar datos live en lugar de los históricos
 
 ### P3 - Bajo
 - **Error en Conservación**: Bug al aprobar cambios
 - **Formulario de visita lento en móvil**: Optimización de rendimiento
+- **NPN code length display**: Muestra 38/38 en lugar de 30/30
 
 ## Future Tasks
-- **(P1 URGENTE)** Corregir script de importación R1-R2 que causa pérdida de datos
-- **(P1)** Refactorizar contador de resoluciones para ser atómico
+- **(P1 URGENTE)** Refactorizar contador de resoluciones (`obtener_siguiente_numero_resolucion`) para ser atómico - riesgo de duplicados bajo concurrencia
 - **(P2)** Mutaciones encadenadas: Permitir que un predio tenga múltiples mutaciones en secuencia (ej: primero rectificación de área, luego desenglobar/englobar). Implementar workflow de mutaciones secuenciales. **Nota: Hacer después de completar todas las mutaciones individuales**
 - Exportación Excel para formulario de visitas
 - Exportación XTF
