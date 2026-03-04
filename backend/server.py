@@ -131,8 +131,8 @@ from app.routers import (
     certificados as certificados_router,
     database as database_router,
     resoluciones as resoluciones_router,
-    actualizacion as actualizacion_router,
-    gdb as gdb_router
+    actualizacion as actualizacion_router
+    # gdb NO incluido - usa implementación completa de server.py
 )
 
 # Registrar routers modulares (estos reemplazan endpoints del monolito)
@@ -148,7 +148,7 @@ api_router.include_router(certificados_router.router)
 api_router.include_router(database_router.router)
 api_router.include_router(resoluciones_router.router)
 api_router.include_router(actualizacion_router.router)
-api_router.include_router(gdb_router.router)
+# GDB usa implementación legacy de server.py (tiene shapely, upload, análisis complejos)
 
 # ===== BACKUP SCHEDULER =====
 backup_scheduler = AsyncIOScheduler()
