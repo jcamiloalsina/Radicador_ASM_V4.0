@@ -177,7 +177,7 @@ export default function MutacionesResoluciones() {
   const [buscandoUltimaManzana, setBuscandoUltimaManzana] = useState(false);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
   const [construcciones, setConstrucciones] = useState([{
-    id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+    id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
     tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
   }]);
   const [propietariosNuevo, setPropietariosNuevo] = useState([{
@@ -796,7 +796,7 @@ export default function MutacionesResoluciones() {
     });
     setZonasTerreno([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
     setConstrucciones([{
-      id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+      id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
       tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
     }]);
     setPropietariosNuevo([{
@@ -1023,7 +1023,7 @@ export default function MutacionesResoluciones() {
     setConstrucciones(prev => {
       const nuevoId = generarIdConstruccion(prev.length);
       return [...prev, {
-        id: nuevoId, piso: '1', habitaciones: '0', banos: '0', locales: '0',
+        id: nuevoId, piso: '0', habitaciones: '0', banos: '0', locales: '0',
         tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
       }];
     });
@@ -1821,7 +1821,7 @@ export default function MutacionesResoluciones() {
                         })));
                       } else {
                         setConstrucciones([{
-                          id: 'A', piso: '1', habitaciones: '0', banos: '0', locales: '0',
+                          id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
                           tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
                         }]);
                       }
