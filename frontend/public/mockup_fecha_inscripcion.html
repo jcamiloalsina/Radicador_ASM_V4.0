@@ -341,7 +341,7 @@
                         <div class="field-row">
                             <div class="field-group">
                                 <label>📅 Año de Inscripción:</label>
-                                <select>
+                                <select id="yearCancelado" onchange="cargarAvaluoAutomatico('cancelado')">
                                     <option value="">Seleccione año...</option>
                                     <option value="2015">2015</option>
                                     <option value="2016">2016</option>
@@ -358,13 +358,10 @@
                                 </select>
                             </div>
                             <div class="field-group">
-                                <label>💰 Avalúo para esta Vigencia:</label>
-                                <input type="text" value="$42,023,000" id="avaluoCancelado">
-                                <div class="avaluo-source sistema">✓ Cargado del sistema</div>
+                                <label>💰 Avalúo Vigencia <span id="labelYearCancelado">2025</span>:</label>
+                                <input type="text" value="$42,023,000" id="avaluoCancelado" placeholder="Ingrese o edite el avalúo...">
+                                <div class="avaluo-source sistema" id="sourceCancelado">✓ Cargado del sistema (editable)</div>
                             </div>
-                            <button class="btn-cargar" onclick="cargarAvaluo('cancelado')">
-                                🔄 Cargar Avalúo
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -388,7 +385,7 @@
                         <div class="field-row">
                             <div class="field-group">
                                 <label>📅 Año de Inscripción:</label>
-                                <select id="yearInscrito">
+                                <select id="yearInscrito" onchange="cargarAvaluoAutomatico('inscrito')">
                                     <option value="">Seleccione año...</option>
                                     <option value="2015">2015</option>
                                     <option value="2016">2016</option>
@@ -405,13 +402,10 @@
                                 </select>
                             </div>
                             <div class="field-group">
-                                <label>💰 Avalúo para esta Vigencia:</label>
-                                <input type="text" value="" placeholder="Ingrese avalúo manualmente..." id="avaluoInscrito">
-                                <div class="avaluo-source manual">⚠️ Predio nuevo - Ingrese manualmente</div>
+                                <label>💰 Avalúo Vigencia <span id="labelYearInscrito">2023</span>:</label>
+                                <input type="text" value="" placeholder="Sin datos - Ingrese manualmente..." id="avaluoInscrito">
+                                <div class="avaluo-source manual" id="sourceInscrito">⚠️ Sin avalúo para 2023 - Ingrese manualmente (predio nuevo)</div>
                             </div>
-                            <button class="btn-cargar" onclick="cargarAvaluo('inscrito')">
-                                🔄 Cargar Avalúo
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -545,36 +539,75 @@
     </div>
 
     <script>
-        // Simulación de carga de avalúo
-        function cargarAvaluo(tipo) {
-            if (tipo === 'inscrito') {
-                const year = document.getElementById('yearInscrito').value;
-                const input = document.getElementById('avaluoInscrito');
-                const source = input.nextElementSibling;
-                
-                // Simular que encontró datos para algunos años
-                const avaluosSimulados = {
-                    '2023': '$25,000,000',
-                    '2024': '$26,500,000',
-                    '2025': '$28,500,000'
-                };
-                
-                if (avaluosSimulados[year]) {
-                    input.value = avaluosSimulados[year];
-                    source.className = 'avaluo-source sistema';
-                    source.textContent = '✓ Cargado del sistema';
-                } else {
-                    input.value = '';
-                    input.placeholder = 'No hay datos - Ingrese manualmente...';
-                    source.className = 'avaluo-source manual';
-                    source.textContent = '⚠️ Sin datos para ' + year + ' - Ingrese manualmente';
-                }
+        // Base de datos simulada de avalúos por vigencia
+        // En producción, esto vendría del backend
+        const avaluosDB = {
+            // Predio cancelado (existente) - tiene historial
+            'cancelado': {
+                '2020': '$35,500,000',
+                '2021': '$37,200,000',
+                '2022': '$39,100,000',
+                '2023': '$40,500,000',
+                '2024': '$41,200,000',
+                '2025': '$42,023,000',
+                '2026': '$43,500,000'  // Proyección
+            },
+            // Predio inscrito (nuevo) - solo tiene datos recientes
+            'inscrito': {
+                '2024': '$27,000,000',
+                '2025': '$28,500,000',
+                '2026': '$29,800,000'
             }
+        };
+
+        // Función que se ejecuta AUTOMÁTICAMENTE al cambiar el año
+        function cargarAvaluoAutomatico(tipo) {
+            const yearSelect = document.getElementById('year' + capitalize(tipo));
+            const year = yearSelect.value;
+            const input = document.getElementById('avaluo' + capitalize(tipo));
+            const source = document.getElementById('source' + capitalize(tipo));
+            const labelYear = document.getElementById('labelYear' + capitalize(tipo));
+            
+            // Actualizar etiqueta del año
+            labelYear.textContent = year || '----';
+            
+            if (!year) {
+                input.value = '';
+                input.placeholder = 'Seleccione un año primero...';
+                source.className = 'avaluo-source';
+                source.textContent = '';
+                return;
+            }
+            
+            // Buscar avalúo en la "base de datos"
+            const avaluoEncontrado = avaluosDB[tipo] && avaluosDB[tipo][year];
+            
+            if (avaluoEncontrado) {
+                input.value = avaluoEncontrado;
+                input.placeholder = '';
+                source.className = 'avaluo-source sistema';
+                source.innerHTML = '✓ Avalúo vigencia ' + year + ' cargado del sistema <strong>(puede editarlo)</strong>';
+            } else {
+                input.value = '';
+                input.placeholder = 'No hay avalúo registrado - Ingrese manualmente...';
+                source.className = 'avaluo-source manual';
+                source.textContent = '⚠️ Sin avalúo para vigencia ' + year + ' - Ingrese el valor manualmente';
+            }
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
         // Actualizar display de configuración
         document.getElementById('yearStart').addEventListener('change', function() {
             document.getElementById('displayStart').textContent = this.value;
+        });
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarAvaluoAutomatico('cancelado');
+            cargarAvaluoAutomatico('inscrito');
         });
     </script>
 </body>
