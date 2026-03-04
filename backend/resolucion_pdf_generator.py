@@ -260,6 +260,43 @@ def generate_resolucion_pdf(
             return new_page()
         return y
     
+    def dibujar_texto_justificado(texto, y_pos, font_name=None, font_size=None, line_height=None):
+        """Dibuja texto justificado (alineado a ambos márgenes)"""
+        fname = font_name or font_normal
+        fsize = font_size or fuente_cuerpo
+        lheight = line_height or espaciado_parrafos
+        
+        c.setFont(fname, fsize)
+        lines = simpleSplit(texto, fname, fsize, content_width)
+        y = y_pos
+        
+        for i, line in enumerate(lines):
+            y = check_page_break(y, 15)
+            
+            # Si es la última línea, no justificar (alinear a la izquierda)
+            if i == len(lines) - 1:
+                c.drawString(left_margin, y, line)
+            else:
+                # Justificar: distribuir espacios extra entre palabras
+                words = line.split(' ')
+                if len(words) > 1:
+                    total_words_width = sum(c.stringWidth(word, fname, fsize) for word in words)
+                    total_space = content_width - total_words_width
+                    space_width = total_space / (len(words) - 1)
+                    
+                    x = left_margin
+                    for j, word in enumerate(words):
+                        c.drawString(x, y, word)
+                        x += c.stringWidth(word, fname, fsize)
+                        if j < len(words) - 1:
+                            x += space_width
+                else:
+                    c.drawString(left_margin, y, line)
+            
+            y -= lheight
+        
+        return y
+    
     # ===============================================
     # === CONTENIDO DE LA RESOLUCIÓN ===
     # ===============================================
@@ -285,11 +322,7 @@ def generate_resolucion_pdf(
     
     # === PREÁMBULO ===
     c.setFont(font_normal, fuente_cuerpo)
-    lines = simpleSplit(textos['preambulo'], font_normal, fuente_cuerpo, content_width)
-    for line in lines:
-        y = check_page_break(y, 15)
-        c.drawString(left_margin, y, line)
-        y -= espaciado_parrafos
+    y = dibujar_texto_justificado(textos['preambulo'], y)
     y -= 8
     
     # === CONSIDERANDO ===
@@ -302,19 +335,12 @@ def generate_resolucion_pdf(
     # Considerando 1
     c.setFont(font_normal, fuente_cuerpo)
     texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
-    lines = simpleSplit(texto_c1, font_normal, fuente_cuerpo, content_width)
-    for line in lines:
-        y = check_page_break(y, 15)
-        c.drawString(left_margin, y, line)
-        y -= espaciado_parrafos
+    y = dibujar_texto_justificado(texto_c1, y)
     y -= 8
     
     # Considerando 2 - Intro
     y = check_page_break(y, 30)
-    lines = simpleSplit(textos['considerando_2_intro'], font_normal, fuente_cuerpo, content_width)
-    for line in lines:
-        c.drawString(left_margin, y, line)
-        y -= espaciado_parrafos
+    y = dibujar_texto_justificado(textos['considerando_2_intro'], y)
     
     # Lista de documentos
     for doc in textos['considerando_2_docs']:
@@ -327,20 +353,12 @@ def generate_resolucion_pdf(
     # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
     y = check_page_break(y, 30)
     texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
-    lines = simpleSplit(texto_c3, font_normal, fuente_cuerpo, content_width)
-    for line in lines:
-        y = check_page_break(y, 15)
-        c.drawString(left_margin, y, line)
-        y -= espaciado_parrafos
+    y = dibujar_texto_justificado(texto_c3, y)
     y -= 8
     
     # Considerando final
     y = check_page_break(y, 40)
-    lines = simpleSplit(textos['considerando_final'], font_normal, fuente_cuerpo, content_width)
-    for line in lines:
-        y = check_page_break(y, 15)
-        c.drawString(left_margin, y, line)
-        y -= espaciado_parrafos
+    y = dibujar_texto_justificado(textos['considerando_final'], y)
     y -= espaciado_secciones
     
     # === RESUELVE ===
@@ -630,14 +648,18 @@ def generate_resolucion_pdf(
     c.drawString(left_margin, y, "Artículo 2.")
     c.setFont(font_normal, fuente_cuerpo)
     texto_art2 = textos['articulo_2']
-    lines_art2 = simpleSplit(texto_art2, font_normal, fuente_cuerpo, content_width - 60)
+    # Primera línea junto al "Artículo 2."
     x_offset = left_margin + c.stringWidth("Artículo 2. ", font_bold, fuente_cuerpo)
+    remaining_width = content_width - (x_offset - left_margin)
+    lines_art2 = simpleSplit(texto_art2, font_normal, fuente_cuerpo, remaining_width)
     if lines_art2:
         c.drawString(x_offset, y, lines_art2[0])
         y -= espaciado_parrafos
-        for line in lines_art2[1:]:
-            c.drawString(left_margin, y, line)
-            y -= espaciado_parrafos
+        # Resto del texto justificado
+        if len(lines_art2) > 1:
+            resto_texto = texto_art2[len(lines_art2[0]):].strip()
+            if resto_texto:
+                y = dibujar_texto_justificado(resto_texto, y)
     y -= 5
     
     # Artículo 3
@@ -646,14 +668,16 @@ def generate_resolucion_pdf(
     c.drawString(left_margin, y, "Artículo 3.")
     c.setFont(font_normal, fuente_cuerpo)
     texto_art3 = textos['articulo_3']
-    lines_art3 = simpleSplit(texto_art3, font_normal, fuente_cuerpo, content_width - 60)
     x_offset = left_margin + c.stringWidth("Artículo 3. ", font_bold, fuente_cuerpo)
+    remaining_width = content_width - (x_offset - left_margin)
+    lines_art3 = simpleSplit(texto_art3, font_normal, fuente_cuerpo, remaining_width)
     if lines_art3:
         c.drawString(x_offset, y, lines_art3[0])
         y -= espaciado_parrafos
-        for line in lines_art3[1:]:
-            c.drawString(left_margin, y, line)
-            y -= espaciado_parrafos
+        if len(lines_art3) > 1:
+            resto_texto = texto_art3[len(lines_art3[0]):].strip()
+            if resto_texto:
+                y = dibujar_texto_justificado(resto_texto, y)
     y -= 5
     
     # Artículo 4
