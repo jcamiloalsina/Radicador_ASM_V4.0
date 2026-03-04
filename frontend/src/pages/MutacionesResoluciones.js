@@ -14,7 +14,7 @@ import {
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
-  Settings, Save, Eye, RefreshCw, Hash
+  Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -202,6 +202,13 @@ export default function MutacionesResoluciones() {
   const [propietariosNuevo, setPropietariosNuevo] = useState([{
     nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
   }]);
+
+  // Estado para desenglobe masivo
+  const [showCargaMasiva, setShowCargaMasiva] = useState(false);
+  const [cargandoExcel, setCargandoExcel] = useState(false);
+  const [prediosCargados, setPrediosCargados] = useState([]);
+  const [excelFile, setExcelFile] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -907,6 +914,91 @@ export default function MutacionesResoluciones() {
       ...prev,
       zonas_homogeneas: prev.zonas_homogeneas.filter((_, i) => i !== zonaIndex)
     }));
+  };
+
+  // ==================== DESENGLOBE MASIVO ====================
+  
+  // Descargar plantilla Excel
+  const descargarPlantillaDesenglobe = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/mutaciones/desenglobe-masivo/plantilla`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Plantilla_Desenglobe_Masivo_R1R2.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Plantilla descargada');
+    } catch (error) {
+      console.error('Error descargando plantilla:', error);
+      toast.error('Error al descargar plantilla');
+    }
+  };
+
+  // Procesar Excel de carga masiva
+  const procesarExcelMasivo = async (file) => {
+    if (!file) return;
+    
+    if (!m2Data.municipio) {
+      toast.error('Primero seleccione un municipio');
+      return;
+    }
+    
+    if (m2Data.predios_cancelados.length === 0) {
+      toast.error('Primero agregue al menos un predio a cancelar (predio matriz)');
+      return;
+    }
+    
+    setCargandoExcel(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('predio_matriz_npn', m2Data.predios_cancelados[0]?.npn || m2Data.predios_cancelados[0]?.codigo_predial_nacional || '');
+      formData.append('municipio', m2Data.municipio);
+      
+      const response = await axios.post(`${API}/mutaciones/desenglobe-masivo/procesar-excel`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.success) {
+        const prediosProcesados = response.data.predios;
+        setPrediosCargados(prediosProcesados);
+        
+        // Agregar a predios inscritos
+        setM2Data(prev => ({
+          ...prev,
+          predios_inscritos: [...prev.predios_inscritos, ...prediosProcesados]
+        }));
+        
+        toast.success(`${prediosProcesados.length} predios cargados desde Excel`);
+        setShowCargaMasiva(false);
+        setExcelFile(null);
+      }
+    } catch (error) {
+      console.error('Error procesando Excel:', error);
+      toast.error(error.response?.data?.detail || 'Error al procesar el archivo Excel');
+    } finally {
+      setCargandoExcel(false);
+    }
+  };
+
+  // Manejar selección de archivo
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setExcelFile(file);
+    }
   };
 
   // Agregar nuevo predio inscrito (destino)
@@ -2444,11 +2536,129 @@ export default function MutacionesResoluciones() {
                 <Check className="w-4 h-4" />
                 Predios a INSCRIBIR ({m2Data.predios_inscritos.length})
               </CardTitle>
-              <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
-                <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setShowCargaMasiva(true)} 
+                  className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                  data-testid="btn-carga-masiva"
+                >
+                  <Upload className="w-4 h-4 mr-1" /> Carga Masiva
+                </Button>
+                <Button size="sm" onClick={agregarPredioDestino} className="bg-emerald-600 hover:bg-emerald-700" data-testid="btn-nuevo-predio-inscrito">
+                  <Plus className="w-4 h-4 mr-1" /> Nuevo Predio
+                </Button>
+              </div>
             </div>
           </CardHeader>
+          
+          {/* Modal de Carga Masiva */}
+          {showCargaMasiva && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+                <div className="p-4 border-b flex justify-between items-center">
+                  <h3 className="font-semibold text-lg text-emerald-800">Carga Masiva de Predios (Excel R1/R2)</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setShowCargaMasiva(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  {/* Instrucciones */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-800 mb-2">Instrucciones:</h4>
+                    <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                      <li>Descargue la plantilla Excel con el formato R1/R2</li>
+                      <li>Complete los datos de cada predio (áreas, avalúos, propietarios)</li>
+                      <li>Deje vacías las columnas NPN y Código Homologado para asignación automática</li>
+                      <li>Suba el archivo y el sistema asignará números disponibles</li>
+                    </ol>
+                  </div>
+                  
+                  {/* Botón descargar plantilla */}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={descargarPlantillaDesenglobe}
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Descargar Plantilla Excel R1/R2
+                  </Button>
+                  
+                  {/* Información del predio matriz */}
+                  {m2Data.predios_cancelados.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-sm font-medium text-amber-800">Predio Matriz (base para NPNs):</p>
+                      <p className="text-xs font-mono text-amber-700 mt-1">
+                        {m2Data.predios_cancelados[0]?.npn || m2Data.predios_cancelados[0]?.codigo_predial_nacional}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Área de carga de archivo */}
+                  <div 
+                    className="border-2 border-dashed border-emerald-300 rounded-lg p-8 text-center hover:bg-emerald-50 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      accept=".xlsx,.xls"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {excelFile ? (
+                      <div className="space-y-2">
+                        <FileSpreadsheet className="w-12 h-12 mx-auto text-emerald-600" />
+                        <p className="font-medium text-emerald-800">{excelFile.name}</p>
+                        <p className="text-sm text-slate-500">
+                          {(excelFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Upload className="w-12 h-12 mx-auto text-slate-400" />
+                        <p className="text-slate-600">Click para seleccionar archivo Excel</p>
+                        <p className="text-xs text-slate-400">Formatos: .xlsx, .xls</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Botones de acción */}
+                  <div className="flex gap-3 pt-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => {
+                        setShowCargaMasiva(false);
+                        setExcelFile(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => procesarExcelMasivo(excelFile)}
+                      disabled={!excelFile || cargandoExcel}
+                    >
+                      {cargandoExcel ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Procesando...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Procesar Excel
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <CardContent className="py-2 space-y-3">
             {m2Data.predios_inscritos.map((predio, idx) => (
               <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">

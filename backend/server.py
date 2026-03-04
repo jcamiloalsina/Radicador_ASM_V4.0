@@ -25616,6 +25616,302 @@ async def generar_resolucion_m2(
         raise HTTPException(status_code=500, detail=f"Error generando resolución: {str(e)}")
 
 
+# ==================== DESENGLOBE MASIVO ====================
+
+@api_router.post("/mutaciones/desenglobe-masivo/procesar-excel")
+async def procesar_excel_desenglobe_masivo(
+    file: UploadFile = File(...),
+    predio_matriz_npn: str = Form(...),
+    municipio: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Procesa un Excel R1/R2 para desenglobe masivo.
+    Detecta predios, asigna NPNs disponibles y códigos homologados automáticamente.
+    """
+    import pandas as pd
+    
+    if current_user.get('role') not in ['coordinador', 'administrador', 'gestor']:
+        raise HTTPException(status_code=403, detail="No tiene permisos para esta operación")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un Excel (.xlsx o .xls)")
+    
+    try:
+        # Guardar archivo temporal
+        temp_path = UPLOAD_DIR / f"desenglobe_masivo_{uuid.uuid4()}.xlsx"
+        with open(temp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        
+        # Leer Excel
+        try:
+            df_r1 = pd.read_excel(temp_path, sheet_name=0, engine='openpyxl')
+            try:
+                df_r2 = pd.read_excel(temp_path, sheet_name=1, engine='openpyxl')
+            except:
+                df_r2 = pd.DataFrame()
+        except:
+            df_r1 = pd.read_excel(temp_path, sheet_name=0, engine='xlrd')
+            try:
+                df_r2 = pd.read_excel(temp_path, sheet_name=1, engine='xlrd')
+            except:
+                df_r2 = pd.DataFrame()
+        
+        # Normalizar columnas
+        df_r1.columns = [str(c).strip().upper() for c in df_r1.columns]
+        if len(df_r2) > 0:
+            df_r2.columns = [str(c).strip().upper() for c in df_r2.columns]
+        
+        # Mapeo de columnas R1
+        col_mapping_r1 = {
+            'CODIGO_PREDIAL_NACIONAL': 'codigo_predial',
+            'CODIGO PREDIAL NACIONAL': 'codigo_predial',
+            'CODIGO_PREDIAL': 'codigo_predial',
+            'CODIGO PREDIAL': 'codigo_predial',
+            'NPN': 'codigo_predial',
+            'DIRECCION': 'direccion',
+            'DESTINO_ECONOMICO': 'destino_economico',
+            'DESTINO ECONOMICO': 'destino_economico',
+            'AREA_TERRENO': 'area_terreno',
+            'AREA TERRENO': 'area_terreno',
+            'AREA_CONSTRUIDA': 'area_construida',
+            'AREA CONSTRUIDA': 'area_construida',
+            'AVALUO': 'avaluo',
+            'AVALUO_CATASTRAL': 'avaluo',
+            'AVALUO CATASTRAL': 'avaluo',
+            'CODIGO_HOMOLOGADO': 'codigo_homologado',
+            'CODIGO HOMOLOGADO': 'codigo_homologado',
+            'MATRICULA_INMOBILIARIA': 'matricula_inmobiliaria',
+            'MATRICULA INMOBILIARIA': 'matricula_inmobiliaria',
+            'MATRICULA': 'matricula_inmobiliaria',
+            'NOMBRE': 'propietario_nombre',
+            'NOMBRE_PROPIETARIO': 'propietario_nombre',
+            'NOMBRE PROPIETARIO': 'propietario_nombre',
+            'TIPO_DOCUMENTO': 'propietario_tipo_doc',
+            'TIPO DOCUMENTO': 'propietario_tipo_doc',
+            'NUMERO_DOCUMENTO': 'propietario_documento',
+            'NUMERO DOCUMENTO': 'propietario_documento',
+            'DOCUMENTO': 'propietario_documento',
+        }
+        
+        # Extraer base del NPN del predio matriz (primeros 25 dígitos = hasta terreno)
+        # NPN: DDMMMZZSSMMMTTTTEEEEE (30 dígitos)
+        # DD=Depto(2), MMM=Mpio(3), ZZ=Zona(2), SS=Sector(2), MMM=Manzana(4), TTTT=Terreno(4), EEEEE=Edificación(5), C=Condición(1), Predio(4)
+        base_npn = predio_matriz_npn[:17] if len(predio_matriz_npn) >= 17 else predio_matriz_npn
+        
+        # Buscar predios existentes en esa manzana para encontrar números disponibles
+        predios_existentes = await db.predios.find(
+            {"codigo_predial_nacional": {"$regex": f"^{base_npn}"}},
+            {"codigo_predial_nacional": 1, "codigo_homologado": 1, "_id": 0}
+        ).to_list(1000)
+        
+        # Extraer números de terreno usados (posiciones 17-21)
+        numeros_usados = set()
+        codigos_homologados_usados = set()
+        for p in predios_existentes:
+            npn = p.get("codigo_predial_nacional", "")
+            if len(npn) >= 21:
+                try:
+                    num_terreno = int(npn[17:21])
+                    numeros_usados.add(num_terreno)
+                except:
+                    pass
+            if p.get("codigo_homologado"):
+                codigos_homologados_usados.add(p["codigo_homologado"])
+        
+        # Encontrar números disponibles
+        numeros_disponibles = []
+        for i in range(1, 10000):
+            if i not in numeros_usados:
+                numeros_disponibles.append(i)
+            if len(numeros_disponibles) >= len(df_r1) + 10:
+                break
+        
+        # Procesar filas del Excel
+        predios_procesados = []
+        propietarios_por_codigo = {}
+        idx_numero = 0
+        
+        for _, row in df_r1.iterrows():
+            predio = {
+                "direccion": "",
+                "destino_economico": "A",
+                "area_terreno": 0,
+                "area_construida": 0,
+                "avaluo": 0,
+                "codigo_homologado": "",
+                "matricula_inmobiliaria": "",
+                "propietarios": []
+            }
+            
+            codigo_predial_excel = None
+            propietario = {}
+            
+            for col, field in col_mapping_r1.items():
+                if col in df_r1.columns:
+                    val = row[col]
+                    if pd.notna(val):
+                        if field in ['area_terreno', 'area_construida', 'avaluo']:
+                            try:
+                                predio[field] = float(val)
+                            except:
+                                pass
+                        elif field == 'codigo_predial':
+                            codigo_predial_excel = str(val).strip()
+                        elif field.startswith('propietario_'):
+                            if field == 'propietario_nombre':
+                                propietario['nombre_propietario'] = str(val).strip()
+                            elif field == 'propietario_tipo_doc':
+                                propietario['tipo_documento'] = str(val).strip()
+                            elif field == 'propietario_documento':
+                                propietario['numero_documento'] = str(val).strip()
+                        else:
+                            predio[field] = str(val).strip()
+            
+            # Determinar si necesita asignar NPN
+            npn_completo = None
+            necesita_asignar_npn = True
+            
+            if codigo_predial_excel and len(codigo_predial_excel) >= 30:
+                # El Excel trae NPN completo
+                npn_completo = codigo_predial_excel
+                necesita_asignar_npn = False
+            elif codigo_predial_excel and len(codigo_predial_excel) >= 17:
+                # Tiene base parcial, completar
+                npn_completo = codigo_predial_excel
+                necesita_asignar_npn = False
+            
+            if necesita_asignar_npn and idx_numero < len(numeros_disponibles):
+                # Asignar número disponible
+                num_terreno = numeros_disponibles[idx_numero]
+                # Construir NPN: base(17) + terreno(4) + resto(9)
+                npn_completo = f"{base_npn}{num_terreno:04d}000000000"
+                idx_numero += 1
+            elif not npn_completo:
+                npn_completo = f"{base_npn}{(idx_numero+1):04d}000000000"
+                idx_numero += 1
+            
+            predio["codigo_predial"] = npn_completo
+            predio["npn"] = npn_completo
+            
+            # Asignar código homologado si está vacío
+            if not predio.get("codigo_homologado"):
+                # Generar código homologado basado en municipio y número
+                codigo_mpio = municipio if len(municipio) == 5 else predio_matriz_npn[0:5]
+                base_hom = f"{codigo_mpio[:5]}-{base_npn[7:11]}-"
+                num_hom = 1
+                while f"{base_hom}{num_hom:03d}" in codigos_homologados_usados:
+                    num_hom += 1
+                predio["codigo_homologado"] = f"{base_hom}{num_hom:03d}"
+                codigos_homologados_usados.add(predio["codigo_homologado"])
+            
+            # Agrupar propietarios por código predial
+            if npn_completo not in propietarios_por_codigo:
+                propietarios_por_codigo[npn_completo] = predio
+            
+            if propietario.get('nombre_propietario'):
+                propietarios_por_codigo[npn_completo].setdefault('propietarios', []).append(propietario)
+        
+        # Convertir a lista
+        for npn, predio in propietarios_por_codigo.items():
+            predios_procesados.append(predio)
+        
+        # Limpiar archivo temporal
+        os.remove(temp_path)
+        
+        return {
+            "success": True,
+            "total_predios": len(predios_procesados),
+            "predios": predios_procesados,
+            "base_npn": base_npn,
+            "numeros_disponibles_usados": numeros_disponibles[:len(predios_procesados)],
+            "mensaje": f"Se procesaron {len(predios_procesados)} predios del Excel"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error procesando Excel desenglobe masivo: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error procesando Excel: {str(e)}")
+
+
+@api_router.get("/mutaciones/desenglobe-masivo/plantilla")
+async def descargar_plantilla_desenglobe(
+    current_user: dict = Depends(get_current_user)
+):
+    """Descarga la plantilla Excel para desenglobe masivo en formato R1/R2"""
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    
+    wb = openpyxl.Workbook()
+    
+    # Hoja R1
+    ws_r1 = wb.active
+    ws_r1.title = "R1"
+    
+    headers_r1 = [
+        "CODIGO_PREDIAL_NACIONAL", "CODIGO_HOMOLOGADO", "DIRECCION", 
+        "DESTINO_ECONOMICO", "AREA_TERRENO", "AREA_CONSTRUIDA", 
+        "AVALUO_CATASTRAL", "MATRICULA_INMOBILIARIA",
+        "NOMBRE_PROPIETARIO", "TIPO_DOCUMENTO", "NUMERO_DOCUMENTO"
+    ]
+    
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    for col, header in enumerate(headers_r1, 1):
+        cell = ws_r1.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+        ws_r1.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 20
+    
+    # Ejemplo de fila
+    ejemplo_r1 = [
+        "(Dejar vacío para asignar automático)", 
+        "(Dejar vacío para asignar automático)",
+        "CALLE 10 # 5-25 LOTE 1",
+        "R",
+        250.5000,
+        0,
+        25000000,
+        "270-12345",
+        "JUAN PEREZ GARCIA",
+        "CC",
+        "1234567890"
+    ]
+    for col, val in enumerate(ejemplo_r1, 1):
+        ws_r1.cell(row=2, column=col, value=val)
+    
+    # Hoja R2 (opcional)
+    ws_r2 = wb.create_sheet("R2")
+    headers_r2 = [
+        "CODIGO_PREDIAL_NACIONAL", "TIPO_CONSTRUCCION", "PISOS", 
+        "ESTRATO", "USO", "PUNTAJE"
+    ]
+    
+    for col, header in enumerate(headers_r2, 1):
+        cell = ws_r2.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+        ws_r2.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 25
+    
+    # Guardar en memoria
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=Plantilla_Desenglobe_Masivo_R1R2.xlsx"}
+    )
+
+
 class GenerarResolucionManualRequest(BaseModel):
     """Modelo para generar resolución manualmente desde el formulario de edición"""
     predio_id: str
