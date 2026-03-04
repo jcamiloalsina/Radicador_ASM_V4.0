@@ -599,6 +599,41 @@ class ProyectoActualizacionEstado:
     COMPLETADO = "completado"   # Trabajo de campo terminado
     ARCHIVADO = "archivado"     # Proyecto archivado (no editable)
 
+
+# ===== MODELOS PARA SOLICITUDES DE MUTACIÓN =====
+
+class MutacionEstado:
+    """Estados de una solicitud de mutación"""
+    BORRADOR = "borrador"
+    PENDIENTE_CARTOGRAFIA = "pendiente_cartografia"  # Asignado a gestor de apoyo
+    PENDIENTE_APROBACION = "pendiente_aprobacion"    # Esperando aprobación
+    APROBADO = "aprobado"                            # Aprobado, PDF generado
+    DEVUELTO = "devuelto"                            # Devuelto para correcciones
+    RECHAZADO = "rechazado"                          # Rechazado definitivamente
+
+class SolicitudMutacionCreate(BaseModel):
+    """Modelo para crear una solicitud de mutación"""
+    tipo: str  # M1, M2
+    subtipo: Optional[str] = None  # Para M2: desengloble, englobe
+    municipio: str
+    radicado: Optional[str] = None
+    solicitante: Optional[dict] = None
+    predios_cancelados: List[dict] = []
+    predios_inscritos: List[dict] = []
+    gestor_apoyo_id: Optional[str] = None
+    observaciones: Optional[str] = None
+    # Para M1
+    predio_id: Optional[str] = None
+    propietarios_anteriores: Optional[List[dict]] = None
+    propietarios_nuevos: Optional[List[dict]] = None
+
+class SolicitudMutacionAccion(BaseModel):
+    """Modelo para acciones sobre una solicitud de mutación"""
+    accion: str  # asignar_apoyo, enviar_aprobacion, aprobar, devolver, rechazar, finalizar_cartografia
+    observaciones: Optional[str] = None
+    gestor_apoyo_id: Optional[str] = None
+
+
 class ProyectoActualizacionCreate(BaseModel):
     """Modelo para crear un proyecto de actualización"""
     nombre: str
@@ -26051,6 +26086,478 @@ async def descargar_plantilla_desenglobe(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=Plantilla_Desenglobe_Masivo_R1R2.xlsx"}
     )
+
+
+# ==================== SOLICITUDES DE MUTACIÓN (FLUJO DE APROBACIÓN) ====================
+
+@api_router.post("/solicitudes-mutacion")
+async def crear_solicitud_mutacion(
+    data: SolicitudMutacionCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea una nueva solicitud de mutación (M1, M2, etc.)
+    """
+    try:
+        solicitud_id = str(uuid.uuid4())
+        
+        # Generar radicado si no viene
+        radicado = data.radicado
+        if not radicado:
+            anio = datetime.now().year
+            count = await db.solicitudes_mutacion.count_documents({}) + 1
+            radicado = f"MUT-{data.tipo}-{count:05d}-{anio}"
+        
+        solicitud = {
+            "id": solicitud_id,
+            "tipo": data.tipo,
+            "subtipo": data.subtipo,
+            "estado": MutacionEstado.BORRADOR,
+            "municipio": data.municipio,
+            "radicado": radicado,
+            "solicitante": data.solicitante,
+            "predios_cancelados": data.predios_cancelados,
+            "predios_inscritos": data.predios_inscritos,
+            "observaciones": data.observaciones,
+            # Para M1
+            "predio_id": data.predio_id,
+            "propietarios_anteriores": data.propietarios_anteriores,
+            "propietarios_nuevos": data.propietarios_nuevos,
+            # Gestor de apoyo
+            "gestor_apoyo_id": data.gestor_apoyo_id,
+            "gestor_apoyo_nombre": None,
+            "gestor_apoyo_completado": False,
+            "gestor_apoyo_fecha_completado": None,
+            # Creación
+            "creado_por_id": current_user['id'],
+            "creado_por_nombre": current_user['full_name'],
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            # Aprobación
+            "aprobado_por_id": None,
+            "aprobado_por_nombre": None,
+            "fecha_aprobacion": None,
+            "resolucion_id": None,
+            "pdf_url": None,
+            # Historial
+            "historial": [{
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "accion": "creado",
+                "usuario_id": current_user['id'],
+                "usuario_nombre": current_user['full_name'],
+                "observaciones": "Solicitud creada"
+            }]
+        }
+        
+        await db.solicitudes_mutacion.insert_one(solicitud)
+        
+        return {
+            "success": True,
+            "solicitud_id": solicitud_id,
+            "radicado": radicado,
+            "mensaje": "Solicitud creada exitosamente"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error creando solicitud de mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/solicitudes-mutacion")
+async def listar_solicitudes_mutacion(
+    estado: Optional[str] = None,
+    tipo: Optional[str] = None,
+    municipio: Optional[str] = None,
+    mis_asignaciones: bool = False,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista solicitudes de mutación según filtros
+    """
+    try:
+        filtro = {}
+        
+        if estado:
+            filtro["estado"] = estado
+        if tipo:
+            filtro["tipo"] = tipo
+        if municipio:
+            filtro["municipio"] = municipio
+        
+        # Si es gestor de apoyo, mostrar sus asignaciones
+        if mis_asignaciones:
+            filtro["gestor_apoyo_id"] = current_user['id']
+            filtro["estado"] = MutacionEstado.PENDIENTE_CARTOGRAFIA
+        
+        solicitudes = await db.solicitudes_mutacion.find(
+            filtro,
+            {"_id": 0}
+        ).sort("fecha_creacion", -1).to_list(500)
+        
+        return {
+            "success": True,
+            "solicitudes": solicitudes,
+            "total": len(solicitudes)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error listando solicitudes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/solicitudes-mutacion/pendientes-aprobacion")
+async def listar_pendientes_aprobacion(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista solicitudes pendientes de aprobación (para coordinadores/aprobadores)
+    """
+    # Verificar que tenga permiso de aprobar
+    puede_aprobar = (
+        current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+        Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+    )
+    
+    if not puede_aprobar:
+        raise HTTPException(status_code=403, detail="No tiene permisos para ver solicitudes pendientes")
+    
+    try:
+        solicitudes = await db.solicitudes_mutacion.find(
+            {"estado": MutacionEstado.PENDIENTE_APROBACION},
+            {"_id": 0}
+        ).sort("fecha_creacion", -1).to_list(500)
+        
+        return {
+            "success": True,
+            "solicitudes": solicitudes,
+            "total": len(solicitudes)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error listando pendientes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/solicitudes-mutacion/{solicitud_id}")
+async def obtener_solicitud_mutacion(
+    solicitud_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene una solicitud de mutación por ID
+    """
+    try:
+        solicitud = await db.solicitudes_mutacion.find_one(
+            {"id": solicitud_id},
+            {"_id": 0}
+        )
+        
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+        
+        return {
+            "success": True,
+            "solicitud": solicitud
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error obteniendo solicitud: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.put("/solicitudes-mutacion/{solicitud_id}")
+async def actualizar_solicitud_mutacion(
+    solicitud_id: str,
+    data: SolicitudMutacionCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Actualiza una solicitud de mutación existente
+    """
+    try:
+        solicitud = await db.solicitudes_mutacion.find_one({"id": solicitud_id})
+        
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+        
+        # Solo se puede editar en estado borrador o devuelto
+        if solicitud['estado'] not in [MutacionEstado.BORRADOR, MutacionEstado.DEVUELTO]:
+            raise HTTPException(status_code=400, detail="No se puede editar una solicitud en este estado")
+        
+        update_data = {
+            "subtipo": data.subtipo,
+            "solicitante": data.solicitante,
+            "predios_cancelados": data.predios_cancelados,
+            "predios_inscritos": data.predios_inscritos,
+            "observaciones": data.observaciones,
+            "predio_id": data.predio_id,
+            "propietarios_anteriores": data.propietarios_anteriores,
+            "propietarios_nuevos": data.propietarios_nuevos,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.solicitudes_mutacion.update_one(
+            {"id": solicitud_id},
+            {"$set": update_data}
+        )
+        
+        return {
+            "success": True,
+            "mensaje": "Solicitud actualizada"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error actualizando solicitud: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/solicitudes-mutacion/{solicitud_id}/accion")
+async def ejecutar_accion_solicitud(
+    solicitud_id: str,
+    data: SolicitudMutacionAccion,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Ejecuta una acción sobre una solicitud de mutación
+    Acciones: asignar_apoyo, enviar_aprobacion, aprobar, devolver, rechazar, finalizar_cartografia
+    """
+    try:
+        solicitud = await db.solicitudes_mutacion.find_one({"id": solicitud_id})
+        
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+        
+        accion = data.accion
+        nuevo_estado = solicitud['estado']
+        historial_entry = {
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "accion": accion,
+            "usuario_id": current_user['id'],
+            "usuario_nombre": current_user['full_name'],
+            "observaciones": data.observaciones or ""
+        }
+        
+        update_data = {}
+        notificaciones = []
+        
+        # ===== ASIGNAR A APOYO =====
+        if accion == "asignar_apoyo":
+            if not data.gestor_apoyo_id:
+                raise HTTPException(status_code=400, detail="Debe seleccionar un gestor de apoyo")
+            
+            # Obtener nombre del gestor de apoyo
+            gestor_apoyo = await db.users.find_one({"id": data.gestor_apoyo_id})
+            if not gestor_apoyo:
+                raise HTTPException(status_code=404, detail="Gestor de apoyo no encontrado")
+            
+            nuevo_estado = MutacionEstado.PENDIENTE_CARTOGRAFIA
+            update_data = {
+                "gestor_apoyo_id": data.gestor_apoyo_id,
+                "gestor_apoyo_nombre": gestor_apoyo['full_name'],
+                "gestor_apoyo_completado": False
+            }
+            
+            # Notificar al gestor de apoyo
+            notificaciones.append({
+                "usuario_id": data.gestor_apoyo_id,
+                "titulo": "📋 Nueva asignación de cartografía",
+                "mensaje": f"Te han asignado la cartografía para la solicitud {solicitud['tipo']} - {solicitud['radicado']}",
+                "tipo": "info",
+                "enlace": f"/dashboard/pendientes?tab=mis-asignaciones"
+            })
+        
+        # ===== FINALIZAR CARTOGRAFÍA (Gestor de apoyo) =====
+        elif accion == "finalizar_cartografia":
+            # Verificar que sea el gestor de apoyo asignado
+            if solicitud.get('gestor_apoyo_id') != current_user['id']:
+                raise HTTPException(status_code=403, detail="Solo el gestor de apoyo asignado puede finalizar")
+            
+            nuevo_estado = MutacionEstado.PENDIENTE_APROBACION
+            update_data = {
+                "gestor_apoyo_completado": True,
+                "gestor_apoyo_fecha_completado": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Notificar a aprobadores
+            aprobadores = await db.users.find({
+                "$or": [
+                    {"role": {"$in": [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]}},
+                    {"permissions": Permission.APPROVE_CHANGES}
+                ]
+            }).to_list(100)
+            
+            for aprobador in aprobadores:
+                notificaciones.append({
+                    "usuario_id": aprobador['id'],
+                    "titulo": f"📋 Solicitud {solicitud['tipo']} lista para aprobación",
+                    "mensaje": f"La solicitud {solicitud['radicado']} está lista para aprobar. Cartografía completada por {current_user['full_name']}.",
+                    "tipo": "warning",
+                    "enlace": f"/dashboard/pendientes?tab=mutaciones"
+                })
+            
+            # Notificar al gestor original
+            notificaciones.append({
+                "usuario_id": solicitud['creado_por_id'],
+                "titulo": f"📋 Cartografía completada",
+                "mensaje": f"El gestor de apoyo {current_user['full_name']} ha completado la cartografía de tu solicitud {solicitud['radicado']}. Enviada a aprobación.",
+                "tipo": "success",
+                "enlace": f"/dashboard/pendientes?tab=mutaciones"
+            })
+        
+        # ===== ENVIAR A APROBACIÓN (sin gestor de apoyo) =====
+        elif accion == "enviar_aprobacion":
+            nuevo_estado = MutacionEstado.PENDIENTE_APROBACION
+            
+            # Notificar a aprobadores
+            aprobadores = await db.users.find({
+                "$or": [
+                    {"role": {"$in": [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]}},
+                    {"permissions": Permission.APPROVE_CHANGES}
+                ]
+            }).to_list(100)
+            
+            for aprobador in aprobadores:
+                notificaciones.append({
+                    "usuario_id": aprobador['id'],
+                    "titulo": f"📋 Nueva solicitud {solicitud['tipo']} pendiente",
+                    "mensaje": f"La solicitud {solicitud['radicado']} requiere aprobación. Creada por {current_user['full_name']}.",
+                    "tipo": "warning",
+                    "enlace": f"/dashboard/pendientes?tab=mutaciones"
+                })
+        
+        # ===== APROBAR =====
+        elif accion == "aprobar":
+            # Verificar permisos
+            puede_aprobar = (
+                current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+                Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+            )
+            if not puede_aprobar:
+                raise HTTPException(status_code=403, detail="No tiene permisos para aprobar")
+            
+            nuevo_estado = MutacionEstado.APROBADO
+            update_data = {
+                "aprobado_por_id": current_user['id'],
+                "aprobado_por_nombre": current_user['full_name'],
+                "fecha_aprobacion": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Notificar al gestor original
+            notificaciones.append({
+                "usuario_id": solicitud['creado_por_id'],
+                "titulo": f"✅ Solicitud {solicitud['tipo']} aprobada",
+                "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido aprobada por {current_user['full_name']}.",
+                "tipo": "success",
+                "enlace": f"/dashboard/mutaciones"
+            })
+        
+        # ===== DEVOLVER =====
+        elif accion == "devolver":
+            puede_aprobar = (
+                current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+                Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+            )
+            if not puede_aprobar:
+                raise HTTPException(status_code=403, detail="No tiene permisos para devolver")
+            
+            nuevo_estado = MutacionEstado.DEVUELTO
+            
+            # Notificar al gestor original
+            notificaciones.append({
+                "usuario_id": solicitud['creado_por_id'],
+                "titulo": f"⚠️ Solicitud {solicitud['tipo']} devuelta",
+                "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido devuelta para correcciones. Observaciones: {data.observaciones or 'Sin observaciones'}",
+                "tipo": "warning",
+                "enlace": f"/dashboard/mutaciones"
+            })
+        
+        # ===== RECHAZAR =====
+        elif accion == "rechazar":
+            puede_aprobar = (
+                current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+                Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+            )
+            if not puede_aprobar:
+                raise HTTPException(status_code=403, detail="No tiene permisos para rechazar")
+            
+            nuevo_estado = MutacionEstado.RECHAZADO
+            
+            # Notificar al gestor original
+            notificaciones.append({
+                "usuario_id": solicitud['creado_por_id'],
+                "titulo": f"❌ Solicitud {solicitud['tipo']} rechazada",
+                "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido rechazada. Motivo: {data.observaciones or 'Sin motivo especificado'}",
+                "tipo": "error",
+                "enlace": f"/dashboard/mutaciones"
+            })
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Acción no válida: {accion}")
+        
+        # Actualizar solicitud
+        update_data["estado"] = nuevo_estado
+        await db.solicitudes_mutacion.update_one(
+            {"id": solicitud_id},
+            {
+                "$set": update_data,
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        # Crear notificaciones
+        for notif in notificaciones:
+            await crear_notificacion(
+                usuario_id=notif['usuario_id'],
+                titulo=notif['titulo'],
+                mensaje=notif['mensaje'],
+                tipo=notif['tipo'],
+                enlace=notif['enlace'],
+                enviar_email=False
+            )
+        
+        return {
+            "success": True,
+            "nuevo_estado": nuevo_estado,
+            "mensaje": f"Acción '{accion}' ejecutada exitosamente"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error ejecutando acción: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/gestores-disponibles")
+async def listar_gestores_disponibles(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista gestores disponibles para asignar como apoyo
+    """
+    try:
+        gestores = await db.users.find(
+            {
+                "role": {"$in": [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]},
+                "is_active": True,
+                "id": {"$ne": current_user['id']}  # Excluir al usuario actual
+            },
+            {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}
+        ).to_list(100)
+        
+        return {
+            "success": True,
+            "gestores": gestores
+        }
+        
+    except Exception as e:
+        logging.error(f"Error listando gestores: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 class GenerarResolucionManualRequest(BaseModel):

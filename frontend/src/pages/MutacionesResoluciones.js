@@ -210,6 +210,37 @@ export default function MutacionesResoluciones() {
   const [excelFile, setExcelFile] = useState(null);
   const fileInputRef = React.useRef(null);
 
+  // Estado para flujo de aprobación
+  const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
+  const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
+  const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  
+  // Determinar si el usuario puede aprobar directamente
+  const puedeAprobar = user?.role === 'coordinador' || 
+                       user?.role === 'administrador' || 
+                       (user?.permissions || []).includes('approve_changes');
+
+  // Cargar gestores disponibles para apoyo
+  const cargarGestoresDisponibles = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/gestores-disponibles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setGestoresDisponibles(response.data.gestores || []);
+      }
+    } catch (error) {
+      console.error('Error cargando gestores:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tipoMutacionSeleccionado?.codigo === 'M2') {
+      cargarGestoresDisponibles();
+    }
+  }, [tipoMutacionSeleccionado, cargarGestoresDisponibles]);
+
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
     setLoadingHistorial(true);
@@ -1523,6 +1554,154 @@ export default function MutacionesResoluciones() {
       ...prev,
       predios_inscritos: prev.predios_inscritos.filter((_, i) => i !== index)
     }));
+  };
+
+  // ========== FUNCIONES PARA FLUJO DE APROBACIÓN M2 ==========
+
+  // Validar datos M2 (común para todas las acciones)
+  const validarDatosM2 = () => {
+    if (!m2Data.subtipo) {
+      toast.error('Seleccione el tipo: Englobe o Desengloble');
+      return false;
+    }
+    if (!m2Data.municipio) {
+      toast.error('Seleccione el municipio');
+      return false;
+    }
+    if (!m2Data.radicado) {
+      toast.error('El número de radicado es obligatorio');
+      return false;
+    }
+    if (m2Data.predios_cancelados.length === 0) {
+      toast.error('Agregue al menos un predio a cancelar');
+      return false;
+    }
+    
+    // Validaciones específicas para Englobe
+    if (m2Data.subtipo === 'englobe') {
+      if (m2Data.predios_cancelados.length < 2) {
+        toast.error('Para englobe necesita al menos 2 predios a cancelar');
+        return false;
+      }
+      if (!m2Data.tipo_englobe) {
+        toast.error('Seleccione el tipo de englobe (Total o Absorción)');
+        return false;
+      }
+      if (m2Data.tipo_englobe === 'absorcion' && !m2Data.predio_matriz_id) {
+        toast.error('Seleccione el predio matriz que absorberá a los demás');
+        return false;
+      }
+      if (!m2Data.predio_resultante) {
+        toast.error('Complete los datos del predio resultante');
+        return false;
+      }
+    } else {
+      // Validación para Desengloble
+      if (m2Data.predios_inscritos.length === 0) {
+        toast.error('Agregue al menos un predio a inscribir');
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Crear solicitud M2 y asignar a gestor de apoyo
+  const asignarAApoyo = async () => {
+    if (!validarDatosM2()) return;
+    
+    if (!gestorApoyoSeleccionado) {
+      toast.error('Seleccione un gestor de apoyo para la cartografía');
+      return;
+    }
+    
+    setEnviandoSolicitud(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Crear la solicitud
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        tipo: 'M2',
+        subtipo: m2Data.subtipo,
+        municipio: m2Data.municipio,
+        radicado: m2Data.radicado,
+        solicitante: m2Data.solicitante,
+        predios_cancelados: m2Data.predios_cancelados,
+        predios_inscritos: m2Data.predios_inscritos,
+        gestor_apoyo_id: gestorApoyoSeleccionado
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        // Asignar a apoyo
+        await axios.post(`${API}/solicitudes-mutacion/${response.data.solicitud_id}/accion`, {
+          accion: 'asignar_apoyo',
+          gestor_apoyo_id: gestorApoyoSeleccionado
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        toast.success('Solicitud creada y asignada al gestor de apoyo');
+        // Limpiar formulario
+        setM2Data({
+          municipio: '', subtipo: '', radicado: '', solicitante: {},
+          predios_cancelados: [], predios_inscritos: [], tipo_englobe: '',
+          predio_matriz_id: '', predio_resultante: null, tipo_cancelacion: 'total'
+        });
+        setGestorApoyoSeleccionado('');
+      }
+    } catch (error) {
+      console.error('Error asignando a apoyo:', error);
+      toast.error(error.response?.data?.detail || 'Error al asignar a apoyo');
+    } finally {
+      setEnviandoSolicitud(false);
+    }
+  };
+
+  // Enviar directamente a aprobación (sin gestor de apoyo)
+  const enviarAAprobacion = async () => {
+    if (!validarDatosM2()) return;
+    
+    setEnviandoSolicitud(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Crear la solicitud
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        tipo: 'M2',
+        subtipo: m2Data.subtipo,
+        municipio: m2Data.municipio,
+        radicado: m2Data.radicado,
+        solicitante: m2Data.solicitante,
+        predios_cancelados: m2Data.predios_cancelados,
+        predios_inscritos: m2Data.predios_inscritos
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        // Enviar a aprobación
+        await axios.post(`${API}/solicitudes-mutacion/${response.data.solicitud_id}/accion`, {
+          accion: 'enviar_aprobacion'
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        toast.success('Solicitud enviada a aprobación');
+        // Limpiar formulario
+        setM2Data({
+          municipio: '', subtipo: '', radicado: '', solicitante: {},
+          predios_cancelados: [], predios_inscritos: [], tipo_englobe: '',
+          predio_matriz_id: '', predio_resultante: null, tipo_cancelacion: 'total'
+        });
+      }
+    } catch (error) {
+      console.error('Error enviando a aprobación:', error);
+      toast.error(error.response?.data?.detail || 'Error al enviar a aprobación');
+    } finally {
+      setEnviandoSolicitud(false);
+    }
   };
 
   // Generar resolución M2
@@ -3463,13 +3642,57 @@ export default function MutacionesResoluciones() {
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
-              <Button 
-                onClick={generarResolucionM2} 
-                disabled={generando}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                {generando ? 'Generando...' : 'Generar Resolución M2'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Selector de Gestor de Apoyo */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={gestorApoyoSeleccionado}
+                    onChange={(e) => setGestorApoyoSeleccionado(e.target.value)}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Gestor de apoyo (opcional)</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Botón Asignar a Apoyo */}
+                {gestorApoyoSeleccionado && (
+                  <Button 
+                    onClick={asignarAApoyo} 
+                    disabled={enviandoSolicitud}
+                    variant="outline"
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  >
+                    {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Asignar a Apoyo
+                  </Button>
+                )}
+                
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={enviarAAprobacion} 
+                    disabled={enviandoSolicitud}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Enviar a Aprobación
+                  </Button>
+                )}
+                
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM2} 
+                    disabled={generando}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {generando ? 'Generando...' : 'Generar Resolución M2'}
+                  </Button>
+                )}
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
