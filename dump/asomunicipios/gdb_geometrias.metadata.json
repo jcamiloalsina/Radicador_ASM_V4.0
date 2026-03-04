@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"codigo":{"$numberInt":"1"}},"name":"codigo_1"},{"v":{"$numberInt":"2"},"key":{"municipio":{"$numberInt":"1"}},"name":"municipio_1"}],"uuid":"09cdea9bd56f4f988f857730c5156706","collectionName":"gdb_geometrias","type":"collection"}

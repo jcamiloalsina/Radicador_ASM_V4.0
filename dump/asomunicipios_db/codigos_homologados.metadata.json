@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"municipio":{"$numberInt":"1"},"usado":{"$numberInt":"1"}},"name":"municipio_1_usado_1","background":true}],"uuid":"1d78a051b8d3440bbeb50f8e0ee108d0","collectionName":"codigos_homologados","type":"collection"}

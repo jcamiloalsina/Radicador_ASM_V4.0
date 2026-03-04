@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"id":{"$numberInt":"1"}},"name":"id_1"},{"v":{"$numberInt":"2"},"key":{"codigo_predial_nacional":{"$numberInt":"1"}},"name":"codigo_predial_nacional_1"}],"uuid":"f4dc266b69fa4fc299f3017c7efefae1","collectionName":"predios","type":"collection"}
