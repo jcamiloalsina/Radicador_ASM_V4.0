@@ -18,7 +18,59 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Sesión Actual (04-03-2026) - Bug Fix Sincronización + Pestaña Mutaciones
+### Sesión Actual (04-03-2026) - Seguridad y Performance de Base de Datos
+
+#### Database Security, Performance & Schema Hardening
+- **JWT Secret**: Reemplazado el secreto predeterminado por uno criptográficamente seguro de 64 caracteres hex
+- **MongoDB Authentication**: Preparado docker-compose.yml para autenticación con:
+  - Usuario root para administración
+  - Usuario aplicación (app_user) con rol readWrite
+  - Script mongo-init.js para crear usuarios automáticamente
+- **Nuevas variables de entorno**: MONGO_ROOT_PASSWORD, MONGO_APP_USER, MONGO_APP_PASSWORD
+
+#### Índices MongoDB Optimizados
+Creados índices para mejorar rendimiento de consultas:
+- **users**: unique(email), index(role)
+- **predios**: municipio, codigo_homologado, propietarios.numero_documento, compound(municipio, deleted)
+- **petitions**: unique(radicado), compound(estado, municipio)
+- **predios_eliminados**: codigo_predial_nacional, municipio
+- **codigos_homologados**: compound(municipio, usado)
+- **certificados**: predio_id, unique(codigo_verificacion)
+- **notifications**: compound(user_id, leido)
+- **resoluciones**: numero_resolucion, municipio, año
+
+#### Consolidación de Colecciones
+Migraciones ejecutadas para consolidar colecciones redundantes:
+- `notificaciones` → `notifications` (con campo origen)
+- `predios_cambios` + `predios_cambios_propuestos` → `cambios_pendientes` (con campo origen)
+- `predios_nuevos_eliminados` → `predios_eliminados` (con campo tipo: "nuevo" o "existente")
+
+#### Schema Validation
+Aplicadas validaciones JSON Schema con validationAction: "warn":
+- **predios**: require codigo_predial_nacional (30 chars), municipio; validate propietarios enums
+- **users**: require email, role; validate role enum
+- **petitions**: require radicado, estado; validate estado enum
+
+#### Backup Automatizado
+- Creado servicio mongo-backup en docker-compose.yml
+- Script backup-script.sh con cron diario a las 2 AM
+- Retención de 7 días con auto-eliminación de backups antiguos
+
+#### Historial con Límite
+- Implementada función `push_historial_con_limite()` que:
+  - Mantiene máximo 50 entradas en historial de cada predio
+  - Mueve entradas antiguas a colección `predios_historico`
+
+#### Esquema Propietario Extendido
+Nuevos campos opcionales en modelo PredioUpdate:
+- `tipo_propietario`: titular, copropietario, usufructuario, poseedor, representante_legal
+- `porcentaje_propiedad`: 0-100
+- `tipo_persona`: natural, juridica, sucesion_iliquida
+
+#### Limpieza
+- .gitignore: Limpiado y reorganizado, eliminadas entradas duplicadas
+
+### Sesión Anterior (04-03-2026) - Bug Fix Sincronización + Pestaña Mutaciones
 
 #### BUG FIX CRÍTICO - Predios Aprobados no aparecían en Gestión de Predios
 - **Problema reportado**: Cuando se aprobaba un predio en la página "Pendientes", el predio aparecía en el Visor de Predios (`predios_actualizacion`) pero NO en la lista de "Gestión de Predios" (`predios`)

@@ -463,6 +463,202 @@ def corregir_matricula_predio_especifico(db):
     return True
 
 
+def consolidar_notificaciones(db):
+    """
+    Migración: Consolidar colección 'notificaciones' en 'notifications'
+    Mantiene 'notifications' como la colección canónica
+    """
+    nombre_migracion = 'consolidar_notificaciones_en_notifications'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    stats = {'movidos': 0, 'errores': 0}
+    
+    # Verificar si existe la colección 'notificaciones'
+    if 'notificaciones' not in db.list_collection_names():
+        logger.info("   Colección 'notificaciones' no existe, nada que migrar")
+        registrar_migracion(db, nombre_migracion, {'mensaje': 'Colección no existe', 'movidos': 0})
+        return True
+    
+    # Mover documentos de 'notificaciones' a 'notifications'
+    for doc in db.notificaciones.find():
+        try:
+            doc['_origen_migracion'] = 'notificaciones'
+            # Verificar si ya existe por ID
+            existing = db.notifications.find_one({'id': doc.get('id')})
+            if not existing:
+                doc.pop('_id', None)
+                db.notifications.insert_one(doc)
+                stats['movidos'] += 1
+        except Exception as e:
+            stats['errores'] += 1
+            logger.error(f"   Error moviendo notificación: {e}")
+    
+    logger.info(f"✅ Migración notificaciones completada: {stats['movidos']} movidos, {stats['errores']} errores")
+    registrar_migracion(db, nombre_migracion, stats)
+    return stats['errores'] == 0
+
+
+def consolidar_cambios_pendientes(db):
+    """
+    Migración: Consolidar 'predios_cambios' y 'predios_cambios_propuestos' en 'cambios_pendientes'
+    Agrega campo 'origen' para distinguir la fuente
+    """
+    nombre_migracion = 'consolidar_cambios_en_cambios_pendientes'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    stats = {'predios_cambios': 0, 'predios_cambios_propuestos': 0, 'errores': 0}
+    
+    # Migrar desde 'predios_cambios'
+    if 'predios_cambios' in db.list_collection_names():
+        for doc in db.predios_cambios.find():
+            try:
+                doc['origen'] = 'predios_cambios'
+                existing = db.cambios_pendientes.find_one({'id': doc.get('id')})
+                if not existing:
+                    doc.pop('_id', None)
+                    db.cambios_pendientes.insert_one(doc)
+                    stats['predios_cambios'] += 1
+            except Exception as e:
+                stats['errores'] += 1
+                logger.error(f"   Error migrando predios_cambios: {e}")
+    
+    # Migrar desde 'predios_cambios_propuestos'
+    if 'predios_cambios_propuestos' in db.list_collection_names():
+        for doc in db.predios_cambios_propuestos.find():
+            try:
+                doc['origen'] = 'predios_cambios_propuestos'
+                existing = db.cambios_pendientes.find_one({'id': doc.get('id')})
+                if not existing:
+                    doc.pop('_id', None)
+                    db.cambios_pendientes.insert_one(doc)
+                    stats['predios_cambios_propuestos'] += 1
+            except Exception as e:
+                stats['errores'] += 1
+                logger.error(f"   Error migrando predios_cambios_propuestos: {e}")
+    
+    logger.info(f"✅ Migración cambios completada: {stats['predios_cambios']} de predios_cambios, {stats['predios_cambios_propuestos']} de propuestos, {stats['errores']} errores")
+    registrar_migracion(db, nombre_migracion, stats)
+    return stats['errores'] == 0
+
+
+def consolidar_predios_eliminados(db):
+    """
+    Migración: Consolidar 'predios_nuevos_eliminados' en 'predios_eliminados'
+    Agrega campo 'tipo' para distinguir ("nuevo" o "existente")
+    """
+    nombre_migracion = 'consolidar_predios_nuevos_eliminados'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    stats = {'movidos': 0, 'errores': 0}
+    
+    # Marcar predios existentes en predios_eliminados como tipo "existente"
+    db.predios_eliminados.update_many(
+        {'tipo': {'$exists': False}},
+        {'$set': {'tipo': 'existente'}}
+    )
+    
+    # Migrar desde 'predios_nuevos_eliminados'
+    if 'predios_nuevos_eliminados' in db.list_collection_names():
+        for doc in db.predios_nuevos_eliminados.find():
+            try:
+                doc['tipo'] = 'nuevo'
+                doc['_origen_migracion'] = 'predios_nuevos_eliminados'
+                existing = db.predios_eliminados.find_one({
+                    'codigo_predial_nacional': doc.get('codigo_predial_nacional')
+                })
+                if not existing:
+                    doc.pop('_id', None)
+                    db.predios_eliminados.insert_one(doc)
+                    stats['movidos'] += 1
+            except Exception as e:
+                stats['errores'] += 1
+                logger.error(f"   Error migrando predios_nuevos_eliminados: {e}")
+    
+    logger.info(f"✅ Migración predios_eliminados completada: {stats['movidos']} movidos, {stats['errores']} errores")
+    registrar_migracion(db, nombre_migracion, stats)
+    return stats['errores'] == 0
+
+
+def migrar_vigencias_a_entero(db):
+    """
+    Migración: Convertir vigencias almacenadas como strings (ej: "02042026") a entero (2026)
+    Aplica a predios y predios_nuevos
+    """
+    nombre_migracion = 'migrar_vigencias_string_a_entero'
+    
+    if verificar_migracion_completada(db, nombre_migracion):
+        logger.info(f"✅ Migración '{nombre_migracion}' ya fue completada anteriormente")
+        return True
+    
+    logger.info(f"🔄 Iniciando migración: {nombre_migracion}")
+    
+    stats = {'predios': 0, 'predios_nuevos': 0, 'errores': 0}
+    anio_actual = datetime.now().year
+    
+    def extraer_anio(vigencia_str):
+        """Extrae el año de una vigencia en formato string"""
+        if not vigencia_str:
+            return anio_actual
+        vigencia_str = str(vigencia_str).strip()
+        # Si es un número de 4 dígitos, es el año directamente
+        if len(vigencia_str) == 4 and vigencia_str.isdigit():
+            return int(vigencia_str)
+        # Si es formato largo como "02042026", extraer los últimos 4 dígitos
+        if len(vigencia_str) >= 4:
+            try:
+                return int(vigencia_str[-4:])
+            except:
+                pass
+        return anio_actual
+    
+    # Corregir en predios
+    for predio in db.predios.find({'vigencia': {'$type': 'string'}}):
+        try:
+            vigencia_original = predio.get('vigencia', '')
+            vigencia_int = extraer_anio(vigencia_original)
+            db.predios.update_one(
+                {'_id': predio['_id']},
+                {'$set': {'vigencia': vigencia_int, '_vigencia_original': vigencia_original}}
+            )
+            stats['predios'] += 1
+        except Exception as e:
+            stats['errores'] += 1
+            logger.error(f"   Error en predios: {e}")
+    
+    # Corregir en predios_nuevos
+    for predio in db.predios_nuevos.find({'vigencia': {'$type': 'string'}}):
+        try:
+            vigencia_original = predio.get('vigencia', '')
+            vigencia_int = extraer_anio(vigencia_original)
+            db.predios_nuevos.update_one(
+                {'_id': predio['_id']},
+                {'$set': {'vigencia': vigencia_int, '_vigencia_original': vigencia_original}}
+            )
+            stats['predios_nuevos'] += 1
+        except Exception as e:
+            stats['errores'] += 1
+            logger.error(f"   Error en predios_nuevos: {e}")
+    
+    logger.info(f"✅ Migración vigencias completada: {stats['predios']} en predios, {stats['predios_nuevos']} en predios_nuevos, {stats['errores']} errores")
+    registrar_migracion(db, nombre_migracion, stats)
+    return stats['errores'] == 0
+
+
 def ejecutar_migraciones():
     """
     Ejecuta todas las migraciones pendientes.
@@ -477,11 +673,20 @@ def ejecutar_migraciones():
         logger.info(f"Conectado a base de datos: {DB_NAME}")
         
         # Ejecutar migraciones en orden
+        # Migraciones de estructura de datos
         migrar_propietarios_r1(db)
         migrar_estructura_r2(db)
         migrar_vigencias_incorrectas(db)
         corregir_codigo_homologado_predio_especifico(db)
         corregir_matricula_predio_especifico(db)
+        
+        # Migraciones de consolidación de colecciones
+        consolidar_notificaciones(db)
+        consolidar_cambios_pendientes(db)
+        consolidar_predios_eliminados(db)
+        
+        # Migraciones de estandarización
+        migrar_vigencias_a_entero(db)
         
         logger.info("=" * 60)
         logger.info("✅ PROCESO DE MIGRACIONES COMPLETADO")

@@ -520,6 +520,11 @@ class PredioUpdate(BaseModel):
     numero_resolucion: Optional[str] = None
     fecha_resolucion: Optional[str] = None
     
+    # Campos extendidos para múltiples propietarios
+    tipo_propietario: Optional[str] = None  # titular, copropietario, usufructuario, poseedor, representante_legal
+    porcentaje_propiedad: Optional[float] = None  # 0-100
+    tipo_persona: Optional[str] = None  # natural, juridica, sucesion_iliquida
+    
     # R2 fields
     matricula_inmobiliaria: Optional[str] = None
     zona_fisica_1: Optional[float] = None
@@ -827,6 +832,67 @@ def require_permission(permission: str):
             )
         return current_user
     return permission_checker
+
+
+MAX_HISTORIAL_ENTRIES = 50
+
+async def push_historial_con_limite(
+    collection_name: str,
+    document_id: str,
+    historial_field: str,
+    historial_entry: dict,
+    id_field: str = "id"
+):
+    """
+    Agrega una entrada al historial de un documento, manteniendo un máximo de 50 entradas.
+    Las entradas más antiguas se mueven a la colección predios_historico.
+    
+    Args:
+        collection_name: Nombre de la colección (ej: "predios")
+        document_id: ID del documento
+        historial_field: Nombre del campo de historial (ej: "historial", "historial_cambios")
+        historial_entry: Diccionario con la entrada a agregar
+        id_field: Nombre del campo que contiene el ID (default: "id")
+    """
+    collection = db[collection_name]
+    
+    # Agregar timestamp si no tiene
+    if 'fecha' not in historial_entry and 'timestamp' not in historial_entry:
+        historial_entry['fecha'] = datetime.now(timezone.utc).isoformat()
+    
+    # Push la nueva entrada
+    await collection.update_one(
+        {id_field: document_id},
+        {"$push": {historial_field: historial_entry}}
+    )
+    
+    # Obtener el documento actualizado
+    doc = await collection.find_one({id_field: document_id}, {"_id": 0, historial_field: 1})
+    if not doc:
+        return
+    
+    historial = doc.get(historial_field, [])
+    
+    # Si excede el límite, mover las más antiguas a predios_historico
+    if len(historial) > MAX_HISTORIAL_ENTRIES:
+        entries_to_move = len(historial) - MAX_HISTORIAL_ENTRIES
+        old_entries = historial[:entries_to_move]
+        
+        # Guardar en predios_historico
+        for entry in old_entries:
+            await db.predios_historico.insert_one({
+                "predio_id": document_id,
+                "collection_origen": collection_name,
+                "historial_field": historial_field,
+                "entry": entry,
+                "moved_at": datetime.now(timezone.utc).isoformat()
+            })
+        
+        # Mantener solo las últimas MAX_HISTORIAL_ENTRIES
+        await collection.update_one(
+            {id_field: document_id},
+            {"$set": {historial_field: historial[entries_to_move:]}}
+        )
 
 async def generate_radicado() -> str:
     """
@@ -27368,6 +27434,7 @@ logger = logging.getLogger(__name__)
 
 # Importar sistema de migraciones
 from migrations import ejecutar_migraciones
+from schema_validation import aplicar_validaciones_schema
 
 @app.on_event("startup")
 async def ejecutar_migraciones_automaticas():
@@ -27391,6 +27458,18 @@ async def ejecutar_migraciones_automaticas():
         
     except Exception as e:
         logger.error(f"Error al iniciar migraciones: {str(e)}")
+
+
+@app.on_event("startup")
+async def aplicar_schema_validation():
+    """
+    Aplica validaciones de schema JSON a las colecciones críticas.
+    Usa validationAction: "warn" para no bloquear datos existentes.
+    """
+    try:
+        await aplicar_validaciones_schema(db)
+    except Exception as e:
+        logger.error(f"Error al aplicar validaciones de schema: {str(e)}")
 
 
 @app.on_event("startup")
@@ -27483,12 +27562,63 @@ async def crear_indices_mongodb():
         logger.info("📊 CREANDO ÍNDICES EN MONGODB")
         logger.info("=" * 60)
         
+        # Índices para colección users
+        await db.users.create_index("email", unique=True, background=True)
+        await db.users.create_index("role", background=True)
+        logger.info("✅ Índices de 'users' creados")
+        
         # Índices para colección predios
         await db.predios.create_index("codigo_predial_nacional", background=True)
+        await db.predios.create_index("municipio", background=True)
+        await db.predios.create_index("codigo_homologado", background=True)
+        await db.predios.create_index("propietarios.numero_documento", background=True)
+        await db.predios.create_index([("municipio", 1), ("deleted", 1)], background=True)
         await db.predios.create_index([("municipio", 1), ("vigencia", 1)], background=True)
         await db.predios.create_index("tiene_geometria", background=True)
         await db.predios.create_index([("municipio", 1), ("vigencia", 1), ("tiene_geometria", 1)], background=True)
         logger.info("✅ Índices de 'predios' creados")
+        
+        # Índices para colección petitions
+        await db.petitions.create_index("radicado", unique=True, background=True, sparse=True)
+        await db.petitions.create_index("municipio", background=True)
+        await db.petitions.create_index([("estado", 1), ("municipio", 1)], background=True)
+        await db.petitions.create_index("user_id", background=True)
+        await db.petitions.create_index("gestores_asignados", background=True)
+        logger.info("✅ Índices de 'petitions' creados")
+        
+        # Índices para colección predios_eliminados
+        await db.predios_eliminados.create_index("codigo_predial_nacional", background=True)
+        await db.predios_eliminados.create_index("municipio", background=True)
+        logger.info("✅ Índices de 'predios_eliminados' creados")
+        
+        # Índices para colección predios_historico
+        await db.predios_historico.create_index("predio_id", background=True)
+        logger.info("✅ Índices de 'predios_historico' creados")
+        
+        # Índices para colección codigos_homologados
+        await db.codigos_homologados.create_index([("municipio", 1), ("usado", 1)], background=True)
+        logger.info("✅ Índices de 'codigos_homologados' creados")
+        
+        # Índices para colección certificados
+        await db.certificados.create_index("predio_id", background=True)
+        await db.certificados.create_index("codigo_verificacion", unique=True, background=True, sparse=True)
+        logger.info("✅ Índices de 'certificados' creados")
+        
+        # Índices para colección notifications
+        await db.notifications.create_index([("user_id", 1), ("leido", 1)], background=True)
+        logger.info("✅ Índices de 'notifications' creados")
+        
+        # Índices para colección proyectos_actualizacion
+        await db.proyectos_actualizacion.create_index("municipio", background=True)
+        logger.info("✅ Índices de 'proyectos_actualizacion' creados")
+        
+        # Índices para colección etapas_proyecto
+        await db.etapas_proyecto.create_index("proyecto_id", background=True)
+        logger.info("✅ Índices de 'etapas_proyecto' creados")
+        
+        # Índices para colección actividades_proyecto
+        await db.actividades_proyecto.create_index("proyecto_id", background=True)
+        logger.info("✅ Índices de 'actividades_proyecto' creados")
         
         # Índices para colección gdb_geometrias
         await db.gdb_geometrias.create_index("codigo", background=True)
@@ -27498,6 +27628,7 @@ async def crear_indices_mongodb():
         
         # Índices para colección predios_nuevos
         await db.predios_nuevos.create_index("municipio", background=True)
+        await db.predios_nuevos.create_index("codigo_predial_nacional", background=True)
         await db.predios_nuevos.create_index("estado_flujo", background=True)
         await db.predios_nuevos.create_index("gestor_apoyo_id", background=True)
         logger.info("✅ Índices de 'predios_nuevos' creados")
@@ -27506,13 +27637,14 @@ async def crear_indices_mongodb():
         await db.cambios_pendientes.create_index("municipio", background=True)
         await db.cambios_pendientes.create_index("estado", background=True)
         await db.cambios_pendientes.create_index("gestor_apoyo_id", background=True)
+        await db.cambios_pendientes.create_index("predio_id", background=True)
         logger.info("✅ Índices de 'cambios_pendientes' creados")
         
-        # Índices para colección petitions
-        await db.petitions.create_index("user_id", background=True)
-        await db.petitions.create_index("estado", background=True)
-        await db.petitions.create_index("gestores_asignados", background=True)
-        logger.info("✅ Índices de 'petitions' creados")
+        # Índices para colección resoluciones
+        await db.resoluciones.create_index("numero_resolucion", background=True)
+        await db.resoluciones.create_index("municipio", background=True)
+        await db.resoluciones.create_index("año", background=True)
+        logger.info("✅ Índices de 'resoluciones' creados")
         
         logger.info("=" * 60)
         logger.info("✅ TODOS LOS ÍNDICES CREADOS CORRECTAMENTE")

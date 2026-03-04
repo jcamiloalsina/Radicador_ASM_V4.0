@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"81f1e951347f4cfab9742dbc5fb9edb9","collectionName":"certificados_verificables","type":"collection"}

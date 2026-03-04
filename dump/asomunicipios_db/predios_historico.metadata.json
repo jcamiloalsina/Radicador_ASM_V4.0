@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"ed799b0996304df0b38a1834ab5f3e1b","collectionName":"predios_historico","type":"collection"}
