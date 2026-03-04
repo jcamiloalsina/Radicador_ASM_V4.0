@@ -118,6 +118,28 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ===== IMPORT MODULAR ROUTERS =====
+# Importar routers modulares para reemplazo gradual de endpoints
+from app.routers import (
+    catalogos as catalogos_router,
+    notifications as notifications_router,
+    certificados as certificados_router,
+    database as database_router,
+    resoluciones as resoluciones_router,
+    actualizacion as actualizacion_router,
+    gdb as gdb_router
+)
+
+# Registrar routers modulares (estos reemplazan endpoints del monolito)
+# NOTA: Los endpoints duplicados en server.py serán ignorados a favor de los modulares
+api_router.include_router(catalogos_router.router)
+api_router.include_router(notifications_router.router)
+api_router.include_router(certificados_router.router)
+api_router.include_router(database_router.router)
+api_router.include_router(resoluciones_router.router)
+api_router.include_router(actualizacion_router.router)
+api_router.include_router(gdb_router.router)
+
 # ===== BACKUP SCHEDULER =====
 backup_scheduler = AsyncIOScheduler()
 

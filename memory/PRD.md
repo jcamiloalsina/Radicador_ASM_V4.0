@@ -20,16 +20,18 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ### Sesión Actual (04-03-2026) - Seguridad y Performance de Base de Datos
 
-#### Refactorización Backend Modular v2.0 (EN PROGRESO - 4,320+ líneas migradas)
-- **Nueva estructura modular** creada en `/app/backend/app/` con 23 archivos:
-  - `core/`: config.py, database.py, security.py
-  - `routers/` (12 módulos): auth, users, admin, catalogos, predios, petitions, notifications, resoluciones, database, certificados, actualizacion, gdb
-  - `services/`: email_service.py
-  - `utils/`: helpers.py
-- **Aplicación modular standalone**: 98 rutas API funcionando en `/app/backend/app/main.py`
-- **Documentación actualizada**: `/app/backend/docs/README.md` con nueva arquitectura
-- **Estado**: server.py legacy mantiene ~28,000 líneas, módulos listos para integración gradual
-- **Pendiente**: Migrar endpoints de mutaciones, sandbox, visitas, historial cambios
+#### Refactorización Backend Modular v2.0 (EN PROGRESO)
+- **Nueva estructura modular** en `/app/backend/app/` con 23 archivos (~4,320 líneas)
+- **7 routers ya integrados en server.py**:
+  - ✅ catalogos (health, municipios, destinos económicos)
+  - ✅ notifications (listar, marcar leídas, eliminar)
+  - ✅ certificados (estadísticas, verificación, anulación)
+  - ✅ database (status, backups, restauración)
+  - ✅ resoluciones (plantillas, configuración, historial)
+  - ✅ actualizacion (proyectos, estadísticas)
+  - ✅ gdb (geometrías, capas, estadísticas)
+- **5 routers pendientes de integración**: auth, users, admin, predios, petitions
+- **Estado**: server.py ahora usa routers modulares para ~50 endpoints
 
 #### Database Security, Performance & Schema Hardening
 - **JWT Secret**: Reemplazado el secreto predeterminado por uno criptográficamente seguro de 64 caracteres hex
