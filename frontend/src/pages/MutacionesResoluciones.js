@@ -1312,7 +1312,58 @@ export default function MutacionesResoluciones() {
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API}/resoluciones/generar-m2`, m2Data, {
+      
+      // Preparar datos para enviar
+      // Lógica: Si hay cancelación PARCIAL, el predio matriz ajustado va PRIMERO en inscripciones
+      let prediosInscribirOrdenados = [...m2Data.predios_inscritos];
+      
+      // Buscar si hay algún predio con cancelación parcial
+      const predioParcial = m2Data.predios_cancelados.find(p => p.tipo_cancelacion === 'parcial');
+      
+      if (predioParcial) {
+        // Crear el predio matriz ajustado para la primera inscripción
+        const predioMatrizAjustado = {
+          ...predioParcial,
+          // Usar los nuevos valores ajustados
+          area_terreno: predioParcial.nueva_area_terreno || predioParcial.area_terreno,
+          area_construida: predioParcial.nueva_area_construida || predioParcial.area_construida,
+          avaluo: predioParcial.nuevo_avaluo || predioParcial.avaluo,
+          es_matriz_ajustado: true, // Marcador para identificarlo
+        };
+        
+        // Verificar si ya existe el predio matriz en las inscripciones (evitar duplicados)
+        const yaExisteMatriz = prediosInscribirOrdenados.some(
+          p => p.codigo_predial === predioParcial.codigo_predial || p.npn === predioParcial.npn
+        );
+        
+        if (!yaExisteMatriz) {
+          // Insertar el predio matriz ajustado al inicio
+          prediosInscribirOrdenados = [predioMatrizAjustado, ...prediosInscribirOrdenados];
+        } else {
+          // Si ya existe, moverlo al inicio
+          const matrizExistente = prediosInscribirOrdenados.find(
+            p => p.codigo_predial === predioParcial.codigo_predial || p.npn === predioParcial.npn
+          );
+          prediosInscribirOrdenados = prediosInscribirOrdenados.filter(
+            p => p.codigo_predial !== predioParcial.codigo_predial && p.npn !== predioParcial.npn
+          );
+          // Actualizar con los nuevos valores y poner al inicio
+          prediosInscribirOrdenados = [{
+            ...matrizExistente,
+            area_terreno: predioParcial.nueva_area_terreno || matrizExistente.area_terreno,
+            area_construida: predioParcial.nueva_area_construida || matrizExistente.area_construida,
+            avaluo: predioParcial.nuevo_avaluo || matrizExistente.avaluo,
+            es_matriz_ajustado: true,
+          }, ...prediosInscribirOrdenados];
+        }
+      }
+      
+      const dataToSend = {
+        ...m2Data,
+        predios_inscritos: prediosInscribirOrdenados
+      };
+      
+      const response = await axios.post(`${API}/resoluciones/generar-m2`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
