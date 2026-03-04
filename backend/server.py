@@ -25261,7 +25261,14 @@ async def obtener_historial_resoluciones(
     
     try:
         año_actual = año or datetime.now().year
-        query = {"año": año_actual}
+        
+        # Query que incluye resoluciones con el campo año O sin él (para compatibilidad con datos antiguos)
+        query = {
+            "$or": [
+                {"año": año_actual},
+                {"año": {"$exists": False}}  # Incluir resoluciones sin campo año
+            ]
+        }
         
         # Filtrar por código de municipio o nombre
         if codigo_municipio:
@@ -25564,6 +25571,7 @@ async def generar_resolucion_m2(
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
             "fecha_resolucion": fecha_resolucion,
+            "año": datetime.now(timezone.utc).year,
             "tipo_mutacion": "M2",
             "subtipo": request.subtipo,
             "municipio": municipio_nombre,
