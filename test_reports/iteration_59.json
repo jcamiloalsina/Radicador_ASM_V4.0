@@ -1,0 +1,77 @@
+{
+  "summary": "Testing completed for Pendientes page Mutaciones tab and bug fix for dual collection insertion. All features verified: 1) /api/solicitudes-mutacion/pendientes-aprobacion endpoint returns 200 with correct structure, 2) Pendientes page shows all 5 tabs (Modificaciones, Predios Nuevos, Mutaciones, Reapariciones, Historial) for approver users, 3) Bug fix code confirmed - approved predios now insert into both 'predios' and 'predios_actualizacion' collections.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pendientes_mutaciones_bugfix.py",
+    "/app/test_reports/pytest/pytest_results_iteration59.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: Bug fix at line 12845-12871 in server.py - When a predio is approved via ejecutar_accion_predio_nuevo(), it now inserts into BOTH 'predios' (line 12843) AND 'predios_actualizacion' (line 12871) collections",
+    "VERIFIED: /api/solicitudes-mutacion/pendientes-aprobacion endpoint correctly filters by MutacionEstado.PENDIENTE_APROBACION and requires approve permission",
+    "VERIFIED: Pendientes.js correctly implements 5 tabs with grid-cols-5 layout and fetchMutacionesPendientes function that calls the new endpoint"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pendientes_mutaciones_bugfix.py (new test file)"
+  ],
+  "success_rate": {
+    "backend": "100% (10 passed, 1 skipped)",
+    "frontend": "100% (5 tabs verified)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*",
+      "role": "Administrador/Aprobador"
+    }
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pendientes page fully tested. 5 tabs working for approver users: 1) Modificaciones - shows pending modification changes, 2) Predios Nuevos - shows new properties pending approval, 3) Mutaciones (NEW) - shows M1/M2 mutations pending approval, 4) Reapariciones - shows property reappearance requests, 5) Historial - shows historical approved/rejected changes. Bug fix for dual collection insertion confirmed in server.py ejecutar_accion_predio_nuevo function.",
+  "tests_performed": {
+    "backend_api_tests": {
+      "health_check": "PASS",
+      "admin_login": "PASS",
+      "pendientes_aprobacion_endpoint_returns_200": "PASS",
+      "pendientes_aprobacion_requires_auth": "PASS",
+      "cambios_pendientes_endpoint": "PASS",
+      "cambios_stats_endpoint": "PASS",
+      "predios_nuevos_endpoint": "PASS",
+      "reapariciones_pendientes_endpoint": "PASS",
+      "historial_endpoint": "PASS",
+      "mutacion_accion_endpoint_exists": "PASS"
+    },
+    "frontend_ui_tests": {
+      "login": "PASS",
+      "navigate_to_pendientes": "PASS",
+      "modificaciones_tab_visible": "PASS",
+      "predios_nuevos_tab_visible": "PASS",
+      "mutaciones_tab_visible": "PASS (NEW TAB)",
+      "reapariciones_tab_visible": "PASS",
+      "historial_tab_visible": "PASS",
+      "mutaciones_tab_clickable": "PASS",
+      "mutaciones_tab_content": "PASS - Shows 'Sin mutaciones pendientes' when no pending mutations"
+    },
+    "bug_fix_verification": {
+      "dual_insertion_code_exists": "VERIFIED at lines 12843 and 12871 in server.py",
+      "predios_insert": "Line 12843 - await db.predios.insert_one(predio_aprobado)",
+      "predios_actualizacion_insert": "Line 12871 - await db.predios_actualizacion.insert_one(predio_para_visor)",
+      "bugfix_comment_present": "Line 12845 - BUGFIX comment explains the change"
+    }
+  },
+  "features_verified": [
+    "1. /api/solicitudes-mutacion/pendientes-aprobacion endpoint works correctly",
+    "2. Pendientes page shows 5 tabs for approver users (Modificaciones, Predios Nuevos, Mutaciones, Reapariciones, Historial)",
+    "3. Mutaciones tab loads data from pendientes-aprobacion endpoint and shows approve/devolver/rechazar actions",
+    "4. Bug fix confirmed - approved predios now insert into both 'predios' and 'predios_actualizacion' collections"
+  ]
+}

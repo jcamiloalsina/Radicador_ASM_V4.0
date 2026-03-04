@@ -96,6 +96,14 @@ export default function Pendientes() {
   const [justificacionReaparicion, setJustificacionReaparicion] = useState('');
   const [procesandoReaparicion, setProcesandoReaparicion] = useState(null);
   
+  // Estados para mutaciones pendientes (M1, M2)
+  const [mutacionesPendientes, setMutacionesPendientes] = useState([]);
+  const [loadingMutaciones, setLoadingMutaciones] = useState(false);
+  const [selectedMutacion, setSelectedMutacion] = useState(null);
+  const [showMutacionModal, setShowMutacionModal] = useState(false);
+  const [observacionesMutacion, setObservacionesMutacion] = useState('');
+  const [procesandoMutacion, setProcesandoMutacion] = useState(false);
+  
   // Estados para el modal de rechazo
   const [showRechazarModal, setShowRechazarModal] = useState(false);
   const [cambioArechazar, setCambioArechazar] = useState(null);
@@ -353,7 +361,58 @@ export default function Pendientes() {
     fetchReapariciones();
     fetchPeticionesParaVincular();
     fetchMisAsignacionesApoyo();
+    fetchMutacionesPendientes();
   }, []);
+
+  // Cargar mutaciones pendientes de aprobación
+  const fetchMutacionesPendientes = async () => {
+    try {
+      setLoadingMutaciones(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/solicitudes-mutacion/pendientes-aprobacion`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMutacionesPendientes(res.data.solicitudes || []);
+    } catch (error) {
+      console.log('Error cargando mutaciones pendientes');
+      setMutacionesPendientes([]);
+    } finally {
+      setLoadingMutaciones(false);
+    }
+  };
+  
+  // Ejecutar acción sobre solicitud de mutación
+  const handleMutacionAccion = async (solicitudId, accion) => {
+    setProcesandoMutacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
+        accion: accion,
+        observaciones: observacionesMutacion || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const mensajes = {
+        aprobar: 'Solicitud de mutación aprobada exitosamente',
+        devolver: 'Solicitud devuelta para correcciones',
+        rechazar: 'Solicitud de mutación rechazada'
+      };
+      
+      toast.success(mensajes[accion] || 'Acción completada');
+      setShowMutacionModal(false);
+      setSelectedMutacion(null);
+      setObservacionesMutacion('');
+      fetchMutacionesPendientes();
+      
+      // Emitir evento para actualizar badge
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al procesar la acción');
+    } finally {
+      setProcesandoMutacion(false);
+    }
+  };
 
   // Cargar mis asignaciones de apoyo en modificaciones
   const fetchMisAsignacionesApoyo = async () => {
@@ -1135,12 +1194,12 @@ export default function Pendientes() {
   
   // Calcular totales según el rol
   const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length;
-  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes;
+  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes + mutacionesPendientes.length;
   
   // Título y descripción según el rol
   const pageTitle = puedeAprobar ? 'Pendientes' : 'Mis Asignaciones';
   const pageDescription = puedeAprobar 
-    ? 'Cambios, predios nuevos y reapariciones que requieren aprobación'
+    ? 'Cambios, predios nuevos, mutaciones y reapariciones que requieren aprobación'
     : 'Predios y modificaciones asignadas para tu gestión';
   const totalBadge = puedeAprobar ? totalPendientesAprobacion : totalMisAsignaciones;
 
@@ -1441,7 +1500,7 @@ export default function Pendientes() {
       ) : (
         /* Vista para COORDINADORES / APROBADORES */
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="modificaciones" className="flex items-center gap-2">
               <Edit className="w-4 h-4" />
               Modificaciones
@@ -1454,6 +1513,13 @@ export default function Pendientes() {
               Predios Nuevos
               {prediosEnRevision > 0 && (
                 <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="mutaciones" className="flex items-center gap-2">
+              <ArrowRight className="w-4 h-4" />
+              Mutaciones
+              {mutacionesPendientes.length > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-800">{mutacionesPendientes.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="reapariciones" className="flex items-center gap-2">
@@ -1947,6 +2013,132 @@ export default function Pendientes() {
           {renderHistorialContent()}
         </TabsContent>
 
+        {/* Tab: Mutaciones (M1, M2) */}
+        <TabsContent value="mutaciones">
+          {loadingMutaciones ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+            </div>
+          ) : mutacionesPendientes.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center">
+                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
+                <h3 className="text-xl font-semibold text-slate-700">Sin mutaciones pendientes</h3>
+                <p className="text-slate-500 mt-2">No hay solicitudes de mutación esperando aprobación</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {mutacionesPendientes.map((mutacion) => (
+                <Card key={mutacion.id} className="hover:border-purple-300 transition-colors border-l-4 border-l-purple-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <ArrowRight className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                              {mutacion.tipo} {mutacion.subtipo ? `- ${mutacion.subtipo}` : ''}
+                            </Badge>
+                            <Badge variant="outline" className="text-blue-600 border-blue-300">
+                              {mutacion.radicado || 'Sin radicado'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-700 mt-1 font-medium">
+                            {mutacion.municipio}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Creado por: {mutacion.creado_por_nombre || 'N/A'}
+                          </p>
+                          {mutacion.gestor_apoyo_nombre && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              <User className="w-3 h-3 inline mr-1" />
+                              Cartografía: {mutacion.gestor_apoyo_nombre}
+                            </p>
+                          )}
+                          {mutacion.predios_cancelados?.length > 0 && (
+                            <p className="text-xs text-slate-600 mt-2">
+                              Predios cancelados: {mutacion.predios_cancelados.length}
+                            </p>
+                          )}
+                          {mutacion.predios_inscritos?.length > 0 && (
+                            <p className="text-xs text-slate-600">
+                              Predios inscritos: {mutacion.predios_inscritos.length}
+                            </p>
+                          )}
+                          <p className="text-xs text-slate-400 mt-2">
+                            <Calendar className="w-3 h-3 inline mr-1" />
+                            {formatDate(mutacion.fecha_creacion)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedMutacion(mutacion);
+                            setShowMutacionModal(true);
+                          }}
+                          data-testid={`view-mutacion-${mutacion.id}`}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver Detalle
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => handleMutacionAccion(mutacion.id, 'aprobar')}
+                          disabled={procesandoMutacion}
+                          data-testid={`approve-mutacion-${mutacion.id}`}
+                        >
+                          {procesandoMutacion ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                          )}
+                          Aprobar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                          onClick={() => {
+                            setSelectedMutacion(mutacion);
+                            setObservacionesMutacion('');
+                            setShowMutacionModal(true);
+                          }}
+                          disabled={procesandoMutacion}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Devolver
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            setSelectedMutacion(mutacion);
+                            setObservacionesMutacion('');
+                            setShowMutacionModal(true);
+                          }}
+                          disabled={procesandoMutacion}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Rechazar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
         {/* Tab: Reapariciones */}
         <TabsContent value="reapariciones">
           {loadingReapariciones ? (
@@ -2106,6 +2298,147 @@ export default function Pendientes() {
                 Confirmar Rechazo
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalle de Mutación */}
+      <Dialog open={showMutacionModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowMutacionModal(false);
+          setSelectedMutacion(null);
+          setObservacionesMutacion('');
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-purple-600" />
+              Detalle de Solicitud de Mutación
+            </DialogTitle>
+            <DialogDescription>
+              Revise los datos de la solicitud antes de aprobar o rechazar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedMutacion && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-xs text-purple-600 font-medium">Tipo de Mutación</p>
+                  <p className="text-sm font-semibold text-purple-800">
+                    {selectedMutacion.tipo} {selectedMutacion.subtipo ? `- ${selectedMutacion.subtipo}` : ''}
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs text-blue-600 font-medium">Radicado</p>
+                  <p className="text-sm font-semibold text-blue-800">
+                    {selectedMutacion.radicado || 'Sin radicado'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-xs text-slate-500 font-medium mb-2">Información General</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-slate-500">Municipio:</span> {selectedMutacion.municipio}</div>
+                  <div><span className="text-slate-500">Creador:</span> {selectedMutacion.creado_por_nombre}</div>
+                  {selectedMutacion.gestor_apoyo_nombre && (
+                    <div><span className="text-slate-500">Cartografía:</span> {selectedMutacion.gestor_apoyo_nombre}</div>
+                  )}
+                  <div><span className="text-slate-500">Fecha:</span> {formatDate(selectedMutacion.fecha_creacion)}</div>
+                </div>
+              </div>
+              
+              {/* Predios Cancelados */}
+              {selectedMutacion.predios_cancelados?.length > 0 && (
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-xs text-red-600 font-medium mb-2">Predios a Cancelar ({selectedMutacion.predios_cancelados.length})</p>
+                  <div className="space-y-2">
+                    {selectedMutacion.predios_cancelados.map((predio, idx) => (
+                      <div key={idx} className="bg-white p-2 rounded border border-red-200 text-sm">
+                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
+                        {predio.nombre_propietario && (
+                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Predios Inscritos */}
+              {selectedMutacion.predios_inscritos?.length > 0 && (
+                <div className="bg-emerald-50 p-3 rounded-lg">
+                  <p className="text-xs text-emerald-600 font-medium mb-2">Predios a Inscribir ({selectedMutacion.predios_inscritos.length})</p>
+                  <div className="space-y-2">
+                    {selectedMutacion.predios_inscritos.map((predio, idx) => (
+                      <div key={idx} className="bg-white p-2 rounded border border-emerald-200 text-sm">
+                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
+                        {predio.nombre_propietario && (
+                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                        )}
+                        {predio.area_terreno && (
+                          <p className="text-xs text-slate-500">Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Observaciones */}
+              {selectedMutacion.observaciones && (
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500 font-medium">Observaciones</p>
+                  <p className="text-sm text-slate-700 mt-1">{selectedMutacion.observaciones}</p>
+                </div>
+              )}
+              
+              {/* Área para escribir observaciones al aprobar/devolver/rechazar */}
+              <div>
+                <Label htmlFor="obs-mutacion">Observaciones (opcional para aprobar, requerido para devolver/rechazar)</Label>
+                <Textarea
+                  id="obs-mutacion"
+                  value={observacionesMutacion}
+                  onChange={(e) => setObservacionesMutacion(e.target.value)}
+                  placeholder="Escriba sus observaciones aquí..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowMutacionModal(false)}>
+              Cerrar
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'devolver')}
+              disabled={procesandoMutacion || !observacionesMutacion.trim()}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              Devolver
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'rechazar')}
+              disabled={procesandoMutacion || !observacionesMutacion.trim()}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+              Rechazar
+            </Button>
+            <Button 
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'aprobar')}
+              disabled={procesandoMutacion}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Aprobar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -928,7 +928,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1066,7 +1066,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1132,7 +1132,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1170,7 +1170,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1223,7 +1223,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1262,7 +1262,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1292,7 +1292,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1325,7 +1325,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11195,7 +11195,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-workflow-1.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://resolucion-central.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -12841,6 +12841,34 @@ async def ejecutar_accion_predio_nuevo(
         
         # Insertar en colección principal
         await db.predios.insert_one(predio_aprobado)
+        
+        # BUGFIX: También insertar en predios_actualizacion para que aparezca en el Visor de Mapas
+        predio_para_visor = {
+            "id": predio_aprobado["id"],
+            "codigo_predial_nacional": predio_aprobado.get("codigo_predial_nacional"),
+            "codigo_predial": predio_aprobado.get("codigo_predial_nacional"),
+            "numero_predial": predio_aprobado.get("codigo_predial_nacional"),
+            "codigo_homologado": predio_aprobado.get("codigo_homologado", ""),
+            "municipio": predio_aprobado.get("municipio"),
+            "vigencia": predio_aprobado.get("vigencia", datetime.now(timezone.utc).year),
+            "direccion": predio_aprobado.get("direccion", ""),
+            "destino_economico": predio_aprobado.get("destino_economico", ""),
+            "area_terreno": predio_aprobado.get("area_terreno", 0),
+            "area_construida": predio_aprobado.get("area_construida", 0),
+            "avaluo_catastral": predio_aprobado.get("avaluo", 0),
+            "nombre_propietario": predio_aprobado.get("propietarios", [{}])[0].get("nombre_propietario", "") if predio_aprobado.get("propietarios") else "",
+            "propietarios": predio_aprobado.get("propietarios", []),
+            "matricula_inmobiliaria": predio_aprobado.get("matricula_inmobiliaria", ""),
+            "estado_visita": "pendiente",
+            "es_predio_nuevo": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "creado_por": predio_aprobado.get("gestor_creador_id"),
+            "creado_por_nombre": predio_aprobado.get("gestor_creador_nombre"),
+            "aprobado_por": current_user["id"],
+            "aprobado_por_nombre": current_user["full_name"]
+        }
+        await db.predios_actualizacion.insert_one(predio_para_visor)
         
         # Eliminar de predios_nuevos
         await db.predios_nuevos.delete_one({"id": predio_id})
@@ -21272,6 +21300,49 @@ async def aprobar_propuesta(
         }
         
         await db.predios_actualizacion.insert_one(predio_nuevo)
+        
+        # IMPORTANTE: También insertar en la colección 'predios' para Gestión de Predios
+        predio_para_gestion = {
+            "id": predio_id,
+            "codigo_predial_nacional": codigo_predial,
+            "codigo_homologado": codigo_homologado,
+            "municipio": municipio,
+            "direccion": r1.get('direccion', ''),
+            "destino_economico": r1.get('destino_economico', ''),
+            "area_terreno": float(r1.get('area_terreno', 0)),
+            "area_terreno_r1": float(r1.get('area_terreno', 0)),
+            "area_construida": float(r1.get('area_construida', 0)),
+            "area_construida_r1": float(r1.get('area_construida', 0)),
+            "avaluo": float(r1.get('avaluo', 0)),
+            "matricula_inmobiliaria": r2.get('matricula_inmobiliaria', ''),
+            "propietarios": propietarios_data,
+            "nombre_propietario": propietarios_data[0].get('nombre_propietario', '') if propietarios_data else '',
+            "zonas_fisicas": zonas_fisicas,
+            "construcciones": construcciones,
+            "estado": "activo",
+            "estado_flujo": "aprobado",
+            "es_nuevo": True,
+            "origen": "propuesta_aprobada",
+            "creado_por": propuesta.get('creado_por'),
+            "creado_por_nombre": propuesta.get('creado_por_nombre'),
+            "aprobado_por": current_user.get('email'),
+            "aprobado_por_nombre": current_user.get('full_name'),
+            "created_at": ahora,
+            "updated_at": ahora
+        }
+        
+        # Verificar si ya existe el predio en 'predios'
+        predio_existente = await db.predios.find_one({"codigo_predial_nacional": codigo_predial})
+        if not predio_existente:
+            await db.predios.insert_one(predio_para_gestion)
+            logger.info(f"Predio nuevo insertado en colección 'predios': {codigo_predial}")
+        else:
+            # Actualizar si ya existe
+            await db.predios.update_one(
+                {"codigo_predial_nacional": codigo_predial},
+                {"$set": predio_para_gestion}
+            )
+            logger.info(f"Predio existente actualizado en 'predios': {codigo_predial}")
         
         # Actualizar contador del proyecto
         await db.proyectos_actualizacion.update_one(
