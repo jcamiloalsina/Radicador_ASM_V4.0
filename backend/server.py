@@ -2677,7 +2677,7 @@ async def create_petition(
                 tipo="info",
                 titulo="Nueva petición radicada",
                 mensaje=f"Nueva petición {radicado} de {nombre_completo} - {tipo_tramite}",
-                enlace=f"/dashboard/peticion/{petition.id}"
+                enlace=f"/dashboard/peticiones/{petition.id}"
             )
     
     return petition
@@ -2896,7 +2896,7 @@ async def upload_petition_files(
                     tipo="info",
                     titulo="Nuevos archivos cargados",
                     mensaje=f"El usuario ha cargado nuevos archivos en el trámite {petition['radicado']}",
-                    enlace=f"/dashboard/peticion/{petition_id}"
+                    enlace=f"/dashboard/peticiones/{petition_id}"
                 )
         else:
             atencion_users = await db.users.find({"role": UserRole.ATENCION_USUARIO}, {"_id": 0}).to_list(100)
@@ -2906,7 +2906,7 @@ async def upload_petition_files(
                     tipo="info",
                     titulo="Nuevos archivos cargados",
                     mensaje=f"El usuario ha cargado nuevos archivos en el trámite {petition['radicado']}",
-                    enlace=f"/dashboard/peticion/{petition_id}"
+                    enlace=f"/dashboard/peticiones/{petition_id}"
                 )
     # Si el staff sube archivos, NO notificar (se finaliza automáticamente y envía correo ahí)
     
@@ -3042,7 +3042,7 @@ async def upload_documento_final(
                 tipo="success",
                 titulo="Trámite Finalizado",
                 mensaje=f"El trámite {petition['radicado']} ha sido finalizado por {current_user['full_name']}.",
-                enlace=f"/dashboard/peticion/{petition_id}",
+                enlace=f"/dashboard/peticiones/{petition_id}",
                 enviar_email=False
             )
     
@@ -3236,7 +3236,7 @@ async def assign_gestor(
         tipo="info",
         titulo="Nuevo trámite asignado",
         mensaje=mensaje_notificacion,
-        enlace=f"/dashboard/peticion/{petition_id}"
+        enlace=f"/dashboard/peticiones/{petition_id}"
     )
     
     return {"message": "Gestor asignado exitosamente"}
@@ -3631,7 +3631,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                             tipo="info",
                             titulo="Trámite en Revisión",
                             mensaje=f"El trámite {petition['radicado']} está listo para su revisión y aprobación.",
-                            enlace=f"/dashboard/peticion/{petition_id}",
+                            enlace=f"/dashboard/peticiones/{petition_id}",
                             enviar_email=False
                         )
         
@@ -3907,7 +3907,7 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
             titulo="📋 Subsanación Recibida",
             mensaje=f"El usuario {current_user['full_name']} ha enviado la subsanación del trámite {petition['radicado']}. Requiere su revisión.",
             tipo="warning",
-            enlace=f"/dashboard/peticion/{petition_id}",
+            enlace=f"/dashboard/peticiones/{petition_id}",
             enviar_email=False  # Solo notificación en plataforma
         )
     
@@ -3919,7 +3919,7 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
                 titulo="📋 Subsanación Recibida",
                 mensaje=f"El trámite {petition['radicado']} ha sido reenviado para revisión después de subsanación.",
                 tipo="warning",
-                enlace=f"/dashboard/peticion/{petition_id}",
+                enlace=f"/dashboard/peticiones/{petition_id}",
                 enviar_email=False  # Solo notificación en plataforma
             )
     
@@ -3937,7 +3937,7 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
                 titulo="📋 Subsanación Recibida",
                 mensaje=f"El trámite {petition['radicado']} ha sido subsanado por {current_user['full_name']}. Pendiente de revisión.",
                 tipo="info",
-                enlace=f"/dashboard/peticion/{petition_id}",
+                enlace=f"/dashboard/peticiones/{petition_id}",
                 enviar_email=False  # Solo notificación en plataforma
             )
     
