@@ -26061,9 +26061,11 @@ async def generar_preview_resolucion(
         raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden generar")
     
     try:
+        tipo = tipo.upper()
+        
         # Obtener plantilla
         plantilla = await db.resolucion_plantillas.find_one(
-            {"tipo": tipo.upper()},
+            {"tipo": tipo},
             {"_id": 0}
         )
         
@@ -26089,9 +26091,6 @@ async def generar_preview_resolucion(
                 "matricula_inmobiliaria": "270-00000"
             }
         
-        # Generar datos para el PDF
-        from resolucion_pdf_generator import generate_resolucion_pdf
-        
         codigo = predio.get("codigo_predial_nacional", "")
         depto = codigo[0:2] if len(codigo) >= 2 else "54"
         mpio = codigo[2:5] if len(codigo) >= 5 else "003"
@@ -26099,63 +26098,126 @@ async def generar_preview_resolucion(
         numero_resolucion = f"RES-{depto}-{mpio}-PREVIEW-{anio}"
         fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
         
-        # Propietarios
-        propietarios_anteriores = []
-        if predio.get("propietarios"):
-            for p in predio["propietarios"]:
+        # Generar PDF según el tipo
+        if tipo == "M2":
+            # Preview de M2 (Englobe/Desengloble)
+            from resolucion_m2_pdf_generator import generate_resolucion_m2_pdf
+            
+            # Crear datos de ejemplo para M2
+            predio_cancelado = {
+                "codigo_predial": codigo,
+                "npn": codigo,
+                "codigo_homologado": predio.get("codigo_homologado", ""),
+                "direccion": predio.get("direccion", "DIRECCIÓN EJEMPLO"),
+                "destino_economico": predio.get("destino_economico", "R"),
+                "area_terreno": predio.get("area_terreno", 500),
+                "area_construida": predio.get("area_construida", 100),
+                "avaluo": predio.get("avaluo", 50000000),
+                "matricula_inmobiliaria": predio.get("matricula_inmobiliaria", "270-00000"),
+                "propietarios": [{
+                    "nombre_propietario": predio.get("nombre_propietario", "PROPIETARIO EJEMPLO"),
+                    "tipo_documento": "CC",
+                    "numero_documento": "1234567890"
+                }]
+            }
+            
+            predio_inscrito = {
+                "codigo_predial": codigo[:25] + "00002" if len(codigo) >= 25 else "540030001000000010002000000000",
+                "npn": codigo[:25] + "00002" if len(codigo) >= 25 else "540030001000000010002000000000",
+                "codigo_homologado": "NUEVO-001",
+                "direccion": "NUEVA DIRECCIÓN EJEMPLO",
+                "destino_economico": "R",
+                "area_terreno": 250,
+                "area_construida": 50,
+                "avaluo": 25000000,
+                "matricula_inmobiliaria": "270-NUEVO",
+                "propietarios": [{
+                    "nombre_propietario": "NUEVO PROPIETARIO EJEMPLO",
+                    "tipo_documento": "CC",
+                    "numero_documento": "9876543210"
+                }]
+            }
+            
+            codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+            
+            pdf_bytes = generate_resolucion_m2_pdf(
+                numero_resolucion=numero_resolucion,
+                fecha_resolucion=fecha_resolucion,
+                municipio=predio.get("municipio", "Ábrego"),
+                subtipo="desengloble",  # Preview de desengloble
+                radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
+                solicitante={
+                    "nombre": predio.get("nombre_propietario", "SOLICITANTE EJEMPLO"),
+                    "documento": "1234567890",
+                    "tipo_documento": "C"
+                },
+                predios_cancelados=[predio_cancelado],
+                predios_inscritos=[predio_inscrito],
+                codigo_verificacion=codigo_verificacion_res,
+                verificacion_base_url=VERIFICACION_BASE_URL,
+                elaboro=current_user.get('full_name', 'Usuario'),
+                aprobo=""
+            )
+        else:
+            # Preview de M1 (Cambio de propietario)
+            from resolucion_pdf_generator import generate_resolucion_pdf
+            
+            # Propietarios
+            propietarios_anteriores = []
+            if predio.get("propietarios"):
+                for p in predio["propietarios"]:
+                    propietarios_anteriores.append({
+                        "nombre": p.get("nombre_propietario", ""),
+                        "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                    })
+            elif predio.get("nombre_propietario"):
                 propietarios_anteriores.append({
-                    "nombre": p.get("nombre_propietario", ""),
-                    "documento": f"{p.get('tipo_documento', 'C')} {p.get('documento', '')}"
+                    "nombre": predio["nombre_propietario"],
+                    "documento": "C --------"
                 })
-        elif predio.get("nombre_propietario"):
-            propietarios_anteriores.append({
-                "nombre": predio["nombre_propietario"],
-                "documento": "C --------"
-            })
-        
-        propietarios_nuevos = [{"nombre": "NUEVO PROPIETARIO PREVIEW", "documento": "C 99999999"}]
-        
-        # Construir la plantilla con el texto personalizado
-        plantilla_textos = {
-            "preambulo": plantilla.get("texto", PLANTILLA_M1_DEFAULT).split("CONSIDERANDO")[0].strip(),
-            "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
-            "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
-        }
-        
-        # Obtener áreas del predio
-        area_terreno = str(predio.get("area_terreno", predio.get("area_terreno_r1", 0)))
-        area_construida = str(predio.get("area_construida", predio.get("area_construida_r1", 0)))
-        destino_economico = predio.get("destino_economico", "A")
-        codigo_homologado = predio.get("codigo_homologado", predio.get("codigo_anterior", ""))
-        
-        # Generar código de verificación para QR (preview)
-        codigo_verificacion_res = generar_codigo_verificacion_resolucion()
-        
-        pdf_bytes = generate_resolucion_pdf(
-            numero_resolucion=numero_resolucion,
-            fecha_resolucion=fecha_resolucion,
-            municipio=predio.get("municipio", "Ábrego"),
-            tipo_tramite="Cambio de Propietario",
-            radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
-            codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
-            npn=codigo,
-            matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
-            direccion=predio.get("direccion", ""),
-            avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
-            vigencia_fiscal=f"01/01/{anio}",
-            area_terreno=area_terreno,
-            area_construida=area_construida,
-            destino_economico=destino_economico,
-            codigo_homologado=codigo_homologado,
-            propietarios_anteriores=propietarios_anteriores,
-            propietarios_nuevos=propietarios_nuevos,
-            elaboro=current_user.get('full_name', 'Usuario'),
-            aprobo="",  # Se llenará cuando se apruebe el cambio
-            plantilla=plantilla_textos,
-            # Código de verificación para QR idéntico al certificado catastral
-            codigo_verificacion=codigo_verificacion_res,
-            verificacion_base_url=VERIFICACION_BASE_URL,
-        )
+            
+            propietarios_nuevos = [{"nombre": "NUEVO PROPIETARIO PREVIEW", "documento": "C 99999999"}]
+            
+            # Construir la plantilla con el texto personalizado
+            plantilla_textos = {
+                "preambulo": plantilla.get("texto", PLANTILLA_M1_DEFAULT),
+                "firmante_nombre": plantilla.get("firmante_nombre", "DALGIE ESPERANZA TORRADO RIZO"),
+                "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
+            }
+            
+            # Obtener áreas del predio
+            area_terreno = str(predio.get("area_terreno", predio.get("area_terreno_r1", 0)))
+            area_construida = str(predio.get("area_construida", predio.get("area_construida_r1", 0)))
+            destino_economico = predio.get("destino_economico", "A")
+            codigo_homologado = predio.get("codigo_homologado", predio.get("codigo_anterior", ""))
+            
+            # Generar código de verificación para QR (preview)
+            codigo_verificacion_res = generar_codigo_verificacion_resolucion()
+            
+            pdf_bytes = generate_resolucion_pdf(
+                numero_resolucion=numero_resolucion,
+                fecha_resolucion=fecha_resolucion,
+                municipio=predio.get("municipio", "Ábrego"),
+                tipo_tramite="Cambio de Propietario",
+                radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
+                codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
+                npn=codigo,
+                matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
+                direccion=predio.get("direccion", ""),
+                avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+                vigencia_fiscal=f"01/01/{anio}",
+                area_terreno=area_terreno,
+                area_construida=area_construida,
+                destino_economico=destino_economico,
+                codigo_homologado=codigo_homologado,
+                propietarios_anteriores=propietarios_anteriores,
+                propietarios_nuevos=propietarios_nuevos,
+                elaboro=current_user.get('full_name', 'Usuario'),
+                aprobo="",
+                plantilla=plantilla_textos,
+                codigo_verificacion=codigo_verificacion_res,
+                verificacion_base_url=VERIFICACION_BASE_URL,
+            )
         
         import base64
         pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
