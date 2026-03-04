@@ -60,7 +60,7 @@ export default function Pendientes() {
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [selectedCambio, setSelectedCambio] = useState(null);
   const [procesando, setProcesando] = useState(false);
-  const [activeTab, setActiveTab] = useState('modificaciones');
+  const [activeTab, setActiveTab] = useState('pendientes');
   
   // Filtros para historial
   const [historialFiltros, setHistorialFiltros] = useState({
@@ -95,6 +95,14 @@ export default function Pendientes() {
   const [showReaparicionModal, setShowReaparicionModal] = useState(false);
   const [justificacionReaparicion, setJustificacionReaparicion] = useState('');
   const [procesandoReaparicion, setProcesandoReaparicion] = useState(null);
+  
+  // Estados para mutaciones pendientes (M1, M2)
+  const [mutacionesPendientes, setMutacionesPendientes] = useState([]);
+  const [loadingMutaciones, setLoadingMutaciones] = useState(false);
+  const [selectedMutacion, setSelectedMutacion] = useState(null);
+  const [showMutacionModal, setShowMutacionModal] = useState(false);
+  const [observacionesMutacion, setObservacionesMutacion] = useState('');
+  const [procesandoMutacion, setProcesandoMutacion] = useState(false);
   
   // Estados para el modal de rechazo
   const [showRechazarModal, setShowRechazarModal] = useState(false);
@@ -353,7 +361,58 @@ export default function Pendientes() {
     fetchReapariciones();
     fetchPeticionesParaVincular();
     fetchMisAsignacionesApoyo();
+    fetchMutacionesPendientes();
   }, []);
+
+  // Cargar mutaciones pendientes de aprobación
+  const fetchMutacionesPendientes = async () => {
+    try {
+      setLoadingMutaciones(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/solicitudes-mutacion/pendientes-aprobacion`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMutacionesPendientes(res.data.solicitudes || []);
+    } catch (error) {
+      console.log('Error cargando mutaciones pendientes');
+      setMutacionesPendientes([]);
+    } finally {
+      setLoadingMutaciones(false);
+    }
+  };
+  
+  // Ejecutar acción sobre solicitud de mutación
+  const handleMutacionAccion = async (solicitudId, accion) => {
+    setProcesandoMutacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
+        accion: accion,
+        observaciones: observacionesMutacion || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const mensajes = {
+        aprobar: 'Solicitud de mutación aprobada exitosamente',
+        devolver: 'Solicitud devuelta para correcciones',
+        rechazar: 'Solicitud de mutación rechazada'
+      };
+      
+      toast.success(mensajes[accion] || 'Acción completada');
+      setShowMutacionModal(false);
+      setSelectedMutacion(null);
+      setObservacionesMutacion('');
+      fetchMutacionesPendientes();
+      
+      // Emitir evento para actualizar badge
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al procesar la acción');
+    } finally {
+      setProcesandoMutacion(false);
+    }
+  };
 
   // Cargar mis asignaciones de apoyo en modificaciones
   const fetchMisAsignacionesApoyo = async () => {
@@ -1135,12 +1194,12 @@ export default function Pendientes() {
   
   // Calcular totales según el rol
   const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length;
-  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes;
+  const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes + mutacionesPendientes.length;
   
   // Título y descripción según el rol
   const pageTitle = puedeAprobar ? 'Pendientes' : 'Mis Asignaciones';
   const pageDescription = puedeAprobar 
-    ? 'Cambios, predios nuevos y reapariciones que requieren aprobación'
+    ? 'Solicitudes que requieren aprobación'
     : 'Predios y modificaciones asignadas para tu gestión';
   const totalBadge = puedeAprobar ? totalPendientesAprobacion : totalMisAsignaciones;
 
@@ -1439,28 +1498,16 @@ export default function Pendientes() {
           </TabsContent>
         </Tabs>
       ) : (
-        /* Vista para COORDINADORES / APROBADORES */
+        /* Vista para COORDINADORES / APROBADORES - Simplificada */
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="modificaciones" className="flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              Modificaciones
-              {cambiosPendientes.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{cambiosPendientes.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="predios-nuevos" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Predios Nuevos
-              {prediosEnRevision > 0 && (
-                <Badge variant="secondary" className="ml-1">{prediosEnRevision}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="reapariciones" className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Reapariciones
-              {reaparicionesPendientes > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{reaparicionesPendientes}</Badge>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="pendientes" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Pendientes por Aprobar
+              {(cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) > 0 && (
+                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">
+                  {cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes}
+                </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="historial" className="flex items-center gap-2">
@@ -1469,67 +1516,51 @@ export default function Pendientes() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab: Modificaciones (para aprobadores) */}
-          <TabsContent value="modificaciones">
-            {cambiosPendientes.length === 0 ? (
+          {/* Tab: Todos los Pendientes Unificados */}
+          <TabsContent value="pendientes">
+            {(cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) === 0 ? (
               <Card>
                 <CardContent className="py-16 text-center">
                   <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
                   <h3 className="text-xl font-semibold text-slate-700">¡Todo al día!</h3>
-                  <p className="text-slate-500 mt-2">No hay modificaciones pendientes de aprobación</p>
+                  <p className="text-slate-500 mt-2">No hay solicitudes pendientes de aprobación</p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
+              <div className="space-y-4">
+                {/* Modificaciones de Predios Existentes */}
                 {cambiosPendientes.map((cambio) => (
-                  <Card key={cambio.id} className="hover:border-emerald-300 transition-colors">
+                  <Card key={`mod-${cambio.id}`} className="hover:border-blue-300 transition-colors border-l-4 border-l-blue-500">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="p-2 bg-slate-100 rounded-lg">
-                            <Building className="w-5 h-5 text-slate-600" />
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <Edit className="w-5 h-5 text-blue-600" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                Modificación
+                              </Badge>
                               <Badge className={getTipoCambioColor(cambio.tipo_cambio)}>
                                 {getTipoCambioLabel(cambio.tipo_cambio)}
                               </Badge>
                               {cambio.radicado_numero && (
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                                <Badge className="bg-slate-100 text-slate-700 border-slate-300">
                                   <FileText className="w-3 h-3 mr-1" />
                                   {cambio.radicado_numero}
                                 </Badge>
                               )}
-                              <span className="font-mono text-sm text-slate-600 break-all">
-                                {cambio.datos_propuestos?.codigo_predial_nacional || 
-                                 cambio.predio_actual?.codigo_predial_nacional || 
-                                 'Código no disponible'}
-                              </span>
                             </div>
-                            <p className="text-sm text-slate-500 mt-1">
-                              {cambio.datos_propuestos?.municipio || 
-                               cambio.predio_actual?.municipio || 
-                               'Municipio no especificado'} · 
-                              Solicitado por: {cambio.propuesto_por_nombre || 'No especificado'}
+                            <p className="font-mono text-sm text-slate-600 mt-1">
+                              {cambio.datos_propuestos?.codigo_predial_nacional || 
+                               cambio.predio_actual?.codigo_predial_nacional || 
+                               'Código no disponible'}
                             </p>
-                            {!cambio.radicado_numero && cambio.tipo_cambio === 'modificacion' && (
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-amber-600">⚠️ Sin radicado asociado</span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedCambio(cambio);
-                                    setShowVincularRadicadoModal(true);
-                                  }}
-                                >
-                                  <Link2 className="w-3 h-3 mr-1" />
-                                  Vincular radicado
-                                </Button>
-                              </div>
-                            )}
+                            <p className="text-sm text-slate-500 mt-1">
+                              {cambio.datos_propuestos?.municipio || cambio.predio_actual?.municipio || 'Sin municipio'} · 
+                              Por: {cambio.propuesto_por_nombre || 'No especificado'}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1540,7 +1571,7 @@ export default function Pendientes() {
                             data-testid={`view-cambio-${cambio.id}`}
                           >
                             <Eye className="w-4 h-4 mr-1" />
-                            Ver Detalle
+                            Ver
                           </Button>
                           <Button
                             variant="outline"
@@ -1548,17 +1579,14 @@ export default function Pendientes() {
                             className="text-red-600 border-red-200 hover:bg-red-50"
                             onClick={() => openRechazarModal(cambio)}
                             disabled={procesando}
-                            data-testid={`reject-cambio-${cambio.id}`}
                           >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Rechazar
+                            <XCircle className="w-4 h-4" />
                           </Button>
                           <Button
                             size="sm"
                             className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={() => handleAprobar(cambio.id)}
                             disabled={procesando}
-                            data-testid={`approve-cambio-${cambio.id}`}
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
                             Aprobar
@@ -1568,51 +1596,36 @@ export default function Pendientes() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-            )}
-          </TabsContent>
 
-          {/* Tab: Predios Nuevos (En Revisión para aprobar) */}
-          <TabsContent value="predios-nuevos">
-            {loadingPredios ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              </div>
-            ) : prediosParaRevisar.length === 0 ? (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                  <h3 className="text-xl font-semibold text-slate-700">¡Sin predios pendientes!</h3>
-                  <p className="text-slate-500 mt-2">No hay predios nuevos esperando aprobación</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {prediosParaRevisar.map(predio => {
+                {/* Predios Nuevos (Conservación) */}
+                {prediosParaRevisar.map((predio) => {
                   const estadoConfig = estadoPredioConfig[predio.estado_flujo] || estadoPredioConfig['revision'];
-                  const IconoEstado = estadoConfig.icon;
-                  
                   return (
-                    <Card key={predio.id} className="hover:border-emerald-300 transition-colors">
+                    <Card key={`pn-${predio.id}`} className="hover:border-emerald-300 transition-colors border-l-4 border-l-emerald-500">
                       <CardContent className="p-4">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="font-mono text-sm text-slate-700">{predio.codigo_predial_nacional}</div>
-                            <div className="text-sm text-slate-600">
-                              <MapPin className="w-4 h-4 inline mr-1" />
-                              {predio.municipio} - {predio.direccion || 'Sin dirección'}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="p-2 bg-emerald-100 rounded-lg">
+                              <FileText className="w-5 h-5 text-emerald-600" />
                             </div>
-                            <div className="flex items-center gap-2 mt-2 flex-wrap">
-                              <Badge className={`${estadoConfig.color} border`}>
-                                <IconoEstado className="w-3 h-3 mr-1" />
-                                {estadoConfig.label}
-                              </Badge>
-                              {predio.gestor_creador_nombre && (
-                                <span className="text-xs text-slate-500">Creador: {predio.gestor_creador_nombre}</span>
-                              )}
-                              {predio.gestor_apoyo_nombre && (
-                                <span className="text-xs text-slate-500">Apoyo: {predio.gestor_apoyo_nombre}</span>
-                              )}
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">
+                                  Predio Nuevo
+                                </Badge>
+                                {predio.radicado_numero && (
+                                  <Badge className="bg-slate-100 text-slate-700">
+                                    {predio.radicado_numero}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="font-mono text-sm text-slate-600 mt-1">
+                                {predio.codigo_predial_nacional}
+                              </p>
+                              <p className="text-sm text-slate-500 mt-1">
+                                {predio.municipio} - {predio.direccion || 'Sin dirección'} · 
+                                Por: {predio.gestor_creador_nombre}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1625,17 +1638,16 @@ export default function Pendientes() {
                               }}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              Ver Detalle
+                              Ver
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="text-orange-600 border-orange-200 hover:bg-orange-50"
                               onClick={() => openPredioActionDialog(predio, 'devolver')}
                               disabled={procesando}
                             >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Devolver
+                              <RefreshCw className="w-4 h-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -1652,354 +1664,121 @@ export default function Pendientes() {
                     </Card>
                   );
                 })}
-              </div>
-            )}
-          </TabsContent>
 
-          {/* Tab: Predios Nuevos (Sub-tabs para coordinadores) */}
-          <TabsContent value="predios-nuevos">
-            {loadingPredios ? (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              </div>
-            ) : (
-              <div>
-                {/* Sub-tabs para predios nuevos */}
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={prediosNuevosSubTab === 'asignados' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPrediosNuevosSubTab('asignados')}
-                    className="flex items-center gap-2"
-                  >
-                    <User className="w-4 h-4" />
-                    Asignados a Mí ({asignadosAMi.length})
-                  </Button>
-                  <Button
-                    variant={prediosNuevosSubTab === 'creaciones' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPrediosNuevosSubTab('creaciones')}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Mis Creaciones ({misCreaciones.length})
-                  </Button>
-                  <Button
-                    variant={prediosNuevosSubTab === 'revision' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPrediosNuevosSubTab('revision')}
-                    className="flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Para Revisar ({prediosParaRevisar.length})
-                  </Button>
-                </div>
-
-                {/* Contenido según sub-tab seleccionado */}
-              {(() => {
-                let prediosFiltrados = [];
-                let mensajeVacio = '';
-                let subtituloVacio = '';
-                
-                if (prediosNuevosSubTab === 'asignados') {
-                  prediosFiltrados = asignadosAMi;
-                  mensajeVacio = '¡Sin tareas pendientes!';
-                  subtituloVacio = 'No tienes predios asignados para digitalizar';
-                } else if (prediosNuevosSubTab === 'creaciones') {
-                  prediosFiltrados = misCreaciones;
-                  mensajeVacio = 'Sin creaciones';
-                  subtituloVacio = 'No has creado predios nuevos';
-                } else if (prediosNuevosSubTab === 'revision') {
-                  prediosFiltrados = prediosParaRevisar;
-                  mensajeVacio = '¡Todo revisado!';
-                  subtituloVacio = 'No hay predios pendientes de aprobación';
-                }
-
-                if (prediosFiltrados.length === 0) {
-                  return (
-                    <Card>
-                      <CardContent className="py-16 text-center">
-                        <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                        <h3 className="text-xl font-semibold text-slate-700">{mensajeVacio}</h3>
-                        <p className="text-slate-500 mt-2">{subtituloVacio}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                }
-
-                return (
-                  <div className="grid gap-4">
-                    {prediosFiltrados.map((predio) => {
-                      const estadoInfo = estadoPredioConfig[predio.estado_flujo || predio.estado] || estadoPredioConfig.creado;
-                      const EstadoIcon = estadoInfo.icon;
-                      const esCreador = predio.gestor_creador_id === user?.id;
-                      const esApoyo = predio.gestor_apoyo_id === user?.id;
-                      
-                      return (
-                        <Card key={predio.id} className="hover:border-emerald-300 transition-colors">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="p-2 bg-slate-100 rounded-lg">
-                                  <EstadoIcon className="w-5 h-5 text-slate-600" />
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge className={estadoInfo.color}>
-                                      {estadoInfo.label}
-                                    </Badge>
-                                    {esCreador && (
-                                      <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">
-                                        Creador
-                                      </Badge>
-                                    )}
-                                    {esApoyo && !esCreador && (
-                                      <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
-                                        Apoyo asignado
-                                      </Badge>
-                                    )}
-                                    <span className="font-mono text-sm text-slate-600 break-all">
-                                      {predio.codigo_predial_nacional || predio.datos_predio?.codigo_predial_nacional || 'Nuevo'}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-slate-500 mt-1">
-                                    {predio.municipio || predio.datos_predio?.municipio || 'N/A'} · 
-                                    Creado por: {predio.gestor_creador_nombre || predio.creado_por_nombre || 'N/A'} · 
-                                    Apoyo: {predio.gestor_apoyo_nombre || 'N/A'} · 
-                                    {formatDate(predio.created_at || predio.fecha_creacion)}
-                                  </p>
-                                  {predio.radicado_numero && (
-                                    <p className="text-sm text-blue-600 mt-1">
-                                      <FileText className="w-3 h-3 inline mr-1" />
-                                      Radicado: {predio.radicado_numero}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPredioNuevo(predio);
-                                    setIsEditingPredio(false);
-                                    setShowPredioDetailDialog(true);
-                                  }}
-                                >
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Ver Detalle
-                                </Button>
-                                
-                                {/* Botón Editar - visible para creador, gestor de apoyo o coordinador en estados editables */}
-                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 (esCreador || esApoyo || isCoordinador) && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openPredioEditor(predio)}
-                                    data-testid={`edit-predio-${predio.id}`}
-                                  >
-                                    <Edit className="w-4 h-4 mr-1" />
-                                    Editar
-                                  </Button>
-                                )}
-                                
-                                {/* Botón Rechazar - visible para gestor de apoyo en estados pendientes */}
-                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 esApoyo && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50"
-                                    onClick={() => openPredioActionDialog(predio, 'rechazar_asignacion')}
-                                    disabled={procesando}
-                                    data-testid={`rechazar-asignacion-${predio.id}`}
-                                  >
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                    Rechazar
-                                  </Button>
-                                )}
-                                
-                                {/* Botón Enviar a Revisión - visible para gestor de apoyo o coordinador */}
-                                {/* El creador NO puede enviar a revisión si hay un gestor de apoyo asignado (debe esperar que el apoyo lo haga) */}
-                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 (esApoyo || (isCoordinador && !esCreador) || (esCreador && !predio.gestor_apoyo_id)) && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                                    onClick={() => openPredioActionDialog(predio, 'enviar_revision')}
-                                    disabled={procesando}
-                                  >
-                                    <ArrowRight className="w-4 h-4 mr-1" />
-                                    Enviar a Revisión
-                                  </Button>
-                                )}
-                                
-                                {/* Botón Eliminar Solicitud - solo visible para el gestor creador en estados editables */}
-                                {['creado', 'digitalizacion', 'devuelto'].includes(predio.estado_flujo || predio.estado) && 
-                                 esCreador && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50"
-                                    onClick={() => openEliminarSolicitudModal(predio)}
-                                    disabled={procesando || eliminandoSolicitud}
-                                    data-testid={`eliminar-solicitud-${predio.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-1" />
-                                    Eliminar
-                                  </Button>
-                                )}
-                                
-                                {/* Acciones de coordinador para predios en revisión */}
-                                {(predio.estado_flujo === 'revision' || predio.estado === 'revision') && isCoordinador && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                                      onClick={() => openPredioActionDialog(predio, 'devolver')}
-                                      disabled={procesando}
-                                    >
-                                      <RefreshCw className="w-4 h-4 mr-1" />
-                                      Devolver
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-red-600 border-red-200 hover:bg-red-50"
-                                      onClick={() => openPredioActionDialog(predio, 'rechazar')}
-                                      disabled={procesando}
-                                    >
-                                      <XCircle className="w-4 h-4 mr-1" />
-                                      Rechazar
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                      onClick={() => openPredioActionDialog(predio, 'aprobar')}
-                                      disabled={procesando}
-                                    >
-                                      <CheckCircle className="w-4 h-4 mr-1" />
-                                      Aprobar
-                                    </Button>
-                                  </>
-                                )}
-                                
-                                {(predio.estado_flujo === 'devuelto' || predio.estado === 'devuelto') && !esApoyo && (
-                                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                                    Pendiente corrección
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {/* Historial colapsable */}
-                            {(predio.historial_flujo || predio.historial) && (predio.historial_flujo || predio.historial).length > 0 && (
-                              <div className="mt-3 border-t pt-3">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-slate-600 p-0 h-auto"
-                                  onClick={() => toggleHistorial(predio.id)}
-                                >
-                                  <History className="w-4 h-4 mr-1" />
-                                  Historial ({(predio.historial_flujo || predio.historial).length})
-                                  {expandedHistorial[predio.id] ? (
-                                    <ChevronUp className="w-4 h-4 ml-1" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4 ml-1" />
-                                  )}
-                                </Button>
-                                
-                                {expandedHistorial[predio.id] && (
-                                  <div className="mt-2 space-y-2 pl-5 border-l-2 border-slate-200">
-                                    {(predio.historial_flujo || predio.historial).map((item, idx) => (
-                                      <div key={idx} className="text-sm">
-                                        <span className="text-slate-400">{formatDate(item.fecha)}</span>
-                                        <span className="mx-2">·</span>
-                                        <span className="font-medium">{item.accion}</span>
-                                        {item.usuario_nombre && (
-                                          <span className="text-slate-500"> por {item.usuario_nombre}</span>
-                                        )}
-                                        {item.observaciones && (
-                                          <p className="text-slate-500 italic mt-1">&quot;{item.observaciones}&quot;</p>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Tab: Historial de Cambios Procesados */}
-        <TabsContent value="historial">
-          {renderHistorialContent()}
-        </TabsContent>
-
-        {/* Tab: Reapariciones */}
-        <TabsContent value="reapariciones">
-          {loadingReapariciones ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
-            </div>
-          ) : reapariciones.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <CheckCircle className="w-16 h-16 mx-auto text-emerald-500 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-700">Sin solicitudes</h3>
-                <p className="text-slate-500 mt-2">No hay solicitudes de reaparición pendientes</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {reapariciones.map((reap) => (
-                <Card key={reap.codigo_predial_nacional} className="hover:border-amber-300 transition-colors border-l-4 border-l-amber-500">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="p-2 bg-amber-100 rounded-lg">
-                          <RefreshCw className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-amber-100 text-amber-800">Reaparición</Badge>
-                            <span className="font-mono text-sm text-slate-600">
-                              {reap.codigo_predial_nacional}
-                            </span>
+                {/* Mutaciones M1/M2 */}
+                {mutacionesPendientes.map((mutacion) => (
+                  <Card key={`mut-${mutacion.id}`} className="hover:border-purple-300 transition-colors border-l-4 border-l-purple-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <ArrowRight className="w-5 h-5 text-purple-600" />
                           </div>
-                          <p className="text-sm text-slate-700 mt-1 font-medium">
-                            {reap.municipio}
-                          </p>
-                          <p className="text-sm text-slate-500 mt-1">
-                            Propietario: {reap.nombre_propietario || 'N/A'}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Eliminado: {formatDate(reap.eliminado_en)} · Solicitado por: {reap.solicitado_por_nombre || 'N/A'}
-                          </p>
-                          {reap.justificacion_solicitud && (
-                            <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded">
-                              <strong>Justificación:</strong> {reap.justificacion_solicitud}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                                {mutacion.tipo}
+                              </Badge>
+                              {mutacion.subtipo && (
+                                <Badge variant="outline" className="text-purple-600">
+                                  {mutacion.subtipo}
+                                </Badge>
+                              )}
+                              {mutacion.radicado && (
+                                <Badge className="bg-slate-100 text-slate-700">
+                                  {mutacion.radicado}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {mutacion.municipio} · Por: {mutacion.creado_por_nombre}
                             </p>
-                          )}
+                            <p className="text-xs text-slate-500 mt-1">
+                              {mutacion.predios_cancelados?.length > 0 && `${mutacion.predios_cancelados.length} cancelados`}
+                              {mutacion.predios_cancelados?.length > 0 && mutacion.predios_inscritos?.length > 0 && ' → '}
+                              {mutacion.predios_inscritos?.length > 0 && `${mutacion.predios_inscritos.length} inscritos`}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      
-                      {isCoordinador && (
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMutacion(mutacion);
+                              setShowMutacionModal(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => {
+                              setSelectedMutacion(mutacion);
+                              setObservacionesMutacion('');
+                              setShowMutacionModal(true);
+                            }}
+                            disabled={procesandoMutacion}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
                           <Button
                             size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleMutacionAccion(mutacion.id, 'aprobar')}
+                            disabled={procesandoMutacion}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Aprobar
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Reapariciones */}
+                {reapariciones.map((reap) => (
+                  <Card key={`reap-${reap.codigo_predial_nacional}`} className="hover:border-amber-300 transition-colors border-l-4 border-l-amber-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-amber-100 rounded-lg">
+                            <RefreshCw className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                                Reaparición
+                              </Badge>
+                            </div>
+                            <p className="font-mono text-sm text-slate-600 mt-1">
+                              {reap.codigo_predial_nacional}
+                            </p>
+                            <p className="text-sm text-slate-500 mt-1">
+                              {reap.municipio} · Propietario: {reap.nombre_propietario || 'N/A'}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Eliminado: {formatDate(reap.eliminado_en)} · Por: {reap.solicitado_por_nombre || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => openReaparicionModal(reap, 'rechazar')}
+                            disabled={procesandoReaparicion === reap.codigo_predial_nacional}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={() => openReaparicionModal(reap, 'aprobar')}
                             disabled={procesandoReaparicion === reap.codigo_predial_nacional}
                           >
@@ -2010,26 +1789,20 @@ export default function Pendientes() {
                             )}
                             Aprobar
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-300 text-red-700 hover:bg-red-50"
-                            onClick={() => openReaparicionModal(reap, 'rechazar')}
-                            disabled={procesandoReaparicion === reap.codigo_predial_nacional}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Rechazar
-                          </Button>
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tab: Historial */}
+          <TabsContent value="historial">
+            {renderHistorialContent()}
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Modal de Reaparición */}
@@ -2106,6 +1879,147 @@ export default function Pendientes() {
                 Confirmar Rechazo
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalle de Mutación */}
+      <Dialog open={showMutacionModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowMutacionModal(false);
+          setSelectedMutacion(null);
+          setObservacionesMutacion('');
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-purple-600" />
+              Detalle de Solicitud de Mutación
+            </DialogTitle>
+            <DialogDescription>
+              Revise los datos de la solicitud antes de aprobar o rechazar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedMutacion && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-xs text-purple-600 font-medium">Tipo de Mutación</p>
+                  <p className="text-sm font-semibold text-purple-800">
+                    {selectedMutacion.tipo} {selectedMutacion.subtipo ? `- ${selectedMutacion.subtipo}` : ''}
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs text-blue-600 font-medium">Radicado</p>
+                  <p className="text-sm font-semibold text-blue-800">
+                    {selectedMutacion.radicado || 'Sin radicado'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-xs text-slate-500 font-medium mb-2">Información General</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-slate-500">Municipio:</span> {selectedMutacion.municipio}</div>
+                  <div><span className="text-slate-500">Creador:</span> {selectedMutacion.creado_por_nombre}</div>
+                  {selectedMutacion.gestor_apoyo_nombre && (
+                    <div><span className="text-slate-500">Cartografía:</span> {selectedMutacion.gestor_apoyo_nombre}</div>
+                  )}
+                  <div><span className="text-slate-500">Fecha:</span> {formatDate(selectedMutacion.fecha_creacion)}</div>
+                </div>
+              </div>
+              
+              {/* Predios Cancelados */}
+              {selectedMutacion.predios_cancelados?.length > 0 && (
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-xs text-red-600 font-medium mb-2">Predios a Cancelar ({selectedMutacion.predios_cancelados.length})</p>
+                  <div className="space-y-2">
+                    {selectedMutacion.predios_cancelados.map((predio, idx) => (
+                      <div key={idx} className="bg-white p-2 rounded border border-red-200 text-sm">
+                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
+                        {predio.nombre_propietario && (
+                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Predios Inscritos */}
+              {selectedMutacion.predios_inscritos?.length > 0 && (
+                <div className="bg-emerald-50 p-3 rounded-lg">
+                  <p className="text-xs text-emerald-600 font-medium mb-2">Predios a Inscribir ({selectedMutacion.predios_inscritos.length})</p>
+                  <div className="space-y-2">
+                    {selectedMutacion.predios_inscritos.map((predio, idx) => (
+                      <div key={idx} className="bg-white p-2 rounded border border-emerald-200 text-sm">
+                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
+                        {predio.nombre_propietario && (
+                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                        )}
+                        {predio.area_terreno && (
+                          <p className="text-xs text-slate-500">Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Observaciones */}
+              {selectedMutacion.observaciones && (
+                <div className="bg-slate-50 p-3 rounded-lg">
+                  <p className="text-xs text-slate-500 font-medium">Observaciones</p>
+                  <p className="text-sm text-slate-700 mt-1">{selectedMutacion.observaciones}</p>
+                </div>
+              )}
+              
+              {/* Área para escribir observaciones al aprobar/devolver/rechazar */}
+              <div>
+                <Label htmlFor="obs-mutacion">Observaciones (opcional para aprobar, requerido para devolver/rechazar)</Label>
+                <Textarea
+                  id="obs-mutacion"
+                  value={observacionesMutacion}
+                  onChange={(e) => setObservacionesMutacion(e.target.value)}
+                  placeholder="Escriba sus observaciones aquí..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowMutacionModal(false)}>
+              Cerrar
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'devolver')}
+              disabled={procesandoMutacion || !observacionesMutacion.trim()}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              Devolver
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'rechazar')}
+              disabled={procesandoMutacion || !observacionesMutacion.trim()}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+              Rechazar
+            </Button>
+            <Button 
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => handleMutacionAccion(selectedMutacion?.id, 'aprobar')}
+              disabled={procesandoMutacion}
+            >
+              {procesandoMutacion ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Aprobar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

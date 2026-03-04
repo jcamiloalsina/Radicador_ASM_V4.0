@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -14,7 +14,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
-  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash
+  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -45,6 +45,48 @@ import {
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Componente memoizado para la guía visual del nombre - evita re-renders innecesarios
+const GuiaNombre = memo(({ nombre }) => {
+  const partes = (nombre || '').trim().split(/\s+/).filter(Boolean);
+  const apellido1 = partes[0] || '________';
+  const apellido2 = partes[1] || '________';
+  const nombre1 = partes[2] || '________';
+  const nombre2 = partes[3] || '';
+  const extras = partes.slice(4).join(' ');
+  
+  return (
+    <div className="mt-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
+      <div className="flex flex-wrap gap-1 text-xs font-mono">
+        <span className={`px-2 py-1 rounded ${partes[0] ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-200 text-slate-400'}`}>
+          {apellido1}
+        </span>
+        <span className={`px-2 py-1 rounded ${partes[1] ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-slate-200 text-slate-400'}`}>
+          {apellido2}
+        </span>
+        <span className={`px-2 py-1 rounded ${partes[2] ? 'bg-purple-100 text-purple-700 border border-purple-300' : 'bg-slate-200 text-slate-400'}`}>
+          {nombre1}
+        </span>
+        {(partes[3] || partes.length >= 3) && (
+          <span className={`px-2 py-1 rounded ${partes[3] ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-slate-200 text-slate-400'}`}>
+            {nombre2 || '________'}
+          </span>
+        )}
+        {extras && (
+          <span className="px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300">
+            {extras} (extra)
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1 text-[10px] mt-1 text-slate-500">
+        <span className="px-2">↑ Apellido 1</span>
+        <span className="px-2">↑ Apellido 2</span>
+        <span className="px-2">↑ Nombre 1</span>
+        <span className="px-2">↑ Nombre 2</span>
+      </div>
+    </div>
+  );
+});
 
 // Helper function para obtener la zona del código predial y formatear texto
 const getZonaFromCodigo = (codigoPredial) => {
@@ -176,6 +218,16 @@ export default function Predios() {
     motivo: ''
   });
   
+  // Estados para información de resolución en editar predio
+  const [infoResolucion, setInfoResolucion] = useState({
+    tipo_mutacion: '',
+    numero_resolucion: '',
+    fecha_resolucion: '',
+    radicado_peticion: ''
+  });
+  const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
+  const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
+  
   // Paginación del lado del cliente para mejorar rendimiento
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 100; // Mostrar 100 predios por página
@@ -216,13 +268,10 @@ export default function Predios() {
   const [isSavingDelete, setIsSavingDelete] = useState(false);
   const [isApprovingChange, setIsApprovingChange] = useState(false);
   
-  // Estado para múltiples propietarios (formato XTF)
+  // Estado para múltiples propietarios (formato simplificado)
   const [propietarios, setPropietarios] = useState([{
-    primer_apellido: '',
-    segundo_apellido: '',
-    primer_nombre: '',
-    segundo_nombre: '',
-    estado: '',  // Campo libre: casado, viudo, soltero, etc.
+    nombre_propietario: '',
+    estado_civil: 'sin_especificar',
     tipo_documento: 'C',
     numero_documento: ''
   }]);
@@ -350,11 +399,8 @@ export default function Predios() {
   // Funciones para manejar múltiples propietarios
   const agregarPropietario = () => {
     setPropietarios([...propietarios, {
-      primer_apellido: '',
-      segundo_apellido: '',
-      primer_nombre: '',
-      segundo_nombre: '',
-      estado: '',
+      nombre_propietario: '',
+      estado_civil: 'sin_especificar',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -390,6 +436,50 @@ export default function Predios() {
       prop.segundo_nombre
     ].filter(p => p && p.trim());
     return partes.join(' ');
+  };
+  
+  // Función para cargar el siguiente número de resolución
+  const cargarSiguienteNumeroResolucion = async (codigoMunicipio) => {
+    if (!codigoMunicipio) return;
+    setCargandoNumeroResolucion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API}/resoluciones/siguiente-numero/${codigoMunicipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInfoResolucion(prev => ({
+          ...prev,
+          numero_resolucion: data.numero_resolucion,
+          fecha_resolucion: data.fecha_resolucion
+        }));
+      }
+    } catch (error) {
+      console.error('Error cargando número de resolución:', error);
+    } finally {
+      setCargandoNumeroResolucion(false);
+    }
+  };
+  
+  // Función para cargar radicados disponibles con búsqueda
+  const cargarRadicadosDisponibles = async (municipio, busqueda = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      let url = `${API}/resoluciones/radicados-disponibles?`;
+      if (municipio) url += `municipio=${encodeURIComponent(municipio)}&`;
+      if (busqueda) url += `busqueda=${encodeURIComponent(busqueda)}`;
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setRadicadosDisponibles(data.radicados || []);
+      }
+    } catch (error) {
+      console.error('Error cargando radicados:', error);
+    }
   };
   
   // Función para parsear números en formato colombiano (200.000 = doscientos mil)
@@ -812,23 +902,19 @@ export default function Predios() {
           if (predioNuevo.propietarios && predioNuevo.propietarios.length > 0) {
             // Convertir propietarios existentes al nuevo formato si es necesario
             const propietariosConvertidos = predioNuevo.propietarios.map(p => ({
-              primer_apellido: p.primer_apellido || '',
-              segundo_apellido: p.segundo_apellido || '',
-              primer_nombre: p.primer_nombre || '',
-              segundo_nombre: p.segundo_nombre || '',
-              estado: p.estado || p.estado_civil || '',
+              nombre_propietario: p.nombre_propietario || generarNombreCompleto(p) || '',
+              estado_civil: p.estado_civil || p.estado || 'sin_especificar',
               tipo_documento: p.tipo_documento || 'C',
               numero_documento: p.numero_documento || ''
             }));
             setPropietarios(propietariosConvertidos);
-          } else if (predioNuevo.primer_apellido || predioNuevo.nombre_propietario) {
+          } else if (predioNuevo.nombre_propietario || predioNuevo.primer_apellido) {
             // Si no hay array de propietarios pero hay datos del propietario principal
+            const nombreCompleto = predioNuevo.nombre_propietario || 
+              [predioNuevo.primer_apellido, predioNuevo.segundo_apellido, predioNuevo.primer_nombre, predioNuevo.segundo_nombre].filter(Boolean).join(' ');
             setPropietarios([{
-              primer_apellido: predioNuevo.primer_apellido || '',
-              segundo_apellido: predioNuevo.segundo_apellido || '',
-              primer_nombre: predioNuevo.primer_nombre || '',
-              segundo_nombre: predioNuevo.segundo_nombre || '',
-              estado: predioNuevo.estado || predioNuevo.estado_civil || '',
+              nombre_propietario: nombreCompleto,
+              estado_civil: predioNuevo.estado_civil || predioNuevo.estado || 'sin_especificar',
               tipo_documento: predioNuevo.tipo_documento || 'C',
               numero_documento: predioNuevo.numero_documento || ''
             }]);
@@ -1193,8 +1279,7 @@ export default function Predios() {
                              codigoManual.terreno !== '0001';
     
     // Verificar si hay datos de propietario (nuevo formato)
-    const tienePropietario = propietarios[0]?.primer_apellido?.trim() || 
-                             propietarios[0]?.primer_nombre?.trim() ||
+    const tienePropietario = propietarios[0]?.nombre_propietario?.trim() || 
                              propietarios[0]?.numero_documento?.trim();
     
     // Verificar si hay datos del predio
@@ -1662,8 +1747,19 @@ export default function Predios() {
       const prediosRecibidos = res.data.predios || [];
       console.log('[Predios] Recibidos del servidor:', prediosRecibidos.length, 'predios');
       
+      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
+      const normalizarTexto = (texto) => {
+        if (!texto) return '';
+        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      };
+      
       const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        ? prediosRecibidos.filter(p => {
+            const municipioNorm = normalizarTexto(p.municipio);
+            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
+            const filtroNorm = normalizarTexto(filterMunicipio);
+            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
+          })
         : prediosRecibidos;
       
       // Ordenar por CNP antes de guardar
@@ -1793,9 +1889,19 @@ export default function Predios() {
       
       const prediosRecibidos = res.data.predios || [];
       
-      // Filtrar solo predios del municipio correcto
+      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
+      const normalizarTexto = (texto) => {
+        if (!texto) return '';
+        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      };
+      
       const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        ? prediosRecibidos.filter(p => {
+            const municipioNorm = normalizarTexto(p.municipio);
+            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
+            const filtroNorm = normalizarTexto(filterMunicipio);
+            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
+          })
         : prediosRecibidos;
       
       const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
@@ -2055,9 +2161,9 @@ export default function Predios() {
       return;
     }
 
-    // Validar que haya al menos un propietario con datos (nuevo formato)
-    if (!propietarios[0].primer_apellido || !propietarios[0].primer_nombre || !propietarios[0].numero_documento) {
-      toast.error('Debe ingresar al menos un propietario con primer apellido, primer nombre y número de documento');
+    // Validar que haya al menos un propietario con datos (nuevo formato simplificado)
+    if (!propietarios[0].nombre_propietario || !propietarios[0].numero_documento) {
+      toast.error('Debe ingresar al menos un propietario con nombre completo y número de documento');
       return;
     }
 
@@ -2067,21 +2173,23 @@ export default function Predios() {
       return;
     }
     
+    // Validar radicado requerido para creación de predios nuevos (excepto coordinadores/admin)
+    if (usarNuevoFlujo && !radicadoNumero && !['coordinador', 'administrador'].includes(user?.role)) {
+      toast.error('Debe ingresar un número de radicado para justificar la creación del predio');
+      return;
+    }
+    
     // Calcular áreas desde R2
     const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
     
-    // Preparar propietarios con formato correcto y documento con padding
+    // Preparar propietarios con formato correcto y documento con padding de 12 dígitos
     const propietariosFormateados = propietarios
-      .filter(p => p.primer_apellido && p.primer_nombre && p.numero_documento)
+      .filter(p => p.nombre_propietario && p.numero_documento)
       .map(p => ({
-        primer_apellido: p.primer_apellido,
-        segundo_apellido: p.segundo_apellido || '',
-        primer_nombre: p.primer_nombre,
-        segundo_nombre: p.segundo_nombre || '',
-        nombre_propietario: generarNombreCompleto(p), // Campo de compatibilidad
-        estado: p.estado || '',
+        nombre_propietario: p.nombre_propietario,
+        estado_civil: p.estado_civil || 'sin_especificar',
         tipo_documento: p.tipo_documento,
-        numero_documento: formatearNumeroDocumento(p.numero_documento)
+        numero_documento: p.numero_documento.padStart(12, '0')
       }));
 
     setIsSavingCreate(true); // Activar estado de guardado
@@ -2103,13 +2211,9 @@ export default function Predios() {
             terreno: codigoManual.terreno,
             condicion_predio: codigoManual.condicion,
             predio_horizontal: `${codigoManual.edificio}${codigoManual.piso}${codigoManual.unidad}`.padEnd(5, '0'),
-            // Nuevo formato de propietario
-            primer_apellido: propietariosFormateados[0].primer_apellido,
-            segundo_apellido: propietariosFormateados[0].segundo_apellido,
-            primer_nombre: propietariosFormateados[0].primer_nombre,
-            segundo_nombre: propietariosFormateados[0].segundo_nombre,
+            // Formato de propietario simplificado
             nombre_propietario: propietariosFormateados[0].nombre_propietario,
-            estado: propietariosFormateados[0].estado,
+            estado_civil: propietariosFormateados[0].estado_civil,
             tipo_documento: propietariosFormateados[0].tipo_documento,
             numero_documento: propietariosFormateados[0].numero_documento,
             direccion: formData.direccion,
@@ -2221,13 +2325,9 @@ export default function Predios() {
           : 'Creación de nuevo predio',
         // Marcar como creado en plataforma para sincronización automática R2→R1
         creado_en_plataforma: true,
-        // Usar el primer propietario como principal (para compatibilidad)
-        primer_apellido: propietariosFormateados[0].primer_apellido,
-        segundo_apellido: propietariosFormateados[0].segundo_apellido,
-        primer_nombre: propietariosFormateados[0].primer_nombre,
-        segundo_nombre: propietariosFormateados[0].segundo_nombre,
+        // Usar el primer propietario como principal (formato simplificado)
         nombre_propietario: propietariosFormateados[0].nombre_propietario,
-        estado: propietariosFormateados[0].estado,
+        estado_civil: propietariosFormateados[0].estado_civil,
         tipo_documento: propietariosFormateados[0].tipo_documento,
         numero_documento: propietariosFormateados[0].numero_documento,
         // Lista completa de propietarios
@@ -2373,6 +2473,52 @@ export default function Predios() {
         };
       }
       
+      // ===== VERIFICAR SI SE DEBE GENERAR RESOLUCIÓN MANUAL (coordinadores/admins) =====
+      if (canEditCodigoPredial && infoResolucion.tipo_mutacion && infoResolucion.numero_resolucion) {
+        try {
+          // Generar resolución manualmente (timeout extendido porque incluye envío de email)
+          const resolucionResponse = await axios.post(`${API}/resoluciones/generar-manual`, {
+            predio_id: selectedPredio.id,
+            tipo_mutacion: infoResolucion.tipo_mutacion,
+            numero_resolucion: infoResolucion.numero_resolucion,
+            fecha_resolucion: infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO'),
+            radicado_peticion: infoResolucion.radicado_peticion || null,
+            datos_predio: updateData
+          }, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000
+          });
+          
+          // Cerrar modal y limpiar estado ANTES de mostrar mensaje
+          setShowEditDialog(false);
+          setIsSavingUpdate(false);
+          setInfoResolucion({ tipo_mutacion: '', numero_resolucion: '', fecha_resolucion: '', radicado_peticion: '' });
+          
+          // Mostrar mensaje de éxito
+          if (resolucionResponse.data.success) {
+            let msg = resolucionResponse.data.duplicado 
+              ? `La resolución ${infoResolucion.numero_resolucion} ya existe.`
+              : `Resolución ${infoResolucion.numero_resolucion} generada y predio actualizado exitosamente.`;
+            if (resolucionResponse.data.peticion_finalizada) msg += ' Petición marcada como finalizada.';
+            if (resolucionResponse.data.email_enviado) msg += ' Correo enviado al solicitante.';
+            toast.success(msg);
+          }
+          
+          // Refrescar en segundo plano
+          forceRefreshPredios().catch(() => {});
+          fetchCambiosStats();
+        } catch (resolucionError) {
+          setIsSavingUpdate(false);
+          if (resolucionError.code === 'ECONNABORTED' || resolucionError.message?.includes('timeout')) {
+            toast.warning('La solicitud tardó mucho. Verifica si la resolución se generó.');
+          } else {
+            toast.error(resolucionError.response?.data?.detail || 'Error al generar resolución');
+          }
+        }
+        // SIEMPRE salir después de intentar generar resolución (éxito o error)
+        return;
+      }
+      
       // Obtener info del radicado seleccionado
       const radicadoInfo = peticionesDisponibles.find(p => p.id === radicadoSeleccionado);
       
@@ -2403,7 +2549,10 @@ export default function Predios() {
       } else if (res.data.requiere_aprobacion) {
         toast.success('Modificación propuesta. Pendiente de aprobación del coordinador.');
       } else {
-        toast.success('Predio actualizado exitosamente');
+        // Solo mostrar si no hubo ya mensaje de resolución
+        if (!infoResolucion.numero_resolucion) {
+          toast.success('Predio actualizado exitosamente');
+        }
       }
       
       setShowEditDialog(false);
@@ -2641,6 +2790,14 @@ export default function Predios() {
     setPropietarios(newPropietarios);
     setZonasFisicas(newZonasFisicas);
     setFormData(newFormData);
+    // Resetear estado de resolución para que el coordinador pueda generar una nueva
+    setInfoResolucion({
+      tipo_mutacion: '',
+      numero_resolucion: '',
+      fecha_resolucion: '',
+      radicado_peticion: ''
+    });
+    setRadicadosDisponibles([]);
     setShowEditDialog(true);
   };
 
@@ -2688,11 +2845,8 @@ export default function Predios() {
       unidad: '0000'
     });
     setPropietarios([{
-      primer_apellido: '',
-      segundo_apellido: '',
-      primer_nombre: '',
-      segundo_nombre: '',
-      estado: '',
+      nombre_propietario: '',
+      estado_civil: 'sin_especificar',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -3080,28 +3234,8 @@ export default function Predios() {
                     {gdbStats.por_municipio[filterMunicipio]?.total || 0} en Base Gráfica
                   </Badge>
                 )}
-                {canModifyPredios && (
-                  <Button onClick={() => { resetForm(); setTerrenoInfo(null); setShowCreateDialog(true); }} className="bg-emerald-700 hover:bg-emerald-800">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Predio
-                  </Button>
-                )}
-                {canModifyPredios && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Predios Eliminados
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Predios Eliminados - {filterMunicipio}</DialogTitle>
-                    </DialogHeader>
-                    <PrediosEliminadosView municipio={filterMunicipio} />
-                  </DialogContent>
-                </Dialog>
-                )}
+                {/* Nota: Botones de Nuevo Predio y Predios Eliminados removidos.
+                    Toda edición se hace desde Mutaciones y Resoluciones */}
                 {/* Botón de Subsanaciones - Para gestores y coordinadores */}
                 {user && ['gestor', 'coordinador', 'administrador'].includes(user.role) && subsanacionesConteo > 0 && (
                   <Button 
@@ -3226,7 +3360,7 @@ export default function Predios() {
                                 </Badge>
                               )}
                               <p className="text-xs text-slate-500">
-                                {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {predio.propietarios?.[0]?.numero_documento || predio.numero_documento}
+                                {catalogos?.tipo_documento?.[predio.propietarios?.[0]?.tipo_documento || predio.tipo_documento]}: {String(predio.propietarios?.[0]?.numero_documento || predio.numero_documento || '').padStart(10, '0')}
                               </p>
                             </div>
                           </td>
@@ -3241,19 +3375,9 @@ export default function Predios() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)}>
+                              <Button variant="ghost" size="sm" onClick={() => openDetailDialog(predio)} title="Ver detalles">
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {canModifyPredios && (
-                                <>
-                                  <Button variant="ghost" size="sm" onClick={() => openEditDialog(predio)}>
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleDelete(predio)} className="text-red-600 hover:text-red-700">
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -3659,48 +3783,51 @@ export default function Predios() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Nombres según formato XTF */}
-                    <div>
-                      <Label className="text-xs">Primer Apellido *</Label>
+                    {/* Nombre Completo - Un solo campo con guía interactiva */}
+                    <div className="col-span-2">
+                      <Label className="text-xs">Nombre Completo *</Label>
                       <Input 
-                        value={prop.primer_apellido || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'primer_apellido', e.target.value.toUpperCase())}
-                        placeholder="PÉREZ"
+                        value={prop.nombre_propietario || ''} 
+                        onChange={(e) => actualizarPropietario(index, 'nombre_propietario', e.target.value.toUpperCase())}
+                        placeholder="PÉREZ GARCÍA JUAN CARLOS"
+                        className="font-mono"
                       />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Segundo Apellido</Label>
-                      <Input 
-                        value={prop.segundo_apellido || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'segundo_apellido', e.target.value.toUpperCase())}
-                        placeholder="GARCÍA"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Primer Nombre *</Label>
-                      <Input 
-                        value={prop.primer_nombre || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'primer_nombre', e.target.value.toUpperCase())}
-                        placeholder="JUAN"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Segundo Nombre</Label>
-                      <Input 
-                        value={prop.segundo_nombre || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'segundo_nombre', e.target.value.toUpperCase())}
-                        placeholder="CARLOS"
-                      />
+                      <GuiaNombre nombre={prop.nombre_propietario} />
                     </div>
                     
                     {/* Estado (campo libre) */}
                     <div className="col-span-2">
-                      <Label className="text-xs">Estado</Label>
-                      <Input 
-                        value={prop.estado || ''} 
-                        onChange={(e) => actualizarPropietario(index, 'estado', e.target.value.toUpperCase())}
-                        placeholder="Ej: CASADO, SOLTERO, VIUDO, E (Estado), etc."
-                      />
+                      <Label className="text-xs">Estado Civil</Label>
+                      <RadioGroup 
+                        value={prop.estado_civil || 'sin_especificar'} 
+                        onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
+                        className="flex flex-wrap gap-2 mt-1"
+                      >
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="sin_especificar" id={`estado_${index}_sin`} />
+                          <Label htmlFor={`estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="soltero" id={`estado_${index}_soltero`} />
+                          <Label htmlFor={`estado_${index}_soltero`} className="text-xs cursor-pointer">Soltero/a</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="casado_con" id={`estado_${index}_casado_con`} />
+                          <Label htmlFor={`estado_${index}_casado_con`} className="text-xs cursor-pointer">Casado/a con sociedad conyugal</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="casado_sin" id={`estado_${index}_casado_sin`} />
+                          <Label htmlFor={`estado_${index}_casado_sin`} className="text-xs cursor-pointer">Casado/a sin sociedad conyugal</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="separacion" id={`estado_${index}_sep`} />
+                          <Label htmlFor={`estado_${index}_sep`} className="text-xs cursor-pointer">Separación de bienes</Label>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <RadioGroupItem value="union_marital" id={`estado_${index}_union`} />
+                          <Label htmlFor={`estado_${index}_union`} className="text-xs cursor-pointer">Unión marital de hecho</Label>
+                        </div>
+                      </RadioGroup>
                     </div>
                     
                     {/* Tipo y Número de Documento */}
@@ -3720,7 +3847,7 @@ export default function Predios() {
                       </RadioGroup>
                     </div>
                     <div>
-                      <Label className="text-xs">Número Documento * (máx 12 dígitos)</Label>
+                      <Label className="text-xs">Número Documento *</Label>
                       <Input 
                         value={prop.numero_documento || ''} 
                         onChange={(e) => {
@@ -3728,23 +3855,14 @@ export default function Predios() {
                           const valor = e.target.value.replace(/\D/g, '').slice(0, 12);
                           actualizarPropietario(index, 'numero_documento', valor);
                         }}
-                        placeholder="Se rellenará con 0s (ej: 001091672736)"
+                        placeholder="Ej: 1091672736"
                       />
                       {prop.numero_documento && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          Formato final: {formatearNumeroDocumento(prop.numero_documento)}
+                        <p className="text-xs text-emerald-600 mt-1">
+                          Formato final: <strong>{prop.numero_documento.padStart(12, '0')}</strong>
                         </p>
                       )}
                     </div>
-                    
-                    {/* Preview del nombre completo */}
-                    {(prop.primer_apellido || prop.primer_nombre) && (
-                      <div className="col-span-2 bg-emerald-50 p-2 rounded border border-emerald-200">
-                        <p className="text-xs text-emerald-700">
-                          <strong>Nombre completo:</strong> {generarNombreCompleto(prop) || 'Complete los campos'}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -3995,12 +4113,15 @@ export default function Predios() {
                   </select>
                 </div>
                 
-                {/* Radicado relacionado */}
-                <div>
-                  <Label className="text-sm font-medium">Radicado Relacionado (Opcional)</Label>
-                  <p className="text-xs text-slate-500 mb-1">Formato: RASMGC-XXXX-DD-MM-AAAA (solo ingrese XXXX)</p>
+                {/* Radicado relacionado - REQUERIDO */}
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <Label className="text-blue-800 font-medium flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Radicado Asociado (Requerido) *
+                  </Label>
+                  <p className="text-xs text-blue-600 mt-1 mb-2">Formato: RASMGC-XXXX-DD-MM-AAAA (solo ingrese los 4 dígitos)</p>
                   <div className="flex gap-2">
-                    <div className="flex items-center bg-slate-100 px-3 py-2 rounded-l border border-r-0 text-sm text-slate-600">
+                    <div className="flex items-center bg-white px-3 py-2 rounded-l border border-r-0 text-sm text-slate-600">
                       RASMGC-
                     </div>
                     <Input 
@@ -4012,9 +4133,9 @@ export default function Predios() {
                       }}
                       placeholder="5511"
                       maxLength={4}
-                      className="w-24 text-center font-mono"
+                      className="w-24 text-center font-mono border-blue-300"
                     />
-                    <div className="flex items-center bg-slate-100 px-3 py-2 border text-sm text-slate-600">
+                    <div className="flex items-center bg-white px-3 py-2 border text-sm text-slate-600">
                       -{radicadoInfo?.encontrado ? radicadoInfo.fecha : 'DD-MM-AAAA'}
                     </div>
                     <Button 
@@ -4023,6 +4144,7 @@ export default function Predios() {
                       size="sm"
                       onClick={() => buscarRadicado(radicadoNumero)}
                       disabled={buscandoRadicado || !radicadoNumero}
+                      className="border-blue-300"
                     >
                       {buscandoRadicado ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     </Button>
@@ -4039,6 +4161,11 @@ export default function Predios() {
                         <p>{radicadoInfo.mensaje}</p>
                       )}
                     </div>
+                  )}
+                  {!radicadoNumero && (
+                    <p className="text-xs text-amber-600 mt-2">
+                      ⚠️ Debe ingresar un número de radicado para justificar la creación del predio
+                    </p>
                   )}
                 </div>
                 
@@ -4145,7 +4272,10 @@ export default function Predios() {
             <Button 
               onClick={handleCreate} 
               className="bg-emerald-700 hover:bg-emerald-800"
-              disabled={isSavingCreate}
+              disabled={
+                isSavingCreate || 
+                (usarNuevoFlujo && !radicadoNumero && !['coordinador', 'administrador'].includes(user?.role))
+              }
             >
               {isSavingCreate ? 'Creando...' : (usarNuevoFlujo ? 'Crear y Asignar a Flujo' : 'Crear Predio')}
             </Button>
@@ -4253,6 +4383,145 @@ export default function Predios() {
               )}
             </div>
             
+            {/* Sección de Información de Resolución - Solo para coordinadores y administradores */}
+            {canEditCodigoPredial && (
+              <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                <h4 className="font-semibold text-purple-800 flex items-center gap-2 mb-4">
+                  <FileText className="w-4 h-4" />
+                  Información de Resolución
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Tipo de Mutación */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Tipo de Mutación</Label>
+                    <select
+                      value={infoResolucion.tipo_mutacion}
+                      onChange={async (e) => {
+                        const tipo = e.target.value;
+                        setInfoResolucion(prev => ({ ...prev, tipo_mutacion: tipo }));
+                        if (tipo === 'M1' && selectedPredio) {
+                          // Obtener código de municipio del predio
+                          const codigo = selectedPredio.codigo_predial_nacional || '';
+                          const codigoMunicipio = codigo.substring(0, 5);
+                          await cargarSiguienteNumeroResolucion(codigoMunicipio);
+                          await cargarRadicadosDisponibles(selectedPredio.municipio);
+                        } else {
+                          setInfoResolucion(prev => ({ ...prev, numero_resolucion: '', fecha_resolucion: '' }));
+                        }
+                      }}
+                      className="w-full mt-1 px-3 py-2 border border-purple-300 rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="M1">M1 - Mutación Primera</option>
+                      <option value="M2" disabled>M2 - Mutación Segunda (Próximamente)</option>
+                      <option value="M3" disabled>M3 - Mutación Tercera (Próximamente)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Número de Resolución - Auto generado */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Número de Resolución</Label>
+                    <div className="relative">
+                      <Input 
+                        value={infoResolucion.numero_resolucion}
+                        readOnly
+                        className="mt-1 bg-purple-100 font-mono text-purple-800"
+                        placeholder={cargandoNumeroResolucion ? "Generando..." : "Seleccione tipo de mutación"}
+                      />
+                      {cargandoNumeroResolucion && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">Se genera automáticamente</p>
+                  </div>
+                  
+                  {/* Fecha de Resolución - Auto generada con opción manual */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Fecha de Resolución</Label>
+                    <Input 
+                      type="date"
+                      value={infoResolucion.fecha_resolucion ? 
+                        infoResolucion.fecha_resolucion.split('/').reverse().join('-') : 
+                        new Date().toISOString().split('T')[0]
+                      }
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        const partes = fecha.split('-');
+                        const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                        setInfoResolucion(prev => ({ ...prev, fecha_resolucion: fechaFormateada }));
+                      }}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-purple-600 mt-1">Automática, puede modificar si requiere</p>
+                  </div>
+                  
+                  {/* Radicado de Petición - Búsqueda manual o selección */}
+                  <div>
+                    <Label className="text-xs text-purple-700">Radicado de Petición</Label>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={infoResolucion.radicado_peticion}
+                        onChange={async (e) => {
+                          const valor = e.target.value.toUpperCase();
+                          setInfoResolucion(prev => ({ ...prev, radicado_peticion: valor }));
+                          // Buscar radicados mientras escribe (mínimo 3 caracteres)
+                          if (valor.length >= 3) {
+                            await cargarRadicadosDisponibles('', valor); // Sin filtrar por municipio
+                          } else {
+                            setRadicadosDisponibles([]);
+                          }
+                        }}
+                        placeholder="Escribir número de radicado..."
+                        className="mt-1"
+                      />
+                      {/* Lista de resultados de búsqueda */}
+                      {radicadosDisponibles.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-purple-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                          {radicadosDisponibles.map(rad => (
+                            <button
+                              key={rad.id}
+                              type="button"
+                              onClick={() => {
+                                setInfoResolucion(prev => ({ ...prev, radicado_peticion: rad.radicado }));
+                                setRadicadosDisponibles([]);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 border-b border-slate-100 last:border-0"
+                            >
+                              <span className="font-mono text-purple-700">{rad.radicado}</span>
+                              <span className="text-slate-500 ml-2">- {rad.tipo_tramite}</span>
+                              {rad.nombre_completo && (
+                                <span className="text-slate-400 text-xs block">{rad.nombre_completo}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Escriba al menos 3 caracteres para buscar
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Preview del número de resolución */}
+                {infoResolucion.numero_resolucion && (
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
+                    <p className="text-xs text-purple-600 mb-1">Vista previa:</p>
+                    <p className="font-mono text-lg font-bold text-purple-800">
+                      {infoResolucion.numero_resolucion}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Fecha: {infoResolucion.fecha_resolucion || new Date().toLocaleDateString('es-CO')}
+                      {infoResolucion.radicado_peticion && ` | Radicado: ${infoResolucion.radicado_peticion}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* Sección de Propietarios */}
             <div className="border border-slate-200 rounded-lg p-4">
               <div className="flex justify-between items-center mb-3">
@@ -4278,8 +4547,10 @@ export default function Predios() {
                       <Input 
                         value={prop.nombre_propietario} 
                         onChange={(e) => actualizarPropietario(index, 'nombre_propietario', e.target.value.toUpperCase())}
-                        placeholder="NOMBRE COMPLETO DEL PROPIETARIO"
+                        placeholder="PÉREZ GARCÍA JUAN CARLOS"
+                        className="font-mono"
                       />
+                      <GuiaNombre nombre={prop.nombre_propietario} />
                     </div>
                     <div>
                       <Label className="text-xs mb-2 block">Tipo Documento *</Label>
@@ -4290,8 +4561,8 @@ export default function Predios() {
                       >
                         {catalogos?.tipo_documento && Object.entries(catalogos.tipo_documento).map(([k, v]) => (
                           <div key={k} className="flex items-center space-x-1">
-                            <RadioGroupItem value={k} id={`tipo_doc_${index}_${k}`} />
-                            <Label htmlFor={`tipo_doc_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
+                            <RadioGroupItem value={k} id={`edit_tipo_doc_${index}_${k}`} />
+                            <Label htmlFor={`edit_tipo_doc_${index}_${k}`} className="text-xs cursor-pointer">{k}</Label>
                           </div>
                         ))}
                       </RadioGroup>
@@ -4300,10 +4571,19 @@ export default function Predios() {
                       <Label className="text-xs">Número Documento *</Label>
                       <Input 
                         value={prop.numero_documento} 
-                        onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value)}
+                        onChange={(e) => {
+                          const valor = e.target.value.replace(/\D/g, '').slice(0, 12);
+                          actualizarPropietario(index, 'numero_documento', valor);
+                        }}
+                        placeholder="Ej: 1091672736"
                       />
+                      {prop.numero_documento && (
+                        <p className="text-xs text-emerald-600 mt-1">
+                          Formato final: <strong>{prop.numero_documento.padStart(12, '0')}</strong>
+                        </p>
+                      )}
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <Label className="text-xs mb-2 block">Estado Civil</Label>
                       <RadioGroup 
                         value={prop.estado_civil || ""} 
@@ -4369,64 +4649,16 @@ export default function Predios() {
               </div>
             </div>
             
-            {/* Información de Resolución para modificaciones - SOLO coordinador/admin */}
-            {['coordinador', 'administrador'].includes(user?.role) && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <Label className="text-sm font-medium text-blue-800 flex items-center gap-1 mb-2">
-                  <FileText className="w-4 h-4" />
-                  Información de Resolución (Obligatorio)
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs text-slate-600">Tipo de Mutación *</Label>
-                    <select
-                      className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
-                      value={formData.tipo_mutacion}
-                      onChange={(e) => setFormData({ ...formData, tipo_mutacion: e.target.value })}
-                      data-testid="tipo-mutacion-edit-select-top"
-                    >
-                      <option value="">Seleccionar...</option>
-                      <option value="Mutación Primera">Mutación Primera - Cambio de propietario</option>
-                      <option value="Mutación Segunda">Mutación Segunda - Englobe o Desenglobe</option>
-                      <option value="Mutación Tercera">Mutación Tercera - Modificación de construcción o destino</option>
-                      <option value="Mutación Cuarta">Mutación Cuarta - Auto estimación del avalúo catastral</option>
-                      <option value="Mutación Quinta">Mutación Quinta - Inscripción o eliminación de predio</option>
-                      <option value="Mutación Sexta">Mutación Sexta - Rectificación de área</option>
-                      <option value="Complementación">Complementación de información catastral</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-600">Número de Resolución *</Label>
-                    <Input
-                      type="text"
-                      value={formData.numero_resolucion || ''}
-                      onChange={(e) => setFormData({ ...formData, numero_resolucion: e.target.value })}
-                      placeholder="Ej: RES-540-0106-2026"
-                      className="bg-white"
-                      data-testid="numero-resolucion-edit-input-top"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-slate-600">Fecha de Resolución *</Label>
-                    <Input
-                      type="date"
-                      value={formData.fecha_resolucion || ''}
-                      onChange={(e) => setFormData({ ...formData, fecha_resolucion: e.target.value })}
-                      className="bg-white"
-                      data-testid="fecha-resolucion-edit-input-top"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            
             {/* Sección R2 - Condicional según tipo de predio */}
             {usarFormatoAutomatico ? (
               /* ═══════════ FORMATO AUTOMÁTICO: R2 → R1 ═══════════ */
               <div className="space-y-4">
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                   <p className="text-sm text-emerald-800 font-medium">
-                    ✅ Predio creado en plataforma - Las áreas de R2 se sincronizan automáticamente a R1
+                    {selectedPredio?.area_editada_en_plataforma && !selectedPredio?.creado_en_plataforma
+                      ? '✅ Área modificada en plataforma - Las áreas de R2 se sincronizan automáticamente a R1'
+                      : '✅ Predio creado en plataforma - Las áreas de R2 se sincronizan automáticamente a R1'
+                    }
                   </p>
                 </div>
                 
@@ -5225,6 +5457,23 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
+              {/* Nota informativa sobre edición - Link clickeable */}
+              <div 
+                className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                onClick={() => {
+                  // Guardar el predio seleccionado en sessionStorage para pre-cargar en Mutaciones
+                  sessionStorage.setItem('predioParaMutacion', JSON.stringify(selectedPredio));
+                  setShowDetailDialog(false);
+                  navigate('/dashboard/mutaciones-resoluciones');
+                }}
+              >
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                  Para modificar este predio, haga clic aquí para ir a <strong className="underline">Mutaciones y Resoluciones</strong>. Todo cambio genera una resolución.
+                </p>
+                <ArrowRight className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              </div>
+              
               {/* Botón Generar Certificado Catastral */}
               {['coordinador', 'administrador', 'atencion_usuario'].includes(user?.role) && (
                 <div className="flex justify-end">
@@ -5325,7 +5574,7 @@ export default function Predios() {
                             <Badge variant="outline" className="text-xs">{idx + 1}/{selectedPredio.propietarios.length}</Badge>
                             <strong>{prop.nombre_propietario}</strong>
                           </div>
-                          <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[prop.tipo_documento]} {prop.numero_documento}</strong></div>
+                          <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[prop.tipo_documento]} {String(prop.numero_documento || '').padStart(10, '0')}</strong></div>
                           <div><span className="text-slate-500">Estado Civil:</span> <strong>{catalogos?.estado_civil?.[prop.estado_civil] || 'N/A'}</strong></div>
                         </div>
                       ))}
@@ -5333,7 +5582,7 @@ export default function Predios() {
                   ) : (
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="col-span-2"><span className="text-slate-500">Nombre:</span> <strong>{selectedPredio.nombre_propietario}</strong></div>
-                      <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[selectedPredio.tipo_documento]} {selectedPredio.numero_documento}</strong></div>
+                      <div><span className="text-slate-500">Documento:</span> <strong>{catalogos?.tipo_documento?.[selectedPredio.tipo_documento]} {String(selectedPredio.numero_documento || '').padStart(10, '0')}</strong></div>
                       <div><span className="text-slate-500">Estado Civil:</span> <strong>{catalogos?.estado_civil?.[selectedPredio.estado_civil] || 'N/A'}</strong></div>
                     </div>
                   )}
@@ -5499,153 +5748,146 @@ export default function Predios() {
                 </Card>
               )}
               
-              {/* Historial */}
-              {selectedPredio.historial && selectedPredio.historial.length > 0 && (
+              {/* Historial de Resoluciones con detalles de cambios */}
+              {selectedPredio.historial_resoluciones && selectedPredio.historial_resoluciones.length > 0 && (
                 <Card>
                   <CardHeader className="py-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <History className="w-4 h-4" /> Historial de Cambios ({selectedPredio.historial.length})
+                      <FileText className="w-4 h-4" /> Resoluciones Generadas ({selectedPredio.historial_resoluciones.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {selectedPredio.historial.slice().reverse().map((h, idx) => (
-                        <div key={idx} className="border rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors">
-                          {/* Encabezado con acción */}
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                h.accion?.toLowerCase().includes('aprobad') ? 'bg-emerald-500' :
-                                h.accion?.toLowerCase().includes('rechaz') ? 'bg-red-500' :
-                                h.accion?.toLowerCase().includes('devuel') ? 'bg-amber-500' :
-                                h.accion?.toLowerCase().includes('crea') ? 'bg-blue-500' :
-                                'bg-slate-400'
-                              }`} />
-                              <span className="font-semibold text-slate-800">{h.accion || 'Acción'}</span>
+                      {selectedPredio.historial_resoluciones.slice().reverse().map((r, idx) => (
+                        <div key={idx} className="border border-emerald-200 rounded-lg overflow-hidden">
+                          {/* Encabezado de la resolución */}
+                          <div className="flex items-center justify-between bg-emerald-50 p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-emerald-800">
+                                  {r.tipo_mutacion && `${r.tipo_mutacion} - `}{r.numero_resolucion}
+                                </div>
+                                <div className="text-xs text-emerald-600 flex items-center gap-2 flex-wrap">
+                                  {r.fecha_resolucion && (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {r.fecha_resolucion}
+                                    </span>
+                                  )}
+                                  {r.radicado && (
+                                    <span className="flex items-center gap-1">
+                                      <Hash className="w-3 h-3" />
+                                      {r.radicado}
+                                    </span>
+                                  )}
+                                  {r.generado_por && (
+                                    <span className="flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      {r.generado_por}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            {h.estado_nuevo && (
-                              <Badge variant="outline" className="text-xs">
-                                {h.estado_anterior && `${h.estado_anterior} → `}{h.estado_nuevo}
-                              </Badge>
+                            {r.pdf_path && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700"
+                                onClick={() => window.open(`${BACKEND_URL}${r.pdf_path}`, '_blank')}
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                PDF
+                              </Button>
                             )}
                           </div>
                           
-                          {/* Información del usuario y fecha */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs text-slate-600 mb-2">
-                            <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              <span>{h.usuario || h.usuario_nombre || 'Usuario'}</span>
-                              {h.rol && <span className="text-slate-400">({h.rol})</span>}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>{h.fecha ? new Date(h.fecha).toLocaleString('es-CO') : 'Sin fecha'}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Acto Administrativo / Resolución */}
-                          {(h.acto_administrativo || h.numero_resolucion || h.resolucion) && (
-                            <div className="flex items-center gap-2 text-xs bg-blue-50 text-blue-800 px-2 py-1 rounded mb-2">
-                              <FileText className="w-3 h-3" />
-                              <span className="font-medium">
-                                {h.acto_administrativo && `Acto: ${h.acto_administrativo}`}
-                                {h.numero_resolucion && `Resolución: ${h.numero_resolucion}`}
-                                {h.resolucion && `Resolución: ${h.resolucion}`}
-                                {h.fecha_resolucion && ` (${h.fecha_resolucion})`}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Radicado */}
-                          {(h.radicado || h.numero_radicado || h.petition_radicado) && (
-                            <div className="flex items-center gap-2 text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded mb-2">
-                              <Hash className="w-3 h-3" />
-                              <span className="font-medium">
-                                Radicado: {h.radicado || h.numero_radicado || h.petition_radicado}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Notas / Observaciones / Motivo */}
-                          {(h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario) && (
-                            <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded p-2 mb-2">
-                              <span className="font-medium text-slate-700">Observaciones: </span>
-                              {h.notas || h.observaciones || h.motivo || h.descripcion || h.comentario}
-                            </div>
-                          )}
-                          
-                          {/* Detalles de creación */}
-                          {h.tipo_cambio === 'creacion' && h.detalles && (
-                            <div className="text-xs bg-emerald-50 border border-emerald-200 rounded p-2 mb-2">
-                              <p className="font-medium text-emerald-800 mb-1">Datos del predio creado:</p>
-                              <div className="grid grid-cols-2 gap-1 text-emerald-700">
-                                {h.detalles.propietario && <p>• Propietario: {h.detalles.propietario}</p>}
-                                {h.detalles.area_terreno && <p>• Área Terreno: {h.detalles.area_terreno} m²</p>}
-                                {h.detalles.area_construida !== undefined && <p>• Área Construida: {h.detalles.area_construida} m²</p>}
-                                {h.detalles.avaluo && <p>• Avalúo: ${h.detalles.avaluo?.toLocaleString('es-CO')}</p>}
-                                {h.detalles.direccion && <p>• Dirección: {h.detalles.direccion}</p>}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Detalles de modificación - Campos cambiados */}
-                          {h.tipo_cambio === 'modificacion' && h.detalles?.campos_modificados && h.detalles.campos_modificados.length > 0 && (
-                            <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 mb-2">
-                              <p className="font-medium text-amber-800 mb-1">Campos modificados ({h.detalles.total_campos}):</p>
-                              <div className="space-y-1">
-                                {h.detalles.campos_modificados.map((cm, cmIdx) => (
-                                  <div key={cmIdx} className="flex items-start gap-2 text-amber-700">
-                                    <span className="font-medium">{cm.campo}:</span>
-                                    <span className="text-red-600 line-through">
-                                      {typeof cm.valor_anterior === 'object' ? JSON.stringify(cm.valor_anterior).slice(0, 50) : String(cm.valor_anterior || 'N/A').slice(0, 50)}
-                                    </span>
-                                    <span>→</span>
-                                    <span className="text-emerald-700">
-                                      {typeof cm.valor_nuevo === 'object' ? JSON.stringify(cm.valor_nuevo).slice(0, 50) : String(cm.valor_nuevo || 'N/A').slice(0, 50)}
-                                    </span>
+                          {/* Detalles del cambio */}
+                          <div className="p-3 bg-white border-t border-emerald-100 space-y-2">
+                            {/* Propietarios anteriores y nuevos */}
+                            {(r.propietarios_anteriores?.length > 0 || r.propietarios_nuevos?.length > 0) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {/* Propietarios cancelados */}
+                                {r.propietarios_anteriores?.length > 0 && (
+                                  <div className="bg-red-50 border border-red-200 rounded p-2">
+                                    <p className="text-xs font-semibold text-red-700 mb-1">
+                                      Propietarios Cancelados ({r.propietarios_anteriores.length}):
+                                    </p>
+                                    {r.propietarios_anteriores.map((p, pIdx) => (
+                                      <div key={pIdx} className="text-xs text-red-600">
+                                        • {p.nombre || p.nombre_propietario} 
+                                        {(p.tipo_documento || p.documento || p.numero_documento) && 
+                                          ` (${p.tipo_documento || 'CC'}: ${String(p.documento || p.numero_documento || '').padStart(10, '0')})`}
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
+                                {/* Propietarios inscritos */}
+                                {r.propietarios_nuevos?.length > 0 && (
+                                  <div className="bg-emerald-50 border border-emerald-200 rounded p-2">
+                                    <p className="text-xs font-semibold text-emerald-700 mb-1">
+                                      Propietarios Inscritos ({r.propietarios_nuevos.length}):
+                                    </p>
+                                    {r.propietarios_nuevos.map((p, pIdx) => (
+                                      <div key={pIdx} className="text-xs text-emerald-600">
+                                        • {p.nombre || p.nombre_propietario} 
+                                        {(p.tipo_documento || p.documento || p.numero_documento) && 
+                                          ` (${p.tipo_documento || 'CC'}: ${String(p.documento || p.numero_documento || '').padStart(10, '0')})`}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* Documentos adjuntos */}
-                          {h.documentos && h.documentos.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-slate-600 mb-1">Documentos:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {h.documentos.map((doc, docIdx) => (
-                                  <Button
-                                    key={docIdx}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => {
-                                      if (doc.url || doc.path) {
-                                        window.open(doc.url || `${BACKEND_URL}${doc.path}`, '_blank');
-                                      }
-                                    }}
-                                  >
-                                    <Download className="w-3 h-3 mr-1" />
-                                    {doc.nombre || doc.filename || `Documento ${docIdx + 1}`}
-                                  </Button>
-                                ))}
+                            )}
+                            
+                            {/* Otros campos modificados (matrícula, dirección, avalúo, etc.) */}
+                            {r.campos_modificados?.filter(cm => 
+                              ['matricula_inmobiliaria', 'direccion', 'avaluo', 'area_terreno', 'area_construida', 'destino_economico', 'codigo_homologado'].includes(cm.campo)
+                            ).length > 0 && (
+                              <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                                <p className="text-xs font-semibold text-blue-700 mb-1">
+                                  Otros datos modificados:
+                                </p>
+                                <div className="space-y-1">
+                                  {r.campos_modificados.filter(cm => 
+                                    ['matricula_inmobiliaria', 'direccion', 'avaluo', 'area_terreno', 'area_construida', 'destino_economico', 'codigo_homologado'].includes(cm.campo)
+                                  ).map((cm, cmIdx) => {
+                                    const nombresCampos = {
+                                      'matricula_inmobiliaria': 'Matrícula',
+                                      'direccion': 'Dirección',
+                                      'avaluo': 'Avalúo',
+                                      'area_terreno': 'Área Terreno',
+                                      'area_construida': 'Área Construida',
+                                      'destino_economico': 'Destino Económico',
+                                      'codigo_homologado': 'Código Homologado'
+                                    };
+                                    return (
+                                      <div key={cmIdx} className="text-xs flex flex-wrap items-center gap-1">
+                                        <span className="font-medium text-blue-700">{nombresCampos[cm.campo] || cm.campo}:</span>
+                                        <span className="text-red-600 line-through">
+                                          {String(cm.valor_anterior || 'N/A').slice(0, 50)}
+                                        </span>
+                                        <span className="text-slate-400">→</span>
+                                        <span className="text-emerald-700 font-medium">
+                                          {String(cm.valor_nuevo || 'N/A').slice(0, 50)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          
-                          {/* Documento único (si existe como campo directo) */}
-                          {(h.documento_url || h.archivo_url) && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs mt-2"
-                              onClick={() => window.open(h.documento_url || h.archivo_url, '_blank')}
-                            >
-                              <Download className="w-3 h-3 mr-1" />
-                              Descargar documento
-                            </Button>
-                          )}
+                            )}
+                            
+                            {/* Si no hay propietarios mostrados, indicar */}
+                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && !r.campos_modificados?.length && (
+                              <p className="text-xs text-slate-500 italic">
+                                Sin detalles de cambios registrados
+                              </p>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

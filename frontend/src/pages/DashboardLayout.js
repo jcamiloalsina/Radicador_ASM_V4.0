@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell } from 'lucide-react';
+import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell, Code } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { OfflineReadyBadge, OfflineBanner, OfflineStatusPanel } from '../components/OfflineComponents';
 import { useOffline } from '../hooks/useOffline';
+import NotificacionesDropdown from '../components/NotificacionesDropdown';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -277,6 +278,7 @@ export default function DashboardLayout() {
     if (isStaff) {
       conservacionItems.push({ path: '/dashboard/predios', label: 'Gestión de Predios', icon: MapPin });
       conservacionItems.push({ path: '/dashboard/visor-predios', label: 'Visor de Predios', icon: Map });
+      conservacionItems.push({ path: '/dashboard/mutaciones-resoluciones', label: 'Mutaciones y Resoluciones', icon: FileText });
       // Certificados solo para administrador, coordinador y atención al usuario
       const canSeeCertificados = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
       if (canSeeCertificados) {
@@ -646,8 +648,11 @@ export default function DashboardLayout() {
             </h1>
           </div>
           
-          {/* Offline Status */}
+          {/* Offline Status y Notificaciones */}
           <div className="flex items-center gap-3">
+            {/* Notificaciones */}
+            <NotificacionesDropdown />
+            
             {/* Badge de estado offline */}
             <OfflineReadyBadge />
           </div>

@@ -714,13 +714,28 @@ export default function VisorPredios() {
         if (cachedData && cachedTime) {
           const cacheAge = Date.now() - parseInt(cachedTime);
           if (cacheAge < CACHE_DURATION) {
-            console.log('Usando límites municipales desde caché');
-            setLimitesMunicipios(JSON.parse(cachedData));
-            return;
+            const parsed = JSON.parse(cachedData);
+            // Validar que el caché tenga datos válidos (features con geometrías)
+            if (parsed?.type === 'FeatureCollection' && 
+                Array.isArray(parsed?.features) && 
+                parsed.features.length > 0 &&
+                parsed.features[0]?.geometry?.coordinates) {
+              console.log(`Usando límites municipales desde caché (${parsed.features.length} municipios)`);
+              setLimitesMunicipios(parsed);
+              return;
+            } else {
+              // Caché inválido o vacío, limpiar y continuar a fetch
+              console.log('Caché de límites inválido, obteniendo datos frescos...');
+              localStorage.removeItem(cacheKey);
+              localStorage.removeItem(cacheTimeKey);
+            }
           }
         }
       } catch (e) {
         console.log('Error leyendo caché de límites:', e);
+        // Limpiar caché corrupto
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(cacheTimeKey);
       }
     }
     
@@ -734,15 +749,23 @@ export default function VisorPredios() {
       const response = await axios.get(`${API}/gdb/limites-municipios?fuente=${fuente}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setLimitesMunicipios(response.data);
       
-      // Guardar en caché
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(response.data));
-        localStorage.setItem(cacheTimeKey, Date.now().toString());
-        console.log('Límites municipales guardados en caché');
-      } catch (e) {
-        console.log('Error guardando caché de límites:', e);
+      // Validar respuesta antes de guardar
+      if (response.data?.type === 'FeatureCollection' && 
+          Array.isArray(response.data?.features) && 
+          response.data.features.length > 0) {
+        setLimitesMunicipios(response.data);
+        
+        // Guardar en caché solo si los datos son válidos
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(response.data));
+          localStorage.setItem(cacheTimeKey, Date.now().toString());
+          console.log(`Límites municipales guardados en caché (${response.data.features.length} municipios)`);
+        } catch (e) {
+          console.log('Error guardando caché de límites:', e);
+        }
+      } else {
+        console.warn('Respuesta de límites municipales inválida o vacía');
       }
     } catch (error) {
       console.error('Error loading municipality limits:', error);

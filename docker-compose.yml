@@ -1,6 +1,6 @@
 
 services:
-  # MongoDB Database
+  # MongoDB Database with Authentication
   mongodb:
     image: mongo:6.0
     container_name: asomunicipios-mongodb
@@ -8,14 +8,16 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./backups:/backups
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     environment:
       - MONGO_INITDB_DATABASE=catastro_asomunicipios
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - MONGO_APP_USER=${MONGO_APP_USER:-app_user}
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
+    command: ["mongod", "--auth"]
     networks:
       - asomunicipios-network
-    # Uncomment for authentication (recommended in production)
-    # environment:
-    #   - MONGO_INITDB_ROOT_USERNAME=admin
-    #   - MONGO_INITDB_ROOT_PASSWORD=your_secure_password
 
   # Backend API (FastAPI)
   backend:
@@ -59,6 +61,35 @@ services:
       - asomunicipios-network
     ports:
       - "8080:80"
+
+  # MongoDB Backup Service (Daily at 2 AM)
+  mongo-backup:
+    image: mongo:6.0
+    container_name: asomunicipios-backup
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_APP_USER=${MONGO_APP_USER:-app_user}
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
+      - MONGO_INITDB_DATABASE=catastro_asomunicipios
+    volumes:
+      - ./backups:/backups
+      - ./backup-script.sh:/backup-script.sh:ro
+    entrypoint: /bin/bash
+    command: >
+      -c "chmod +x /backup-script.sh && 
+          echo '0 2 * * * /backup-script.sh >> /var/log/backup.log 2>&1' > /etc/cron.d/backup-cron &&
+          chmod 0644 /etc/cron.d/backup-cron &&
+          crontab /etc/cron.d/backup-cron &&
+          touch /var/log/backup.log &&
+          echo 'Backup cron job installed. Running initial backup...' &&
+          /backup-script.sh &&
+          cron -f"
+    networks:
+      - asomunicipios-network
 
   # Nginx Reverse Proxy with SSL (optional, for HTTPS)
   # nginx-proxy:

@@ -27,6 +27,8 @@ import CertificadosGestion from "./pages/CertificadosGestion";
 import PrediosEnProceso from "./pages/PrediosEnProceso";
 import GestionPrediosActualizacion from "./pages/GestionPrediosActualizacion";
 import MaintenancePage from "./pages/MaintenancePage";
+import ConfiguracionResoluciones from "./pages/ConfiguracionResoluciones";
+import MutacionesResoluciones from "./pages/MutacionesResoluciones";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -113,6 +115,8 @@ function App() {
             <Route path="gestion-propuestas" element={<GestionPropuestas />} />
             <Route path="certificados" element={<CertificadosGestion />} />
             <Route path="predios-en-proceso" element={<PrediosEnProceso />} />
+            <Route path="configuracion-resoluciones" element={<ConfiguracionResoluciones />} />
+            <Route path="mutaciones-resoluciones" element={<MutacionesResoluciones />} />
           </Route>
         </Routes>
         </BrowserRouter>

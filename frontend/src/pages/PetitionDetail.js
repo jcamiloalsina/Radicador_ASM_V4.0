@@ -33,6 +33,7 @@ export default function PetitionDetail() {
   const [showFinalizarDialog, setShowFinalizarDialog] = useState(false);
   const [enviarArchivosFinalizacion, setEnviarArchivosFinalizacion] = useState(false);
   const [uploadingFinal, setUploadingFinal] = useState(false);
+  const [resoluciones, setResoluciones] = useState([]);
 
   useEffect(() => {
     fetchPetition();
@@ -57,6 +58,10 @@ export default function PetitionDetail() {
         gestor_id: '',
         comentario_asignacion: ''  // Comentario al asignar gestor
       });
+      // Cargar resoluciones asociadas
+      if (response.data.radicado) {
+        fetchResoluciones(response.data.radicado);
+      }
     } catch (error) {
       toast.error('Error al cargar la petición');
       navigate('/dashboard/peticiones');
@@ -71,6 +76,20 @@ export default function PetitionDetail() {
       setGestores(response.data);
     } catch (error) {
       console.error('Error fetching gestores:', error);
+    }
+  };
+
+  const fetchResoluciones = async (radicado) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/por-radicado/${encodeURIComponent(radicado)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setResoluciones(response.data.resoluciones || []);
+      }
+    } catch (error) {
+      console.error('Error fetching resoluciones:', error);
     }
   };
 
@@ -1550,6 +1569,50 @@ export default function PetitionDetail() {
         </CardContent>
       </Card>
 
+      {/* Resoluciones Generadas Card */}
+      {resoluciones.length > 0 && (
+        <Card className="border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-slate-900 font-outfit flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" />
+              Resoluciones Generadas ({resoluciones.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {resoluciones.map((res, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200" data-testid={`resolucion-${idx}`}>
+                  <div className="flex-1">
+                    <p className="font-medium text-emerald-800">{res.numero_resolucion}</p>
+                    <p className="text-sm text-emerald-600">
+                      {res.tipo_mutacion && `Tipo: ${res.tipo_mutacion} • `}
+                      Fecha: {res.fecha_resolucion || new Date(res.created_at).toLocaleDateString('es-CO')}
+                    </p>
+                    {res.predio_codigo && (
+                      <p className="text-xs text-slate-500 mt-1">Predio: {res.predio_codigo}</p>
+                    )}
+                  </div>
+                  {res.pdf_path && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                      onClick={() => {
+                        window.open(res.pdf_path, '_blank');
+                      }}
+                      data-testid={`download-resolucion-${idx}`}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Descargar PDF
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Flujo de Trabajo Card - Solo para staff */}
       {user?.role !== 'usuario' && (
         <Card className="border-slate-200">
@@ -1802,12 +1865,14 @@ export default function PetitionDetail() {
                           <span className="text-xs text-slate-500">{fechaFormateada}</span>
                         </div>
                         <p className="text-sm text-slate-600 mb-1">
-                          Por: <span className="font-medium">{entry.usuario}</span>
-                          <span className="text-xs text-slate-500 ml-2">
-                            ({entry.usuario_rol === 'atencion_usuario' ? 'Atención al Usuario' : 
-                              entry.usuario_rol === 'gestor_auxiliar' ? 'Gestor Auxiliar' : 
-                              entry.usuario_rol.charAt(0).toUpperCase() + entry.usuario_rol.slice(1)})
-                          </span>
+                          Por: <span className="font-medium">{entry.usuario_nombre || entry.usuario || 'N/A'}</span>
+                          {entry.usuario_rol && (
+                            <span className="text-xs text-slate-500 ml-2">
+                              ({entry.usuario_rol === 'atencion_usuario' ? 'Atención al Usuario' : 
+                                entry.usuario_rol === 'gestor_auxiliar' ? 'Gestor Auxiliar' : 
+                                entry.usuario_rol.charAt(0).toUpperCase() + entry.usuario_rol.slice(1)})
+                            </span>
+                          )}
                         </p>
                         {entry.notas && (
                           <p className="text-sm text-slate-700 mt-2 p-2 bg-white rounded border border-slate-200">
