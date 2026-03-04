@@ -25610,25 +25610,30 @@ async def generar_resolucion_m2(
             
             if tipo_cancelacion == 'total':
                 # Cancelación total: marcar para eliminación (pendiente de aprobación)
+                # Primero inicializar historial_resoluciones si no existe
+                await db.predios.update_one(
+                    {"id": predio_id, "historial_resoluciones": {"$exists": False}},
+                    {"$set": {"historial_resoluciones": []}}
+                )
+                # Luego agregar la resolución al historial
                 await db.predios.update_one(
                     {"id": predio_id},
-                    {"$set": {
-                        "pendiente_eliminacion": True,
-                        "resolucion_eliminacion": numero_resolucion,
-                        "fecha_resolucion_eliminacion": fecha_resolucion,
-                        "historial_resoluciones": {
-                            "$ifNull": ["$historial_resoluciones", []]
+                    {
+                        "$set": {
+                            "pendiente_eliminacion": True,
+                            "resolucion_eliminacion": numero_resolucion,
+                            "fecha_resolucion_eliminacion": fecha_resolucion
+                        },
+                        "$push": {
+                            "historial_resoluciones": {
+                                "tipo_mutacion": "M2",
+                                "subtipo": request.subtipo,
+                                "numero_resolucion": numero_resolucion,
+                                "fecha_resolucion": fecha_resolucion,
+                                "accion": "cancelacion_total"
+                            }
                         }
-                    },
-                    "$push": {
-                        "historial_resoluciones": {
-                            "tipo_mutacion": "M2",
-                            "subtipo": request.subtipo,
-                            "numero_resolucion": numero_resolucion,
-                            "fecha_resolucion": fecha_resolucion,
-                            "accion": "cancelacion_total"
-                        }
-                    }}
+                    }
                 )
             elif tipo_cancelacion == 'parcial':
                 # Cancelación parcial: actualizar predio con nuevos datos
@@ -25660,6 +25665,12 @@ async def generar_resolucion_m2(
                 if predio_cancelado.get('destino_economico'):
                     update_data["destino_economico"] = predio_cancelado['destino_economico']
                 
+                # Primero inicializar historial_resoluciones si no existe
+                await db.predios.update_one(
+                    {"id": predio_id, "historial_resoluciones": {"$exists": False}},
+                    {"$set": {"historial_resoluciones": []}}
+                )
+                # Luego actualizar el predio
                 await db.predios.update_one(
                     {"id": predio_id},
                     {
