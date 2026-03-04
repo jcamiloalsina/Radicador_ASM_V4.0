@@ -8542,6 +8542,7 @@ async def actualizar_radicado_eliminado(
 async def import_predios_excel(
     file: UploadFile = File(...),
     vigencia: Optional[str] = Query(None),
+    force: bool = Query(False, description="Forzar importación aunque haya diferencia significativa de predios"),
     current_user: dict = Depends(get_current_user)
 ):
     """Importa predios desde archivo Excel R1-R2 con soporte de vigencia"""
@@ -8950,6 +8951,71 @@ async def import_predios_excel(
         logger.info(f"  - CNP en nueva importación: {len(new_codigos)}")
         logger.info(f"  - CNP eliminados detectados: {len(cnp_eliminados)}")
         
+        # ========== VALIDACIONES DE SEGURIDAD ==========
+        
+        # VALIDACIÓN 1: El archivo Excel no puede estar vacío
+        if len(new_codigos) == 0:
+            wb.close()
+            temp_path.unlink()
+            raise HTTPException(
+                status_code=400,
+                detail="ERROR: El archivo Excel no contiene predios válidos. Verifique el formato del archivo."
+            )
+        
+        # VALIDACIÓN 2: Si hay predios existentes en esta vigencia, verificar diferencia significativa
+        predios_existentes_count = len(existing_predios_vigencia_actual)
+        predios_nuevos_count = len(new_codigos)
+        
+        if predios_existentes_count > 0:
+            porcentaje = (predios_nuevos_count / predios_existentes_count) * 100
+            diferencia = predios_existentes_count - predios_nuevos_count
+            
+            # Si el Excel tiene menos del 70% de los predios existentes, es sospechoso
+            if porcentaje < 70 and not force:
+                wb.close()
+                temp_path.unlink()
+                
+                logger.warning(f"[SEGURIDAD] Importación BLOQUEADA - Diferencia significativa detectada")
+                logger.warning(f"  - Predios existentes: {predios_existentes_count}")
+                logger.warning(f"  - Predios en Excel: {predios_nuevos_count}")
+                logger.warning(f"  - Porcentaje: {porcentaje:.1f}%")
+                
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": "ADVERTENCIA DE SEGURIDAD",
+                        "mensaje": f"El archivo Excel contiene {predios_nuevos_count:,} predios, pero actualmente existen {predios_existentes_count:,} predios en la vigencia {vigencia_int}.",
+                        "diferencia": f"Esto eliminaría aproximadamente {diferencia:,} predios ({100-porcentaje:.1f}% menos).",
+                        "accion_requerida": "Si está seguro de que el archivo es correcto, agregue el parámetro 'force=true' a la solicitud.",
+                        "predios_existentes": predios_existentes_count,
+                        "predios_en_excel": predios_nuevos_count,
+                        "porcentaje": round(porcentaje, 1)
+                    }
+                )
+            
+            # Si se forzó pero hay diferencia muy grande (menos del 30%), registrar advertencia crítica
+            if porcentaje < 30 and force:
+                logger.critical(f"[SEGURIDAD] Importación FORZADA con diferencia CRÍTICA")
+                logger.critical(f"  - Predios existentes: {predios_existentes_count}")
+                logger.critical(f"  - Predios en Excel: {predios_nuevos_count}")
+                logger.critical(f"  - Usuario: {current_user.get('email')}")
+        
+        # VALIDACIÓN 3: Crear resumen antes de proceder
+        resumen_pre_importacion = {
+            "municipio": municipio,
+            "vigencia": vigencia_int,
+            "predios_existentes": predios_existentes_count,
+            "predios_en_excel": predios_nuevos_count,
+            "predios_a_eliminar_estimados": len(cnp_eliminados),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user.get('email'),
+            "force": force
+        }
+        await db.logs_importacion.insert_one(resumen_pre_importacion)
+        logger.info(f"[SEGURIDAD] Pre-importación registrada: {resumen_pre_importacion}")
+        
+        # ========== FIN VALIDACIONES DE SEGURIDAD ==========
+        
         # 4. Guardar predios eliminados (evitando duplicados)
         predios_eliminados_count = 0
         predios_eliminados_nuevos = []
@@ -9048,6 +9114,36 @@ async def import_predios_excel(
             await db.predios.insert_many(predios_a_insertar)
         
         logger.info(f"[Import] Predios insertados: {len(predios_a_insertar)}, Predios omitidos (protegidos): {predios_omitidos}")
+        
+        # ========== VERIFICACIÓN POST-IMPORTACIÓN ==========
+        # Verificar que los predios se insertaron correctamente
+        predios_despues = await db.predios.count_documents({
+            "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+            "vigencia": vigencia_int,
+            "deleted": {"$ne": True}
+        })
+        
+        predios_esperados = len(predios_a_insertar) + len(predios_protegidos)
+        
+        if predios_despues < predios_esperados * 0.9:  # Si hay más del 10% de diferencia
+            logger.error(f"[SEGURIDAD] VERIFICACIÓN FALLIDA - Predios después de importación: {predios_despues}, esperados: {predios_esperados}")
+            logger.error(f"[SEGURIDAD] Posible pérdida de datos durante la importación")
+            
+            # Registrar la anomalía
+            await db.logs_importacion.update_one(
+                {"municipio": municipio, "vigencia": vigencia_int, "usuario": current_user.get('email')},
+                {"$set": {
+                    "verificacion_fallida": True,
+                    "predios_esperados": predios_esperados,
+                    "predios_reales": predios_despues,
+                    "timestamp_verificacion": datetime.now(timezone.utc).isoformat()
+                }},
+                upsert=True
+            )
+        else:
+            logger.info(f"[SEGURIDAD] Verificación OK - Predios después: {predios_despues}, esperados: {predios_esperados}")
+        
+        # ========== FIN VERIFICACIÓN ==========
         
         # Calcular predios nuevos (CNP que no estaban en ninguna vigencia anterior)
         predios_nuevos_count = len(new_codigos - all_previous_cnp)
