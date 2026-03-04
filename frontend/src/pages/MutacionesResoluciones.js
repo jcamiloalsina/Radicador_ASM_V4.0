@@ -1972,9 +1972,15 @@ export default function MutacionesResoluciones() {
             </CardTitle>
           </CardHeader>
           <CardContent className="py-3 space-y-4">
-            {!m2Data.tipo_englobe ? (
+            {m2Data.predios_cancelados.length < 2 ? (
+              <div className="text-center py-6 text-amber-600 bg-amber-50 rounded-lg border border-amber-200">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                <p className="text-sm font-medium">Para englobe necesita al menos 2 predios a cancelar</p>
+                <p className="text-xs text-amber-500 mt-1">Agregue más predios en la sección de arriba</p>
+              </div>
+            ) : !m2Data.tipo_englobe ? (
               <div className="text-center py-6 text-slate-500">
-                <p className="text-sm">Primero seleccione el tipo de englobe arriba</p>
+                <p className="text-sm">Primero seleccione el tipo de englobe en la sección "Configuración del Englobe"</p>
               </div>
             ) : m2Data.tipo_englobe === 'absorcion' && !m2Data.predio_matriz_id ? (
               <div className="text-center py-6 text-slate-500">
