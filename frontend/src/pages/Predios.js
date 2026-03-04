@@ -1747,8 +1747,19 @@ export default function Predios() {
       const prediosRecibidos = res.data.predios || [];
       console.log('[Predios] Recibidos del servidor:', prediosRecibidos.length, 'predios');
       
+      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
+      const normalizarTexto = (texto) => {
+        if (!texto) return '';
+        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      };
+      
       const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        ? prediosRecibidos.filter(p => {
+            const municipioNorm = normalizarTexto(p.municipio);
+            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
+            const filtroNorm = normalizarTexto(filterMunicipio);
+            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
+          })
         : prediosRecibidos;
       
       // Ordenar por CNP antes de guardar
@@ -1878,9 +1889,19 @@ export default function Predios() {
       
       const prediosRecibidos = res.data.predios || [];
       
-      // Filtrar solo predios del municipio correcto
+      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
+      const normalizarTexto = (texto) => {
+        if (!texto) return '';
+        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      };
+      
       const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => p.municipio === filterMunicipio || p.nombre_municipio === filterMunicipio)
+        ? prediosRecibidos.filter(p => {
+            const municipioNorm = normalizarTexto(p.municipio);
+            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
+            const filtroNorm = normalizarTexto(filterMunicipio);
+            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
+          })
         : prediosRecibidos;
       
       const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
