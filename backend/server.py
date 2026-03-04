@@ -25056,9 +25056,9 @@ MUNICIPIOS_R1R2 = {
     "54250": "El Tarra",
     "54344": "Hacarí",
     "54398": "La Playa",
-    "54498": "Ocaña",
     "20614": "Río de Oro",
     "54670": "San Calixto",
+    "54720": "Sardinata",
     "54800": "Teorama",
 }
 

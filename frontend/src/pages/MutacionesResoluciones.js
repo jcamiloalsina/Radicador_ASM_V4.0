@@ -85,9 +85,9 @@ const MUNICIPIOS = [
   { codigo: '54250', nombre: 'El Tarra' },
   { codigo: '54344', nombre: 'Hacarí' },
   { codigo: '54398', nombre: 'La Playa' },
-  { codigo: '54498', nombre: 'Ocaña' },
   { codigo: '20614', nombre: 'Río de Oro' },
   { codigo: '54670', nombre: 'San Calixto' },
+  { codigo: '54720', nombre: 'Sardinata' },
   { codigo: '54800', nombre: 'Teorama' }
 ];
 
