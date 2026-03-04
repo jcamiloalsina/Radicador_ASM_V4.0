@@ -24769,6 +24769,37 @@ COMUNÍQUESE,NOTIFÍQUESEYCÚMPLASE
 
 Dada en Ocaña a los {fecha_resolucion_texto}"""
 
+PLANTILLA_M2_DEFAULT = """La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios en uso de sus facultades legales otorgadas por la Resolución IGAC 1204 del 2021, en concordancia con la Ley 14 de 1983, el Decreto 148 de 2020 y la Resolución 1040 de 2023 del Instituto Geográfico Agustín Codazzi "Por medio de la cual se expide la resolución única de la gestión catastral multipropósito", y
+
+C O N S I D E R A N D O
+
+Qué, el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía No. {solicitante_documento}, en su condición de propietario de un predio que hace parte de uno de mayor extensión identificado con el código catastral {codigo_origen}, del Municipio de {municipio}, radicó con el número {radicado}, ante el Gestor catastral de Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios, una solicitud de trámite catastral con Radicado {radicado} y soportado en los siguientes documentos justificativos:
+
+• Fotocopia cédula de ciudadanía del propietario.
+• Escritura pública.
+• Matrícula inmobiliaria {matricula}.
+• Plano del predio en formato DWG.
+
+Qué, con base en los documentos aportados y lo dispuesto por las normas anteriormente mencionadas, realizado el respectivo estudio de oficina y visita al predio, se procede hacer mutación de segunda {subtipo} al predio matriz identificado con el NPN {npn_origen}.
+
+Qué, en consecuencia, procede una mutación de segunda y su correspondiente inscripción en el catastro, conforme lo indican el Literal C del Artículo 2.2.2.2.2 del Decreto 148 de 2020, el Artículo 4.5.1, 4.5.2, 4.6.3, y 4.7.13 de la Resolución 1040 de 2023, y lo preceptuado en la resolución sobre los requisitos para trámites y otros procedimientos administrativos.
+
+RESUELVE
+
+ARTÍCULO 1. Ordenar los cambios en el catastro del Municipio de {municipio} de la siguiente manera:
+
+[TABLA DE CANCELACIÓN/INSCRIPCIÓN SE GENERA AUTOMÁTICAMENTE]
+
+ARTÍCULO 2. El avalúo del predio indicado de acuerdo a lo preceptuado en los artículos 4.7.2 y siguientes de la resolución 1040 de 2023 del IGAC se calculará teniendo en cuenta los valores unitarios de las Zonas Homogéneas Físicas y Geoeconómicas vigentes para el Municipio de {municipio}.
+
+ARTÍCULO 3. Los avalúos inscritos con posterioridad al primero de enero de la vigencia actual tendrán vigencia fiscal para el año siguiente, ajustados con el índice de valoración que determine el gobierno nacional.
+
+ARTÍCULO 4. Contra el presente acto administrativo no procede recurso alguno.
+
+COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE
+
+Dada en Ocaña a los {fecha_resolucion_texto}"""
+
 
 class PlantillaTipoRequest(BaseModel):
     """Request para actualizar plantilla de tipo de resolución"""
@@ -24804,9 +24835,41 @@ async def listar_plantillas_resolucion(current_user: dict = Depends(get_current_
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
+            plantilla_m2 = {
+                "id": "M2",
+                "tipo": "M2",
+                "nombre": "Mutación Segunda (M2)",
+                "descripcion": "Englobe y Desengloble de terrenos",
+                "texto": PLANTILLA_M2_DEFAULT,
+                "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+                "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
             await db.resolucion_plantillas.insert_one(plantilla_m1.copy())
+            await db.resolucion_plantillas.insert_one(plantilla_m2.copy())
             # No incluir _id en la respuesta
-            plantillas = [{k: v for k, v in plantilla_m1.items() if k != '_id'}]
+            plantillas = [
+                {k: v for k, v in plantilla_m1.items() if k != '_id'},
+                {k: v for k, v in plantilla_m2.items() if k != '_id'}
+            ]
+        
+        # Verificar si falta M2 y agregarlo
+        tipos_existentes = [p.get('tipo') for p in plantillas]
+        if 'M2' not in tipos_existentes:
+            plantilla_m2 = {
+                "id": "M2",
+                "tipo": "M2",
+                "nombre": "Mutación Segunda (M2)",
+                "descripcion": "Englobe y Desengloble de terrenos",
+                "texto": PLANTILLA_M2_DEFAULT,
+                "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+                "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.resolucion_plantillas.insert_one(plantilla_m2.copy())
+            plantillas.append({k: v for k, v in plantilla_m2.items() if k != '_id'})
         
         return {
             "success": True,
