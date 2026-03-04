@@ -18,7 +18,24 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (03-03-2026) - Modal Nuevo Predio para M2
+### Última Sesión (04-03-2026) - PDF M2 con Header/Footer Institucional
+- **FEATURE P0 - PDF M2 con encabezado y pie de página COMPLETO**:
+  - **Problema**: El PDF de resolución M2 (Englobe/Desengloble) no tenía el encabezado ni pie de página institucional que sí tiene el M1
+  - **Solución**: Refactorizado completamente `resolucion_m2_pdf_generator.py` para replicar el formato del M1:
+    - **Encabezado institucional**: Logo de ASOMUNICIPIOS con "Gestor Catastral" en todas las páginas
+    - **Pie de página institucional**: Barra verde con email, dirección y teléfono de contacto
+    - **Marca de agua**: Logo de Asomunicipios con 15% de opacidad centrado
+    - **QR de verificación**: Código QR verde institucional con información de verificación
+    - **Firma digitalizada**: Imagen de firma de Dalgie Esperanza Torrado Rizo
+    - **Tablas mejoradas**: Secciones CANCELACIÓN e INSCRIPCIÓN con fondo verde institucional
+    - **Fuentes Carlito**: Misma tipografía que el M1
+    - **Información Elaboró/Aprobó**: Agregado al final del documento
+  - **Archivos modificados**: 
+    - `/app/backend/resolucion_m2_pdf_generator.py` (refactorizado completamente)
+    - `/app/backend/server.py` (agregados parámetros elaboro y aprobo a la llamada)
+  - **Estado**: ✅ VERIFICADO - Screenshots confirman encabezado, pie y QR en todas las páginas
+
+### Sesión Anterior (03-03-2026) - Modal Nuevo Predio para M2
 - **FEATURE P0 - Modal Nuevo Predio para M2 COMPLETO**:
   - **Problema**: Usuario necesitaba que el formulario de crear predio en M2 fuera idéntico al original
   - **Solución**: Implementado modal completo con 3 tabs:
