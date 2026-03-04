@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { OfflineReadyBadge, OfflineBanner, OfflineStatusPanel } from '../components/OfflineComponents';
 import { useOffline } from '../hooks/useOffline';
+import NotificacionesDropdown from '../components/NotificacionesDropdown';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -647,8 +648,11 @@ export default function DashboardLayout() {
             </h1>
           </div>
           
-          {/* Offline Status */}
+          {/* Offline Status y Notificaciones */}
           <div className="flex items-center gap-3">
+            {/* Notificaciones */}
+            <NotificacionesDropdown />
+            
             {/* Badge de estado offline */}
             <OfflineReadyBadge />
           </div>
