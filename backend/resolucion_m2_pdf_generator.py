@@ -62,8 +62,7 @@ def get_m2_plantilla():
         "considerando_estudio_desengloble": (
             "Qué, con base en los documentos aportados y lo dispuesto por las normas anteriormente "
             "mencionadas, realizado el respectivo estudio de oficina y visita al predio, se procede hacer "
-            "mutación de segunda desenglobe al predio identificado con el No. {codigo_origen} y "
-            "NPN {npn_origen}."
+            "mutación de segunda desenglobe al predio matriz identificado con el NPN {npn_origen}."
         ),
         "considerando_estudio_englobe": (
             "Qué, con base en los documentos aportados y lo dispuesto por las normas anteriormente "
