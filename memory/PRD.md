@@ -40,6 +40,15 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 - **Archivo modificado**: `/app/frontend/src/pages/Pendientes.js`
 - **Estado**: ✅ VERIFICADO por testing agent
 
+#### REFACTOR - Simplificación de UI en Pendientes
+- **Feedback del usuario**: Había redundancia entre pestañas (Modificaciones, Predios Nuevos, Mutaciones)
+- **Solución**: Se simplificó de 5 pestañas a solo 2:
+  1. **Pendientes por Aprobar** - Lista unificada con TODAS las solicitudes (modificaciones, predios nuevos, mutaciones M1/M2, reapariciones) diferenciadas por badges de colores
+  2. **Historial** - Trámites aprobados/rechazados con filtros
+- **Beneficios**: UI más limpia, menos clicks, visión completa de todo lo pendiente en una sola vista
+- **Archivo modificado**: `/app/frontend/src/pages/Pendientes.js`
+- **Estado**: ✅ Implementado
+
 ### Sesión Anterior (04-03-2026) - Corrección PDF Desordenado
 
 #### BUG FIX P0 - PDF M2 "Desordenado" CORREGIDO
