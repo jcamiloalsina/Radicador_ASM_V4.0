@@ -13,7 +13,7 @@ import {
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
-  ChevronDown, ChevronUp, Trash2, Edit, Loader2
+  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -2683,19 +2683,26 @@ export default function MutacionesResoluciones() {
                       Código Predial Nacional (30 dígitos)
                     </h4>
                     
-                    {/* Código Homologado */}
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-4">
-                      <Label className="text-sm text-emerald-700 font-semibold">Código Homologado (auto-generado)</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input 
-                          value={siguienteCodigoHomologadoNuevo?.codigo || 'Cargando...'} 
-                          disabled 
-                          className="font-mono text-emerald-800 bg-emerald-100 font-bold"
-                        />
-                        {siguienteCodigoHomologadoNuevo?.disponibles && (
-                          <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 whitespace-nowrap">
-                            {siguienteCodigoHomologadoNuevo.disponibles} disponibles
-                          </Badge>
+                    {/* Código Homologado Asignado */}
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
+                      <Label className="text-sm text-emerald-700 font-semibold mb-2 block">Código Homologado Asignado</Label>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center flex-1 bg-white border border-emerald-300 rounded-md overflow-hidden">
+                          <div className="bg-emerald-100 p-2.5 border-r border-emerald-300">
+                            <Lock className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <input 
+                            value={siguienteCodigoHomologadoNuevo?.codigo || 'Cargando...'} 
+                            disabled 
+                            className="flex-1 px-3 py-2 font-mono text-lg text-emerald-700 font-bold bg-transparent border-none outline-none"
+                          />
+                        </div>
+                        {siguienteCodigoHomologadoNuevo?.disponibles !== undefined && (
+                          <div className="bg-emerald-100 border border-emerald-300 rounded-md px-4 py-2">
+                            <span className="text-emerald-700 font-semibold">
+                              {siguienteCodigoHomologadoNuevo.disponibles} disponibles
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
