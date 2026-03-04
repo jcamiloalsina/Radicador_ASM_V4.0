@@ -1,1 +1,1 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"c511c1bb5e1d48ff8d89717f0b6508e1","collectionName":"etapas_proyecto","type":"collection"}
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"proyecto_id":{"$numberInt":"1"}},"name":"proyecto_id_1","background":true}],"uuid":"c511c1bb5e1d48ff8d89717f0b6508e1","collectionName":"etapas_proyecto","type":"collection"}

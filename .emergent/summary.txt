@@ -1,92 +1,105 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to centralize all property modification and resolution generation workflows into a new, dedicated Mutaciones y Resoluciones module. This initiative encompasses several key requirements:
-1.  **Create a Centralized Mutations Module:** Build a new frontend page to handle all types of property mutations, starting with M1 (Change of Owner/Possessor) and M2 (Merge/Split of properties, known as Englobe/Desenglobe).
-2.  **Implement Approval Workflows:** All mutation changes (M1, M2) initiated by users without direct approval permissions must go through an approval process. This involves creating a request, optionally assigning it to a support user for cartography, and having it reviewed by a coordinator or a user with  permissions.
-3.  **Implement M2 Mass Creation:** For Desenglobe Total (total property split), implement a feature to mass-create new properties by uploading an Excel file with R1/R2 data. The system must intelligently assign National Property Numbers (NPN) and validate against existing properties.
-4.  **Build a Notification System:** Implement a user-facing notification system to alert staff about key events, such as when a citizen submits corrected documents or when a mutation request requires approval.
-5.  **Make Property Management Read-Only:** Convert the existing Gestión de Predios (Property Management) page into a view-only interface. All editing functionality must be removed and redirected to the new mutations module.
-6.  **Fix UI/UX Bugs:** Address numerous user-reported issues, including PDF formatting, incorrect data displays, and confusing UI messages.
+The user's initial goal was to create a centralized Mutaciones y Resoluciones module to handle property modifications (M1, M2), including complex approval workflows, mass property creation via Excel upload, and a notification system. This involved making the old Gestión de Predios page read-only.
+
+More recently, the user requested a comprehensive database security, performance, and schema hardening audit. This includes enabling MongoDB authentication, adding critical indexes, consolidating redundant collections, adding schema validation, and creating an automated backup system.
+
+Finally, the user requested a major refactoring of the monolithic backend () into a modular structure with corresponding documentation for each module.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The Mutaciones y Resoluciones module is now highly advanced. The agent has implemented a full-featured Desenglobe Masivo (mass split) functionality, allowing users to upload an Excel file in R1/R2 format to create multiple properties at once. The backend logic intelligently assigns available National Property Numbers (NPNs) and validates against both active and deleted properties to prevent duplicates.
+The application is a large, feature-rich property management system. Key functionalities like mass property creation (Desenglobe Masivo), role-based approval workflows, and a user notification system are fully implemented.
 
-A comprehensive, role-based approval workflow for mutations has been implemented. The UI now dynamically displays different action buttons (Generate Resolution, Assign to Support, Send for Approval) based on the current user's permissions. The backend infrastructure, including new database models and API endpoints, has been created to support this flow.
+A significant database and security hardening initiative has been completed. This includes preparing for MongoDB authentication, replacing the JWT secret, adding 40+ critical database indexes, implementing schema validation for key collections (predios, users, petitions), and configuring an automated daily backup service via Docker Compose.
 
-A full-stack notification system is now live. A bell icon in the main dashboard header displays a real-time count of unread notifications, with a dropdown panel listing recent events and providing direct links to the relevant items.
-
-The agent also identified and fixed a critical bug where newly approved properties were visible in the map viewer but not in the main Gestión de Predios list. Additionally, several user-reported PDF formatting and UI bugs have been resolved.
+A major backend refactoring task has been initiated. A new modular directory structure has been created at , and documentation files for each module have been generated in . The process of migrating code from the monolithic  has just begun.
 
 **Last working item**:
--   **Last item agent was working:** The agent was working on two user requests concurrently:
-    1.  **Bug Fix:** Investigating and fixing a critical bug where a property approved via the Pendientes page would appear in the map viewer () but not in the main property list (). The agent identified the issue in  and implemented a fix to ensure the property is saved to both database collections.
-    2.  **Feature Implementation:** Building out the new Mutaciones tab within the Pendientes page. The agent added the necessary frontend components and state management in  to create the tab.
+-   **Last item agent was working:** The agent was executing a large-scale refactoring and documentation task. It successfully created the new modular backend directory structure (), generated documentation templates for each module (), and began creating refactored files like . The ultimate goal is to dismantle the monolithic  into a scalable, maintainable, and well-documented modular application.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?**
-    -   **For the Bug Fix:** Backend testing. The agent must test the approval flow and verify that a newly approved property is successfully inserted into both the  and  MongoDB collections.
-    -   **For the Mutaciones Tab:** Both. The agent needs to complete the data fetching logic for the tab, then use the frontend testing agent to verify that pending mutation requests are displayed correctly and that the approval/rejection buttons work as intended.
+-   **Which testing method agent to use?** Both. After each module is fully refactored from  to the new structure, a full regression test using both frontend and backend testing agents is required to ensure no functionality has broken.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Bug - Approved property not showing in Gestión de Predios (P0)**
--   **Issue 2: Resolution counter is fragile and needs an atomic implementation (P1)**
--   **Issue 3: PDF downloaded from history shows incorrect data for canceled/enrolled parties (P2)**
--   **Issue 4: User reported an unspecified error: sigo con un error pero después lo arreglamos (P2)**
--   **Issue 5: NPN code length display shows incorrect count (e.g., 38/38 instead of 30/30) (P3)**
--   **Issue 6: Unconfirmed fix for Conservación approval error (P3)**
--   **Issue 7: Visit form is extremely slow on mobile (P3)**
+-   **Issue 1: Property approved in Pendientes not visible in Gestión de Predios on user's server (P0)**
+-   **Issue 2: Resolution counter is not atomic and poses a data integrity risk (P1)**
+-   **Issue 3: Mass desenglobe does not correctly mark the original property as cancelled, leading to duplicates (P2)**
+-   **Issue 4: PDF downloaded from history shows incorrect data for canceled/enrolled parties (P2)**
+-   **Issue 5: User reported an unspecified error: sigo con un error pero después lo arreglamos (P2)**
+-   **Issue 6: NPN code length display shows incorrect count (e.g., 38/38 instead of 30/30) (P3)**
+-   **Issue 7: Unconfirmed fix for Conservación approval error (P3)**
+-   **Issue 8: Visit form is extremely slow on mobile (P3)**
 
 **Issues Detail:**
--   **Issue 1: Bug - Approved property not showing in Gestión de Predios**
-    -   **Attempted fixes:** The agent identified that the  function in  was only inserting data into the  collection. A line of code was added to also insert the approved property into the  collection.
+-   **Issue 1: Property approved in Pendientes not visible in Gestión de Predios on user's server**
+    -   **Attempted fixes:** The agent provided multiple diagnostic scripts (MongoDB shell, Python, ) for the user to run on their production server to determine if the specific property () exists in the  collection. The agent suspects the property was approved before a critical bug fix was deployed, or there is a data mismatch (e.g., ,  with/without tilde). The user was unable to correctly execute the commands provided.
     -   **Next debug checklist:**
-        1.  Trigger the property approval flow from the Pendientes page.
-        2.  After approval, connect to the MongoDB and run  and .
-        3.  Confirm the new property exists in both collections.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical data consistency bug. Fixing it ensures that all approved properties are correctly displayed and managed within the application's main property list.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** Backend.
-    -   **Blocked on other issue:** None.
+        1.  Guide the user to correctly run the  command to query their MongoDB instance.
+        2.  Check the output to see if the property exists in the  collection.
+        3.  If it exists, analyze its , , and  fields to understand why it's being filtered out of the Gestión de Predios view.
+        4.  If it does not exist, guide the user to run the provided correction script to copy the property document from the collection where it *does* exist (likely  or ) into the  collection.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical data visibility bug blocking the user from managing an approved property on their live server.
+    -   **Status:** BLOCKED (waiting for user to successfully run diagnostics).
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1: Complete the Mutaciones approval tab (P0)**
-    -   **Where to resume:** In , implement the  hook to fetch data from the  endpoint. Populate the list in the Mutaciones tab with the fetched data. Wire up the Aprobar, Rechazar, and Devolver buttons to call their respective backend API endpoints.
-    -   **What will be achieved with this?** This will complete the approval workflow, allowing coordinators to manage and approve/reject mutation requests submitted by other users.
+-   **Task 1: Complete Backend Refactoring and Documentation (P0)**
+    -   **Where to resume:** The new directory structure () and documentation files are created. The next step is to begin migrating logic from  into the new modular files. A good starting point would be the  or  modules. This involves:
+        1.  Moving the relevant API endpoints into the corresponding router file (e.g., ).
+        2.  Moving associated Pydantic models to .
+        3.  Updating  to import and include the new router.
+        4.  Deleting the migrated code from  to reduce its size.
+        5.  Filling out the documentation in .
+    -   **What will be achieved with this?** This will systematically reduce the massive technical debt in , making the application more maintainable, scalable, and easier for future development.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Both.
+    -   **Should Test frontend/backend/both after fix?** Both (after each module is fully refactored).
     -   **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **(P1)** Refactor the resolution counter () to be robust and atomic.
--   **(P2)** Fix incorrect data display in PDF when downloading from history.
+-   **(P1)** **Complete Collection Consolidation:** Update all backend routes in  to use the new consolidated collections (, ) instead of the old ones (, , ).
+-   **(P1)** **Implement Generic Otras Mutaciones Module:** Create a flexible module to handle other mutation types (M3-M9) where the user can register changes and upload a manual resolution PDF, as requested.
+-   **(P1)** **Implement Atomic Resolution Counter:** Refactor  to use an atomic operation (e.g., ) to prevent duplicate resolution numbers.
+-   **(P2)** **Frontend Refactoring:** Break down large components like  (4,700+ lines) into smaller, reusable components.
 
 **Future Tasks:**
--   **(P1)** **Chained Mutations:** Implement a way to chain mutations for a single property (e.g., Rectification of Area -> Desenglobe).
--   **(P2)** New Feature: Excel Export for Visit Form data.
--   **(P2)** Implement XTF Export functionality.
--   **(P2)** Develop Correspondence Management App.
--   **(P3)** Implement a UI for GDB Reports.
--   **(P3)** Add graphs/charts to dashboards.
--   **(P3)** Address slow performance of the visit form on mobile.
+-   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
+-   Develop an Excel Export feature for Visit Form data.
+-   Implement XTF Export functionality.
+-   Develop a Correspondence Management App.
+-   Implement a UI for GDB Reports.
+-   Add graphs/charts to dashboards.
 
 **Completed work in this session**
--   **Implemented Desenglobe Masivo:** Built the full-stack feature for mass property creation via Excel upload, including intelligent NPN assignment and validation against active/deleted properties.
--   **Implemented Approval Workflow for Mutations:** Created the backend infrastructure and dynamic frontend UI for a role-based approval process for M1/M2 changes.
--   **Implemented Notification System:** Deployed a complete frontend notification center with a bell icon, unread count, and a dropdown panel that links to relevant items.
--   **Fixed Critical Bug (Property Sync):** Corrected the backend logic to ensure newly approved properties are saved to both the main  collection and the  collection for the map viewer.
--   **Fixed PDF Generation Bugs:** Resolved issues with disordered text in M2 PDFs by fixing character spacing and improving the text justification algorithm.
--   **Fixed UI Template Editor:** Implemented an auto-growing  and updated the database templates to ensure the full text of M1/M2 resolutions is visible and editable.
--   **Fixed Area Formatting in PDFs:** Standardized the area display format to  in all generated resolution PDFs.
--   **Updated New Property Modal UI:** Redesigned a section of the Create New Property modal to match a user-provided screenshot, improving usability.
+-   **Database Security & Performance Hardening:**
+    -   Configured MongoDB for authentication and created an application user.
+    -   Replaced the placeholder JWT secret with a secure random value.
+    -   Added over 40 missing MongoDB indexes to improve query performance.
+    -   Implemented schema validation for , , and  collections.
+    -   Created an automated daily backup service using Docker Compose.
+    -   Created migration scripts to consolidate redundant collections and standardize date formats.
+-   **Bug Fixes:**
+    -   **UI Refactor (Pendientes):** Simplified the Pendientes page UI from 5 tabs to 2 (Pendientes por aprobar and Historial) per user request.
+    -   **Property Sync:** Fixed a bug where approved properties weren't saved to the  collection.
+    -   **Resolution History:** Fixed a bug where M2 resolutions didn't appear in the history due to a missing  field.
+    -   **Excel Upload:** Fixed a  in MongoDB during mass desenglobe.
+    -   **Edit Mode:** Fixed a bug where constructions didn't load in edit mode due to an incorrect data structure path.
+-   **Feature Enhancements:**
+    -   **Excel Import:** Renamed Carga Masiva to Importar Excel and improved related UI text.
+    -   **Duplicate Prevention:** Changed mass desenglobe to block duplicate NPNs instead of just warning.
+    -   **Area Formatting:** Updated area display to the Colombian standard (e.g., ).
+    -   **R2 Matrícula:** Added logic to read the property registration number () from the R2 sheet in the Excel import.
+-   **Refactoring & Documentation:**
+    -   Initiated a major backend refactoring by creating a new modular directory structure and documentation templates.
+    -   Cleaned up the  file.
 
 **Earlier issues found/mentioned but not fixed**
--   **Fragile Resolution Counter:** The function  in  is not atomic and could lead to duplicate resolution numbers under concurrent requests.
--   **Incorrect Historical PDFs:** The endpoint for downloading historical resolution PDFs may be serving live data instead of the historically accurate data.
--   **Slow Visit Form on Mobile:** A known performance bottleneck that has not yet been addressed.
+-   **Fragile Resolution Counter:** The function  is not atomic, creating a risk of duplicate resolution numbers under concurrent use.
+-   **Incorrect Historical PDFs:** An endpoint for downloading historical PDFs might be serving live data instead of the correct historical snapshot.
+-   **Slow Visit Form on Mobile:** A known performance issue that has not been addressed.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Intermittent Save/Sync Failures on Slow Connections.
@@ -97,59 +110,66 @@ The agent also identified and fixed a critical bug where newly approved properti
 
 
 **Key Technical Concepts**
--   **Asynchronous Approval Workflows:** A multi-step approval process was implemented, involving different user roles (Originator, Support, Approver) with state changes and notifications at each step.
--   **Role-Based UI Rendering:** The frontend now renders different action buttons based on whether the user's role includes the  permission, creating a tailored user experience.
--   **Excel Data Parsing (openpyxl):** The backend uses the  library to read  files, parse rows, and map them to property data for the mass creation feature.
--   **Complex NPN Assignment Logic:** The backend contains business logic to intelligently assign new National Property Numbers (NPNs), checking for availability against both active and deleted properties to ensure uniqueness.
--   **Real-time Notifications:** A full-stack notification system was implemented with a backend polling endpoint and a React frontend component to provide real-time updates to users.
+-   **Code Refactoring (Modularization):** Breaking down a monolithic application () into a feature-based modular structure to improve maintainability and scalability.
+-   **MongoDB Security:** Enabling authentication, managing users and roles, and using authenticated connection strings.
+-   **MongoDB Performance:** Strategic use of single-field and compound indexes to optimize query performance across a large dataset.
+-   **MongoDB Schema Validation:** Using JSON Schema to enforce data structure and types at the database level () for backward compatibility.
+-   **Database Migrations:** Writing and executing startup scripts to perform additive changes to data, such as consolidating collections or standardizing data formats.
+-   **Automated Backups:** Using a separate Docker service with  and  to perform scheduled, automated database backups with a retention policy.
 
 **key DB schema**
--   ** (NEW):** Stores M1/M2 requests awaiting approval. Key fields include ,  (, ), , , and .
--   **:** The main collection for property management. A critical bug was fixed to ensure new properties are correctly added here upon approval.
--   **:** Collection storing deleted properties, now cross-referenced during mass NPN assignment to prevent reuse.
--   **:** A new collection to store user-specific notifications with fields like , , , , and .
--   ****: This collection was updated to store the full, editable text of the M1 and M2 resolution templates.
+-   **Schema Validation Added:** , ,  collections now have schema validation rules applied on startup to warn against incorrect data types or missing required fields.
+-   **Collections to be Merged:**
+    -    -> 
+    -   ,  -> 
+    -    -> 
+    -   *Note: Migration logic exists, but backend code still uses old collections.*
+-   ** Sub-document Extended:** The Pydantic models for proprietors were extended to include , , and , although the frontend has not been updated yet.
 
 **All files of reference**
--    **(CRITICAL - Contains all new backend logic for mass upload, approval workflows, bug fixes, and notifications)**
--    **(CRITICAL - Contains all new frontend UI for the approval workflow and mass upload)**
--    **(CRITICAL - Contains the new Mutaciones tab for approvals)**
--    **(NEW - The notification UI component)**
--    **(MODIFIED - UI updated as per user screenshot)**
--    (Modified to include notifications)
+-    **(CRITICAL - Legacy monolith, currently being refactored)**
+-    **(CRITICAL - New modular backend structure)**
+-    **(CRITICAL - New documentation root)**
+-    **(CRITICAL - Updated for DB auth and backups)**
+-    **(CRITICAL - Updated with new DB credentials)**
+-    (MODIFIED - Contains new data migration logic)
+-    (CREATED - Contains DB schema validation logic)
+-    (MODIFIED - UI refactored to 2 tabs)
 
 **Areas that need refactoring**:
--   : This file's complexity has grown significantly with the addition of the approval workflow and mass upload logic. It is a high-priority candidate for being broken down into smaller, more focused components.
--   : The file is becoming monolithic. The numerous endpoints related to mutations, approvals, and notifications should be organized into separate router files to improve maintainability.
+-   : This is the primary target of the ongoing refactoring effort. It is over 27,000 lines long and needs to be completely broken down into the new modular structure.
+-   : This component is over 4,700 lines and should be broken down into smaller, more manageable child components.
 
 **key api endpoints**
--   : **(NEW)** Processes an uploaded Excel file for mass property creation.
--   : **(NEW)** Creates a new mutation request that requires approval.
--   : **(NEW)** Fetches all pending mutation requests.
--   : **(NEW)** Approves a pending mutation request.
--   : Fetches all notifications for the currently logged-in user.
--   : **(MODIFIED)** The endpoint where the critical data-sync bug was fixed.
+-   No new endpoints were created, but the entire API surface (280+ endpoints) is subject to change as the backend refactoring progresses. The plan to consolidate collections will require updating dozens of endpoints.
 
 **Critical Info for New Agent**
--   Your immediate priority is to complete the **in-progress tasks**:
-    1.  **Finish the Mutaciones tab** on the  page by implementing the data fetching and action buttons.
-    2.  **Verify the bug fix** for approved properties not appearing in Gestión de Predios. You must test the approval flow and confirm the data is saved correctly in the  collection.
--   The user has also reported another, unspecified error (sigo con un error pero después lo arreglamos). Be prepared to ask for clarification on this.
--   After completing the current tasks, the next logical step is to address the **fragile resolution counter**, which is a high-priority, recurring data integrity risk.
+-   **Refactoring is the top priority.** Your immediate task is to continue the work of moving logic from  into the new modular structure at .
+-   **User is blocked.** The user cannot manage a specific property on their production server. You must prioritize helping them run the diagnostic scripts to identify and fix the issue.
+-   **MongoDB Authentication is active.** The backend now requires proper credentials from the  file to connect to the database. The  file has been updated accordingly.
+-   **Collection consolidation is incomplete.** The agent wrote migration functions to merge several collections but *did not* update the backend API routes to use the new, consolidated collections. This is a critical pending step of the database hardening task.
+
+**documents and test reports created in this job**
+-    (and all sub-files): New documentation for the project.
+-   : Test report from the testing agent.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks to implement an approval workflow where a support user handles cartography and then sends the request for final approval. (Status: **RESOLVED**)
-2.  **User:** Clarifies that if a user has approve_changes permission, they should be able to approve directly, just like a coordinator. (Status: **RESOLVED**)
-3.  **User:** Clarifies the M2 workflow: the original user loads all data, the support user only does cartography. (Status: **RESOLVED**)
-4.  **User:** Requests a change: the support user should send directly to approval, not back to the original user. (Status: **RESOLVED**)
-5.  **User:** Asks how the workflow handles a user with approval permission who still wants to assign to a support user. (Status: **RESOLVED**)
-6.  **User:** Confirms the final proposed workflow is correct and says correcto. (Status: **RESOLVED**)
-7.  **User:** Says Sí continua con esa parte (referring to building the Pendientes tab) and reports a critical bug: en mi servidor de producción se aprobó un predio en pendientes, se carga en el visor de predios pero no se relacionó en gestión de predios. Por qué? (Status: **IN PROGRESS**)
+1.  **User:** Asks for a way to use other mutation types (M3, M4, etc.) even if they aren't fully developed. (Status: **PLANNING PENDING**)
+2.  **User:** Provides a large list of database security, performance, and schema hardening tasks. (Status: **IN PROGRESS**)
+3.  **User:** Asks for an impact analysis of the current build. (Status: **RESOLVED**)
+4.  **User:** Asks the agent to refactor the code into modules and create documentation. (Status: **IN PROGRESS**)
+5.  **User:** Asks why a specific property created via an M2 resolution isn't in the resolution history on the Emergent environment. (Status: **RESOLVED**)
+6.  **User:** Reports an error during a mass desenglobe Excel upload. (Status: **RESOLVED**)
+7.  **User:** Reports multiple issues after a successful Excel upload: cancelled property still appears, duplicates were not detected, and PDF formatting was incorrect. (Status: **IN PROGRESS**)
+8.  **User:** Clarifies requirements for fixing the Excel upload issues (duplicates must be blocked, provides correct area format). (Status: **RESOLVED**)
+9.  **User:** Reports a new bug where editing a property duplicates the area de terreno field and doesn't show existing constructions. (Status: **RESOLVED**)
+10. **User:** Asks for a way to use other mutation types (M3, M4, etc.) since only M1/M2 are built. (Status: **PLANNING PENDING**)
 
 **Project Health Check:**
 -   **Broken:**
-    -   The approval workflow for mutations is incomplete; the Mutaciones tab on the Pendientes page does not yet fetch or display data.
-    -   A fix for a critical data-sync bug (approved properties not showing in the main list) has been implemented but not yet verified.
+    -   A critical data visibility issue is affecting the user's production server.
+    -   The backend refactoring is in an intermediate state; the application is functional, but code is split between the old monolith and the new structure.
+    -   The collection consolidation is half-finished; data is migrated, but the code still points to old collections.
 -   **Mocked:**
     -   None.
 
@@ -164,7 +184,7 @@ The agent also identified and fixed a critical bug where newly approved properti
 -   Sonner
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES (once)
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** []
 -   **Known regressions:** None.
@@ -174,5 +194,6 @@ The agent also identified and fixed a critical bug where newly approved properti
 -   **Gestor (for creating changes):**  / 
 
 **What agent forgot to execute**
--   The agent has consistently failed to address the long-standing critical issue of the non-atomic resolution counter (), despite it being a known data integrity risk.
--   The agent did not perform any verification testing after implementing the fix for the critical property-sync bug. The code was changed, but its effectiveness was not confirmed.</analysis>
+-   **Update Routes for Consolidated Collections:** The agent created migration scripts to merge  into  and  into , but it failed to update the API endpoints in  to query these new collections. The backend is still using the old, redundant collections.
+-   **Implement  Capping:** The agent planned to create a helper function to cap the  array in  documents at 50 entries and move older entries to a separate collection. This was designed but not implemented.
+-   **Implement Frontend Schema Extension:** The agent extended the backend Pydantic models for  to include new fields (, , ) but did not implement the corresponding dropdowns and inputs in the frontend edit modal ().</analysis>

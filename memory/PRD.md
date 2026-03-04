@@ -20,6 +20,20 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ### Sesión Actual (04-03-2026) - Seguridad y Performance de Base de Datos
 
+#### Refactorización Backend Modular v2.0
+- **Nueva estructura modular** creada en `/app/backend/app/`:
+  - `core/config.py`: Configuración centralizada, catálogos DIVIPOLA, roles y permisos
+  - `core/database.py`: Conexión MongoDB reutilizable
+  - `core/security.py`: JWT, autenticación, validación de permisos
+  - `routers/auth.py`: Login, registro, verificación email, recuperación contraseña
+  - `routers/users.py`: Gestión de usuarios, roles, permisos
+  - `routers/admin.py`: Administración del sistema, municipios empresa
+  - `routers/catalogos.py`: Catálogos del sistema, health check
+  - `services/email_service.py`: Envío de correos con templates HTML
+  - `utils/helpers.py`: Funciones de utilidad (nombres, seguridad de archivos)
+- **Migración gradual**: Los routers pueden importarse en `server.py` para reemplazo progresivo
+- **Documentación actualizada**: `/app/backend/docs/README.md` con nueva arquitectura
+
 #### Database Security, Performance & Schema Hardening
 - **JWT Secret**: Reemplazado el secreto predeterminado por uno criptográficamente seguro de 64 caracteres hex
 - **MongoDB Authentication**: Preparado docker-compose.yml para autenticación con:
@@ -244,7 +258,22 @@ Nuevos campos opcionales en modelo PredioUpdate:
 ```
 /app/
 ├── backend/
-│   ├── server.py                    # API principal FastAPI
+│   ├── server.py                    # API principal FastAPI (legacy ~28k líneas)
+│   ├── app/                         # NUEVA estructura modular v2.0
+│   │   ├── core/                    # Configuración, DB, seguridad
+│   │   │   ├── config.py            # Settings, catálogos, constantes
+│   │   │   ├── database.py          # Conexión MongoDB
+│   │   │   └── security.py          # JWT, autenticación, permisos
+│   │   ├── routers/                 # Endpoints por dominio
+│   │   │   ├── auth.py              # Login, registro, verificación
+│   │   │   ├── users.py             # Gestión de usuarios
+│   │   │   ├── admin.py             # Administración
+│   │   │   └── catalogos.py         # Catálogos y health
+│   │   ├── services/
+│   │   │   └── email_service.py     # Envío de correos
+│   │   └── utils/
+│   │       └── helpers.py           # Funciones de ayuda
+│   ├── models/schemas.py            # Modelos Pydantic
 │   ├── resolucion_pdf_generator.py  # Generador de PDF de resoluciones
 │   └── certificado_images.py        # Imágenes embebidas para PDFs
 └── frontend/
@@ -293,7 +322,10 @@ Nuevos campos opcionales en modelo PredioUpdate:
 - **NPN code length display**: Muestra 38/38 en lugar de 30/30
 
 ## Future Tasks
+- **(P0 EN PROGRESO)** Continuar refactorización backend: migrar endpoints de predios, peticiones, resoluciones a estructura modular
 - **(P1 URGENTE)** Refactorizar contador de resoluciones (`obtener_siguiente_numero_resolucion`) para ser atómico - riesgo de duplicados bajo concurrencia
+- **(P1)** Actualizar rutas API para usar colecciones consolidadas (`cambios_pendientes`, `predios_eliminados`)
+- **(P1)** Implementar módulo genérico "Otras Mutaciones" (M3-M9)
 - **(P2)** Mutaciones encadenadas: Permitir que un predio tenga múltiples mutaciones en secuencia (ej: primero rectificación de área, luego desenglobar/englobar). Implementar workflow de mutaciones secuenciales. **Nota: Hacer después de completar todas las mutaciones individuales**
 - Exportación Excel para formulario de visitas
 - Exportación XTF
