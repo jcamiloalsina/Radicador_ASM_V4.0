@@ -3,26 +3,29 @@
 ## [2.0.0] - 2026-03-04
 
 ### Added - Refactorización Backend Modular
-- Nueva estructura modular en `/app/backend/app/` (~3,400 líneas en 20 archivos)
-- **72 rutas API** funcionando en la aplicación modular standalone
+- Nueva estructura modular en `/app/backend/app/` (~4,320 líneas en 23 archivos)
+- **98 rutas API** funcionando en la aplicación modular standalone
 - **core/**:
   - `config.py`: Configuración centralizada, catálogos DIVIPOLA, roles y permisos
   - `database.py`: Conexión MongoDB reutilizable
   - `security.py`: JWT, autenticación, validación de permisos
-- **routers/** (9 módulos):
-  - `auth.py`: Login, registro, verificación email, recuperación contraseña (~470 líneas)
-  - `users.py`: Gestión de usuarios, roles, permisos (~190 líneas)
-  - `admin.py`: Administración del sistema (~120 líneas)
+- **routers/** (12 módulos):
+  - `auth.py`: Login, registro, verificación email, recuperación contraseña (~473 líneas)
+  - `users.py`: Gestión de usuarios, roles, permisos (~193 líneas)
+  - `admin.py`: Administración del sistema (~118 líneas)
   - `catalogos.py`: Catálogos del sistema, health check (~65 líneas)
-  - `predios.py`: CRUD de predios, búsquedas, estadísticas (~305 líneas)
-  - `petitions.py`: Crear/listar peticiones, asignar gestores (~465 líneas)
-  - `notifications.py`: Sistema de notificaciones (~150 líneas)
-  - `resoluciones.py`: Plantillas, configuración, historial (~395 líneas)
-  - `database.py`: Estado DB, backups, restauración (~370 líneas)
+  - `predios.py`: CRUD de predios, búsquedas, estadísticas (~306 líneas)
+  - `petitions.py`: Crear/listar peticiones, asignar gestores (~467 líneas)
+  - `notifications.py`: Sistema de notificaciones (~149 líneas)
+  - `resoluciones.py`: Plantillas, configuración, historial (~396 líneas)
+  - `database.py`: Estado DB, backups, restauración (~369 líneas)
+  - `certificados.py`: Generación, verificación, estadísticas (~261 líneas)
+  - `actualizacion.py`: Proyectos de actualización catastral (~379 líneas)
+  - `gdb.py`: Base gráfica, geometrías, estadísticas (~283 líneas)
 - **services/**:
   - `email_service.py`: Envío de correos con templates HTML profesionales (~295 líneas)
 - **utils/**:
-  - `helpers.py`: Funciones de utilidad (formateo nombres, seguridad archivos) (~120 líneas)
+  - `helpers.py`: Funciones de utilidad (formateo nombres, seguridad archivos) (~122 líneas)
 - `main.py`: Aplicación FastAPI modular standalone
 
 ### Changed
