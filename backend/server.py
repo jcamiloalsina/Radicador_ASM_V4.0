@@ -5602,6 +5602,20 @@ async def get_siguiente_codigo_homologado(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtener el siguiente código homologado disponible para un municipio"""
+    
+    # Primero sincronizar: verificar si hay códigos marcados como no usados pero ya asignados a predios
+    codigos_en_predios = await db.predios.distinct("codigo_homologado", {
+        "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+        "codigo_homologado": {"$exists": True, "$ne": "", "$ne": None}
+    })
+    
+    if codigos_en_predios:
+        # Marcar como usados los códigos que ya están en predios
+        await db.codigos_homologados.update_many(
+            {"codigo": {"$in": codigos_en_predios}, "usado": False},
+            {"$set": {"usado": True, "fecha_asignacion": "sincronizado-auto"}}
+        )
+    
     # Buscar el primer código disponible (ordenado alfabéticamente)
     codigo_doc = await db.codigos_homologados.find_one(
         {'municipio': municipio, 'usado': False},
