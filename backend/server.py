@@ -9056,17 +9056,18 @@ async def import_predios_excel(
         
         # === LÓGICA SIMPLIFICADA: EL EXCEL SIEMPRE GANA ===
         
-        # 1. Extraer historial y guardar predios con áreas modificadas para respaldo
-        historiales_por_cnp = {}
+        # 1. Extraer historial de resoluciones y guardar predios con áreas modificadas para respaldo
+        historiales_resoluciones_por_cnp = {}
         predios_areas_modificadas = []
         
         for p in existing_predios_vigencia_actual:
             cnp = p.get('codigo_predial_nacional')
             if cnp:
-                # Guardar historial para transferirlo al nuevo predio
-                historial = p.get('historial', [])
-                if historial:
-                    historiales_por_cnp[cnp] = historial
+                # Guardar historial_resoluciones para transferirlo al nuevo predio
+                historial_res = p.get('historial_resoluciones', [])
+                if historial_res:
+                    historiales_resoluciones_por_cnp[cnp] = historial_res
+                    logger.debug(f"[Import] Historial de resoluciones encontrado para CNP {cnp}: {len(historial_res)} registros")
                 
                 # Si tenía áreas modificadas manualmente, guardar respaldo
                 if p.get('area_editada_en_plataforma') or p.get('creado_en_plataforma'):
@@ -9075,6 +9076,8 @@ async def import_predios_excel(
                         "respaldado_en": datetime.now(timezone.utc).isoformat(),
                         "motivo": "Reemplazado por importación R1-R2"
                     })
+        
+        logger.info(f"[Import] Predios con historial de resoluciones a transferir: {len(historiales_resoluciones_por_cnp)}")
         
         # Guardar respaldo de predios con áreas modificadas
         if predios_areas_modificadas:
@@ -9095,10 +9098,11 @@ async def import_predios_excel(
         for predio in predios_list:
             cnp = predio.get('codigo_predial_nacional')
             
-            # Transferir historial si el CNP coincide
-            if cnp and cnp in historiales_por_cnp:
-                predio['historial'] = historiales_por_cnp[cnp]
+            # Transferir historial_resoluciones si el CNP coincide
+            if cnp and cnp in historiales_resoluciones_por_cnp:
+                predio['historial_resoluciones'] = historiales_resoluciones_por_cnp[cnp]
                 predios_con_historial_transferido += 1
+                logger.debug(f"[Import] Transferido historial de resoluciones a CNP {cnp}")
             
             # Marcar como NO creado/editado en plataforma (viene del Excel)
             predio['creado_en_plataforma'] = False
