@@ -5,33 +5,29 @@
 ### Added - Refactorización Backend Modular
 - Nueva estructura modular en `/app/backend/app/` (~4,320 líneas en 23 archivos)
 - **98 rutas API** funcionando en la aplicación modular standalone
-- **7 routers integrados en server.py**: catalogos, notifications, certificados, database, resoluciones, actualizacion, gdb
-- **core/**:
-  - `config.py`: Configuración centralizada, catálogos DIVIPOLA, roles y permisos
-  - `database.py`: Conexión MongoDB reutilizable
-  - `security.py`: JWT, autenticación, validación de permisos
-- **routers/** (12 módulos):
-  - `auth.py`: Login, registro, verificación email, recuperación contraseña (~473 líneas)
-  - `users.py`: Gestión de usuarios, roles, permisos (~193 líneas)
-  - `admin.py`: Administración del sistema (~118 líneas)
-  - `catalogos.py`: Catálogos del sistema, health check (~65 líneas) ✅ INTEGRADO
-  - `predios.py`: CRUD de predios, búsquedas, estadísticas (~306 líneas)
-  - `petitions.py`: Crear/listar peticiones, asignar gestores (~467 líneas)
-  - `notifications.py`: Sistema de notificaciones (~149 líneas) ✅ INTEGRADO
-  - `resoluciones.py`: Plantillas, configuración, historial (~396 líneas) ✅ INTEGRADO
-  - `database.py`: Estado DB, backups, restauración (~369 líneas) ✅ INTEGRADO
-  - `certificados.py`: Generación, verificación, estadísticas (~261 líneas) ✅ INTEGRADO
-  - `actualizacion.py`: Proyectos de actualización catastral (~379 líneas) ✅ INTEGRADO
-  - `gdb.py`: Base gráfica, geometrías, estadísticas (~283 líneas) ✅ INTEGRADO
+- **12 routers modulares completamente integrados en server.py**:
+  - ✅ `auth.py`: Login, registro, verificación email, recuperación contraseña
+  - ✅ `users.py`: Gestión de usuarios, roles, permisos
+  - ✅ `admin.py`: Administración del sistema, municipios empresa
+  - ✅ `catalogos.py`: Catálogos del sistema, health check
+  - ✅ `predios.py`: CRUD de predios, búsquedas, estadísticas
+  - ✅ `petitions.py`: Crear/listar peticiones, asignar gestores
+  - ✅ `notifications.py`: Sistema de notificaciones
+  - ✅ `resoluciones.py`: Plantillas, configuración, historial
+  - ✅ `database.py`: Estado DB, backups, restauración
+  - ✅ `certificados.py`: Generación, verificación, estadísticas
+  - ✅ `actualizacion.py`: Proyectos de actualización catastral
+  - ✅ `gdb.py`: Base gráfica, geometrías, estadísticas
 - **services/**:
-  - `email_service.py`: Envío de correos con templates HTML profesionales (~295 líneas)
+  - `email_service.py`: Envío de correos con templates HTML profesionales
 - **utils/**:
-  - `helpers.py`: Funciones de utilidad (formateo nombres, seguridad archivos) (~122 líneas)
+  - `helpers.py`: Funciones de utilidad (formateo nombres, seguridad archivos)
 - `main.py`: Aplicación FastAPI modular standalone
 
 ### Changed
-- **server.py ahora importa 7 routers modulares** en lugar de definirlos inline
-- Los endpoints modulares tienen prioridad sobre los del monolito
+- **server.py ahora importa y usa los 12 routers modulares**
+- Los endpoints modulares tienen prioridad sobre el código legacy del monolito
+- El código duplicado en server.py se mantiene como fallback (será eliminado gradualmente)
 
 ### Changed
 - Documentación actualizada en `/app/backend/docs/README.md` con nueva arquitectura

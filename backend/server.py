@@ -121,7 +121,12 @@ api_router = APIRouter(prefix="/api")
 # ===== IMPORT MODULAR ROUTERS =====
 # Importar routers modulares para reemplazo gradual de endpoints
 from app.routers import (
+    auth as auth_router,
+    users as users_router,
+    admin as admin_router,
     catalogos as catalogos_router,
+    predios as predios_router,
+    petitions as petitions_router,
     notifications as notifications_router,
     certificados as certificados_router,
     database as database_router,
@@ -131,8 +136,13 @@ from app.routers import (
 )
 
 # Registrar routers modulares (estos reemplazan endpoints del monolito)
-# NOTA: Los endpoints duplicados en server.py serán ignorados a favor de los modulares
+# Los endpoints modulares tienen prioridad - los duplicados en server.py serán ignorados
+api_router.include_router(auth_router.router)
+api_router.include_router(users_router.router)
+api_router.include_router(admin_router.router)
 api_router.include_router(catalogos_router.router)
+api_router.include_router(predios_router.router)
+api_router.include_router(petitions_router.router)
 api_router.include_router(notifications_router.router)
 api_router.include_router(certificados_router.router)
 api_router.include_router(database_router.router)
