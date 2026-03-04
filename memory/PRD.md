@@ -18,22 +18,42 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ## What's Been Implemented
 
-### Última Sesión (04-03-2026) - PDF M2 con Header/Footer Institucional
-- **FEATURE P0 - PDF M2 con encabezado y pie de página COMPLETO**:
-  - **Problema**: El PDF de resolución M2 (Englobe/Desengloble) no tenía el encabezado ni pie de página institucional que sí tiene el M1
-  - **Solución**: Refactorizado completamente `resolucion_m2_pdf_generator.py` para replicar el formato del M1:
-    - **Encabezado institucional**: Logo de ASOMUNICIPIOS con "Gestor Catastral" en todas las páginas
-    - **Pie de página institucional**: Barra verde con email, dirección y teléfono de contacto
-    - **Marca de agua**: Logo de Asomunicipios con 15% de opacidad centrado
-    - **QR de verificación**: Código QR verde institucional con información de verificación
-    - **Firma digitalizada**: Imagen de firma de Dalgie Esperanza Torrado Rizo
-    - **Tablas mejoradas**: Secciones CANCELACIÓN e INSCRIPCIÓN con fondo verde institucional
-    - **Fuentes Carlito**: Misma tipografía que el M1
-    - **Información Elaboró/Aprobó**: Agregado al final del documento
-  - **Archivos modificados**: 
-    - `/app/backend/resolucion_m2_pdf_generator.py` (refactorizado completamente)
-    - `/app/backend/server.py` (agregados parámetros elaboro y aprobo a la llamada)
-  - **Estado**: ✅ VERIFICADO - Screenshots confirman encabezado, pie y QR en todas las páginas
+### Última Sesión (04-03-2026) - M2 Completo: PDF + Englobe + Desengloble
+
+#### PDF M2 con Header/Footer Institucional
+- Encabezado y pie de página institucional idénticos al M1
+- Marca de agua, QR de verificación, firma digitalizada
+- Texto justificado en todo el documento
+- Correcciones de texto: "Qué," en lugar de "Que", eliminado "Expedida en", "Asomunicipios" sin "Catatumbo"
+- Documentos simplificados: Escritura pública, Matrícula inmobiliaria, Plano DWG
+- NPN único sin duplicación
+- Consecutivo de resolución corregido: `RES-54-128-XXXX-2026` (sin "M2", código municipio correcto)
+
+#### Desengloble con Lógica Cancelación Total/Parcial
+- **Cancelación TOTAL**: El predio matriz desaparece, solo se inscriben predios nuevos
+- **Cancelación PARCIAL**: 
+  - 1ª Inscripción = Predio matriz AJUSTADO (área reducida)
+  - 2ª+ Inscripciones = Predios nuevos
+- Frontend implementa automáticamente esta lógica al generar resolución
+
+#### Englobe Completo (NUEVO)
+- **Englobe TOTAL**: 
+  - Múltiples predios se cancelan y nace un predio NUEVO
+  - Al seleccionar, abre modal completo de "Nuevo Predio" con constructor NPN 30 dígitos
+  - Valores pre-cargados (suma de áreas y avalúos)
+- **Englobe por ABSORCIÓN**:
+  - Un predio matriz absorbe a los demás
+  - Usuario selecciona cuál es el matriz
+  - Mismo NPN, área aumentada
+  - Formulario inline para editar datos del matriz ajustado
+- UI con selectores visuales claros para tipo de englobe
+- Validaciones: mínimo 2 predios para englobe
+- Mensajes de ayuda cuando faltan requisitos
+
+**Archivos modificados**:
+- `/app/backend/resolucion_m2_pdf_generator.py` - Texto justificado, header/footer, correcciones
+- `/app/backend/resolucion_pdf_generator.py` - Texto justificado para M1
+- `/app/frontend/src/pages/MutacionesResoluciones.js` - Lógica englobe completa, UI mejorada
 
 ### Sesión Anterior (03-03-2026) - Modal Nuevo Predio para M2
 - **FEATURE P0 - Modal Nuevo Predio para M2 COMPLETO**:
@@ -166,10 +186,11 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 ## Future Tasks
 - **(P1 URGENTE)** Corregir script de importación R1-R2 que causa pérdida de datos
 - **(P1)** Refactorizar contador de resoluciones para ser atómico
+- **(P2)** Mutaciones encadenadas: Permitir que un predio tenga múltiples mutaciones en secuencia (ej: primero rectificación de área, luego desenglobar/englobar). Implementar workflow de mutaciones secuenciales. **Nota: Hacer después de completar todas las mutaciones individuales**
 - Exportación Excel para formulario de visitas
 - Exportación XTF
 - App de Gestión de Correspondencia
-- Refactorización de MutacionesResoluciones.js (>3000 líneas) en componentes más pequeños
+- Refactorización de MutacionesResoluciones.js (>3800 líneas) en componentes más pequeños
 - UI para reportes GDB
 - Gráficos en dashboards
 
