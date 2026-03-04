@@ -20,24 +20,26 @@ Sistema integral de gestión catastral para la Asociación de Municipios del Cat
 
 ### Sesión Actual (04-03-2026) - Seguridad y Performance de Base de Datos
 
-#### Refactorización Backend Modular v2.0 (EN PROGRESO - 2,500+ líneas migradas)
-- **Nueva estructura modular** creada en `/app/backend/app/`:
+#### Refactorización Backend Modular v2.0 (EN PROGRESO - 3,400+ líneas migradas)
+- **Nueva estructura modular** creada en `/app/backend/app/` con 20 archivos:
   - `core/config.py`: Configuración centralizada, catálogos DIVIPOLA, roles y permisos
   - `core/database.py`: Conexión MongoDB reutilizable
   - `core/security.py`: JWT, autenticación, validación de permisos
-  - `routers/auth.py`: Login, registro, verificación email, recuperación contraseña (~450 líneas)
-  - `routers/users.py`: Gestión de usuarios, roles, permisos (~170 líneas)
-  - `routers/admin.py`: Administración del sistema, municipios empresa (~90 líneas)
-  - `routers/catalogos.py`: Catálogos del sistema, health check (~60 líneas)
-  - `routers/predios.py`: CRUD de predios, búsquedas, estadísticas (~280 líneas)
-  - `routers/petitions.py`: Crear/listar peticiones, asignar gestores (~400 líneas)
-  - `routers/notifications.py`: Sistema de notificaciones (~130 líneas)
-  - `services/email_service.py`: Envío de correos con templates HTML (~250 líneas)
-  - `utils/helpers.py`: Funciones de utilidad (nombres, seguridad de archivos) (~100 líneas)
-- **Aplicación modular standalone**: 52 rutas API funcionando en `/app/backend/app/main.py`
-- **Migración gradual**: Los routers pueden importarse en `server.py` para reemplazo progresivo
+  - `routers/auth.py`: Login, registro, verificación email, recuperación contraseña (~470 líneas)
+  - `routers/users.py`: Gestión de usuarios, roles, permisos (~190 líneas)
+  - `routers/admin.py`: Administración del sistema (~120 líneas)
+  - `routers/catalogos.py`: Catálogos del sistema, health check (~65 líneas)
+  - `routers/predios.py`: CRUD de predios, búsquedas, estadísticas (~305 líneas)
+  - `routers/petitions.py`: Crear/listar peticiones, asignar gestores (~465 líneas)
+  - `routers/notifications.py`: Sistema de notificaciones (~150 líneas)
+  - `routers/resoluciones.py`: Plantillas, configuración, historial (~395 líneas)
+  - `routers/database.py`: Estado DB, backups, restauración (~370 líneas)
+  - `services/email_service.py`: Envío de correos con templates HTML (~295 líneas)
+  - `utils/helpers.py`: Funciones de utilidad (~120 líneas)
+- **Aplicación modular standalone**: 72 rutas API funcionando en `/app/backend/app/main.py`
 - **Documentación actualizada**: `/app/backend/docs/README.md` con nueva arquitectura
-- **Pendiente**: Migrar endpoints de resoluciones, actualización, certificados, backups
+- **Estado**: server.py legacy mantiene ~28,000 líneas, módulos listos para integración gradual
+- **Pendiente**: Migrar endpoints de certificados, actualización, GDB, mutaciones
 
 #### Database Security, Performance & Schema Hardening
 - **JWT Secret**: Reemplazado el secreto predeterminado por uno criptográficamente seguro de 64 caracteres hex
