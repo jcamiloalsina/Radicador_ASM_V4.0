@@ -7,6 +7,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gdal-bin \
     libgdal-dev \
+    build-essential \
+    make \
+    gcc \
     libgeos-dev \
     libproj-dev \
     && rm -rf /var/lib/apt/lists/*

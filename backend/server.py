@@ -1851,7 +1851,14 @@ async def login(credentials: UserLogin):
     if not verify_password(credentials.password, user['password']):
         logger.warning(f"Login fallido: contraseña incorrecta para {credentials.email}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
-    
+
+    # Block non-admin logins during maintenance mode
+    if user.get('role') not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        maintenance_config = await db.system_config.find_one({"type": "maintenance_mode"})
+        if maintenance_config and maintenance_config.get("enabled", False):
+            logger.warning(f"Login bloqueado por mantenimiento: {credentials.email}")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="maintenance_mode")
+
     logger.info(f"Login exitoso: {credentials.email}")
     
     # Verificar si el email está verificado (excepto admin protegido y usuarios internos)
@@ -23227,6 +23234,39 @@ async def descargar_archivo_servidor(filename: str):
         filename=safe_filename,
         media_type="application/octet-stream"
     )
+
+
+# ===== MAINTENANCE MODE ENDPOINTS =====
+@api_router.get("/maintenance/status")
+async def get_maintenance_status():
+    """Get maintenance mode status (public, no auth required)"""
+    config = await db.system_config.find_one({"type": "maintenance_mode"}, {"_id": 0})
+    if not config:
+        return {"enabled": False}
+    return {
+        "enabled": config.get("enabled", False),
+        "toggled_by": config.get("toggled_by"),
+        "toggled_at": config.get("toggled_at")
+    }
+
+@api_router.put("/maintenance/toggle")
+async def toggle_maintenance(current_user: dict = Depends(get_current_user)):
+    """Toggle maintenance mode (admin/coordinador only)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para cambiar el modo de mantenimiento")
+
+    config = await db.system_config.find_one({"type": "maintenance_mode"})
+    new_state = not (config.get("enabled", False) if config else False)
+    await db.system_config.update_one(
+        {"type": "maintenance_mode"},
+        {"$set": {
+            "enabled": new_state,
+            "toggled_by": current_user["full_name"],
+            "toggled_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    return {"enabled": new_state, "toggled_by": current_user["full_name"], "toggled_at": datetime.now(timezone.utc).isoformat()}
 
 
 # Include the router in the main app

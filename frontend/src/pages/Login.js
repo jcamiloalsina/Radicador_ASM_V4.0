@@ -282,6 +282,8 @@ export default function Login() {
       if (error.response?.data?.detail === 'email_not_verified') {
         setShowVerification(true);
         toast.info('Tu correo no está verificado. Se ha enviado un nuevo código.');
+      } else if (error.response?.data?.detail === 'maintenance_mode') {
+        toast.error('El sitio se encuentra en mantenimiento. Intente más tarde.');
       } else {
         toast.error(error.response?.data?.detail || error.message || 'Error al iniciar sesión');
       }

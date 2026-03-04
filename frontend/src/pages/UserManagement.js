@@ -90,6 +90,12 @@ export default function UserManagement() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = React.useRef(null);
 
+  // Estados para mantenimiento
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [maintenanceInfo, setMaintenanceInfo] = useState(null);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+
   // Estados para configuración de backups automáticos
   const [backupConfig, setBackupConfig] = useState(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
@@ -122,6 +128,9 @@ export default function UserManagement() {
       fetchDbStatus();
       fetchBackups();
       fetchBackupConfig();
+    }
+    if (activeTab === 'mantenimiento') {
+      fetchMaintenanceStatus();
     }
   }, [activeTab]);
 
@@ -251,6 +260,35 @@ export default function UserManagement() {
       });
     } catch (error) {
       console.error('Error al cargar configuración:', error);
+    }
+  };
+
+  const fetchMaintenanceStatus = async () => {
+    setLoadingMaintenance(true);
+    try {
+      const response = await axios.get(`${API}/maintenance/status`);
+      setMaintenanceEnabled(response.data.enabled);
+      if (response.data.toggled_by) {
+        setMaintenanceInfo({ toggled_by: response.data.toggled_by, toggled_at: response.data.toggled_at });
+      }
+    } catch (error) {
+      console.error('Error al cargar estado de mantenimiento:', error);
+    } finally {
+      setLoadingMaintenance(false);
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    setTogglingMaintenance(true);
+    try {
+      const response = await axios.put(`${API}/maintenance/toggle`);
+      setMaintenanceEnabled(response.data.enabled);
+      setMaintenanceInfo({ toggled_by: response.data.toggled_by, toggled_at: response.data.toggled_at });
+      toast.success(response.data.enabled ? 'Modo mantenimiento activado' : 'Modo mantenimiento desactivado');
+    } catch (error) {
+      toast.error('Error al cambiar modo de mantenimiento');
+    } finally {
+      setTogglingMaintenance(false);
     }
   };
 
@@ -590,7 +628,7 @@ export default function UserManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-xl">
           <TabsTrigger value="usuarios" className="flex items-center gap-2">
             <UserCog className="w-4 h-4" />
             Usuarios
@@ -598,6 +636,10 @@ export default function UserManagement() {
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
             Base de Datos
+          </TabsTrigger>
+          <TabsTrigger value="mantenimiento" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Mantenimiento
           </TabsTrigger>
         </TabsList>
 
@@ -1131,6 +1173,75 @@ export default function UserManagement() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab Mantenimiento */}
+        <TabsContent value="mantenimiento" className="mt-6 space-y-6">
+          <Card className="border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg font-outfit">
+                <Settings className="w-5 h-5 text-slate-600" />
+                Modo Mantenimiento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingMaintenance ? (
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando estado...
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+                    <div className="space-y-1">
+                      <p className="font-medium text-slate-900">Activar modo mantenimiento</p>
+                      <p className="text-sm text-slate-500">
+                        Al activar, todos los usuarios (excepto administradores) verán una página de mantenimiento.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={maintenanceEnabled ? "destructive" : "secondary"}>
+                        {maintenanceEnabled ? "Activo" : "Inactivo"}
+                      </Badge>
+                      <Switch
+                        checked={maintenanceEnabled}
+                        onCheckedChange={handleToggleMaintenance}
+                        disabled={togglingMaintenance}
+                      />
+                    </div>
+                  </div>
+
+                  {maintenanceInfo && (
+                    <div className="flex items-center gap-4 text-sm text-slate-500 px-1">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5" />
+                        <span>Última acción por: <strong>{maintenanceInfo.toggled_by}</strong></span>
+                      </div>
+                      {maintenanceInfo.toggled_at && (
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{new Date(maintenanceInfo.toggled_at).toLocaleString('es-CO')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {maintenanceEnabled && (
+                    <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-800">El sitio está en mantenimiento</p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          Los usuarios no administradores no pueden acceder al sistema.
+                          Desactive el modo mantenimiento cuando termine las tareas de mantenimiento.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
