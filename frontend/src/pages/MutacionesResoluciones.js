@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Textarea } from '../components/ui/textarea';
+import PDFViewerModal from '../components/PDFViewerModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -41,9 +42,9 @@ const TIPOS_MUTACION = {
   M3: { 
     codigo: 'M3', 
     nombre: 'Mutación Tercera', 
-    descripcion: 'Modificación de construcción o destino económico',
+    descripcion: 'Cambio de destino económico o incorporación de construcción',
     color: 'bg-amber-100 text-amber-800',
-    enabled: false
+    enabled: true
   },
   M4: { 
     codigo: 'M4', 
@@ -161,6 +162,26 @@ export default function MutacionesResoluciones() {
   const [showMunicipioDropdown, setShowMunicipioDropdown] = useState(false);
   const [showMunicipioDropdownM2, setShowMunicipioDropdownM2] = useState(false);
 
+  // Estado para M3
+  const [m3Data, setM3Data] = useState({
+    subtipo: '', // 'cambio_destino' o 'incorporacion_construccion'
+    municipio: '',
+    radicado: '',
+    predio: null,
+    destino_anterior: '',
+    destino_nuevo: '',
+    construcciones_nuevas: [],
+    avaluo_anterior: 0,
+    avaluo_nuevo: 0,
+    fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
+    observaciones: ''
+  });
+  const [searchPredioM3, setSearchPredioM3] = useState('');
+  const [searchResultsM3, setSearchResultsM3] = useState([]);
+  const [searchingPrediosM3, setSearchingPrediosM3] = useState(false);
+  const [showMunicipioDropdownM3, setShowMunicipioDropdownM3] = useState(false);
+  const [radicadosDisponiblesM3, setRadicadosDisponiblesM3] = useState([]);
+
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
   const [predioEditando, setPredioEditando] = useState(null); // datos del predio en edición
@@ -249,6 +270,18 @@ export default function MutacionesResoluciones() {
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  
+  // Estado para visor de PDF
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [pdfViewerData, setPdfViewerData] = useState({
+    url: '',
+    title: '',
+    fileName: '',
+    resolucionId: null,
+    radicado: '',
+    correoSolicitante: ''
+  });
+  const [emailSent, setEmailSent] = useState(false);
   
   // Determinar si el usuario puede aprobar directamente
   const puedeAprobar = user?.role === 'coordinador' || 
@@ -915,9 +948,19 @@ export default function MutacionesResoluciones() {
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
         
-        // Abrir PDF en nueva pestaña
+        // Mostrar PDF en popup en lugar de abrir nueva ventana
         if (response.data.pdf_url) {
-          window.open(response.data.pdf_url, '_blank');
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.id,
+            radicado: m1Data.radicado_peticion,
+            correoSolicitante: '' // Se puede obtener del radicado si es necesario
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
         }
         
         // Limpiar formulario
@@ -2042,8 +2085,14 @@ export default function MutacionesResoluciones() {
       }
       
       const dataToSend = {
-        ...m2Data,
-        predios_inscritos: prediosInscribirOrdenados
+        tipo: 'M2',
+        subtipo: m2Data.subtipo,
+        municipio: m2Data.municipio,
+        radicado: m2Data.radicado,
+        solicitante: m2Data.solicitante,
+        predios_cancelados: m2Data.predios_cancelados,
+        predios_inscritos: prediosInscribirOrdenados,
+        observaciones: m2Data.observaciones || ''
       };
       
       // Para ENGLOBE: usar el predio_resultante como único predio inscrito
@@ -2051,22 +2100,36 @@ export default function MutacionesResoluciones() {
         dataToSend.predios_inscritos = [m2Data.predio_resultante];
       }
       
-      const response = await axios.post(`${API}/resoluciones/generar-m2`, dataToSend, {
+      const response = await axios.post(`${API}/solicitudes-mutacion`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.success) {
-        toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-        
-        // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
-        if (codigosReservados.length > 0) {
-          await confirmarUsoCodigos(codigosReservados);
-          setCodigosReservados([]);
-        }
-        
-        // Abrir PDF en nueva pestaña
-        if (response.data.pdf_url) {
-          window.open(response.data.pdf_url, '_blank');
+        // Verificar si fue aprobación directa o quedó pendiente
+        if (response.data.aprobacion_directa && response.data.pdf_url) {
+          toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
+          
+          // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
+          if (codigosReservados.length > 0) {
+            await confirmarUsoCodigos(codigosReservados);
+            setCodigosReservados([]);
+          }
+          
+          // Mostrar PDF en popup
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion} - ${m2Data.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}`,
+            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.id,
+            radicado: m2Data.radicado,
+            correoSolicitante: ''
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
+        } else {
+          // Quedó pendiente de aprobación
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
         }
         
         // Limpiar formulario
@@ -2105,6 +2168,754 @@ export default function MutacionesResoluciones() {
     setSearchResults([]);
     setCodigosReservados([]);
   };
+
+  // =====================
+  // FUNCIONES PARA M3
+  // =====================
+  
+  // Buscar predios para M3
+  const buscarPrediosM3 = async () => {
+    if (!searchPredioM3 || searchPredioM3.length < 3) {
+      toast.error('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosM3(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m3Data.municipio)?.nombre || '';
+      
+      // Obtener vigencia actual
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia_actual;
+      
+      const response = await axios.get(`${API}/predios`, {
+        params: { 
+          search: searchPredioM3,
+          municipio: municipioNombre,
+          vigencia: vigenciaActual,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setSearchResultsM3(response.data.predios || []);
+      if (response.data.predios?.length === 0) {
+        toast.info('No se encontraron predios con ese criterio');
+      }
+    } catch (error) {
+      toast.error('Error buscando predios');
+      console.error(error);
+    } finally {
+      setSearchingPrediosM3(false);
+    }
+  };
+
+  // Seleccionar predio para M3
+  const seleccionarPredioM3 = (predio) => {
+    setM3Data(prev => ({
+      ...prev,
+      predio: predio,
+      destino_anterior: predio.destino_economico || '',
+      avaluo_anterior: predio.avaluo || 0
+    }));
+    setSearchResultsM3([]);
+    setSearchPredioM3('');
+  };
+
+  // Buscar radicados para M3
+  const buscarRadicadosM3 = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesM3([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setRadicadosDisponiblesM3(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados M3:', error);
+    }
+  };
+
+  // Agregar construcción nueva para M3
+  const agregarConstruccionM3 = () => {
+    setM3Data(prev => ({
+      ...prev,
+      construcciones_nuevas: [...prev.construcciones_nuevas, {
+        tipo_construccion: 'C',
+        pisos: 1,
+        habitaciones: 0,
+        banos: 0,
+        locales: 0,
+        uso: '',
+        puntaje: 0,
+        area_construida: 0
+      }]
+    }));
+  };
+
+  // Actualizar construcción M3
+  const actualizarConstruccionM3 = (index, campo, valor) => {
+    setM3Data(prev => ({
+      ...prev,
+      construcciones_nuevas: prev.construcciones_nuevas.map((c, i) => 
+        i === index ? { ...c, [campo]: valor } : c
+      )
+    }));
+  };
+
+  // Eliminar construcción M3
+  const eliminarConstruccionM3 = (index) => {
+    setM3Data(prev => ({
+      ...prev,
+      construcciones_nuevas: prev.construcciones_nuevas.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Generar resolución M3
+  const generarResolucionM3 = async () => {
+    // Validaciones
+    if (!m3Data.predio) {
+      toast.error('Seleccione un predio');
+      return;
+    }
+    if (!m3Data.subtipo) {
+      toast.error('Seleccione el tipo de mutación M3');
+      return;
+    }
+    if (!m3Data.radicado) {
+      toast.error('Seleccione un radicado');
+      return;
+    }
+    if (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) {
+      toast.error('Seleccione el nuevo destino económico');
+      return;
+    }
+    if (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) {
+      toast.error('Agregue al menos una construcción');
+      return;
+    }
+    if (!m3Data.avaluo_nuevo || m3Data.avaluo_nuevo <= 0) {
+      toast.error('Ingrese el nuevo avalúo');
+      return;
+    }
+    
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        tipo: 'M3',
+        subtipo: m3Data.subtipo,
+        municipio: m3Data.municipio,
+        radicado: m3Data.radicado,
+        predio_id: m3Data.predio.id,
+        destino_anterior: m3Data.destino_anterior,
+        destino_nuevo: m3Data.destino_nuevo,
+        construcciones_nuevas: m3Data.construcciones_nuevas,
+        avaluo_anterior: m3Data.avaluo_anterior,
+        avaluo_nuevo: m3Data.avaluo_nuevo,
+        fechas_inscripcion: m3Data.fechas_inscripcion || [],
+        observaciones: m3Data.observaciones || ''
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        // Verificar si fue aprobación directa o quedó pendiente
+        if (response.data.aprobacion_directa && response.data.pdf_url) {
+          toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
+          
+          // Mostrar PDF en popup
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución M3 - ${response.data.numero_resolucion}`,
+            fileName: `Resolucion_M3_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.id,
+            radicado: m3Data.radicado,
+            correoSolicitante: ''
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
+        } else {
+          // Quedó pendiente de aprobación
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
+        }
+        
+        // Limpiar formulario
+        resetFormularioM3();
+        setShowMutacionDialog(false);
+        setTipoMutacionSeleccionado(null);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error generando resolución M3');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario M3
+  const resetFormularioM3 = () => {
+    setM3Data({
+      subtipo: '',
+      municipio: '',
+      radicado: '',
+      predio: null,
+      destino_anterior: '',
+      destino_nuevo: '',
+      construcciones_nuevas: [],
+      avaluo_anterior: 0,
+      avaluo_nuevo: 0,
+      fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
+      observaciones: ''
+    });
+    setSearchPredioM3('');
+    setSearchResultsM3([]);
+    setRadicadosDisponiblesM3([]);
+  };
+
+  // Funciones para manejar fechas de inscripción en M3
+  const agregarFechaInscripcionM3 = () => {
+    setM3Data(prev => ({
+      ...prev,
+      fechas_inscripcion: [...prev.fechas_inscripcion, { año: '', avaluo: '', avaluo_source: 'manual' }]
+    }));
+  };
+
+  const eliminarFechaInscripcionM3 = (index) => {
+    if (m3Data.fechas_inscripcion.length > 1) {
+      setM3Data(prev => ({
+        ...prev,
+        fechas_inscripcion: prev.fechas_inscripcion.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const actualizarFechaInscripcionM3 = async (index, campo, valor) => {
+    const nuevasFechas = [...m3Data.fechas_inscripcion];
+    if (!nuevasFechas[index]) {
+      nuevasFechas[index] = { año: '', avaluo: '', avaluo_source: 'manual' };
+    }
+    nuevasFechas[index][campo] = valor;
+    
+    // Si se cambió el año, intentar cargar avalúo del sistema
+    if (campo === 'año' && valor && m3Data.predio) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API}/predios/${m3Data.predio.id}/avaluo-vigencia/${valor}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.avaluo) {
+          nuevasFechas[index].avaluo = response.data.avaluo;
+          nuevasFechas[index].avaluo_source = response.data.source || 'sistema';
+        }
+      } catch (error) {
+        // Silently fail - user can enter manually
+      }
+    }
+    
+    setM3Data(prev => ({ ...prev, fechas_inscripcion: nuevasFechas }));
+  };
+
+  // Catálogo de destinos económicos
+  const DESTINOS_ECONOMICOS = [
+    { codigo: 'A', nombre: 'A - Habitacional' },
+    { codigo: 'B', nombre: 'B - Industrial' },
+    { codigo: 'C', nombre: 'C - Comercial' },
+    { codigo: 'D', nombre: 'D - Agropecuario' },
+    { codigo: 'E', nombre: 'E - Minero' },
+    { codigo: 'F', nombre: 'F - Cultural' },
+    { codigo: 'G', nombre: 'G - Recreacional' },
+    { codigo: 'H', nombre: 'H - Salubridad' },
+    { codigo: 'I', nombre: 'I - Institucional' },
+    { codigo: 'J', nombre: 'J - Educativo' },
+    { codigo: 'K', nombre: 'K - Religioso' },
+    { codigo: 'L', nombre: 'L - Agrícola' },
+    { codigo: 'M', nombre: 'M - Pecuario' },
+    { codigo: 'N', nombre: 'N - Agroindustrial' },
+    { codigo: 'O', nombre: 'O - Forestal' },
+    { codigo: 'P', nombre: 'P - Uso Público' },
+    { codigo: 'Q', nombre: 'Q - Lote Urbanizable No Urbanizado' },
+    { codigo: 'R', nombre: 'R - Lote Urbanizable No Edificado' },
+    { codigo: 'S', nombre: 'S - Lote No Urbanizable' },
+    { codigo: 'T', nombre: 'T - Servicios Especiales' }
+  ];
+
+  // Renderizar formulario M3
+  const renderFormularioM3 = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Tipo de M3 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m3Data.subtipo === 'cambio_destino' 
+              ? 'border-amber-600 bg-amber-50' 
+              : 'border-slate-200 hover:border-amber-300'
+          }`}
+          onClick={() => setM3Data(prev => ({ ...prev, subtipo: 'cambio_destino', construcciones_nuevas: [] }))}
+          data-testid="m3-cambio-destino-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m3Data.subtipo === 'cambio_destino' ? 'border-amber-600 bg-amber-600' : 'border-slate-300'
+            }`}>
+              {m3Data.subtipo === 'cambio_destino' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m3Data.subtipo === 'cambio_destino' ? 'text-amber-700' : 'text-slate-700'}`}>
+              Cambio de Destino Económico
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Modifica el destino económico del predio (ej: de Agrícola a Comercial)
+          </p>
+        </div>
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m3Data.subtipo === 'incorporacion_construccion' 
+              ? 'border-amber-600 bg-amber-50' 
+              : 'border-slate-200 hover:border-amber-300'
+          }`}
+          onClick={() => setM3Data(prev => ({ ...prev, subtipo: 'incorporacion_construccion', destino_nuevo: '' }))}
+          data-testid="m3-incorporacion-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m3Data.subtipo === 'incorporacion_construccion' ? 'border-amber-600 bg-amber-600' : 'border-slate-300'
+            }`}>
+              {m3Data.subtipo === 'incorporacion_construccion' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m3Data.subtipo === 'incorporacion_construccion' ? 'text-amber-700' : 'text-slate-700'}`}>
+              Incorporación de Construcción
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Agrega nuevas construcciones al registro R2 del predio
+          </p>
+        </div>
+      </div>
+
+      {/* Solo mostrar el resto si ya seleccionó subtipo */}
+      {m3Data.subtipo && (
+        <>
+          {/* Municipio - Dropdown */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <Label>Municipio *</Label>
+              <div 
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-white px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                onClick={() => setShowMunicipioDropdownM3(!showMunicipioDropdownM3)}
+                data-testid="m3-municipio-dropdown"
+              >
+                <span className={m3Data.municipio ? 'text-slate-900' : 'text-slate-500'}>
+                  {m3Data.municipio ? MUNICIPIOS.find(m => m.codigo === m3Data.municipio)?.nombre : 'Seleccionar municipio'}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </div>
+              {showMunicipioDropdownM3 && (
+                <div className="absolute z-[99999] mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {MUNICIPIOS.map(m => (
+                    <div
+                      key={m.codigo}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-amber-50 ${m3Data.municipio === m.codigo ? 'bg-amber-100 text-amber-800' : ''}`}
+                      onClick={() => {
+                        setM3Data(prev => ({ ...prev, municipio: m.codigo, predio: null }));
+                        setShowMunicipioDropdownM3(false);
+                      }}
+                    >
+                      {m.nombre}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Radicado */}
+            <div className="relative">
+              <Label>Radicado *</Label>
+              <Input
+                value={m3Data.radicado}
+                onChange={(e) => {
+                  setM3Data(prev => ({ ...prev, radicado: e.target.value }));
+                  buscarRadicadosM3(e.target.value);
+                }}
+                placeholder="Buscar radicado..."
+                data-testid="m3-radicado-input"
+              />
+              {radicadosDisponiblesM3.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                  {radicadosDisponiblesM3.map((r, idx) => (
+                    <div
+                      key={idx}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-amber-50"
+                      onClick={() => {
+                        setM3Data(prev => ({ ...prev, radicado: r.radicado }));
+                        setRadicadosDisponiblesM3([]);
+                      }}
+                    >
+                      {r.radicado} - {r.nombre_completo || r.creator_name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Búsqueda de Predio */}
+          <Card className="border-amber-200 bg-amber-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
+                <Search className="w-4 h-4" />
+                Buscar Predio
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={searchPredioM3}
+                  onChange={(e) => setSearchPredioM3(e.target.value)}
+                  placeholder="Buscar por código predial, matrícula o propietario..."
+                  onKeyDown={(e) => e.key === 'Enter' && buscarPrediosM3()}
+                  disabled={!m3Data.municipio}
+                  data-testid="m3-search-predio-input"
+                />
+                <Button onClick={buscarPrediosM3} disabled={searchingPrediosM3 || !m3Data.municipio} data-testid="m3-search-btn">
+                  {searchingPrediosM3 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+              
+              {/* Resultados de búsqueda */}
+              {searchResultsM3.length > 0 && (
+                <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
+                  {searchResultsM3.map((predio, idx) => {
+                    const nombrePropietario = predio.propietarios?.length > 0 
+                      ? predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre
+                      : predio.nombre_propietario || '';
+                    return (
+                      <div 
+                        key={idx}
+                        className="p-2 hover:bg-amber-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                        onClick={() => seleccionarPredioM3(predio)}
+                        data-testid={`m3-search-result-${idx}`}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                          <p className="text-xs text-slate-600">{predio.direccion} - {nombrePropietario}</p>
+                        </div>
+                        <Plus className="w-4 h-4 text-amber-600" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Predio seleccionado */}
+              {m3Data.predio && (
+                <div className="bg-white p-4 rounded-lg border border-amber-300" data-testid="m3-predio-seleccionado">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <Badge className="bg-amber-100 text-amber-800">Predio Seleccionado</Badge>
+                      <p className="font-bold text-lg mt-2">{m3Data.predio.codigo_predial_nacional}</p>
+                      <p className="text-sm text-slate-600">{m3Data.predio.direccion}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Destino: {m3Data.predio.destino_economico} | 
+                        Área T: {(m3Data.predio.area_terreno || 0).toLocaleString()} m² | 
+                        Área C: {(m3Data.predio.area_construida || 0).toLocaleString()} m²
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Avalúo actual: ${(m3Data.predio.avaluo || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setM3Data(prev => ({ ...prev, predio: null, destino_anterior: '', avaluo_anterior: 0 }))}
+                      className="text-red-600"
+                      data-testid="m3-remove-predio-btn"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Formulario específico según subtipo */}
+          {m3Data.predio && m3Data.subtipo === 'cambio_destino' && (
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                  <ArrowRight className="w-4 h-4" />
+                  Cambio de Destino Económico
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-blue-700">Destino Anterior</Label>
+                    <div className="bg-blue-100 p-2 rounded text-sm font-medium text-blue-800">
+                      {m3Data.destino_anterior} - {DESTINOS_ECONOMICOS.find(d => d.codigo === m3Data.destino_anterior)?.nombre.split(' - ')[1] || 'Desconocido'}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-emerald-700">Nuevo Destino *</Label>
+                    <select
+                      value={m3Data.destino_nuevo}
+                      onChange={(e) => setM3Data(prev => ({ ...prev, destino_nuevo: e.target.value }))}
+                      className="w-full h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      data-testid="m3-destino-nuevo-select"
+                    >
+                      <option value="">Seleccionar nuevo destino</option>
+                      {DESTINOS_ECONOMICOS.filter(d => d.codigo !== m3Data.destino_anterior).map(d => (
+                        <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Formulario de Incorporación de Construcción */}
+          {m3Data.predio && m3Data.subtipo === 'incorporacion_construccion' && (
+            <Card className="border-purple-200 bg-purple-50/30">
+              <CardHeader className="py-3">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                    <Building className="w-4 h-4" />
+                    Construcciones a Incorporar ({m3Data.construcciones_nuevas.length})
+                  </CardTitle>
+                  <Button 
+                    size="sm" 
+                    onClick={agregarConstruccionM3} 
+                    variant="outline" 
+                    className="text-purple-700 border-purple-300"
+                    data-testid="m3-agregar-construccion-btn"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Agregar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="py-2 space-y-3 max-h-60 overflow-y-auto">
+                {m3Data.construcciones_nuevas.length === 0 ? (
+                  <div className="text-center py-4 text-slate-500 text-sm">
+                    No hay construcciones agregadas. Haga clic en "Agregar" para comenzar.
+                  </div>
+                ) : (
+                  m3Data.construcciones_nuevas.map((const_, idx) => (
+                    <div key={idx} className="border border-purple-200 rounded-lg p-3 bg-white" data-testid={`m3-construccion-${idx}`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-purple-800">Construcción {idx + 1}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => eliminarConstruccionM3(idx)} 
+                          className="text-red-600 h-6 w-6 p-0"
+                          data-testid={`m3-eliminar-construccion-${idx}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <Label className="text-xs">Pisos</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.pisos} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'pisos', parseInt(e.target.value) || 0)} 
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Habitaciones</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.habitaciones} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'habitaciones', parseInt(e.target.value) || 0)} 
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Baños</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.banos} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'banos', parseInt(e.target.value) || 0)} 
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Locales</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.locales} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'locales', parseInt(e.target.value) || 0)} 
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs">Uso</Label>
+                          <Input 
+                            value={const_.uso || ''} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'uso', e.target.value)} 
+                            placeholder="Ej: Vivienda"
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Puntaje</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.puntaje} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'puntaje', parseFloat(e.target.value) || 0)} 
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Área Construida (m²) *</Label>
+                          <Input 
+                            type="number" 
+                            value={const_.area_construida} 
+                            onChange={(e) => actualizarConstruccionM3(idx, 'area_construida', parseFloat(e.target.value) || 0)} 
+                            className="h-8 border-purple-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                
+                {/* Resumen de área a incorporar */}
+                {m3Data.construcciones_nuevas.length > 0 && (
+                  <div className="bg-purple-100 border border-purple-200 rounded p-2 mt-2">
+                    <p className="text-sm text-purple-800">
+                      <strong>Total Área a Incorporar:</strong> {m3Data.construcciones_nuevas.reduce((sum, c) => sum + (c.area_construida || 0), 0).toLocaleString()} m²
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Avalúos */}
+          {m3Data.predio && (
+            <Card className="border-emerald-200 bg-emerald-50/30">
+              <CardHeader className="py-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
+                  <DollarSign className="w-4 h-4" />
+                  Información de Avalúo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-600">Avalúo Anterior</Label>
+                    <div className="bg-slate-100 p-2 rounded text-sm font-medium text-slate-700">
+                      ${(m3Data.avaluo_anterior || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-emerald-700">Nuevo Avalúo *</Label>
+                    <Input
+                      type="number"
+                      value={m3Data.avaluo_nuevo || ''}
+                      onChange={(e) => setM3Data(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                      placeholder="Ingrese el nuevo avalúo"
+                      className="border-emerald-300"
+                      data-testid="m3-avaluo-nuevo-input"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs text-slate-600">Vigencias Fiscales de Inscripción</Label>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={agregarFechaInscripcionM3}
+                      className="h-6 text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Agregar Año
+                    </Button>
+                  </div>
+                  {m3Data.fechas_inscripcion.map((fecha, fidx) => (
+                    <div key={fidx} className="flex items-end gap-2 mb-2 p-2 bg-white rounded border border-emerald-200">
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Año Inscripción</Label>
+                        <Select
+                          value={String(fecha.año || '')}
+                          onValueChange={(v) => actualizarFechaInscripcionM3(fidx, 'año', parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Año..." />
+                          </SelectTrigger>
+                          <SelectContent side="bottom" align="start">
+                            {añosDisponibles.map(año => (
+                              <SelectItem key={año} value={String(año)}>{año}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">
+                          Avalúo Vigencia {fecha.año || '----'}
+                          {fecha.avaluo_source === 'sistema' && <span className="text-emerald-600 ml-1">(Sistema)</span>}
+                        </Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="$0"
+                          value={fecha.avaluo ? `$${Number(fecha.avaluo).toLocaleString()}` : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            actualizarFechaInscripcionM3(fidx, 'avaluo', val);
+                            actualizarFechaInscripcionM3(fidx, 'avaluo_source', 'manual');
+                          }}
+                        />
+                      </div>
+                      {m3Data.fechas_inscripcion.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => eliminarFechaInscripcionM3(fidx)}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-slate-600">Observaciones</Label>
+                  <Textarea
+                    value={m3Data.observaciones || ''}
+                    onChange={(e) => setM3Data(prev => ({ ...prev, observaciones: e.target.value }))}
+                    placeholder="Observaciones adicionales (opcional)"
+                    rows={2}
+                    data-testid="m3-observaciones-input"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   // Renderizar selector de tipo de mutación
   const renderSelectorTipo = () => (
@@ -3440,10 +4251,21 @@ export default function MutacionesResoluciones() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.open(res.pdf_path, '_blank')}
+                        onClick={() => {
+                          setPdfViewerData({
+                            url: `${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`,
+                            title: `Resolución ${res.numero_resolucion}`,
+                            fileName: `Resolucion_${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
+                            resolucionId: res.id,
+                            radicado: res.radicado || '',
+                            correoSolicitante: ''
+                          });
+                          setEmailSent(false);
+                          setShowPDFViewer(true);
+                        }}
                       >
-                        <Download className="w-4 h-4 mr-1" />
-                        PDF
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver PDF
                       </Button>
                     )}
                   </div>
@@ -3728,6 +4550,8 @@ export default function MutacionesResoluciones() {
           </DialogHeader>
           
           {tipoMutacionSeleccionado?.codigo === 'M2' && renderFormularioM2()}
+          
+          {tipoMutacionSeleccionado?.codigo === 'M3' && renderFormularioM3()}
           
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
@@ -4039,6 +4863,7 @@ export default function MutacionesResoluciones() {
               setShowMutacionDialog(false);
               resetFormularioM2();
               resetFormularioM1();
+              resetFormularioM3();
             }}>
               Cancelar
             </Button>
@@ -4049,6 +4874,16 @@ export default function MutacionesResoluciones() {
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {generando ? 'Generando...' : 'Generar Resolución M1'}
+              </Button>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'M3' && m3Data.predio && (
+              <Button 
+                onClick={generarResolucionM3} 
+                disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
+                className="bg-amber-600 hover:bg-amber-700"
+                data-testid="m3-generar-btn"
+              >
+                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
@@ -5117,6 +5952,39 @@ export default function MutacionesResoluciones() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de visualización de PDF */}
+      <PDFViewerModal
+        isOpen={showPDFViewer}
+        onClose={() => setShowPDFViewer(false)}
+        pdfUrl={pdfViewerData.url}
+        title={pdfViewerData.title}
+        fileName={pdfViewerData.fileName}
+        showEmailOption={!!pdfViewerData.radicado}
+        emailSent={emailSent}
+        onSendEmail={async () => {
+          if (!pdfViewerData.radicado) return;
+          
+          try {
+            const token = localStorage.getItem('token');
+            // Finalizar trámite y enviar correo con PDF adjunto
+            const response = await axios.post(`${API}/resoluciones/finalizar-y-enviar`, {
+              radicado: pdfViewerData.radicado,
+              pdf_url: pdfViewerData.url.replace(process.env.REACT_APP_BACKEND_URL, '')
+            }, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+              setEmailSent(true);
+              toast.success('Trámite finalizado y correo enviado exitosamente');
+            }
+          } catch (error) {
+            console.error('Error finalizando trámite:', error);
+            throw error;
+          }
+        }}
+      />
     </div>
   );
 }

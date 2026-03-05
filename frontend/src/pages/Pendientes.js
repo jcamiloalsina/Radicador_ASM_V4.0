@@ -104,6 +104,14 @@ export default function Pendientes() {
   const [observacionesMutacion, setObservacionesMutacion] = useState('');
   const [procesandoMutacion, setProcesandoMutacion] = useState(false);
   
+  // Estados para solicitudes de mutación asignadas como gestor de apoyo
+  const [misSolicitudesMutacion, setMisSolicitudesMutacion] = useState([]);
+  const [loadingSolicitudesMutacion, setLoadingSolicitudesMutacion] = useState(false);
+  const [selectedSolicitudMutacion, setSelectedSolicitudMutacion] = useState(null);
+  const [showFinalizarCartografiaModal, setShowFinalizarCartografiaModal] = useState(false);
+  const [observacionesCartografia, setObservacionesCartografia] = useState('');
+  const [procesandoCartografia, setProcesandoCartografia] = useState(false);
+  
   // Estados para el modal de rechazo
   const [showRechazarModal, setShowRechazarModal] = useState(false);
   const [cambioArechazar, setCambioArechazar] = useState(null);
@@ -362,6 +370,7 @@ export default function Pendientes() {
     fetchPeticionesParaVincular();
     fetchMisAsignacionesApoyo();
     fetchMutacionesPendientes();
+    fetchMisSolicitudesMutacion(); // Cargar solicitudes de mutación asignadas
   }, []);
 
   // Cargar mutaciones pendientes de aprobación
@@ -428,6 +437,53 @@ export default function Pendientes() {
       setMisAsignacionesApoyo([]);
     } finally {
       setLoadingAsignacionesApoyo(false);
+    }
+  };
+
+  // Cargar solicitudes de mutación asignadas como gestor de apoyo
+  const fetchMisSolicitudesMutacion = async () => {
+    try {
+      setLoadingSolicitudesMutacion(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/solicitudes-mutacion?mis_asignaciones=true`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMisSolicitudesMutacion(res.data.solicitudes || []);
+    } catch (error) {
+      console.log('Error cargando solicitudes de mutación asignadas');
+      setMisSolicitudesMutacion([]);
+    } finally {
+      setLoadingSolicitudesMutacion(false);
+    }
+  };
+
+  // Finalizar cartografía de solicitud de mutación
+  const handleFinalizarCartografia = async () => {
+    if (!selectedSolicitudMutacion) return;
+    
+    try {
+      setProcesandoCartografia(true);
+      const token = localStorage.getItem('token');
+      
+      await axios.post(`${API}/solicitudes-mutacion/${selectedSolicitudMutacion.id}/accion`, {
+        accion: 'finalizar_cartografia',
+        observaciones: observacionesCartografia || null
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success('Cartografía completada y enviada a aprobación del coordinador');
+      setShowFinalizarCartografiaModal(false);
+      setSelectedSolicitudMutacion(null);
+      setObservacionesCartografia('');
+      fetchMisSolicitudesMutacion();
+      
+      // Emitir evento para actualizar badge
+      window.dispatchEvent(new Event('pendientesUpdated'));
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al finalizar la cartografía');
+    } finally {
+      setProcesandoCartografia(false);
     }
   };
 
@@ -1193,7 +1249,7 @@ export default function Pendientes() {
   const prediosParaRevisar = prediosNuevos.filter(p => (p.estado_flujo || p.estado) === 'revision');
   
   // Calcular totales según el rol
-  const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length;
+  const totalMisAsignaciones = misCreaciones.length + asignadosAMi.length + misAsignacionesApoyo.length + misSolicitudesMutacion.length;
   const totalPendientesAprobacion = cambiosPendientes.length + prediosEnRevision + reaparicionesPendientes + mutacionesPendientes.length;
   
   // Título y descripción según el rol
@@ -1234,7 +1290,7 @@ export default function Pendientes() {
 
           {/* Tab: Mis Asignaciones (Todo centralizado para gestores) */}
           <TabsContent value="mis-asignaciones">
-            {(loadingAsignacionesApoyo || loadingPredios) ? (
+            {(loadingAsignacionesApoyo || loadingPredios || loadingSolicitudesMutacion) ? (
               <Card>
                 <CardContent className="py-16 text-center">
                   <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
@@ -1479,6 +1535,81 @@ export default function Pendientes() {
                                 >
                                   <CheckCircle className="w-4 h-4 mr-1" />
                                   Completar y Enviar
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección: Solicitudes de Mutación Asignadas (Cartografía) */}
+                {misSolicitudesMutacion.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
+                      Mutaciones Asignadas - Cartografía ({misSolicitudesMutacion.length})
+                    </h3>
+                    <div className="grid gap-3">
+                      {misSolicitudesMutacion.map(solicitud => (
+                        <Card key={solicitud.id} className="border-purple-200 bg-purple-50/30">
+                          <CardContent className="py-4">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-purple-600 text-white">
+                                    {solicitud.tipo}
+                                  </Badge>
+                                  <span className="font-medium text-slate-800">
+                                    {solicitud.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-slate-600">
+                                  <MapPin className="w-4 h-4 inline mr-1" />
+                                  {solicitud.municipio_nombre || solicitud.municipio}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                  <Badge variant="outline" className="text-purple-600 border-purple-300">
+                                    Pendiente Cartografía
+                                  </Badge>
+                                  {solicitud.radicado && (
+                                    <Badge variant="outline" className="text-blue-600">
+                                      Radicado: {solicitud.radicado}
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-slate-500">
+                                    Predios: {solicitud.predios_cancelados?.length || 0} cancelados, {solicitud.predios_inscritos?.length || 0} inscritos
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                  <Clock className="w-3 h-3 inline mr-1" />
+                                  Asignado: {formatDate(solicitud.fecha_creacion)}
+                                  {solicitud.creado_por_nombre && (
+                                    <span className="ml-2">por {solicitud.creado_por_nombre}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedSolicitudMutacion(solicitud)}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Ver Detalle
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={() => {
+                                    setSelectedSolicitudMutacion(solicitud);
+                                    setShowFinalizarCartografiaModal(true);
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Finalizar Cartografía
                                 </Button>
                               </div>
                             </div>
@@ -3044,6 +3175,96 @@ export default function Pendientes() {
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Eliminando...</>
               ) : (
                 <><Trash2 className="w-4 h-4 mr-2" /> Eliminar Solicitud</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para Finalizar Cartografía de Mutación */}
+      <Dialog open={showFinalizarCartografiaModal} onOpenChange={setShowFinalizarCartografiaModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-purple-700">
+              <CheckCircle className="w-5 h-5" />
+              Finalizar Cartografía de Mutación
+            </DialogTitle>
+            <DialogDescription>
+              ¿Has completado la cartografía de esta solicitud? Se enviará a aprobación del coordinador.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSolicitudMutacion && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 p-4 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-600 text-white">{selectedSolicitudMutacion.tipo}</Badge>
+                  <span className="font-medium">
+                    {selectedSolicitudMutacion.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-600">
+                  <strong>Municipio:</strong> {selectedSolicitudMutacion.municipio_nombre || selectedSolicitudMutacion.municipio}
+                </p>
+                {selectedSolicitudMutacion.radicado && (
+                  <p className="text-sm text-slate-600">
+                    <strong>Radicado:</strong> {selectedSolicitudMutacion.radicado}
+                  </p>
+                )}
+                <p className="text-sm text-slate-600">
+                  <strong>Solicitado por:</strong> {selectedSolicitudMutacion.creado_por_nombre || 'N/A'}
+                </p>
+                <div className="flex gap-4 text-sm text-slate-600">
+                  <span>
+                    <strong>Predios a cancelar:</strong> {selectedSolicitudMutacion.predios_cancelados?.length || 0}
+                  </span>
+                  <span>
+                    <strong>Predios a inscribir:</strong> {selectedSolicitudMutacion.predios_inscritos?.length || 0}
+                  </span>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium text-slate-700">
+                  Observaciones de cartografía (opcional)
+                </Label>
+                <Textarea
+                  value={observacionesCartografia}
+                  onChange={(e) => setObservacionesCartografia(e.target.value)}
+                  placeholder="Agregar comentarios sobre la cartografía realizada, ajustes, observaciones..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowFinalizarCartografiaModal(false);
+                setSelectedSolicitudMutacion(null);
+                setObservacionesCartografia('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleFinalizarCartografia}
+              disabled={procesandoCartografia}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {procesandoCartografia ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  Finalizar y Enviar a Aprobación
+                </>
               )}
             </Button>
           </DialogFooter>

@@ -1,0 +1,93 @@
+{
+  "summary": "Testing completed for M3 Mutaciones module (Cambio de Destino Económico / Incorporación de Construcción). All features verified: 1) M3 card appears in mutations list, 2) M3 dialog shows two subtipo options, 3) Municipio dropdown works, 4) Predio search works, 5) Cambio de Destino form shows destino anterior/nuevo, 6) Incorporación de Construcción allows adding multiple construcciones, 7) Backend endpoint /api/resoluciones/generar-m3 works correctly",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "M3 Dialog",
+        "issues": [
+          "Warning console: Missing `Description` or `aria-describedby={undefined}` for {DialogContent} - accessibility issue"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_m3_mutaciones.py",
+    "/app/test_reports/pytest/pytest_results_m3_iteration61.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: M3 card (data-testid='mutacion-card-M3') is clickable and shows 'Mutación Tercera' with description",
+    "VERIFIED: M3 dialog shows both options: 'Cambio de Destino Económico' (data-testid='m3-cambio-destino-option') and 'Incorporación de Construcción' (data-testid='m3-incorporacion-option')",
+    "VERIFIED: Municipio dropdown (data-testid='m3-municipio-dropdown') works correctly - all 12 municipalities available",
+    "VERIFIED: Predio search (data-testid='m3-search-predio-input') works correctly - results shown and clickable",
+    "VERIFIED: 'Cambio de Destino' form shows Destino Anterior (readonly) and Nuevo Destino dropdown (data-testid='m3-destino-nuevo-select')",
+    "VERIFIED: 'Incorporación de Construcción' form allows adding multiple construcciones with fields: Pisos, Habitaciones, Baños, Locales, Uso, Puntaje, Área Construida",
+    "VERIFIED: Backend endpoint POST /api/resoluciones/generar-m3 exists at line ~26439 in server.py",
+    "VERIFIED: Backend generates PDF using resolucion_m3_pdf_generator.py",
+    "VERIFIED: Backend updates predio in database with new destino_economico or r2_registros",
+    "VERIFIED: Backend saves resolution to resoluciones collection with pdf_path"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_m3_mutaciones.py (new test file)"
+  ],
+  "success_rate": {
+    "backend": "100% (12 tests passed)",
+    "frontend": "100% (All UI elements verified)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*",
+      "role": "Administrador"
+    }
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "M3 module fully tested and working. The module supports two subtipos: 'cambio_destino' (changes destino economico) and 'incorporacion_construccion' (adds R2 records). Both generate PDFs and update predio records.",
+  "tests_performed": {
+    "backend_api_tests": {
+      "health_check": "PASS",
+      "admin_login": "PASS",
+      "generar_m3_requires_auth": "PASS - Returns 401 without token",
+      "generar_m3_validates_required_fields": "PASS - Returns 422 for empty request",
+      "search_predios_for_m3": "PASS - Found predios in Ábrego",
+      "generar_m3_predio_not_found": "PASS - Returns 404 for non-existent predio",
+      "resoluciones_historial_includes_m3": "PASS - Historial endpoint works",
+      "generar_m3_cambio_destino_full_flow": "PASS - Creates resolution and PDF",
+      "generar_m3_incorporacion_full_flow": "PASS - Creates resolution with construcciones"
+    },
+    "frontend_ui_tests": {
+      "login": "PASS",
+      "navigate_to_mutaciones": "PASS",
+      "m3_card_visible": "PASS - data-testid='mutacion-card-M3' found",
+      "m3_card_clickable": "PASS - Opens dialog",
+      "cambio_destino_option": "PASS - data-testid='m3-cambio-destino-option' found",
+      "incorporacion_option": "PASS - data-testid='m3-incorporacion-option' found",
+      "municipio_dropdown": "PASS - data-testid='m3-municipio-dropdown' works",
+      "predio_search": "PASS - data-testid='m3-search-predio-input' works",
+      "predio_selection": "PASS - Shows selected predio with details",
+      "destino_nuevo_select": "PASS - data-testid='m3-destino-nuevo-select' works",
+      "agregar_construccion_btn": "PASS - data-testid='m3-agregar-construccion-btn' works",
+      "construccion_form_fields": "PASS - Pisos, Habitaciones, Baños, Locales, Uso, Puntaje, Área visible",
+      "generar_resolucion_btn": "PASS - 'Generar Resolución M3' button visible"
+    }
+  },
+  "features_verified": [
+    "1. M3 card (data-testid='mutacion-card-M3') visible in mutations list with green M3 badge",
+    "2. M3 dialog opens with two options: 'Cambio de Destino Económico' and 'Incorporación de Construcción'",
+    "3. Municipio dropdown shows all 12 municipalities and selection works",
+    "4. Predio search by code/matrícula/propietario works correctly",
+    "5. 'Cambio de Destino' form shows Destino Anterior (readonly) and Nuevo Destino (editable select)",
+    "6. 'Incorporación de Construcción' form allows adding multiple construcciones with R2 fields",
+    "7. Avalúo Anterior (readonly) and Nuevo Avalúo (editable) fields shown at bottom",
+    "8. 'Generar Resolución M3' button disabled until all required fields filled",
+    "9. Backend POST /api/resoluciones/generar-m3 generates PDF and updates predio"
+  ]
+}

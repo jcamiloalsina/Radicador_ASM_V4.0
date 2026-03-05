@@ -650,8 +650,8 @@ class MutacionEstado:
 
 class SolicitudMutacionCreate(BaseModel):
     """Modelo para crear una solicitud de mutación"""
-    tipo: str  # M1, M2
-    subtipo: Optional[str] = None  # Para M2: desengloble, englobe
+    tipo: str  # M1, M2, M3
+    subtipo: Optional[str] = None  # Para M2: desengloble, englobe | Para M3: cambio_destino, incorporacion_construccion
     municipio: str
     radicado: Optional[str] = None
     solicitante: Optional[dict] = None
@@ -663,6 +663,13 @@ class SolicitudMutacionCreate(BaseModel):
     predio_id: Optional[str] = None
     propietarios_anteriores: Optional[List[dict]] = None
     propietarios_nuevos: Optional[List[dict]] = None
+    # Para M3
+    destino_anterior: Optional[str] = None
+    destino_nuevo: Optional[str] = None
+    construcciones_nuevas: Optional[List[dict]] = None
+    avaluo_anterior: Optional[float] = None
+    avaluo_nuevo: Optional[float] = None
+    fechas_inscripcion: Optional[List[dict]] = None
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
@@ -1026,7 +1033,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1164,7 +1171,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1230,7 +1237,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1268,7 +1275,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1321,7 +1328,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1360,7 +1367,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1390,7 +1397,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1423,7 +1430,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -3932,6 +3939,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     reapariciones_pendientes = 0
     aprobados_mes = 0
     rechazados_mes = 0
+    mutaciones_pendientes_count = 0
     
     if es_aprobador:
         # Query base para municipios (si el usuario tiene municipios asignados)
@@ -3971,6 +3979,77 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             "fecha_resolucion": {"$gte": inicio_mes.isoformat()}
         })
     
+    # ===== LISTAS DE TAREAS URGENTES (para el dashboard) =====
+    tareas_urgentes = {
+        "peticiones_asignadas": [],
+        "predios_apoyo": [],
+        "mutaciones_cartografia": [],
+        "modificaciones_aprobar": [],
+        "mutaciones_aprobar": [],
+        "predios_aprobar": []
+    }
+    
+    # Para GESTOR: obtener sus asignaciones
+    if user_role in [UserRole.GESTOR, 'gestor_auxiliar', 'gestor']:
+        # Peticiones asignadas al gestor (últimas 5)
+        peticiones_cursor = db.petitions.find(
+            {"gestores_asignados": user_id, "estado": {"$in": ["asignado", "en_proceso"]}},
+            {"_id": 0, "id": 1, "radicado": 1, "tipo_tramite": 1, "municipio": 1, "created_at": 1, "estado": 1}
+        ).sort("created_at", -1).limit(5)
+        tareas_urgentes["peticiones_asignadas"] = await peticiones_cursor.to_list(5)
+        
+        # Predios asignados como gestor de apoyo (últimas 5)
+        predios_apoyo_cursor = db.predios_nuevos.find(
+            {"gestor_apoyo_id": user_id, "estado_flujo": {"$in": ["creado", "digitalizacion", "devuelto"]}},
+            {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "municipio": 1, "direccion": 1, "created_at": 1, "estado_flujo": 1}
+        ).sort("created_at", -1).limit(5)
+        tareas_urgentes["predios_apoyo"] = await predios_apoyo_cursor.to_list(5)
+        
+        # Mutaciones asignadas para cartografía (últimas 5)
+        mutaciones_cart_cursor = db.solicitudes_mutacion.find(
+            {"gestor_apoyo_id": user_id, "estado": "pendiente_cartografia"},
+            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1, "municipio_nombre": 1, "fecha_creacion": 1}
+        ).sort("fecha_creacion", -1).limit(5)
+        tareas_urgentes["mutaciones_cartografia"] = await mutaciones_cart_cursor.to_list(5)
+    
+    # Para COORDINADOR/ADMIN: obtener pendientes de aprobación
+    if es_aprobador:
+        query_municipio_list = {}
+        if user_municipios:
+            query_municipio_list = {"municipio": {"$in": user_municipios}}
+        
+        # Modificaciones pendientes de aprobar (más antiguas primero, últimas 5)
+        modificaciones_cursor = db.cambios_pendientes.find(
+            {**query_municipio_list, "estado": "pendiente"},
+            {"_id": 0, "id": 1, "codigo_predial": 1, "tipo_cambio": 1, "municipio": 1, "created_at": 1, "solicitante_nombre": 1}
+        ).sort("created_at", 1).limit(5)
+        tareas_urgentes["modificaciones_aprobar"] = await modificaciones_cursor.to_list(5)
+        
+        # Mutaciones pendientes de aprobar (últimas 5)
+        mutaciones_aprobar_cursor = db.solicitudes_mutacion.find(
+            {**query_municipio_list, "estado": "pendiente_aprobacion"},
+            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1, "municipio_nombre": 1, "fecha_creacion": 1, "creado_por_nombre": 1}
+        ).sort("fecha_creacion", 1).limit(5)
+        tareas_urgentes["mutaciones_aprobar"] = await mutaciones_aprobar_cursor.to_list(5)
+        
+        # Predios nuevos en revisión (últimas 5)
+        predios_rev_cursor = db.predios_nuevos.find(
+            {**query_municipio_list, "estado_flujo": "revision"},
+            {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "municipio": 1, "direccion": 1, "created_at": 1, "gestor_creador_nombre": 1}
+        ).sort("created_at", 1).limit(5)
+        tareas_urgentes["predios_aprobar"] = await predios_rev_cursor.to_list(5)
+    
+    # Contar mutaciones pendientes para coordinadores
+    mutaciones_pendientes_count = 0
+    if es_aprobador:
+        query_mut = {}
+        if user_municipios:
+            query_mut = {"municipio": {"$in": user_municipios}}
+        mutaciones_pendientes_count = await db.solicitudes_mutacion.count_documents({
+            **query_mut,
+            "estado": "pendiente_aprobacion"
+        })
+    
     return {
         # Peticiones/Radicados
         "total": total,
@@ -3993,7 +4072,10 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "aprobados_mes": aprobados_mes,
         "rechazados_mes": rechazados_mes,
         # Info del rol
-        "es_aprobador": es_aprobador
+        "es_aprobador": es_aprobador,
+        # Listas de tareas urgentes
+        "tareas_urgentes": tareas_urgentes,
+        "mutaciones_pendientes": mutaciones_pendientes_count
     }
 
 @api_router.post("/petitions/{petition_id}/reenviar")
@@ -11508,7 +11590,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -13836,6 +13918,26 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
         
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_email=aprobador.get("email"),
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M1 para {codigo}",
+            entidad_tipo="resolucion",
+            entidad_id=numero_resolucion,
+            datos_adicionales={
+                "tipo_mutacion": "M1",
+                "codigo_predial": codigo,
+                "municipio": datos_predio.get("municipio", ""),
+                "radicado": cambio.get("radicado", "")
+            },
+            ip_address=None
+        )
+        
         # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
         verificacion_doc = {
             "id": str(uuid.uuid4()),
@@ -13918,6 +14020,368 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         import traceback
         traceback.print_exc()
         return None
+
+
+# ========================================
+# FUNCIONES INTERNAS PARA GENERAR RESOLUCIONES M2/M3
+# ========================================
+
+async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera resolución M2 (Desenglobe) y aplica los cambios a los predios.
+    Usado internamente cuando se aprueba una solicitud de mutación M2.
+    """
+    try:
+        from resolucion_m2_pdf_generator import generate_resolucion_m2_pdf
+        
+        # Obtener datos de la solicitud
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        predios_cancelados = solicitud.get('predios_cancelados', [])
+        predios_inscritos = solicitud.get('predios_inscritos', [])
+        solicitante = solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""}
+        
+        # Obtener nombre del municipio
+        municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
+        
+        # Generar número de resolución
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Preparar datos para el PDF
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "radicado": radicado,
+            "predios_cancelados": predios_cancelados,
+            "predios_inscritos": predios_inscritos,
+            "solicitante": solicitante,
+            "observaciones": solicitud.get('observaciones', ''),
+            "elaborado_por": aprobador.get("full_name", ""),
+            "revisado_por": ""
+        }
+        
+        # Crear directorio si no existe
+        resoluciones_dir = "/app/backend/static/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        # Generar nombre del archivo
+        filename = f"resolucion_M2_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        filepath = os.path.join(resoluciones_dir, filename)
+        
+        # Generar PDF
+        pdf_bytes = generate_resolucion_m2_pdf(pdf_data)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # ========================================
+        # APLICAR CAMBIOS A LOS PREDIOS
+        # ========================================
+        
+        # 1. Marcar predios cancelados como eliminados
+        for predio_cancelado in predios_cancelados:
+            predio_id = predio_cancelado.get('id')
+            if predio_id:
+                # Mover a predios_eliminados
+                predio_original = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+                if predio_original:
+                    predio_eliminado = {
+                        **predio_original,
+                        "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
+                        "fecha_eliminacion": datetime.now(timezone.utc).isoformat(),
+                        "eliminado_por": aprobador.get('id'),
+                        "eliminado_por_nombre": aprobador.get('full_name'),
+                        "resolucion_eliminacion": numero_resolucion,
+                        "solicitud_id": solicitud.get('id')
+                    }
+                    await db.predios_eliminados.insert_one(predio_eliminado)
+                    
+                    # Marcar como deleted en predios
+                    await db.predios.update_one(
+                        {"id": predio_id},
+                        {"$set": {
+                            "deleted": True,
+                            "status": "cancelado",
+                            "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
+                            "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+        
+        # 2. Crear predios inscritos
+        for predio_nuevo in predios_inscritos:
+            predio_doc = {
+                **predio_nuevo,
+                "id": predio_nuevo.get('id') or str(uuid.uuid4()),
+                "status": "aprobado",
+                "estado_aprobacion": PredioEstadoAprobacion.APROBADO,
+                "deleted": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "tipo_mutacion": "Mutación Segunda (Desenglobe)",
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": fecha_resolucion,
+                "solicitud_id": solicitud.get('id'),
+                "historial": [{
+                    "accion": "Predio creado por Desenglobe (M2)",
+                    "tipo_cambio": "desenglobe",
+                    "usuario": aprobador.get('full_name'),
+                    "usuario_id": aprobador.get('id'),
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "numero_resolucion": numero_resolucion
+                }]
+            }
+            
+            # Verificar si el predio ya existe
+            existente = await db.predios.find_one({"id": predio_doc['id']}, {"_id": 0})
+            if existente:
+                await db.predios.update_one(
+                    {"id": predio_doc['id']},
+                    {"$set": predio_doc}
+                )
+            else:
+                await db.predios.insert_one(predio_doc)
+        
+        # Guardar resolución en la colección
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "tipo": "M2",
+            "subtipo": solicitud.get('subtipo', 'desenglobe'),
+            "municipio": municipio_nombre,
+            "codigo_municipio": municipio,
+            "radicado": radicado,
+            "solicitud_id": solicitud.get('id'),
+            "predios_cancelados": [p.get('codigo_predial_nacional') for p in predios_cancelados],
+            "predios_inscritos": [p.get('codigo_predial_nacional') for p in predios_inscritos],
+            "pdf_path": f"/resoluciones/{filename}",
+            "generado_por": aprobador.get('id'),
+            "generado_por_nombre": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "año": datetime.now().year
+        }
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M2 (Desenglobe) para {municipio_nombre}",
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_rol=aprobador.get("role"),
+            municipio=municipio_nombre,
+            detalles={
+                "tipo_mutacion": "M2",
+                "subtipo": "desenglobe",
+                "numero_resolucion": numero_resolucion,
+                "predios_cancelados": len(predios_cancelados),
+                "predios_inscritos": len(predios_inscritos)
+            }
+        )
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_path": f"/resoluciones/{filename}",
+            "predios_creados": len(predios_inscritos),
+            "predios_cancelados": len(predios_cancelados)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m2_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera resolución M3 (Cambio destino / Incorporación construcción) y aplica los cambios.
+    Usado internamente cuando se aprueba una solicitud de mutación M3.
+    """
+    try:
+        from resolucion_m3_pdf_generator import generate_resolucion_m3_pdf
+        
+        # Obtener datos de la solicitud
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        predio_id = solicitud.get('predio_id', '')
+        subtipo = solicitud.get('subtipo', '')  # cambio_destino o incorporacion_construccion
+        
+        # Obtener predio
+        predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        if not predio:
+            raise Exception(f"Predio no encontrado: {predio_id}")
+        
+        # Obtener nombre del municipio
+        municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
+        
+        # Generar número de resolución
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Preparar fechas de inscripción
+        fechas_inscripcion = solicitud.get('fechas_inscripcion') or [
+            {"año": datetime.now().year, "avaluo": solicitud.get('avaluo_nuevo', 0), "avaluo_source": "actual"}
+        ]
+        
+        # Preparar datos para el PDF
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "subtipo": subtipo,
+            "radicado": radicado,
+            "predio": predio,
+            "destino_anterior": solicitud.get('destino_anterior') or predio.get('destino_economico', 'R'),
+            "destino_nuevo": solicitud.get('destino_nuevo'),
+            "construcciones_nuevas": solicitud.get('construcciones_nuevas') or [],
+            "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+            "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
+            "fechas_inscripcion": fechas_inscripcion,
+            "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+            "elaborado_por": aprobador.get("full_name", ""),
+            "revisado_por": ""
+        }
+        
+        # Crear directorio si no existe
+        resoluciones_dir = "/app/backend/static/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        # Generar nombre del archivo
+        filename = f"resolucion_M3_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        filepath = os.path.join(resoluciones_dir, filename)
+        
+        # Generar PDF
+        pdf_bytes = generate_resolucion_m3_pdf(pdf_data)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # ========================================
+        # APLICAR CAMBIOS AL PREDIO
+        # ========================================
+        
+        update_predio = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "avaluo": solicitud.get('avaluo_nuevo', predio.get('avaluo', 0)),
+        }
+        
+        historial_entry = {
+            "accion": f"Mutación M3 ({subtipo}) aprobada",
+            "tipo_cambio": f"m3_{subtipo}",
+            "usuario": aprobador.get('full_name'),
+            "usuario_id": aprobador.get('id'),
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "numero_resolucion": numero_resolucion,
+            "cambio_id": solicitud.get('id')
+        }
+        
+        if subtipo == "cambio_destino":
+            # Cambiar destino económico
+            destino_anterior = predio.get('destino_economico', '')
+            destino_nuevo = solicitud.get('destino_nuevo', '')
+            
+            update_predio["destino_economico"] = destino_nuevo
+            historial_entry["detalles"] = {
+                "destino_anterior": destino_anterior,
+                "destino_nuevo": destino_nuevo,
+                "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+                "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0)
+            }
+            
+        elif subtipo == "incorporacion_construccion":
+            # Agregar construcciones al R2
+            construcciones_nuevas = solicitud.get('construcciones_nuevas', [])
+            r2_actuales = predio.get('r2_registros', [])
+            
+            # Agregar las nuevas construcciones
+            for const in construcciones_nuevas:
+                r2_actuales.append({
+                    **const,
+                    "fecha_incorporacion": datetime.now(timezone.utc).isoformat(),
+                    "resolucion": numero_resolucion
+                })
+            
+            # Recalcular área construida total
+            area_construida_total = sum(c.get('area_construida', 0) for c in r2_actuales)
+            
+            update_predio["r2_registros"] = r2_actuales
+            update_predio["area_construida"] = area_construida_total
+            
+            historial_entry["detalles"] = {
+                "construcciones_agregadas": len(construcciones_nuevas),
+                "area_total_nueva": area_construida_total,
+                "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+                "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0)
+            }
+        
+        # Aplicar actualización al predio
+        await db.predios.update_one(
+            {"id": predio_id},
+            {
+                "$set": update_predio,
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        # Guardar resolución en la colección
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "tipo": "M3",
+            "subtipo": subtipo,
+            "municipio": municipio_nombre,
+            "codigo_municipio": municipio,
+            "radicado": radicado,
+            "solicitud_id": solicitud.get('id'),
+            "predio_id": predio_id,
+            "codigo_predial": predio.get('codigo_predial_nacional'),
+            "pdf_path": f"/resoluciones/{filename}",
+            "generado_por": aprobador.get('id'),
+            "generado_por_nombre": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "año": datetime.now().year
+        }
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M3 ({subtipo}) para {municipio_nombre}",
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_rol=aprobador.get("role"),
+            municipio=municipio_nombre,
+            detalles={
+                "tipo_mutacion": "M3",
+                "subtipo": subtipo,
+                "predio_id": predio_id,
+                "codigo_predial": predio.get('codigo_predial_nacional'),
+                "numero_resolucion": numero_resolucion
+            }
+        )
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_path": f"/resoluciones/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m3_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 @api_router.post("/predios/cambios/aprobar")
@@ -25944,6 +26408,28 @@ async def generar_resolucion_m2(
         
         await db.resoluciones.insert_one(resolucion_doc)
         
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_email=current_user.get("email"),
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M2 ({request.subtipo}) para {municipio_nombre}",
+            entidad_tipo="resolucion",
+            entidad_id=numero_resolucion,
+            datos_adicionales={
+                "tipo_mutacion": "M2",
+                "subtipo": request.subtipo,
+                "municipio": municipio_nombre,
+                "radicado": request.radicado,
+                "predios_cancelados": len(request.predios_cancelados),
+                "predios_inscritos": len(request.predios_inscritos)
+            },
+            ip_address=None
+        )
+        
         # Guardar código de verificación
         certificado_verificable = {
             "id": str(uuid.uuid4()),
@@ -25978,33 +26464,42 @@ async def generar_resolucion_m2(
             predio_id_real = predio_existente.get('id')
             
             if tipo_cancelacion == 'total':
-                # Cancelación total: marcar para eliminación (pendiente de aprobación)
-                # Primero inicializar historial_resoluciones si no existe
-                await db.predios.update_one(
-                    {"id": predio_id_real, "historial_resoluciones": {"$exists": False}},
-                    {"$set": {"historial_resoluciones": []}}
-                )
-                # Luego agregar la resolución al historial
+                # Cancelación total: mover a predios_eliminados y marcar como eliminado
+                
+                # Crear registro en predios_eliminados con toda la información
+                predio_eliminado = {
+                    **predio_existente,
+                    "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                    "motivo_eliminacion": f"Mutación M2 - {request.subtipo}",
+                    "resolucion_eliminacion": numero_resolucion,
+                    "fecha_resolucion_eliminacion": fecha_resolucion,
+                    "eliminado_por": current_user.get("id"),
+                    "eliminado_por_nombre": current_user.get("full_name"),
+                    "historial_resoluciones": (predio_existente.get("historial_resoluciones") or []) + [{
+                        "tipo_mutacion": "M2",
+                        "subtipo": request.subtipo,
+                        "numero_resolucion": numero_resolucion,
+                        "fecha_resolucion": fecha_resolucion,
+                        "accion": "cancelacion_total"
+                    }]
+                }
+                
+                # Insertar en predios_eliminados
+                await db.predios_eliminados.insert_one(predio_eliminado)
+                
+                # Marcar el predio original como eliminado (soft delete)
                 result = await db.predios.update_one(
                     {"id": predio_id_real},
                     {
                         "$set": {
-                            "pendiente_eliminacion": True,
+                            "deleted": True,
+                            "eliminado_en": datetime.now(timezone.utc).isoformat(),
                             "resolucion_eliminacion": numero_resolucion,
                             "fecha_resolucion_eliminacion": fecha_resolucion
-                        },
-                        "$push": {
-                            "historial_resoluciones": {
-                                "tipo_mutacion": "M2",
-                                "subtipo": request.subtipo,
-                                "numero_resolucion": numero_resolucion,
-                                "fecha_resolucion": fecha_resolucion,
-                                "accion": "cancelacion_total"
-                            }
                         }
                     }
                 )
-                logging.info(f"Predio {npn_cancelado} marcado para cancelación: {result.modified_count} documentos actualizados")
+                logging.info(f"Predio matriz {npn_cancelado} cancelado y movido a predios_eliminados: {result.modified_count} documentos actualizados")
             elif tipo_cancelacion == 'parcial':
                 # Cancelación parcial: actualizar predio con nuevos datos
                 update_data = {
@@ -26061,9 +26556,74 @@ async def generar_resolucion_m2(
         
         # Procesar predios inscritos (crear nuevos predios)
         for predio_inscrito in request.predios_inscritos:
+            npn = predio_inscrito.get('npn', predio_inscrito.get('codigo_predial', ''))
+            matricula = predio_inscrito.get('matricula_inmobiliaria', '')
+            
+            # Construir r2_registros con la información física del predio
+            r2_registros = []
+            construcciones_data = predio_inscrito.get('construcciones', [])
+            zonas_data = predio_inscrito.get('zonas', predio_inscrito.get('zonas_homogeneas', []))
+            
+            # Si hay construcciones, crear un registro R2 por cada una
+            if construcciones_data:
+                for idx, construccion in enumerate(construcciones_data):
+                    zona_info = zonas_data[idx] if idx < len(zonas_data) else {}
+                    r2_registro = {
+                        "codigo_predial_nacional": npn,
+                        "orden_construccion": idx + 1,
+                        "tipo_construccion": construccion.get('tipificacion', 'C'),
+                        "total_pisos": construccion.get('piso', 1),
+                        "total_habitaciones": construccion.get('habitaciones', 0),
+                        "total_banos": construccion.get('banos', 0),
+                        "total_locales": construccion.get('locales', 0),
+                        "puntaje": construccion.get('puntaje', 0),
+                        "uso": construccion.get('uso', ''),
+                        "area_construida": construccion.get('area_construida', 0),
+                        "zona_fisica_geoeconomica": zona_info.get('zona_fisica', '0'),
+                        "zona_economica": zona_info.get('zona_economica', '0'),
+                        "matricula_inmobiliaria": matricula
+                    }
+                    r2_registros.append(r2_registro)
+            elif zonas_data:
+                # Si hay zonas pero no construcciones, crear registro R2 básico
+                for idx, zona in enumerate(zonas_data):
+                    r2_registro = {
+                        "codigo_predial_nacional": npn,
+                        "orden_construccion": idx + 1,
+                        "tipo_construccion": "C",
+                        "total_pisos": 0,
+                        "total_habitaciones": 0,
+                        "total_banos": 0,
+                        "total_locales": 0,
+                        "puntaje": 0,
+                        "uso": "",
+                        "area_construida": zona.get('area_construida', 0),
+                        "zona_fisica_geoeconomica": zona.get('zona_fisica', '0'),
+                        "zona_economica": zona.get('zona_economica', '0'),
+                        "matricula_inmobiliaria": matricula
+                    }
+                    r2_registros.append(r2_registro)
+            else:
+                # Registro R2 mínimo si no hay datos de construcción
+                r2_registros.append({
+                    "codigo_predial_nacional": npn,
+                    "orden_construccion": 1,
+                    "tipo_construccion": "C",
+                    "total_pisos": 0,
+                    "total_habitaciones": 0,
+                    "total_banos": 0,
+                    "total_locales": 0,
+                    "puntaje": 0,
+                    "uso": "",
+                    "area_construida": predio_inscrito.get('area_construida', 0),
+                    "zona_fisica_geoeconomica": "0",
+                    "zona_economica": "0",
+                    "matricula_inmobiliaria": matricula
+                })
+            
             nuevo_predio = {
                 "id": str(uuid.uuid4()),
-                "codigo_predial_nacional": predio_inscrito.get('npn', predio_inscrito.get('codigo_predial')),
+                "codigo_predial_nacional": npn,
                 "codigo_homologado": predio_inscrito.get('codigo_homologado', ''),
                 "numero_predio": predio_inscrito.get('codigo_predial', ''),
                 "direccion": predio_inscrito.get('direccion', ''),
@@ -26071,15 +26631,16 @@ async def generar_resolucion_m2(
                 "area_terreno": predio_inscrito.get('area_terreno', 0),
                 "area_construida": predio_inscrito.get('area_construida', 0),
                 "avaluo": predio_inscrito.get('avaluo', 0),
-                "matricula_inmobiliaria": predio_inscrito.get('matricula_inmobiliaria', ''),
+                "matricula_inmobiliaria": matricula,
                 "propietarios": predio_inscrito.get('propietarios', []),
                 "zonas_homogeneas": predio_inscrito.get('zonas_homogeneas', []),
+                "r2_registros": r2_registros,  # NUEVO: Incluir información R2
                 "municipio": municipio_nombre,
                 "codigo_municipio": request.municipio,
                 "vigencia": datetime.now().year,
                 "creado_en_plataforma": True,
                 "area_editada_en_plataforma": True,
-                "status": "pendiente_aprobacion",
+                "status": "aprobado",  # CAMBIO: Directamente aprobado para que aparezca en gestión
                 "resolucion_creacion": numero_resolucion,
                 "historial_resoluciones": [{
                     "tipo_mutacion": "M2",
@@ -26091,6 +26652,7 @@ async def generar_resolucion_m2(
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.predios.insert_one(nuevo_predio)
+            logging.info(f"Predio inscrito creado: {npn} con {len(r2_registros)} registros R2")
         
         logging.info(f"Resolución M2 {numero_resolucion} generada por {current_user.get('email')}")
         
@@ -26113,6 +26675,399 @@ async def generar_resolucion_m2(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error generando resolución: {str(e)}")
+
+
+# ==================== FINALIZAR TRÁMITE Y ENVIAR CORREO ====================
+
+class FinalizarEnviarRequest(BaseModel):
+    radicado: str
+    pdf_url: str
+
+@api_router.post("/resoluciones/finalizar-y-enviar")
+async def finalizar_tramite_y_enviar_correo(
+    request: FinalizarEnviarRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Finaliza el trámite asociado al radicado y envía el PDF por correo al solicitante.
+    """
+    try:
+        if current_user.get('role') not in ['coordinador', 'administrador']:
+            if not await check_permission(current_user, 'approve_changes'):
+                raise HTTPException(status_code=403, detail="No tiene permisos para finalizar trámites")
+        
+        # Buscar la petición por radicado
+        petition = await db.petitions.find_one({"radicado": request.radicado}, {"_id": 0})
+        
+        if not petition:
+            raise HTTPException(status_code=404, detail=f"No se encontró el trámite con radicado {request.radicado}")
+        
+        # Verificar si tiene correo del solicitante
+        correo_solicitante = petition.get("correo") or petition.get("email")
+        nombre_solicitante = petition.get("nombre_completo") or petition.get("nombre") or "Estimado usuario"
+        
+        # Construir ruta del archivo PDF
+        pdf_path_relative = request.pdf_url
+        pdf_path_full = f"/app/frontend/public{pdf_path_relative}"
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(pdf_path_full):
+            logging.warning(f"Archivo PDF no encontrado: {pdf_path_full}")
+            # Intentar sin el /app/frontend/public
+            pdf_path_full = f"/app/frontend/public{pdf_path_relative}"
+        
+        # Actualizar estado del trámite a finalizado
+        historial_entry = {
+            "estado_anterior": petition.get("status"),
+            "estado_nuevo": "finalizado",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user.get("full_name"),
+            "usuario_id": current_user.get("id"),
+            "accion": "Trámite finalizado con resolución generada",
+            "notas": f"PDF enviado por correo a {correo_solicitante}" if correo_solicitante else "Sin correo de solicitante"
+        }
+        
+        await db.petitions.update_one(
+            {"radicado": request.radicado},
+            {
+                "$set": {
+                    "status": "finalizado",
+                    "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                    "finalizado_por": current_user.get("id"),
+                    "finalizado_por_nombre": current_user.get("full_name"),
+                    "pdf_resolucion": pdf_path_relative
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        logging.info(f"Trámite {request.radicado} finalizado por {current_user.get('email')}")
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_email=current_user.get("email"),
+            accion="finalizar_tramite",
+            categoria="tramites",
+            descripcion=f"Finalizó trámite {request.radicado} y envió resolución",
+            entidad_tipo="peticion",
+            entidad_id=request.radicado,
+            datos_adicionales={
+                "correo_enviado": correo_solicitante if correo_solicitante else None,
+                "pdf_path": pdf_path_relative
+            },
+            ip_address=None
+        )
+        
+        # Enviar correo con PDF adjunto si hay correo del solicitante
+        email_enviado = False
+        if correo_solicitante:
+            try:
+                # Obtener número de resolución del nombre del archivo
+                numero_resolucion = pdf_path_relative.split('resolucion_')[-1].split('_')[0] if 'resolucion_' in pdf_path_relative else "N/A"
+                
+                email_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #009846; padding: 20px; text-align: center;">
+                        <h1 style="color: white; margin: 0;">ASOMUNICIPIOS</h1>
+                        <p style="color: white; margin: 5px 0;">Gestor Catastral</p>
+                    </div>
+                    
+                    <div style="padding: 30px; background-color: #f9f9f9;">
+                        <h2 style="color: #333;">Resolución Aprobada</h2>
+                        
+                        <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
+                        
+                        <p>Le informamos que su trámite con radicado <strong>{request.radicado}</strong> ha sido 
+                        procesado exitosamente.</p>
+                        
+                        <p>Adjunto a este correo encontrará la resolución correspondiente en formato PDF.</p>
+                        
+                        <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p style="margin: 0;"><strong>Radicado:</strong> {request.radicado}</p>
+                            <p style="margin: 5px 0 0 0;"><strong>Estado:</strong> Finalizado</p>
+                        </div>
+                        
+                        <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
+                        
+                        <p>Atentamente,<br>
+                        <strong>Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</strong></p>
+                    </div>
+                    
+                    <div style="background-color: #333; padding: 15px; text-align: center;">
+                        <p style="color: #999; margin: 0; font-size: 12px;">
+                            Este es un correo automático, por favor no responda a esta dirección.
+                        </p>
+                    </div>
+                </div>
+                """
+                
+                # Enviar correo con adjunto
+                await send_email(
+                    to_email=correo_solicitante,
+                    subject=f"Resolución Aprobada - Radicado {request.radicado}",
+                    body=email_body,
+                    attachment_path=pdf_path_full if os.path.exists(pdf_path_full) else None,
+                    attachment_name=f"Resolucion_{request.radicado.replace('/', '-')}.pdf"
+                )
+                
+                email_enviado = True
+                logging.info(f"Correo con resolución enviado a {correo_solicitante}")
+                
+            except Exception as email_error:
+                logging.error(f"Error enviando correo: {str(email_error)}")
+                # No interrumpir el flujo si falla el correo
+        
+        return {
+            "success": True,
+            "mensaje": "Trámite finalizado exitosamente",
+            "email_enviado": email_enviado,
+            "correo_destino": correo_solicitante if email_enviado else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error finalizando trámite: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error finalizando trámite: {str(e)}")
+
+
+# ==================== RESOLUCIÓN M3 ====================
+
+from resolucion_m3_pdf_generator import generate_resolucion_m3_pdf
+
+class ResolucionM3Request(BaseModel):
+    municipio: str
+    subtipo: str  # 'cambio_destino' o 'incorporacion_construccion'
+    radicado: Optional[str] = None
+    predio_id: str
+    # Para cambio de destino
+    destino_anterior: Optional[str] = None
+    destino_nuevo: Optional[str] = None
+    # Para incorporación de construcción
+    construcciones_nuevas: Optional[List[dict]] = []
+    # Comunes
+    avaluo_anterior: float
+    avaluo_nuevo: float
+    fechas_inscripcion: Optional[List[dict]] = []  # [{año: 2025, avaluo: 100000, avaluo_source: 'manual'}]
+    observaciones: Optional[str] = None
+
+@api_router.post("/resoluciones/generar-m3")
+async def generar_resolucion_m3(
+    request: ResolucionM3Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Genera una resolución M3 (Cambio de Destino Económico o Incorporación de Construcción)
+    
+    Subtipos:
+    - cambio_destino: Modifica el destino económico del predio
+    - incorporacion_construccion: Agrega construcciones al registro R2
+    """
+    try:
+        # Verificar permisos
+        puede_aprobar = current_user.get('role') in ['coordinador', 'administrador']
+        if not puede_aprobar:
+            puede_aprobar = await check_permission(current_user, 'approve_changes')
+        
+        if not puede_aprobar:
+            raise HTTPException(status_code=403, detail="No tiene permisos para generar resoluciones")
+        
+        # Obtener datos del predio
+        predio = await db.predios.find_one({"id": request.predio_id}, {"_id": 0})
+        if not predio:
+            # Buscar por NPN
+            predio = await db.predios.find_one({"codigo_predial_nacional": request.predio_id}, {"_id": 0})
+        
+        if not predio:
+            raise HTTPException(status_code=404, detail=f"Predio no encontrado: {request.predio_id}")
+        
+        # Obtener nombre del municipio
+        municipio_doc = await db.municipios.find_one({"codigo": request.municipio})
+        municipio_nombre = municipio_doc.get("nombre", request.municipio) if municipio_doc else request.municipio
+        
+        # Generar número de resolución
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(request.municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", "RES-XX-XXX-0000-2026")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Preparar fechas de inscripción (usar las proporcionadas o crear una por defecto)
+        fechas_inscripcion = request.fechas_inscripcion if request.fechas_inscripcion else [
+            {"año": datetime.now().year, "avaluo": request.avaluo_nuevo, "avaluo_source": "actual"}
+        ]
+        
+        # Preparar datos para el PDF
+        propietarios = predio.get('propietarios', [])
+        solicitante = {
+            "nombre": propietarios[0].get('nombre', '') if propietarios else '',
+            "documento": propietarios[0].get('documento', '') if propietarios else ''
+        }
+        
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "subtipo": request.subtipo,
+            "radicado": request.radicado or "",
+            "predio": predio,
+            "destino_anterior": request.destino_anterior or predio.get('destino_economico', 'R'),
+            "destino_nuevo": request.destino_nuevo,
+            "construcciones_nuevas": request.construcciones_nuevas or [],
+            "avaluo_anterior": request.avaluo_anterior,
+            "avaluo_nuevo": request.avaluo_nuevo,
+            "fechas_inscripcion": fechas_inscripcion,
+            "solicitante": solicitante,
+            "elaborado_por": current_user.get("full_name", ""),
+            "revisado_por": ""
+        }
+        
+        # Generar PDF
+        logging.info(f"Generando PDF de resolución M3 ({request.subtipo}): {numero_resolucion}")
+        pdf_bytes = generate_resolucion_m3_pdf(pdf_data)
+        
+        if not pdf_bytes or len(pdf_bytes) < 1000:
+            raise HTTPException(status_code=500, detail="Error generando el PDF de la resolución")
+        
+        # Guardar PDF
+        resoluciones_dir = "/app/frontend/public/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"resolucion_{numero_resolucion.replace('-', '_').replace('/', '_')}_{timestamp}.pdf"
+        pdf_path = os.path.join(resoluciones_dir, filename)
+        
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        
+        logging.info(f"PDF guardado en: {pdf_path}")
+        
+        # Actualizar el predio en la base de datos
+        update_data = {
+            "avaluo": request.avaluo_nuevo,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "ultima_mutacion": numero_resolucion
+        }
+        
+        if request.subtipo == 'cambio_destino':
+            update_data["destino_economico"] = request.destino_nuevo
+            update_data["destino_anterior"] = request.destino_anterior
+        
+        if request.subtipo == 'incorporacion_construccion' and request.construcciones_nuevas:
+            # Agregar o actualizar registros R2
+            r2_existentes = predio.get('r2_registros', [])
+            nuevos_r2 = []
+            for idx, const in enumerate(request.construcciones_nuevas):
+                r2_registro = {
+                    "codigo_predial_nacional": predio.get('codigo_predial_nacional', ''),
+                    "orden_construccion": len(r2_existentes) + idx + 1,
+                    "tipo_construccion": const.get('tipo_construccion', 'C'),
+                    "total_pisos": const.get('pisos', const.get('total_pisos', 1)),
+                    "total_habitaciones": const.get('habitaciones', 0),
+                    "total_banos": const.get('banos', 0),
+                    "total_locales": const.get('locales', 0),
+                    "puntaje": const.get('puntaje', 0),
+                    "uso": const.get('uso', ''),
+                    "area_construida": const.get('area_construida', const.get('area', 0)),
+                    "matricula_inmobiliaria": predio.get('matricula_inmobiliaria', '')
+                }
+                nuevos_r2.append(r2_registro)
+            
+            update_data["r2_registros"] = r2_existentes + nuevos_r2
+            
+            # Actualizar área construida total
+            area_nueva = sum(c.get('area_construida', c.get('area', 0)) for c in request.construcciones_nuevas)
+            update_data["area_construida"] = predio.get('area_construida', 0) + area_nueva
+        
+        # Agregar al historial del predio
+        historial_entry = {
+            "tipo_mutacion": "M3",
+            "subtipo": request.subtipo,
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "accion": "cambio_destino" if request.subtipo == 'cambio_destino' else "incorporacion_construccion",
+            "avaluo_anterior": request.avaluo_anterior,
+            "avaluo_nuevo": request.avaluo_nuevo,
+            "ejecutado_por": current_user.get("full_name"),
+            "fecha_ejecucion": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if request.subtipo == 'cambio_destino':
+            historial_entry["destino_anterior"] = request.destino_anterior
+            historial_entry["destino_nuevo"] = request.destino_nuevo
+        
+        # Actualizar predio
+        result = await db.predios.update_one(
+            {"id": predio.get("id")},
+            {
+                "$set": update_data,
+                "$push": {"historial_resoluciones": historial_entry}
+            }
+        )
+        
+        logging.info(f"Predio actualizado: {result.modified_count} documentos")
+        
+        # Guardar resolución en la colección de resoluciones
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "tipo_mutacion": "M3",
+            "subtipo": request.subtipo,
+            "municipio": municipio_nombre,
+            "codigo_municipio": request.municipio,
+            "radicado": request.radicado,
+            "predio_id": predio.get("id"),
+            "codigo_predial": predio.get("codigo_predial_nacional"),
+            "pdf_path": f"/resoluciones/{filename}",
+            "avaluo_anterior": request.avaluo_anterior,
+            "avaluo_nuevo": request.avaluo_nuevo,
+            "destino_anterior": request.destino_anterior,
+            "destino_nuevo": request.destino_nuevo,
+            "construcciones_nuevas": request.construcciones_nuevas,
+            "generado_por": current_user.get("id"),
+            "generado_por_nombre": current_user.get("full_name"),
+            "año": datetime.now().year,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M3 ({request.subtipo}) para {municipio_nombre}",
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_rol=current_user.get("role"),
+            municipio=municipio_nombre,
+            detalles={
+                "tipo_mutacion": "M3",
+                "subtipo": request.subtipo,
+                "predio_id": predio.get("id"),
+                "codigo_predial": predio.get("codigo_predial_nacional"),
+                "numero_resolucion": numero_resolucion
+            }
+        )
+        
+        return {
+            "success": True,
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/resoluciones/{filename}",
+            "id": resolucion_doc["id"],
+            "mensaje": f"Resolución M3 ({request.subtipo}) generada exitosamente"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error generando resolución M3: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error generando resolución M3: {str(e)}")
 
 
 # ==================== DESENGLOBE MASIVO ====================
@@ -26596,10 +27551,18 @@ async def crear_solicitud_mutacion(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Crea una nueva solicitud de mutación (M1, M2, etc.)
+    Crea una nueva solicitud de mutación (M1, M2, M3).
+    Si el usuario puede aprobar directamente (coordinador/admin o con permiso approve_changes),
+    la solicitud se aprueba y genera el PDF inmediatamente.
     """
     try:
         solicitud_id = str(uuid.uuid4())
+        
+        # Verificar si el usuario puede aprobar directamente
+        puede_aprobar_directo = (
+            current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+            Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+        )
         
         # Generar radicado si no viene
         radicado = data.radicado
@@ -26608,11 +27571,14 @@ async def crear_solicitud_mutacion(
             count = await db.solicitudes_mutacion.count_documents({}) + 1
             radicado = f"MUT-{data.tipo}-{count:05d}-{anio}"
         
+        # Determinar estado inicial
+        estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.BORRADOR
+        
         solicitud = {
             "id": solicitud_id,
             "tipo": data.tipo,
             "subtipo": data.subtipo,
-            "estado": MutacionEstado.BORRADOR,
+            "estado": estado_inicial,
             "municipio": data.municipio,
             "radicado": radicado,
             "solicitante": data.solicitante,
@@ -26623,6 +27589,13 @@ async def crear_solicitud_mutacion(
             "predio_id": data.predio_id,
             "propietarios_anteriores": data.propietarios_anteriores,
             "propietarios_nuevos": data.propietarios_nuevos,
+            # Para M3
+            "destino_anterior": data.destino_anterior,
+            "destino_nuevo": data.destino_nuevo,
+            "construcciones_nuevas": data.construcciones_nuevas,
+            "avaluo_anterior": data.avaluo_anterior,
+            "avaluo_nuevo": data.avaluo_nuevo,
+            "fechas_inscripcion": data.fechas_inscripcion,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
@@ -26632,30 +27605,72 @@ async def crear_solicitud_mutacion(
             "creado_por_id": current_user['id'],
             "creado_por_nombre": current_user['full_name'],
             "fecha_creacion": datetime.now(timezone.utc).isoformat(),
-            # Aprobación
-            "aprobado_por_id": None,
-            "aprobado_por_nombre": None,
-            "fecha_aprobacion": None,
+            # Aprobación (se llena si aprueba directo)
+            "aprobado_por_id": current_user['id'] if puede_aprobar_directo else None,
+            "aprobado_por_nombre": current_user['full_name'] if puede_aprobar_directo else None,
+            "fecha_aprobacion": datetime.now(timezone.utc).isoformat() if puede_aprobar_directo else None,
             "resolucion_id": None,
             "pdf_url": None,
             # Historial
             "historial": [{
                 "fecha": datetime.now(timezone.utc).isoformat(),
-                "accion": "creado",
+                "accion": "creado" if not puede_aprobar_directo else "creado_y_aprobado",
                 "usuario_id": current_user['id'],
                 "usuario_nombre": current_user['full_name'],
-                "observaciones": "Solicitud creada"
+                "observaciones": "Solicitud creada" if not puede_aprobar_directo else "Solicitud creada y aprobada directamente"
             }]
         }
         
+        # Si puede aprobar directo, generar PDF y aplicar cambios
+        pdf_result = None
+        if puede_aprobar_directo:
+            try:
+                tipo_mutacion = data.tipo
+                
+                if tipo_mutacion == "M2":
+                    pdf_result = await _generar_resolucion_m2_interno(solicitud, current_user)
+                elif tipo_mutacion == "M3":
+                    pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                else:
+                    # M1 - Lógica existente para cambio de propietarios
+                    if data.predio_id:
+                        cambio_doc = {
+                            "id": solicitud_id,
+                            "tipo_cambio": "modificacion",
+                            "predio_id": data.predio_id,
+                            "datos_propuestos": {
+                                "propietarios": data.propietarios_nuevos or [],
+                            },
+                            "radicado_numero": radicado,
+                            "justificacion": data.observaciones
+                        }
+                        pdf_result = await generar_resolucion_final(cambio_doc, current_user)
+                
+                if pdf_result:
+                    solicitud["resolucion_id"] = pdf_result.get("id")
+                    solicitud["pdf_url"] = pdf_result.get("pdf_url") or pdf_result.get("pdf_path")
+                    solicitud["numero_resolucion"] = pdf_result.get("numero_resolucion")
+                    
+            except Exception as pdf_error:
+                logging.error(f"Error generando PDF para {data.tipo}: {str(pdf_error)}")
+                solicitud["error_pdf"] = str(pdf_error)
+        
         await db.solicitudes_mutacion.insert_one(solicitud)
         
-        return {
+        # Preparar respuesta
+        response = {
             "success": True,
             "solicitud_id": solicitud_id,
             "radicado": radicado,
-            "mensaje": "Solicitud creada exitosamente"
+            "aprobacion_directa": puede_aprobar_directo,
+            "mensaje": "Solicitud creada y aprobada exitosamente" if puede_aprobar_directo else "Solicitud creada exitosamente (pendiente de aprobación)"
         }
+        
+        if pdf_result:
+            response["numero_resolucion"] = pdf_result.get("numero_resolucion")
+            response["pdf_url"] = pdf_result.get("pdf_url") or pdf_result.get("pdf_path")
+        
+        return response
         
     except Exception as e:
         logging.error(f"Error creando solicitud de mutación: {str(e)}")
@@ -26944,6 +27959,46 @@ async def ejecutar_accion_solicitud(
                 "aprobado_por_nombre": current_user['full_name'],
                 "fecha_aprobacion": datetime.now(timezone.utc).isoformat()
             }
+            
+            # ========================================
+            # GENERAR PDF Y APLICAR CAMBIOS SEGÚN TIPO
+            # ========================================
+            tipo_mutacion = solicitud.get('tipo', 'M1')
+            pdf_result = None
+            
+            try:
+                if tipo_mutacion == "M2":
+                    # Generar resolución M2 (Desenglobe)
+                    pdf_result = await _generar_resolucion_m2_interno(solicitud, current_user)
+                    
+                elif tipo_mutacion == "M3":
+                    # Generar resolución M3 (Cambio destino / Incorporación construcción)
+                    pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                    
+                else:
+                    # M1 - usar lógica existente
+                    # Crear documento de cambio compatible con generar_resolucion_final
+                    cambio_doc = {
+                        "id": solicitud['id'],
+                        "tipo_cambio": "modificacion",
+                        "predio_id": solicitud.get('predio_id'),
+                        "datos_propuestos": {
+                            "propietarios": solicitud.get('propietarios_nuevos', []),
+                        },
+                        "radicado_numero": solicitud.get('radicado'),
+                        "justificacion": solicitud.get('observaciones')
+                    }
+                    pdf_result = await generar_resolucion_final(cambio_doc, current_user)
+                
+                if pdf_result:
+                    update_data["resolucion_id"] = pdf_result.get("id")
+                    update_data["pdf_url"] = pdf_result.get("pdf_url") or pdf_result.get("pdf_path")
+                    update_data["numero_resolucion"] = pdf_result.get("numero_resolucion")
+                    
+            except Exception as pdf_error:
+                logging.error(f"Error generando PDF para {tipo_mutacion}: {str(pdf_error)}")
+                # Continuar con la aprobación aunque falle el PDF
+                update_data["error_pdf"] = str(pdf_error)
             
             # Notificar al gestor original
             notificaciones.append({
