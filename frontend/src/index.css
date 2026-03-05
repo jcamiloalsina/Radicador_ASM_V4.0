@@ -160,8 +160,9 @@ code {
 
 /* Select content */
 [cmdk-root],
-[data-radix-select-content] {
-  z-index: 9999 !important;
+[data-radix-select-content],
+[data-radix-popper-content-wrapper] {
+  z-index: 2147483647 !important;
 }
 
 /* Leaflet container - asegurar que no tape los modales */
