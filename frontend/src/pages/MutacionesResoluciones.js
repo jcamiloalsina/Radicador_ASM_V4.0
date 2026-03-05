@@ -49,9 +49,9 @@ const TIPOS_MUTACION = {
   M4: { 
     codigo: 'M4', 
     nombre: 'Mutación Cuarta', 
-    descripcion: 'Auto estimación del avalúo catastral',
+    descripcion: 'Revisión de avalúo o Autoestimación',
     color: 'bg-green-100 text-green-800',
-    enabled: false
+    enabled: true
   },
   M5: { 
     codigo: 'M5', 
@@ -181,6 +181,25 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosM3, setSearchingPrediosM3] = useState(false);
   const [showMunicipioDropdownM3, setShowMunicipioDropdownM3] = useState(false);
   const [radicadosDisponiblesM3, setRadicadosDisponiblesM3] = useState([]);
+
+  // Estado para M4 - Revisión de Avalúo / Autoestimación
+  const [m4Data, setM4Data] = useState({
+    subtipo: '', // 'revision_avaluo' o 'autoestimacion'
+    decision: 'aceptar', // 'aceptar' o 'rechazar'
+    municipio: '',
+    radicado: '',
+    predio: null,
+    avaluo_anterior: 0,
+    avaluo_nuevo: 0,
+    valor_autoestimado: 0,
+    motivo_solicitud: '',
+    observaciones: ''
+  });
+  const [searchPredioM4, setSearchPredioM4] = useState('');
+  const [searchResultsM4, setSearchResultsM4] = useState([]);
+  const [searchingPrediosM4, setSearchingPrediosM4] = useState(false);
+  const [showMunicipioDropdownM4, setShowMunicipioDropdownM4] = useState(false);
+  const [radicadosDisponiblesM4, setRadicadosDisponiblesM4] = useState([]);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2425,6 +2444,176 @@ export default function MutacionesResoluciones() {
     setM3Data(prev => ({ ...prev, fechas_inscripcion: nuevasFechas }));
   };
 
+  // ==========================================
+  // FUNCIONES PARA M4 - Revisión de Avalúo / Autoestimación
+  // ==========================================
+
+  // Buscar predios para M4
+  const buscarPrediosM4 = async () => {
+    if (!searchPredioM4 || searchPredioM4.length < 3) {
+      toast.error('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosM4(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === m4Data.municipio)?.nombre || '';
+      
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia_actual;
+      
+      const response = await axios.get(`${API}/predios`, {
+        params: { 
+          search: searchPredioM4,
+          municipio: municipioNombre,
+          vigencia: vigenciaActual,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setSearchResultsM4(response.data.predios || []);
+      if (response.data.predios?.length === 0) {
+        toast.info('No se encontraron predios con ese criterio');
+      }
+    } catch (error) {
+      toast.error('Error buscando predios');
+      console.error(error);
+    } finally {
+      setSearchingPrediosM4(false);
+    }
+  };
+
+  // Seleccionar predio para M4
+  const seleccionarPredioM4 = (predio) => {
+    setM4Data(prev => ({
+      ...prev,
+      predio: predio,
+      avaluo_anterior: predio.avaluo || 0
+    }));
+    setSearchResultsM4([]);
+    setSearchPredioM4('');
+  };
+
+  // Buscar radicados para M4
+  const buscarRadicadosM4 = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesM4([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setRadicadosDisponiblesM4(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados M4:', error);
+    }
+  };
+
+  // Generar resolución M4
+  const generarResolucionM4 = async () => {
+    // Validaciones
+    if (!m4Data.predio) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+    if (!m4Data.subtipo) {
+      toast.error('Debe seleccionar el tipo de solicitud');
+      return;
+    }
+    if (!m4Data.radicado) {
+      toast.error('Debe ingresar un número de radicado');
+      return;
+    }
+    if (!m4Data.avaluo_nuevo || m4Data.avaluo_nuevo <= 0) {
+      toast.error('Debe ingresar el nuevo avalúo');
+      return;
+    }
+    if (m4Data.subtipo === 'revision_avaluo' && !m4Data.motivo_solicitud) {
+      toast.error('Debe ingresar el motivo de la solicitud de revisión');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      const propietarios = m4Data.predio.propietarios || [];
+      const solicitante = propietarios.length > 0 
+        ? { nombre: propietarios[0].nombre_propietario || 'No especificado', documento: propietarios[0].numero_documento || '' }
+        : { nombre: 'No especificado', documento: '' };
+
+      const payload = {
+        tipo: 'M4',
+        subtipo: m4Data.subtipo,
+        decision: m4Data.decision,
+        municipio: m4Data.municipio,
+        radicado: m4Data.radicado,
+        predio_id: m4Data.predio.id,
+        solicitante: solicitante,
+        avaluo_anterior: m4Data.avaluo_anterior,
+        avaluo_nuevo: m4Data.avaluo_nuevo,
+        valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
+        motivo_solicitud: m4Data.motivo_solicitud,
+        observaciones: m4Data.observaciones
+      };
+
+      const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.mensaje || 'Solicitud M4 procesada exitosamente');
+        
+        if (response.data.pdf_url) {
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            numero: response.data.numero_resolucion
+          });
+          setShowPDFViewer(true);
+        }
+        
+        resetFormularioM4();
+        cargarHistorialResoluciones();
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando M4:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución M4');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario M4
+  const resetFormularioM4 = () => {
+    setM4Data({
+      subtipo: '',
+      decision: 'aceptar',
+      municipio: '',
+      radicado: '',
+      predio: null,
+      avaluo_anterior: 0,
+      avaluo_nuevo: 0,
+      valor_autoestimado: 0,
+      motivo_solicitud: '',
+      observaciones: ''
+    });
+    setSearchPredioM4('');
+    setSearchResultsM4([]);
+    setRadicadosDisponiblesM4([]);
+  };
+
   // Catálogo de destinos económicos
   const DESTINOS_ECONOMICOS = [
     { codigo: 'A', nombre: 'A - Habitacional' },
@@ -2912,6 +3101,269 @@ export default function MutacionesResoluciones() {
               </CardContent>
             </Card>
           )}
+        </>
+      )}
+    </div>
+  );
+
+  // Renderizar formulario M4 - Revisión de Avalúo / Autoestimación
+  const renderFormularioM4 = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Tipo de M4 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m4Data.subtipo === 'revision_avaluo' 
+              ? 'border-green-600 bg-green-50' 
+              : 'border-slate-200 hover:border-green-300'
+          }`}
+          onClick={() => setM4Data(prev => ({ ...prev, subtipo: 'revision_avaluo' }))}
+          data-testid="m4-revision-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m4Data.subtipo === 'revision_avaluo' ? 'border-green-600 bg-green-600' : 'border-slate-300'
+            }`}>
+              {m4Data.subtipo === 'revision_avaluo' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m4Data.subtipo === 'revision_avaluo' ? 'text-green-700' : 'text-slate-700'}`}>
+              Revisión de Avalúo
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            El avalúo revisado se aplica en la <strong>presente vigencia</strong>
+          </p>
+        </div>
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m4Data.subtipo === 'autoestimacion' 
+              ? 'border-green-600 bg-green-50' 
+              : 'border-slate-200 hover:border-green-300'
+          }`}
+          onClick={() => setM4Data(prev => ({ ...prev, subtipo: 'autoestimacion' }))}
+          data-testid="m4-autoestimacion-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m4Data.subtipo === 'autoestimacion' ? 'border-green-600 bg-green-600' : 'border-slate-300'
+            }`}>
+              {m4Data.subtipo === 'autoestimacion' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m4Data.subtipo === 'autoestimacion' ? 'text-green-700' : 'text-slate-700'}`}>
+              Autoestimación
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            El avalúo autoestimado se aplica en la <strong>vigencia venidera</strong>
+          </p>
+        </div>
+      </div>
+
+      {m4Data.subtipo && (
+        <>
+          {/* Decisión: Aceptar / Rechazar */}
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <label className="block text-sm font-medium text-slate-700 mb-2">Decisión</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="decision"
+                  value="aceptar"
+                  checked={m4Data.decision === 'aceptar'}
+                  onChange={() => setM4Data(prev => ({ ...prev, decision: 'aceptar' }))}
+                  className="w-4 h-4 text-green-600"
+                />
+                <span className="text-sm text-green-700 font-medium">Aceptar solicitud</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="decision"
+                  value="rechazar"
+                  checked={m4Data.decision === 'rechazar'}
+                  onChange={() => setM4Data(prev => ({ ...prev, decision: 'rechazar' }))}
+                  className="w-4 h-4 text-red-600"
+                />
+                <span className="text-sm text-red-700 font-medium">Rechazar solicitud</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Municipio */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Municipio *</label>
+            <div 
+              className="flex items-center justify-between px-3 py-2 border rounded-lg cursor-pointer hover:bg-slate-50"
+              onClick={() => setShowMunicipioDropdownM4(!showMunicipioDropdownM4)}
+            >
+              <span className={m4Data.municipio ? 'text-slate-900' : 'text-slate-400'}>
+                {m4Data.municipio ? MUNICIPIOS.find(m => m.codigo === m4Data.municipio)?.nombre : 'Seleccione municipio'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </div>
+            {showMunicipioDropdownM4 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {MUNICIPIOS.map(mun => (
+                  <div
+                    key={mun.codigo}
+                    className="px-3 py-2 hover:bg-green-50 cursor-pointer"
+                    onClick={() => {
+                      setM4Data(prev => ({ ...prev, municipio: mun.codigo, predio: null }));
+                      setShowMunicipioDropdownM4(false);
+                      setSearchResultsM4([]);
+                    }}
+                  >
+                    {mun.nombre}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Radicado */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Número de Radicado *</label>
+            <Input
+              placeholder="Ingrese número de radicado"
+              value={m4Data.radicado}
+              onChange={(e) => {
+                setM4Data(prev => ({ ...prev, radicado: e.target.value }));
+                buscarRadicadosM4(e.target.value);
+              }}
+              data-testid="m4-radicado-input"
+            />
+            {radicadosDisponiblesM4.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {radicadosDisponiblesM4.map((rad, idx) => (
+                  <div
+                    key={idx}
+                    className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm"
+                    onClick={() => {
+                      setM4Data(prev => ({ ...prev, radicado: rad.numero || rad }));
+                      setRadicadosDisponiblesM4([]);
+                    }}
+                  >
+                    {rad.numero || rad}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Buscar Predio */}
+          {m4Data.municipio && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">Buscar Predio *</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Buscar por código predial, matrícula o nombre..."
+                  value={searchPredioM4}
+                  onChange={(e) => setSearchPredioM4(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && buscarPrediosM4()}
+                  data-testid="m4-search-predio-input"
+                />
+                <Button onClick={buscarPrediosM4} disabled={searchingPrediosM4 || !m4Data.municipio} data-testid="m4-search-btn">
+                  {searchingPrediosM4 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+
+              {/* Resultados de búsqueda */}
+              {searchResultsM4.length > 0 && (
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {searchResultsM4.map(predio => (
+                    <div
+                      key={predio.id}
+                      className="p-3 hover:bg-green-50 cursor-pointer border-b last:border-b-0"
+                      onClick={() => seleccionarPredioM4(predio)}
+                    >
+                      <div className="font-medium text-sm">{predio.codigo_predial_nacional || predio.npn}</div>
+                      <div className="text-xs text-slate-500">{predio.direccion}</div>
+                      <div className="text-xs text-slate-400">Avalúo actual: ${(predio.avaluo || 0).toLocaleString('es-CO')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Predio seleccionado */}
+              {m4Data.predio && (
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-semibold text-green-800">{m4Data.predio.codigo_predial_nacional}</h4>
+                        <p className="text-sm text-slate-600">{m4Data.predio.direccion}</p>
+                        <p className="text-sm text-slate-500">Matrícula: {m4Data.predio.matricula_inmobiliaria || 'N/A'}</p>
+                        <p className="text-sm font-medium text-green-700">
+                          Avalúo actual: ${(m4Data.avaluo_anterior || 0).toLocaleString('es-CO')}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setM4Data(prev => ({ ...prev, predio: null, avaluo_anterior: 0 }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Motivo de solicitud (solo para revisión de avalúo) */}
+          {m4Data.subtipo === 'revision_avaluo' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Motivo de la Solicitud de Revisión *</label>
+              <textarea
+                className="w-full px-3 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                rows={3}
+                placeholder="Describa el motivo por el cual el propietario solicita la revisión del avalúo..."
+                value={m4Data.motivo_solicitud}
+                onChange={(e) => setM4Data(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
+                data-testid="m4-motivo-input"
+              />
+            </div>
+          )}
+
+          {/* Avalúos */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Avalúo Anterior</label>
+              <Input
+                type="text"
+                value={`$${(m4Data.avaluo_anterior || 0).toLocaleString('es-CO')}`}
+                disabled
+                className="bg-slate-100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {m4Data.subtipo === 'autoestimacion' ? 'Valor Autoestimado *' : 'Nuevo Avalúo *'}
+              </label>
+              <Input
+                type="number"
+                placeholder="Ingrese el nuevo valor"
+                value={m4Data.avaluo_nuevo || ''}
+                onChange={(e) => setM4Data(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                data-testid="m4-avaluo-nuevo-input"
+              />
+            </div>
+          </div>
+
+          {/* Observaciones */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Observaciones</label>
+            <textarea
+              className="w-full px-3 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              rows={2}
+              placeholder="Observaciones adicionales (opcional)"
+              value={m4Data.observaciones}
+              onChange={(e) => setM4Data(prev => ({ ...prev, observaciones: e.target.value }))}
+              data-testid="m4-observaciones-input"
+            />
+          </div>
         </>
       )}
     </div>
@@ -4553,6 +5005,8 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'M3' && renderFormularioM3()}
           
+          {tipoMutacionSeleccionado?.codigo === 'M4' && renderFormularioM4()}
+          
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               {/* Selección de Municipio - Dropdown personalizado */}
@@ -4884,6 +5338,16 @@ export default function MutacionesResoluciones() {
                 data-testid="m3-generar-btn"
               >
                 {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
+              </Button>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'M4' && m4Data.predio && (
+              <Button 
+                onClick={generarResolucionM4} 
+                disabled={generando || !m4Data.subtipo || !m4Data.radicado || !m4Data.avaluo_nuevo}
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="m4-generar-btn"
+              >
+                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (

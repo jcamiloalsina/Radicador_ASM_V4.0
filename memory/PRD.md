@@ -3,12 +3,20 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: WORKFLOW UNIFICADO M1/M2/M3 COMPLETADO
+## Estado Actual: M4 IMPLEMENTADO
 
 ### Funcionalidades Completadas (Marzo 2026)
 
-#### Workflow Unificado de Mutaciones (NUEVO - 05/03/2026)
-- **Endpoint centralizado**: `/api/solicitudes-mutacion` ahora maneja M1, M2 y M3
+#### Módulo M4 - Revisión de Avalúo y Autoestimación (NUEVO - 05/03/2026)
+- **Revisión de Avalúo**: Solicitud cuando el propietario considera que el avalúo es excesivo. El avalúo revisado se aplica en la **presente vigencia**.
+- **Autoestimación**: El propietario propone un valor autoestimado. Se aplica en la **vigencia venidera**.
+- **Decisión Aceptar/Rechazar**: Ambos subtipos permiten aceptar o rechazar la solicitud.
+- **Artículos diferenciados**: 6 artículos para Revisión de Avalúo, 7 artículos para Autoestimación.
+- **PDF Generator**: `resolucion_m4_pdf_generator.py` con plantillas completas.
+- **Frontend**: Formulario con selector de subtipo, decisión, búsqueda de predio, y campos específicos.
+
+#### Workflow Unificado de Mutaciones
+- **Endpoint centralizado**: `/api/solicitudes-mutacion` ahora maneja M1, M2, M3 y M4
 - **Aprobación automática**: Usuarios con rol coordinador/administrador generan PDFs directamente
 - **Solicitudes pendientes**: Usuarios con rol gestor crean solicitudes que requieren aprobación
 - **Generación de PDFs verificada**: Los tres tipos de mutación generan PDFs correctamente
@@ -43,15 +51,16 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 ├── backend/
 │   ├── server.py                          # Endpoint unificado /api/solicitudes-mutacion
 │   ├── resolucion_pdf_generator.py        # Generador PDF M1
-│   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2 (fix aplicado)
+│   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2
 │   ├── resolucion_m3_pdf_generator.py     # Generador PDF M3
-│   └── static/resoluciones/               # PDFs M2/M3
+│   ├── resolucion_m4_pdf_generator.py     # Generador PDF M4 (NUEVO)
+│   └── static/resoluciones/               # PDFs M2/M3/M4
 ├── frontend/
 │   ├── public/resoluciones/               # PDFs M1
 │   └── src/
 │       └── pages/
 │           └── Mutaciones/
-│               └── MutacionesResoluciones.js  # UI M1, M2, M3
+│               └── MutacionesResoluciones.js  # UI M1, M2, M3, M4
 └── memory/
     └── PRD.md
 ```

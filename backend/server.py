@@ -651,8 +651,8 @@ class MutacionEstado:
 
 class SolicitudMutacionCreate(BaseModel):
     """Modelo para crear una solicitud de mutación"""
-    tipo: str  # M1, M2, M3
-    subtipo: Optional[str] = None  # Para M2: desengloble, englobe | Para M3: cambio_destino, incorporacion_construccion
+    tipo: str  # M1, M2, M3, M4
+    subtipo: Optional[str] = None  # Para M2: desengloble, englobe | Para M3: cambio_destino, incorporacion_construccion | Para M4: revision_avaluo, autoestimacion
     municipio: str
     radicado: Optional[str] = None
     solicitante: Optional[dict] = None
@@ -671,6 +671,10 @@ class SolicitudMutacionCreate(BaseModel):
     avaluo_anterior: Optional[float] = None
     avaluo_nuevo: Optional[float] = None
     fechas_inscripcion: Optional[List[dict]] = None
+    # Para M4
+    motivo_solicitud: Optional[str] = None  # Motivo de la revisión de avalúo
+    valor_autoestimado: Optional[float] = None  # Valor propuesto por el propietario
+    decision: Optional[str] = "aceptar"  # aceptar o rechazar
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
@@ -14382,6 +14386,179 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         raise
 
 
+async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera resolución M4 (Revisión de Avalúo / Autoestimación) y aplica los cambios.
+    Usado internamente cuando se aprueba una solicitud de mutación M4.
+    """
+    try:
+        from resolucion_m4_pdf_generator import generate_resolucion_m4_pdf
+        
+        # Obtener datos de la solicitud
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        predio_id = solicitud.get('predio_id', '')
+        subtipo = solicitud.get('subtipo', 'revision_avaluo')  # revision_avaluo o autoestimacion
+        decision = solicitud.get('decision', 'aceptar')  # aceptar o rechazar
+        
+        # Obtener predio
+        predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        if not predio:
+            raise Exception(f"Predio no encontrado: {predio_id}")
+        
+        # Obtener nombre del municipio
+        municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
+        
+        # Generar número de resolución
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Preparar datos para el PDF
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "subtipo": subtipo,
+            "decision": decision,
+            "radicado": radicado,
+            "predio": predio,
+            "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+            "avaluo_anterior": solicitud.get('avaluo_anterior') or predio.get('avaluo', 0),
+            "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
+            "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
+            "valor_autoestimado": solicitud.get('valor_autoestimado') or solicitud.get('avaluo_nuevo', 0),
+            "elaborado_por": aprobador.get("full_name", ""),
+            "revisado_por": ""
+        }
+        
+        # Crear directorio si no existe
+        resoluciones_dir = "/app/backend/static/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        # Generar nombre del archivo
+        filename = f"resolucion_M4_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        filepath = os.path.join(resoluciones_dir, filename)
+        
+        # Generar PDF
+        pdf_bytes = generate_resolucion_m4_pdf(pdf_data)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # ========================================
+        # APLICAR CAMBIOS AL PREDIO (solo si se acepta)
+        # ========================================
+        
+        if decision == 'aceptar':
+            avaluo_nuevo = solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0)
+            
+            update_predio = {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "avaluo": avaluo_nuevo,
+            }
+            
+            historial_entry = {
+                "accion": f"Mutación M4 ({subtipo}) - {decision.upper()}",
+                "tipo_cambio": f"m4_{subtipo}",
+                "usuario": aprobador.get('full_name'),
+                "usuario_id": aprobador.get('id'),
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "numero_resolucion": numero_resolucion,
+                "cambio_id": solicitud.get('id'),
+                "detalles": {
+                    "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+                    "avaluo_nuevo": avaluo_nuevo,
+                    "decision": decision,
+                    "motivo": solicitud.get('motivo_solicitud', '')
+                }
+            }
+            
+            # Aplicar actualización al predio
+            await db.predios.update_one(
+                {"id": predio_id},
+                {
+                    "$set": update_predio,
+                    "$push": {"historial": historial_entry}
+                }
+            )
+        else:
+            # Si se rechaza, solo registrar en historial sin cambiar avalúo
+            historial_entry = {
+                "accion": f"Mutación M4 ({subtipo}) - RECHAZADA",
+                "tipo_cambio": f"m4_{subtipo}_rechazada",
+                "usuario": aprobador.get('full_name'),
+                "usuario_id": aprobador.get('id'),
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "numero_resolucion": numero_resolucion,
+                "cambio_id": solicitud.get('id'),
+                "detalles": {
+                    "avaluo_solicitado": solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0),
+                    "decision": decision,
+                    "motivo": solicitud.get('motivo_solicitud', '')
+                }
+            }
+            
+            await db.predios.update_one(
+                {"id": predio_id},
+                {"$push": {"historial": historial_entry}}
+            )
+        
+        # Guardar resolución en la colección
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "tipo": "M4",
+            "subtipo": subtipo,
+            "decision": decision,
+            "municipio": municipio_nombre,
+            "codigo_municipio": municipio,
+            "radicado": radicado,
+            "solicitud_id": solicitud.get('id'),
+            "predio_id": predio_id,
+            "codigo_predial": predio.get('codigo_predial_nacional'),
+            "pdf_path": f"/resoluciones/{filename}",
+            "generado_por": aprobador.get('id'),
+            "generado_por_nombre": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "año": datetime.now().year
+        }
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M4 ({subtipo}) - {decision.upper()} para {municipio_nombre}",
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_rol=aprobador.get("role"),
+            municipio=municipio_nombre,
+            detalles={
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
+                "decision": decision,
+                "predio_id": predio_id,
+                "codigo_predial": predio.get('codigo_predial_nacional'),
+                "numero_resolucion": numero_resolucion
+            }
+        )
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/resoluciones/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m4_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
 @api_router.post("/predios/cambios/aprobar")
 async def aprobar_rechazar_cambio(
     request: CambioAprobacionRequest,
@@ -27591,6 +27768,10 @@ async def crear_solicitud_mutacion(
             "avaluo_anterior": data.avaluo_anterior,
             "avaluo_nuevo": data.avaluo_nuevo,
             "fechas_inscripcion": data.fechas_inscripcion,
+            # Para M4
+            "motivo_solicitud": data.motivo_solicitud,
+            "valor_autoestimado": data.valor_autoestimado,
+            "decision": data.decision or "aceptar",
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
@@ -27626,6 +27807,8 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_m2_interno(solicitud, current_user)
                 elif tipo_mutacion == "M3":
                     pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                elif tipo_mutacion == "M4":
+                    pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
                     if data.predio_id:
@@ -27969,6 +28152,10 @@ async def ejecutar_accion_solicitud(
                 elif tipo_mutacion == "M3":
                     # Generar resolución M3 (Cambio destino / Incorporación construcción)
                     pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                
+                elif tipo_mutacion == "M4":
+                    # Generar resolución M4 (Revisión de Avalúo / Autoestimación)
+                    pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
                     
                 else:
                     # M1 - usar lógica existente
