@@ -13995,7 +13995,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         return {
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "consecutivo": siguiente_numero,
             "tipo_mutacion": "M1",
@@ -14184,7 +14184,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "predios_creados": len(predios_inscritos),
             "predios_cancelados": len(predios_cancelados)
@@ -14371,7 +14371,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}"
         }
         
@@ -27045,7 +27045,7 @@ async def generar_resolucion_m3(
         return {
             "success": True,
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "id": resolucion_doc["id"],
             "mensaje": f"Resolución M3 ({request.subtipo}) generada exitosamente"
         }
@@ -28537,7 +28537,7 @@ async def generar_resolucion_manual(
         return {
             "success": True,
             "numero_resolucion": request.numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "peticion_finalizada": peticion is not None,
             "email_enviado": email_enviado,
             "mensaje": f"Resolución {request.numero_resolucion} generada exitosamente"
