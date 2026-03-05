@@ -173,7 +173,7 @@ export default function MutacionesResoluciones() {
     construcciones_nuevas: [],
     avaluo_anterior: 0,
     avaluo_nuevo: 0,
-    fecha_inscripcion: '',
+    fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
     observaciones: ''
   });
   const [searchPredioM3, setSearchPredioM3] = useState('');
@@ -2311,7 +2311,7 @@ export default function MutacionesResoluciones() {
         construcciones_nuevas: m3Data.construcciones_nuevas,
         avaluo_anterior: m3Data.avaluo_anterior,
         avaluo_nuevo: m3Data.avaluo_nuevo,
-        fecha_inscripcion: m3Data.fecha_inscripcion || null,
+        fechas_inscripcion: m3Data.fechas_inscripcion || [],
         observaciones: m3Data.observaciones || null
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -2359,12 +2359,55 @@ export default function MutacionesResoluciones() {
       construcciones_nuevas: [],
       avaluo_anterior: 0,
       avaluo_nuevo: 0,
-      fecha_inscripcion: '',
+      fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
       observaciones: ''
     });
     setSearchPredioM3('');
     setSearchResultsM3([]);
     setRadicadosDisponiblesM3([]);
+  };
+
+  // Funciones para manejar fechas de inscripción en M3
+  const agregarFechaInscripcionM3 = () => {
+    setM3Data(prev => ({
+      ...prev,
+      fechas_inscripcion: [...prev.fechas_inscripcion, { año: '', avaluo: '', avaluo_source: 'manual' }]
+    }));
+  };
+
+  const eliminarFechaInscripcionM3 = (index) => {
+    if (m3Data.fechas_inscripcion.length > 1) {
+      setM3Data(prev => ({
+        ...prev,
+        fechas_inscripcion: prev.fechas_inscripcion.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const actualizarFechaInscripcionM3 = async (index, campo, valor) => {
+    const nuevasFechas = [...m3Data.fechas_inscripcion];
+    if (!nuevasFechas[index]) {
+      nuevasFechas[index] = { año: '', avaluo: '', avaluo_source: 'manual' };
+    }
+    nuevasFechas[index][campo] = valor;
+    
+    // Si se cambió el año, intentar cargar avalúo del sistema
+    if (campo === 'año' && valor && m3Data.predio) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API}/predios/${m3Data.predio.id}/avaluo-vigencia/${valor}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.avaluo) {
+          nuevasFechas[index].avaluo = response.data.avaluo;
+          nuevasFechas[index].avaluo_source = response.data.source || 'sistema';
+        }
+      } catch (error) {
+        // Silently fail - user can enter manually
+      }
+    }
+    
+    setM3Data(prev => ({ ...prev, fechas_inscripcion: nuevasFechas }));
   };
 
   // Catálogo de destinos económicos
@@ -2780,14 +2823,65 @@ export default function MutacionesResoluciones() {
                 </div>
                 
                 <div>
-                  <Label className="text-xs text-slate-600">Fecha de Inscripción Catastral</Label>
-                  <Input
-                    type="date"
-                    value={m3Data.fecha_inscripcion || ''}
-                    onChange={(e) => setM3Data(prev => ({ ...prev, fecha_inscripcion: e.target.value }))}
-                    className="max-w-xs"
-                    data-testid="m3-fecha-inscripcion-input"
-                  />
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs text-slate-600">Vigencias Fiscales de Inscripción</Label>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={agregarFechaInscripcionM3}
+                      className="h-6 text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Agregar Año
+                    </Button>
+                  </div>
+                  {m3Data.fechas_inscripcion.map((fecha, fidx) => (
+                    <div key={fidx} className="flex items-end gap-2 mb-2 p-2 bg-white rounded border border-emerald-200">
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Año Inscripción</Label>
+                        <Select
+                          value={String(fecha.año || '')}
+                          onValueChange={(v) => actualizarFechaInscripcionM3(fidx, 'año', parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Año..." />
+                          </SelectTrigger>
+                          <SelectContent side="bottom" align="start">
+                            {añosDisponibles.map(año => (
+                              <SelectItem key={año} value={String(año)}>{año}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">
+                          Avalúo Vigencia {fecha.año || '----'}
+                          {fecha.avaluo_source === 'sistema' && <span className="text-emerald-600 ml-1">(Sistema)</span>}
+                        </Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="$0"
+                          value={fecha.avaluo ? `$${Number(fecha.avaluo).toLocaleString()}` : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            actualizarFechaInscripcionM3(fidx, 'avaluo', val);
+                            actualizarFechaInscripcionM3(fidx, 'avaluo_source', 'manual');
+                          }}
+                        />
+                      </div>
+                      {m3Data.fechas_inscripcion.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => eliminarFechaInscripcionM3(fidx)}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 
                 <div>

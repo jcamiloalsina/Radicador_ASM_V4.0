@@ -26433,7 +26433,7 @@ class ResolucionM3Request(BaseModel):
     # Comunes
     avaluo_anterior: float
     avaluo_nuevo: float
-    fecha_inscripcion: Optional[str] = None
+    fechas_inscripcion: Optional[List[dict]] = []  # [{año: 2025, avaluo: 100000, avaluo_source: 'manual'}]
     observaciones: Optional[str] = None
 
 @api_router.post("/resoluciones/generar-m3")
@@ -26471,9 +26471,14 @@ async def generar_resolucion_m3(
         municipio_nombre = municipio_doc.get("nombre", request.municipio) if municipio_doc else request.municipio
         
         # Generar número de resolución
-        numero_resolucion = await obtener_siguiente_numero_resolucion(request.municipio)
-        fecha_resolucion = datetime.now().strftime("%d/%m/%Y")
-        fecha_inscripcion = request.fecha_inscripcion or datetime.now().strftime("%d/%m/%Y")
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(request.municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", "RES-XX-XXX-0000-2026")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Preparar fechas de inscripción (usar las proporcionadas o crear una por defecto)
+        fechas_inscripcion = request.fechas_inscripcion if request.fechas_inscripcion else [
+            {"año": datetime.now().year, "avaluo": request.avaluo_nuevo, "avaluo_source": "actual"}
+        ]
         
         # Preparar datos para el PDF
         propietarios = predio.get('propietarios', [])
@@ -26494,7 +26499,7 @@ async def generar_resolucion_m3(
             "construcciones_nuevas": request.construcciones_nuevas or [],
             "avaluo_anterior": request.avaluo_anterior,
             "avaluo_nuevo": request.avaluo_nuevo,
-            "fecha_inscripcion": fecha_inscripcion,
+            "fechas_inscripcion": fechas_inscripcion,
             "solicitante": solicitante,
             "elaborado_por": current_user.get("full_name", ""),
             "revisado_por": ""
@@ -26612,23 +26617,20 @@ async def generar_resolucion_m3(
         
         # Registrar en log de actividades
         await registrar_log_actividad(
-            db=db,
-            usuario_id=current_user.get("id"),
-            usuario_nombre=current_user.get("full_name"),
-            usuario_email=current_user.get("email"),
             accion="generar_resolucion",
             categoria="resoluciones",
             descripcion=f"Generó resolución {numero_resolucion} tipo M3 ({request.subtipo}) para {municipio_nombre}",
-            entidad_tipo="resolucion",
-            entidad_id=numero_resolucion,
-            datos_adicionales={
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_rol=current_user.get("role"),
+            municipio=municipio_nombre,
+            detalles={
                 "tipo_mutacion": "M3",
                 "subtipo": request.subtipo,
-                "municipio": municipio_nombre,
                 "predio_id": predio.get("id"),
-                "codigo_predial": predio.get("codigo_predial_nacional")
-            },
-            ip_address=None
+                "codigo_predial": predio.get("codigo_predial_nacional"),
+                "numero_resolucion": numero_resolucion
+            }
         )
         
         return {

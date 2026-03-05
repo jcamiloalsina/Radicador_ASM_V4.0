@@ -351,13 +351,63 @@ def generate_resolucion_m3_pdf(data: dict) -> bytes:
     
     y_position = dibujar_tabla_predio(c, predio, destino_inscripcion,
                                        data.get('avaluo_nuevo', 0),
-                                       format_date(data.get('fecha_inscripcion', '')), y_position, font_bold, font_normal, "inscripcion")
+                                       "", y_position, font_bold, font_normal, "inscripcion")
     y_position -= 10
     
-    # Fecha de inscripción catastral
-    c.setFont(font_bold, 8)
-    c.drawString(MARGIN_LEFT, y_position, f"FECHA INSCRIPCIÓN CATASTRAL: {format_date(data.get('fecha_inscripcion', ''))}")
-    y_position -= 20
+    # =====================
+    # VIGENCIAS FISCALES DE INSCRIPCIÓN
+    # =====================
+    fechas_inscripcion = data.get('fechas_inscripcion', [])
+    if fechas_inscripcion:
+        verificar_espacio(30 + len(fechas_inscripcion) * 15)
+        
+        c.setFont(font_bold, 9)
+        c.setFillColor(VERDE_ASOMUNICIPIOS)
+        c.drawString(MARGIN_LEFT, y_position, "VIGENCIAS FISCALES DE INSCRIPCIÓN")
+        c.setFillColor(NEGRO)
+        y_position -= 15
+        
+        # Encabezado de tabla
+        col_widths = [80, 150, 100]
+        headers = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "FUENTE"]
+        
+        c.setFont(font_bold, 7)
+        c.setFillColor(VERDE_ASOMUNICIPIOS)
+        c.rect(MARGIN_LEFT, y_position - 12, sum(col_widths), 14, fill=1)
+        c.setFillColor(colors.white)
+        x_pos = MARGIN_LEFT + 5
+        for i, header in enumerate(headers):
+            c.drawString(x_pos, y_position - 9, header)
+            x_pos += col_widths[i]
+        y_position -= 14
+        
+        # Filas de datos
+        c.setFillColor(NEGRO)
+        c.setFont(font_normal, 7)
+        for fecha in fechas_inscripcion:
+            año = fecha.get('año', '')
+            avaluo = fecha.get('avaluo', 0)
+            source = fecha.get('avaluo_source', 'manual')
+            
+            fuente_texto = {
+                'sistema': 'Sistema catastral',
+                'manual': 'Manual',
+                'actual': 'Vigencia actual'
+            }.get(source, 'Manual')
+            
+            c.setStrokeColor(colors.lightgrey)
+            c.rect(MARGIN_LEFT, y_position - 12, sum(col_widths), 14, stroke=1, fill=0)
+            
+            x_pos = MARGIN_LEFT + 5
+            c.drawString(x_pos, y_position - 9, str(año))
+            x_pos += col_widths[0]
+            c.drawString(x_pos, y_position - 9, f"${int(avaluo):,}" if avaluo else "$0")
+            x_pos += col_widths[1]
+            c.drawString(x_pos, y_position - 9, fuente_texto)
+            
+            y_position -= 14
+        
+        y_position -= 10
     
     # Si es incorporación de construcción, mostrar detalle R2
     if subtipo == 'incorporacion_construccion':
