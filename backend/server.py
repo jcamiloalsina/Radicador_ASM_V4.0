@@ -27432,6 +27432,268 @@ async def generar_preview_resolucion(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+# ==========================================
+# SISTEMA DE LOGS UNIFICADO
+# ==========================================
+
+@api_router.get("/logs/actividad")
+async def obtener_logs_actividad(
+    fecha_desde: str = None,
+    fecha_hasta: str = None,
+    categoria: str = None,
+    tipo_accion: str = None,
+    usuario_id: str = None,
+    municipio: str = None,
+    busqueda: str = None,
+    page: int = 1,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener logs de actividad del sistema - Solo admin/coordinador"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden ver los logs")
+    
+    query = {}
+    
+    # Filtro por fechas
+    if fecha_desde or fecha_hasta:
+        date_filter = {}
+        if fecha_desde:
+            date_filter["$gte"] = fecha_desde
+        if fecha_hasta:
+            date_filter["$lte"] = fecha_hasta + "T23:59:59"
+        query["timestamp"] = date_filter
+    
+    # Filtro por categoría
+    if categoria:
+        query["categoria"] = categoria
+    
+    # Filtro por tipo de acción
+    if tipo_accion:
+        query["accion"] = tipo_accion
+    
+    # Filtro por usuario
+    if usuario_id:
+        query["usuario_id"] = usuario_id
+    
+    # Filtro por municipio
+    if municipio:
+        query["municipio"] = municipio
+    
+    # Búsqueda de texto
+    if busqueda:
+        query["$or"] = [
+            {"descripcion": {"$regex": busqueda, "$options": "i"}},
+            {"detalles.npn": {"$regex": busqueda, "$options": "i"}},
+            {"detalles.radicado": {"$regex": busqueda, "$options": "i"}},
+            {"detalles.codigo": {"$regex": busqueda, "$options": "i"}}
+        ]
+    
+    # Calcular skip
+    skip = (page - 1) * limit
+    
+    # Obtener total
+    total = await db.activity_logs.count_documents(query)
+    
+    # Obtener logs
+    logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Obtener estadísticas
+    hoy = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    inicio_semana = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    
+    stats = {
+        "total_registros": total,
+        "acciones_hoy": await db.activity_logs.count_documents({"timestamp": {"$gte": hoy}}),
+        "errores_semana": await db.activity_logs.count_documents({
+            "timestamp": {"$gte": inicio_semana},
+            "accion": {"$in": ["rechazar", "error", "eliminar"]}
+        }),
+        "usuarios_activos_24h": len(await db.activity_logs.distinct("usuario_id", {
+            "timestamp": {"$gte": (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()}
+        })),
+        "cambios_criticos": await db.activity_logs.count_documents({
+            "timestamp": {"$gte": inicio_semana},
+            "categoria": "sistema"
+        })
+    }
+    
+    return {
+        "logs": logs,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total + limit - 1) // limit,
+        "stats": stats
+    }
+
+
+async def registrar_log_actividad(
+    accion: str,
+    categoria: str,
+    descripcion: str,
+    usuario_id: str = None,
+    usuario_nombre: str = None,
+    usuario_rol: str = None,
+    municipio: str = None,
+    detalles: dict = None,
+    ip_address: str = None
+):
+    """Función helper para registrar actividad en el sistema"""
+    try:
+        log_entry = {
+            "id": str(uuid.uuid4()),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "accion": accion,
+            "categoria": categoria,
+            "descripcion": descripcion,
+            "usuario_id": usuario_id,
+            "usuario_nombre": usuario_nombre or "Sistema",
+            "usuario_rol": usuario_rol or "Automático",
+            "municipio": municipio,
+            "detalles": detalles or {},
+            "ip_address": ip_address
+        }
+        await db.activity_logs.insert_one(log_entry)
+    except Exception as e:
+        logger.error(f"Error registrando log de actividad: {str(e)}")
+
+
+@api_router.get("/logs/usuarios-activos")
+async def obtener_usuarios_activos_logs(current_user: dict = Depends(get_current_user)):
+    """Obtener lista de usuarios que tienen logs"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+    
+    # Obtener usuarios únicos de los logs
+    usuarios_ids = await db.activity_logs.distinct("usuario_id")
+    
+    # Obtener info de usuarios
+    usuarios = await db.users.find(
+        {"id": {"$in": [u for u in usuarios_ids if u]}},
+        {"_id": 0, "id": 1, "full_name": 1, "role": 1}
+    ).to_list(100)
+    
+    return usuarios
+
+
+# ==========================================
+# AVALÚOS POR VIGENCIA
+# ==========================================
+
+@api_router.get("/avaluos/vigencia/{codigo_predial}/{anio}")
+async def obtener_avaluo_vigencia(
+    codigo_predial: str,
+    anio: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtener el avalúo de un predio para una vigencia específica"""
+    # Buscar en historial del predio
+    predio = await db.predios.find_one(
+        {"codigo_predial_nacional": codigo_predial},
+        {"_id": 0, "avaluo": 1, "vigencia": 1, "historial": 1, "avaluos_vigencias": 1}
+    )
+    
+    if not predio:
+        # Intentar buscar por código más corto
+        predio = await db.predios.find_one(
+            {"codigo_predial_nacional": {"$regex": f"^{codigo_predial[:15]}"}},
+            {"_id": 0, "avaluo": 1, "vigencia": 1, "historial": 1, "avaluos_vigencias": 1}
+        )
+    
+    if not predio:
+        return {"avaluo": None, "found": False, "message": "Predio no encontrado"}
+    
+    # Buscar en avaluos_vigencias si existe
+    if predio.get("avaluos_vigencias"):
+        for av in predio["avaluos_vigencias"]:
+            if av.get("año") == anio or av.get("vigencia") == anio:
+                return {"avaluo": av.get("avaluo"), "found": True, "source": "avaluos_vigencias"}
+    
+    # Buscar en historial
+    if predio.get("historial"):
+        for entry in reversed(predio["historial"]):
+            entry_year = None
+            if entry.get("fecha"):
+                try:
+                    entry_year = int(entry["fecha"][:4])
+                except:
+                    pass
+            if entry.get("timestamp"):
+                try:
+                    entry_year = int(entry["timestamp"][:4])
+                except:
+                    pass
+            
+            if entry_year == anio and entry.get("avaluo"):
+                return {"avaluo": entry["avaluo"], "found": True, "source": "historial"}
+    
+    # Si es la vigencia actual, retornar avalúo actual
+    current_year = datetime.now().year
+    if anio == current_year or (anio == current_year + 1):
+        return {"avaluo": predio.get("avaluo"), "found": True, "source": "actual"}
+    
+    return {"avaluo": None, "found": False, "message": f"No se encontró avalúo para vigencia {anio}"}
+
+
+@api_router.get("/avaluos/configuracion-anios")
+async def obtener_configuracion_anios(current_user: dict = Depends(get_current_user)):
+    """Obtener configuración de rango de años para inscripción"""
+    config = await db.system_config.find_one({"id": "configuracion_años_inscripcion"}, {"_id": 0})
+    
+    if not config:
+        # Valores por defecto
+        config = {
+            "año_inicial": 2015,
+            "años_futuro": 1
+        }
+    
+    current_year = datetime.now().year
+    años = list(range(config.get("año_inicial", 2015), current_year + config.get("años_futuro", 1) + 1))
+    
+    return {
+        "año_inicial": config.get("año_inicial", 2015),
+        "años_futuro": config.get("años_futuro", 1),
+        "años_disponibles": años
+    }
+
+
+@api_router.put("/avaluos/configuracion-anios")
+async def actualizar_configuracion_anios(
+    anio_inicial: int = Form(...),
+    anios_futuro: int = Form(1),
+    current_user: dict = Depends(get_current_user)
+):
+    """Actualizar configuración de rango de años - Solo admin"""
+    if current_user['role'] != UserRole.ADMINISTRADOR:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar esta configuración")
+    
+    await db.system_config.update_one(
+        {"id": "configuracion_años_inscripcion"},
+        {"$set": {
+            "id": "configuracion_años_inscripcion",
+            "año_inicial": anio_inicial,
+            "años_futuro": anios_futuro,
+            "actualizado_por": current_user["id"],
+            "actualizado_en": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="config",
+        categoria="sistema",
+        descripcion="Actualización de configuración de años para inscripción",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"año_inicial": anio_inicial, "años_futuro": anios_futuro}
+    )
+    
+    return {"message": "Configuración actualizada", "año_inicial": anio_inicial, "años_futuro": anios_futuro}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -27890,6 +28152,7 @@ async def sincronizar_geometrias_gdb_automaticamente():
         
     except Exception as e:
         logger.error(f"❌ Error en sincronización de geometrías: {str(e)}")
+
 
 
 @app.on_event("shutdown")

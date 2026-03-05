@@ -28,6 +28,7 @@ import PrediosEnProceso from "./pages/PrediosEnProceso";
 import GestionPrediosActualizacion from "./pages/GestionPrediosActualizacion";
 import ConfiguracionResoluciones from "./pages/ConfiguracionResoluciones";
 import MutacionesResoluciones from "./pages/MutacionesResoluciones";
+import LogActividades from "./pages/LogActividades";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
 function App() {
@@ -72,6 +73,7 @@ function App() {
             <Route path="predios-en-proceso" element={<PrediosEnProceso />} />
             <Route path="configuracion-resoluciones" element={<ConfiguracionResoluciones />} />
             <Route path="mutaciones-resoluciones" element={<MutacionesResoluciones />} />
+            <Route path="log-actividades" element={<LogActividades />} />
           </Route>
         </Routes>
         </BrowserRouter>

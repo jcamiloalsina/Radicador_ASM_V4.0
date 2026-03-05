@@ -210,6 +210,10 @@ export default function MutacionesResoluciones() {
   const [excelFile, setExcelFile] = useState(null);
   const fileInputRef = React.useRef(null);
 
+  // Estado para fechas de inscripción catastral
+  const [añosDisponibles, setAñosDisponibles] = useState([]);
+  const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2015, años_futuro: 1 });
+
   // Estado para flujo de aprobación
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
@@ -240,6 +244,135 @@ export default function MutacionesResoluciones() {
       cargarGestoresDisponibles();
     }
   }, [tipoMutacionSeleccionado, cargarGestoresDisponibles]);
+
+  // Cargar configuración de años disponibles para inscripción
+  const cargarConfiguracionAños = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/avaluos/configuracion-anios`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConfiguracionAños(response.data);
+      setAñosDisponibles(response.data.años_disponibles || []);
+    } catch (error) {
+      console.error('Error cargando configuración de años:', error);
+      // Valores por defecto
+      const currentYear = new Date().getFullYear();
+      const años = [];
+      for (let y = 2015; y <= currentYear + 1; y++) años.push(y);
+      setAñosDisponibles(años);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarConfiguracionAños();
+  }, [cargarConfiguracionAños]);
+
+  // Función para cargar avalúo de una vigencia específica
+  const cargarAvaluoVigencia = async (codigoPredial, año) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/avaluos/vigencia/${encodeURIComponent(codigoPredial)}/${año}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error cargando avalúo:', error);
+      return { avaluo: null, found: false };
+    }
+  };
+
+  // Función para agregar fecha de inscripción a un predio
+  const agregarFechaInscripcion = (tipoPredio, indexPredio) => {
+    if (tipoPredio === 'cancelado') {
+      setM2Data(prev => {
+        const nuevosPrecios = [...prev.predios_cancelados];
+        if (!nuevosPrecios[indexPredio].fechas_inscripcion) {
+          nuevosPrecios[indexPredio].fechas_inscripcion = [];
+        }
+        nuevosPrecios[indexPredio].fechas_inscripcion.push({
+          año: new Date().getFullYear(),
+          avaluo: '',
+          avaluo_source: 'manual'
+        });
+        return { ...prev, predios_cancelados: nuevosPrecios };
+      });
+    } else {
+      setM2Data(prev => {
+        const nuevosPrecios = [...prev.predios_inscritos];
+        if (!nuevosPrecios[indexPredio].fechas_inscripcion) {
+          nuevosPrecios[indexPredio].fechas_inscripcion = [];
+        }
+        nuevosPrecios[indexPredio].fechas_inscripcion.push({
+          año: new Date().getFullYear(),
+          avaluo: '',
+          avaluo_source: 'manual'
+        });
+        return { ...prev, predios_inscritos: nuevosPrecios };
+      });
+    }
+  };
+
+  // Función para eliminar fecha de inscripción
+  const eliminarFechaInscripcion = (tipoPredio, indexPredio, indexFecha) => {
+    if (tipoPredio === 'cancelado') {
+      setM2Data(prev => {
+        const nuevosPrecios = [...prev.predios_cancelados];
+        if (nuevosPrecios[indexPredio].fechas_inscripcion?.length > 1) {
+          nuevosPrecios[indexPredio].fechas_inscripcion.splice(indexFecha, 1);
+        }
+        return { ...prev, predios_cancelados: nuevosPrecios };
+      });
+    } else {
+      setM2Data(prev => {
+        const nuevosPrecios = [...prev.predios_inscritos];
+        if (nuevosPrecios[indexPredio].fechas_inscripcion?.length > 1) {
+          nuevosPrecios[indexPredio].fechas_inscripcion.splice(indexFecha, 1);
+        }
+        return { ...prev, predios_inscritos: nuevosPrecios };
+      });
+    }
+  };
+
+  // Función para actualizar fecha de inscripción
+  const actualizarFechaInscripcion = async (tipoPredio, indexPredio, indexFecha, campo, valor) => {
+    const updateData = (prev) => {
+      const key = tipoPredio === 'cancelado' ? 'predios_cancelados' : 'predios_inscritos';
+      const nuevosPrecios = [...prev[key]];
+      if (!nuevosPrecios[indexPredio].fechas_inscripcion) {
+        nuevosPrecios[indexPredio].fechas_inscripcion = [];
+      }
+      if (!nuevosPrecios[indexPredio].fechas_inscripcion[indexFecha]) {
+        nuevosPrecios[indexPredio].fechas_inscripcion[indexFecha] = { año: '', avaluo: '', avaluo_source: 'manual' };
+      }
+      nuevosPrecios[indexPredio].fechas_inscripcion[indexFecha][campo] = valor;
+      return { ...prev, [key]: nuevosPrecios };
+    };
+
+    setM2Data(updateData);
+
+    // Si se cambió el año, intentar cargar el avalúo
+    if (campo === 'año' && valor) {
+      const key = tipoPredio === 'cancelado' ? 'predios_cancelados' : 'predios_inscritos';
+      const predio = m2Data[key][indexPredio];
+      const codigoPredial = predio.npn || predio.codigo_predial_nacional || predio.codigo_predial;
+      
+      if (codigoPredial) {
+        const resultado = await cargarAvaluoVigencia(codigoPredial, valor);
+        if (resultado.found && resultado.avaluo) {
+          setM2Data(prev => {
+            const nuevosPrecios = [...prev[key]];
+            nuevosPrecios[indexPredio].fechas_inscripcion[indexFecha].avaluo = resultado.avaluo;
+            nuevosPrecios[indexPredio].fechas_inscripcion[indexFecha].avaluo_source = resultado.source || 'sistema';
+            return { ...prev, [key]: nuevosPrecios };
+          });
+          toast.success(`Avalúo ${valor} cargado: $${Number(resultado.avaluo).toLocaleString()}`);
+        } else {
+          toast.info(`No se encontró avalúo para vigencia ${valor}. Ingrese manualmente.`);
+        }
+      }
+    }
+  };
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -2213,6 +2346,74 @@ export default function MutacionesResoluciones() {
                   </div>
                 )}
               </div>
+              
+              {/* SECCIÓN: Fechas de Inscripción Catastral */}
+              <div className="border-t border-amber-200 pt-3 mt-3">
+                <div className="bg-amber-50 border border-dashed border-amber-300 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-semibold text-amber-800 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Fechas de Inscripción Catastral
+                    </h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => agregarFechaInscripcion('cancelado', idx)}
+                      className="h-6 text-xs text-amber-700 hover:bg-amber-100"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Agregar Fecha
+                    </Button>
+                  </div>
+                  
+                  {(predio.fechas_inscripcion || [{ año: new Date().getFullYear(), avaluo: predio.avaluo || '', avaluo_source: 'actual' }]).map((fecha, fidx) => (
+                    <div key={fidx} className="flex items-end gap-2 mb-2 p-2 bg-white rounded border border-amber-200">
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Año Inscripción</Label>
+                        <Select
+                          value={String(fecha.año || '')}
+                          onValueChange={(v) => actualizarFechaInscripcion('cancelado', idx, fidx, 'año', parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Año..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {añosDisponibles.map(año => (
+                              <SelectItem key={año} value={String(año)}>{año}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">
+                          Avalúo Vigencia {fecha.año || '----'}
+                          {fecha.avaluo_source === 'sistema' && <span className="text-emerald-600 ml-1">(Sistema)</span>}
+                        </Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="$0"
+                          value={fecha.avaluo ? `$${Number(fecha.avaluo).toLocaleString()}` : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            actualizarFechaInscripcion('cancelado', idx, fidx, 'avaluo', val);
+                            actualizarFechaInscripcion('cancelado', idx, fidx, 'avaluo_source', 'manual');
+                          }}
+                        />
+                      </div>
+                      {(predio.fechas_inscripcion?.length > 1) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => eliminarFechaInscripcion('cancelado', idx, fidx)}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
         </CardContent>
@@ -2983,6 +3184,74 @@ export default function MutacionesResoluciones() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+              
+              {/* SECCIÓN: Fechas de Inscripción Catastral para Predios Inscritos */}
+              <div className="border-t border-emerald-200 pt-3 mt-3">
+                <div className="bg-emerald-50 border border-dashed border-emerald-300 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Fechas de Inscripción Catastral
+                    </h4>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => agregarFechaInscripcion('inscrito', idx)}
+                      className="h-6 text-xs text-emerald-700 hover:bg-emerald-100"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Agregar Fecha
+                    </Button>
+                  </div>
+                  
+                  {(predio.fechas_inscripcion || [{ año: new Date().getFullYear(), avaluo: predio.avaluo || '', avaluo_source: 'actual' }]).map((fecha, fidx) => (
+                    <div key={fidx} className="flex items-end gap-2 mb-2 p-2 bg-white rounded border border-emerald-200">
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Año Inscripción</Label>
+                        <Select
+                          value={String(fecha.año || '')}
+                          onValueChange={(v) => actualizarFechaInscripcion('inscrito', idx, fidx, 'año', parseInt(v))}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Año..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {añosDisponibles.map(año => (
+                              <SelectItem key={año} value={String(año)}>{año}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">
+                          Avalúo Vigencia {fecha.año || '----'}
+                          {fecha.avaluo_source === 'sistema' && <span className="text-emerald-600 ml-1">(Sistema)</span>}
+                        </Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="$0"
+                          value={fecha.avaluo ? `$${Number(fecha.avaluo).toLocaleString()}` : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            actualizarFechaInscripcion('inscrito', idx, fidx, 'avaluo', val);
+                            actualizarFechaInscripcion('inscrito', idx, fidx, 'avaluo_source', 'manual');
+                          }}
+                        />
+                      </div>
+                      {(predio.fechas_inscripcion?.length > 1) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => eliminarFechaInscripcion('inscrito', idx, fidx)}
+                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
