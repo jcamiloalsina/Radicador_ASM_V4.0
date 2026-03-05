@@ -27561,7 +27561,9 @@ async def crear_solicitud_mutacion(
             radicado = f"MUT-{data.tipo}-{count:05d}-{anio}"
         
         # Determinar estado inicial
-        estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.BORRADOR
+        # Si puede aprobar: APROBADO (genera PDF inmediato)
+        # Si NO puede aprobar: PENDIENTE_APROBACION (queda en cola para aprobación)
+        estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.PENDIENTE_APROBACION
         
         solicitud = {
             "id": solicitud_id,
@@ -27606,7 +27608,7 @@ async def crear_solicitud_mutacion(
                 "accion": "creado" if not puede_aprobar_directo else "creado_y_aprobado",
                 "usuario_id": current_user['id'],
                 "usuario_nombre": current_user['full_name'],
-                "observaciones": "Solicitud creada" if not puede_aprobar_directo else "Solicitud creada y aprobada directamente"
+                "observaciones": "Solicitud enviada para aprobación" if not puede_aprobar_directo else "Solicitud creada y aprobada directamente"
             }]
         }
         
