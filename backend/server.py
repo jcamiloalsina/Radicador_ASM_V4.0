@@ -27612,7 +27612,9 @@ async def crear_solicitud_mutacion(
             radicado = f"MUT-{data.tipo}-{count:05d}-{anio}"
         
         # Determinar estado inicial
-        estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.BORRADOR
+        # Si puede aprobar: APROBADO (genera PDF inmediato)
+        # Si NO puede aprobar: PENDIENTE_APROBACION (queda en cola para aprobación)
+        estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.PENDIENTE_APROBACION
         
         solicitud = {
             "id": solicitud_id,
@@ -27657,7 +27659,7 @@ async def crear_solicitud_mutacion(
                 "accion": "creado" if not puede_aprobar_directo else "creado_y_aprobado",
                 "usuario_id": current_user['id'],
                 "usuario_nombre": current_user['full_name'],
-                "observaciones": "Solicitud creada" if not puede_aprobar_directo else "Solicitud creada y aprobada directamente"
+                "observaciones": "Solicitud enviada para aprobación" if not puede_aprobar_directo else "Solicitud creada y aprobada directamente"
             }]
         }
         
@@ -28192,9 +28194,13 @@ async def generar_resolucion_manual(
     4. Si hay radicado asociado, actualiza la petición a 'finalizado'
     5. Envía correo al solicitante con el PDF adjunto
     """
-    # Verificar permisos
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo coordinadores y administradores pueden generar resoluciones")
+    # Verificar permisos - incluir usuarios con permiso approve_changes
+    puede_generar = (
+        current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR] or
+        Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+    )
+    if not puede_generar:
+        raise HTTPException(status_code=403, detail="No tiene permisos para generar resoluciones. Requiere rol de coordinador/administrador o permiso de aprobación.")
     
     try:
         # 1. Obtener el predio ORIGINAL (sin los cambios propuestos)
@@ -28608,8 +28614,12 @@ async def generar_preview_resolucion(
     current_user: dict = Depends(get_current_user)
 ):
     """Generar un PDF preview de una resolución usando la plantilla y datos de un predio"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden generar")
+    puede_generar = (
+        current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR] or
+        Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+    )
+    if not puede_generar:
+        raise HTTPException(status_code=403, detail="No tiene permisos para generar previews. Requiere rol de coordinador/administrador o permiso de aprobación.")
     
     try:
         tipo = tipo.upper()
