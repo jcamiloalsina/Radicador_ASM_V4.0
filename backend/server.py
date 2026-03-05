@@ -13904,6 +13904,26 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
         
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_email=aprobador.get("email"),
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M1 para {codigo}",
+            entidad_tipo="resolucion",
+            entidad_id=numero_resolucion,
+            datos_adicionales={
+                "tipo_mutacion": "M1",
+                "codigo_predial": codigo,
+                "municipio": datos_predio.get("municipio", ""),
+                "radicado": cambio.get("radicado", "")
+            },
+            ip_address=None
+        )
+        
         # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
         verificacion_doc = {
             "id": str(uuid.uuid4()),
@@ -25975,6 +25995,28 @@ async def generar_resolucion_m2(
         
         await db.resoluciones.insert_one(resolucion_doc)
         
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_email=current_user.get("email"),
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M2 ({request.subtipo}) para {municipio_nombre}",
+            entidad_tipo="resolucion",
+            entidad_id=numero_resolucion,
+            datos_adicionales={
+                "tipo_mutacion": "M2",
+                "subtipo": request.subtipo,
+                "municipio": municipio_nombre,
+                "radicado": request.radicado,
+                "predios_cancelados": len(request.predios_cancelados),
+                "predios_inscritos": len(request.predios_inscritos)
+            },
+            ip_address=None
+        )
+        
         # Guardar código de verificación
         certificado_verificable = {
             "id": str(uuid.uuid4()),
@@ -26280,6 +26322,24 @@ async def finalizar_tramite_y_enviar_correo(
         )
         
         logging.info(f"Trámite {request.radicado} finalizado por {current_user.get('email')}")
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            db=db,
+            usuario_id=current_user.get("id"),
+            usuario_nombre=current_user.get("full_name"),
+            usuario_email=current_user.get("email"),
+            accion="finalizar_tramite",
+            categoria="tramites",
+            descripcion=f"Finalizó trámite {request.radicado} y envió resolución",
+            entidad_tipo="peticion",
+            entidad_id=request.radicado,
+            datos_adicionales={
+                "correo_enviado": correo_solicitante if correo_solicitante else None,
+                "pdf_path": pdf_path_relative
+            },
+            ip_address=None
+        )
         
         # Enviar correo con PDF adjunto si hay correo del solicitante
         email_enviado = False
