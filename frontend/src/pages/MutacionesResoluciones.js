@@ -220,9 +220,30 @@ export default function MutacionesResoluciones() {
   });
   const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2022, años_futuro: 2 });
 
-  // Estado para códigos homologados reservados
+  // Estado para códigos homologados reservados (temporalmente)
   const [codigosReservados, setCodigosReservados] = useState([]);
   const [sessionIdReserva, setSessionIdReserva] = useState(null);
+
+  // Función para confirmar uso de códigos al guardar resolución
+  const confirmarUsoCodigos = useCallback(async (codigos) => {
+    if (!codigos || codigos.length === 0) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/codigos-homologados/confirmar-uso`, 
+        `codigos=${codigos.join(',')}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          } 
+        }
+      );
+      console.log('Códigos confirmados:', codigos);
+    } catch (error) {
+      console.error('Error confirmando códigos:', error);
+    }
+  }, []);
 
   // Estado para flujo de aprobación
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
@@ -1678,6 +1699,11 @@ export default function MutacionesResoluciones() {
         predios_inscritos: [...prev.predios_inscritos, predioFinal]
       }));
       toast.success('Predio agregado a la lista');
+      
+      // Agregar el código a la lista de reservados para confirmar después
+      if (codigoHomologado) {
+        setCodigosReservados(prev => [...prev, codigoHomologado]);
+      }
     }
     
     // IMPORTANTE: Refrescar el siguiente código homologado disponible
@@ -2032,6 +2058,12 @@ export default function MutacionesResoluciones() {
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
         
+        // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
+        if (codigosReservados.length > 0) {
+          await confirmarUsoCodigos(codigosReservados);
+          setCodigosReservados([]);
+        }
+        
         // Abrir PDF en nueva pestaña
         if (response.data.pdf_url) {
           window.open(response.data.pdf_url, '_blank');
@@ -2044,6 +2076,7 @@ export default function MutacionesResoluciones() {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error generando resolución');
+      // No liberamos los códigos aquí porque el usuario puede reintentar
     } finally {
       setGenerando(false);
     }
@@ -2051,6 +2084,11 @@ export default function MutacionesResoluciones() {
 
   // Reset formulario M2
   const resetFormularioM2 = () => {
+    // Liberar códigos reservados no utilizados antes de limpiar
+    if (codigosReservados.length > 0) {
+      liberarCodigosReservados();
+    }
+    
     setM2Data({
       subtipo: '',
       municipio: '',
@@ -2065,6 +2103,7 @@ export default function MutacionesResoluciones() {
     });
     setSearchPredio('');
     setSearchResults([]);
+    setCodigosReservados([]);
   };
 
   // Renderizar selector de tipo de mutación
