@@ -26047,7 +26047,11 @@ async def descargar_resolucion_pdf(filename: str):
         return FileResponse(
             filepath,
             media_type="application/pdf",
-            filename=filename
+            filename=filename,
+            headers={
+                "Content-Disposition": f"inline; filename={filename}",
+                "X-Content-Type-Options": "nosniff"
+            }
         )
     except HTTPException:
         raise
