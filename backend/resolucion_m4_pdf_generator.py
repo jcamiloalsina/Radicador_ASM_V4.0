@@ -572,45 +572,56 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         c.setFont(font_bold, 10)
         c.drawString(MARGIN_LEFT, y_position, f"Artículo {num_articulo}.")
         
-        # Calcular ancho disponible después de "Artículo X."
+        # Calcular ancho para la primera línea (después de "Artículo X.")
         indent = 60
         c.setFont(font_normal, 10)
-        
-        lines = simpleSplit(texto, font_normal, 10, CONTENT_WIDTH - indent)
         espacio_normal = c.stringWidth(' ', font_normal, 10)
         max_space = espacio_normal * 3
         
-        for i, line in enumerate(lines):
-            verificar_espacio(14)
-            
-            if i == 0:
-                # Primera línea junto al número de artículo
-                c.drawString(MARGIN_LEFT + indent, y_position, line)
-            else:
-                # Líneas siguientes justificadas
-                line_width = c.stringWidth(line, font_normal, 10)
-                if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
-                    c.drawString(MARGIN_LEFT, y_position, line)
-                else:
-                    words = line.split(' ')
-                    if len(words) > 1:
-                        total_words_width = sum(c.stringWidth(word, font_normal, 10) for word in words)
-                        total_space = CONTENT_WIDTH - total_words_width
-                        space_width = total_space / (len(words) - 1)
-                        
-                        if space_width > max_space:
-                            c.drawString(MARGIN_LEFT, y_position, line)
-                        else:
-                            x = MARGIN_LEFT
-                            for j, word in enumerate(words):
-                                c.drawString(x, y_position, word)
-                                x += c.stringWidth(word, font_normal, 10)
-                                if j < len(words) - 1:
-                                    x += space_width
-                    else:
-                        c.drawString(MARGIN_LEFT, y_position, line)
-            
+        # Primera línea con indent
+        first_line_width = CONTENT_WIDTH - indent
+        first_lines = simpleSplit(texto, font_normal, 10, first_line_width)
+        
+        if first_lines:
+            c.drawString(MARGIN_LEFT + indent, y_position, first_lines[0])
             y_position -= 14
+            
+            # Texto restante después de la primera línea
+            first_line_len = len(first_lines[0])
+            remaining_text = texto[first_line_len:].strip()
+            
+            if remaining_text:
+                # Líneas siguientes usando todo el CONTENT_WIDTH
+                lines = simpleSplit(remaining_text, font_normal, 10, CONTENT_WIDTH)
+                
+                for i, line in enumerate(lines):
+                    verificar_espacio(14)
+                    
+                    line_width = c.stringWidth(line, font_normal, 10)
+                    # Última línea o línea corta - no justificar
+                    if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.85:
+                        c.drawString(MARGIN_LEFT, y_position, line)
+                    else:
+                        # Justificar
+                        words = line.split(' ')
+                        if len(words) > 1:
+                            total_words_width = sum(c.stringWidth(word, font_normal, 10) for word in words)
+                            total_space = CONTENT_WIDTH - total_words_width
+                            space_width = total_space / (len(words) - 1)
+                            
+                            if space_width > max_space:
+                                c.drawString(MARGIN_LEFT, y_position, line)
+                            else:
+                                x = MARGIN_LEFT
+                                for j, word in enumerate(words):
+                                    c.drawString(x, y_position, word)
+                                    x += c.stringWidth(word, font_normal, 10)
+                                    if j < len(words) - 1:
+                                        x += space_width
+                        else:
+                            c.drawString(MARGIN_LEFT, y_position, line)
+                    
+                    y_position -= 14
         y_position -= 6
     
     # ARTÍCULO 2 - Aceptar/Rechazar
