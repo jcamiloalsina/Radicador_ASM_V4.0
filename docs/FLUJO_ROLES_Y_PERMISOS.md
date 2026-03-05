@@ -159,7 +159,19 @@
 │   2. Carga datos del predio                                                      │
 │   3. Completa formulario de mutación                                             │
 │   4. Selecciona GESTOR DE APOYO (coordinador a quien enviar)                    │
-│   5. [ENVÍA PARA REVISIÓN] ───────────────────────┐                             │
+│   5. [ENVÍA PARA CARTOGRAFÍA/REVISIÓN] ───────────┐                             │
+│                                                    │                             │
+│                                                    ▼                             │
+│   ┌────────────────────────────────────────────────────────────────┐            │
+│   │  • GESTOR DE APOYO recibe notificación                         │            │
+│   │  • Ve la asignación en: /dashboard/pendientes?tab=mis-asignaciones │        │
+│   │  • Sección: "Mutaciones Asignadas - Cartografía"               │            │
+│   │  • Botón: "Finalizar Cartografía"                              │            │
+│   │                                                                  │            │
+│   │  Al finalizar cartografía:                                      │            │
+│   │  • Notifica a coordinadores/aprobadores                        │            │
+│   │  • Pasa a estado: PENDIENTE_APROBACION                         │            │
+│   └────────────────────────────────────────────────────────────────┘            │
 │                                                    │                             │
 │                                                    ▼                             │
 │   ┌────────────────────────────────────────────────────────────────┐            │
@@ -172,6 +184,16 @@
 │                                                                                  │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## 5.1 NOTIFICACIONES EN MUTACIONES
+
+| Evento | Quién notifica | Destinatario | Dónde ve |
+|--------|----------------|--------------|----------|
+| Asignar a gestor de apoyo | Gestor original | Gestor de apoyo | Pendientes → Mis Asignaciones → "Mutaciones Asignadas" |
+| Finalizar cartografía | Gestor de apoyo | Coordinadores | Pendientes → Pendientes por Aprobar |
+| Finalizar cartografía | Gestor de apoyo | Gestor original | Notificación "Cartografía completada" |
+| Aprobar mutación | Coordinador | Gestor original | Notificación + Resolución generada |
+| Rechazar mutación | Coordinador | Gestor original | Notificación con motivo |
 
 ## 6. FLUJO DE CAMBIOS EN PREDIOS
 
