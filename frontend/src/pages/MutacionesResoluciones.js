@@ -220,6 +220,31 @@ export default function MutacionesResoluciones() {
   });
   const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2022, años_futuro: 2 });
 
+  // Estado para códigos homologados reservados (temporalmente)
+  const [codigosReservados, setCodigosReservados] = useState([]);
+  const [sessionIdReserva, setSessionIdReserva] = useState(null);
+
+  // Función para confirmar uso de códigos al guardar resolución
+  const confirmarUsoCodigos = useCallback(async (codigos) => {
+    if (!codigos || codigos.length === 0) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/codigos-homologados/confirmar-uso`, 
+        `codigos=${codigos.join(',')}`,
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          } 
+        }
+      );
+      console.log('Códigos confirmados:', codigos);
+    } catch (error) {
+      console.error('Error confirmando códigos:', error);
+    }
+  }, []);
+
   // Estado para flujo de aprobación
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
@@ -244,6 +269,63 @@ export default function MutacionesResoluciones() {
       console.error('Error cargando gestores:', error);
     }
   }, []);
+
+  // Función para reservar múltiples códigos homologados
+  const reservarCodigosHomologados = useCallback(async (municipio, cantidad) => {
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === municipio)?.nombre || municipio;
+      
+      const response = await axios.post(
+        `${API}/codigos-homologados/reservar-multiples/${encodeURIComponent(municipioNombre)}?cantidad=${cantidad}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setCodigosReservados(prev => [...prev, ...response.data.codigos_reservados]);
+        setSessionIdReserva(response.data.session_id);
+        return response.data.codigos_reservados;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error reservando códigos:', error);
+      toast.error(error.response?.data?.detail || 'Error reservando códigos homologados');
+      return [];
+    }
+  }, []);
+
+  // Función para obtener el siguiente código reservado
+  const obtenerSiguienteCodigoReservado = useCallback(() => {
+    if (codigosReservados.length > 0) {
+      const [siguiente, ...restantes] = codigosReservados;
+      setCodigosReservados(restantes);
+      return siguiente;
+    }
+    return null;
+  }, [codigosReservados]);
+
+  // Liberar códigos no utilizados al cancelar
+  const liberarCodigosReservados = useCallback(async () => {
+    if (sessionIdReserva && codigosReservados.length > 0) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post(`${API}/codigos-homologados/liberar-reserva`, 
+          `session_id=${sessionIdReserva}`,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded'
+            } 
+          }
+        );
+        setCodigosReservados([]);
+        setSessionIdReserva(null);
+      } catch (error) {
+        console.error('Error liberando códigos:', error);
+      }
+    }
+  }, [sessionIdReserva, codigosReservados]);
 
   useEffect(() => {
     if (tipoMutacionSeleccionado?.codigo === 'M2') {
@@ -1257,23 +1339,26 @@ export default function MutacionesResoluciones() {
     }));
   };
 
-  // Obtener siguiente código homologado para el municipio
-  const fetchSiguienteCodigoHomologadoNuevo = async (municipioCodigo) => {
+  // Obtener siguiente código homologado para el municipio (y opcionalmente reservarlo)
+  const fetchSiguienteCodigoHomologadoNuevo = async (municipioCodigo, reservar = false) => {
     if (!municipioCodigo) {
       setSiguienteCodigoHomologadoNuevo(null);
-      return;
+      return null;
     }
     
     try {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === municipioCodigo)?.nombre || '';
-      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(municipioNombre)}`, {
+      const url = `${API}/codigos-homologados/siguiente/${encodeURIComponent(municipioNombre)}${reservar ? '?reservar=true' : ''}`;
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSiguienteCodigoHomologadoNuevo(res.data);
+      return res.data;
     } catch (error) {
       console.error('Error obteniendo siguiente código homologado:', error);
       setSiguienteCodigoHomologadoNuevo(null);
+      return null;
     }
   };
 
@@ -1501,18 +1586,28 @@ export default function MutacionesResoluciones() {
       return;
     }
     
-    // Usar el código homologado ya cargado o generar uno nuevo
+    // Usar el código homologado reservado o el siguiente disponible
     setGenerandoCodigo(true);
-    let codigoHomologado = siguienteCodigoHomologadoNuevo?.codigo || '';
+    let codigoHomologado = '';
     
+    // Reservar un nuevo código de forma atómica
+    try {
+      const codigoReservado = await fetchSiguienteCodigoHomologadoNuevo(m2Data.municipio, true);
+      if (codigoReservado?.codigo) {
+        codigoHomologado = codigoReservado.codigo;
+      }
+    } catch (error) {
+      console.error('Error reservando código:', error);
+    }
+    
+    // Fallback: generar código básico si la reserva falla
     if (!codigoHomologado) {
-      // Si no hay código pre-cargado, intentar generar uno
       try {
         const token = localStorage.getItem('token');
         const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
         const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
           municipio: municipioNombre,
-          codigo_predial: codigo.substring(0, 21) // Primeros 21 dígitos
+          codigo_predial: codigo.substring(0, 21)
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -1522,7 +1617,6 @@ export default function MutacionesResoluciones() {
         }
       } catch (error) {
         console.log('Error generando código homologado, se usará formato básico');
-        // Generar un código básico si falla
         const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || m2Data.municipio;
         codigoHomologado = `${municipioNombre}-${Date.now().toString().slice(-6)}`;
       }
@@ -1605,7 +1699,16 @@ export default function MutacionesResoluciones() {
         predios_inscritos: [...prev.predios_inscritos, predioFinal]
       }));
       toast.success('Predio agregado a la lista');
+      
+      // Agregar el código a la lista de reservados para confirmar después
+      if (codigoHomologado) {
+        setCodigosReservados(prev => [...prev, codigoHomologado]);
+      }
     }
+    
+    // IMPORTANTE: Refrescar el siguiente código homologado disponible
+    // para que el próximo predio obtenga un código diferente
+    fetchSiguienteCodigoHomologadoNuevo(m2Data.municipio);
     
     setShowNuevoPredioModal(false);
     setNuevoPredioInscrito(null);
@@ -1955,6 +2058,12 @@ export default function MutacionesResoluciones() {
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
         
+        // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
+        if (codigosReservados.length > 0) {
+          await confirmarUsoCodigos(codigosReservados);
+          setCodigosReservados([]);
+        }
+        
         // Abrir PDF en nueva pestaña
         if (response.data.pdf_url) {
           window.open(response.data.pdf_url, '_blank');
@@ -1967,6 +2076,7 @@ export default function MutacionesResoluciones() {
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error generando resolución');
+      // No liberamos los códigos aquí porque el usuario puede reintentar
     } finally {
       setGenerando(false);
     }
@@ -1974,6 +2084,11 @@ export default function MutacionesResoluciones() {
 
   // Reset formulario M2
   const resetFormularioM2 = () => {
+    // Liberar códigos reservados no utilizados antes de limpiar
+    if (codigosReservados.length > 0) {
+      liberarCodigosReservados();
+    }
+    
     setM2Data({
       subtipo: '',
       municipio: '',
@@ -1988,6 +2103,7 @@ export default function MutacionesResoluciones() {
     });
     setSearchPredio('');
     setSearchResults([]);
+    setCodigosReservados([]);
   };
 
   // Renderizar selector de tipo de mutación

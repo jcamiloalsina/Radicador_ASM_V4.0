@@ -1026,7 +1026,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1164,7 +1164,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1230,7 +1230,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1268,7 +1268,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1321,7 +1321,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1360,7 +1360,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1390,7 +1390,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1423,7 +1423,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -5739,9 +5739,16 @@ async def get_codigos_disponibles(
 @api_router.get("/codigos-homologados/siguiente/{municipio}")
 async def get_siguiente_codigo_homologado(
     municipio: str,
+    reservar: bool = False,
+    session_id: str = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtener el siguiente código homologado disponible para un municipio"""
+    """
+    Obtener el siguiente código homologado disponible para un municipio.
+    Si reservar=true, se reserva el código TEMPORALMENTE (no usado definitivamente).
+    El código debe confirmarse con /confirmar-uso cuando se guarde la resolución.
+    Si no se confirma, puede liberarse o expira automáticamente.
+    """
     
     # Primero sincronizar: verificar si hay códigos marcados como no usados pero ya asignados a predios
     codigos_en_predios = await db.predios.distinct("codigo_homologado", {
@@ -5753,14 +5760,45 @@ async def get_siguiente_codigo_homologado(
         # Marcar como usados los códigos que ya están en predios
         await db.codigos_homologados.update_many(
             {"codigo": {"$in": codigos_en_predios}, "usado": False},
-            {"$set": {"usado": True, "fecha_asignacion": "sincronizado-auto"}}
+            {"$set": {"usado": True, "estado": "usado", "fecha_asignacion": "sincronizado-auto"}}
         )
     
-    # Buscar el primer código disponible (ordenado alfabéticamente)
-    codigo_doc = await db.codigos_homologados.find_one(
-        {'municipio': municipio, 'usado': False},
-        sort=[('codigo', 1)]
+    # Liberar reservas expiradas (más de 2 horas sin confirmar)
+    tiempo_expiracion = (datetime.utcnow() - timedelta(hours=2)).isoformat()
+    await db.codigos_homologados.update_many(
+        {
+            "municipio": municipio,
+            "estado": "reservado",
+            "fecha_reserva": {"$lt": tiempo_expiracion}
+        },
+        {
+            "$set": {"usado": False, "estado": "disponible"},
+            "$unset": {"reservado_por": "", "fecha_reserva": "", "session_id": ""}
+        }
     )
+    
+    if reservar:
+        # Reservar el código TEMPORALMENTE de forma atómica
+        codigo_doc = await db.codigos_homologados.find_one_and_update(
+            {'municipio': municipio, 'usado': False, '$or': [{'estado': 'disponible'}, {'estado': {'$exists': False}}]},
+            {
+                '$set': {
+                    'usado': True,  # Marcado como usado para que no aparezca en otras consultas
+                    'estado': 'reservado',  # Pero el estado indica que es temporal
+                    'reservado_por': current_user.get('id'),
+                    'fecha_reserva': datetime.utcnow().isoformat(),
+                    'session_id': session_id or str(uuid.uuid4())
+                }
+            },
+            sort=[('codigo', 1)],
+            return_document=True
+        )
+    else:
+        # Solo consultar sin reservar (excluir los reservados temporalmente)
+        codigo_doc = await db.codigos_homologados.find_one(
+            {'municipio': municipio, 'usado': False, '$or': [{'estado': 'disponible'}, {'estado': {'$exists': False}}]},
+            sort=[('codigo', 1)]
+        )
     
     if not codigo_doc:
         return {
@@ -5778,7 +5816,9 @@ async def get_siguiente_codigo_homologado(
     return {
         "municipio": municipio,
         "codigo": codigo_doc['codigo'],
-        "disponibles": total_disponibles
+        "disponibles": total_disponibles,
+        "reservado": reservar,
+        "session_id": codigo_doc.get('session_id') if reservar else None
     }
 
 
@@ -5801,6 +5841,167 @@ async def asignar_codigo_homologado(municipio: str, predio_id: str) -> str:
     if result:
         return result['codigo']
     return None
+
+
+@api_router.post("/codigos-homologados/reservar-multiples/{municipio}")
+async def reservar_multiples_codigos_homologados(
+    municipio: str,
+    cantidad: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reserva múltiples códigos homologados de forma atómica para una solicitud.
+    Útil cuando se crean varios predios en una misma resolución (ej: desenglobe M2).
+    
+    Retorna una lista de códigos reservados en orden.
+    """
+    if cantidad < 1 or cantidad > 100:
+        raise HTTPException(status_code=400, detail="La cantidad debe estar entre 1 y 100")
+    
+    # Primero sincronizar: verificar códigos ya usados en predios
+    codigos_en_predios = await db.predios.distinct("codigo_homologado", {
+        "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+        "codigo_homologado": {"$exists": True, "$ne": "", "$ne": None}
+    })
+    
+    if codigos_en_predios:
+        await db.codigos_homologados.update_many(
+            {"codigo": {"$in": codigos_en_predios}, "usado": False},
+            {"$set": {"usado": True, "fecha_asignacion": "sincronizado-auto"}}
+        )
+    
+    # Reservar códigos uno por uno de forma atómica
+    codigos_reservados = []
+    session_id = str(uuid.uuid4())  # ID de sesión para agrupar la reserva
+    
+    for i in range(cantidad):
+        result = await db.codigos_homologados.find_one_and_update(
+            {'municipio': municipio, 'usado': False},
+            {
+                '$set': {
+                    'usado': True,
+                    'reservado': True,
+                    'session_id': session_id,
+                    'fecha_reserva': datetime.utcnow().isoformat(),
+                    'reservado_por': current_user.get('id')
+                }
+            },
+            sort=[('codigo', 1)],
+            return_document=True
+        )
+        
+        if result:
+            codigos_reservados.append(result['codigo'])
+        else:
+            # No hay más códigos disponibles
+            break
+    
+    if len(codigos_reservados) < cantidad:
+        # Liberar los códigos reservados si no se pudieron obtener todos
+        if codigos_reservados:
+            await db.codigos_homologados.update_many(
+                {'codigo': {'$in': codigos_reservados}, 'session_id': session_id},
+                {'$set': {'usado': False, 'reservado': False}, '$unset': {'session_id': '', 'fecha_reserva': '', 'reservado_por': ''}}
+            )
+        
+        disponibles = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': False})
+        raise HTTPException(
+            status_code=400, 
+            detail=f"No hay suficientes códigos disponibles. Solicitados: {cantidad}, Disponibles: {disponibles}"
+        )
+    
+    total_disponibles = await db.codigos_homologados.count_documents({
+        'municipio': municipio,
+        'usado': False
+    })
+    
+    logging.info(f"Reservados {len(codigos_reservados)} códigos homologados para {municipio} por {current_user.get('email')}")
+    
+    return {
+        "success": True,
+        "municipio": municipio,
+        "codigos_reservados": codigos_reservados,
+        "cantidad_reservada": len(codigos_reservados),
+        "disponibles_restantes": total_disponibles,
+        "session_id": session_id
+    }
+
+
+@api_router.post("/codigos-homologados/liberar-reserva")
+async def liberar_reserva_codigos(
+    session_id: str = Form(None),
+    codigos: str = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Libera códigos reservados que no fueron utilizados.
+    Se usa cuando el usuario cancela la operación antes de guardar.
+    Puede liberar por session_id o por lista de códigos específicos.
+    """
+    query = {"estado": "reservado"}
+    
+    if session_id:
+        query["session_id"] = session_id
+    elif codigos:
+        lista_codigos = [c.strip() for c in codigos.split(",") if c.strip()]
+        query["codigo"] = {"$in": lista_codigos}
+    else:
+        # Liberar todos los códigos reservados por este usuario
+        query["reservado_por"] = current_user.get('id')
+    
+    result = await db.codigos_homologados.update_many(
+        query,
+        {
+            '$set': {'usado': False, 'estado': 'disponible'},
+            '$unset': {'session_id': '', 'fecha_reserva': '', 'reservado_por': '', 'predio_id': ''}
+        }
+    )
+    
+    logging.info(f"Liberados {result.modified_count} códigos homologados por {current_user.get('email')}")
+    
+    return {
+        "success": True,
+        "codigos_liberados": result.modified_count
+    }
+
+
+@api_router.post("/codigos-homologados/confirmar-uso")
+async def confirmar_uso_codigos(
+    codigos: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Confirma el uso definitivo de códigos homologados reservados.
+    Se llama cuando se guarda exitosamente la resolución.
+    Los códigos pasan de estado 'reservado' a 'usado' permanentemente.
+    """
+    lista_codigos = [c.strip() for c in codigos.split(",") if c.strip()]
+    
+    if not lista_codigos:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un código")
+    
+    result = await db.codigos_homologados.update_many(
+        {
+            "codigo": {"$in": lista_codigos},
+            "estado": "reservado"
+        },
+        {
+            "$set": {
+                "estado": "usado",
+                "fecha_confirmacion": datetime.utcnow().isoformat(),
+                "confirmado_por": current_user.get('id')
+            },
+            "$unset": {"session_id": ""}
+        }
+    )
+    
+    logging.info(f"Confirmado uso de {result.modified_count} códigos homologados por {current_user.get('email')}: {lista_codigos}")
+    
+    return {
+        "success": True,
+        "codigos_confirmados": result.modified_count,
+        "codigos": lista_codigos
+    }
 
 
 @api_router.delete("/codigos-homologados/{municipio}")
@@ -11307,7 +11508,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://pdf-fiscalidad.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-audit.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -26825,17 +27026,25 @@ async def listar_gestores_disponibles(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Lista gestores disponibles para asignar como apoyo
+    Lista usuarios internos disponibles para asignar como apoyo
+    Incluye: Gestor, Gestor Auxiliar, Coordinador, Administrador, Atención Usuario
     """
     try:
+        roles_internos = [
+            UserRole.GESTOR, 
+            UserRole.GESTOR_AUXILIAR, 
+            UserRole.COORDINADOR, 
+            UserRole.ADMINISTRADOR,
+            UserRole.ATENCION_USUARIO
+        ]
+        
         gestores = await db.users.find(
             {
-                "role": {"$in": [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]},
-                "is_active": True,
+                "role": {"$in": roles_internos},
                 "id": {"$ne": current_user['id']}  # Excluir al usuario actual
             },
             {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}
-        ).to_list(100)
+        ).sort("full_name", 1).to_list(200)
         
         return {
             "success": True,
