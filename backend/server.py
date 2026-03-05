@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Form, Query, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -26017,11 +26018,8 @@ async def actualizar_configuracion_municipios(
 
 
 @api_router.get("/resoluciones/descargar/{filename}")
-async def descargar_resolucion_pdf(
-    filename: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Descargar un PDF de resolución por su nombre de archivo"""
+async def descargar_resolucion_pdf(filename: str):
+    """Descargar un PDF de resolución por su nombre de archivo (público)"""
     try:
         filepath = f"/app/backend/static/resoluciones/{filename}"
         
@@ -28989,6 +28987,11 @@ async def actualizar_configuracion_anios(
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Mount static files directory for PDFs and images
+os.makedirs("/app/backend/static", exist_ok=True)
+os.makedirs("/app/backend/static/resoluciones", exist_ok=True)
+app.mount("/api/static", StaticFiles(directory="/app/backend/static"), name="static")
 
 
 # ===== WEBSOCKET ENDPOINT FOR REAL-TIME NOTIFICATIONS =====
