@@ -108,6 +108,7 @@ def generate_resolucion_m3_pdf(
     encabezado_img = None
     pie_pagina_img = None
     firma_dalgie = None
+    logo_watermark = None
     
     try:
         if imagen_encabezado_b64:
@@ -134,6 +135,14 @@ def generate_resolucion_m3_pdf(
     except Exception as e:
         print(f"Error cargando firma: {e}")
     
+    # Cargar watermark (marca de agua) - IDÉNTICO al M2
+    try:
+        logo_path = "/app/frontend/public/watermark-gray.png"
+        if os.path.exists(logo_path):
+            logo_watermark = ImageReader(logo_path)
+    except Exception as e:
+        print(f"Error cargando marca de agua: {e}")
+    
     # Variables de control
     y_position = PAGE_HEIGHT - MARGIN_TOP
     page_number = 1
@@ -155,12 +164,12 @@ def generate_resolucion_m3_pdf(
     solicitante_documento = solicitante.get("documento", "N/A")
     codigo_predial = predio.get("codigo_predial_nacional", predio.get("numero_predio", ""))
     
-    # Marca de agua
+    # Marca de agua - IDÉNTICA al M2
     def draw_watermark():
-        try:
-            logo_watermark = ImageReader(get_encabezado_image())
+        """Dibuja la marca de agua con el logo de Asomunicipios - IDÉNTICO al M2"""
+        if logo_watermark:
             c.saveState()
-            watermark_width = 300
+            watermark_width = 450
             watermark_height = 180
             watermark_x = (PAGE_WIDTH - watermark_width) / 2
             watermark_y = (PAGE_HEIGHT - watermark_height) / 2
@@ -169,8 +178,6 @@ def generate_resolucion_m3_pdf(
                        width=watermark_width, height=watermark_height,
                        preserveAspectRatio=True, mask='auto')
             c.restoreState()
-        except:
-            pass
     
     def draw_header():
         """Dibuja el encabezado institucional IDÉNTICO al M2"""
@@ -263,16 +270,20 @@ def generate_resolucion_m3_pdf(
             y_position -= line_height
     
     def dibujar_tabla_predio(titulo_seccion, destino_val, avaluo_val, es_cancelacion=True):
-        """Dibuja tabla de predio igual que M2"""
+        """Dibuja tabla de predio IDÉNTICO al M2 - con encabezado verde y texto blanco"""
         nonlocal y_position
         
-        verificar_espacio(60)
+        verificar_espacio(80)
         
-        # Título de sección
+        # Título de sección con rectángulo verde y texto blanco - IDÉNTICO al M2
         c.setFillColor(VERDE_INSTITUCIONAL)
-        c.setFont(font_bold, 9)
-        c.drawString(MARGIN_LEFT, y_position, titulo_seccion)
-        y_position -= 15
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 15, fill=1, stroke=0)
+        c.setFillColor(BLANCO)
+        c.setFont(font_bold, 10)
+        c.drawCentredString(PAGE_WIDTH/2, y_position - 9, titulo_seccion)
+        y_position -= 20
+        
+        c.setFillColor(NEGRO)
         
         # Primera fila de encabezados
         c.setFillColor(colors.HexColor('#e8e8e8'))
