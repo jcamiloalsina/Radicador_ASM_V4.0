@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Textarea } from '../components/ui/textarea';
+import PDFViewerModal from '../components/PDFViewerModal';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -249,6 +250,18 @@ export default function MutacionesResoluciones() {
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  
+  // Estado para visor de PDF
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [pdfViewerData, setPdfViewerData] = useState({
+    url: '',
+    title: '',
+    fileName: '',
+    resolucionId: null,
+    radicado: '',
+    correoSolicitante: ''
+  });
+  const [emailSent, setEmailSent] = useState(false);
   
   // Determinar si el usuario puede aprobar directamente
   const puedeAprobar = user?.role === 'coordinador' || 
@@ -915,10 +928,19 @@ export default function MutacionesResoluciones() {
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
         
-        // Abrir PDF en nueva pestaña - usar URL completa del backend
+        // Mostrar PDF en popup en lugar de abrir nueva ventana
         if (response.data.pdf_url) {
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
-          window.open(pdfFullUrl, '_blank');
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.id,
+            radicado: m1Data.radicado_peticion,
+            correoSolicitante: '' // Se puede obtener del radicado si es necesario
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
         }
         
         // Limpiar formulario
@@ -2065,10 +2087,19 @@ export default function MutacionesResoluciones() {
           setCodigosReservados([]);
         }
         
-        // Abrir PDF en nueva pestaña - usar URL completa del backend
+        // Mostrar PDF en popup en lugar de abrir nueva ventana
         if (response.data.pdf_url) {
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
-          window.open(pdfFullUrl, '_blank');
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion} - ${m2Data.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}`,
+            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.id,
+            radicado: m2Data.radicado,
+            correoSolicitante: '' // Se obtiene del radicado
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
         }
         
         // Limpiar formulario
@@ -3442,10 +3473,21 @@ export default function MutacionesResoluciones() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`, '_blank')}
+                        onClick={() => {
+                          setPdfViewerData({
+                            url: `${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`,
+                            title: `Resolución ${res.numero_resolucion}`,
+                            fileName: `Resolucion_${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
+                            resolucionId: res.id,
+                            radicado: res.radicado || '',
+                            correoSolicitante: ''
+                          });
+                          setEmailSent(false);
+                          setShowPDFViewer(true);
+                        }}
                       >
-                        <Download className="w-4 h-4 mr-1" />
-                        PDF
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver PDF
                       </Button>
                     )}
                   </div>
@@ -5119,6 +5161,39 @@ export default function MutacionesResoluciones() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de visualización de PDF */}
+      <PDFViewerModal
+        isOpen={showPDFViewer}
+        onClose={() => setShowPDFViewer(false)}
+        pdfUrl={pdfViewerData.url}
+        title={pdfViewerData.title}
+        fileName={pdfViewerData.fileName}
+        showEmailOption={!!pdfViewerData.radicado}
+        emailSent={emailSent}
+        onSendEmail={async () => {
+          if (!pdfViewerData.radicado) return;
+          
+          try {
+            const token = localStorage.getItem('token');
+            // Finalizar trámite y enviar correo con PDF adjunto
+            const response = await axios.post(`${API}/resoluciones/finalizar-y-enviar`, {
+              radicado: pdfViewerData.radicado,
+              pdf_url: pdfViewerData.url.replace(process.env.REACT_APP_BACKEND_URL, '')
+            }, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+              setEmailSent(true);
+              toast.success('Trámite finalizado y correo enviado exitosamente');
+            }
+          } catch (error) {
+            console.error('Error finalizando trámite:', error);
+            throw error;
+          }
+        }}
+      />
     </div>
   );
 }

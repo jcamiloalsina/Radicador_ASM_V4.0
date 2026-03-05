@@ -26140,6 +26140,147 @@ async def generar_resolucion_m2(
         raise HTTPException(status_code=500, detail=f"Error generando resolución: {str(e)}")
 
 
+# ==================== FINALIZAR TRÁMITE Y ENVIAR CORREO ====================
+
+class FinalizarEnviarRequest(BaseModel):
+    radicado: str
+    pdf_url: str
+
+@api_router.post("/resoluciones/finalizar-y-enviar")
+async def finalizar_tramite_y_enviar_correo(
+    request: FinalizarEnviarRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Finaliza el trámite asociado al radicado y envía el PDF por correo al solicitante.
+    """
+    try:
+        if current_user.get('role') not in ['coordinador', 'administrador']:
+            if not await check_permission(current_user, 'approve_changes'):
+                raise HTTPException(status_code=403, detail="No tiene permisos para finalizar trámites")
+        
+        # Buscar la petición por radicado
+        petition = await db.petitions.find_one({"radicado": request.radicado}, {"_id": 0})
+        
+        if not petition:
+            raise HTTPException(status_code=404, detail=f"No se encontró el trámite con radicado {request.radicado}")
+        
+        # Verificar si tiene correo del solicitante
+        correo_solicitante = petition.get("correo") or petition.get("email")
+        nombre_solicitante = petition.get("nombre_completo") or petition.get("nombre") or "Estimado usuario"
+        
+        # Construir ruta del archivo PDF
+        pdf_path_relative = request.pdf_url
+        pdf_path_full = f"/app/frontend/public{pdf_path_relative}"
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(pdf_path_full):
+            logging.warning(f"Archivo PDF no encontrado: {pdf_path_full}")
+            # Intentar sin el /app/frontend/public
+            pdf_path_full = f"/app/frontend/public{pdf_path_relative}"
+        
+        # Actualizar estado del trámite a finalizado
+        historial_entry = {
+            "estado_anterior": petition.get("status"),
+            "estado_nuevo": "finalizado",
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "usuario": current_user.get("full_name"),
+            "usuario_id": current_user.get("id"),
+            "accion": "Trámite finalizado con resolución generada",
+            "notas": f"PDF enviado por correo a {correo_solicitante}" if correo_solicitante else "Sin correo de solicitante"
+        }
+        
+        await db.petitions.update_one(
+            {"radicado": request.radicado},
+            {
+                "$set": {
+                    "status": "finalizado",
+                    "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                    "finalizado_por": current_user.get("id"),
+                    "finalizado_por_nombre": current_user.get("full_name"),
+                    "pdf_resolucion": pdf_path_relative
+                },
+                "$push": {"historial": historial_entry}
+            }
+        )
+        
+        logging.info(f"Trámite {request.radicado} finalizado por {current_user.get('email')}")
+        
+        # Enviar correo con PDF adjunto si hay correo del solicitante
+        email_enviado = False
+        if correo_solicitante:
+            try:
+                # Obtener número de resolución del nombre del archivo
+                numero_resolucion = pdf_path_relative.split('resolucion_')[-1].split('_')[0] if 'resolucion_' in pdf_path_relative else "N/A"
+                
+                email_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #009846; padding: 20px; text-align: center;">
+                        <h1 style="color: white; margin: 0;">ASOMUNICIPIOS</h1>
+                        <p style="color: white; margin: 5px 0;">Gestor Catastral</p>
+                    </div>
+                    
+                    <div style="padding: 30px; background-color: #f9f9f9;">
+                        <h2 style="color: #333;">Resolución Aprobada</h2>
+                        
+                        <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
+                        
+                        <p>Le informamos que su trámite con radicado <strong>{request.radicado}</strong> ha sido 
+                        procesado exitosamente.</p>
+                        
+                        <p>Adjunto a este correo encontrará la resolución correspondiente en formato PDF.</p>
+                        
+                        <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p style="margin: 0;"><strong>Radicado:</strong> {request.radicado}</p>
+                            <p style="margin: 5px 0 0 0;"><strong>Estado:</strong> Finalizado</p>
+                        </div>
+                        
+                        <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
+                        
+                        <p>Atentamente,<br>
+                        <strong>Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</strong></p>
+                    </div>
+                    
+                    <div style="background-color: #333; padding: 15px; text-align: center;">
+                        <p style="color: #999; margin: 0; font-size: 12px;">
+                            Este es un correo automático, por favor no responda a esta dirección.
+                        </p>
+                    </div>
+                </div>
+                """
+                
+                # Enviar correo con adjunto
+                await send_email(
+                    to_email=correo_solicitante,
+                    subject=f"Resolución Aprobada - Radicado {request.radicado}",
+                    body=email_body,
+                    attachment_path=pdf_path_full if os.path.exists(pdf_path_full) else None,
+                    attachment_name=f"Resolucion_{request.radicado.replace('/', '-')}.pdf"
+                )
+                
+                email_enviado = True
+                logging.info(f"Correo con resolución enviado a {correo_solicitante}")
+                
+            except Exception as email_error:
+                logging.error(f"Error enviando correo: {str(email_error)}")
+                # No interrumpir el flujo si falla el correo
+        
+        return {
+            "success": True,
+            "mensaje": "Trámite finalizado exitosamente",
+            "email_enviado": email_enviado,
+            "correo_destino": correo_solicitante if email_enviado else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error finalizando trámite: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error finalizando trámite: {str(e)}")
+
+
 # ==================== DESENGLOBE MASIVO ====================
 
 @api_router.post("/mutaciones/desenglobe-masivo/procesar-excel")

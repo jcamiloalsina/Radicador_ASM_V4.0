@@ -11,13 +11,17 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 │   │   └── api/routes/         # Routers modulares
 │   ├── server.py               # Monolito principal (contiene lógica nueva)
 │   ├── resolucion_m2_pdf_generator.py  # Generador PDF M2
+│   ├── scripts/
+│   │   └── migracion_m2_produccion.py  # Script de migración
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
-│       ├── pages/              # Páginas principales
-│       │   ├── Mutaciones/MutacionesResoluciones.js  # Componente principal
-│       │   └── LogActividades.js                      # Log de actividades
-│       └── components/ui/      # Componentes Shadcn
+│       ├── components/
+│       │   └── PDFViewerModal.jsx      # NUEVO: Visor PDF en popup
+│       ├── pages/              
+│       │   ├── MutacionesResoluciones.js  # Modificado para usar popup
+│       │   └── LogActividades.js                      
+│       └── components/ui/      
 └── memory/
     └── PRD.md
 ```
@@ -31,40 +35,49 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - [x] Corrección búsqueda de radicados
 - [x] Corrección lista de gestores disponibles
 - [x] Corrección dropdown de vigencias (z-index)
-- [x] Bug fix: duplicación de función liberarCodigosReservados (2025-12)
-- [x] Fix M2: URL completa para descarga de PDFs (2025-12)
-- [x] Fix M2: Creación de r2_registros para predios nuevos (2025-12)
-- [x] Fix M2: Status "aprobado" para predios nuevos (antes era pendiente_aprobacion) (2025-12)
-- [x] Fix M2: Predio matriz se elimina correctamente (soft delete + predios_eliminados) (2025-12)
+- [x] Bug fix: duplicación de función liberarCodigosReservados
+- [x] Fix M2: URL completa para descarga de PDFs
+- [x] Fix M2: Creación de r2_registros para predios nuevos
+- [x] Fix M2: Status "aprobado" para predios nuevos
+- [x] Fix M2: Predio matriz se elimina correctamente (soft delete + predios_eliminados)
+- [x] **NUEVO**: Visor PDF en popup (no abre nueva ventana)
+- [x] **NUEVO**: Endpoint para finalizar trámite y enviar correo con PDF adjunto
+- [x] **NUEVO**: Script de migración para corregir datos existentes
 
 ### En Progreso
 - [ ] PDF de Fechas de Inscripción Catastral (UI lista, PDF pendiente)
 
-## Fixes Aplicados Sesión Actual (Diciembre 2025)
+## Nuevas Funcionalidades (Diciembre 2025)
 
-### Fix 1: PDF M2 en Blanco
-- **Problema:** La URL del PDF usaba ruta relativa que no funcionaba en servidores de desarrollo
-- **Solución:** Cambiar a URL completa: `${REACT_APP_BACKEND_URL}${pdf_path}`
-- **Archivos:** `MutacionesResoluciones.js`
+### Visor PDF en Popup
+- **Componente**: `PDFViewerModal.jsx`
+- **Funcionalidades**:
+  - Vista previa del PDF embebida en iframe
+  - Botón "Descargar PDF"
+  - Botón "Imprimir"
+  - Botón "Abrir en pestaña"
+  - Botón "Enviar por correo" (finaliza trámite)
 
-### Fix 2: Predios Nuevos sin R2
-- **Problema:** Los predios creados por M2 no tenían información R2 (construcciones, zonas, etc.)
-- **Solución:** Construir `r2_registros` a partir de datos de construcciones y zonas del frontend
-- **Archivos:** `server.py` - función `generar_resolucion_m2`
+### Finalización de Trámite
+- **Endpoint**: `POST /api/resoluciones/finalizar-y-enviar`
+- **Funcionalidades**:
+  - Busca petición por radicado
+  - Cambia status a "finalizado"
+  - Envía correo HTML con PDF adjunto
+  - Registra en historial del trámite
 
-### Fix 3: Predios no aparecían en Gestión
-- **Problema:** Status era `pendiente_aprobacion` y no aparecían en gestión
-- **Solución:** Cambiar status a `aprobado` directamente
-
-### Fix 4: Predio Matriz no se eliminaba
-- **Problema:** Solo se marcaba como `pendiente_eliminacion` pero seguía apareciendo
-- **Solución:** Soft delete (`deleted: true`) + copia completa a `predios_eliminados`
+### Script de Migración
+- **Archivo**: `/app/backend/scripts/migracion_m2_produccion.py`
+- **Corrige**:
+  - Predios con status `pendiente_aprobacion` → `aprobado`
+  - Predios matriz con `pendiente_eliminacion` → `deleted: true`
+  - Resoluciones sin campo `año`
 
 ## Backlog Priorizado
 
 ### P0 (Crítico)
 1. Completar generación de PDF con Fechas de Inscripción Catastral
-2. Probar flujo M2 completo después de fixes
+2. Probar flujo M2 completo con popup
 
 ### P1 (Alta)
 1. Contador de resoluciones no atómico
@@ -74,33 +87,25 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 ### P2 (Media)
 1. Desenglobe masivo - verificar marcado correcto
 2. Error no especificado reportado por usuario
-3. Visibilidad de predios en Gestión (BLOQUEADO - necesita IDs)
 
 ### P3 (Baja/Futuro)
 - Módulo genérico "Otras Mutaciones" (M3-M9)
 - Refactorización frontend MutacionesResoluciones.js
 - Exportación Excel/XTF
 - Gráficos en dashboards
-- App de Correspondencia
 
 ## Credenciales de Prueba
 - **Admin:** catastro@asomunicipios.gov.co / Asm*123*
 - **Gestor:** gestor@emergent.co / Asm*123*
 
 ## Endpoints Clave
-- POST /api/resoluciones/generar-m2 - Genera resolución M2 (desenglobe/englobe)
-- GET /api/resoluciones/historial - Lista resoluciones con filtro de año
-- POST /api/logs - Logs del sistema
-- GET /api/avaluos/config/anos-disponibles - Años para avalúos
+- POST /api/resoluciones/generar-m2 - Genera resolución M2
+- POST /api/resoluciones/finalizar-y-enviar - **NUEVO**: Finaliza y envía correo
+- GET /api/resoluciones/historial - Lista resoluciones
 - POST /api/codigos-homologados/reservar-temporalmente
 - POST /api/codigos-homologados/confirmar-uso
 - POST /api/codigos-homologados/liberar
 
-## Deuda Técnica
-1. **server.py monolítico** - Todo código nuevo agregado aquí, aumentando deuda
-2. **MutacionesResoluciones.js** - Componente muy grande (~5000 líneas)
-3. **Arquitectura híbrida** - Routers modulares y monolito coexistiendo
-
 ## Última Actualización
 - Fecha: Diciembre 2025
-- Últimos cambios: Fixes para flujo M2 (PDF URL, R2, status, eliminación matriz)
+- Últimos cambios: Visor PDF en popup, finalización de trámite con envío de correo
