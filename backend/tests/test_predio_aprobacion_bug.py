@@ -14,7 +14,7 @@ import os
 import time
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://predios-workflow.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 COORDINADOR_EMAIL = "Camilo.alsina1@hotmail.com"

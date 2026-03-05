@@ -1034,7 +1034,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1172,7 +1172,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1238,7 +1238,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1276,7 +1276,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1329,7 +1329,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1368,7 +1368,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1398,7 +1398,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1431,7 +1431,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11584,7 +11584,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://predios-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -13914,22 +13914,19 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         # Registrar en log de actividades
         await registrar_log_actividad(
-            db=db,
-            usuario_id=aprobador.get("id"),
-            usuario_nombre=aprobador.get("full_name"),
-            usuario_email=aprobador.get("email"),
             accion="generar_resolucion",
             categoria="resoluciones",
             descripcion=f"Generó resolución {numero_resolucion} tipo M1 para {codigo}",
-            entidad_tipo="resolucion",
-            entidad_id=numero_resolucion,
-            datos_adicionales={
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_rol=aprobador.get("role"),
+            municipio=datos_predio.get("municipio", ""),
+            detalles={
                 "tipo_mutacion": "M1",
                 "codigo_predial": codigo,
-                "municipio": datos_predio.get("municipio", ""),
-                "radicado": cambio.get("radicado", "")
-            },
-            ip_address=None
+                "radicado": cambio.get("radicado", ""),
+                "numero_resolucion": numero_resolucion
+            }
         )
         
         # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
@@ -14061,8 +14058,19 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         filename = f"resolucion_M2_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
-        # Generar PDF
-        pdf_bytes = generate_resolucion_m2_pdf(pdf_data)
+        # Generar PDF - llamar con parámetros individuales
+        pdf_bytes = generate_resolucion_m2_pdf(
+            numero_resolucion=numero_resolucion,
+            fecha_resolucion=fecha_resolucion,
+            municipio=municipio_nombre,
+            subtipo=solicitud.get('subtipo', 'desengloble'),
+            radicado=radicado,
+            solicitante=solicitante,
+            predios_cancelados=predios_cancelados,
+            predios_inscritos=predios_inscritos,
+            elaboro=aprobador.get("full_name", ""),
+            aprobo=""
+        )
         with open(filepath, 'wb') as f:
             f.write(pdf_bytes)
         
@@ -26021,9 +26029,19 @@ async def actualizar_configuracion_municipios(
 async def descargar_resolucion_pdf(filename: str):
     """Descargar un PDF de resolución por su nombre de archivo (público)"""
     try:
-        filepath = f"/app/backend/static/resoluciones/{filename}"
+        # Buscar en las dos ubicaciones posibles de PDFs
+        possible_paths = [
+            f"/app/backend/static/resoluciones/{filename}",
+            f"/app/frontend/public/resoluciones/{filename}"
+        ]
         
-        if not os.path.exists(filepath):
+        filepath = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                filepath = path
+                break
+        
+        if not filepath:
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
         
         return FileResponse(

@@ -3,112 +3,100 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: MÓDULO M3 COMPLETADO ✅
+## Estado Actual: WORKFLOW UNIFICADO M1/M2/M3 COMPLETADO
 
 ### Funcionalidades Completadas (Marzo 2026)
 
-#### Módulo M3 - Mutación Tercera ✅ (NUEVO)
-- **Subtipos implementados**:
-  1. **Cambio de Destino Económico**: Modifica el destino del predio (A-T)
-  2. **Incorporación de Construcción**: Agrega registros R2 al predio
-- **Frontend**: 
-  - Selector de subtipo con radio buttons
-  - Dropdown de municipio
-  - Búsqueda de predios
-  - Formulario dinámico según subtipo
-  - Campos de avalúo anterior/nuevo
-- **Backend**: 
-  - Endpoint: `POST /api/resoluciones/generar-m3`
-  - Generador PDF: `resolucion_m3_pdf_generator.py`
-- **Testing**: 100% pass rate (12 tests backend + frontend UI)
-- **Reporte**: `/app/test_reports/iteration_61.json`
+#### Workflow Unificado de Mutaciones (NUEVO - 05/03/2026)
+- **Endpoint centralizado**: `/api/solicitudes-mutacion` ahora maneja M1, M2 y M3
+- **Aprobación automática**: Usuarios con rol coordinador/administrador generan PDFs directamente
+- **Solicitudes pendientes**: Usuarios con rol gestor crean solicitudes que requieren aprobación
+- **Generación de PDFs verificada**: Los tres tipos de mutación generan PDFs correctamente
+- **Endpoint de descarga público**: `/api/resoluciones/descargar/{filename}` funcional para todas las ubicaciones
+
+#### Módulo M1 - Mutación Primera
+- Cambio de propietario o poseedor
+- Generación de PDF con header institucional, watermark y QR
+- PDFs almacenados en `/app/frontend/public/resoluciones/`
+
+#### Módulo M2 - Mutación Segunda
+- Desenglobe de terrenos
+- Englobe de predios
+- Generación de PDF con header institucional, watermark y QR
+- PDFs almacenados en `/app/backend/static/resoluciones/`
+- **Fix aplicado (05/03/2026)**: Compatibilidad con `codigo_predial` y `codigo_predial_nacional`
+
+#### Módulo M3 - Mutación Tercera
+- Cambio de destino económico (A-T)
+- Incorporación de construcción (registros R2)
+- Campo radicado obligatorio
+- Vigencias fiscales de inscripción
+- PDFs almacenados en `/app/backend/static/resoluciones/`
 
 #### Visor PDF en Popup
-- **Componente**: `PDFViewerModal.jsx`
-- **Funcionalidades**:
-  - Modal con PDF embebido (iframe)
-  - Botón "Descargar PDF" (verde)
-  - Botón "Imprimir"
-  - Botón "Abrir en pestaña"
-  - Botón "Enviar por correo" (finaliza trámite)
-- **Integración**: M1, M2, M3 y Historial de resoluciones
-
-#### Fechas de Inscripción Catastral
-- **PDF**: Sección "VIGENCIAS FISCALES DE INSCRIPCIÓN"
-- **Campos**: Año Vigencia, Avalúo Catastral, Fuente
-- **Fuentes**: Manual, Sistema catastral, Vigencia actual
-
-#### Finalización de Trámite
-- **Endpoint**: `POST /api/resoluciones/finalizar-y-enviar`
-- **Acciones**:
-  - Actualiza petición a status "finalizado"
-  - Envía correo HTML con PDF adjunto
-  - Registra en historial del trámite
-
-#### Migración de Datos M2
-- **Script**: `/app/backend/scripts/migracion_m2_produccion.py`
-- **Correcciones aplicadas**:
-  - 90 predios: `pendiente_aprobacion` → `aprobado`
-  - 2 predios matriz: movidos a `predios_eliminados`
+- Modal con PDF embebido (iframe)
+- Botones: Descargar, Imprimir, Abrir en pestaña, Enviar por correo
 
 ## Arquitectura
 ```
 /app/
 ├── backend/
-│   ├── server.py                          # Monolito principal (~29k líneas)
-│   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2
-│   ├── resolucion_m3_pdf_generator.py     # Generador PDF M3 (NUEVO)
-│   ├── tests/
-│   │   └── test_m3_mutaciones.py          # Tests M3 (NUEVO)
-│   └── scripts/
-│       └── migracion_m2_produccion.py     # Migración para producción
+│   ├── server.py                          # Endpoint unificado /api/solicitudes-mutacion
+│   ├── resolucion_pdf_generator.py        # Generador PDF M1
+│   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2 (fix aplicado)
+│   ├── resolucion_m3_pdf_generator.py     # Generador PDF M3
+│   └── static/resoluciones/               # PDFs M2/M3
 ├── frontend/
+│   ├── public/resoluciones/               # PDFs M1
 │   └── src/
-│       ├── components/
-│       │   └── PDFViewerModal.jsx         # Visor PDF en popup
 │       └── pages/
-│           └── MutacionesResoluciones.js  # M1, M2, M3 integrados (~5900 líneas)
+│           └── Mutaciones/
+│               └── MutacionesResoluciones.js  # UI M1, M2, M3
 └── memory/
     └── PRD.md
 ```
 
-## Testing Status
-- **Backend**: 12/12 tests M3 passed (100%)
-- **Frontend**: Todos los componentes M3 verificados
-- **Reporte más reciente**: `/app/test_reports/iteration_61.json`
+## Endpoints Clave
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3 (unificado) |
+| /api/solicitudes-mutacion | GET | Listar solicitudes |
+| /api/solicitudes-mutacion/{id}/accion | POST | Aprobar/rechazar solicitud |
+| /api/resoluciones/descargar/{filename} | GET | Descargar PDF (público) |
+| /api/resoluciones/historial | GET | Historial de resoluciones |
 
 ## Backlog Priorizado
 
+### P0 (Crítico) - COMPLETADO
+- [x] Generación de PDFs M1, M2, M3 verificada
+- [x] Endpoint de descarga funcional
+- [x] Fix compatibilidad codigo_predial
+
 ### P1 (Alta)
-1. **Bug PDF en Producción**: Investigar por qué PDFs no se generan en el servidor del usuario (BLOQUEADO - esperando input)
-2. Contador de resoluciones atómico (prevenir duplicados)
-3. Refactorización backend (migrar de server.py a módulos)
+1. **Eliminar endpoints deprecados**: `/resoluciones/generar-m2`, `/resoluciones/generar-m3`
+2. **Refactorización backend**: Migrar lógica de server.py a módulos en `/app/backend/app/api/routes/`
+3. **Contador de resoluciones atómico** (prevenir duplicados en concurrencia)
 
 ### P2 (Media)
-1. Desenglobe masivo - verificar marcado correcto
-2. Consolidación de colecciones (`cambios_pendientes`, `predios_eliminados`)
+1. Refactorizar MutacionesResoluciones.js (componentes más pequeños)
+2. Consolidar ubicación de PDFs (todo a una sola carpeta)
+3. Desenglobe masivo - verificar marcado correcto de predios matriz
 
 ### P3 (Baja/Futuro)
-- Refactorización frontend MutacionesResoluciones.js
-- Módulos M4-M9 (próximamente)
+- Módulos M4-M9
 - Exportación Excel/XTF
 - Gráficos en dashboards
+- Mutaciones encadenadas
 
 ## Credenciales de Prueba
 - **Admin:** catastro@asomunicipios.gov.co / Asm*123*
 - **Gestor:** gestor@emergent.co / Asm*123*
 
-## Endpoints Clave
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| /api/resoluciones/generar-m1 | POST | Genera resolución M1 |
-| /api/resoluciones/generar-m2 | POST | Genera resolución M2 |
-| /api/resoluciones/generar-m3 | POST | Genera resolución M3 (NUEVO) |
-| /api/resoluciones/finalizar-y-enviar | POST | Finaliza y envía correo |
-| /api/resoluciones/historial | GET | Lista resoluciones |
-| /api/codigos-homologados/reservar-temporalmente | POST | Reserva código |
-
 ## Última Actualización
-- **Fecha**: Marzo 2026
-- **Estado**: Módulo M3 Completado
-- **Testing**: 100% Pass Rate
+- **Fecha**: 05 Marzo 2026
+- **Estado**: Workflow Unificado M1/M2/M3 Completado
+- **Testing**: PDFs generados y descargables correctamente
+
+## Issues Conocidos (Pendientes de Verificación en Producción)
+- Sincronización lenta en conexiones móviles
+- Verificar que el refactor soluciona el bug de PDFs en producción del usuario

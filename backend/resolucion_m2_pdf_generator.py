@@ -338,7 +338,7 @@ def generate_resolucion_m2_pdf(
     dibujar_seccion_titulo("CONSIDERANDO")
     
     # Considerando intro
-    codigo_origen = predios_cancelados[0]["codigo_predial"] if predios_cancelados else ""
+    codigo_origen = predios_cancelados[0].get("codigo_predial") or predios_cancelados[0].get("codigo_predial_nacional", "") if predios_cancelados else ""
     npn_origen = predios_cancelados[0].get("npn", "") if predios_cancelados else ""
     matricula_origen = predios_cancelados[0].get("matricula_inmobiliaria", "") if predios_cancelados else ""
     
@@ -447,7 +447,7 @@ def generate_resolucion_m2_pdf(
         tipo_doc = propietario.get("tipo_documento", "CC")
         nro_doc = str(propietario.get("numero_documento", propietario.get("documento", ""))).zfill(10)
         destino = predio.get("destino_economico", "R")
-        codigo_predial = predio.get("codigo_predial", predio.get("npn", ""))[:30]
+        codigo_predial = (predio.get("codigo_predial") or predio.get("codigo_predial_nacional") or predio.get("npn", ""))[:30]
         
         # Fila de datos
         x = MARGIN_LEFT
