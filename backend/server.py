@@ -27447,17 +27447,10 @@ async def generar_preview_resolucion(
         
         import base64
         pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
-        
-        # Guardar archivo temporal
-        filename = f"resolucion_preview_{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = f"/app/frontend/public/{filename}"
-        with open(filepath, "wb") as f:
-            f.write(pdf_bytes)
-        
+
         return {
             "success": True,
             "pdf_base64": pdf_base64,
-            "pdf_url": f"/{filename}",
             "tipo_plantilla": tipo,
             "predio_usado": predio.get("codigo_predial_nacional", "Preview")
         }
