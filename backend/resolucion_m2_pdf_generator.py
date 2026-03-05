@@ -536,7 +536,74 @@ def generate_resolucion_m2_pdf(
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, predio.get("matricula_inmobiliaria", ""))
-        y_position -= 20
+        y_position -= 15
+        
+        # =====================
+        # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
+        # =====================
+        fechas_inscripcion = predio.get("fechas_inscripcion", [])
+        if fechas_inscripcion and len(fechas_inscripcion) > 0:
+            verificar_espacio(40 + len(fechas_inscripcion) * 12)
+            
+            # Título de la sección
+            c.setFillColor(colors.HexColor('#e8f5e9'))  # Verde claro
+            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+            c.setFillColor(NEGRO)
+            c.setFont(font_bold, 7)
+            c.drawCentredString(PAGE_WIDTH/2, y_position - 9, "VIGENCIAS FISCALES DE INSCRIPCIÓN")
+            y_position -= 12
+            
+            # Headers de la tabla de vigencias
+            c.setFillColor(colors.HexColor('#e8e8e8'))
+            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+            c.setFillColor(NEGRO)
+            c.setFont(font_bold, 7)
+            
+            col_widths_vig = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.40]
+            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "FUENTE"]
+            x = MARGIN_LEFT
+            for i, header in enumerate(headers_vig):
+                c.drawCentredString(x + col_widths_vig[i]/2, y_position - 9, header)
+                c.rect(x, y_position - 12, col_widths_vig[i], 12, fill=0, stroke=1)
+                x += col_widths_vig[i]
+            y_position -= 12
+            
+            # Filas de datos de vigencias
+            c.setFont(font_normal, 7)
+            for fecha in fechas_inscripcion:
+                año = str(fecha.get("año", ""))
+                avaluo_fecha = fecha.get("avaluo", 0)
+                fuente = fecha.get("avaluo_source", "manual")
+                
+                # Formatear avalúo
+                try:
+                    avaluo_fmt = f"${float(avaluo_fecha):,.0f}".replace(",", ".")
+                except:
+                    avaluo_fmt = str(avaluo_fecha)
+                
+                # Traducir fuente
+                fuente_texto = {
+                    "manual": "Ingreso manual",
+                    "sistema": "Sistema catastral",
+                    "actual": "Vigencia actual"
+                }.get(fuente, fuente)
+                
+                x = MARGIN_LEFT
+                c.rect(x, y_position - 12, col_widths_vig[0], 12, fill=0, stroke=1)
+                c.drawCentredString(x + col_widths_vig[0]/2, y_position - 9, año)
+                x += col_widths_vig[0]
+                
+                c.rect(x, y_position - 12, col_widths_vig[1], 12, fill=0, stroke=1)
+                c.drawCentredString(x + col_widths_vig[1]/2, y_position - 9, avaluo_fmt)
+                x += col_widths_vig[1]
+                
+                c.rect(x, y_position - 12, col_widths_vig[2], 12, fill=0, stroke=1)
+                c.drawCentredString(x + col_widths_vig[2]/2, y_position - 9, fuente_texto[:25])
+                y_position -= 12
+            
+            y_position -= 5  # Espacio adicional después de las vigencias
+        
+        y_position -= 5  # Espacio entre predios
     
     # Dibujar predios cancelados
     for predio in predios_cancelados:
