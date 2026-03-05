@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockup - Log de Actividades del Sistema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        .page-header h1 {
+            color: #4ade80;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .badge-admin {
+            background: #dc2626;
+            color: white;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        /* Stats Cards */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #4ade80;
+        }
+        .stat-card.warning { border-left-color: #f59e0b; }
+        .stat-card.danger { border-left-color: #ef4444; }
+        .stat-card.info { border-left-color: #3b82f6; }
+        .stat-card.purple { border-left-color: #8b5cf6; }
+        .stat-card h3 {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .stat-card .subtext {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* Filters Section */
+        .filters-section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .filters-section h3 {
+            color: #4ade80;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .filter-group select,
+        .filter-group input {
+            background: #0f0f23;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #4ade80;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: #4ade80;
+            color: #000;
+        }
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        /* Logs Table */
+        .logs-section {
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+        }
+        .logs-header h3 {
+            color: #fff;
+            font-size: 16px;
+        }
+        .logs-count {
+            color: #888;
+            font-size: 13px;
+        }
+        
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .logs-table th {
+            background: #0f0f23;
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .logs-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #252540;
+            font-size: 13px;
+            vertical-align: top;
+        }
+        .logs-table tr:hover {
+            background: #1e1e3f;
+        }
+        
+        /* Action Type Badges */
+        .action-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .action-badge.create { background: #065f46; color: #6ee7b7; }
+        .action-badge.update { background: #1e40af; color: #93c5fd; }
+        .action-badge.delete { background: #7f1d1d; color: #fca5a5; }
+        .action-badge.approve { background: #166534; color: #86efac; }
+        .action-badge.reject { background: #991b1b; color: #fecaca; }
+        .action-badge.login { background: #4c1d95; color: #c4b5fd; }
+        .action-badge.export { background: #854d0e; color: #fde047; }
+        .action-badge.import { background: #0e7490; color: #67e8f9; }
+        .action-badge.config { background: #6b21a8; color: #d8b4fe; }
+        .action-badge.view { background: #374151; color: #9ca3af; }
+        
+        /* Category Badges */
+        .category-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            background: #333;
+            color: #aaa;
+        }
+        .category-badge.predios { background: #1e3a5f; color: #60a5fa; }
+        .category-badge.usuarios { background: #3f1e5f; color: #a78bfa; }
+        .category-badge.peticiones { background: #1e5f3a; color: #4ade80; }
+        .category-badge.resoluciones { background: #5f3a1e; color: #fb923c; }
+        .category-badge.sistema { background: #5f1e1e; color: #f87171; }
+        .category-badge.certificados { background: #1e5f5f; color: #2dd4bf; }
+        
+        /* User Info */
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .user-name {
+            color: #fff;
+            font-weight: 500;
+        }
+        .user-role {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        /* Timestamp */
+        .timestamp {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .timestamp .date {
+            color: #fff;
+        }
+        .timestamp .time {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        /* Details */
+        .details-cell {
+            max-width: 350px;
+        }
+        .details-main {
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .details-extra {
+            font-size: 11px;
+            color: #666;
+        }
+        .details-code {
+            font-family: monospace;
+            background: #0f0f23;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            color: #4ade80;
+        }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-top: 1px solid #333;
+        }
+        .pagination-info {
+            color: #888;
+            font-size: 13px;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .page-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .page-btn.active {
+            background: #4ade80;
+            color: #000;
+        }
+        .page-btn:hover:not(.active) {
+            background: #444;
+        }
+        
+        /* IP Address */
+        .ip-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <h1>
+                📋 Log de Actividades del Sistema
+                <span class="badge-admin">Solo Admin/Coordinador</span>
+            </h1>
+            <div style="color: #888; font-size: 13px;">
+                Última actualización: hace 2 minutos
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <h3>Total Registros</h3>
+                <div class="value">12,847</div>
+                <div class="subtext">Últimos 30 días</div>
+            </div>
+            <div class="stat-card warning">
+                <h3>Acciones Hoy</h3>
+                <div class="value">156</div>
+                <div class="subtext">+23% vs ayer</div>
+            </div>
+            <div class="stat-card danger">
+                <h3>Errores/Rechazos</h3>
+                <div class="value">12</div>
+                <div class="subtext">Esta semana</div>
+            </div>
+            <div class="stat-card info">
+                <h3>Usuarios Activos</h3>
+                <div class="value">8</div>
+                <div class="subtext">En las últimas 24h</div>
+            </div>
+            <div class="stat-card purple">
+                <h3>Cambios Críticos</h3>
+                <div class="value">3</div>
+                <div class="subtext">Configuración/Sistema</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-section">
+            <h3>🔍 Filtros de Búsqueda</h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Fecha Desde</label>
+                    <input type="date" value="2025-12-01">
+                </div>
+                <div class="filter-group">
+                    <label>Fecha Hasta</label>
+                    <input type="date" value="2025-12-15">
+                </div>
+                <div class="filter-group">
+                    <label>Categoría</label>
+                    <select>
+                        <option value="">Todas las categorías</option>
+                        <option value="predios">Predios</option>
+                        <option value="usuarios">Usuarios</option>
+                        <option value="peticiones">Peticiones</option>
+                        <option value="resoluciones">Resoluciones</option>
+                        <option value="certificados">Certificados</option>
+                        <option value="sistema">Sistema</option>
+                        <option value="importacion">Importación</option>
+                        <option value="visitas">Visitas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Tipo de Acción</label>
+                    <select>
+                        <option value="">Todas las acciones</option>
+                        <option value="create">Crear</option>
+                        <option value="update">Modificar</option>
+                        <option value="delete">Eliminar</option>
+                        <option value="approve">Aprobar</option>
+                        <option value="reject">Rechazar</option>
+                        <option value="login">Inicio Sesión</option>
+                        <option value="export">Exportar</option>
+                        <option value="import">Importar</option>
+                        <option value="config">Configuración</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Usuario</label>
+                    <select>
+                        <option value="">Todos los usuarios</option>
+                        <option value="u1">Dalgie Torrado (Admin)</option>
+                        <option value="u2">Juan Alsina (Coordinador)</option>
+                        <option value="u3">María García (Gestor)</option>
+                        <option value="u4">Carlos Pérez (Gestor)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filters-grid" style="margin-top: 15px;">
+                <div class="filter-group">
+                    <label>Municipio</label>
+                    <select>
+                        <option value="">Todos los municipios</option>
+                        <option value="54003">Ábrego</option>
+                        <option value="54051">Arboledas</option>
+                        <option value="54099">Bochalema</option>
+                        <option value="54128">Cachirá</option>
+                        <option value="54172">Chinácota</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Buscar (NPN, ID, Descripción)</label>
+                    <input type="text" placeholder="Ej: 540030004...">
+                </div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <div class="filter-actions">
+                        <button class="btn btn-primary">🔍 Aplicar Filtros</button>
+                        <button class="btn btn-secondary">↻ Limpiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="logs-section">
+            <div class="logs-header">
+                <h3>📜 Registros de Actividad</h3>
+                <span class="logs-count">Mostrando 1-20 de 12,847 registros</span>
+            </div>
+            
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Fecha/Hora</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">14:32:15</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Dalgie Torrado</span>
+                                <span class="user-role">Administrador</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge approve">Aprobar</span></td>
+                        <td><span class="category-badge resoluciones">Resoluciones</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Aprobación de resolución M2 - Desengloble</div>
+                            <div class="details-extra">
+                                Resolución: <span class="details-code">RES-54-003-0125-2025</span><br>
+                                Predios afectados: 3
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.45</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">14:28:03</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Juan Alsina</span>
+                                <span class="user-role">Coordinador</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge create">Crear</span></td>
+                        <td><span class="category-badge peticiones">Peticiones</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Nueva petición de cambio de propietario</div>
+                            <div class="details-extra">
+                                Radicado: <span class="details-code">RASMGC-5505-15-12-2025</span><br>
+                                NPN: 540030004000000020197000000000
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.32</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">14:15:47</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">María García</span>
+                                <span class="user-role">Gestor</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge update">Modificar</span></td>
+                        <td><span class="category-badge predios">Predios</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Actualización de datos de predio</div>
+                            <div class="details-extra">
+                                NPN: <span class="details-code">540030004000000020198000000000</span><br>
+                                Campos: dirección, área_terreno
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.88</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">13:52:21</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Carlos Pérez</span>
+                                <span class="user-role">Gestor</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge export">Exportar</span></td>
+                        <td><span class="category-badge certificados">Certificados</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Generación de certificado catastral</div>
+                            <div class="details-extra">
+                                Código: <span class="details-code">CERT-ABR-2025-00847</span><br>
+                                Municipio: Ábrego
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.77</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">13:45:09</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Dalgie Torrado</span>
+                                <span class="user-role">Administrador</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge reject">Rechazar</span></td>
+                        <td><span class="category-badge peticiones">Peticiones</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Rechazo de solicitud de englobe</div>
+                            <div class="details-extra">
+                                Motivo: Documentación incompleta<br>
+                                Radicado: <span class="details-code">RASMGC-5504-14-12-2025</span>
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.45</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">12:30:00</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Juan Alsina</span>
+                                <span class="user-role">Coordinador</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge import">Importar</span></td>
+                        <td><span class="category-badge predios">Predios</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Importación masiva de predios</div>
+                            <div class="details-extra">
+                                Archivo: predios_abrego_2025.xlsx<br>
+                                Registros: 1,245 importados, 3 errores
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.32</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">11:15:33</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Dalgie Torrado</span>
+                                <span class="user-role">Administrador</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge config">Config</span></td>
+                        <td><span class="category-badge sistema">Sistema</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Cambio de configuración del sistema</div>
+                            <div class="details-extra">
+                                Parámetro: año_vigencia_default<br>
+                                Valor anterior: 2024 → Nuevo: 2025
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.45</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">10:05:12</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">María García</span>
+                                <span class="user-role">Gestor</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge login">Login</span></td>
+                        <td><span class="category-badge usuarios">Usuarios</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Inicio de sesión exitoso</div>
+                            <div class="details-extra">
+                                Email: maria.garcia@asomunicipios.gov.co<br>
+                                Dispositivo: Chrome/Windows
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.88</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">09:45:28</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Carlos Pérez</span>
+                                <span class="user-role">Gestor</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge delete">Eliminar</span></td>
+                        <td><span class="category-badge predios">Predios</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Eliminación de predio (solicitud aprobada)</div>
+                            <div class="details-extra">
+                                NPN: <span class="details-code">540030004000000020199000000000</span><br>
+                                Motivo: Predio duplicado
+                            </div>
+                        </td>
+                        <td class="ip-address">192.168.1.77</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="timestamp">
+                                <span class="date">15/12/2025</span>
+                                <span class="time">09:22:44</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-info">
+                                <span class="user-name">Sistema</span>
+                                <span class="user-role">Automático</span>
+                            </div>
+                        </td>
+                        <td><span class="action-badge view">Auto</span></td>
+                        <td><span class="category-badge sistema">Sistema</span></td>
+                        <td class="details-cell">
+                            <div class="details-main">Backup automático completado</div>
+                            <div class="details-extra">
+                                Tamaño: 245 MB<br>
+                                Colecciones: 18 respaldadas
+                            </div>
+                        </td>
+                        <td class="ip-address">localhost</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                <div class="pagination-info">
+                    Mostrando 1-10 de 12,847 registros
+                </div>
+                <div class="pagination-buttons">
+                    <button class="page-btn">« Primera</button>
+                    <button class="page-btn">‹ Anterior</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn">4</button>
+                    <button class="page-btn">5</button>
+                    <button class="page-btn">...</button>
+                    <button class="page-btn">643</button>
+                    <button class="page-btn">Siguiente ›</button>
+                    <button class="page-btn">Última »</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

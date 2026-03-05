@@ -371,19 +371,17 @@ async def obtener_radicados_disponibles(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtener radicados disponibles para generar resolución"""
-    query = {
-        "estado": {"$in": ["aprobado", "asignado", "en_proceso"]},
-        "tipo_tramite": {"$in": ["Mutación Primera (M1)", "Mutación Segunda (M2)", "MUT", "ACT"]}
-    }
+    query = {}
+    
+    # Si hay búsqueda específica, buscar en radicado sin filtrar por estado
+    if busqueda:
+        query["radicado"] = {"$regex": busqueda, "$options": "i"}
+    else:
+        # Solo cuando no hay búsqueda, filtrar por estado
+        query["estado"] = {"$in": ["pendiente", "en_proceso", "asignado", "aprobado"]}
     
     if municipio:
         query["municipio"] = {"$regex": municipio, "$options": "i"}
-    
-    if busqueda:
-        query["$or"] = [
-            {"radicado": {"$regex": busqueda, "$options": "i"}},
-            {"nombre_completo": {"$regex": busqueda, "$options": "i"}}
-        ]
     
     peticiones = await db.petitions.find(
         query,
