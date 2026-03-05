@@ -402,40 +402,39 @@ def generate_resolucion_m3_pdf(
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
         y_position -= 15
         
-        # VIGENCIAS FISCALES DE INSCRIPCIÓN - IDÉNTICO al M2
+        # VIGENCIAS FISCALES DE INSCRIPCIÓN - Solo AÑO VIGENCIA y AVALÚO CATASTRAL (sin FUENTE)
         fechas_inscripcion = data.get("fechas_inscripcion", [])
         if fechas_inscripcion and len(fechas_inscripcion) > 0:
             verificar_espacio(40 + len(fechas_inscripcion) * 12)
             
-            # Título de la sección con fondo verde claro
-            c.setFillColor(colors.HexColor('#e8f5e9'))
-            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
-            c.setFillColor(NEGRO)
+            # Título de la sección con fondo verde
+            c.setFillColor(VERDE_INSTITUCIONAL)
+            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=0)
+            c.setFillColor(BLANCO)
             c.setFont(font_bold, 7)
             c.drawCentredString(PAGE_WIDTH/2, y_position - 9, "VIGENCIAS FISCALES DE INSCRIPCIÓN")
             y_position -= 12
             
-            # Headers de la tabla de vigencias
-            c.setFillColor(colors.HexColor('#e8e8e8'))
-            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
-            c.setFillColor(NEGRO)
+            # Headers de la tabla de vigencias - Solo 2 columnas
+            c.setFillColor(VERDE_INSTITUCIONAL)
+            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=0)
+            c.setFillColor(BLANCO)
             c.setFont(font_bold, 7)
             
-            col_widths_vig = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.40]
-            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "FUENTE"]
+            col_widths_vig = [CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.60]
+            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL"]
             x = MARGIN_LEFT
             for i, header in enumerate(headers_vig):
                 c.drawCentredString(x + col_widths_vig[i]/2, y_position - 9, header)
-                c.rect(x, y_position - 12, col_widths_vig[i], 12, fill=0, stroke=1)
                 x += col_widths_vig[i]
             y_position -= 12
             
             # Filas de datos de vigencias
+            c.setFillColor(NEGRO)
             c.setFont(font_normal, 7)
             for fecha in fechas_inscripcion:
                 año = str(fecha.get("año_vigencia", fecha.get("año", "")))
                 avaluo_fecha = fecha.get("avaluo", 0)
-                fuente = fecha.get("fuente", fecha.get("avaluo_source", "manual"))
                 
                 # Formatear avalúo
                 try:
@@ -443,17 +442,14 @@ def generate_resolucion_m3_pdf(
                 except:
                     avaluo_vig_fmt = str(avaluo_fecha)
                 
+                c.setStrokeColor(colors.lightgrey)
+                c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, stroke=1, fill=0)
+                
                 x = MARGIN_LEFT
-                c.rect(x, y_position - 12, col_widths_vig[0], 12, fill=0, stroke=1)
                 c.drawCentredString(x + col_widths_vig[0]/2, y_position - 9, año)
                 x += col_widths_vig[0]
                 
-                c.rect(x, y_position - 12, col_widths_vig[1], 12, fill=0, stroke=1)
                 c.drawCentredString(x + col_widths_vig[1]/2, y_position - 9, avaluo_vig_fmt)
-                x += col_widths_vig[1]
-                
-                c.rect(x, y_position - 12, col_widths_vig[2], 12, fill=0, stroke=1)
-                c.drawCentredString(x + col_widths_vig[2]/2, y_position - 9, fuente)
                 y_position -= 12
             
             y_position -= 5
@@ -567,62 +563,6 @@ def generate_resolucion_m3_pdf(
     
     # Tabla INSCRIPCIÓN
     dibujar_tabla_predio("INSCRIPCIÓN", destino_nuevo, avaluo_nuevo, False)
-    
-    # ==========================================
-    # VIGENCIAS FISCALES DE INSCRIPCIÓN
-    # ==========================================
-    
-    fechas_inscripcion = data.get("fechas_inscripcion", [])
-    if fechas_inscripcion:
-        verificar_espacio(40 + len(fechas_inscripcion) * 14)
-        
-        c.setFillColor(VERDE_INSTITUCIONAL)
-        c.setFont(font_bold, 9)
-        c.drawString(MARGIN_LEFT, y_position, "VIGENCIAS FISCALES DE INSCRIPCIÓN")
-        y_position -= 15
-        
-        # Encabezados - proporcionales al CONTENT_WIDTH
-        vig_col_widths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.35]
-        vig_headers = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "FUENTE"]
-        
-        c.setFillColor(VERDE_INSTITUCIONAL)
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=0)
-        c.setFillColor(BLANCO)
-        c.setFont(font_bold, 8)
-        
-        x = MARGIN_LEFT
-        for i, header in enumerate(vig_headers):
-            c.drawCentredString(x + vig_col_widths[i]/2, y_position - 9, header)
-            x += vig_col_widths[i]
-        y_position -= 12
-        
-        c.setFillColor(NEGRO)
-        c.setFont(font_normal, 8)
-        
-        for fecha in fechas_inscripcion:
-            año = fecha.get('año', '')
-            avaluo = fecha.get('avaluo', 0)
-            source = fecha.get('avaluo_source', 'manual')
-            
-            fuente_texto = {
-                'sistema': 'Sistema catastral',
-                'manual': 'Manual',
-                'actual': 'Vigencia actual'
-            }.get(source, 'Manual')
-            
-            c.setStrokeColor(colors.lightgrey)
-            c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, stroke=1, fill=0)
-            
-            x = MARGIN_LEFT
-            c.drawCentredString(x + vig_col_widths[0]/2, y_position - 9, str(año))
-            x += vig_col_widths[0]
-            c.drawCentredString(x + vig_col_widths[1]/2, y_position - 9, f"${int(avaluo):,}" if avaluo else "$0")
-            x += vig_col_widths[1]
-            c.drawCentredString(x + vig_col_widths[2]/2, y_position - 9, fuente_texto)
-            
-            y_position -= 12
-        
-        y_position -= 10
     
     # ==========================================
     # CONSTRUCCIONES INCORPORADAS (solo para incorporacion_construccion)
