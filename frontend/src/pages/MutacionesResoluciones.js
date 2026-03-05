@@ -2281,6 +2281,10 @@ export default function MutacionesResoluciones() {
       toast.error('Seleccione el tipo de mutación M3');
       return;
     }
+    if (!m3Data.radicado) {
+      toast.error('Seleccione un radicado');
+      return;
+    }
     if (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) {
       toast.error('Seleccione el nuevo destino económico');
       return;
@@ -2477,7 +2481,7 @@ export default function MutacionesResoluciones() {
             
             {/* Radicado */}
             <div className="relative">
-              <Label>Radicado (Opcional)</Label>
+              <Label>Radicado *</Label>
               <Input
                 value={m3Data.radicado}
                 onChange={(e) => {
@@ -4766,7 +4770,7 @@ export default function MutacionesResoluciones() {
             {tipoMutacionSeleccionado?.codigo === 'M3' && m3Data.predio && (
               <Button 
                 onClick={generarResolucionM3} 
-                disabled={generando || !m3Data.subtipo || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
+                disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
                 className="bg-amber-600 hover:bg-amber-700"
                 data-testid="m3-generar-btn"
               >
