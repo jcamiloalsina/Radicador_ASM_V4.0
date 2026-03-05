@@ -13997,7 +13997,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         return {
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_url": f"/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "consecutivo": siguiente_numero,
             "tipo_mutacion": "M1",
@@ -14175,7 +14175,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_url": f"/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "predios_creados": len(predios_inscritos),
             "predios_cancelados": len(predios_cancelados)
@@ -14362,7 +14362,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_url": f"/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}"
         }
         
@@ -26016,6 +26016,30 @@ async def actualizar_configuracion_municipios(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@api_router.get("/resoluciones/descargar/{filename}")
+async def descargar_resolucion_pdf(
+    filename: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Descargar un PDF de resolución por su nombre de archivo"""
+    try:
+        filepath = f"/app/backend/static/resoluciones/{filename}"
+        
+        if not os.path.exists(filepath):
+            raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
+        
+        return FileResponse(
+            filepath,
+            media_type="application/pdf",
+            filename=filename
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error descargando resolución: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 @api_router.get("/resoluciones/historial")
 async def obtener_historial_resoluciones(
     municipio: str = None,
@@ -27005,7 +27029,7 @@ async def generar_resolucion_m3(
         return {
             "success": True,
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_url": f"/resoluciones/descargar/{filename}",
             "id": resolucion_doc["id"],
             "mensaje": f"Resolución M3 ({request.subtipo}) generada exitosamente"
         }
@@ -28491,7 +28515,7 @@ async def generar_resolucion_manual(
         return {
             "success": True,
             "numero_resolucion": request.numero_resolucion,
-            "pdf_url": f"/resoluciones/{filename}",
+            "pdf_url": f"/resoluciones/descargar/{filename}",
             "peticion_finalizada": peticion is not None,
             "email_enviado": email_enviado,
             "mensaje": f"Resolución {request.numero_resolucion} generada exitosamente"
