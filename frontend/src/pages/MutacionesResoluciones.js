@@ -915,9 +915,10 @@ export default function MutacionesResoluciones() {
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
         
-        // Abrir PDF en nueva pestaña
+        // Abrir PDF en nueva pestaña - usar URL completa del backend
         if (response.data.pdf_url) {
-          window.open(response.data.pdf_url, '_blank');
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          window.open(pdfFullUrl, '_blank');
         }
         
         // Limpiar formulario
@@ -2064,9 +2065,10 @@ export default function MutacionesResoluciones() {
           setCodigosReservados([]);
         }
         
-        // Abrir PDF en nueva pestaña
+        // Abrir PDF en nueva pestaña - usar URL completa del backend
         if (response.data.pdf_url) {
-          window.open(response.data.pdf_url, '_blank');
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          window.open(pdfFullUrl, '_blank');
         }
         
         // Limpiar formulario
@@ -3440,7 +3442,7 @@ export default function MutacionesResoluciones() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.open(res.pdf_path, '_blank')}
+                        onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`, '_blank')}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         PDF

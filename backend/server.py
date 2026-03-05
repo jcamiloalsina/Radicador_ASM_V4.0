@@ -25922,7 +25922,7 @@ async def generar_resolucion_m2(
             
             # Buscar el predio por ID o por NPN
             query_predio = {"id": predio_id} if predio_id else {"codigo_predial_nacional": npn_cancelado}
-            predio_existente = await db.predios.find_one(query_predio, {"_id": 0, "id": 1})
+            predio_existente = await db.predios.find_one(query_predio, {"_id": 0})
             
             if not predio_existente:
                 logging.warning(f"No se encontró el predio a cancelar: id={predio_id}, npn={npn_cancelado}")
@@ -25931,33 +25931,42 @@ async def generar_resolucion_m2(
             predio_id_real = predio_existente.get('id')
             
             if tipo_cancelacion == 'total':
-                # Cancelación total: marcar para eliminación (pendiente de aprobación)
-                # Primero inicializar historial_resoluciones si no existe
-                await db.predios.update_one(
-                    {"id": predio_id_real, "historial_resoluciones": {"$exists": False}},
-                    {"$set": {"historial_resoluciones": []}}
-                )
-                # Luego agregar la resolución al historial
+                # Cancelación total: mover a predios_eliminados y marcar como eliminado
+                
+                # Crear registro en predios_eliminados con toda la información
+                predio_eliminado = {
+                    **predio_existente,
+                    "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                    "motivo_eliminacion": f"Mutación M2 - {request.subtipo}",
+                    "resolucion_eliminacion": numero_resolucion,
+                    "fecha_resolucion_eliminacion": fecha_resolucion,
+                    "eliminado_por": current_user.get("id"),
+                    "eliminado_por_nombre": current_user.get("full_name"),
+                    "historial_resoluciones": (predio_existente.get("historial_resoluciones") or []) + [{
+                        "tipo_mutacion": "M2",
+                        "subtipo": request.subtipo,
+                        "numero_resolucion": numero_resolucion,
+                        "fecha_resolucion": fecha_resolucion,
+                        "accion": "cancelacion_total"
+                    }]
+                }
+                
+                # Insertar en predios_eliminados
+                await db.predios_eliminados.insert_one(predio_eliminado)
+                
+                # Marcar el predio original como eliminado (soft delete)
                 result = await db.predios.update_one(
                     {"id": predio_id_real},
                     {
                         "$set": {
-                            "pendiente_eliminacion": True,
+                            "deleted": True,
+                            "eliminado_en": datetime.now(timezone.utc).isoformat(),
                             "resolucion_eliminacion": numero_resolucion,
                             "fecha_resolucion_eliminacion": fecha_resolucion
-                        },
-                        "$push": {
-                            "historial_resoluciones": {
-                                "tipo_mutacion": "M2",
-                                "subtipo": request.subtipo,
-                                "numero_resolucion": numero_resolucion,
-                                "fecha_resolucion": fecha_resolucion,
-                                "accion": "cancelacion_total"
-                            }
                         }
                     }
                 )
-                logging.info(f"Predio {npn_cancelado} marcado para cancelación: {result.modified_count} documentos actualizados")
+                logging.info(f"Predio matriz {npn_cancelado} cancelado y movido a predios_eliminados: {result.modified_count} documentos actualizados")
             elif tipo_cancelacion == 'parcial':
                 # Cancelación parcial: actualizar predio con nuevos datos
                 update_data = {
@@ -26014,9 +26023,74 @@ async def generar_resolucion_m2(
         
         # Procesar predios inscritos (crear nuevos predios)
         for predio_inscrito in request.predios_inscritos:
+            npn = predio_inscrito.get('npn', predio_inscrito.get('codigo_predial', ''))
+            matricula = predio_inscrito.get('matricula_inmobiliaria', '')
+            
+            # Construir r2_registros con la información física del predio
+            r2_registros = []
+            construcciones_data = predio_inscrito.get('construcciones', [])
+            zonas_data = predio_inscrito.get('zonas', predio_inscrito.get('zonas_homogeneas', []))
+            
+            # Si hay construcciones, crear un registro R2 por cada una
+            if construcciones_data:
+                for idx, construccion in enumerate(construcciones_data):
+                    zona_info = zonas_data[idx] if idx < len(zonas_data) else {}
+                    r2_registro = {
+                        "codigo_predial_nacional": npn,
+                        "orden_construccion": idx + 1,
+                        "tipo_construccion": construccion.get('tipificacion', 'C'),
+                        "total_pisos": construccion.get('piso', 1),
+                        "total_habitaciones": construccion.get('habitaciones', 0),
+                        "total_banos": construccion.get('banos', 0),
+                        "total_locales": construccion.get('locales', 0),
+                        "puntaje": construccion.get('puntaje', 0),
+                        "uso": construccion.get('uso', ''),
+                        "area_construida": construccion.get('area_construida', 0),
+                        "zona_fisica_geoeconomica": zona_info.get('zona_fisica', '0'),
+                        "zona_economica": zona_info.get('zona_economica', '0'),
+                        "matricula_inmobiliaria": matricula
+                    }
+                    r2_registros.append(r2_registro)
+            elif zonas_data:
+                # Si hay zonas pero no construcciones, crear registro R2 básico
+                for idx, zona in enumerate(zonas_data):
+                    r2_registro = {
+                        "codigo_predial_nacional": npn,
+                        "orden_construccion": idx + 1,
+                        "tipo_construccion": "C",
+                        "total_pisos": 0,
+                        "total_habitaciones": 0,
+                        "total_banos": 0,
+                        "total_locales": 0,
+                        "puntaje": 0,
+                        "uso": "",
+                        "area_construida": zona.get('area_construida', 0),
+                        "zona_fisica_geoeconomica": zona.get('zona_fisica', '0'),
+                        "zona_economica": zona.get('zona_economica', '0'),
+                        "matricula_inmobiliaria": matricula
+                    }
+                    r2_registros.append(r2_registro)
+            else:
+                # Registro R2 mínimo si no hay datos de construcción
+                r2_registros.append({
+                    "codigo_predial_nacional": npn,
+                    "orden_construccion": 1,
+                    "tipo_construccion": "C",
+                    "total_pisos": 0,
+                    "total_habitaciones": 0,
+                    "total_banos": 0,
+                    "total_locales": 0,
+                    "puntaje": 0,
+                    "uso": "",
+                    "area_construida": predio_inscrito.get('area_construida', 0),
+                    "zona_fisica_geoeconomica": "0",
+                    "zona_economica": "0",
+                    "matricula_inmobiliaria": matricula
+                })
+            
             nuevo_predio = {
                 "id": str(uuid.uuid4()),
-                "codigo_predial_nacional": predio_inscrito.get('npn', predio_inscrito.get('codigo_predial')),
+                "codigo_predial_nacional": npn,
                 "codigo_homologado": predio_inscrito.get('codigo_homologado', ''),
                 "numero_predio": predio_inscrito.get('codigo_predial', ''),
                 "direccion": predio_inscrito.get('direccion', ''),
@@ -26024,15 +26098,16 @@ async def generar_resolucion_m2(
                 "area_terreno": predio_inscrito.get('area_terreno', 0),
                 "area_construida": predio_inscrito.get('area_construida', 0),
                 "avaluo": predio_inscrito.get('avaluo', 0),
-                "matricula_inmobiliaria": predio_inscrito.get('matricula_inmobiliaria', ''),
+                "matricula_inmobiliaria": matricula,
                 "propietarios": predio_inscrito.get('propietarios', []),
                 "zonas_homogeneas": predio_inscrito.get('zonas_homogeneas', []),
+                "r2_registros": r2_registros,  # NUEVO: Incluir información R2
                 "municipio": municipio_nombre,
                 "codigo_municipio": request.municipio,
                 "vigencia": datetime.now().year,
                 "creado_en_plataforma": True,
                 "area_editada_en_plataforma": True,
-                "status": "pendiente_aprobacion",
+                "status": "aprobado",  # CAMBIO: Directamente aprobado para que aparezca en gestión
                 "resolucion_creacion": numero_resolucion,
                 "historial_resoluciones": [{
                     "tipo_mutacion": "M2",
@@ -26044,6 +26119,7 @@ async def generar_resolucion_m2(
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.predios.insert_one(nuevo_predio)
+            logging.info(f"Predio inscrito creado: {npn} con {len(r2_registros)} registros R2")
         
         logging.info(f"Resolución M2 {numero_resolucion} generada por {current_user.get('email')}")
         
