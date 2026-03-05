@@ -2085,8 +2085,14 @@ export default function MutacionesResoluciones() {
       }
       
       const dataToSend = {
-        ...m2Data,
-        predios_inscritos: prediosInscribirOrdenados
+        tipo: 'M2',
+        subtipo: m2Data.subtipo,
+        municipio: m2Data.municipio,
+        radicado: m2Data.radicado,
+        solicitante: m2Data.solicitante,
+        predios_cancelados: m2Data.predios_cancelados,
+        predios_inscritos: prediosInscribirOrdenados,
+        observaciones: m2Data.observaciones || ''
       };
       
       // Para ENGLOBE: usar el predio_resultante como único predio inscrito
@@ -2094,21 +2100,22 @@ export default function MutacionesResoluciones() {
         dataToSend.predios_inscritos = [m2Data.predio_resultante];
       }
       
-      const response = await axios.post(`${API}/resoluciones/generar-m2`, dataToSend, {
+      const response = await axios.post(`${API}/solicitudes-mutacion`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.success) {
-        toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-        
-        // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
-        if (codigosReservados.length > 0) {
-          await confirmarUsoCodigos(codigosReservados);
-          setCodigosReservados([]);
-        }
-        
-        // Mostrar PDF en popup en lugar de abrir nueva ventana
-        if (response.data.pdf_url) {
+        // Verificar si fue aprobación directa o quedó pendiente
+        if (response.data.aprobacion_directa && response.data.pdf_url) {
+          toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
+          
+          // IMPORTANTE: Confirmar el uso de los códigos homologados reservados
+          if (codigosReservados.length > 0) {
+            await confirmarUsoCodigos(codigosReservados);
+            setCodigosReservados([]);
+          }
+          
+          // Mostrar PDF en popup
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -2116,10 +2123,13 @@ export default function MutacionesResoluciones() {
             fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
             resolucionId: response.data.id,
             radicado: m2Data.radicado,
-            correoSolicitante: '' // Se obtiene del radicado
+            correoSolicitante: ''
           });
           setEmailSent(false);
           setShowPDFViewer(true);
+        } else {
+          // Quedó pendiente de aprobación
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
         }
         
         // Limpiar formulario
@@ -2301,10 +2311,11 @@ export default function MutacionesResoluciones() {
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API}/resoluciones/generar-m3`, {
-        municipio: m3Data.municipio,
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        tipo: 'M3',
         subtipo: m3Data.subtipo,
-        radicado: m3Data.radicado || null,
+        municipio: m3Data.municipio,
+        radicado: m3Data.radicado,
         predio_id: m3Data.predio.id,
         destino_anterior: m3Data.destino_anterior,
         destino_nuevo: m3Data.destino_nuevo,
@@ -2312,16 +2323,17 @@ export default function MutacionesResoluciones() {
         avaluo_anterior: m3Data.avaluo_anterior,
         avaluo_nuevo: m3Data.avaluo_nuevo,
         fechas_inscripcion: m3Data.fechas_inscripcion || [],
-        observaciones: m3Data.observaciones || null
+        observaciones: m3Data.observaciones || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.success) {
-        toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-        
-        // Mostrar PDF en popup
-        if (response.data.pdf_url) {
+        // Verificar si fue aprobación directa o quedó pendiente
+        if (response.data.aprobacion_directa && response.data.pdf_url) {
+          toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
+          
+          // Mostrar PDF en popup
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
           setPdfViewerData({
             url: pdfFullUrl,
@@ -2333,6 +2345,9 @@ export default function MutacionesResoluciones() {
           });
           setEmailSent(false);
           setShowPDFViewer(true);
+        } else {
+          // Quedó pendiente de aprobación
+          toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
         }
         
         // Limpiar formulario
