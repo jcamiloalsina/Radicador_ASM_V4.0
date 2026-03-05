@@ -26786,17 +26786,25 @@ async def listar_gestores_disponibles(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Lista gestores disponibles para asignar como apoyo
+    Lista usuarios internos disponibles para asignar como apoyo
+    Incluye: Gestor, Gestor Auxiliar, Coordinador, Administrador, Atención Usuario
     """
     try:
+        roles_internos = [
+            UserRole.GESTOR, 
+            UserRole.GESTOR_AUXILIAR, 
+            UserRole.COORDINADOR, 
+            UserRole.ADMINISTRADOR,
+            UserRole.ATENCION_USUARIO
+        ]
+        
         gestores = await db.users.find(
             {
-                "role": {"$in": [UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]},
-                "is_active": True,
+                "role": {"$in": roles_internos},
                 "id": {"$ne": current_user['id']}  # Excluir al usuario actual
             },
             {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}
-        ).to_list(100)
+        ).sort("full_name", 1).to_list(200)
         
         return {
             "success": True,
