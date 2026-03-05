@@ -71,7 +71,6 @@ def get_m3_plantilla():
         "articulo_2": "De conformidad con lo dispuesto en el artículo 4.8.2 de la Resolución 1040 de 2023, el presente acto administrativo se notificará personalmente y subsidiariamente por aviso siguiendo el procedimiento previsto en los Artículos 67, 68 y 69 de la Ley 1437 de 2011 (CPA y CCA), procederá la notificación electrónica siempre y cuando el interesado acepte ser notificado de esta manera.",
         "articulo_3": "Contra el presente acto administrativo proceden los recursos de reposición y subsidio de apelación, ante el funcionario que dictó la decisión, podrán interponerse por escrito en la diligencia de notificación personal, o dentro de los diez (10) días hábiles siguientes a su notificación, de conformidad con lo preceptuado en el Artículo 4.8.2 de la Resolución 1040 de 2023 y lo dispuesto en Artículo 74 y 76 de la Ley 1437 de 2011 o la norma que la modifique, adicione o sustituya.",
         "articulo_4": "Los recursos se concederán en el efecto suspensivo y por consiguiente la anotación de la inscripción catastral en los documentos de la tesorería municipal u oficina recaudadora solo se efectuarán hasta la ejecutoria del acto administrativo.",
-        "articulo_5": "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en el Artículo 4.7.14 de la Resolución 1040 de 2023.",
         "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
         "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
@@ -715,33 +714,6 @@ def generate_resolucion_m3_pdf(
     c.drawString(MARGIN_LEFT + 55, y_position, art4_lines[0] if art4_lines else "")
     y_position -= 14
     for line in art4_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 10
-    
-    # Artículo 5
-    verificar_espacio(60)
-    c.setFont(font_bold, 10)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 5.")
-    c.setFont(font_normal, 10)
-    
-    art5_texto = plantilla["articulo_5"]
-    art5_lines = []
-    words = art5_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art5_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art5_lines.append(current_line)
-    
-    c.drawString(MARGIN_LEFT + 55, y_position, art5_lines[0] if art5_lines else "")
-    y_position -= 14
-    for line in art5_lines[1:]:
         c.drawString(MARGIN_LEFT, y_position, line)
         y_position -= 14
     y_position -= 30
