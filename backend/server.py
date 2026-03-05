@@ -5732,9 +5732,13 @@ async def get_codigos_disponibles(
 @api_router.get("/codigos-homologados/siguiente/{municipio}")
 async def get_siguiente_codigo_homologado(
     municipio: str,
+    reservar: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    """Obtener el siguiente código homologado disponible para un municipio"""
+    """
+    Obtener el siguiente código homologado disponible para un municipio.
+    Si reservar=true, se reserva el código de forma atómica.
+    """
     
     # Primero sincronizar: verificar si hay códigos marcados como no usados pero ya asignados a predios
     codigos_en_predios = await db.predios.distinct("codigo_homologado", {
@@ -5749,11 +5753,27 @@ async def get_siguiente_codigo_homologado(
             {"$set": {"usado": True, "fecha_asignacion": "sincronizado-auto"}}
         )
     
-    # Buscar el primer código disponible (ordenado alfabéticamente)
-    codigo_doc = await db.codigos_homologados.find_one(
-        {'municipio': municipio, 'usado': False},
-        sort=[('codigo', 1)]
-    )
+    if reservar:
+        # Reservar el código de forma atómica usando find_one_and_update
+        codigo_doc = await db.codigos_homologados.find_one_and_update(
+            {'municipio': municipio, 'usado': False},
+            {
+                '$set': {
+                    'usado': True,
+                    'reservado': True,
+                    'reservado_por': current_user.get('id'),
+                    'fecha_reserva': datetime.utcnow().isoformat()
+                }
+            },
+            sort=[('codigo', 1)],
+            return_document=True
+        )
+    else:
+        # Solo consultar sin reservar
+        codigo_doc = await db.codigos_homologados.find_one(
+            {'municipio': municipio, 'usado': False},
+            sort=[('codigo', 1)]
+        )
     
     if not codigo_doc:
         return {
@@ -5771,7 +5791,8 @@ async def get_siguiente_codigo_homologado(
     return {
         "municipio": municipio,
         "codigo": codigo_doc['codigo'],
-        "disponibles": total_disponibles
+        "disponibles": total_disponibles,
+        "reservado": reservar
     }
 
 

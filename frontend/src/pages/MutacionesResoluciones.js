@@ -1318,23 +1318,26 @@ export default function MutacionesResoluciones() {
     }));
   };
 
-  // Obtener siguiente código homologado para el municipio
-  const fetchSiguienteCodigoHomologadoNuevo = async (municipioCodigo) => {
+  // Obtener siguiente código homologado para el municipio (y opcionalmente reservarlo)
+  const fetchSiguienteCodigoHomologadoNuevo = async (municipioCodigo, reservar = false) => {
     if (!municipioCodigo) {
       setSiguienteCodigoHomologadoNuevo(null);
-      return;
+      return null;
     }
     
     try {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === municipioCodigo)?.nombre || '';
-      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(municipioNombre)}`, {
+      const url = `${API}/codigos-homologados/siguiente/${encodeURIComponent(municipioNombre)}${reservar ? '?reservar=true' : ''}`;
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSiguienteCodigoHomologadoNuevo(res.data);
+      return res.data;
     } catch (error) {
       console.error('Error obteniendo siguiente código homologado:', error);
       setSiguienteCodigoHomologadoNuevo(null);
+      return null;
     }
   };
 
@@ -1566,27 +1569,17 @@ export default function MutacionesResoluciones() {
     setGenerandoCodigo(true);
     let codigoHomologado = '';
     
-    // Primero intentar usar un código ya reservado
-    if (codigosReservados.length > 0) {
-      codigoHomologado = obtenerSiguienteCodigoReservado();
-    } else if (siguienteCodigoHomologadoNuevo?.codigo) {
-      // Si no hay reservados, usar el siguiente cargado
-      codigoHomologado = siguienteCodigoHomologadoNuevo.codigo;
-    }
-    
-    if (!codigoHomologado) {
-      // Si no hay código, reservar uno nuevo
-      try {
-        const codigos = await reservarCodigosHomologados(m2Data.municipio, 1);
-        if (codigos.length > 0) {
-          codigoHomologado = codigos[0];
-        }
-      } catch (error) {
-        console.log('Error reservando código, intentando generar uno');
+    // Reservar un nuevo código de forma atómica
+    try {
+      const codigoReservado = await fetchSiguienteCodigoHomologadoNuevo(m2Data.municipio, true);
+      if (codigoReservado?.codigo) {
+        codigoHomologado = codigoReservado.codigo;
       }
+    } catch (error) {
+      console.error('Error reservando código:', error);
     }
     
-    // Fallback: generar código básico si todo falla
+    // Fallback: generar código básico si la reserva falla
     if (!codigoHomologado) {
       try {
         const token = localStorage.getItem('token');
@@ -1686,6 +1679,10 @@ export default function MutacionesResoluciones() {
       }));
       toast.success('Predio agregado a la lista');
     }
+    
+    // IMPORTANTE: Refrescar el siguiente código homologado disponible
+    // para que el próximo predio obtenga un código diferente
+    fetchSiguienteCodigoHomologadoNuevo(m2Data.municipio);
     
     setShowNuevoPredioModal(false);
     setNuevoPredioInscrito(null);
