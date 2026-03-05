@@ -212,13 +212,13 @@ export default function MutacionesResoluciones() {
 
   // Estado para fechas de inscripción catastral
   const [añosDisponibles, setAñosDisponibles] = useState(() => {
-    // Valores por defecto iniciales
+    // Valores por defecto: desde 2022 hasta año actual + 2
     const currentYear = new Date().getFullYear();
     const años = [];
-    for (let y = 2015; y <= currentYear + 1; y++) años.push(y);
+    for (let y = 2022; y <= currentYear + 2; y++) años.push(y);
     return años;
   });
-  const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2015, años_futuro: 1 });
+  const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2022, años_futuro: 2 });
 
   // Estado para flujo de aprobación
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
@@ -262,10 +262,10 @@ export default function MutacionesResoluciones() {
       setAñosDisponibles(response.data.años_disponibles || []);
     } catch (error) {
       console.error('Error cargando configuración de años:', error);
-      // Valores por defecto
+      // Valores por defecto: desde 2022 sin límite superior (año actual + 2)
       const currentYear = new Date().getFullYear();
       const años = [];
-      for (let y = 2015; y <= currentYear + 1; y++) años.push(y);
+      for (let y = 2022; y <= currentYear + 2; y++) años.push(y);
       setAñosDisponibles(años);
     }
   }, []);

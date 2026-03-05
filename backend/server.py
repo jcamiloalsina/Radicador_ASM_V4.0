@@ -27647,18 +27647,18 @@ async def obtener_configuracion_anios(current_user: dict = Depends(get_current_u
     config = await db.system_config.find_one({"id": "configuracion_años_inscripcion"}, {"_id": 0})
     
     if not config:
-        # Valores por defecto
+        # Valores por defecto: desde 2022 en adelante
         config = {
-            "año_inicial": 2015,
-            "años_futuro": 1
+            "año_inicial": 2022,
+            "años_futuro": 2
         }
     
     current_year = datetime.now().year
-    años = list(range(config.get("año_inicial", 2015), current_year + config.get("años_futuro", 1) + 1))
+    años = list(range(config.get("año_inicial", 2022), current_year + config.get("años_futuro", 2) + 1))
     
     return {
-        "año_inicial": config.get("año_inicial", 2015),
-        "años_futuro": config.get("años_futuro", 1),
+        "año_inicial": config.get("año_inicial", 2022),
+        "años_futuro": config.get("años_futuro", 2),
         "años_disponibles": años
     }
 
