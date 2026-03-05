@@ -220,6 +220,10 @@ export default function MutacionesResoluciones() {
   });
   const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2022, años_futuro: 2 });
 
+  // Estado para códigos homologados reservados
+  const [codigosReservados, setCodigosReservados] = useState([]);
+  const [sessionIdReserva, setSessionIdReserva] = useState(null);
+
   // Estado para flujo de aprobación
   const [gestoresDisponibles, setGestoresDisponibles] = useState([]);
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
@@ -244,6 +248,63 @@ export default function MutacionesResoluciones() {
       console.error('Error cargando gestores:', error);
     }
   }, []);
+
+  // Función para reservar múltiples códigos homologados
+  const reservarCodigosHomologados = useCallback(async (municipio, cantidad) => {
+    try {
+      const token = localStorage.getItem('token');
+      const municipioNombre = MUNICIPIOS.find(m => m.codigo === municipio)?.nombre || municipio;
+      
+      const response = await axios.post(
+        `${API}/codigos-homologados/reservar-multiples/${encodeURIComponent(municipioNombre)}?cantidad=${cantidad}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setCodigosReservados(prev => [...prev, ...response.data.codigos_reservados]);
+        setSessionIdReserva(response.data.session_id);
+        return response.data.codigos_reservados;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error reservando códigos:', error);
+      toast.error(error.response?.data?.detail || 'Error reservando códigos homologados');
+      return [];
+    }
+  }, []);
+
+  // Función para obtener el siguiente código reservado
+  const obtenerSiguienteCodigoReservado = useCallback(() => {
+    if (codigosReservados.length > 0) {
+      const [siguiente, ...restantes] = codigosReservados;
+      setCodigosReservados(restantes);
+      return siguiente;
+    }
+    return null;
+  }, [codigosReservados]);
+
+  // Liberar códigos no utilizados al cancelar
+  const liberarCodigosReservados = useCallback(async () => {
+    if (sessionIdReserva && codigosReservados.length > 0) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post(`${API}/codigos-homologados/liberar-reserva`, 
+          `session_id=${sessionIdReserva}`,
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/x-www-form-urlencoded'
+            } 
+          }
+        );
+        setCodigosReservados([]);
+        setSessionIdReserva(null);
+      } catch (error) {
+        console.error('Error liberando códigos:', error);
+      }
+    }
+  }, [sessionIdReserva, codigosReservados]);
 
   useEffect(() => {
     if (tipoMutacionSeleccionado?.codigo === 'M2') {
@@ -1501,18 +1562,38 @@ export default function MutacionesResoluciones() {
       return;
     }
     
-    // Usar el código homologado ya cargado o generar uno nuevo
+    // Usar el código homologado reservado o el siguiente disponible
     setGenerandoCodigo(true);
-    let codigoHomologado = siguienteCodigoHomologadoNuevo?.codigo || '';
+    let codigoHomologado = '';
+    
+    // Primero intentar usar un código ya reservado
+    if (codigosReservados.length > 0) {
+      codigoHomologado = obtenerSiguienteCodigoReservado();
+    } else if (siguienteCodigoHomologadoNuevo?.codigo) {
+      // Si no hay reservados, usar el siguiente cargado
+      codigoHomologado = siguienteCodigoHomologadoNuevo.codigo;
+    }
     
     if (!codigoHomologado) {
-      // Si no hay código pre-cargado, intentar generar uno
+      // Si no hay código, reservar uno nuevo
+      try {
+        const codigos = await reservarCodigosHomologados(m2Data.municipio, 1);
+        if (codigos.length > 0) {
+          codigoHomologado = codigos[0];
+        }
+      } catch (error) {
+        console.log('Error reservando código, intentando generar uno');
+      }
+    }
+    
+    // Fallback: generar código básico si todo falla
+    if (!codigoHomologado) {
       try {
         const token = localStorage.getItem('token');
         const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || '';
         const response = await axios.post(`${API}/predios/generar-codigo-homologado`, {
           municipio: municipioNombre,
-          codigo_predial: codigo.substring(0, 21) // Primeros 21 dígitos
+          codigo_predial: codigo.substring(0, 21)
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -1522,7 +1603,6 @@ export default function MutacionesResoluciones() {
         }
       } catch (error) {
         console.log('Error generando código homologado, se usará formato básico');
-        // Generar un código básico si falla
         const municipioNombre = MUNICIPIOS.find(m => m.codigo === m2Data.municipio)?.nombre || m2Data.municipio;
         codigoHomologado = `${municipioNombre}-${Date.now().toString().slice(-6)}`;
       }

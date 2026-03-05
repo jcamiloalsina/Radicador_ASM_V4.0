@@ -5796,6 +5796,113 @@ async def asignar_codigo_homologado(municipio: str, predio_id: str) -> str:
     return None
 
 
+@api_router.post("/codigos-homologados/reservar-multiples/{municipio}")
+async def reservar_multiples_codigos_homologados(
+    municipio: str,
+    cantidad: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reserva múltiples códigos homologados de forma atómica para una solicitud.
+    Útil cuando se crean varios predios en una misma resolución (ej: desenglobe M2).
+    
+    Retorna una lista de códigos reservados en orden.
+    """
+    if cantidad < 1 or cantidad > 100:
+        raise HTTPException(status_code=400, detail="La cantidad debe estar entre 1 y 100")
+    
+    # Primero sincronizar: verificar códigos ya usados en predios
+    codigos_en_predios = await db.predios.distinct("codigo_homologado", {
+        "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+        "codigo_homologado": {"$exists": True, "$ne": "", "$ne": None}
+    })
+    
+    if codigos_en_predios:
+        await db.codigos_homologados.update_many(
+            {"codigo": {"$in": codigos_en_predios}, "usado": False},
+            {"$set": {"usado": True, "fecha_asignacion": "sincronizado-auto"}}
+        )
+    
+    # Reservar códigos uno por uno de forma atómica
+    codigos_reservados = []
+    session_id = str(uuid.uuid4())  # ID de sesión para agrupar la reserva
+    
+    for i in range(cantidad):
+        result = await db.codigos_homologados.find_one_and_update(
+            {'municipio': municipio, 'usado': False},
+            {
+                '$set': {
+                    'usado': True,
+                    'reservado': True,
+                    'session_id': session_id,
+                    'fecha_reserva': datetime.utcnow().isoformat(),
+                    'reservado_por': current_user.get('id')
+                }
+            },
+            sort=[('codigo', 1)],
+            return_document=True
+        )
+        
+        if result:
+            codigos_reservados.append(result['codigo'])
+        else:
+            # No hay más códigos disponibles
+            break
+    
+    if len(codigos_reservados) < cantidad:
+        # Liberar los códigos reservados si no se pudieron obtener todos
+        if codigos_reservados:
+            await db.codigos_homologados.update_many(
+                {'codigo': {'$in': codigos_reservados}, 'session_id': session_id},
+                {'$set': {'usado': False, 'reservado': False}, '$unset': {'session_id': '', 'fecha_reserva': '', 'reservado_por': ''}}
+            )
+        
+        disponibles = await db.codigos_homologados.count_documents({'municipio': municipio, 'usado': False})
+        raise HTTPException(
+            status_code=400, 
+            detail=f"No hay suficientes códigos disponibles. Solicitados: {cantidad}, Disponibles: {disponibles}"
+        )
+    
+    total_disponibles = await db.codigos_homologados.count_documents({
+        'municipio': municipio,
+        'usado': False
+    })
+    
+    logging.info(f"Reservados {len(codigos_reservados)} códigos homologados para {municipio} por {current_user.get('email')}")
+    
+    return {
+        "success": True,
+        "municipio": municipio,
+        "codigos_reservados": codigos_reservados,
+        "cantidad_reservada": len(codigos_reservados),
+        "disponibles_restantes": total_disponibles,
+        "session_id": session_id
+    }
+
+
+@api_router.post("/codigos-homologados/liberar-reserva")
+async def liberar_reserva_codigos(
+    session_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Libera códigos reservados que no fueron utilizados.
+    Se usa cuando el usuario cancela la operación antes de guardar.
+    """
+    result = await db.codigos_homologados.update_many(
+        {'session_id': session_id, 'reservado': True},
+        {
+            '$set': {'usado': False, 'reservado': False},
+            '$unset': {'session_id': '', 'fecha_reserva': '', 'reservado_por': '', 'predio_id': ''}
+        }
+    )
+    
+    return {
+        "success": True,
+        "codigos_liberados": result.modified_count
+    }
+
+
 @api_router.delete("/codigos-homologados/{municipio}")
 async def eliminar_codigos_municipio(
     municipio: str,
