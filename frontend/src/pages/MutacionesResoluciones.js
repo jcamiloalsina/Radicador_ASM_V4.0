@@ -211,7 +211,13 @@ export default function MutacionesResoluciones() {
   const fileInputRef = React.useRef(null);
 
   // Estado para fechas de inscripción catastral
-  const [añosDisponibles, setAñosDisponibles] = useState([]);
+  const [añosDisponibles, setAñosDisponibles] = useState(() => {
+    // Valores por defecto iniciales
+    const currentYear = new Date().getFullYear();
+    const años = [];
+    for (let y = 2015; y <= currentYear + 1; y++) años.push(y);
+    return años;
+  });
   const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2015, años_futuro: 1 });
 
   // Estado para flujo de aprobación
@@ -2376,7 +2382,7 @@ export default function MutacionesResoluciones() {
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder="Año..." />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent side="bottom" align="start">
                             {añosDisponibles.map(año => (
                               <SelectItem key={año} value={String(año)}>{año}</SelectItem>
                             ))}
@@ -3216,7 +3222,7 @@ export default function MutacionesResoluciones() {
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder="Año..." />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent side="bottom" align="start">
                             {añosDisponibles.map(año => (
                               <SelectItem key={año} value={String(año)}>{año}</SelectItem>
                             ))}
