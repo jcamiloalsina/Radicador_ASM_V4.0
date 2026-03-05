@@ -68,8 +68,12 @@ def get_m3_plantilla():
             "2.2.2.2.2 del Decreto 148 de 2020, el Numeral 3 del Artículo 4.5.1, y los Artículos 4.5.2, 4.6.4 y "
             "4.7.13 de la Resolución 1040 de 2023."
         ),
-        "firmante_nombre": "DALGIE YUSLENY ASCANIO PÉREZ",
-        "firmante_cargo": "Coordinadora del Proceso de Gestión Catastral"
+        "articulo_2": "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023 y el artículo 70 de la ley 1437 de 2011, el presente acto administrativo rige a partir de la fecha de su expedición.",
+        "articulo_3": "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en los artículos 4.7.13 y 4.7.14 de la resolución 1040 de 2023.",
+        "articulo_4": "Contra el presente acto administrativo no procede recurso alguno.",
+        "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
+        "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
+        "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
     }
 
 
@@ -626,23 +630,73 @@ def generate_resolucion_m3_pdf(
             y_position -= 20
     
     # ==========================================
-    # ARTÍCULOS ADICIONALES
+    # ARTÍCULOS ADICIONALES (Idéntico a M2)
     # ==========================================
     
-    verificar_espacio(60)
+    y_position -= 20  # Espacio adicional después de las tablas
+    
+    # Artículo 2
+    verificar_espacio(80)
     c.setFont(font_bold, 10)
     c.setFillColor(NEGRO)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 2.")
     c.setFont(font_normal, 10)
-    c.drawString(MARGIN_LEFT + 55, y_position, "Comunicar al interesado, a la Oficina de Registro de Instrumentos Públicos,")
-    y_position -= 14
-    c.drawString(MARGIN_LEFT, y_position, "a la Tesorería Municipal y demás entidades competentes.")
-    y_position -= 20
     
+    # Texto del artículo 2 de M2
+    art2_texto = plantilla["articulo_2"]
+    art2_lines = []
+    words = art2_texto.split()
+    current_line = ""
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
+            current_line = test_line
+        else:
+            art2_lines.append(current_line)
+            current_line = word
+    if current_line:
+        art2_lines.append(current_line)
+    
+    c.drawString(MARGIN_LEFT + 55, y_position, art2_lines[0] if art2_lines else "")
+    y_position -= 14
+    for line in art2_lines[1:]:
+        c.drawString(MARGIN_LEFT, y_position, line)
+        y_position -= 14
+    y_position -= 10
+    
+    # Artículo 3
+    verificar_espacio(80)
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 3.")
     c.setFont(font_normal, 10)
-    c.drawString(MARGIN_LEFT + 55, y_position, "La presente resolución rige a partir de su expedición.")
+    
+    art3_texto = plantilla["articulo_3"]
+    art3_lines = []
+    words = art3_texto.split()
+    current_line = ""
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
+            current_line = test_line
+        else:
+            art3_lines.append(current_line)
+            current_line = word
+    if current_line:
+        art3_lines.append(current_line)
+    
+    c.drawString(MARGIN_LEFT + 55, y_position, art3_lines[0] if art3_lines else "")
+    y_position -= 14
+    for line in art3_lines[1:]:
+        c.drawString(MARGIN_LEFT, y_position, line)
+        y_position -= 14
+    y_position -= 10
+    
+    # Artículo 4
+    verificar_espacio(40)
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 4.")
+    c.setFont(font_normal, 10)
+    c.drawString(MARGIN_LEFT + 55, y_position, plantilla["articulo_4"])
     y_position -= 30
     
     # ==========================================
@@ -652,7 +706,7 @@ def generate_resolucion_m3_pdf(
     verificar_espacio(120)
     
     c.setFont(font_bold, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, "COMUNÍQUESE Y CÚMPLASE")
+    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
     y_position -= 20
     
     # Generar QR de verificación
