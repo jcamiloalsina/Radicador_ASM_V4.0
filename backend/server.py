@@ -25549,6 +25549,7 @@ async def obtener_radicados_disponibles(
         # Si hay búsqueda, buscar en radicado
         if busqueda:
             query["radicado"] = {"$regex": busqueda, "$options": "i"}
+            logger.info(f"Búsqueda de radicados con: {busqueda}")
         else:
             # Solo mostrar peticiones pendientes si no hay búsqueda específica
             query["estado"] = {"$in": ["pendiente", "en_proceso", "asignado"]}
@@ -25556,11 +25557,15 @@ async def obtener_radicados_disponibles(
         if municipio:
             query["municipio"] = {"$regex": municipio, "$options": "i"}
         
+        logger.info(f"Query peticiones: {query}")
+        
         peticiones = await db.petitions.find(
             query,
             {"_id": 0, "id": 1, "radicado": 1, "municipio": 1, "tipo_tramite": 1, 
              "nombre_completo": 1, "estado": 1, "created_at": 1}
         ).sort("created_at", -1).limit(50).to_list(50)
+        
+        logger.info(f"Peticiones encontradas: {len(peticiones)}")
         
         return {
             "success": True,
