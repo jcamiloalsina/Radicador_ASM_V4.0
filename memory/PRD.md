@@ -111,6 +111,15 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
   - Causa: `rad.numero || rad` intentaba renderizar el objeto completo cuando `rad.numero` era undefined
   - Solución: Cambiar a `rad.radicado || rad.numero || typeof rad === 'string' ? rad : ''`
+- ✅ Historial de resoluciones M4 no aparecía en gestión de predios - CORREGIDO
+  - Causa: Usaba `$push: {"historial": ...}` en lugar de `$push: {"historial_resoluciones": ...}`
+  - Solución: Cambiado a usar `historial_resoluciones` como las demás mutaciones
+- ✅ Fecha de resolución con día de mañana - CORREGIDO
+  - Causa: Usaba `datetime.now()` sin zona horaria (servidor UTC)
+  - Solución: Agregado `ZoneInfo("America/Bogota")` para usar hora de Colombia
+- ✅ Correo con resolución M4 no se enviaba - CORREGIDO
+  - Causa: Faltaba la llamada a `send_email()` en `_generar_resolucion_m4_interno`
+  - Solución: Agregada lógica de envío de correo igual que M1/M2/M3
 - M4 formulario renderiza correctamente con ambos subtipos
 - Regresión M1/M2/M3 pasada exitosamente
 

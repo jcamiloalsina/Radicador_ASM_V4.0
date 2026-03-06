@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import bcrypt
 import jwt
 import smtplib
@@ -14457,20 +14458,19 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                 "avaluo": avaluo_nuevo,
             }
             
-            historial_entry = {
-                "accion": f"Mutación M4 ({subtipo}) - {decision.upper()}",
-                "tipo_cambio": f"m4_{subtipo}",
-                "usuario": aprobador.get('full_name'),
-                "usuario_id": aprobador.get('id'),
-                "fecha": datetime.now(timezone.utc).isoformat(),
+            # Historial para mostrar en el frontend (historial_resoluciones)
+            historial_resolucion_entry = {
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
                 "numero_resolucion": numero_resolucion,
-                "cambio_id": solicitud.get('id'),
-                "detalles": {
-                    "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
-                    "avaluo_nuevo": avaluo_nuevo,
-                    "decision": decision,
-                    "motivo": solicitud.get('motivo_solicitud', '')
-                }
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "decision": decision,
+                "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+                "avaluo_nuevo": avaluo_nuevo,
+                "motivo": solicitud.get('motivo_solicitud', '')
             }
             
             # Aplicar actualización al predio
@@ -14478,29 +14478,27 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                 {"id": predio_id},
                 {
                     "$set": update_predio,
-                    "$push": {"historial": historial_entry}
+                    "$push": {"historial_resoluciones": historial_resolucion_entry}
                 }
             )
         else:
             # Si se rechaza, solo registrar en historial sin cambiar avalúo
-            historial_entry = {
-                "accion": f"Mutación M4 ({subtipo}) - RECHAZADA",
-                "tipo_cambio": f"m4_{subtipo}_rechazada",
-                "usuario": aprobador.get('full_name'),
-                "usuario_id": aprobador.get('id'),
-                "fecha": datetime.now(timezone.utc).isoformat(),
+            historial_resolucion_entry = {
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
                 "numero_resolucion": numero_resolucion,
-                "cambio_id": solicitud.get('id'),
-                "detalles": {
-                    "avaluo_solicitado": solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0),
-                    "decision": decision,
-                    "motivo": solicitud.get('motivo_solicitud', '')
-                }
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "decision": decision,
+                "avaluo_solicitado": solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0),
+                "motivo": solicitud.get('motivo_solicitud', '')
             }
             
             await db.predios.update_one(
                 {"id": predio_id},
-                {"$push": {"historial": historial_entry}}
+                {"$push": {"historial_resoluciones": historial_resolucion_entry}}
             )
         
         # Guardar resolución en la colección
@@ -14543,6 +14541,47 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                 "numero_resolucion": numero_resolucion
             }
         )
+        
+        # === ENVIAR CORREO CON LA RESOLUCIÓN AL SOLICITANTE ===
+        try:
+            # Buscar si hay una petición asociada para obtener el correo del solicitante
+            peticion = None
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            # Si hay petición con correo del solicitante, enviar el correo
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                
+                # Generar el contenido del correo
+                subtipo_texto = "Revisión de Avalúo" if subtipo == "revision_avaluo" else "Autoestimación"
+                decision_texto = "APROBADA" if decision == "aceptar" else "RECHAZADA"
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predio.get('codigo_predial_nacional', ''),
+                    tipo_mutacion=f"M4 - {subtipo_texto} ({decision_texto})"
+                )
+                
+                # Enviar correo con el PDF adjunto
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución {decision_texto} - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                
+                logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para enviar resolución M4 {numero_resolucion}")
+                
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución M4: {str(email_error)}")
+            # No interrumpir el flujo si falla el envío de correo
         
         return {
             "success": True,
@@ -26327,7 +26366,10 @@ async def obtener_resoluciones_por_radicado(
 
 async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> dict:
     """Función interna para obtener el siguiente número de resolución"""
-    año = datetime.now().year
+    # Usar zona horaria de Colombia para año y fecha
+    colombia_tz = ZoneInfo("America/Bogota")
+    now_colombia = datetime.now(colombia_tz)
+    año = now_colombia.year
     
     # Validar que el código de municipio sea válido
     if codigo_municipio not in MUNICIPIOS_R1R2:
@@ -26365,7 +26407,7 @@ async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> 
         "año": año,
         "codigo_municipio": codigo_municipio,
         "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-        "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+        "fecha_resolucion": now_colombia.strftime("%d/%m/%Y")
     }
 
 
@@ -26415,7 +26457,7 @@ async def obtener_siguiente_numero_resolucion(
             "año": año,
             "codigo_municipio": codigo_municipio,
             "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-            "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+            "fecha_resolucion": datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y")
         }
     except Exception as e:
         logging.error(f"Error obteniendo siguiente número: {str(e)}")
