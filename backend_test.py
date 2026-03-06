@@ -6,7 +6,7 @@ import tempfile
 from datetime import datetime
 
 class CatastralAPITester:
-    def __init__(self, base_url="https://m1-m2-m3-demo.preview.emergentagent.com"):
+    def __init__(self, base_url="https://m4-workflow.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tokens = {}  # Store tokens for different users
