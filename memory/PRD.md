@@ -192,6 +192,13 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Se muestran todos los campos: Propietarios, Área Terreno, Avalúo, Matrícula (para todas las resoluciones)
   - Campos vacíos muestran texto descriptivo: "Sin dirección registrada", "No registrados"
   - M1 ahora guarda: tipo RESOLUCION_M1, direccion, matricula_inmobiliaria, propietarios con hora Colombia
+- ✅ **Matrícula desde R2** - IMPLEMENTADO (06/03/2026)
+  - Nueva función `getMatriculaInmobiliaria(predio)` busca matrícula en campo directo y en r2_registros
+  - Si no existe matrícula, muestra "Sin información" en lugar de "N/A"
+  - Aplica a M1, M2, M4, M5
+- ✅ **Petición No Se Finaliza al Generar Resolución** - CORREGIDO (06/03/2026)
+  - Ahora M1, M2, M3, M4 y M5 actualizan la petición a "completado" al generar resolución
+  - Se guarda: status="completado", estado_tramite="Finalizado", resolucion_numero, resolucion_pdf, fecha_finalizacion
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

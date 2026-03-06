@@ -14243,8 +14243,37 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                 )
                 
                 logging.info(f"Correo de resolución enviado a {email_solicitante}")
+                
+                # === FINALIZAR LA PETICIÓN ===
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
             else:
                 logging.info(f"No se encontró correo de solicitante para enviar resolución {numero_resolucion}")
+                # Aún así finalizar la petición si existe
+                if peticion:
+                    await db.petitions.update_one(
+                        {"radicado": radicado},
+                        {"$set": {
+                            "status": "completado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    logging.info(f"Petición {radicado} finalizada (sin correo)")
+                
                 
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución: {str(email_error)}")
@@ -14460,6 +14489,23 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             }
         )
         
+        # === FINALIZAR LA PETICIÓN RELACIONADA ===
+        if radicado:
+            peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            if peticion:
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución M2 {numero_resolucion}")
+        
         return {
             "success": True,
             "id": resolucion_doc['id'],
@@ -14668,6 +14714,23 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                 "numero_resolucion": numero_resolucion
             }
         )
+        
+        # === FINALIZAR LA PETICIÓN RELACIONADA ===
+        if radicado:
+            peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            if peticion:
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución M3 {numero_resolucion}")
         
         return {
             "success": True,
@@ -14896,8 +14959,37 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                 )
                 
                 logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
+                
+                # === FINALIZAR LA PETICIÓN ===
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución M4 {numero_resolucion}")
             else:
                 logging.info(f"No se encontró correo de solicitante para enviar resolución M4 {numero_resolucion}")
+                # Aún así finalizar la petición si existe
+                if peticion:
+                    await db.petitions.update_one(
+                        {"radicado": radicado},
+                        {"$set": {
+                            "status": "completado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    logging.info(f"Petición {radicado} finalizada (sin correo)")
+                
                 
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución M4: {str(email_error)}")
@@ -15142,6 +15234,34 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                 )
                 
                 logging.info(f"Correo de resolución M5 enviado a {email_solicitante}")
+                
+                # === FINALIZAR LA PETICIÓN ===
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución M5 {numero_resolucion}")
+            elif peticion:
+                # Finalizar la petición aunque no haya correo
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada (sin correo)")
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución M5: {str(email_error)}")
         
