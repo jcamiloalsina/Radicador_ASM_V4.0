@@ -14200,6 +14200,9 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
+        # Generar código de verificación para QR
+        codigo_verificacion_m2 = generar_codigo_verificacion_resolucion()
+        
         # Preparar datos para el PDF
         pdf_data = {
             "numero_resolucion": numero_resolucion,
@@ -14211,7 +14214,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "solicitante": solicitante,
             "observaciones": solicitud.get('observaciones', ''),
             "elaborado_por": aprobador.get("full_name", ""),
-            "revisado_por": ""
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m2
         }
         
         # Crear directorio si no existe
@@ -14322,9 +14326,28 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "año": datetime.now().year
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m2
         }
         await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m2 = {
+            "codigo_verificacion": codigo_verificacion_m2,
+            "tipo": "RESOLUCION_M2",
+            "subtipo": solicitud.get('subtipo', 'desenglobe').upper(),
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predios_cancelados": len(predios_cancelados),
+            "predios_inscritos": len(predios_inscritos),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m2)
         
         # Registrar en log de actividades
         await registrar_log_actividad(
@@ -14388,6 +14411,9 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
+        # Generar código de verificación para QR
+        codigo_verificacion_m3 = generar_codigo_verificacion_resolucion()
+        
         # Preparar fechas de inscripción
         fechas_inscripcion = solicitud.get('fechas_inscripcion') or [
             {"año": datetime.now().year, "avaluo": solicitud.get('avaluo_nuevo', 0), "avaluo_source": "actual"}
@@ -14409,7 +14435,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "fechas_inscripcion": fechas_inscripcion,
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
             "elaborado_por": aprobador.get("full_name", ""),
-            "revisado_por": ""
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m3
         }
         
         # Crear directorio si no existe
@@ -14509,9 +14536,27 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "año": datetime.now().year
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m3
         }
         await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m3 = {
+            "codigo_verificacion": codigo_verificacion_m3,
+            "tipo": "RESOLUCION_M3",
+            "subtipo": subtipo.upper() if subtipo else "CAMBIO",
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "predio_codigo": predio.get('codigo_predial_nacional'),
+            "predio_direccion": predio.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m3)
         
         # Registrar en log de actividades
         await registrar_log_actividad(
@@ -14574,6 +14619,9 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
+        # Generar código de verificación para QR
+        codigo_verificacion_m4 = generar_codigo_verificacion_resolucion()
+        
         # Preparar datos para el PDF
         pdf_data = {
             "numero_resolucion": numero_resolucion,
@@ -14589,7 +14637,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
             "valor_autoestimado": solicitud.get('valor_autoestimado') or solicitud.get('avaluo_nuevo', 0),
             "elaborado_por": aprobador.get("full_name", ""),
-            "revisado_por": ""
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m4
         }
         
         # Crear directorio si no existe
@@ -14678,9 +14727,27 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "año": datetime.now().year
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m4
         }
         await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m4 = {
+            "codigo_verificacion": codigo_verificacion_m4,
+            "tipo": "RESOLUCION_M4",
+            "subtipo": f"{subtipo.upper()}_{decision.upper()}" if subtipo else "M4",
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "predio_codigo": predio.get('codigo_predial_nacional'),
+            "predio_direccion": predio.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m4)
         
         # Registrar en log de actividades
         await registrar_log_actividad(

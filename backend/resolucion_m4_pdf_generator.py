@@ -270,9 +270,9 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     motivo_solicitud = data.get('motivo_solicitud', '')
     valor_autoestimado = data.get('valor_autoestimado', avaluo_nuevo)
     
-    # Generar código de verificación
+    # Usar código de verificación del servidor o generar uno local
     fecha_hora_gen = datetime.now().strftime("%Y%m%d%H%M%S")
-    codigo_verificacion = f"M4-{numero_resolucion.replace('/', '-')}-{fecha_hora_gen[-6:]}"
+    codigo_verificacion = data.get('codigo_verificacion') or f"M4-{numero_resolucion.replace('/', '-')}-{fecha_hora_gen[-6:]}"
     
     def formatear_moneda(valor):
         try:
@@ -688,11 +688,12 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     
     verificar_espacio(120)
     
-    # Generar QR
+    # Generar QR - URL igual a M1, M2, M3, M5
     qr_image = None
     hash_doc = ""
+    VERIFICACION_BASE_URL = os.environ.get('VERIFICACION_BASE_URL', 'https://certificados.asomunicipios.gov.co')
     try:
-        qr_url = f"https://catastro.asomunicipios.gov.co/verificar?codigo={codigo_verificacion}"
+        qr_url = f"{VERIFICACION_BASE_URL}/api/verificar/{codigo_verificacion}"
         qr = qrcode.QRCode(version=1, box_size=10, border=2)
         qr.add_data(qr_url)
         qr.make(fit=True)
