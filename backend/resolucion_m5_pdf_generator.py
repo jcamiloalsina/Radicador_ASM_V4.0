@@ -719,7 +719,7 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     y_position -= 20
     
     # ==========================================
-    # CIERRE Y FIRMA
+    # CIERRE Y FIRMA + QR (IDÉNTICO A M1)
     # ==========================================
     verificar_espacio(150)
     
@@ -731,52 +731,126 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Fecha textual
     c.setFont(font_normal, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, fecha_texto)
-    y_position -= 40
-    
-    # Firma
-    if firma_img:
-        try:
-            firma_width = 150
-            firma_height = 50
-            firma_x = (PAGE_WIDTH - firma_width) / 2
-            c.drawImage(firma_img, firma_x, y_position - firma_height,
-                       width=firma_width, height=firma_height,
-                       preserveAspectRatio=True, mask='auto')
-            y_position -= firma_height + 10
-        except:
-            y_position -= 30
-    else:
-        y_position -= 30
-    
-    # Nombre y cargo
-    c.setFont(font_bold, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_nombre"])
-    y_position -= 14
-    c.setFont(font_normal, 9)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_cargo"])
     y_position -= 30
     
-    # QR de verificación
-    verificar_espacio(80)
+    # === GENERAR QR Y HASH (IGUAL A M1) ===
+    qr_image = None
+    hash_doc = ""
+    fecha_hora_gen = fecha_actual.strftime("%d/%m/%Y %H:%M")
+    base_url = "https://certificados.asomunicipios.gov.co"
+    
     try:
-        qr = qrcode.QRCode(version=1, box_size=3, border=1)
-        qr.add_data(f"M5-{numero_resolucion}-{codigo_verificacion}")
+        qr_data = f"{base_url}/api/verificar-resolucion/{numero_resolucion}"
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(qr_data)
         qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Color verde institucional idéntico al M1
+        qr_img_gen = qr.make_image(fill_color="#009846", back_color="white")
         
         qr_buffer = io.BytesIO()
-        qr_img.save(qr_buffer, format='PNG')
+        qr_img_gen.save(qr_buffer, format='PNG')
         qr_buffer.seek(0)
-        qr_reader = ImageReader(qr_buffer)
+        qr_image = ImageReader(qr_buffer)
         
-        qr_size = 50
-        c.drawImage(qr_reader, PAGE_WIDTH - MARGIN_RIGHT - qr_size, y_position - qr_size,
-                   width=qr_size, height=qr_size)
+        # Hash del documento
+        hash_input = f"{codigo_predial}-{numero_resolucion}-{fecha_hora_gen}"
+        hash_doc = hashlib.sha256(hash_input.encode()).hexdigest()
         
-        c.setFont(font_normal, 7)
-        c.drawString(PAGE_WIDTH - MARGIN_RIGHT - qr_size - 80, y_position - 30, f"Verificación: {codigo_verificacion}")
     except Exception as e:
         print(f"Error generando QR: {e}")
+    
+    # === CALCULAR POSICIONES PARA FIRMA Y QR LADO A LADO (IGUAL A M1) ===
+    firma_block_width = 200
+    verif_block_width = 185
+    gap_between = 20
+    
+    total_blocks_width = firma_block_width + gap_between + verif_block_width
+    start_x = MARGIN_LEFT + (CONTENT_WIDTH - total_blocks_width) / 2
+    
+    block_height = 90
+    block_y = y_position - block_height
+    
+    # === BLOQUE IZQUIERDO: FIRMA DE DALGIE ===
+    firma_center_x = start_x + firma_block_width / 2
+    
+    # Dibujar imagen de firma si existe
+    if firma_img:
+        try:
+            firma_img_width = 100
+            firma_img_height = 50
+            c.drawImage(firma_img, firma_center_x - firma_img_width/2, block_y + 40,
+                       width=firma_img_width, height=firma_img_height, mask='auto')
+        except:
+            pass
+    
+    # Línea debajo de la firma
+    linea_width = 160
+    linea_y = block_y + 35
+    c.setStrokeColor(NEGRO)
+    c.line(firma_center_x - linea_width/2, linea_y, firma_center_x + linea_width/2, linea_y)
+    
+    # Nombre del firmante
+    c.setFont(font_bold, 10)
+    c.setFillColor(NEGRO)
+    c.drawCentredString(firma_center_x, linea_y - 12, plantilla["firmante_nombre"])
+    
+    # Cargo del firmante
+    c.setFont(font_bold, 9)
+    c.drawCentredString(firma_center_x, linea_y - 24, plantilla["firmante_cargo"])
+    
+    # === BLOQUE DERECHO: CUADRO DE VERIFICACIÓN (IDÉNTICO A M1) ===
+    if qr_image:
+        gris_claro = colors.HexColor('#666666')
+        marco_width = verif_block_width
+        marco_height = 58
+        marco_x = start_x + firma_block_width + gap_between
+        marco_y = block_y + 15
+        
+        # Fondo del marco (verde muy claro)
+        c.setFillColor(colors.HexColor('#f0fdf4'))
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=1, stroke=0)
+        
+        # Borde verde institucional
+        c.setStrokeColor(VERDE_INSTITUCIONAL)
+        c.setLineWidth(1.5)
+        c.roundRect(marco_x, marco_y, marco_width, marco_height, 5, fill=0, stroke=1)
+        
+        # QR dentro del marco (izquierda del bloque)
+        qr_size = 46
+        c.drawImage(qr_image, marco_x + 5, marco_y + 6, width=qr_size, height=qr_size, mask='auto')
+        
+        # Información de verificación (derecha del QR)
+        info_x = marco_x + 55
+        
+        # Título
+        c.setFillColor(VERDE_INSTITUCIONAL)
+        c.setFont(font_bold, 8)
+        c.drawString(info_x, marco_y + marco_height - 11, "RESOLUCIÓN VERIFICABLE")
+        
+        # Código
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        c.drawString(info_x, marco_y + 36, f"Código: {numero_resolucion}")
+        
+        # Detalles
+        c.setFont(font_normal, 6)
+        c.setFillColor(gris_claro)
+        c.drawString(info_x, marco_y + 26, f"Generado: {fecha_hora_gen}")
+        c.drawString(info_x, marco_y + 17, f"Hash: SHA256:{hash_doc[:12]}...")
+        
+        # URL de verificación
+        c.setFillColor(VERDE_INSTITUCIONAL)
+        c.setFont(font_normal, 6)
+        c.drawString(info_x, marco_y + 8, "Escanear QR para verificar")
+    
+    y_position = block_y - 10
     
     # Pie de página final
     draw_footer()
