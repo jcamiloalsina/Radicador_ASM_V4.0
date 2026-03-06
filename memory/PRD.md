@@ -185,6 +185,13 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Fix Backend: Todos los `pdf_path` ahora usan la ruta correcta del API
   - Fix Frontend: Predios.js, ConfiguracionResoluciones.js, MutacionesResoluciones.js y PetitionDetail.js normalizan URLs antiguas automáticamente
   - Las resoluciones antiguas con rutas incorrectas ahora funcionan gracias a la normalización en el frontend
+- ✅ **Página de Verificación QR Mejorada** - CORREGIDO (06/03/2026)
+  - "RESOLUCIÓN VÁLIDO" → "RESOLUCIÓN VÁLIDA" (género femenino correcto)
+  - "Datos del Resolución" → "Datos de la Resolución" (preposición correcta)
+  - Hora de generación ahora se muestra en hora Colombia (UTC-5) en lugar de UTC
+  - Se muestran todos los campos: Propietarios, Área Terreno, Avalúo, Matrícula (para todas las resoluciones)
+  - Campos vacíos muestran texto descriptivo: "Sin dirección registrada", "No registrados"
+  - M1 ahora guarda: tipo RESOLUCION_M1, direccion, matricula_inmobiliaria, propietarios con hora Colombia
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

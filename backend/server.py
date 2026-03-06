@@ -11700,11 +11700,17 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     
     es_valido = estado == 'activo' and not esta_vencido
     
-    # Formatear fecha
+    # Formatear fecha (convertir a hora Colombia si viene en UTC)
     fecha_gen = certificado.get('fecha_generacion', '')
     if fecha_gen:
         try:
+            from zoneinfo import ZoneInfo
             dt = datetime.fromisoformat(fecha_gen.replace('Z', '+00:00'))
+            # Si la fecha no tiene zona horaria o es UTC, convertir a Colombia
+            if dt.tzinfo is None or str(dt.tzinfo) == 'UTC':
+                dt = dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('America/Bogota'))
+            elif str(dt.tzinfo) != 'America/Bogota':
+                dt = dt.astimezone(ZoneInfo('America/Bogota'))
             fecha_formateada = dt.strftime("%d/%m/%Y a las %H:%M")
         except:
             fecha_formateada = fecha_gen
@@ -11713,18 +11719,25 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     
     # Propietarios
     propietarios = certificado.get('propietarios', [])
-    propietarios_html = "<br>".join([f"• {p}" for p in propietarios]) if propietarios else "No disponible"
+    # Filtrar propietarios vacíos
+    propietarios = [p for p in propietarios if p and p.strip()]
+    propietarios_html = "<br>".join([f"• {p}" for p in propietarios]) if propietarios else "No registrados"
     
     # Obtener área terreno y avalúo directamente del certificado (ya vienen formateados)
     area_terreno = certificado.get('area_terreno', 'N/A')
     avaluo = certificado.get('avaluo_catastral', 'N/A')
+    
+    # Obtener matrícula inmobiliaria
+    matricula_inmobiliaria = certificado.get('matricula_inmobiliaria', '')
     
     # Verificar si tiene hash de PDF (sistema nuevo)
     tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
     
     # Detectar si es una RESOLUCIÓN (M1-M5) vs CERTIFICADO
     tipo_doc = certificado.get('tipo', '')
-    es_resolucion_db = tipo_doc.startswith('RESOLUCION_') or tipo_doc == 'RESOLUCION'
+    tipo_documento_db = certificado.get('tipo_documento', '')
+    es_resolucion_db = (tipo_doc.startswith('RESOLUCION_') or tipo_doc == 'RESOLUCION' or 
+                        tipo_documento_db == 'resolucion' or tipo_documento_db == 'RESOLUCION')
     
     # Para resoluciones, obtener campos específicos
     if es_resolucion_db:
@@ -11835,10 +11848,14 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">📍 Dirección:</span>
-                        <span class="info-value">{direccion_display}</span>
+                        <span class="info-value">{direccion_display if direccion_display and direccion_display != 'N/A' else 'Sin dirección registrada'}</span>
                     </div>
                     
-                    {"" if es_resolucion_db else f'''
+                    {f'''<div class="info-row">
+                        <span class="info-label">📜 Matrícula:</span>
+                        <span class="info-value"><strong>{matricula_inmobiliaria}</strong></span>
+                    </div>''' if matricula_inmobiliaria else ''}
+                    
                     <div class="info-row">
                         <span class="info-label">👥 Propietarios:</span>
                         <span class="info-value"><strong>{propietarios_html}</strong></span>
@@ -11853,7 +11870,6 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         <span class="info-label">💰 Avalúo:</span>
                         <span class="info-value"><strong>{avaluo}</strong></span>
                     </div>
-                    '''}
                     
                     {"" if not es_resolucion_db else f'''
                     <div class="info-row">
@@ -14164,24 +14180,31 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         )
         
         # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
+        # Convertir a hora Colombia (UTC-5)
+        from zoneinfo import ZoneInfo
+        hora_colombia = datetime.now(ZoneInfo('America/Bogota'))
+        
         verificacion_doc = {
             "id": str(uuid.uuid4()),
             "codigo_verificacion": codigo_verificacion_res,
             "tipo_documento": "resolucion",
+            "tipo": "RESOLUCION_M1",
             "numero_resolucion": numero_resolucion,
             "predio_id": cambio.get("predio_id"),
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
-            "propietarios": [datos_predio.get("nombre_propietario", "")],
+            "direccion": datos_predio.get("direccion", "Sin dirección"),
+            "matricula_inmobiliaria": matricula_inmobiliaria or datos_predio.get("matricula_inmobiliaria", ""),
+            "propietarios": [datos_predio.get("nombre_propietario", "")] if datos_predio.get("nombre_propietario") else [],
             "area_terreno": str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
             "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "fecha_vencimiento": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),  # 1 año de validez
+            "fecha_generacion": hora_colombia.isoformat(),
+            "fecha_vencimiento": (hora_colombia + timedelta(days=365)).isoformat(),  # 1 año de validez
             "estado": "activo",
             "generado_por": aprobador.get("id"),
             "generado_por_nombre": aprobador.get("full_name", ""),
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": hora_colombia.isoformat()
         }
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
