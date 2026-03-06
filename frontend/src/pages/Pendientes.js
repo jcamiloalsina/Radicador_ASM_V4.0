@@ -2099,6 +2099,97 @@ export default function Pendientes() {
                 </div>
               )}
               
+              {/* Información específica de M4 - Revisión de Avalúo / Autoestimación */}
+              {selectedMutacion.tipo === 'M4' && (
+                <div className="space-y-3">
+                  {/* Predio afectado */}
+                  {selectedMutacion.predio_id && (
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium mb-2">Predio Afectado</p>
+                      <div className="bg-white p-2 rounded">
+                        <p className="font-mono text-sm text-slate-700">{selectedMutacion.codigo_predial || selectedMutacion.predio_codigo || 'Ver en sistema'}</p>
+                        {selectedMutacion.predio_direccion && (
+                          <p className="text-xs text-slate-500">{selectedMutacion.predio_direccion}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Subtipo y Decisión */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-600 font-medium">Subtipo</p>
+                      <p className="text-sm font-semibold text-purple-800">
+                        {selectedMutacion.subtipo === 'revision_avaluo' ? 'Revisión de Avalúo' : 
+                         selectedMutacion.subtipo === 'autoestimacion' ? 'Autoestimación' : 
+                         selectedMutacion.subtipo || 'No especificado'}
+                      </p>
+                      <p className="text-xs text-purple-500 mt-1">
+                        {selectedMutacion.subtipo === 'revision_avaluo' 
+                          ? 'Aplica en vigencia actual' 
+                          : 'Aplica en vigencia venidera'}
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-lg border ${
+                      selectedMutacion.decision === 'aceptar' 
+                        ? 'bg-emerald-50 border-emerald-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <p className={`text-xs font-medium ${
+                        selectedMutacion.decision === 'aceptar' ? 'text-emerald-600' : 'text-red-600'
+                      }`}>Decisión Propuesta</p>
+                      <p className={`text-sm font-semibold ${
+                        selectedMutacion.decision === 'aceptar' ? 'text-emerald-800' : 'text-red-800'
+                      }`}>
+                        {selectedMutacion.decision === 'aceptar' ? '✓ ACEPTAR' : '✗ RECHAZAR'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Información de Avalúo */}
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-600 font-medium mb-2">Cambio de Avalúo Propuesto</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-xs text-slate-500">Avalúo Anterior</p>
+                        <p className="text-lg font-bold text-red-600">
+                          ${(selectedMutacion.avaluo_anterior || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-xs text-slate-500">
+                          {selectedMutacion.subtipo === 'autoestimacion' ? 'Valor Autoestimado' : 'Avalúo Nuevo'}
+                        </p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          ${(selectedMutacion.avaluo_nuevo || selectedMutacion.valor_autoestimado || 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedMutacion.avaluo_anterior && selectedMutacion.avaluo_nuevo && (
+                      <div className="mt-2 text-center">
+                        <span className={`text-sm font-medium ${
+                          (selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) > 0 
+                            ? 'text-emerald-600' 
+                            : 'text-red-600'
+                        }`}>
+                          {(selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) > 0 ? '↑' : '↓'} 
+                          Diferencia: ${Math.abs(selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior).toLocaleString()}
+                          ({((selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) / selectedMutacion.avaluo_anterior * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Motivo de la solicitud */}
+                  {selectedMutacion.motivo_solicitud && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-xs text-slate-500 font-medium">Motivo de la Solicitud</p>
+                      <p className="text-sm text-slate-700 mt-1">{selectedMutacion.motivo_solicitud}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Observaciones */}
               {selectedMutacion.observaciones && (
                 <div className="bg-slate-50 p-3 rounded-lg">

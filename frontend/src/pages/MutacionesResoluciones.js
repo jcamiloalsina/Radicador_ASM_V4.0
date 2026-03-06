@@ -2557,6 +2557,8 @@ export default function MutacionesResoluciones() {
         municipio: m4Data.municipio,
         radicado: m4Data.radicado,
         predio_id: m4Data.predio.id,
+        codigo_predial: m4Data.predio.codigo_predial_nacional || m4Data.predio.NPN || '',
+        predio_direccion: m4Data.predio.direccion || '',
         solicitante: solicitante,
         avaluo_anterior: m4Data.avaluo_anterior,
         avaluo_nuevo: m4Data.avaluo_nuevo,
@@ -3196,6 +3198,7 @@ export default function MutacionesResoluciones() {
             <div 
               className="flex items-center justify-between px-3 py-2 border rounded-lg cursor-pointer hover:bg-slate-50"
               onClick={() => setShowMunicipioDropdownM4(!showMunicipioDropdownM4)}
+              data-testid="m4-municipio-select"
             >
               <span className={m4Data.municipio ? 'text-slate-900' : 'text-slate-400'}>
                 {m4Data.municipio ? MUNICIPIOS.find(m => m.codigo === m4Data.municipio)?.nombre : 'Seleccione municipio'}
@@ -3286,18 +3289,13 @@ export default function MutacionesResoluciones() {
                 </div>
               )}
 
-              {/* Predio seleccionado */}
+              {/* Predio seleccionado - Información completa tipo R1 */}
               {m4Data.predio && (
                 <Card className="bg-green-50 border-green-200">
                   <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold text-green-800">{m4Data.predio.codigo_predial_nacional}</h4>
-                        <p className="text-sm text-slate-600">{m4Data.predio.direccion}</p>
-                        <p className="text-sm text-slate-500">Matrícula: {m4Data.predio.matricula_inmobiliaria || 'N/A'}</p>
-                        <p className="text-sm font-medium text-green-700">
-                          Avalúo actual: ${(m4Data.avaluo_anterior || 0).toLocaleString('es-CO')}
-                        </p>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-600">Predio Seleccionado</Badge>
                       </div>
                       <Button
                         variant="ghost"
@@ -3307,6 +3305,56 @@ export default function MutacionesResoluciones() {
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
+                    
+                    {/* Información Principal - Estilo R1 */}
+                    <div className="bg-white rounded-lg p-3 mb-3">
+                      <h4 className="font-bold text-green-800 text-lg">{m4Data.predio.codigo_predial_nacional}</h4>
+                      <p className="text-sm text-slate-600">{m4Data.predio.direccion || 'Sin dirección'}</p>
+                    </div>
+                    
+                    {/* Grid de datos tipo R1 */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Matrícula</span>
+                        <span className="font-medium">{m4Data.predio.matricula_inmobiliaria || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Destino</span>
+                        <span className="font-medium">{m4Data.predio.destino_economico || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Área Terreno</span>
+                        <span className="font-medium">{(m4Data.predio.area_terreno || 0).toLocaleString()} m²</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Área Construida</span>
+                        <span className="font-medium">{(m4Data.predio.area_construida || 0).toLocaleString()} m²</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Avalúo Catastral</span>
+                        <span className="font-bold text-green-700">${(m4Data.avaluo_anterior || 0).toLocaleString('es-CO')}</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Municipio</span>
+                        <span className="font-medium">{m4Data.predio.municipio || m4Data.municipio || 'N/A'}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Propietarios */}
+                    {m4Data.predio.propietarios && m4Data.predio.propietarios.length > 0 && (
+                      <div className="mt-3 bg-white rounded-lg p-2">
+                        <span className="text-xs text-slate-500 block mb-1">Propietario(s)</span>
+                        {m4Data.predio.propietarios.slice(0, 3).map((prop, idx) => (
+                          <div key={idx} className="text-sm">
+                            <span className="font-medium">{prop.nombre_propietario || prop.nombre}</span>
+                            {prop.numero_documento && <span className="text-slate-500 ml-1">({prop.tipo_documento || 'CC'} {prop.numero_documento})</span>}
+                          </div>
+                        ))}
+                        {m4Data.predio.propietarios.length > 3 && (
+                          <span className="text-xs text-slate-400">y {m4Data.predio.propietarios.length - 3} más...</span>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

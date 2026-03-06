@@ -676,6 +676,8 @@ class SolicitudMutacionCreate(BaseModel):
     motivo_solicitud: Optional[str] = None  # Motivo de la revisión de avalúo
     valor_autoestimado: Optional[float] = None  # Valor propuesto por el propietario
     decision: Optional[str] = "aceptar"  # aceptar o rechazar
+    codigo_predial: Optional[str] = None  # Código predial para mostrar en vista de aprobación
+    predio_direccion: Optional[str] = None  # Dirección del predio
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
@@ -27819,6 +27821,8 @@ async def crear_solicitud_mutacion(
             "motivo_solicitud": data.motivo_solicitud,
             "valor_autoestimado": data.valor_autoestimado,
             "decision": data.decision or "aceptar",
+            "codigo_predial": data.codigo_predial,
+            "predio_direccion": data.predio_direccion,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
