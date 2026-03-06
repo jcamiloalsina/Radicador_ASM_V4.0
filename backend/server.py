@@ -14799,6 +14799,17 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         municipio_nombre = numero_info['municipio']
         
         # Preparar datos para el PDF
+        # Obtener usuario que elaboró (proponente de la solicitud)
+        elaboro_nombre = ""
+        proponente_id = solicitud.get('creado_por', solicitud.get('created_by'))
+        if proponente_id:
+            proponente = await db.users.find_one({"id": proponente_id})
+            if proponente:
+                elaboro_nombre = proponente.get('full_name', '')
+        
+        # Generar código de verificación para el QR
+        codigo_verificacion = generar_codigo_verificacion_resolucion()
+        
         pdf_data = {
             "subtipo": subtipo,
             "numero_resolucion": numero_resolucion,
@@ -14810,7 +14821,10 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "vigencia": vigencia,
             "motivo_solicitud": motivo_solicitud,
             "es_doble_inscripcion": es_doble_inscripcion,
-            "codigo_predio_duplicado": codigo_predio_duplicado
+            "codigo_predio_duplicado": codigo_predio_duplicado,
+            "elaboro": elaboro_nombre or aprobador.get('full_name', ''),
+            "aprobo": aprobador.get('full_name', ''),
+            "codigo_verificacion": codigo_verificacion
         }
         
         # Generar PDF
@@ -14845,10 +14859,39 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "año": numero_info['año'],
             "creado_por_id": aprobador.get('id'),
             "creado_por_nombre": aprobador.get('full_name'),
-            "fecha_creacion": datetime.now(timezone.utc).isoformat()
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "codigo_verificacion": codigo_verificacion
         }
         
-        await db.resoluciones.insert_one(resolucion_doc)
+        logger.info(f"🔵 M5: Guardando resolución {numero_resolucion} con código {codigo_verificacion}")
+        insert_result = await db.resoluciones.insert_one(resolucion_doc)
+        logger.info(f"✅ M5: Resolución guardada en DB con _id: {insert_result.inserted_id}")
+        
+        # Verificar que se guardó
+        verificacion = await db.resoluciones.find_one({"numero_resolucion": numero_resolucion})
+        if verificacion:
+            logger.info(f"✅ M5: Verificación exitosa - resolución encontrada")
+        else:
+            logger.error(f"❌ M5: Error - resolución NO encontrada después de insert")
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_record = {
+            "codigo_verificacion": codigo_verificacion,
+            "tipo": "RESOLUCION_M5",
+            "subtipo": subtipo.upper(),
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predio_codigo": predio_m5.get('codigo_predial_nacional') or predio_m5.get('codigo_predial'),
+            "predio_direccion": predio_m5.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_record)
+        logger.info(f"✅ M5: Certificado verificable guardado")
         
         # Actualizar historial del predio según subtipo
         predio_id = predio_m5.get('id')

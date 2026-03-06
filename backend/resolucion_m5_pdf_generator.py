@@ -227,6 +227,10 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     radicado = data.get('radicado', '')
     motivo_solicitud = data.get('motivo_solicitud', '')
     
+    # Elaboró y Aprobó
+    elaboro = data.get('elaboro', '')
+    aprobo = data.get('aprobo', '')
+    
     # Vigencias
     vigencia_cancelacion = data.get('vigencia_cancelacion', fecha_actual.year)
     vigencia_inscripcion = data.get('vigencia_inscripcion', fecha_actual.year)
@@ -234,9 +238,6 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Doble inscripción
     es_doble_inscripcion = data.get('es_doble_inscripcion', False)
     codigo_predio_duplicado = data.get('codigo_predio_duplicado', '')
-    
-    # Código verificación
-    codigo_verificacion = hashlib.md5(f"{numero_resolucion}{fecha_resolucion}".encode()).hexdigest()[:8]
     
     # Cargar imágenes - IGUAL A M4
     encabezado_img = None
@@ -737,10 +738,16 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     qr_image = None
     hash_doc = ""
     fecha_hora_gen = fecha_actual.strftime("%d/%m/%Y %H:%M")
-    base_url = "https://certificados.asomunicipios.gov.co"
+    
+    # Usar código de verificación pasado desde el servidor
+    codigo_verificacion = data.get('codigo_verificacion', '')
+    
+    # URL base para verificación (usa la misma URL del sistema)
+    VERIFICACION_BASE_URL = os.environ.get('VERIFICACION_BASE_URL', 'https://certificados.asomunicipios.gov.co')
     
     try:
-        qr_data = f"{base_url}/api/verificar-resolucion/{numero_resolucion}"
+        # URL de verificación IGUAL A M1 - usa el código de verificación
+        qr_data = f"{VERIFICACION_BASE_URL}/api/verificar/{codigo_verificacion}"
         
         qr = qrcode.QRCode(
             version=1,
@@ -759,8 +766,8 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
         qr_buffer.seek(0)
         qr_image = ImageReader(qr_buffer)
         
-        # Hash del documento
-        hash_input = f"{codigo_predial}-{numero_resolucion}-{fecha_hora_gen}"
+        # Hash del documento - IGUAL A M1
+        hash_input = f"{codigo_predial}-{codigo_verificacion}-{fecha_hora_gen}"
         hash_doc = hashlib.sha256(hash_input.encode()).hexdigest()
         
     except Exception as e:
@@ -834,10 +841,11 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
         c.setFont(font_bold, 8)
         c.drawString(info_x, marco_y + marco_height - 11, "RESOLUCIÓN VERIFICABLE")
         
-        # Código
+        # Código de verificación (no número de resolución)
         c.setFillColor(NEGRO)
         c.setFont(font_bold, 7)
-        c.drawString(info_x, marco_y + 36, f"Código: {numero_resolucion}")
+        codigo_mostrar = codigo_verificacion if codigo_verificacion else numero_resolucion
+        c.drawString(info_x, marco_y + 36, f"Código: {codigo_mostrar}")
         
         # Detalles
         c.setFont(font_normal, 6)
@@ -851,6 +859,14 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
         c.drawString(info_x, marco_y + 8, "Escanear QR para verificar")
     
     y_position = block_y - 10
+    
+    # === ELABORÓ / APROBÓ (debajo de la firma y QR) - IGUAL A M1 ===
+    verificar_espacio(30)
+    c.setFont(font_normal, 8)
+    c.setFillColor(NEGRO)
+    c.drawString(MARGIN_LEFT, y_position, f"Elaboró: {elaboro}")
+    y_position -= 12
+    c.drawString(MARGIN_LEFT, y_position, f"Aprobó:  {aprobo}")
     
     # Pie de página final
     draw_footer()
