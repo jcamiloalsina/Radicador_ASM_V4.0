@@ -1,0 +1,70 @@
+{
+  "summary": "Backend testing completo para verificación de datos R1/R2 en generadores de PDF de mutaciones (M1-M5). Todos los tests pasaron (13/13). La función obtener_datos_r1_r2() en server.py y obtener_datos_r1_r2_pdf() en generadores M2-M5 están correctamente implementadas para obtener codigo_homologado de r1_registros y matricula_inmobiliaria de r2_registros.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_r1_r2_resolucion_data.py",
+    "/app/test_reports/pytest/pytest_results_r1r2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: obtener_datos_r1_r2() en server.py (líneas 13977-14013) prioriza r1_registros y r2_registros con fallback correcto",
+    "VERIFIED: generar_resolucion_manual() (líneas 29123-29410) usa obtener_datos_r1_r2() para datos anteriores (CANCELACIÓN) y nuevos (INSCRIPCIÓN)",
+    "VERIFIED: M2 generator (resolucion_m2_pdf_generator.py) tiene obtener_datos_r1_r2_pdf() líneas 36-67",
+    "VERIFIED: M3 generator (resolucion_m3_pdf_generator.py) tiene obtener_datos_r1_r2_pdf() líneas 37-68",
+    "VERIFIED: M4 generator (resolucion_m4_pdf_generator.py) tiene obtener_datos_r1_r2_pdf() líneas 35-66",
+    "VERIFIED: M5 generator (resolucion_m5_pdf_generator.py) tiene obtener_datos_r1_r2_pdf() líneas 38-69",
+    "VERIFIED: codigo_homologado viene de r1_registros[0].codigo_homologado con fallback a predio.codigo_homologado",
+    "VERIFIED: matricula_inmobiliaria viene de r2_registros[0].matricula_inmobiliaria con fallback a predio.matricula_inmobiliaria",
+    "VERIFIED: Endpoint POST /api/resoluciones/generar-manual requiere autenticación (403) y valida predio (404)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_r1_r2_resolucion_data.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)"
+  },
+  "test_credentials": {
+    "email": "catastro@asomunicipios.gov.co",
+    "password": "Asm*123*",
+    "role": "administrador"
+  },
+  "seed_data_creation": "No se crearon datos de prueba",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "La función obtener_datos_r1_r2() está correctamente implementada en server.py y en cada generador de PDF (M2-M5). Los datos de cancelación e inscripción se obtienen de r1_registros (codigo_homologado) y r2_registros (matricula_inmobiliaria) con fallback a campos directos del predio cuando estos subdocumentos están vacíos.",
+  "tests_performed": {
+    "backend_api_tests": {
+      "GET /api/health": "PASS - Status 200, response: {status: healthy, version: 2.0.0}",
+      "POST /api/resoluciones/generar-manual sin auth": "PASS - Status 403 (requiere autenticación)",
+      "POST /api/resoluciones/generar-manual con predio inexistente": "PASS - Status 404 (validación correcta)"
+    },
+    "function_verification_tests": {
+      "obtener_datos_r1_r2() estructura": "PASS - Retorna 7 campos: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo, matricula_inmobiliaria",
+      "obtener_datos_r1_r2() prioridad R1/R2": "PASS - Prioriza r1_registros y r2_registros sobre campos directos",
+      "generar_resolucion_manual() usa R1/R2": "PASS - Llama a obtener_datos_r1_r2() para datos anteriores y nuevos"
+    },
+    "pdf_generator_tests": {
+      "M2 generator": "PASS - Tiene obtener_datos_r1_r2_pdf() correctamente",
+      "M3 generator": "PASS - Tiene obtener_datos_r1_r2_pdf() correctamente",
+      "M4 generator": "PASS - Tiene obtener_datos_r1_r2_pdf() correctamente",
+      "M5 generator": "PASS - Tiene obtener_datos_r1_r2_pdf() correctamente"
+    }
+  },
+  "features_verified": [
+    "1. Función obtener_datos_r1_r2() existe y retorna estructura correcta",
+    "2. Prioridad de datos: r1_registros > campos directos del predio",
+    "3. codigo_homologado viene de R1 (r1_registros[0])",
+    "4. matricula_inmobiliaria viene de R2 (r2_registros[0])",
+    "5. Generadores M2-M5 tienen función obtener_datos_r1_r2_pdf() idéntica",
+    "6. generar_resolucion_manual() usa datos R1/R2 para CANCELACIÓN e INSCRIPCIÓN",
+    "7. Endpoint /api/resoluciones/generar-manual funciona con autenticación"
+  ]
+}

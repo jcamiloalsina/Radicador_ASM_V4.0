@@ -1048,7 +1048,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1186,7 +1186,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1252,7 +1252,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1290,7 +1290,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1343,7 +1343,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1382,7 +1382,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1412,7 +1412,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1445,7 +1445,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11598,7 +11598,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -13419,7 +13419,8 @@ async def ejecutar_accion_predio_nuevo(
                     "destino_economico": predio_aprobado.get("destino_economico", ""),
                     "area_terreno": predio_aprobado.get("area_terreno", 0),
                     "area_construida": predio_aprobado.get("area_construida", 0),
-                    "avaluo": predio_aprobado.get("avaluo", 0)
+                    "avaluo": predio_aprobado.get("avaluo", 0),
+                    "codigo_homologado": predio_aprobado.get("codigo_homologado", "")
                 }
                 predio_aprobado["r1_registros"].append(r1_registro)
         
@@ -13973,6 +13974,44 @@ async def get_cambios_pendientes(
 
 # ===== GENERACIÓN AUTOMÁTICA DE RESOLUCIONES =====
 
+def obtener_datos_r1_r2(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    Prioridad: r1_registros/r2_registros > campos directos del predio
+    
+    R1 contiene: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2 contiene: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        # Datos de R1 (con fallback a campos directos)
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        
+        # Datos de R2 (con fallback a campo directo)
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
 async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
     """
     Genera un PDF de resolución final para un cambio aprobado.
@@ -14035,15 +14074,16 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         datos_anteriores = {}
         predio_original = await db.predios.find_one({"id": cambio.get("predio_id")}, {"_id": 0}) if cambio.get("predio_id") else None
         if predio_original:
-            # Guardar datos anteriores para la sección CANCELACIÓN
+            # Obtener datos de R1/R2 para la sección CANCELACIÓN
+            datos_r1_r2_anterior = obtener_datos_r1_r2(predio_original)
             datos_anteriores = {
-                "area_terreno": str(predio_original.get("area_terreno") or predio_original.get("area_terreno_r1") or 0),
-                "area_construida": str(predio_original.get("area_construida") or predio_original.get("area_construida_r1") or 0),
-                "avaluo": f"${predio_original.get('avaluo', 0):,.0f}".replace(",", "."),
-                "direccion": predio_original.get("direccion") or "",
-                "destino_economico": predio_original.get("destino_economico") or "A",
-                "codigo_homologado": predio_original.get("codigo_homologado") or predio_original.get("codigo_anterior") or "",
-                "matricula_inmobiliaria": predio_original.get("matricula_inmobiliaria") or "---",
+                "area_terreno": str(datos_r1_r2_anterior.get("area_terreno") or 0),
+                "area_construida": str(datos_r1_r2_anterior.get("area_construida") or 0),
+                "avaluo": f"${datos_r1_r2_anterior.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_anterior.get('avaluo') else "$0",
+                "direccion": datos_r1_r2_anterior.get("direccion") or "",
+                "destino_economico": datos_r1_r2_anterior.get("destino_economico") or "A",
+                "codigo_homologado": datos_r1_r2_anterior.get("codigo_homologado") or "",
+                "matricula_inmobiliaria": datos_r1_r2_anterior.get("matricula_inmobiliaria") or "Sin información",
             }
             if predio_original.get("propietarios"):
                 for p in predio_original["propietarios"]:
@@ -14093,6 +14133,9 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Importar y generar PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
+        # Obtener datos de R1/R2 para los valores NUEVOS (INSCRIPCIÓN)
+        datos_r1_r2_nuevos = obtener_datos_r1_r2(datos_predio)
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
             fecha_resolucion=fecha_resolucion,
@@ -14101,14 +14144,14 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             radicado=cambio.get("radicado", datos_predio.get("radicado", f"RASMGC-{datetime.now().strftime('%Y%m%d')}")),
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo,
-            matricula_inmobiliaria=datos_predio.get("matricula_inmobiliaria", "---"),
-            direccion=datos_predio.get("direccion", ""),
-            avaluo=f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            matricula_inmobiliaria=datos_r1_r2_nuevos.get("matricula_inmobiliaria") or "Sin información",
+            direccion=datos_r1_r2_nuevos.get("direccion") or "",
+            avaluo=f"${datos_r1_r2_nuevos.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_nuevos.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
-            area_terreno=str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
-            area_construida=str(datos_predio.get("area_construida", datos_predio.get("area_construida_r1", 0))),
-            destino_economico=datos_predio.get("destino_economico", "A"),
-            codigo_homologado=datos_predio.get("codigo_homologado", datos_predio.get("codigo_anterior", "")),
+            area_terreno=str(datos_r1_r2_nuevos.get("area_terreno") or 0),
+            area_construida=str(datos_r1_r2_nuevos.get("area_construida") or 0),
+            destino_economico=datos_r1_r2_nuevos.get("destino_economico") or "A",
+            codigo_homologado=datos_r1_r2_nuevos.get("codigo_homologado") or "",
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=elaboro,
@@ -14194,7 +14237,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
             "direccion": datos_predio.get("direccion", "Sin dirección"),
-            "matricula_inmobiliaria": matricula_inmobiliaria or datos_predio.get("matricula_inmobiliaria", ""),
+            "matricula_inmobiliaria": datos_r1_r2_nuevos.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria", ""),
             "propietarios": [datos_predio.get("nombre_propietario", "")] if datos_predio.get("nombre_propietario") else [],
             "area_terreno": str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
             "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
@@ -26463,6 +26506,9 @@ async def generar_resolucion_prueba(
         # Generar código de verificación para QR (igual que certificado catastral)
         codigo_verificacion_res = generar_codigo_verificacion_resolucion()
         
+        # Obtener datos de R1/R2 para consistencia con otros generadores
+        datos_r1_r2 = obtener_datos_r1_r2(predio)
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
             fecha_resolucion=fecha_resolucion,
@@ -26471,10 +26517,14 @@ async def generar_resolucion_prueba(
             radicado=request.radicado or f"RASMGC-XXXX-{datetime.now().strftime('%d-%m-%Y')}",
             codigo_catastral_anterior=predio.get("codigo_predial_nacional", "")[:15] if predio.get("codigo_predial_nacional") else "000000000000000",
             npn=predio.get("codigo_predial_nacional", ""),
-            matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
-            direccion=predio.get("direccion", ""),
-            avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+            direccion=datos_r1_r2.get("direccion") or "",
+            avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{anio}",
+            area_terreno=str(datos_r1_r2.get("area_terreno") or 0),
+            area_construida=str(datos_r1_r2.get("area_construida") or 0),
+            destino_economico=datos_r1_r2.get("destino_economico") or "A",
+            codigo_homologado=datos_r1_r2.get("codigo_homologado") or "",
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),
@@ -29100,15 +29150,16 @@ async def generar_resolucion_manual(
         if not predio:
             raise HTTPException(status_code=404, detail="Predio no encontrado")
         
-        # Guardar los datos ANTERIORES para la sección CANCELACIÓN
+        # Guardar los datos ANTERIORES para la sección CANCELACIÓN (OBTENER DE R1/R2)
+        datos_r1_r2_anteriores = obtener_datos_r1_r2(predio)
         datos_anteriores = {
-            "area_terreno": str(predio.get("area_terreno") or predio.get("area_terreno_r1") or 0),
-            "area_construida": str(predio.get("area_construida") or predio.get("area_construida_r1") or 0),
-            "avaluo": f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
-            "direccion": predio.get("direccion") or "",
-            "destino_economico": predio.get("destino_economico") or "A",
-            "codigo_homologado": predio.get("codigo_homologado") or predio.get("codigo_anterior") or "",
-            "matricula_inmobiliaria": predio.get("matricula_inmobiliaria") or "---",
+            "area_terreno": str(datos_r1_r2_anteriores.get("area_terreno") or 0),
+            "area_construida": str(datos_r1_r2_anteriores.get("area_construida") or 0),
+            "avaluo": f"${datos_r1_r2_anteriores.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_anteriores.get('avaluo') else "$0",
+            "direccion": datos_r1_r2_anteriores.get("direccion") or "",
+            "destino_economico": datos_r1_r2_anteriores.get("destino_economico") or "A",
+            "codigo_homologado": datos_r1_r2_anteriores.get("codigo_homologado") or "",
+            "matricula_inmobiliaria": datos_r1_r2_anteriores.get("matricula_inmobiliaria") or "Sin información",
         }
         
         # Propietarios: Intentar obtenerlos del cambio/petición asociado al radicado
@@ -29267,6 +29318,9 @@ async def generar_resolucion_manual(
         fecha_resolucion = request.fecha_resolucion or datetime.now().strftime('%d/%m/%Y')
         fecha_formateada = fecha_resolucion.replace('/', '-')
         
+        # Obtener datos de R1/R2 para la sección INSCRIPCIÓN (datos nuevos)
+        datos_r1_r2_nuevos = obtener_datos_r1_r2(datos_predio)
+        
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=request.numero_resolucion,
             fecha_resolucion=fecha_formateada,
@@ -29275,20 +29329,20 @@ async def generar_resolucion_manual(
             radicado=request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo or "",
-            matricula_inmobiliaria=datos_predio.get("matricula_inmobiliaria") or "---",
-            direccion=datos_predio.get("direccion") or "",
-            avaluo=f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
+            matricula_inmobiliaria=datos_r1_r2_nuevos.get("matricula_inmobiliaria") or "Sin información",
+            direccion=datos_r1_r2_nuevos.get("direccion") or "",
+            avaluo=f"${datos_r1_r2_nuevos.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_nuevos.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
-            area_terreno=str(datos_predio.get("area_terreno") or datos_predio.get("area_terreno_r1") or 0),
-            area_construida=str(datos_predio.get("area_construida") or datos_predio.get("area_construida_r1") or 0),
-            destino_economico=datos_predio.get("destino_economico") or "A",
-            codigo_homologado=datos_predio.get("codigo_homologado") or datos_predio.get("codigo_anterior") or "",
+            area_terreno=str(datos_r1_r2_nuevos.get("area_terreno") or 0),
+            area_construida=str(datos_r1_r2_nuevos.get("area_construida") or 0),
+            destino_economico=datos_r1_r2_nuevos.get("destino_economico") or "A",
+            codigo_homologado=datos_r1_r2_nuevos.get("codigo_homologado") or "",
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get("full_name", ""),
             aprobo=current_user.get("full_name", ""),
             plantilla=plantilla_textos,
-            # Datos anteriores para la sección CANCELACIÓN
+            # Datos anteriores para la sección CANCELACIÓN (ya obtenidos de R1/R2)
             area_terreno_anterior=datos_anteriores["area_terreno"],
             area_construida_anterior=datos_anteriores["area_construida"],
             avaluo_anterior=datos_anteriores["avaluo"],
@@ -29634,11 +29688,12 @@ async def generar_preview_resolucion(
                 "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
             }
             
-            # Obtener áreas del predio
-            area_terreno = str(predio.get("area_terreno", predio.get("area_terreno_r1", 0)))
-            area_construida = str(predio.get("area_construida", predio.get("area_construida_r1", 0)))
-            destino_economico = predio.get("destino_economico", "A")
-            codigo_homologado = predio.get("codigo_homologado", predio.get("codigo_anterior", ""))
+            # Obtener datos de R1/R2 para el preview
+            datos_r1_r2 = obtener_datos_r1_r2(predio)
+            area_terreno = str(datos_r1_r2.get("area_terreno") or 0)
+            area_construida = str(datos_r1_r2.get("area_construida") or 0)
+            destino_economico = datos_r1_r2.get("destino_economico") or "A"
+            codigo_homologado = datos_r1_r2.get("codigo_homologado") or ""
             
             # Generar código de verificación para QR (preview)
             codigo_verificacion_res = generar_codigo_verificacion_resolucion()
@@ -29651,9 +29706,9 @@ async def generar_preview_resolucion(
                 radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
                 codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
                 npn=codigo,
-                matricula_inmobiliaria=predio.get("matricula_inmobiliaria", "---"),
-                direccion=predio.get("direccion", ""),
-                avaluo=f"${predio.get('avaluo', 0):,.0f}".replace(",", "."),
+                matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+                direccion=datos_r1_r2.get("direccion") or "",
+                avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
                 vigencia_fiscal=f"01/01/{anio}",
                 area_terreno=area_terreno,
                 area_construida=area_construida,

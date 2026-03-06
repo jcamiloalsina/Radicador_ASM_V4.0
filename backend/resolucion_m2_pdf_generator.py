@@ -33,6 +33,40 @@ NEGRO = colors.HexColor('#000000')
 BLANCO = colors.HexColor('#FFFFFF')
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m2_plantilla():
     """Retorna la plantilla de textos para M2 - Desengloble/Englobe"""
     return {
@@ -488,13 +522,15 @@ def generate_resolucion_m2_pdf(
             x += col_widths2[i]
         y_position -= 12
         
-        # Valores
+        # Valores - OBTENER DE R1/R2
         c.setFont(font_normal, 7)
-        codigo_hom = predio.get("codigo_homologado", "")
-        direccion = predio.get("direccion", "")[:20]
-        area_terreno = predio.get("area_terreno", 0)
-        area_construida = predio.get("area_construida", 0)
-        avaluo = predio.get("avaluo", 0)
+        datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
+        codigo_hom = datos_r1_r2.get("codigo_homologado", "")
+        direccion = (datos_r1_r2.get("direccion", "") or "")[:20]
+        area_terreno = datos_r1_r2.get("area_terreno", 0)
+        area_construida = datos_r1_r2.get("area_construida", 0)
+        avaluo = datos_r1_r2.get("avaluo", 0)
+        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
         
         # Formatear áreas con unidades
         area_terreno_fmt = formatear_area(area_terreno)
@@ -535,7 +571,7 @@ def generate_resolucion_m2_pdf(
         c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 9, "MATRÍCULA INMOBILIARIA")
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
-        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, predio.get("matricula_inmobiliaria", ""))
+        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
         y_position -= 15
         
         # =====================

@@ -32,6 +32,40 @@ NEGRO = colors.black
 BLANCO = colors.white
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m4_plantilla_revision():
     """Plantilla para Revisión de Avalúo"""
     return {
@@ -251,12 +285,15 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     elaboro = data.get('elaborado_por', '')
     aprobo = data.get('revisado_por', plantilla['firmante_nombre'])
     
-    # Datos del predio
+    # Datos del predio - OBTENER DE R1/R2
+    datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
     codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_catastral', ''))
-    matricula = predio.get('matricula_inmobiliaria', '')
-    area_terreno = predio.get('area_terreno', 0)
-    area_construida = predio.get('area_construida', 0)
-    destino_economico = predio.get('destino_economico', '')
+    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or "Sin información"
+    area_terreno = datos_r1_r2.get('area_terreno', 0)
+    area_construida = datos_r1_r2.get('area_construida', 0)
+    destino_economico = datos_r1_r2.get('destino_economico', '')
+    codigo_homologado_predio = datos_r1_r2.get('codigo_homologado', '')
+    direccion_predio_r1 = datos_r1_r2.get('direccion', '')
     zona = 'rural' if predio.get('zona', '').lower() in ['rural', 'r', '00'] else 'urbana'
     
     # Datos del solicitante
@@ -585,12 +622,12 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             x += col_widths2[i]
         y_position -= 12
         
-        # Valores de la fila 2
+        # Valores de la fila 2 - USAR DATOS DE R1/R2
         c.setFont(font_normal, 7)
-        codigo_hom = predio.get("codigo_homologado", "") if predio else ""
-        direccion_predio = (predio.get("direccion", "") if predio else "")[:20]
-        area_terreno_val = predio.get("area_terreno", 0) if predio else 0
-        area_construida_val = predio.get("area_construida", 0) if predio else 0
+        codigo_hom = codigo_homologado_predio  # Ya viene de R1
+        direccion_predio = (direccion_predio_r1 or "")[:20]  # Ya viene de R1
+        area_terreno_val = area_terreno  # Ya viene de R1
+        area_construida_val = area_construida  # Ya viene de R1
         
         # Valor de avalúo según cancelación o inscripción
         valor_avaluo = avaluo_anterior if es_cancelacion else avaluo_nuevo

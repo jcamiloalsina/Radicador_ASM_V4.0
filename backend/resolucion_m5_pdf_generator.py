@@ -35,6 +35,40 @@ ROJO_CANCELACION = colors.HexColor('#C00000')
 VERDE_INSCRIPCION = colors.HexColor('#008000')
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m5_plantilla_cancelacion():
     """Plantilla para Cancelación de Predio"""
     return {
@@ -198,15 +232,16 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     predio = data.get('predio_m5', data.get('predio', {}))
     solicitante = data.get('solicitante', {})
     
-    # Datos del predio
+    # Datos del predio - OBTENER DE R1/R2
+    datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
     codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_predial', ''))
-    matricula = predio.get('matricula_inmobiliaria', '')
-    area_terreno = predio.get('area_terreno', 0)
-    area_construida = predio.get('area_construida', 0)
-    destino_economico = predio.get('destino_economico', 'A')
-    avaluo = predio.get('avaluo', predio.get('avaluo_catastral', 0))
-    direccion = predio.get('direccion', '')
-    codigo_homologado = predio.get('codigo_homologado', '')
+    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or "Sin información"
+    area_terreno = datos_r1_r2.get('area_terreno', 0)
+    area_construida = datos_r1_r2.get('area_construida', 0)
+    destino_economico = datos_r1_r2.get('destino_economico', 'A')
+    avaluo = datos_r1_r2.get('avaluo', 0) or predio.get('avaluo', predio.get('avaluo_catastral', 0))
+    direccion = datos_r1_r2.get('direccion', '')
+    codigo_homologado = datos_r1_r2.get('codigo_homologado', '')
     
     # Propietarios
     propietarios = predio.get('propietarios', [])
