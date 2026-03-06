@@ -31,6 +31,8 @@ CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 VERDE_INSTITUCIONAL = colors.HexColor('#009846')
 NEGRO = colors.black
 BLANCO = colors.white
+ROJO_CANCELACION = colors.HexColor('#C00000')
+VERDE_INSCRIPCION = colors.HexColor('#008000')
 
 
 def get_m5_plantilla_cancelacion():
@@ -166,515 +168,602 @@ def get_m5_plantilla_inscripcion():
     }
 
 
-def draw_header(c, y_position, numero_resolucion, fecha_resolucion):
-    """Dibuja el encabezado institucional"""
-    # Logo/Encabezado
-    try:
-        encabezado_base64 = get_encabezado_image()
-        if encabezado_base64:
-            encabezado_data = base64.b64decode(encabezado_base64)
-            encabezado_image = ImageReader(io.BytesIO(encabezado_data))
-            c.drawImage(encabezado_image, MARGIN_LEFT, y_position - 80, 
-                       width=CONTENT_WIDTH, height=80, preserveAspectRatio=True)
-            y_position -= 100
-    except Exception as e:
-        print(f"Error cargando encabezado: {e}")
-        y_position -= 20
-    
-    # Número de resolución
-    c.setFont("Helvetica-Bold", 11)
-    c.setFillColor(NEGRO)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No. {numero_resolucion}")
-    y_position -= 15
-    
-    # Fecha
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"({fecha_resolucion})")
-    y_position -= 25
-    
-    return y_position
-
-
-def draw_justified_text(c, text, x, y, width, font_name="Helvetica", font_size=10, leading=12):
-    """Dibuja texto justificado"""
-    c.setFont(font_name, font_size)
-    words = text.split()
-    lines = []
-    current_line = []
-    
-    for word in words:
-        test_line = ' '.join(current_line + [word])
-        if c.stringWidth(test_line, font_name, font_size) <= width:
-            current_line.append(word)
-        else:
-            if current_line:
-                lines.append(current_line)
-            current_line = [word]
-    if current_line:
-        lines.append(current_line)
-    
-    for i, line_words in enumerate(lines):
-        if i < len(lines) - 1 and len(line_words) > 1:
-            total_word_width = sum(c.stringWidth(w, font_name, font_size) for w in line_words)
-            total_space = width - total_word_width
-            space_between = total_space / (len(line_words) - 1)
-            
-            current_x = x
-            for j, word in enumerate(line_words):
-                c.drawString(current_x, y, word)
-                current_x += c.stringWidth(word, font_name, font_size) + space_between
-        else:
-            c.drawString(x, y, ' '.join(line_words))
-        
-        y -= leading
-    
-    return y
-
-
-def draw_watermark(c):
-    """Dibuja marca de agua"""
-    c.saveState()
-    c.setFillColor(colors.Color(0, 0.6, 0.27, alpha=0.08))
-    c.setFont("Helvetica-Bold", 60)
-    c.translate(PAGE_WIDTH/2, PAGE_HEIGHT/2)
-    c.rotate(45)
-    c.drawCentredString(0, 0, "ASOMUNICIPIOS")
-    c.restoreState()
-
-
-def draw_footer(c):
-    """Dibuja el pie de página"""
-    try:
-        pie_base64 = get_pie_pagina_image()
-        if pie_base64:
-            pie_data = base64.b64decode(pie_base64)
-            pie_image = ImageReader(io.BytesIO(pie_data))
-            c.drawImage(pie_image, MARGIN_LEFT, 15, 
-                       width=CONTENT_WIDTH, height=50, preserveAspectRatio=True)
-    except Exception as e:
-        print(f"Error cargando pie de página: {e}")
-        c.setFont("Helvetica", 8)
-        c.setFillColor(VERDE_INSTITUCIONAL)
-        c.drawCentredString(PAGE_WIDTH/2, 30, "ASOMUNICIPIOS - Gestor Catastral")
-
-
-def draw_predio_table_cancelacion(c, y_position, predio_data, vigencia_cancelacion):
-    """Dibuja tabla de predio a cancelar"""
-    # Encabezado de tabla
-    c.setFillColor(VERDE_INSTITUCIONAL)
-    c.rect(MARGIN_LEFT, y_position - 18, CONTENT_WIDTH, 18, fill=True, stroke=False)
-    c.setFillColor(BLANCO)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(MARGIN_LEFT + 5, y_position - 13, "PREDIO A CANCELAR")
-    
-    y_position -= 20
-    
-    # Datos del predio
-    c.setStrokeColor(VERDE_INSTITUCIONAL)
-    c.setLineWidth(0.5)
-    
-    # Primera fila - Código y NPN
-    row_height = 35
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFillColor(NEGRO)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Código Predial Nacional:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', '')))
-    
-    # NPN
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "NPN:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 290, y_position - 24, predio_data.get('npn', predio_data.get('NPN', '')))
-    
-    y_position -= row_height
-    
-    # Segunda fila - Propietario y Documento
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Propietario:")
-    c.setFont("Helvetica", 8)
-    propietario = ""
-    if predio_data.get('propietarios') and len(predio_data['propietarios']) > 0:
-        propietario = predio_data['propietarios'][0].get('nombre_propietario', predio_data['propietarios'][0].get('nombre', ''))
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, propietario)
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "Documento:")
-    c.setFont("Helvetica", 8)
-    documento = ""
-    if predio_data.get('propietarios') and len(predio_data['propietarios']) > 0:
-        tipo_doc = predio_data['propietarios'][0].get('tipo_documento', 'CC')
-        num_doc = predio_data['propietarios'][0].get('numero_documento', '')
-        documento = f"{tipo_doc} {num_doc}"
-    c.drawString(MARGIN_LEFT + 270, y_position - 24, documento)
-    
-    y_position -= row_height
-    
-    # Tercera fila - Dirección y Avalúo
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Dirección:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, predio_data.get('direccion', ''))
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "Avalúo:")
-    c.setFont("Helvetica", 8)
-    avaluo = predio_data.get('avaluo', predio_data.get('avaluo_catastral', 0))
-    c.drawString(MARGIN_LEFT + 270, y_position - 24, f"$ {int(avaluo):,}".replace(',', '.'))
-    
-    y_position -= row_height
-    
-    # Cuarta fila - Vigencia de cancelación
-    c.rect(MARGIN_LEFT, y_position - 25, CONTENT_WIDTH, 25, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 15, "Cancelación desde vigencia:")
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.HexColor('#C00000'))
-    c.drawString(MARGIN_LEFT + 150, y_position - 15, f"01/01/{vigencia_cancelacion}")
-    
-    return y_position - 35
-
-
-def draw_predio_table_inscripcion(c, y_position, predio_data, vigencia_inscripcion):
-    """Dibuja tabla de predio a inscribir"""
-    # Encabezado de tabla
-    c.setFillColor(VERDE_INSTITUCIONAL)
-    c.rect(MARGIN_LEFT, y_position - 18, CONTENT_WIDTH, 18, fill=True, stroke=False)
-    c.setFillColor(BLANCO)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(MARGIN_LEFT + 5, y_position - 13, "PREDIO A INSCRIBIR")
-    
-    y_position -= 20
-    
-    # Datos del predio
-    c.setStrokeColor(VERDE_INSTITUCIONAL)
-    c.setLineWidth(0.5)
-    
-    # Primera fila - Código y Matrícula
-    row_height = 35
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFillColor(NEGRO)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Código Predial Nacional (Asignado):")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', 'Por asignar')))
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "Matrícula Inmobiliaria:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 24, predio_data.get('matricula_inmobiliaria', ''))
-    
-    y_position -= row_height
-    
-    # Segunda fila - Propietario y Documento
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Propietario:")
-    c.setFont("Helvetica", 8)
-    propietario = ""
-    if predio_data.get('propietarios') and len(predio_data['propietarios']) > 0:
-        propietario = predio_data['propietarios'][0].get('nombre_propietario', predio_data['propietarios'][0].get('nombre', ''))
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, propietario)
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "Documento:")
-    c.setFont("Helvetica", 8)
-    documento = ""
-    if predio_data.get('propietarios') and len(predio_data['propietarios']) > 0:
-        tipo_doc = predio_data['propietarios'][0].get('tipo_documento', 'CC')
-        num_doc = predio_data['propietarios'][0].get('numero_documento', '')
-        documento = f"{tipo_doc} {num_doc}"
-    c.drawString(MARGIN_LEFT + 270, y_position - 24, documento)
-    
-    y_position -= row_height
-    
-    # Tercera fila - Dirección y Destino
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Dirección:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, predio_data.get('direccion', ''))
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 12, "Destino Económico:")
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN_LEFT + 270, y_position - 24, predio_data.get('destino_economico', ''))
-    
-    y_position -= row_height
-    
-    # Cuarta fila - Áreas y Avalúo
-    c.rect(MARGIN_LEFT, y_position - row_height, CONTENT_WIDTH, row_height, stroke=True, fill=False)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 12, "Área Terreno:")
-    c.setFont("Helvetica", 8)
-    area_terreno = predio_data.get('area_terreno', 0)
-    c.drawString(MARGIN_LEFT + 5, y_position - 24, f"{float(area_terreno):,.2f} m²".replace(',', '.'))
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 150, y_position - 12, "Área Construida:")
-    c.setFont("Helvetica", 8)
-    area_construida = predio_data.get('area_construida', 0)
-    c.drawString(MARGIN_LEFT + 150, y_position - 24, f"{float(area_construida):,.2f} m²".replace(',', '.'))
-    
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 300, y_position - 12, "Avalúo:")
-    c.setFont("Helvetica", 8)
-    avaluo = predio_data.get('avaluo', predio_data.get('avaluo_catastral', 0))
-    c.drawString(MARGIN_LEFT + 300, y_position - 24, f"$ {int(avaluo):,}".replace(',', '.'))
-    
-    y_position -= row_height
-    
-    # Quinta fila - Vigencia de inscripción
-    c.rect(MARGIN_LEFT, y_position - 25, CONTENT_WIDTH, 25, stroke=True, fill=False)
-    c.setFillColor(NEGRO)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN_LEFT + 5, y_position - 15, "Inscripción desde vigencia:")
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(VERDE_INSTITUCIONAL)
-    c.drawString(MARGIN_LEFT + 150, y_position - 15, f"01/01/{vigencia_inscripcion}")
-    
-    return y_position - 35
-
-
-def generate_qr_code(data_to_encode):
-    """Genera código QR"""
-    qr = qrcode.QRCode(version=1, box_size=10, border=1)
-    qr.add_data(data_to_encode)
-    qr.make(fit=True)
-    qr_image = qr.make_image(fill_color="black", back_color="white")
-    buffer = io.BytesIO()
-    qr_image.save(buffer, format='PNG')
-    buffer.seek(0)
-    return buffer
-
-
-def generate_m5_resolution_pdf(data: dict) -> bytes:
+def generar_resolucion_m5_pdf(data: dict) -> bytes:
     """
-    Genera el PDF de resolución M5 (Cancelación o Inscripción)
-    
-    Args:
-        data: dict con:
-            - subtipo: 'cancelacion' | 'inscripcion'
-            - numero_resolucion: str
-            - fecha_resolucion: str
-            - municipio: str
-            - radicado: str
-            - solicitante: dict con nombre y documento
-            - predio: dict con datos del predio
-            - vigencia: int (año desde el cual aplica)
-            - motivo_solicitud: str
-            - es_doble_inscripcion: bool (solo para cancelación)
-            - codigo_predio_duplicado: str (solo si es_doble_inscripcion)
+    Genera el PDF de resolución M5 (Cancelación o Inscripción de Predio)
+    Formato IDÉNTICO a M2/M4
     """
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    subtipo = data.get('subtipo', 'cancelacion')
-    numero_resolucion = data.get('numero_resolucion', 'RES-54-XXX-XXXX-2026')
-    fecha_resolucion = data.get('fecha_resolucion', datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y"))
-    municipio = data.get('municipio', 'MUNICIPIO')
-    radicado = data.get('radicado', '')
+    # Obtener datos
+    subtipo = data.get('subtipo', 'inscripcion')
+    plantilla = get_m5_plantilla_cancelacion() if subtipo == 'cancelacion' else get_m5_plantilla_inscripcion()
+    
+    municipio = data.get('municipio', '').upper()
+    numero_resolucion = data.get('numero_resolucion', '')
+    
+    # Fecha con timezone Colombia
+    try:
+        colombia_tz = ZoneInfo("America/Bogota")
+        fecha_actual = datetime.now(colombia_tz)
+        fecha_resolucion = fecha_actual.strftime("%d/%m/%Y")
+        fecha_texto = f"Dada en Ocaña, a los {fecha_actual.day} días del mes de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][fecha_actual.month-1]} de {fecha_actual.year}"
+    except:
+        fecha_actual = datetime.now()
+        fecha_resolucion = fecha_actual.strftime("%d/%m/%Y")
+        fecha_texto = f"Dada en Ocaña, a los {fecha_actual.day} días del mes de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][fecha_actual.month-1]} de {fecha_actual.year}"
+    
+    # Predio
+    predio = data.get('predio_m5', data.get('predio', {}))
     solicitante = data.get('solicitante', {})
-    predio = data.get('predio', {})
-    vigencia = data.get('vigencia', datetime.now(ZoneInfo("America/Bogota")).year)
-    motivo_solicitud = data.get('motivo_solicitud', 'Solicitud de trámite catastral')
+    
+    # Datos del predio
+    codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_predial', ''))
+    matricula = predio.get('matricula_inmobiliaria', '')
+    area_terreno = predio.get('area_terreno', 0)
+    area_construida = predio.get('area_construida', 0)
+    destino_economico = predio.get('destino_economico', 'A')
+    avaluo = predio.get('avaluo', predio.get('avaluo_catastral', 0))
+    direccion = predio.get('direccion', '')
+    codigo_homologado = predio.get('codigo_homologado', '')
+    
+    # Propietarios
+    propietarios = predio.get('propietarios', [])
+    if propietarios and len(propietarios) > 0:
+        propietario_principal = propietarios[0]
+        nombre_propietario = propietario_principal.get('nombre_propietario', propietario_principal.get('nombre', ''))
+        tipo_doc = propietario_principal.get('tipo_documento', 'C')
+        num_doc = propietario_principal.get('numero_documento', '')
+    else:
+        nombre_propietario = solicitante.get('nombre', '')
+        tipo_doc = 'C'
+        num_doc = solicitante.get('documento', '')
+    
+    # Datos del solicitante
+    solicitante_nombre = solicitante.get('nombre', nombre_propietario)
+    solicitante_documento = solicitante.get('documento', num_doc)
+    
+    radicado = data.get('radicado', '')
+    motivo_solicitud = data.get('motivo_solicitud', '')
+    
+    # Vigencias
+    vigencia_cancelacion = data.get('vigencia_cancelacion', fecha_actual.year)
+    vigencia_inscripcion = data.get('vigencia_inscripcion', fecha_actual.year)
+    
+    # Doble inscripción
     es_doble_inscripcion = data.get('es_doble_inscripcion', False)
     codigo_predio_duplicado = data.get('codigo_predio_duplicado', '')
     
-    # Obtener plantilla según subtipo
-    if subtipo == 'inscripcion':
-        plantilla = get_m5_plantilla_inscripcion()
-    else:
-        plantilla = get_m5_plantilla_cancelacion()
+    # Código verificación
+    codigo_verificacion = hashlib.md5(f"{numero_resolucion}{fecha_resolucion}".encode()).hexdigest()[:8]
     
-    # Variables para reemplazar
-    solicitante_nombre = solicitante.get('nombre', solicitante.get('nombre_completo', 'N/A'))
-    solicitante_documento = solicitante.get('documento', solicitante.get('numero_documento', 'N/A'))
-    codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_predial', predio.get('NPN', '')))
-    matricula = predio.get('matricula_inmobiliaria', '')
+    # Cargar imágenes
+    encabezado_img = None
+    pie_pagina_img = None
+    logo_watermark = None
+    firma_img = None
     
-    # ========== PÁGINA 1 ==========
-    draw_watermark(c)
+    try:
+        encabezado_base64 = get_encabezado_image()
+        if encabezado_base64:
+            encabezado_data = base64.b64decode(encabezado_base64)
+            encabezado_img = ImageReader(io.BytesIO(encabezado_data))
+    except Exception as e:
+        print(f"Error cargando encabezado: {e}")
+    
+    try:
+        pie_base64 = get_pie_pagina_image()
+        if pie_base64:
+            pie_data = base64.b64decode(pie_base64)
+            pie_pagina_img = ImageReader(io.BytesIO(pie_data))
+    except Exception as e:
+        print(f"Error cargando pie de página: {e}")
+    
+    try:
+        firma_base64 = get_firma_dalgie_image()
+        if firma_base64:
+            firma_data = base64.b64decode(firma_base64)
+            firma_img = ImageReader(io.BytesIO(firma_data))
+    except Exception as e:
+        print(f"Error cargando firma: {e}")
+    
+    # Usar el mismo logo para watermark
+    logo_watermark = encabezado_img
+    
+    # Fuentes
+    font_normal = "Helvetica"
+    font_bold = "Helvetica-Bold"
+    
+    # Variables de estado
     y_position = PAGE_HEIGHT - MARGIN_TOP
+    page_number = 1
     
-    # Encabezado
-    y_position = draw_header(c, y_position, numero_resolucion, fecha_resolucion)
+    def formatear_moneda(valor):
+        try:
+            return f"${int(float(valor)):,}".replace(",", ".")
+        except:
+            return f"${valor}"
+    
+    def formatear_area(valor):
+        try:
+            return f"{float(valor):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+        except:
+            return f"{valor} m²"
+    
+    # ==========================================
+    # FUNCIONES DE DIBUJO (IDÉNTICAS A M2/M4)
+    # ==========================================
+    
+    def draw_header():
+        """Dibuja el encabezado institucional - IDÉNTICO a M2"""
+        nonlocal y_position
+        if encabezado_img:
+            header_height = 2.5 * cm
+            c.drawImage(encabezado_img, 0, PAGE_HEIGHT - header_height, 
+                       width=PAGE_WIDTH, height=header_height, 
+                       preserveAspectRatio=False, mask='auto')
+        
+        # Marca de agua
+        if logo_watermark:
+            c.saveState()
+            watermark_width = 450
+            watermark_height = 180
+            watermark_x = (PAGE_WIDTH - watermark_width) / 2
+            watermark_y = (PAGE_HEIGHT - watermark_height) / 2
+            c.setFillAlpha(0.08)
+            c.drawImage(logo_watermark, watermark_x, watermark_y,
+                       width=watermark_width, height=watermark_height,
+                       preserveAspectRatio=True, mask='auto')
+            c.restoreState()
+        
+        return PAGE_HEIGHT - 3*cm
+    
+    def draw_footer():
+        """Dibuja el pie de página institucional - IDÉNTICO a M2"""
+        if pie_pagina_img:
+            footer_height = 2.0 * cm
+            c.drawImage(pie_pagina_img, 0, 0, 
+                        width=PAGE_WIDTH, height=footer_height, 
+                        preserveAspectRatio=False, mask='auto')
+        else:
+            c.setFillColor(VERDE_INSTITUCIONAL)
+            c.rect(0, 0, PAGE_WIDTH, 28, fill=1, stroke=0)
+            c.setFillColor(BLANCO)
+            c.setFont(font_normal, 8)
+            c.drawCentredString(PAGE_WIDTH/2, 10, "comunicaciones@asomunicipios.gov.co")
+        
+        # Número de página
+        c.setFillColor(NEGRO)
+        c.setFont(font_normal, 8)
+        c.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, MARGIN_BOTTOM - 1.5*cm, 
+                         f"Página {page_number}")
+    
+    def nueva_pagina():
+        nonlocal y_position, page_number
+        draw_footer()
+        c.showPage()
+        page_number += 1
+        y_position = draw_header()
+        
+        # Título de continuación
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 11)
+        c.drawCentredString(PAGE_WIDTH/2, y_position, "RESOLUCIÓN (Continuación)")
+        y_position -= 14
+        c.setFont(font_normal, 9)
+        c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
+        y_position -= 20
+        
+        return y_position
+    
+    def verificar_espacio(necesario):
+        nonlocal y_position
+        if y_position - necesario < MARGIN_BOTTOM + 1*cm:
+            nueva_pagina()
+    
+    def dibujar_texto_justificado(texto, font_name=None, font_size=10, line_height=14):
+        """Dibuja texto justificado (alineado a ambos márgenes) - IDÉNTICO a M2"""
+        nonlocal y_position
+        fname = font_name or font_normal
+        c.setFont(fname, font_size)
+        lines = simpleSplit(texto, fname, font_size, CONTENT_WIDTH)
+        
+        espacio_normal = c.stringWidth(' ', fname, font_size)
+        max_space = espacio_normal * 3
+        
+        for i, line in enumerate(lines):
+            verificar_espacio(line_height)
+            
+            line_width = c.stringWidth(line, fname, font_size)
+            if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
+                c.drawString(MARGIN_LEFT, y_position, line)
+            else:
+                words = line.split(' ')
+                if len(words) > 1:
+                    total_words_width = sum(c.stringWidth(word, fname, font_size) for word in words)
+                    total_space = CONTENT_WIDTH - total_words_width
+                    space_width = total_space / (len(words) - 1)
+                    
+                    if space_width > max_space:
+                        c.drawString(MARGIN_LEFT, y_position, line)
+                    else:
+                        x = MARGIN_LEFT
+                        for j, word in enumerate(words):
+                            c.drawString(x, y_position, word)
+                            x += c.stringWidth(word, fname, font_size)
+                            if j < len(words) - 1:
+                                x += space_width
+                else:
+                    c.drawString(MARGIN_LEFT, y_position, line)
+            
+            y_position -= line_height
+    
+    def dibujar_seccion_titulo(titulo):
+        nonlocal y_position
+        verificar_espacio(30)
+        c.setFont(font_bold, 11)
+        c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
+        y_position -= 20
+    
+    def dibujar_tabla_predio_m5(predio_data, es_cancelacion=False, vigencia=None):
+        """Dibuja tabla de predio estilo M2 con banner de CANCELACIÓN o INSCRIPCIÓN"""
+        nonlocal y_position
+        
+        verificar_espacio(120)
+        
+        # Banner de tipo (CANCELACIÓN o INSCRIPCIÓN)
+        if es_cancelacion:
+            banner_color = ROJO_CANCELACION
+            banner_text = "PREDIO A CANCELAR"
+        else:
+            banner_color = VERDE_INSCRIPCION
+            banner_text = "PREDIO A INSCRIBIR"
+        
+        c.setFillColor(banner_color)
+        c.rect(MARGIN_LEFT, y_position - 15, CONTENT_WIDTH, 15, fill=1, stroke=0)
+        c.setFillColor(BLANCO)
+        c.setFont(font_bold, 9)
+        c.drawCentredString(PAGE_WIDTH/2, y_position - 11, banner_text)
+        y_position -= 18
+        
+        c.setStrokeColor(colors.HexColor('#333333'))
+        c.setLineWidth(0.5)
+        
+        # Fila 1: Código Predial Nacional + Matrícula Inmobiliaria
+        col_widths1 = [CONTENT_WIDTH * 0.5, CONTENT_WIDTH * 0.5]
+        headers1 = ["Código Predial Nacional (Asignado):", "Matrícula Inmobiliaria:"]
+        
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        x = MARGIN_LEFT
+        for i, header in enumerate(headers1):
+            c.drawCentredString(x + col_widths1[i]/2, y_position - 9, header)
+            c.rect(x, y_position - 12, col_widths1[i], 12, fill=0, stroke=1)
+            x += col_widths1[i]
+        y_position -= 12
+        
+        # Valores
+        codigo_pred = predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', ''))
+        matricula_val = predio_data.get('matricula_inmobiliaria', '')
+        
+        c.setFont(font_normal, 7)
+        x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths1[0], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[0]/2, y_position - 9, codigo_pred)
+        x += col_widths1[0]
+        c.rect(x, y_position - 12, col_widths1[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[1]/2, y_position - 9, matricula_val)
+        y_position -= 12
+        
+        # Fila 2: Propietario + Documento
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        x = MARGIN_LEFT
+        c.drawCentredString(x + col_widths1[0]/2, y_position - 9, "Propietario:")
+        c.rect(x, y_position - 12, col_widths1[0], 12, fill=0, stroke=1)
+        x += col_widths1[0]
+        c.drawCentredString(x + col_widths1[1]/2, y_position - 9, "Documento:")
+        c.rect(x, y_position - 12, col_widths1[1], 12, fill=0, stroke=1)
+        y_position -= 12
+        
+        # Valores propietario
+        props = predio_data.get('propietarios', [])
+        if props and len(props) > 0:
+            prop_nombre = props[0].get('nombre_propietario', props[0].get('nombre', ''))
+            prop_tipo = props[0].get('tipo_documento', 'C')
+            prop_num = props[0].get('numero_documento', '')
+            prop_doc = f"{prop_tipo} {prop_num}"
+        else:
+            prop_nombre = ""
+            prop_doc = ""
+        
+        c.setFont(font_normal, 7)
+        x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths1[0], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[0]/2, y_position - 9, prop_nombre[:40])
+        x += col_widths1[0]
+        c.rect(x, y_position - 12, col_widths1[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[1]/2, y_position - 9, prop_doc)
+        y_position -= 12
+        
+        # Fila 3: Dirección + Destino Económico
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        x = MARGIN_LEFT
+        c.drawCentredString(x + col_widths1[0]/2, y_position - 9, "Dirección:")
+        c.rect(x, y_position - 12, col_widths1[0], 12, fill=0, stroke=1)
+        x += col_widths1[0]
+        c.drawCentredString(x + col_widths1[1]/2, y_position - 9, "Destino Económico:")
+        c.rect(x, y_position - 12, col_widths1[1], 12, fill=0, stroke=1)
+        y_position -= 12
+        
+        # Valores
+        dir_val = predio_data.get('direccion', '')
+        dest_val = predio_data.get('destino_economico', 'A')
+        
+        c.setFont(font_normal, 7)
+        x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths1[0], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[0]/2, y_position - 9, dir_val[:45])
+        x += col_widths1[0]
+        c.rect(x, y_position - 12, col_widths1[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths1[1]/2, y_position - 9, dest_val)
+        y_position -= 12
+        
+        # Fila 4: Área Terreno + Área Construida + Avalúo
+        col_widths2 = [CONTENT_WIDTH * 0.33, CONTENT_WIDTH * 0.33, CONTENT_WIDTH * 0.34]
+        
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        x = MARGIN_LEFT
+        for i, header in enumerate(["Área Terreno:", "Área Construida:", "Avalúo:"]):
+            c.drawCentredString(x + col_widths2[i]/2, y_position - 9, header)
+            c.rect(x, y_position - 12, col_widths2[i], 12, fill=0, stroke=1)
+            x += col_widths2[i]
+        y_position -= 12
+        
+        # Valores áreas
+        area_ter = predio_data.get('area_terreno', 0)
+        area_con = predio_data.get('area_construida', 0)
+        avaluo_val = predio_data.get('avaluo', predio_data.get('avaluo_catastral', 0))
+        
+        c.setFont(font_normal, 7)
+        x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths2[0], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[0]/2, y_position - 9, formatear_area(area_ter))
+        x += col_widths2[0]
+        c.rect(x, y_position - 12, col_widths2[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[1]/2, y_position - 9, formatear_area(area_con))
+        x += col_widths2[1]
+        c.rect(x, y_position - 12, col_widths2[2], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[2]/2, y_position - 9, formatear_moneda(avaluo_val))
+        y_position -= 12
+        
+        # Fila 5: Vigencia (Cancelación desde / Inscripción desde)
+        if es_cancelacion:
+            vigencia_label = "Cancelación desde vigencia:"
+            vigencia_color = ROJO_CANCELACION
+        else:
+            vigencia_label = "Inscripción desde vigencia:"
+            vigencia_color = VERDE_INSCRIPCION
+        
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 15, CONTENT_WIDTH * 0.5, 15, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 8)
+        c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.5)/2, y_position - 11, vigencia_label)
+        
+        c.setFillColor(vigencia_color)
+        c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.5, y_position - 15, CONTENT_WIDTH * 0.5, 15, fill=1, stroke=1)
+        c.setFillColor(BLANCO)
+        c.setFont(font_bold, 10)
+        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.75, y_position - 11, f"01/01/{vigencia or fecha_actual.year}")
+        
+        y_position -= 20
+        
+        return y_position
+    
+    # ==========================================
+    # PÁGINA 1 - ENCABEZADO
+    # ==========================================
+    y_position = draw_header()
+    
+    # Número de resolución y fecha
+    c.setFillColor(NEGRO)
+    c.setFont(font_bold, 12)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No. {numero_resolucion}")
+    y_position -= 16
+    
+    c.setFont(font_normal, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, f"({fecha_resolucion})")
+    y_position -= 25
     
     # Título
-    titulo = plantilla['titulo'].format(municipio=municipio.upper())
-    c.setFont("Helvetica-Bold", 10)
-    lines = simpleSplit(titulo, "Helvetica-Bold", 10, CONTENT_WIDTH)
+    titulo_formateado = plantilla["titulo"].format(municipio=municipio)
+    c.setFont(font_bold, 10)
+    lines = simpleSplit(titulo_formateado, font_bold, 10, CONTENT_WIDTH - 40)
     for line in lines:
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
-        y_position -= 12
-    y_position -= 10
+        y_position -= 14
+    y_position -= 15
     
-    # CONSIDERANDO
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(MARGIN_LEFT, y_position, "CONSIDERANDO:")
-    y_position -= 20
+    # ==========================================
+    # CONSIDERANDOS
+    # ==========================================
+    dibujar_seccion_titulo("CONSIDERANDO:")
+    y_position -= 5
     
-    # Introducción
-    y_position = draw_justified_text(c, plantilla['considerando_intro'], 
-                                     MARGIN_LEFT, y_position, CONTENT_WIDTH, 
-                                     "Helvetica", 9, 11)
+    # Intro
+    c.setFillColor(NEGRO)
+    dibujar_texto_justificado(plantilla["considerando_intro"])
     y_position -= 10
     
     # Solicitud
-    considerando_solicitud = plantilla['considerando_solicitud'].format(
+    texto_solicitud = plantilla["considerando_solicitud"].format(
         solicitante_nombre=solicitante_nombre,
         solicitante_documento=solicitante_documento,
         radicado=radicado,
         codigo_predial=codigo_predial,
         matricula_inmobiliaria=matricula
     )
-    y_position = draw_justified_text(c, considerando_solicitud,
-                                     MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                     "Helvetica", 9, 11)
+    dibujar_texto_justificado(texto_solicitud)
     y_position -= 10
     
     # Motivo
-    considerando_motivo = plantilla['considerando_motivo'].format(
-        motivo_solicitud=motivo_solicitud
-    )
-    y_position = draw_justified_text(c, considerando_motivo,
-                                     MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                     "Helvetica", 9, 11)
+    texto_motivo = plantilla["considerando_motivo"].format(motivo_solicitud=motivo_solicitud)
+    dibujar_texto_justificado(texto_motivo)
     y_position -= 10
     
     # Análisis
-    y_position = draw_justified_text(c, plantilla['considerando_analisis'],
-                                     MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                     "Helvetica", 9, 11)
+    dibujar_texto_justificado(plantilla["considerando_analisis"])
     y_position -= 10
     
-    # Para cancelación por doble inscripción
+    # Doble inscripción (solo para cancelación)
     if subtipo == 'cancelacion' and es_doble_inscripcion and codigo_predio_duplicado:
-        considerando_doble = plantilla['considerando_doble_inscripcion'].format(
+        texto_doble = plantilla["considerando_doble_inscripcion"].format(
             codigo_predial=codigo_predial,
             codigo_predio_duplicado=codigo_predio_duplicado
         )
-        y_position = draw_justified_text(c, considerando_doble,
-                                         MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                         "Helvetica", 9, 11)
+        dibujar_texto_justificado(texto_doble)
         y_position -= 10
     
     # Legal
-    y_position = draw_justified_text(c, plantilla['considerando_legal'],
-                                     MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                     "Helvetica", 9, 11)
+    dibujar_texto_justificado(plantilla["considerando_legal"])
     y_position -= 15
     
+    # ==========================================
     # RESUELVE
-    c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, "RESUELVE:")
-    y_position -= 20
+    # ==========================================
+    dibujar_seccion_titulo("RESUELVE:")
+    y_position -= 5
     
-    # Artículo 1
-    c.setFont("Helvetica-Bold", 9)
-    articulo_1_intro = plantilla['articulo_1_intro'].format(municipio=municipio.upper())
-    c.drawString(MARGIN_LEFT, y_position, f"Artículo 001. {articulo_1_intro}")
-    y_position -= 20
+    # Artículo 001
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 001.")
+    y_position -= 14
     
-    # Verificar si necesitamos nueva página
-    if y_position < 250:
-        draw_footer(c)
-        c.showPage()
-        draw_watermark(c)
-        y_position = PAGE_HEIGHT - MARGIN_TOP - 30
+    texto_articulo1 = plantilla["articulo_1_intro"].format(municipio=municipio)
+    dibujar_texto_justificado(texto_articulo1)
+    y_position -= 10
     
     # Tabla del predio
-    if subtipo == 'inscripcion':
-        y_position = draw_predio_table_inscripcion(c, y_position, predio, vigencia)
+    if subtipo == 'cancelacion':
+        y_position = dibujar_tabla_predio_m5(predio, es_cancelacion=True, vigencia=vigencia_cancelacion)
     else:
-        y_position = draw_predio_table_cancelacion(c, y_position, predio, vigencia)
-    
-    # ========== PÁGINA 2 (si es necesario) ==========
-    if y_position < 200:
-        draw_footer(c)
-        c.showPage()
-        draw_watermark(c)
-        y_position = PAGE_HEIGHT - MARGIN_TOP - 30
-    
-    # Artículos restantes
-    articulos = [
-        ("Artículo 02", plantilla['articulo_2']),
-        ("Artículo 03", plantilla['articulo_3']),
-        ("Artículo 04", plantilla['articulo_4']),
-        ("Artículo 05", plantilla['articulo_5']),
-    ]
-    
-    for art_num, art_texto in articulos:
-        if y_position < 120:
-            draw_footer(c)
-            c.showPage()
-            draw_watermark(c)
-            y_position = PAGE_HEIGHT - MARGIN_TOP - 30
-        
-        c.setFont("Helvetica-Bold", 9)
-        c.drawString(MARGIN_LEFT, y_position, f"{art_num}.")
-        y_position -= 12
-        y_position = draw_justified_text(c, art_texto,
-                                         MARGIN_LEFT, y_position, CONTENT_WIDTH,
-                                         "Helvetica", 9, 11)
-        y_position -= 12
-    
-    # Cierre
-    if y_position < 150:
-        draw_footer(c)
-        c.showPage()
-        draw_watermark(c)
-        y_position = PAGE_HEIGHT - MARGIN_TOP - 30
+        y_position = dibujar_tabla_predio_m5(predio, es_cancelacion=False, vigencia=vigencia_inscripcion)
     
     y_position -= 10
-    c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla['cierre'])
-    y_position -= 25
     
-    # Fecha de expedición
-    colombia_tz = ZoneInfo("America/Bogota")
-    fecha_expedicion = datetime.now(colombia_tz)
-    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    fecha_texto = f"Dada en Ocaña, a los {fecha_expedicion.day} días del mes de {meses[fecha_expedicion.month-1]} de {fecha_expedicion.year}"
-    c.setFont("Helvetica", 9)
+    # Artículo 02
+    verificar_espacio(60)
+    c.setFillColor(NEGRO)
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 02.")
+    y_position -= 14
+    dibujar_texto_justificado(plantilla["articulo_2"])
+    y_position -= 10
+    
+    # Artículo 03
+    verificar_espacio(60)
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 03.")
+    y_position -= 14
+    dibujar_texto_justificado(plantilla["articulo_3"])
+    y_position -= 10
+    
+    # Artículo 04
+    verificar_espacio(40)
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 04.")
+    y_position -= 14
+    dibujar_texto_justificado(plantilla["articulo_4"])
+    y_position -= 10
+    
+    # Artículo 05
+    verificar_espacio(40)
+    c.setFont(font_bold, 10)
+    c.drawString(MARGIN_LEFT, y_position, "Artículo 05.")
+    y_position -= 14
+    dibujar_texto_justificado(plantilla["articulo_5"])
+    y_position -= 20
+    
+    # ==========================================
+    # CIERRE Y FIRMA
+    # ==========================================
+    verificar_espacio(150)
+    
+    # Cierre
+    c.setFont(font_bold, 11)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
+    y_position -= 20
+    
+    # Fecha textual
+    c.setFont(font_normal, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, fecha_texto)
     y_position -= 40
     
     # Firma
-    try:
-        firma_base64 = get_firma_dalgie_image()
-        if firma_base64:
-            firma_data = base64.b64decode(firma_base64)
-            firma_image = ImageReader(io.BytesIO(firma_data))
-            c.drawImage(firma_image, PAGE_WIDTH/2 - 75, y_position - 50,
-                       width=150, height=50, preserveAspectRatio=True, mask='auto')
-            y_position -= 55
-    except:
+    if firma_img:
+        try:
+            firma_width = 150
+            firma_height = 50
+            firma_x = (PAGE_WIDTH - firma_width) / 2
+            c.drawImage(firma_img, firma_x, y_position - firma_height,
+                       width=firma_width, height=firma_height,
+                       preserveAspectRatio=True, mask='auto')
+            y_position -= firma_height + 10
+        except:
+            y_position -= 30
+    else:
         y_position -= 30
     
-    c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla['firmante_nombre'])
-    y_position -= 12
-    c.setFont("Helvetica", 9)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla['firmante_cargo'])
+    # Nombre y cargo
+    c.setFont(font_bold, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_nombre"])
+    y_position -= 14
+    c.setFont(font_normal, 9)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_cargo"])
     y_position -= 30
     
-    # QR Code
-    qr_data = f"RES:{numero_resolucion}|TIPO:M5-{subtipo.upper()}|PREDIO:{codigo_predial}|FECHA:{fecha_resolucion}"
-    qr_hash = hashlib.md5(qr_data.encode()).hexdigest()[:8]
-    qr_buffer = generate_qr_code(f"{qr_data}|HASH:{qr_hash}")
-    qr_image = ImageReader(qr_buffer)
-    c.drawImage(qr_image, PAGE_WIDTH - MARGIN_RIGHT - 60, 70, width=50, height=50)
-    c.setFont("Helvetica", 6)
-    c.drawString(PAGE_WIDTH - MARGIN_RIGHT - 60, 65, f"Verificación: {qr_hash}")
+    # QR de verificación
+    verificar_espacio(80)
+    try:
+        qr = qrcode.QRCode(version=1, box_size=3, border=1)
+        qr.add_data(f"M5-{numero_resolucion}-{codigo_verificacion}")
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        
+        qr_buffer = io.BytesIO()
+        qr_img.save(qr_buffer, format='PNG')
+        qr_buffer.seek(0)
+        qr_reader = ImageReader(qr_buffer)
+        
+        qr_size = 50
+        c.drawImage(qr_reader, PAGE_WIDTH - MARGIN_RIGHT - qr_size, y_position - qr_size,
+                   width=qr_size, height=qr_size)
+        
+        c.setFont(font_normal, 7)
+        c.drawString(PAGE_WIDTH - MARGIN_RIGHT - qr_size - 80, y_position - 30, f"Verificación: {codigo_verificacion}")
+    except Exception as e:
+        print(f"Error generando QR: {e}")
     
-    # Footer final
-    draw_footer(c)
+    # Pie de página final
+    draw_footer()
     
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
+
+
+# Alias para compatibilidad
+generate_m5_resolution_pdf = generar_resolucion_m5_pdf
+
