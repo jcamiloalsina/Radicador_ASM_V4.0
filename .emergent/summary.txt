@@ -1,71 +1,73 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to create a Mutaciones y Resoluciones module. During this session, the user's primary focus evolved to address several critical issues and feature enhancements:
-1.  **Complete M3 Mutation Module:** Finish the implementation for Cambio de Destino Económico and Incorporación de Construcción, including making the  field mandatory and adding the Vigencias Fiscales de Inscripción feature consistent with other mutation types.
-2.  **Fix M3 PDF Design:** The initial M3 PDF was missing the standard institutional header, footer, watermark, QR verification code, and had table formatting issues (overflowing margins). The request was to make it identical in style to the M1 and M2 PDFs.
-3.  **Resolve Permission Issues:** A user with the  role was unable to propose or generate mutations. This prompted an investigation into the application's permission and workflow logic.
-4.  **Architectural Unification (M1, M2, M3):** The investigation revealed a major architectural inconsistency. M1 used a request/approval workflow (), while M2 and M3 used direct-generation endpoints. This was identified as the likely root cause for several production bugs, including PDF generation failures and data not appearing in Gestión de Predios. The user approved a major refactoring to migrate M2 and M3 to the same request/approval system as M1.
-5.  **Final Verification:** Generate final, correct PDF examples for all three mutation types (M1, M2, and M3) to validate that all the refactoring and bug fixes were successful.
+The user's initial goal was to finalize the Mutaciones y Resoluciones module, focusing on several areas:
+1.  **Finalize M1/M2/M3 Workflow:** Verify that the major architectural refactoring from the previous session (unifying M1, M2, and M3 under a single request/approval workflow) was successful by generating sample PDFs for each.
+2.  **Fix M3 PDF Design:** The user identified several remaining design inconsistencies in the M3 PDF compared to M1/M2, including text justification, legal articles, and signer information.
+3.  **Resolve Persistent Permission Issues:** The user reported that an  role with approval permissions still couldn't generate resolutions on their production server, indicating a bug in the permission logic.
+4.  **Fix PDF Viewer Popup:** After generating a resolution, the PDF was not appearing in the frontend popup viewer, showing a blank screen.
+5.  **Implement M4 Module:** The user requested the creation of a new mutation type, M4, with two subtypes: Revisión de avalúo and Autoestimación. This required building the frontend UI, extending the backend workflow, and creating a new, complex PDF generator with conditional logic based on user decisions (Aceptar/Rechazar).
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a full-stack property management system. In this session, the agent performed a major refactoring of the mutation modules.
--   **Unified Mutation Workflow:** The M2 and M3 modules have been migrated to use the same request/approval workflow as M1, centralized in the  endpoint. Now, users without approval rights create a pending request, while users with approval rights can generate the resolution directly. This is expected to fix the production PDF and data sync bugs.
--   **Completed M3 Module:** The frontend in  is complete for both M3 subtypes, including a mandatory  field and the complex Vigencias Fiscales component.
--   **Standardized M3 PDF:** The PDF generator for M3 () has been completely rewritten to perfectly match the M1/M2 template, including the institutional header/footer, watermark, QR code, and correctly formatted tables that respect page margins.
--   **PDF Serving Fix:** A new public endpoint  was created to serve generated PDFs, fixing authentication errors that occurred when accessing the direct file links.
--   **Internal Bug Fixes:** Bugs within the internal generation logic for M1 (in ) and M2 (in ) related to incorrect function calls were identified and fixed.
+- **Unified Mutation Workflow (M1-M3):** The unified workflow for M1, M2, and M3 is functional. PDF generation for all three types has been fixed and verified.
+- **Corrected PDF Styling (M3):** The  has been iteratively updated to perfectly match the M1/M2 style, including watermarks, table headers, justified text, legal articles, and signer details.
+- **Fixed Permission Logic:** The root cause of the permission issue was identified and fixed. Old, non-unified endpoints (, ) were only checking for user roles (, ) and not the  permission. This has been corrected.
+- **Fixed PDF Popup Viewer:** The backend now adds a  prefix to the PDF URL and a  header. The frontend appends  to the iframe URL. These changes resolved the issue where the PDF viewer appeared blank.
+- **M4 Module (In Progress):**
+    - **Backend:** A new  has been created with conditional logic for both subtypes and decision outcomes (Aceptar/Rechazar). The  file has been updated to handle M4 requests through the unified  endpoint.
+    - **Frontend:** The  file has been updated to include a tab and a form for the M4 module. However, this component is currently broken.
 
 **Last working item**:
--   **Last item agent was working:** The agent was executing the user's final request: to generate a sample PDF for each mutation type (M1, M2, and M3) to verify that the recent major refactoring and bug fixes were successful.
+-   **Last item agent was working:** Debugging a critical frontend error in the new M4 module. When the user clicks the M4 tab, a toast notification appears with Error, and the component fails to render correctly. The agent identified this is a React error: Objects are not valid as a React child, likely caused by trying to render a state object directly in the JSX instead of its properties.
 -   **Status:** IN PROGRESS
--   **Agent Testing Done:** N (The agent was in the process of manual curl testing)
--   **Which testing method agent to use?** both. First, use  to confirm all three backend PDF generation flows work. Then, use the  to perform a full regression test on the M1, M2, and M3 user flows (proposing, and having it appear in 'pendientes' or generating directly based on role).
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** Frontend testing agent. The agent needs to inspect , find where the M4 form state is being rendered incorrectly, and fix it. After the fix, a screenshot should be taken to verify the form displays correctly.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Generate final test PDFs for M1, M2, and M3 (P0)**
+-   **Issue 1: M4 Frontend Form Fails to Render (P0)**
 -   **Issue 2: PDF generation fails on the user's production server (P0)**
 
 **Issues Detail:**
--   **Issue 1: Generate final test PDFs for M1, M2, and M3**
-    -   **Attempted fixes:** The agent identified and fixed two critical bugs preventing PDF generation: an incorrect function call to  in the M1 flow, and passing a dictionary instead of individual arguments to the M2 PDF generator.
+-   **Issue 1: M4 Frontend Form Fails to Render**
+    -   **Attempted fixes:** The agent correctly identified the cause as a React rendering error (Objects are not valid as a React child) but had not yet applied a fix.
     -   **Next debug checklist:**
-        1.  Restart the backend service with backend: stopped
-backend: started.
-        2.  Execute the  commands again to trigger generation for M1, M2, and M3.
-        3.  Verify the PDF files are created in the  directory.
-        4.  Provide the three working download URLs to the user.
-    -   **Why fix this issue and what will be achieved with the fix?** This will fulfill the user's direct request and serve as the final validation that the major architectural refactoring was successful.
+        1.  View .
+        2.  Locate the  function or the JSX block where the M4 form is rendered.
+        3.  Inspect the  object and how its properties are being accessed in the JSX.
+        4.  Identify the exact line where the state object itself (instead of a property like ) is being rendered.
+        5.  Use  to correct the JSX to render the appropriate property of the state object.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a hard blocker preventing any testing or further development of the M4 feature. Fixing it will unblock the entire M4 implementation.
     -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
     -   **Blocked on other issue:** None
 
 -   **Issue 2: PDF generation fails on the user's production server**
-    -   **Attempted fixes:** The entire mutation workflow (M2, M3) was refactored to match the more stable M1 workflow. This is the intended fix.
+    -   **Attempted fixes:** The agent fixed the permission logic in the preview environment. The user confirmed the fix works in the preview but the error persists on their production server. This confirms it's a deployment/synchronization issue, not a code bug in the current environment.
     -   **Next debug checklist:**
-        1.  After confirming the fix works locally (by completing Issue 1), inform the user that the underlying cause has been addressed.
-        2.  Ask the user to test the M2 and M3 generation process on their production server to confirm the resolution.
-    -   **Why fix this issue and what will be achieved with the fix?** This is a critical production bug preventing a core application function.
-    -   **Status:** USER VERIFICATION PENDING
+        1.  This issue is resolved from a coding perspective. The agent has repeatedly informed the user that the code in the preview is correct and the issue is that their production server has outdated code.
+        2.  After the M4 work is complete, the agent should remind the user to deploy all the new changes to their production environment to resolve this for good.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical production bug. Resolving it requires the user to sync the code changes from the preview environment to their server.
+    -   **Status:** BLOCKED (User action required for deployment)
     -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue:** Issue 1
+    -   **Should Test frontend/backend/both after fix?** N/A (Code is already fixed)
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1: Complete M2/M3 Migration & Verification (P0)**
-    -   **Where to resume:** The backend code is fixed. The agent must now re-run the  commands to generate the three test PDFs and present them to the user.
-    -   **What will be achieved with this?** A unified, consistent, and robust architecture for all mutation types, resolving multiple user-reported bugs regarding PDF generation and data synchronization.
-    -   **Status:** IN PROGRESS
+-   **Task 1: Complete M4 Module Implementation (P0)**
+    -   **Where to resume:** The immediate next step is to fix the frontend bug described in Issue 1. Once the form renders, the agent needs to complete the frontend logic for submitting the M4 request and handling the response (displaying the generated PDF).
+    -   **What will be achieved with this?** A new, fully functional mutation type (M4) for handling appraisal reviews and self-estimations, as requested by the user.
+    -   **Status:** BLOCKED
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** None.
+    -   **Blocked on something:** Issue 1: M4 Frontend Form Fails to Render
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **(P1)** **Backend Refactoring:** The new and modified mutation logic is still in the monolithic . This logic (e.g., , ) should be migrated into the modular structure at .
+-   **(P1)** **Full Regression Test:** After M4 is complete, run a full regression test using the  for M1, M2, M3, and M4, covering both direct approval (admin) and pending approval (gestor) workflows.
+-   **(P1)** **Backend Refactoring:** Migrate the new and modified mutation logic (M1-M4) from the monolithic  into the modular structure at .
 -   **(P1)** **Deprecate Old Endpoints:** Remove the now-unused  and  endpoints from .
--   **(P2)** **Frontend Refactoring:** Break down the massive  component into smaller, manageable child components for each mutation type.
+-   **(P2)** **Frontend Refactoring:** Break down the massive  component into smaller, manageable child components for each mutation type (M1, M2, M3, M4).
 
 **Future Tasks:**
 -   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
@@ -76,17 +78,21 @@ backend: started.
 -   Add graphs/charts to dashboards.
 
 **Completed work in this session**
--   **Refactor: Unified Mutation Workflow:** Migrated M2 and M3 to the central  request/approval system, standardizing the workflow for all mutation types.
--   **Feature: M3 Module UI:** Implemented the complete frontend for M3 in , including a mandatory  and the Vigencias Fiscales component.
--   **BugFix: M3 PDF Design:** Completely rewrote  to perfectly match the M1/M2 design, including header, footer, watermark, QR code, and correct table formatting.
--   **BugFix: PDF Serving:** Created a new public endpoint  to resolve Not Authenticated errors when accessing PDF links.
--   **BugFix: Internal Generation Logic:** Corrected critical bugs in the internal PDF generation calls for both the M1 and M2 workflows within .
+-   **Verification & Fix: M1/M2/M3 PDF Generation:** Successfully generated test PDFs for all three mutation types, fixing bugs along the way (e.g., M2 generator expecting  instead of ).
+-   **BugFix: M3 PDF Styling:** Iteratively corrected the M3 PDF to match the M2 template, fixing text justification, legal articles, and signer information.
+-   **BugFix: Permission Logic:** Corrected endpoints (, ) to check for the  permission in addition to user roles, allowing the  role to function as intended.
+-   **BugFix: PDF Viewer Popup:** Fixed the blank PDF viewer by ensuring the backend provides a full  URL with an  content disposition and the frontend uses a URL format that forces browser rendering.
+-   **BugFix: User Login:** Resolved user login failures by identifying and fixing two issues: creating test users in the wrong database ( vs. ) and correcting a bug where the login endpoint looked for a  field instead of .
+-   **Feature: M4 Module Backend & PDF:** Created the new  and extended the  logic to support the M4 feature with its two subtypes and conditional text.
+-   **Feature: M4 Module Frontend (Initial):** Added the M4 tab and form structure to .
+-   **BugFix: M4 PDF Styling:** Fixed footer margins, justified text, and QR code layout in the new M4 PDF generator to match other resolutions.
+-   **Troubleshooting: Frontend Cache:** Guided the user to perform a hard refresh (Ctrl+Shift+R) to resolve a browser caching issue that was preventing the enabled M4 tab from appearing.
 
 **Earlier issues found/mentioned but not fixed**
 -   Incorrect Historical PDFs: An endpoint for downloading historical PDFs might be serving live data.
 -   Slow Visit Form on Mobile: A known performance issue that has not been addressed.
 -   Resolution counter is not atomic.
--   Mass desenglobe does not correctly mark the original property as cancelled (The refactor might have fixed this for new M2s, but needs verification).
+-   Mass desenglobe does not correctly mark the original property as cancelled (Needs verification).
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Intermittent Save/Sync Failures on Slow Connections.
@@ -97,58 +103,56 @@ backend: started.
 
 
 **Key Technical Concepts**
--   **Workflow Unification:** Refactoring disparate endpoints () into a single, stateful workflow endpoint () to centralize logic for proposing and approving actions based on user roles and permissions.
--   **Dynamic PDF Generation (ReportLab):** Extensive work rewriting a PDF generator to match a template, including logic for multi-page headers/footers, watermarks, dynamic table column widths, and embedding QR codes with verification data.
--   **Static File Serving (FastAPI):** Diagnosed and fixed issues with serving static files by adding a dedicated public endpoint to bypass authentication checks for direct file access.
+-   **Conditional PDF Generation (ReportLab):** The M4 PDF generator uses conditional logic to change text (e.g., Artículo 2 based on Aceptar/Rechazar decision), legal articles, and other content based on the mutation subtype and user input.
+-   **Stateful Workflow Endpoint:** The  endpoint was further extended to manage the M4 mutation type, demonstrating a robust, centralized state management system for business logic.
+-   **Frontend State Management (React):** Extensive work with React state () to manage complex, multi-step forms. The current bug highlights the importance of correctly accessing state properties in JSX.
+-   **Permission & Role-Based Access Control (RBAC):** Debugged and corrected a flaw in the RBAC logic where endpoints were only checking roles and not granular permissions.
 
 **key DB schema**
--   ****: This collection is now central to M1, M2, and M3 workflows. Its schema was extended to include M3-specific fields (, , , etc.).
--   ****: Now correctly used by the M2 workflow to mark parent properties upon desenglobe.
--   ****: Now correctly updated with the final data upon approval of M2 and M3 mutations via the unified workflow.
+-   ****: Extended to support M4, with new fields like  ('revision_avaluo' | 'autoestimacion'),  ('aceptar' | 'rechazar'), and .
+-   ****: Debugged issues related to  vs  fields and incorrect database placement.
 
 **All files of reference**
--    **(CRITICAL):** The entire mutation logic was refactored here. The  endpoint was heavily modified to handle all mutation types, and a new  endpoint was added.
--    **(CRITICAL):** The M3 UI was built, and the API calls for generating M2 and M3 were completely rewritten to use the new unified endpoint and handle its response.
--   : This file was completely rewritten to match the visual design and features (QR code, margins) of the other PDF generators.
--   : Used as a reference template for the M3 PDF rewrite.
+-    **(CRITICAL):** Heavily modified to fix permissions, correct PDF URLs, and add the entire backend logic for the M4 mutation.
+-    **(CRITICAL):** Heavily modified to add the M4 UI and fix the PDF viewer popup. It currently contains the bug blocking M4.
+-    **(NEW):** The new generator for M4 resolutions, containing complex conditional logic and styling.
+-   : Modified to fix lingering text justification and styling issues.
+-   : Inspected to debug user login issues.
 
 **Areas that need refactoring**:
--   : This file is still a monolith and urgently needs to be broken up. The new functions and refactored endpoints should be moved into the modular  structure.
--   : This component is now extremely large (over 3000 lines) and complex. It needs to be broken down into smaller components.
+-   : This file has become even more monolithic with the addition of M4 logic. It urgently needs to be broken up, and its routes moved to the  directory.
+-   : This component is now exceptionally large and complex, handling four different mutation types. It must be broken down into smaller child components to be maintainable.
 
 **key api endpoints**
 -   **Heavily Modified:**
-    -   : Now the primary endpoint for creating M1, M2, and M3 mutation requests. Handles both direct approval and pending requests based on user permissions.
-    -   : Approval logic was extended to handle M2 and M3, triggering the correct internal PDF generation and data update functions.
--   **New:**
-    -   : A public endpoint to serve generated PDF files.
--   **Deprecated (Should be removed):**
-    -   
-    -   
+    -   : The core logic was extended to process  requests, triggering the new M4 PDF generator.
+    -   : Permission logic was corrected to check for  permission. The response  was corrected to include .
+    -   : Permission logic was corrected.
+    -   : Response headers were modified to include  to fix the frontend PDF viewer.
 
 **Critical Info for New Agent**
--   **Immediate Priority:** Your first task is to resume the last operation: successfully generate one test PDF for each mutation type (M1, M2, M3) and provide the links to the user. The previous agent fixed the underlying bugs but did not complete this final verification step.
--   **Architectural Context:** The M2/M3 mutation process has been fundamentally changed. It no longer uses the old  endpoints. All mutations now go through the  endpoint, which has built-in logic for direct vs. pending approval. This was a critical refactor to fix production bugs; do not revert this logic.
--   **Testing Strategy:** After providing the user with the sample PDFs, the next logical step is to perform a full regression test. Propose using the  to verify the complete frontend flow for creating M1, M2, and M3 mutations for both an admin user (direct approval) and a basic user (pending approval).
+-   **Immediate Priority:** Your first and only priority is to fix the frontend bug in the M4 form. The error is Objects are not valid as a React child and it happens when the M4 tab is selected. You need to investigate , find where an object (likely ) is being rendered directly, and change it to render a property of that object (e.g., ).
+-   **Architectural Context:** Remember that all mutations (M1-M4) go through the unified  endpoint. Do not use or create separate endpoints.
+-   **Deployment vs. Preview:** The user has repeatedly confused issues on their production server with issues in the preview environment. The  permission bug is fixed in *this* environment's code. Be clear that for the fix to apply to their server, they must deploy the changes.
 
 **documents and test reports created in this job**
--   
+-   None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Generate M1, M2, and M3 PDFs. I need to review. (Status: **IN PROGRESS**)
-2.  **User:** The tables are overflowing the margins, and the QR code is missing from the M3 PDF. (Status: **RESOLVED**)
-3.  **User:** Show me the PDFs, send me the links. (Status: **ADDRESSED**, but links were for outdated PDFs)
-4.  **User:** The M3 PDF is missing the header and footer, it doesn't look like M1/M2. What happened? (Status: **RESOLVED**)
-5.  **User:** I want to see the PDFs, send me the link. (Status: **ADDRESSED**)
-6.  **User:** Still not showing, take a capture. (Status: **ADDRESSED**)
-7.  **User:** It's not generating. (Status: **RESOLVED**)
-8.  **User:** Generate the test PDFs for M3. (Status: **ADDRESSED**)
-9.  **User:** Yes, I confirm. (Proceed with the major refactor). (Status: **COMPLETED**)
-10. **User:** So, migrating M2 and M3 to how M1 works would probably fix the PDF generation problem I'm having? And will the property show up in Gestión de Predios? (Status: **ADDRESSED**)
+1.  **User:** Getting an Error toast when clicking the M4 tab. (Status: **IN PROGRESS**)
+2.  **User:** M4 is not active in the preview. (Status: **RESOLVED**, it was a browser cache issue).
+3.  **User:** The text in the M4 PDF isn't wrapping correctly. (Status: **RESOLVED**)
+4.  **User:** The M4 PDF footer margins, QR code, and justified text are wrong. (Status: **RESOLVED**)
+5.  **User:** Start implementing M4. (Status: **COMPLETED**, initial implementation is done but buggy).
+6.  **User:** Explained the conditional logic for M4's Artículo 2 based on Aceptar/Rechazar. (Status: **ACKNOWLEDGED** and implemented in the backend).
+7.  **User:** Corrected the plan for M4's Artículo 2 for Autoestimación. (Status: **ACKNOWLEDGED** and plan updated).
+8.  **User:** Requested the implementation of the M4 module with two PDF examples. (Status: **ADDRESSED**, agent provided an implementation plan).
+9.  **User:** The PDF viewer popup is blank. (Status: **RESOLVED**)
+10. **User:** The  role with approval permission still doesn't work on my production server. (Status: **RESOLVED** in preview, user needs to deploy).
 
 **Project Health Check:**
 -   **Broken:**
-    -   **PDF Generation Workflow (Verification Pending):** The core process was broken and inconsistent. A major refactor has been implemented, but final end-to-end verification for all three mutation types is still pending.
+    -   **M4 Feature:** The entire M4 user flow is blocked by a frontend rendering bug in .
 -   **Mocked:**
     -   None.
 
@@ -159,15 +163,17 @@ backend: started.
 -   qrcode (for PDF verification QR codes)
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (used once for the initial M3 UI)
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** The recent refactor was extensive. While it fixed many bugs, a full regression test has not been performed, so the risk of unknown regressions is high.
+-   **Known regressions:** A full regression test has not been performed after numerous fixes to permissions, workflows, and the introduction of M4. The risk of regressions is high.
 
 **Credentials to test flow:**
 -   **Administrator / Aprobador:**  / 
 -   **Gestor (No approval rights):**  / 
+-   **Atención Usuario (with approval rights):**  / 
 
 **What agent forgot to execute**
--   The agent did not run a full regression test using the  after the massive refactoring of the M1/M2/M3 workflow. This should have been done to ensure no new bugs were introduced.
--   The deprecated endpoints (, ) were not deleted from , leaving dead code in the application.</analysis>
+-   The agent did not run a full regression test using the  after the massive changes to permissions, workflows, and the introduction of M4.
+-   The deprecated endpoints (, ) were still not deleted from .
+-   The critical refactoring of  and  is still pending and the files have only grown larger, increasing technical debt.</analysis>

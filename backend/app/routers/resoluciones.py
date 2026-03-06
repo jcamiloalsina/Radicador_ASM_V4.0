@@ -5,6 +5,7 @@ Endpoints: plantillas, configuración, historial, generación de números
 import logging
 from typing import Optional, List
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 
@@ -321,7 +322,10 @@ async def obtener_siguiente_numero_resolucion(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtener el siguiente número de resolución para un municipio"""
-    año = datetime.now().year
+    # Usar zona horaria de Colombia
+    colombia_tz = ZoneInfo("America/Bogota")
+    now_colombia = datetime.now(colombia_tz)
+    año = now_colombia.year
     
     # Validar código de municipio
     if codigo_municipio not in MUNICIPIOS_R1R2:
@@ -360,7 +364,7 @@ async def obtener_siguiente_numero_resolucion(
         "año": año,
         "codigo_municipio": codigo_municipio,
         "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-        "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+        "fecha_resolucion": now_colombia.strftime("%d/%m/%Y")
     }
 
 

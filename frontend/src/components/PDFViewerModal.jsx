@@ -94,10 +94,11 @@ export default function PDFViewerModal({
             </div>
           )}
           <iframe
-            src={pdfUrl}
+            src={`${pdfUrl}#toolbar=1&navpanes=0`}
             className="w-full h-full min-h-[60vh]"
             title="Vista previa del PDF"
             onLoad={() => setLoading(false)}
+            onError={() => setLoading(false)}
             style={{ border: 'none' }}
           />
         </div>

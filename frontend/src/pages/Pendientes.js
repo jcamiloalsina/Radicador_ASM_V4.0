@@ -395,7 +395,7 @@ export default function Pendientes() {
     setProcesandoMutacion(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
+      const response = await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
         accion: accion,
         observaciones: observacionesMutacion || null
       }, {
@@ -409,6 +409,16 @@ export default function Pendientes() {
       };
       
       toast.success(mensajes[accion] || 'Acción completada');
+      
+      // Si fue aprobación y hay PDF, abrir el PDF
+      if (accion === 'aprobar' && response.data.pdf_url) {
+        const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+        window.open(pdfFullUrl, '_blank');
+        if (response.data.numero_resolucion) {
+          toast.info(`Resolución ${response.data.numero_resolucion} generada`);
+        }
+      }
+      
       setShowMutacionModal(false);
       setSelectedMutacion(null);
       setObservacionesMutacion('');
@@ -2062,16 +2072,63 @@ export default function Pendientes() {
                 </div>
               </div>
               
-              {/* Predios Cancelados */}
+              {/* Predios Cancelados - Información completa tipo R1 */}
               {selectedMutacion.predios_cancelados?.length > 0 && (
-                <div className="bg-red-50 p-3 rounded-lg">
-                  <p className="text-xs text-red-600 font-medium mb-2">Predios a Cancelar ({selectedMutacion.predios_cancelados.length})</p>
-                  <div className="space-y-2">
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-xs text-red-600 font-semibold mb-2">📋 Predios a CANCELAR ({selectedMutacion.predios_cancelados.length})</p>
+                  <div className="space-y-3">
                     {selectedMutacion.predios_cancelados.map((predio, idx) => (
-                      <div key={idx} className="bg-white p-2 rounded border border-red-200 text-sm">
-                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
-                        {predio.nombre_propietario && (
-                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                      <div key={idx} className="bg-white p-3 rounded-lg border border-red-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-mono font-bold text-red-700">
+                            {predio.codigo_predial_nacional || predio.codigo_predial || predio.NPN || predio.npn || predio.codigo_homologado || 'Sin código'}
+                          </p>
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Cancelar</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {predio.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
+                          )}
+                          {predio.destino_economico && (
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                          )}
+                          {predio.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {predio.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(predio.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                          {(predio.avaluo || predio.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-medium">${Number(predio.avaluo || predio.avaluo_catastral).toLocaleString()}</span></div>
+                          )}
+                          {predio.direccion && (
+                            <div className="col-span-2"><span className="text-slate-500">Dirección:</span> <span className="font-medium">{predio.direccion}</span></div>
+                          )}
+                        </div>
+                        {/* Propietarios */}
+                        {predio.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-red-100">
+                            <p className="text-xs text-red-600 font-medium mb-1">Propietarios:</p>
+                            {predio.propietarios.slice(0, 3).map((prop, pIdx) => (
+                              <p key={pIdx} className="text-xs text-slate-600">
+                                • {prop.nombre_propietario || prop.nombre} {prop.numero_documento && `(${prop.tipo_documento || 'CC'} ${prop.numero_documento})`}
+                              </p>
+                            ))}
+                            {predio.propietarios.length > 3 && (
+                              <p className="text-xs text-slate-400">y {predio.propietarios.length - 3} más...</p>
+                            )}
+                          </div>
+                        )}
+                        {/* Fechas de inscripción */}
+                        {predio.fechas_inscripcion?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-red-100">
+                            <p className="text-xs text-red-600 font-medium mb-1">Vigencias:</p>
+                            {predio.fechas_inscripcion.map((f, fIdx) => (
+                              <p key={fIdx} className="text-xs text-slate-600">
+                                • Año {f.año}: ${Number(f.avaluo || 0).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -2079,23 +2136,249 @@ export default function Pendientes() {
                 </div>
               )}
               
-              {/* Predios Inscritos */}
+              {/* Predios Inscritos - Información completa tipo R1 */}
               {selectedMutacion.predios_inscritos?.length > 0 && (
-                <div className="bg-emerald-50 p-3 rounded-lg">
-                  <p className="text-xs text-emerald-600 font-medium mb-2">Predios a Inscribir ({selectedMutacion.predios_inscritos.length})</p>
-                  <div className="space-y-2">
+                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                  <p className="text-xs text-emerald-600 font-semibold mb-2">📋 Predios a INSCRIBIR ({selectedMutacion.predios_inscritos.length})</p>
+                  <div className="space-y-3">
                     {selectedMutacion.predios_inscritos.map((predio, idx) => (
-                      <div key={idx} className="bg-white p-2 rounded border border-emerald-200 text-sm">
-                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
-                        {predio.nombre_propietario && (
-                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                      <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-mono font-bold text-emerald-700">
+                            {predio.codigo_predial_nacional || predio.codigo_predial || predio.NPN || predio.npn || predio.codigo_homologado || 'Nuevo predio'}
+                          </p>
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Inscribir</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {predio.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
+                          )}
+                          {predio.destino_economico && (
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                          )}
+                          {predio.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {predio.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(predio.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                          {(predio.avaluo || predio.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-medium">${Number(predio.avaluo || predio.avaluo_catastral).toLocaleString()}</span></div>
+                          )}
+                          {predio.direccion && (
+                            <div className="col-span-2"><span className="text-slate-500">Dirección:</span> <span className="font-medium">{predio.direccion}</span></div>
+                          )}
+                        </div>
+                        {/* Propietarios */}
+                        {predio.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-emerald-100">
+                            <p className="text-xs text-emerald-600 font-medium mb-1">Propietarios:</p>
+                            {predio.propietarios.slice(0, 3).map((prop, pIdx) => (
+                              <p key={pIdx} className="text-xs text-slate-600">
+                                • {prop.nombre_propietario || prop.nombre} {prop.numero_documento && `(${prop.tipo_documento || 'CC'} ${prop.numero_documento})`}
+                              </p>
+                            ))}
+                            {predio.propietarios.length > 3 && (
+                              <p className="text-xs text-slate-400">y {predio.propietarios.length - 3} más...</p>
+                            )}
+                          </div>
                         )}
-                        {predio.area_terreno && (
-                          <p className="text-xs text-slate-500">Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                        {/* Fechas de inscripción */}
+                        {predio.fechas_inscripcion?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-emerald-100">
+                            <p className="text-xs text-emerald-600 font-medium mb-1">Vigencias:</p>
+                            {predio.fechas_inscripcion.map((f, fIdx) => (
+                              <p key={fIdx} className="text-xs text-slate-600">
+                                • Año {f.año}: ${Number(f.avaluo || 0).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              
+              {/* Información específica de M4 - Revisión de Avalúo / Autoestimación */}
+              {selectedMutacion.tipo === 'M4' && (
+                <div className="space-y-3">
+                  {/* Predio afectado */}
+                  {selectedMutacion.predio_id && (
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium mb-2">Predio Afectado</p>
+                      <div className="bg-white p-2 rounded">
+                        <p className="font-mono text-sm text-slate-700">{selectedMutacion.codigo_predial || selectedMutacion.predio_codigo || 'Ver en sistema'}</p>
+                        {selectedMutacion.predio_direccion && (
+                          <p className="text-xs text-slate-500">{selectedMutacion.predio_direccion}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Subtipo y Decisión */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-600 font-medium">Subtipo</p>
+                      <p className="text-sm font-semibold text-purple-800">
+                        {selectedMutacion.subtipo === 'revision_avaluo' ? 'Revisión de Avalúo' : 
+                         selectedMutacion.subtipo === 'autoestimacion' ? 'Autoestimación' : 
+                         selectedMutacion.subtipo || 'No especificado'}
+                      </p>
+                      <p className="text-xs text-purple-500 mt-1">
+                        {selectedMutacion.subtipo === 'revision_avaluo' 
+                          ? 'Aplica en vigencia actual' 
+                          : 'Aplica en vigencia venidera'}
+                      </p>
+                    </div>
+                    <div className={`p-3 rounded-lg border ${
+                      selectedMutacion.decision === 'aceptar' 
+                        ? 'bg-emerald-50 border-emerald-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <p className={`text-xs font-medium ${
+                        selectedMutacion.decision === 'aceptar' ? 'text-emerald-600' : 'text-red-600'
+                      }`}>Decisión Propuesta</p>
+                      <p className={`text-sm font-semibold ${
+                        selectedMutacion.decision === 'aceptar' ? 'text-emerald-800' : 'text-red-800'
+                      }`}>
+                        {selectedMutacion.decision === 'aceptar' ? '✓ ACEPTAR' : '✗ RECHAZAR'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Información de Avalúo */}
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-600 font-medium mb-2">Cambio de Avalúo Propuesto</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-xs text-slate-500">Avalúo Anterior</p>
+                        <p className="text-lg font-bold text-red-600">
+                          ${(selectedMutacion.avaluo_anterior || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-xs text-slate-500">
+                          {selectedMutacion.subtipo === 'autoestimacion' ? 'Valor Autoestimado' : 'Avalúo Nuevo'}
+                        </p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          ${(selectedMutacion.avaluo_nuevo || selectedMutacion.valor_autoestimado || 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedMutacion.avaluo_anterior && selectedMutacion.avaluo_nuevo && (
+                      <div className="mt-2 text-center">
+                        <span className={`text-sm font-medium ${
+                          (selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) > 0 
+                            ? 'text-emerald-600' 
+                            : 'text-red-600'
+                        }`}>
+                          {(selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) > 0 ? '↑' : '↓'} 
+                          Diferencia: ${Math.abs(selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior).toLocaleString()}
+                          ({((selectedMutacion.avaluo_nuevo - selectedMutacion.avaluo_anterior) / selectedMutacion.avaluo_anterior * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Motivo de la solicitud */}
+                  {selectedMutacion.motivo_solicitud && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-xs text-slate-500 font-medium">Motivo de la Solicitud</p>
+                      <p className="text-sm text-slate-700 mt-1">{selectedMutacion.motivo_solicitud}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Información específica de M5 - Cancelación / Inscripción de Predio */}
+              {selectedMutacion.tipo === 'M5' && (
+                <div className="space-y-3">
+                  {/* Subtipo */}
+                  <div className={`p-3 rounded-lg border ${
+                    selectedMutacion.subtipo === 'cancelacion' 
+                      ? 'bg-red-50 border-red-200' 
+                      : 'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <p className={`text-xs font-medium ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-600' : 'text-emerald-600'
+                    }`}>Tipo de Solicitud</p>
+                    <p className={`text-lg font-bold ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-800' : 'text-emerald-800'
+                    }`}>
+                      {selectedMutacion.subtipo === 'cancelacion' ? '✗ CANCELACIÓN DE PREDIO' : '✓ INSCRIPCIÓN DE PREDIO NUEVO'}
+                    </p>
+                    <p className={`text-xs mt-1 ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-500' : 'text-emerald-500'
+                    }`}>
+                      {selectedMutacion.subtipo === 'cancelacion' 
+                        ? `Desde vigencia: ${selectedMutacion.vigencia_cancelacion || 'No especificada'}`
+                        : `Desde vigencia: ${selectedMutacion.vigencia_inscripcion || 'No especificada'}`}
+                    </p>
+                  </div>
+                  
+                  {/* Datos del predio */}
+                  {selectedMutacion.predio_m5 && (
+                    <div className={`p-3 rounded-lg border ${
+                      selectedMutacion.subtipo === 'cancelacion' 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-emerald-50 border-emerald-200'
+                    }`}>
+                      <p className={`text-xs font-medium mb-2 ${
+                        selectedMutacion.subtipo === 'cancelacion' ? 'text-red-600' : 'text-emerald-600'
+                      }`}>
+                        {selectedMutacion.subtipo === 'cancelacion' ? 'Predio a Cancelar' : 'Predio a Inscribir'}
+                      </p>
+                      <div className="bg-white p-3 rounded">
+                        <p className={`font-mono font-bold ${
+                          selectedMutacion.subtipo === 'cancelacion' ? 'text-red-700' : 'text-emerald-700'
+                        }`}>
+                          {selectedMutacion.predio_m5.codigo_predial_nacional || selectedMutacion.predio_m5.codigo_predial || selectedMutacion.predio_m5.NPN || 'Por asignar'}
+                        </p>
+                        {selectedMutacion.predio_m5.direccion && (
+                          <p className="text-sm text-slate-600 mt-1">{selectedMutacion.predio_m5.direccion}</p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                          {selectedMutacion.predio_m5.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{selectedMutacion.predio_m5.matricula_inmobiliaria}</span></div>
+                          )}
+                          {(selectedMutacion.predio_m5.avaluo || selectedMutacion.predio_m5.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-bold">${Number(selectedMutacion.predio_m5.avaluo || selectedMutacion.predio_m5.avaluo_catastral || 0).toLocaleString()}</span></div>
+                          )}
+                          {selectedMutacion.predio_m5.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(selectedMutacion.predio_m5.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {selectedMutacion.predio_m5.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(selectedMutacion.predio_m5.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                        </div>
+                        {selectedMutacion.predio_m5.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <p className="text-xs text-slate-500">Propietario:</p>
+                            <p className="text-sm font-medium">{selectedMutacion.predio_m5.propietarios[0].nombre_propietario || selectedMutacion.predio_m5.propietarios[0].nombre}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Si es cancelación por doble inscripción */}
+                  {selectedMutacion.subtipo === 'cancelacion' && selectedMutacion.es_doble_inscripcion && (
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium">⚠️ Cancelación por Doble Inscripción</p>
+                      <p className="text-sm text-amber-800 mt-1">
+                        Este predio está duplicado con: <span className="font-mono font-bold">{selectedMutacion.codigo_predio_duplicado}</span>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Motivo */}
+                  {selectedMutacion.motivo_solicitud && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-xs text-slate-500 font-medium">Motivo de la Solicitud</p>
+                      <p className="text-sm text-slate-700 mt-1">{selectedMutacion.motivo_solicitud}</p>
+                    </div>
+                  )}
                 </div>
               )}
               

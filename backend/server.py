@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import bcrypt
 import jwt
 import smtplib
@@ -651,8 +652,8 @@ class MutacionEstado:
 
 class SolicitudMutacionCreate(BaseModel):
     """Modelo para crear una solicitud de mutación"""
-    tipo: str  # M1, M2, M3
-    subtipo: Optional[str] = None  # Para M2: desengloble, englobe | Para M3: cambio_destino, incorporacion_construccion
+    tipo: str  # M1, M2, M3, M4, M5
+    subtipo: Optional[str] = None  # Para M2: desengloble, englobe | Para M3: cambio_destino, incorporacion_construccion | Para M4: revision_avaluo, autoestimacion | Para M5: cancelacion, inscripcion
     municipio: str
     radicado: Optional[str] = None
     solicitante: Optional[dict] = None
@@ -671,6 +672,18 @@ class SolicitudMutacionCreate(BaseModel):
     avaluo_anterior: Optional[float] = None
     avaluo_nuevo: Optional[float] = None
     fechas_inscripcion: Optional[List[dict]] = None
+    # Para M4
+    motivo_solicitud: Optional[str] = None  # Motivo de la revisión de avalúo o cancelación/inscripción
+    valor_autoestimado: Optional[float] = None  # Valor propuesto por el propietario
+    decision: Optional[str] = "aceptar"  # aceptar o rechazar
+    codigo_predial: Optional[str] = None  # Código predial para mostrar en vista de aprobación
+    predio_direccion: Optional[str] = None  # Dirección del predio
+    # Para M5
+    vigencia_cancelacion: Optional[int] = None  # Año desde el cual se cancela
+    vigencia_inscripcion: Optional[int] = None  # Año desde el cual se inscribe
+    es_doble_inscripcion: Optional[bool] = False  # Si la cancelación es por doble inscripción
+    codigo_predio_duplicado: Optional[str] = None  # Código del predio con el que está duplicado
+    predio_m5: Optional[dict] = None  # Datos del predio para M5 (cancelar o inscribir)
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
@@ -1034,7 +1047,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1172,7 +1185,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1238,7 +1251,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1276,7 +1289,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1329,7 +1342,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1368,7 +1381,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1398,7 +1411,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1431,7 +1444,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11591,7 +11604,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m1-m2-m3-demo.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -11715,16 +11728,47 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     # Verificar si tiene hash de PDF (sistema nuevo)
     tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
     
+    # Detectar si es una RESOLUCIÓN (M1-M5) vs CERTIFICADO
+    tipo_doc = certificado.get('tipo', '')
+    es_resolucion_db = tipo_doc.startswith('RESOLUCION_') or tipo_doc == 'RESOLUCION'
+    
+    # Para resoluciones, obtener campos específicos
+    if es_resolucion_db:
+        # Las resoluciones usan 'predio_codigo' y 'predio_direccion' en lugar de 'codigo_predial' y 'direccion'
+        codigo_predial_display = certificado.get('codigo_predial') or certificado.get('predio_codigo', 'N/A')
+        direccion_display = certificado.get('direccion') or certificado.get('predio_direccion', 'N/A')
+        # Las resoluciones usan 'generado_por' en lugar de 'generado_por_nombre'
+        generado_por_display = certificado.get('generado_por_nombre') or certificado.get('generado_por', 'N/A')
+        # Obtener número de resolución y radicado
+        numero_resolucion = certificado.get('numero_resolucion', 'N/A')
+        radicado = certificado.get('radicado', 'N/A')
+        solicitante = certificado.get('solicitante', 'N/A')
+        subtipo = certificado.get('subtipo', '')
+        # Para M2 (desenglobe/englobe)
+        predios_cancelados = certificado.get('predios_cancelados', 0)
+        predios_inscritos = certificado.get('predios_inscritos', 0)
+    else:
+        codigo_predial_display = certificado.get('codigo_predial', 'N/A')
+        direccion_display = certificado.get('direccion', 'N/A')
+        generado_por_display = certificado.get('generado_por_nombre', 'N/A')
+        numero_resolucion = None
+        radicado = None
+        solicitante = None
+        subtipo = None
+        predios_cancelados = 0
+        predios_inscritos = 0
+    
     if es_valido:
         # Documento VÁLIDO (Certificado o Resolución)
         titulo_documento = tipo_documento.title()  # "Certificado" o "Resolución"
+        valido_genero = "VÁLIDA" if es_resolucion_db else "VÁLIDO"  # Femenino para resolución
         html_content = f"""
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>✅ {titulo_documento} Válido - Asomunicipios</title>
+            <title>✅ {titulo_documento} {"Válida" if es_resolucion_db else "Válido"} - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
                 .container {{ max-width: 650px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
@@ -11756,7 +11800,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <div class="container">
                 <div class="header">
                     <img src="{logo_url}" alt="Asomunicipios">
-                    <h1>✅ {tipo_documento} VÁLIDO</h1>
+                    <h1>✅ {tipo_documento} {valido_genero}</h1>
                     <span class="badge">Verificado por Asomunicipios</span>
                 </div>
                 <div class="content">
@@ -11765,12 +11809,29 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         {codigo_verificacion}
                     </div>
                     
-                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos del {titulo_documento}</h3>
+                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos {"de la" if es_resolucion_db else "del"} {titulo_documento}</h3>
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Compare estos datos con su documento físico o digital</p>
+                    
+                    {"" if not es_resolucion_db else f'''
+                    <div class="info-row">
+                        <span class="info-label">📄 No. Resolución:</span>
+                        <span class="info-value"><strong>{numero_resolucion}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📁 Tipo:</span>
+                        <span class="info-value">{tipo_doc} {f"({subtipo})" if subtipo else ""}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📋 Radicado:</span>
+                        <span class="info-value">{radicado}</span>
+                    </div>
+                    '''}
                     
                     <div class="info-row">
                         <span class="info-label">📋 Código Predial:</span>
-                        <span class="info-value"><strong>{certificado.get('codigo_predial', 'N/A')}</strong></span>
+                        <span class="info-value"><strong>{codigo_predial_display}</strong></span>
                     </div>
                     
                     <div class="info-row">
@@ -11780,9 +11841,10 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">📍 Dirección:</span>
-                        <span class="info-value">{certificado.get('direccion', 'N/A')}</span>
+                        <span class="info-value">{direccion_display}</span>
                     </div>
                     
+                    {"" if es_resolucion_db else f'''
                     <div class="info-row">
                         <span class="info-label">👥 Propietarios:</span>
                         <span class="info-value"><strong>{propietarios_html}</strong></span>
@@ -11797,6 +11859,26 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         <span class="info-label">💰 Avalúo:</span>
                         <span class="info-value"><strong>{avaluo}</strong></span>
                     </div>
+                    '''}
+                    
+                    {"" if not es_resolucion_db else f'''
+                    <div class="info-row">
+                        <span class="info-label">👤 Solicitante:</span>
+                        <span class="info-value">{solicitante}</span>
+                    </div>
+                    ''' if solicitante and solicitante != 'N/A' else ""}
+                    
+                    {"" if not (es_resolucion_db and tipo_doc == 'RESOLUCION_M2') else f'''
+                    <div class="info-row">
+                        <span class="info-label">🔴 Predios Cancelados:</span>
+                        <span class="info-value"><strong>{predios_cancelados}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">🟢 Predios Inscritos:</span>
+                        <span class="info-value"><strong>{predios_inscritos}</strong></span>
+                    </div>
+                    '''}
                     
                     <div class="info-row">
                         <span class="info-label">📅 Generado:</span>
@@ -11805,7 +11887,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">👤 Elaborado por:</span>
-                        <span class="info-value">{certificado.get('generado_por_nombre', 'N/A')}</span>
+                        <span class="info-value">{generado_por_display}</span>
                     </div>
                     
                     <div class="verify-section">
@@ -12691,6 +12773,157 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
     }, exclude_user=current_user['id'])
     
     return {"message": "Predio eliminado exitosamente"}
+
+
+# ===== ENDPOINT SIMPLIFICADO PARA CREAR PREDIOS DESDE M5 =====
+
+class PredioM5Create(BaseModel):
+    """Modelo simplificado para crear predios desde M5 - Inscripción"""
+    codigo_predial_nacional: str  # Código completo de 30 dígitos
+    municipio: str  # Nombre del municipio
+    matricula_inmobiliaria: Optional[str] = None
+    direccion: str
+    destino_economico: str = "H"
+    area_terreno: float = 0
+    area_construida: float = 0
+    avaluo_catastral: float = 0
+    propietarios: List[dict]  # Lista de propietarios
+    es_predio_nuevo: bool = True
+    origen: Optional[str] = "M5_inscripcion"
+
+@api_router.post("/predios/m5/crear")
+async def crear_predio_m5(
+    predio_data: PredioM5Create,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un predio nuevo de forma simplificada desde el modal de M5.
+    Este endpoint usa un formato plano más simple que el endpoint principal.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
+    
+    # Validar código predial de 30 dígitos
+    if len(predio_data.codigo_predial_nacional) != 30:
+        raise HTTPException(status_code=400, detail=f"El código predial debe tener 30 dígitos, recibido: {len(predio_data.codigo_predial_nacional)}")
+    
+    # Extraer partes del código predial
+    codigo = predio_data.codigo_predial_nacional
+    prefijo_municipio = codigo[:5]
+    
+    # Obtener información del municipio desde el código
+    municipio_info = MUNICIPIOS_POR_CODIGO.get(prefijo_municipio)
+    if not municipio_info:
+        # Intentar buscar por nombre del municipio
+        divipola = MUNICIPIOS_DIVIPOLA.get(predio_data.municipio)
+        if not divipola:
+            raise HTTPException(status_code=400, detail=f"Municipio no válido: {predio_data.municipio}")
+        municipio_nombre = predio_data.municipio
+    else:
+        municipio_nombre = municipio_info.get("nombre", predio_data.municipio)
+    
+    # Verificar que el código no existe
+    existing = await db.predios.find_one({"codigo_predial_nacional": codigo, "deleted": {"$ne": True}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
+    
+    # Generar código homologado
+    codigo_homologado = await asignar_codigo_homologado(municipio_nombre, None)
+    if not codigo_homologado:
+        codigo_homologado, _ = await generate_codigo_homologado(municipio_nombre)
+    
+    # Obtener siguiente número de predio
+    last_predio = await db.predios.find_one(
+        {"municipio": municipio_nombre, "deleted": {"$ne": True}},
+        sort=[("numero_predio", -1)]
+    )
+    if last_predio:
+        num_predio = last_predio.get("numero_predio", 0)
+        if isinstance(num_predio, str):
+            try:
+                num_predio = int(num_predio)
+            except (ValueError, TypeError):
+                num_predio = 0
+        numero_predio = num_predio + 1
+    else:
+        numero_predio = 1
+    
+    # Extraer partes del código para la estructura del predio
+    zona = codigo[5:7]
+    sector = codigo[7:9]
+    comuna = codigo[9:11]
+    barrio = codigo[11:13]
+    manzana_vereda = codigo[13:17]
+    terreno = codigo[17:21]
+    condicion = codigo[21:22]
+    edificio = codigo[22:24]
+    piso = codigo[24:26]
+    unidad = codigo[26:30]
+    
+    # Obtener datos del primer propietario
+    prop_principal = predio_data.propietarios[0] if predio_data.propietarios else {}
+    
+    # Crear el predio
+    predio = {
+        "id": str(uuid.uuid4()),
+        "municipio": municipio_nombre,
+        "numero_predio": numero_predio,
+        "codigo_predial_nacional": codigo,
+        "codigo_homologado": codigo_homologado,
+        "zona": zona,
+        "sector": sector,
+        "comuna": comuna,
+        "barrio": barrio,
+        "manzana_vereda": manzana_vereda,
+        "terreno": terreno,
+        "terreno_num": int(terreno) if terreno.isdigit() else 1,
+        "condicion_predio": condicion + "000",  # Padding para compatibilidad
+        "predio_horizontal": edificio + piso + unidad,
+        
+        # Datos R1
+        "tipo_registro": 1,
+        "nombre_propietario": prop_principal.get("nombre_propietario", ""),
+        "tipo_documento": prop_principal.get("tipo_documento", "C"),
+        "numero_documento": prop_principal.get("numero_documento", ""),
+        "estado_civil": prop_principal.get("estado_civil", ""),
+        "direccion": predio_data.direccion,
+        "destino_economico": predio_data.destino_economico,
+        "area_terreno": predio_data.area_terreno,
+        "area_construida": predio_data.area_construida,
+        "avaluo": predio_data.avaluo_catastral,
+        "matricula_inmobiliaria": predio_data.matricula_inmobiliaria,
+        
+        # Lista completa de propietarios
+        "propietarios": predio_data.propietarios,
+        
+        # Metadata
+        "vigencia": datetime.now().year,
+        "es_predio_nuevo": True,
+        "origen": predio_data.origen or "M5_inscripcion",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"],
+        "created_by_name": current_user["full_name"],
+        "deleted": False,
+        "historial": [{
+            "accion": "Predio creado desde M5 - Inscripción",
+            "usuario": current_user["full_name"],
+            "usuario_id": current_user["id"],
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }]
+    }
+    
+    await db.predios.insert_one(predio)
+    
+    # Eliminar _id antes de retornar
+    predio.pop("_id", None)
+    
+    return {
+        "id": predio["id"],
+        "codigo_predial_nacional": predio["codigo_predial_nacional"],
+        "codigo_homologado": predio["codigo_homologado"],
+        "numero_predio": predio["numero_predio"],
+        "message": "Predio creado exitosamente"
+    }
 
 
 # ===== FLUJO DE TRABAJO PARA PREDIOS NUEVOS (CONSERVACIÓN) =====
@@ -14005,7 +14238,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
 
         return {
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "pdf_base64": pdf_base64,
             "consecutivo": siguiente_numero,
@@ -14047,6 +14280,9 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
+        # Generar código de verificación para QR
+        codigo_verificacion_m2 = generar_codigo_verificacion_resolucion()
+        
         # Preparar datos para el PDF
         pdf_data = {
             "numero_resolucion": numero_resolucion,
@@ -14058,7 +14294,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "solicitante": solicitante,
             "observaciones": solicitud.get('observaciones', ''),
             "elaborado_por": aprobador.get("full_name", ""),
-            "revisado_por": ""
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m2
         }
         
         # Crear directorio si no existe
@@ -14169,9 +14406,28 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "año": datetime.now().year
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m2
         }
         await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m2 = {
+            "codigo_verificacion": codigo_verificacion_m2,
+            "tipo": "RESOLUCION_M2",
+            "subtipo": solicitud.get('subtipo', 'desenglobe').upper(),
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predios_cancelados": len(predios_cancelados),
+            "predios_inscritos": len(predios_inscritos),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m2)
         
         # Registrar en log de actividades
         await registrar_log_actividad(
@@ -14195,7 +14451,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}",
             "predios_creados": len(predios_inscritos),
             "predios_cancelados": len(predios_cancelados)
@@ -14235,6 +14491,9 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
+        # Generar código de verificación para QR
+        codigo_verificacion_m3 = generar_codigo_verificacion_resolucion()
+        
         # Preparar fechas de inscripción
         fechas_inscripcion = solicitud.get('fechas_inscripcion') or [
             {"año": datetime.now().year, "avaluo": solicitud.get('avaluo_nuevo', 0), "avaluo_source": "actual"}
@@ -14256,7 +14515,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "fechas_inscripcion": fechas_inscripcion,
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
             "elaborado_por": aprobador.get("full_name", ""),
-            "revisado_por": ""
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m3
         }
         
         # Crear directorio si no existe
@@ -14356,9 +14616,27 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "año": datetime.now().year
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m3
         }
         await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m3 = {
+            "codigo_verificacion": codigo_verificacion_m3,
+            "tipo": "RESOLUCION_M3",
+            "subtipo": subtipo.upper() if subtipo else "CAMBIO",
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "predio_codigo": predio.get('codigo_predial_nacional'),
+            "predio_direccion": predio.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m3)
         
         # Registrar en log de actividades
         await registrar_log_actividad(
@@ -14382,12 +14660,487 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "success": True,
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/resoluciones/{filename}"
         }
         
     except Exception as e:
         logging.error(f"Error en _generar_resolucion_m3_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera resolución M4 (Revisión de Avalúo / Autoestimación) y aplica los cambios.
+    Usado internamente cuando se aprueba una solicitud de mutación M4.
+    """
+    try:
+        from resolucion_m4_pdf_generator import generate_resolucion_m4_pdf
+        
+        # Obtener datos de la solicitud
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        predio_id = solicitud.get('predio_id', '')
+        subtipo = solicitud.get('subtipo', 'revision_avaluo')  # revision_avaluo o autoestimacion
+        decision = solicitud.get('decision', 'aceptar')  # aceptar o rechazar
+        
+        # Obtener predio
+        predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        if not predio:
+            raise Exception(f"Predio no encontrado: {predio_id}")
+        
+        # Obtener nombre del municipio
+        municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
+        
+        # Generar número de resolución
+        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
+        fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        
+        # Generar código de verificación para QR
+        codigo_verificacion_m4 = generar_codigo_verificacion_resolucion()
+        
+        # Preparar datos para el PDF
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "subtipo": subtipo,
+            "decision": decision,
+            "radicado": radicado,
+            "predio": predio,
+            "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
+            "avaluo_anterior": solicitud.get('avaluo_anterior') or predio.get('avaluo', 0),
+            "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
+            "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
+            "valor_autoestimado": solicitud.get('valor_autoestimado') or solicitud.get('avaluo_nuevo', 0),
+            "elaborado_por": aprobador.get("full_name", ""),
+            "revisado_por": "",
+            "codigo_verificacion": codigo_verificacion_m4
+        }
+        
+        # Crear directorio si no existe
+        resoluciones_dir = "/app/backend/static/resoluciones"
+        os.makedirs(resoluciones_dir, exist_ok=True)
+        
+        # Generar nombre del archivo
+        filename = f"resolucion_M4_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        filepath = os.path.join(resoluciones_dir, filename)
+        
+        # Generar PDF
+        pdf_bytes = generate_resolucion_m4_pdf(pdf_data)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # ========================================
+        # APLICAR CAMBIOS AL PREDIO (solo si se acepta)
+        # ========================================
+        
+        if decision == 'aceptar':
+            avaluo_nuevo = solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0)
+            
+            update_predio = {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "avaluo": avaluo_nuevo,
+            }
+            
+            # Historial para mostrar en el frontend (historial_resoluciones)
+            historial_resolucion_entry = {
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "decision": decision,
+                "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
+                "avaluo_nuevo": avaluo_nuevo,
+                "motivo": solicitud.get('motivo_solicitud', '')
+            }
+            
+            # Aplicar actualización al predio
+            await db.predios.update_one(
+                {"id": predio_id},
+                {
+                    "$set": update_predio,
+                    "$push": {"historial_resoluciones": historial_resolucion_entry}
+                }
+            )
+        else:
+            # Si se rechaza, solo registrar en historial sin cambiar avalúo
+            historial_resolucion_entry = {
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "decision": decision,
+                "avaluo_solicitado": solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0),
+                "motivo": solicitud.get('motivo_solicitud', '')
+            }
+            
+            await db.predios.update_one(
+                {"id": predio_id},
+                {"$push": {"historial_resoluciones": historial_resolucion_entry}}
+            )
+        
+        # Guardar resolución en la colección
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "tipo": "M4",
+            "subtipo": subtipo,
+            "decision": decision,
+            "municipio": municipio_nombre,
+            "codigo_municipio": municipio,
+            "radicado": radicado,
+            "solicitud_id": solicitud.get('id'),
+            "predio_id": predio_id,
+            "codigo_predial": predio.get('codigo_predial_nacional'),
+            "pdf_path": f"/resoluciones/{filename}",
+            "generado_por": aprobador.get('id'),
+            "generado_por_nombre": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "año": datetime.now().year,
+            "codigo_verificacion": codigo_verificacion_m4
+        }
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_m4 = {
+            "codigo_verificacion": codigo_verificacion_m4,
+            "tipo": "RESOLUCION_M4",
+            "subtipo": f"{subtipo.upper()}_{decision.upper()}" if subtipo else "M4",
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "predio_codigo": predio.get('codigo_predial_nacional'),
+            "predio_direccion": predio.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_m4)
+        
+        # Registrar en log de actividades
+        await registrar_log_actividad(
+            accion="generar_resolucion",
+            categoria="resoluciones",
+            descripcion=f"Generó resolución {numero_resolucion} tipo M4 ({subtipo}) - {decision.upper()} para {municipio_nombre}",
+            usuario_id=aprobador.get("id"),
+            usuario_nombre=aprobador.get("full_name"),
+            usuario_rol=aprobador.get("role"),
+            municipio=municipio_nombre,
+            detalles={
+                "tipo_mutacion": "M4",
+                "subtipo": subtipo,
+                "decision": decision,
+                "predio_id": predio_id,
+                "codigo_predial": predio.get('codigo_predial_nacional'),
+                "numero_resolucion": numero_resolucion
+            }
+        )
+        
+        # === ENVIAR CORREO CON LA RESOLUCIÓN AL SOLICITANTE ===
+        try:
+            # Buscar si hay una petición asociada para obtener el correo del solicitante
+            peticion = None
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            # Si hay petición con correo del solicitante, enviar el correo
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                
+                # Generar el contenido del correo
+                subtipo_texto = "Revisión de Avalúo" if subtipo == "revision_avaluo" else "Autoestimación"
+                decision_texto = "APROBADA" if decision == "aceptar" else "RECHAZADA"
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predio.get('codigo_predial_nacional', ''),
+                    tipo_mutacion=f"M4 - {subtipo_texto} ({decision_texto})"
+                )
+                
+                # Enviar correo con el PDF adjunto
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución {decision_texto} - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                
+                logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para enviar resolución M4 {numero_resolucion}")
+                
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución M4: {str(email_error)}")
+            # No interrumpir el flujo si falla el envío de correo
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/resoluciones/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m4_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera internamente una resolución M5 (Cancelación o Inscripción de predio).
+    Usado internamente cuando se aprueba una solicitud de mutación M5.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        from resolucion_m5_pdf_generator import generate_m5_resolution_pdf
+        
+        subtipo = solicitud.get('subtipo', 'cancelacion')
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        solicitante = solicitud.get('solicitante', {})
+        motivo_solicitud = solicitud.get('motivo_solicitud', 'Solicitud de trámite catastral')
+        predio_m5 = solicitud.get('predio_m5', {})
+        es_doble_inscripcion = solicitud.get('es_doble_inscripcion', False)
+        codigo_predio_duplicado = solicitud.get('codigo_predio_duplicado', '')
+        
+        # Determinar vigencia
+        colombia_tz = ZoneInfo("America/Bogota")
+        año_actual = datetime.now(colombia_tz).year
+        if subtipo == 'cancelacion':
+            vigencia = solicitud.get('vigencia_cancelacion', año_actual)
+        else:
+            vigencia = solicitud.get('vigencia_inscripcion', año_actual)
+        
+        # Obtener código de municipio
+        codigo_municipio = None
+        for codigo, nombre in MUNICIPIOS_R1R2.items():
+            if nombre.lower() == municipio.lower() or municipio.lower() in nombre.lower():
+                codigo_municipio = codigo
+                break
+        if not codigo_municipio:
+            codigo_municipio = "54003"
+        
+        # Obtener siguiente número de resolución
+        numero_info = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
+        numero_resolucion = numero_info['numero_resolucion']
+        fecha_resolucion = numero_info['fecha_resolucion']
+        municipio_nombre = numero_info['municipio']
+        
+        # Preparar datos para el PDF
+        # Obtener usuario que elaboró (proponente de la solicitud)
+        elaboro_nombre = ""
+        proponente_id = solicitud.get('creado_por', solicitud.get('created_by'))
+        if proponente_id:
+            proponente = await db.users.find_one({"id": proponente_id})
+            if proponente:
+                elaboro_nombre = proponente.get('full_name', '')
+        
+        # Generar código de verificación para el QR
+        codigo_verificacion = generar_codigo_verificacion_resolucion()
+        
+        pdf_data = {
+            "subtipo": subtipo,
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predio": predio_m5,
+            "vigencia": vigencia,
+            "motivo_solicitud": motivo_solicitud,
+            "es_doble_inscripcion": es_doble_inscripcion,
+            "codigo_predio_duplicado": codigo_predio_duplicado,
+            "elaboro": elaboro_nombre or aprobador.get('full_name', ''),
+            "aprobo": aprobador.get('full_name', ''),
+            "codigo_verificacion": codigo_verificacion
+        }
+        
+        # Generar PDF
+        pdf_bytes = generate_m5_resolution_pdf(pdf_data)
+        
+        # Guardar archivo
+        filename = f"M5_{subtipo}_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"/app/backend/static/resoluciones/{filename}"
+        
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # Registrar en base de datos
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "tipo": "M5",
+            "subtipo": subtipo,
+            "municipio": municipio_nombre,
+            "codigo_municipio": codigo_municipio,
+            "radicado": radicado,
+            "fecha_resolucion": fecha_resolucion,
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "filename": filename,
+            "solicitante": solicitante,
+            "predio_id": predio_m5.get('id'),
+            "codigo_predial": predio_m5.get('codigo_predial_nacional') or predio_m5.get('codigo_predial'),
+            "vigencia": vigencia,
+            "es_doble_inscripcion": es_doble_inscripcion,
+            "codigo_predio_duplicado": codigo_predio_duplicado,
+            "año": numero_info['año'],
+            "creado_por_id": aprobador.get('id'),
+            "creado_por_nombre": aprobador.get('full_name'),
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "codigo_verificacion": codigo_verificacion
+        }
+        
+        logger.info(f"🔵 M5: Guardando resolución {numero_resolucion} con código {codigo_verificacion}")
+        insert_result = await db.resoluciones.insert_one(resolucion_doc)
+        logger.info(f"✅ M5: Resolución guardada en DB con _id: {insert_result.inserted_id}")
+        
+        # Verificar que se guardó
+        verificacion = await db.resoluciones.find_one({"numero_resolucion": numero_resolucion})
+        if verificacion:
+            logger.info(f"✅ M5: Verificación exitosa - resolución encontrada")
+        else:
+            logger.error(f"❌ M5: Error - resolución NO encontrada después de insert")
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_record = {
+            "codigo_verificacion": codigo_verificacion,
+            "tipo": "RESOLUCION_M5",
+            "subtipo": subtipo.upper(),
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predio_codigo": predio_m5.get('codigo_predial_nacional') or predio_m5.get('codigo_predial'),
+            "predio_direccion": predio_m5.get('direccion', ''),
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_record)
+        logger.info(f"✅ M5: Certificado verificable guardado")
+        
+        # Actualizar historial del predio según subtipo
+        predio_id = predio_m5.get('id')
+        if predio_id:
+            historial_entry = {
+                "tipo_mutacion": "M5",
+                "subtipo": subtipo,
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "vigencia": vigencia,
+                "motivo": motivo_solicitud
+            }
+            
+            if subtipo == 'cancelacion':
+                # Para cancelación, marcar el predio como cancelado
+                await db.predios.update_one(
+                    {"id": predio_id},
+                    {
+                        "$set": {
+                            "estado": "cancelado",
+                            "fecha_cancelacion": fecha_resolucion,
+                            "vigencia_cancelacion": vigencia,
+                            "resolucion_cancelacion": numero_resolucion
+                        },
+                        "$push": {"historial_resoluciones": historial_entry}
+                    }
+                )
+            else:
+                # Para inscripción, registrar en historial
+                await db.predios.update_one(
+                    {"id": predio_id},
+                    {
+                        "$set": {
+                            "estado": "activo",
+                            "fecha_inscripcion": fecha_resolucion,
+                            "vigencia_inscripcion": vigencia,
+                            "resolucion_inscripcion": numero_resolucion
+                        },
+                        "$push": {"historial_resoluciones": historial_entry}
+                    }
+                )
+        
+        # Registrar actividad
+        await db.actividad.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "tipo": f"resolucion_m5_{subtipo}",
+                "usuario_id": aprobador.get('id'),
+                "usuario_nombre": aprobador.get('full_name'),
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "descripcion": f"Resolución M5 ({subtipo}) {numero_resolucion} generada",
+                "predio_id": predio_id,
+                "codigo_predial": predio_m5.get('codigo_predial_nacional') or predio_m5.get('codigo_predial'),
+                "numero_resolucion": numero_resolucion
+            }
+        )
+        
+        # Enviar correo si hay destinatario
+        try:
+            peticion = None
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                
+                subtipo_texto = "Cancelación de Predio" if subtipo == "cancelacion" else "Inscripción de Predio Nuevo"
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predio_m5.get('codigo_predial_nacional', predio_m5.get('codigo_predial', '')),
+                    tipo_mutacion=f"M5 - {subtipo_texto}"
+                )
+                
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución {subtipo_texto} - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                
+                logging.info(f"Correo de resolución M5 enviado a {email_solicitante}")
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución M5: {str(email_error)}")
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/resoluciones/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m5_interno: {str(e)}")
         import traceback
         traceback.print_exc()
         raise
@@ -26091,7 +26844,11 @@ async def descargar_resolucion_pdf(filename: str):
         return FileResponse(
             filepath,
             media_type="application/pdf",
-            filename=filename
+            filename=filename,
+            headers={
+                "Content-Disposition": f"inline; filename={filename}",
+                "X-Content-Type-Options": "nosniff"
+            }
         )
     except HTTPException:
         raise
@@ -26190,7 +26947,10 @@ async def obtener_resoluciones_por_radicado(
 
 async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> dict:
     """Función interna para obtener el siguiente número de resolución"""
-    año = datetime.now().year
+    # Usar zona horaria de Colombia para año y fecha
+    colombia_tz = ZoneInfo("America/Bogota")
+    now_colombia = datetime.now(colombia_tz)
+    año = now_colombia.year
     
     # Validar que el código de municipio sea válido
     if codigo_municipio not in MUNICIPIOS_R1R2:
@@ -26228,7 +26988,7 @@ async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> 
         "año": año,
         "codigo_municipio": codigo_municipio,
         "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-        "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+        "fecha_resolucion": now_colombia.strftime("%d/%m/%Y")
     }
 
 
@@ -26271,6 +27031,11 @@ async def obtener_siguiente_numero_resolucion(
         mpio = codigo_municipio[2:]
         numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
         
+        # Usar zona horaria de Colombia
+        colombia_tz = ZoneInfo("America/Bogota")
+        fecha_colombia = datetime.now(colombia_tz).strftime("%d/%m/%Y")
+        logging.info(f"[DEBUG] Fecha Colombia calculada: {fecha_colombia}")
+        
         return {
             "success": True,
             "siguiente_numero": siguiente,
@@ -26278,7 +27043,7 @@ async def obtener_siguiente_numero_resolucion(
             "año": año,
             "codigo_municipio": codigo_municipio,
             "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-            "fecha_resolucion": datetime.now().strftime("%d/%m/%Y")
+            "fecha_resolucion": fecha_colombia
         }
     except Exception as e:
         logging.error(f"Error obteniendo siguiente número: {str(e)}")
@@ -27096,7 +27861,7 @@ async def generar_resolucion_m3(
         return {
             "success": True,
             "numero_resolucion": numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "id": resolucion_doc["id"],
             "mensaje": f"Resolución M3 ({request.subtipo}) generada exitosamente"
         }
@@ -27638,6 +28403,18 @@ async def crear_solicitud_mutacion(
             "avaluo_anterior": data.avaluo_anterior,
             "avaluo_nuevo": data.avaluo_nuevo,
             "fechas_inscripcion": data.fechas_inscripcion,
+            # Para M4
+            "motivo_solicitud": data.motivo_solicitud,
+            "valor_autoestimado": data.valor_autoestimado,
+            "decision": data.decision or "aceptar",
+            "codigo_predial": data.codigo_predial,
+            "predio_direccion": data.predio_direccion,
+            # Para M5
+            "vigencia_cancelacion": data.vigencia_cancelacion,
+            "vigencia_inscripcion": data.vigencia_inscripcion,
+            "es_doble_inscripcion": data.es_doble_inscripcion,
+            "codigo_predio_duplicado": data.codigo_predio_duplicado,
+            "predio_m5": data.predio_m5,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
@@ -27673,6 +28450,10 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_m2_interno(solicitud, current_user)
                 elif tipo_mutacion == "M3":
                     pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                elif tipo_mutacion == "M4":
+                    pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
+                elif tipo_mutacion == "M5":
+                    pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
                     if data.predio_id:
@@ -28016,6 +28797,14 @@ async def ejecutar_accion_solicitud(
                 elif tipo_mutacion == "M3":
                     # Generar resolución M3 (Cambio destino / Incorporación construcción)
                     pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                
+                elif tipo_mutacion == "M4":
+                    # Generar resolución M4 (Revisión de Avalúo / Autoestimación)
+                    pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
+                
+                elif tipo_mutacion == "M5":
+                    # Generar resolución M5 (Cancelación / Inscripción de predio)
+                    pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
                     
                 else:
                     # M1 - usar lógica existente
@@ -28115,11 +28904,19 @@ async def ejecutar_accion_solicitud(
                 enviar_email=False
             )
         
-        return {
+        # Construir respuesta
+        response = {
             "success": True,
             "nuevo_estado": nuevo_estado,
             "mensaje": f"Acción '{accion}' ejecutada exitosamente"
         }
+        
+        # Agregar información del PDF si fue aprobación
+        if accion == "aprobar" and update_data.get("pdf_url"):
+            response["pdf_url"] = update_data.get("pdf_url")
+            response["numero_resolucion"] = update_data.get("numero_resolucion")
+        
+        return response
         
     except HTTPException:
         raise
@@ -28591,7 +29388,7 @@ async def generar_resolucion_manual(
         return {
             "success": True,
             "numero_resolucion": request.numero_resolucion,
-            "pdf_url": f"/resoluciones/descargar/{filename}",
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_base64": pdf_base64,
             "peticion_finalizada": peticion is not None,
             "email_enviado": email_enviado,
