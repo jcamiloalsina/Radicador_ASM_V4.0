@@ -505,11 +505,11 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     c.drawString(MARGIN_LEFT + 55, y_position, texto_art1)
     y_position -= 20
     
-    # Función para dibujar tabla de avalúo
+    # Función para dibujar tabla de avalúo - ESTILO M2 COMPLETO
     def dibujar_tabla_avaluo(titulo_seccion, es_cancelacion=True):
         nonlocal y_position
         
-        verificar_espacio(80)
+        verificar_espacio(100)
         
         # Título de sección con fondo verde
         c.setFillColor(VERDE_INSTITUCIONAL)
@@ -521,38 +521,118 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         
         c.setFillColor(NEGRO)
         
-        # Headers de la tabla
-        col_widths = [CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.30]
-        headers = ["CÓDIGO PREDIAL", "PROPIETARIO", "AVALÚO"]
+        # =====================
+        # FILA 1: N° PREDIAL, APELLIDOS Y NOMBRES, TIPO DOC., NRO. DOC., DESTINO
+        # =====================
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
         
-        c.setFillColor(VERDE_INSTITUCIONAL)
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=0)
-        c.setFillColor(BLANCO)
-        c.setFont(font_bold, 8)
-        
+        col_widths = [CONTENT_WIDTH * 0.32, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.10]
+        headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "TIPO DOC.", "NRO. DOC.", "DESTINO"]
         x = MARGIN_LEFT
         for i, header in enumerate(headers):
             c.drawCentredString(x + col_widths[i]/2, y_position - 9, header)
+            c.rect(x, y_position - 12, col_widths[i], 12, fill=0, stroke=1)
             x += col_widths[i]
         y_position -= 12
         
+        # Datos del propietario (extraer de solicitante)
+        c.setFont(font_normal, 7)
+        tipo_doc = solicitante.get("tipo_documento", "CC") if isinstance(solicitante, dict) else "CC"
+        nro_doc = str(solicitante.get("numero_documento", solicitante.get("documento", "")) if isinstance(solicitante, dict) else "").zfill(10)
+        destino = predio.get("destino_economico", "R") if predio else "R"
+        
         # Fila de datos
-        c.setFillColor(NEGRO)
-        c.setFont(font_normal, 8)
-        c.setStrokeColor(colors.lightgrey)
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, stroke=1, fill=0)
-        
-        valor = avaluo_anterior if es_cancelacion else avaluo_nuevo
-        
         x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths[0], 12, fill=0, stroke=1)
+        c.setFont(font_normal, 6)
         c.drawCentredString(x + col_widths[0]/2, y_position - 9, codigo_predial[:30] if codigo_predial else "")
         x += col_widths[0]
-        c.drawCentredString(x + col_widths[1]/2, y_position - 9, solicitante_nombre[:25] if solicitante_nombre else "")
+        
+        c.setFont(font_normal, 7)
+        c.rect(x, y_position - 12, col_widths[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths[1]/2, y_position - 9, solicitante_nombre[:28] if solicitante_nombre else "")
         x += col_widths[1]
-        c.drawCentredString(x + col_widths[2]/2, y_position - 9, formatear_moneda(valor))
+        
+        c.rect(x, y_position - 12, col_widths[2], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths[2]/2, y_position - 9, tipo_doc)
+        x += col_widths[2]
+        
+        c.rect(x, y_position - 12, col_widths[3], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths[3]/2, y_position - 9, nro_doc[:15])
+        x += col_widths[3]
+        
+        c.rect(x, y_position - 12, col_widths[4], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths[4]/2, y_position - 9, destino[:5])
         y_position -= 12
         
-        # Fila de matrícula
+        # =====================
+        # FILA 2: CÓD. HOMOLOGADO, DIRECCIÓN, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL
+        # =====================
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        
+        col_widths2 = [CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15]
+        headers2 = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
+        x = MARGIN_LEFT
+        for i, header in enumerate(headers2):
+            c.drawCentredString(x + col_widths2[i]/2, y_position - 9, header)
+            c.rect(x, y_position - 12, col_widths2[i], 12, fill=0, stroke=1)
+            x += col_widths2[i]
+        y_position -= 12
+        
+        # Valores de la fila 2
+        c.setFont(font_normal, 7)
+        codigo_hom = predio.get("codigo_homologado", "") if predio else ""
+        direccion_predio = (predio.get("direccion", "") if predio else "")[:20]
+        area_terreno_val = predio.get("area_terreno", 0) if predio else 0
+        area_construida_val = predio.get("area_construida", 0) if predio else 0
+        
+        # Valor de avalúo según cancelación o inscripción
+        valor_avaluo = avaluo_anterior if es_cancelacion else avaluo_nuevo
+        
+        # Formatear áreas
+        area_terreno_fmt = f"{float(area_terreno_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+        area_construida_fmt = f"{float(area_construida_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+        
+        # Vigencia fiscal
+        from datetime import datetime
+        vig_fiscal = f"01/01/{datetime.now().year}"
+        
+        x = MARGIN_LEFT
+        c.rect(x, y_position - 12, col_widths2[0], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[0]/2, y_position - 9, codigo_hom[:12] if codigo_hom else "")
+        x += col_widths2[0]
+        
+        c.rect(x, y_position - 12, col_widths2[1], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[1]/2, y_position - 9, direccion_predio)
+        x += col_widths2[1]
+        
+        c.rect(x, y_position - 12, col_widths2[2], 12, fill=0, stroke=1)
+        c.setFont(font_normal, 5)
+        c.drawCentredString(x + col_widths2[2]/2, y_position - 9, area_terreno_fmt)
+        x += col_widths2[2]
+        
+        c.rect(x, y_position - 12, col_widths2[3], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[3]/2, y_position - 9, area_construida_fmt)
+        c.setFont(font_normal, 7)
+        x += col_widths2[3]
+        
+        c.rect(x, y_position - 12, col_widths2[4], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[4]/2, y_position - 9, formatear_moneda(valor_avaluo))
+        x += col_widths2[4]
+        
+        c.rect(x, y_position - 12, col_widths2[5], 12, fill=0, stroke=1)
+        c.drawCentredString(x + col_widths2[5]/2, y_position - 9, vig_fiscal)
+        y_position -= 12
+        
+        # =====================
+        # FILA 3: MATRÍCULA INMOBILIARIA
+        # =====================
         c.setFillColor(colors.HexColor('#e8e8e8'))
         c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH * 0.3, 12, fill=1, stroke=1)
         c.setFillColor(NEGRO)
