@@ -92,6 +92,27 @@ const MUNICIPIOS = [
   { codigo: '54800', nombre: 'Teorama' }
 ];
 
+// Helper para obtener matrícula inmobiliaria de un predio
+// Busca primero en el campo directo, luego en r2_registros
+const getMatriculaInmobiliaria = (predio) => {
+  if (!predio) return 'Sin información';
+  
+  // Primero intentar campo directo
+  if (predio.matricula_inmobiliaria && predio.matricula_inmobiliaria.trim()) {
+    return predio.matricula_inmobiliaria;
+  }
+  
+  // Luego buscar en r2_registros
+  if (predio.r2_registros && Array.isArray(predio.r2_registros) && predio.r2_registros.length > 0) {
+    const matriculaR2 = predio.r2_registros[0]?.matricula_inmobiliaria;
+    if (matriculaR2 && matriculaR2.trim()) {
+      return matriculaR2;
+    }
+  }
+  
+  return 'Sin información';
+};
+
 export default function MutacionesResoluciones() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('nueva');
@@ -193,7 +214,8 @@ export default function MutacionesResoluciones() {
     avaluo_nuevo: 0,
     valor_autoestimado: 0,
     motivo_solicitud: '',
-    observaciones: ''
+    observaciones: '',
+    perito_avaluador: '' // Nombre del perito avaluador (solo para autoestimación)
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
   const [searchResultsM4, setSearchResultsM4] = useState([]);
@@ -2596,6 +2618,10 @@ export default function MutacionesResoluciones() {
       toast.error('Debe ingresar el motivo de la solicitud de revisión');
       return;
     }
+    if (m4Data.subtipo === 'autoestimacion' && !m4Data.perito_avaluador) {
+      toast.error('Debe ingresar el nombre del perito avaluador');
+      return;
+    }
 
     setGenerando(true);
     try {
@@ -2619,7 +2645,8 @@ export default function MutacionesResoluciones() {
         avaluo_nuevo: m4Data.avaluo_nuevo,
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
         motivo_solicitud: m4Data.motivo_solicitud,
-        observaciones: m4Data.observaciones
+        observaciones: m4Data.observaciones,
+        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -2664,7 +2691,8 @@ export default function MutacionesResoluciones() {
       avaluo_nuevo: 0,
       valor_autoestimado: 0,
       motivo_solicitud: '',
-      observaciones: ''
+      observaciones: '',
+      perito_avaluador: ''
     });
     setSearchPredioM4('');
     setSearchResultsM4([]);
@@ -2841,14 +2869,27 @@ export default function MutacionesResoluciones() {
 
   // Construir código predial de 30 dígitos para M5
   const construirCodigoPredialM5 = () => {
-    return `${codigoMunicipioM5}${codigoManualM5.zona}${codigoManualM5.sector}${codigoManualM5.comuna}${codigoManualM5.barrio}${codigoManualM5.manzana_vereda}${codigoManualM5.terreno}${codigoManualM5.condicion}${codigoManualM5.edificio}${codigoManualM5.piso}${codigoManualM5.unidad}`;
+    // Aplicar padding al construir el código completo
+    const zona = (codigoManualM5.zona || '').padStart(2, '0');
+    const sector = (codigoManualM5.sector || '').padStart(2, '0');
+    const comuna = (codigoManualM5.comuna || '').padStart(2, '0');
+    const barrio = (codigoManualM5.barrio || '').padStart(2, '0');
+    const manzana = (codigoManualM5.manzana_vereda || '').padStart(4, '0');
+    const terreno = (codigoManualM5.terreno || '').padStart(4, '0');
+    const condicion = (codigoManualM5.condicion || '').padStart(1, '0');
+    const edificio = (codigoManualM5.edificio || '').padStart(2, '0');
+    const piso = (codigoManualM5.piso || '').padStart(2, '0');
+    const unidad = (codigoManualM5.unidad || '').padStart(4, '0');
+    return `${codigoMunicipioM5}${zona}${sector}${comuna}${barrio}${manzana}${terreno}${condicion}${edificio}${piso}${unidad}`;
   };
 
   // Manejar cambios en campos del código M5
   const handleCodigoChangeM5 = (campo, valor, maxLength) => {
+    // Solo permitir números
     const soloNumeros = valor.replace(/[^0-9]/g, '');
+    // Limitar al máximo de dígitos
     const valorFinal = soloNumeros.slice(0, maxLength);
-    setCodigoManualM5(prev => ({ ...prev, [campo]: valorFinal.padStart(maxLength, '0') }));
+    setCodigoManualM5(prev => ({ ...prev, [campo]: valorFinal }));
   };
 
   // Calcular áreas totales M5
@@ -3840,7 +3881,7 @@ export default function MutacionesResoluciones() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Matrícula</span>
-                        <span className="font-medium">{m4Data.predio.matricula_inmobiliaria || 'N/A'}</span>
+                        <span className="font-medium">{getMatriculaInmobiliaria(m4Data.predio)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Destino</span>
@@ -3897,6 +3938,21 @@ export default function MutacionesResoluciones() {
                 onChange={(e) => setM4Data(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
                 data-testid="m4-motivo-input"
               />
+            </div>
+          )}
+
+          {/* Perito Avaluador (solo para autoestimación) */}
+          {m4Data.subtipo === 'autoestimacion' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Perito Avaluador *</label>
+              <Input
+                type="text"
+                placeholder="Ingrese el nombre completo del perito avaluador"
+                value={m4Data.perito_avaluador}
+                onChange={(e) => setM4Data(prev => ({ ...prev, perito_avaluador: e.target.value }))}
+                data-testid="m4-perito-avaluador-input"
+              />
+              <p className="text-xs text-slate-500 mt-1">Este nombre aparecerá en la resolución como el profesional que realizó el análisis del avalúo</p>
             </div>
           )}
 
@@ -4149,7 +4205,7 @@ export default function MutacionesResoluciones() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Matrícula</span>
-                        <span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span>
+                        <span className="font-medium">{getMatriculaInmobiliaria(predio)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Avalúo</span>
@@ -4273,7 +4329,7 @@ export default function MutacionesResoluciones() {
                         {m5Data.predio.codigo_homologado && <p className="text-xs text-emerald-600 mt-1">Homologado: {m5Data.predio.codigo_homologado}</p>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{getMatriculaInmobiliaria(predio)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
@@ -5034,7 +5090,7 @@ export default function MutacionesResoluciones() {
                     Construida: {Number(predio.area_construida).toLocaleString()} m² | 
                     Avalúo: ${Number(predio.avaluo).toLocaleString()}
                   </p>
-                  <p className="text-xs text-slate-500">Matrícula: {predio.matricula_inmobiliaria || 'N/A'}</p>
+                  <p className="text-xs text-slate-500">Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -5341,7 +5397,7 @@ export default function MutacionesResoluciones() {
                         </div>
                         <div className="text-right text-xs text-slate-500">
                           <p>Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
-                          <p>Matrícula: {predio.matricula_inmobiliaria || 'N/A'}</p>
+                          <p>Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                         </div>
                       </div>
                     </div>
@@ -5450,7 +5506,7 @@ export default function MutacionesResoluciones() {
                           </div>
                           <div>
                             <p className="text-slate-500">Matrícula:</p>
-                            <p>{m2Data.predio_resultante.matricula_inmobiliaria || 'N/A'}</p>
+                            <p>{m2Data.predio_resultante.matricula_inmobiliaria || 'Sin información'}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Dirección:</p>
@@ -5539,7 +5595,7 @@ export default function MutacionesResoluciones() {
                     <div className="bg-amber-50 p-3 rounded-lg mb-3">
                       <p className="text-xs text-amber-700 font-medium mb-1">Datos del predio matriz (se conservan):</p>
                       <p className="font-mono text-xs">{m2Data.predio_resultante.codigo_predial}</p>
-                      <p className="text-xs text-slate-600">Matrícula: {m2Data.predio_resultante.matricula_inmobiliaria || 'N/A'}</p>
+                      <p className="text-xs text-slate-600">Matrícula: {m2Data.predio_resultante.matricula_inmobiliaria || 'Sin información'}</p>
                     </div>
 
                     {/* Formulario para editar datos ajustados */}
@@ -5826,7 +5882,7 @@ export default function MutacionesResoluciones() {
                     </div>
                     <p className="text-xs text-slate-600">{predio.direccion || 'Sin dirección'}</p>
                     <p className="text-xs text-slate-500 mt-1">
-                      NPN: {predio.npn || 'N/A'} | Matrícula: {predio.matricula_inmobiliaria || 'N/A'}
+                      NPN: {predio.npn || 'N/A'} | Matrícula: {getMatriculaInmobiliaria(predio)}
                     </p>
                     <p className="text-xs text-slate-500">
                       Área: {Number(predio.area_terreno || 0).toLocaleString()} m² | 
@@ -6095,8 +6151,13 @@ export default function MutacionesResoluciones() {
                         variant="outline" 
                         size="sm"
                         onClick={() => {
+                          // Normalizar pdf_path
+                          let pdfUrl = res.pdf_path;
+                          if (pdfUrl.startsWith('/resoluciones/') && !pdfUrl.startsWith('/api/')) {
+                            pdfUrl = pdfUrl.replace('/resoluciones/', '/api/resoluciones/descargar/');
+                          }
                           setPdfViewerData({
-                            url: `${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`,
+                            url: `${process.env.REACT_APP_BACKEND_URL}${pdfUrl}`,
                             title: `Resolución ${res.numero_resolucion}`,
                             fileName: `Resolucion_${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
                             resolucionId: res.id,
@@ -6487,7 +6548,7 @@ export default function MutacionesResoluciones() {
                           <p className="font-bold text-lg mt-2">{m1Data.predio.codigo_predial_nacional}</p>
                           <p className="text-sm text-slate-600">{m1Data.predio.direccion}</p>
                           <p className="text-xs text-slate-500 mt-1">
-                            Matrícula: {m1Data.predio.matricula_inmobiliaria || 'N/A'} | 
+                            Matrícula: {getMatriculaInmobiliaria(m1Data.predio)} | 
                             Área: {m1Data.predio.area_terreno || 0} m²
                           </p>
                         </div>

@@ -1598,7 +1598,12 @@ export default function PetitionDetail() {
                       size="sm"
                       className="text-emerald-700 border-emerald-300 hover:bg-emerald-100"
                       onClick={() => {
-                        window.open(res.pdf_path, '_blank');
+                        // Normalizar pdf_path
+                        let pdfUrl = res.pdf_path;
+                        if (pdfUrl.startsWith('/resoluciones/') && !pdfUrl.startsWith('/api/')) {
+                          pdfUrl = pdfUrl.replace('/resoluciones/', '/api/resoluciones/descargar/');
+                        }
+                        window.open(`${process.env.REACT_APP_BACKEND_URL}${pdfUrl}`, '_blank');
                       }}
                       data-testid={`download-resolucion-${idx}`}
                     >

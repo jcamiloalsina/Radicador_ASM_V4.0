@@ -166,6 +166,32 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - M2 (Desenglobe/Englobe) también muestra: Predios Cancelados, Predios Inscritos
   - Certificados siguen mostrando: Propietarios, Área Terreno, Avalúo
   - Corrección gramatical: "RESOLUCIÓN VÁLIDA" (femenino), "CERTIFICADO VÁLIDO" (masculino)
+- ✅ **M5 Inputs Numéricos No Funcionaban** - CORREGIDO (06/03/2026)
+  - Bug: Los campos del código predial (zona, sector, terreno, etc.) no permitían escribir números
+  - Causa: `padStart` se aplicaba en cada onChange, rellenando inmediatamente con ceros
+  - Fix: `handleCodigoChangeM5` ahora solo limita dígitos, padding se aplica en `construirCodigoPredialM5`
+- ✅ **M4 Autoestimación - Campo Perito Avaluador** - IMPLEMENTADO (06/03/2026)
+  - Nuevo campo "Nombre del Perito Avaluador" visible solo para autoestimación
+  - Campo obligatorio con validación
+  - Nombre aparece en el PDF: "Qué, el perito avaluador {nombre}, profesional especializado..."
+  - Archivos modificados: MutacionesResoluciones.js, server.py, resolucion_m4_pdf_generator.py
+- ✅ **M4 Tablas Completas Estilo M2** - IMPLEMENTADO (06/03/2026)
+  - Tablas de CANCELACIÓN e INSCRIPCIÓN ahora muestran todas las columnas igual que M2
+  - Fila 1: N° PREDIAL, APELLIDOS Y NOMBRES, TIPO DOC., NRO. DOC., DESTINO
+  - Fila 2: CÓD. HOMOLOGADO, DIRECCIÓN, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL
+  - Fila 3: MATRÍCULA INMOBILIARIA
+- ✅ **PDF No Se Puede Descargar Desde Historial** - CORREGIDO (06/03/2026)
+  - Problema: `pdf_path` guardado como `/resoluciones/{filename}` pero endpoint es `/api/resoluciones/descargar/{filename}`
+  - Fix Backend: Todos los `pdf_path` ahora usan la ruta correcta del API
+  - Fix Frontend: Predios.js, ConfiguracionResoluciones.js, MutacionesResoluciones.js y PetitionDetail.js normalizan URLs antiguas automáticamente
+  - Las resoluciones antiguas con rutas incorrectas ahora funcionan gracias a la normalización en el frontend
+- ✅ **Página de Verificación QR Mejorada** - CORREGIDO (06/03/2026)
+  - "RESOLUCIÓN VÁLIDO" → "RESOLUCIÓN VÁLIDA" (género femenino correcto)
+  - "Datos del Resolución" → "Datos de la Resolución" (preposición correcta)
+  - Hora de generación ahora se muestra en hora Colombia (UTC-5) en lugar de UTC
+  - Se muestran todos los campos: Propietarios, Área Terreno, Avalúo, Matrícula (para todas las resoluciones)
+  - Campos vacíos muestran texto descriptivo: "Sin dirección registrada", "No registrados"
+  - M1 ahora guarda: tipo RESOLUCION_M1, direccion, matricula_inmobiliaria, propietarios con hora Colombia
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
