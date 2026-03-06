@@ -109,24 +109,18 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 ## Issues Resueltos (Sesión Actual)
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
-  - Causa: `rad.numero || rad` intentaba renderizar el objeto completo cuando `rad.numero` era undefined
-  - Solución: Cambiar a `rad.radicado || rad.numero || typeof rad === 'string' ? rad : ''`
 - ✅ Historial de resoluciones M4 no aparecía en gestión de predios - CORREGIDO
-  - Causa: Usaba `$push: {"historial": ...}` en lugar de `$push: {"historial_resoluciones": ...}`
-  - Solución: Cambiado a usar `historial_resoluciones` como las demás mutaciones
-- ✅ Fecha de resolución con día de mañana - CORREGIDO
-  - Causa: Usaba `datetime.now()` sin zona horaria (servidor UTC) en `resoluciones.py`
-  - Solución: Agregado `ZoneInfo("America/Bogota")` para usar hora de Colombia
+- ✅ Fecha de resolución con día de mañana - CORREGIDO (ZoneInfo America/Bogota)
 - ✅ Correo con resolución M4 no se enviaba - CORREGIDO
-  - Causa: Faltaba la llamada a `send_email()` en `_generar_resolucion_m4_interno`
-  - Solución: Agregada lógica de envío de correo igual que M1/M2/M3
 - ✅ Vista de aprobación de coordinador para M4 vacía - CORREGIDO
-  - Causa: Faltaba sección específica para mostrar datos M4 en `Pendientes.js`
-  - Solución: Agregada sección completa con predio, subtipo, decisión, avalúos, motivo
-- ✅ Información de predio mejorada en formulario M4
-  - Agregada visualización estilo R1 con matrícula, destino, áreas, propietarios
-- M4 formulario renderiza correctamente con ambos subtipos
-- Regresión M1/M2/M3 pasada exitosamente
+- ✅ Información de predio mejorada en formulario M4 (estilo R1)
+- ✅ **Vista de predios cancelados/inscritos en Pendientes.js** - MEJORADA
+  - Ahora muestra: código, matrícula, destino, áreas, avalúo, dirección, propietarios, vigencias
+  - Aplica para M1, M2, M3, M4
+- ✅ **PDF no se descargaba al aprobar solicitud** - CORREGIDO
+  - Backend ahora devuelve `pdf_url` y `numero_resolucion` en la respuesta
+  - Frontend abre el PDF en nueva pestaña automáticamente al aprobar
+- ✅ **Historial de solicitudes** - VERIFICADO FUNCIONANDO (31 aprobados, 5 rechazados)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

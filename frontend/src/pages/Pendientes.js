@@ -395,7 +395,7 @@ export default function Pendientes() {
     setProcesandoMutacion(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
+      const response = await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
         accion: accion,
         observaciones: observacionesMutacion || null
       }, {
@@ -409,6 +409,16 @@ export default function Pendientes() {
       };
       
       toast.success(mensajes[accion] || 'Acción completada');
+      
+      // Si fue aprobación y hay PDF, abrir el PDF
+      if (accion === 'aprobar' && response.data.pdf_url) {
+        const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+        window.open(pdfFullUrl, '_blank');
+        if (response.data.numero_resolucion) {
+          toast.info(`Resolución ${response.data.numero_resolucion} generada`);
+        }
+      }
+      
       setShowMutacionModal(false);
       setSelectedMutacion(null);
       setObservacionesMutacion('');
@@ -2062,16 +2072,63 @@ export default function Pendientes() {
                 </div>
               </div>
               
-              {/* Predios Cancelados */}
+              {/* Predios Cancelados - Información completa tipo R1 */}
               {selectedMutacion.predios_cancelados?.length > 0 && (
-                <div className="bg-red-50 p-3 rounded-lg">
-                  <p className="text-xs text-red-600 font-medium mb-2">Predios a Cancelar ({selectedMutacion.predios_cancelados.length})</p>
-                  <div className="space-y-2">
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-xs text-red-600 font-semibold mb-2">📋 Predios a CANCELAR ({selectedMutacion.predios_cancelados.length})</p>
+                  <div className="space-y-3">
                     {selectedMutacion.predios_cancelados.map((predio, idx) => (
-                      <div key={idx} className="bg-white p-2 rounded border border-red-200 text-sm">
-                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
-                        {predio.nombre_propietario && (
-                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                      <div key={idx} className="bg-white p-3 rounded-lg border border-red-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-mono font-bold text-red-700">
+                            {predio.codigo_predial_nacional || predio.codigo_predial || predio.NPN || predio.npn || predio.codigo_homologado || 'Sin código'}
+                          </p>
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Cancelar</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {predio.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
+                          )}
+                          {predio.destino_economico && (
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                          )}
+                          {predio.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {predio.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(predio.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                          {(predio.avaluo || predio.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-medium">${Number(predio.avaluo || predio.avaluo_catastral).toLocaleString()}</span></div>
+                          )}
+                          {predio.direccion && (
+                            <div className="col-span-2"><span className="text-slate-500">Dirección:</span> <span className="font-medium">{predio.direccion}</span></div>
+                          )}
+                        </div>
+                        {/* Propietarios */}
+                        {predio.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-red-100">
+                            <p className="text-xs text-red-600 font-medium mb-1">Propietarios:</p>
+                            {predio.propietarios.slice(0, 3).map((prop, pIdx) => (
+                              <p key={pIdx} className="text-xs text-slate-600">
+                                • {prop.nombre_propietario || prop.nombre} {prop.numero_documento && `(${prop.tipo_documento || 'CC'} ${prop.numero_documento})`}
+                              </p>
+                            ))}
+                            {predio.propietarios.length > 3 && (
+                              <p className="text-xs text-slate-400">y {predio.propietarios.length - 3} más...</p>
+                            )}
+                          </div>
+                        )}
+                        {/* Fechas de inscripción */}
+                        {predio.fechas_inscripcion?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-red-100">
+                            <p className="text-xs text-red-600 font-medium mb-1">Vigencias:</p>
+                            {predio.fechas_inscripcion.map((f, fIdx) => (
+                              <p key={fIdx} className="text-xs text-slate-600">
+                                • Año {f.año}: ${Number(f.avaluo || 0).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -2079,19 +2136,63 @@ export default function Pendientes() {
                 </div>
               )}
               
-              {/* Predios Inscritos */}
+              {/* Predios Inscritos - Información completa tipo R1 */}
               {selectedMutacion.predios_inscritos?.length > 0 && (
-                <div className="bg-emerald-50 p-3 rounded-lg">
-                  <p className="text-xs text-emerald-600 font-medium mb-2">Predios a Inscribir ({selectedMutacion.predios_inscritos.length})</p>
-                  <div className="space-y-2">
+                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                  <p className="text-xs text-emerald-600 font-semibold mb-2">📋 Predios a INSCRIBIR ({selectedMutacion.predios_inscritos.length})</p>
+                  <div className="space-y-3">
                     {selectedMutacion.predios_inscritos.map((predio, idx) => (
-                      <div key={idx} className="bg-white p-2 rounded border border-emerald-200 text-sm">
-                        <p className="font-mono text-slate-700">{predio.codigo_predial_nacional || predio.NPN}</p>
-                        {predio.nombre_propietario && (
-                          <p className="text-xs text-slate-500">{predio.nombre_propietario}</p>
+                      <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-mono font-bold text-emerald-700">
+                            {predio.codigo_predial_nacional || predio.codigo_predial || predio.NPN || predio.npn || predio.codigo_homologado || 'Nuevo predio'}
+                          </p>
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Inscribir</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {predio.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
+                          )}
+                          {predio.destino_economico && (
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                          )}
+                          {predio.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {predio.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(predio.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                          {(predio.avaluo || predio.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-medium">${Number(predio.avaluo || predio.avaluo_catastral).toLocaleString()}</span></div>
+                          )}
+                          {predio.direccion && (
+                            <div className="col-span-2"><span className="text-slate-500">Dirección:</span> <span className="font-medium">{predio.direccion}</span></div>
+                          )}
+                        </div>
+                        {/* Propietarios */}
+                        {predio.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-emerald-100">
+                            <p className="text-xs text-emerald-600 font-medium mb-1">Propietarios:</p>
+                            {predio.propietarios.slice(0, 3).map((prop, pIdx) => (
+                              <p key={pIdx} className="text-xs text-slate-600">
+                                • {prop.nombre_propietario || prop.nombre} {prop.numero_documento && `(${prop.tipo_documento || 'CC'} ${prop.numero_documento})`}
+                              </p>
+                            ))}
+                            {predio.propietarios.length > 3 && (
+                              <p className="text-xs text-slate-400">y {predio.propietarios.length - 3} más...</p>
+                            )}
+                          </div>
                         )}
-                        {predio.area_terreno && (
-                          <p className="text-xs text-slate-500">Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                        {/* Fechas de inscripción */}
+                        {predio.fechas_inscripcion?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-emerald-100">
+                            <p className="text-xs text-emerald-600 font-medium mb-1">Vigencias:</p>
+                            {predio.fechas_inscripcion.map((f, fIdx) => (
+                              <p key={fIdx} className="text-xs text-slate-600">
+                                • Año {f.año}: ${Number(f.avaluo || 0).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}

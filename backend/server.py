@@ -28306,11 +28306,19 @@ async def ejecutar_accion_solicitud(
                 enviar_email=False
             )
         
-        return {
+        # Construir respuesta
+        response = {
             "success": True,
             "nuevo_estado": nuevo_estado,
             "mensaje": f"Acción '{accion}' ejecutada exitosamente"
         }
+        
+        # Agregar información del PDF si fue aprobación
+        if accion == "aprobar" and update_data.get("pdf_url"):
+            response["pdf_url"] = update_data.get("pdf_url")
+            response["numero_resolucion"] = update_data.get("numero_resolucion")
+        
+        return response
         
     except HTTPException:
         raise
