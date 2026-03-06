@@ -128,9 +128,9 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - **Atención Usuario:** atencion@emergent.co / Asm*123*
 
 ## Última Actualización
-- **Fecha**: 06 Marzo 2026
-- **Estado**: M5 COMPLETADO Y VERIFICADO  
-- **Testing**: iteration_63.json - 100% éxito frontend y backend
+- **Fecha**: 07 Marzo 2026
+- **Estado**: DATOS R1/R2 EN PDFs COMPLETADO Y VERIFICADO  
+- **Testing**: iteration_64.json - 100% éxito backend (13/13 tests)
 
 ## Issues Resueltos (Sesión Actual)
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
@@ -199,6 +199,14 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - ✅ **Petición No Se Finaliza al Generar Resolución** - CORREGIDO (06/03/2026)
   - Ahora M1, M2, M3, M4 y M5 actualizan la petición a "completado" al generar resolución
   - Se guarda: status="completado", estado_tramite="Finalizado", resolucion_numero, resolucion_pdf, fecha_finalizacion
+
+- ✅ **Datos R1/R2 para PDFs de Mutaciones** - CORREGIDO (07/03/2026)
+  - Todos los generadores de PDF (M1-M5) ahora obtienen datos de r1_registros y r2_registros
+  - `codigo_homologado` viene de R1 (r1_registros[0].codigo_homologado)
+  - `matricula_inmobiliaria` viene de R2 (r2_registros[0].matricula_inmobiliaria)
+  - Nueva función `obtener_datos_r1_r2()` en server.py centraliza la lógica
+  - Cada generador (M2-M5) tiene `obtener_datos_r1_r2_pdf()` para consistencia
+  - Testing: iteration_64.json - 100% éxito backend (13/13 tests)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
