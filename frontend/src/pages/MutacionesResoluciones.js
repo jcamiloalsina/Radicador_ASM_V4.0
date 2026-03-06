@@ -3868,134 +3868,135 @@ export default function MutacionesResoluciones() {
             <>
               <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                 <p className="text-sm text-emerald-800 mb-3">
-                  <strong>Inscripción de Predio Nuevo:</strong> Ingrese los datos del predio que se inscribirá en el catastro.
+                  <strong>Inscripción de Predio Nuevo:</strong> Debe crear el predio en el módulo de Gestión de Predios y luego seleccionarlo aquí.
                 </p>
                 
-                {/* Datos básicos del nuevo predio */}
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-emerald-600">Código Predial Nacional (a asignar)</Label>
-                    <Input
-                      type="text"
-                      value={m5Data.predio?.codigo_predial_nacional || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { ...prev.predio, codigo_predial_nacional: e.target.value }
-                      }))}
-                      placeholder="540030001000..."
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-xs text-emerald-600">Matrícula Inmobiliaria</Label>
-                    <Input
-                      type="text"
-                      value={m5Data.predio?.matricula_inmobiliaria || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { ...prev.predio, matricula_inmobiliaria: e.target.value }
-                      }))}
-                      placeholder="270-XXXX"
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-xs text-emerald-600">Dirección</Label>
-                    <Input
-                      type="text"
-                      value={m5Data.predio?.direccion || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { ...prev.predio, direccion: e.target.value }
-                      }))}
-                      placeholder="Calle, Carrera, Barrio..."
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-emerald-600">Área Terreno (m²)</Label>
-                      <Input
-                        type="number"
-                        value={m5Data.predio?.area_terreno || ''}
-                        onChange={(e) => setM5Data(prev => ({
-                          ...prev,
-                          predio: { ...prev.predio, area_terreno: parseFloat(e.target.value) || 0 }
-                        }))}
-                        className="mt-1"
-                      />
+                {/* Si no hay predio seleccionado, mostrar opciones */}
+                {!m5Data.predio && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        onClick={() => {
+                          // Abrir Gestión de Predios en nueva pestaña con parámetro para crear
+                          const url = `/predios?crear=true&municipio=${encodeURIComponent(m5Data.municipio || '')}`;
+                          window.open(url, '_blank');
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Crear Predio Nuevo
+                      </Button>
+                      <span className="text-sm text-slate-500 self-center">o busque un predio recién creado:</span>
                     </div>
+                    
+                    {/* Búsqueda de predio recién creado */}
                     <div>
-                      <Label className="text-xs text-emerald-600">Área Construida (m²)</Label>
-                      <Input
-                        type="number"
-                        value={m5Data.predio?.area_construida || ''}
-                        onChange={(e) => setM5Data(prev => ({
-                          ...prev,
-                          predio: { ...prev.predio, area_construida: parseFloat(e.target.value) || 0 }
-                        }))}
-                        className="mt-1"
-                      />
+                      <Label className="text-xs text-emerald-600">Buscar predio por código predial o código homologado</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="text"
+                          value={searchPredioM5}
+                          onChange={(e) => setSearchPredioM5(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && buscarPrediosM5()}
+                          placeholder="Código predial o código homologado..."
+                          className="flex-1"
+                          data-testid="m5-inscripcion-search-input"
+                        />
+                        <Button 
+                          onClick={buscarPrediosM5} 
+                          disabled={searchingPrediosM5}
+                          variant="outline"
+                        >
+                          {searchingPrediosM5 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {/* Resultados de búsqueda */}
+                    {searchResultsM5.length > 0 && (
+                      <div className="border rounded-lg max-h-48 overflow-y-auto">
+                        {searchResultsM5.map((predio, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0"
+                            onClick={() => seleccionarPredioM5(predio)}
+                          >
+                            <p className="font-mono text-sm font-medium text-emerald-700">{predio.codigo_predial_nacional || predio.codigo_homologado || predio.NPN}</p>
+                            <p className="text-xs text-slate-500">{predio.direccion}</p>
+                            {predio.codigo_homologado && (
+                              <p className="text-xs text-emerald-500">Homologado: {predio.codigo_homologado}</p>
+                            )}
+                            {predio.propietarios?.[0] && (
+                              <p className="text-xs text-slate-400">{predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  
-                  <div>
-                    <Label className="text-xs text-emerald-600">Avalúo Catastral ($)</Label>
-                    <Input
-                      type="number"
-                      value={m5Data.predio?.avaluo || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { ...prev.predio, avaluo: parseFloat(e.target.value) || 0 }
-                      }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-xs text-emerald-600">Nombre del Propietario</Label>
-                    <Input
-                      type="text"
-                      value={m5Data.predio?.propietarios?.[0]?.nombre_propietario || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { 
-                          ...prev.predio, 
-                          propietarios: [{ 
-                            ...prev.predio?.propietarios?.[0],
-                            nombre_propietario: e.target.value 
-                          }]
-                        }
-                      }))}
-                      placeholder="Nombre completo"
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label className="text-xs text-emerald-600">Documento del Propietario</Label>
-                    <Input
-                      type="text"
-                      value={m5Data.predio?.propietarios?.[0]?.numero_documento || ''}
-                      onChange={(e) => setM5Data(prev => ({
-                        ...prev,
-                        predio: { 
-                          ...prev.predio, 
-                          propietarios: [{ 
-                            ...prev.predio?.propietarios?.[0],
-                            numero_documento: e.target.value,
-                            tipo_documento: 'CC'
-                          }]
-                        }
-                      }))}
-                      placeholder="Número de documento"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+                )}
+                
+                {/* Si hay predio seleccionado, mostrarlo */}
+                {m5Data.predio && (
+                  <Card className="bg-white border-emerald-300 mt-3">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <Badge className="bg-emerald-600">Predio a Inscribir</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setM5Data(prev => ({ ...prev, predio: null }))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Información completa del predio */}
+                      <div className="bg-emerald-50 rounded-lg p-3 mb-3">
+                        <h4 className="font-bold text-emerald-800">{m5Data.predio.codigo_predial_nacional || m5Data.predio.codigo_homologado || m5Data.predio.NPN}</h4>
+                        <p className="text-sm text-slate-600">{m5Data.predio.direccion || 'Sin dirección'}</p>
+                        {m5Data.predio.codigo_homologado && (
+                          <p className="text-xs text-emerald-600 mt-1">Código Homologado: {m5Data.predio.codigo_homologado}</p>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-slate-50 rounded p-2">
+                          <span className="text-xs text-slate-500 block">Matrícula</span>
+                          <span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 rounded p-2">
+                          <span className="text-xs text-slate-500 block">Destino</span>
+                          <span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 rounded p-2">
+                          <span className="text-xs text-slate-500 block">Área Terreno</span>
+                          <span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span>
+                        </div>
+                        <div className="bg-slate-50 rounded p-2">
+                          <span className="text-xs text-slate-500 block">Área Construida</span>
+                          <span className="font-medium">{(m5Data.predio.area_construida || 0).toLocaleString()} m²</span>
+                        </div>
+                        <div className="bg-slate-50 rounded p-2 col-span-2">
+                          <span className="text-xs text-slate-500 block">Avalúo Catastral</span>
+                          <span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || m5Data.predio.avaluo_catastral || 0).toLocaleString('es-CO')}</span>
+                        </div>
+                      </div>
+                      
+                      {m5Data.predio.propietarios?.length > 0 && (
+                        <div className="mt-3 bg-slate-50 rounded-lg p-2">
+                          <span className="text-xs text-slate-500 block mb-1">Propietario(s)</span>
+                          {m5Data.predio.propietarios.slice(0, 3).map((prop, idx) => (
+                            <div key={idx} className="text-sm">
+                              <span className="font-medium">{prop.nombre_propietario || prop.nombre}</span>
+                              {prop.numero_documento && <span className="text-slate-500 ml-1">({prop.tipo_documento || 'CC'} {prop.numero_documento})</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </>
           )}
