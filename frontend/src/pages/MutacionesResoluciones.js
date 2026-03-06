@@ -92,6 +92,27 @@ const MUNICIPIOS = [
   { codigo: '54800', nombre: 'Teorama' }
 ];
 
+// Helper para obtener matrícula inmobiliaria de un predio
+// Busca primero en el campo directo, luego en r2_registros
+const getMatriculaInmobiliaria = (predio) => {
+  if (!predio) return 'Sin información';
+  
+  // Primero intentar campo directo
+  if (predio.matricula_inmobiliaria && predio.matricula_inmobiliaria.trim()) {
+    return predio.matricula_inmobiliaria;
+  }
+  
+  // Luego buscar en r2_registros
+  if (predio.r2_registros && Array.isArray(predio.r2_registros) && predio.r2_registros.length > 0) {
+    const matriculaR2 = predio.r2_registros[0]?.matricula_inmobiliaria;
+    if (matriculaR2 && matriculaR2.trim()) {
+      return matriculaR2;
+    }
+  }
+  
+  return 'Sin información';
+};
+
 export default function MutacionesResoluciones() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('nueva');
@@ -3860,7 +3881,7 @@ export default function MutacionesResoluciones() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Matrícula</span>
-                        <span className="font-medium">{m4Data.predio.matricula_inmobiliaria || 'Sin información'}</span>
+                        <span className="font-medium">{getMatriculaInmobiliaria(m4Data.predio)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Destino</span>
@@ -4184,7 +4205,7 @@ export default function MutacionesResoluciones() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Matrícula</span>
-                        <span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'Sin información'}</span>
+                        <span className="font-medium">{getMatriculaInmobiliaria(predio)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Avalúo</span>
@@ -4308,7 +4329,7 @@ export default function MutacionesResoluciones() {
                         {m5Data.predio.codigo_homologado && <p className="text-xs text-emerald-600 mt-1">Homologado: {m5Data.predio.codigo_homologado}</p>}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'Sin información'}</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{getMatriculaInmobiliaria(predio)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
@@ -5069,7 +5090,7 @@ export default function MutacionesResoluciones() {
                     Construida: {Number(predio.area_construida).toLocaleString()} m² | 
                     Avalúo: ${Number(predio.avaluo).toLocaleString()}
                   </p>
-                  <p className="text-xs text-slate-500">Matrícula: {predio.matricula_inmobiliaria || 'Sin información'}</p>
+                  <p className="text-xs text-slate-500">Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -5376,7 +5397,7 @@ export default function MutacionesResoluciones() {
                         </div>
                         <div className="text-right text-xs text-slate-500">
                           <p>Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
-                          <p>Matrícula: {predio.matricula_inmobiliaria || 'Sin información'}</p>
+                          <p>Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                         </div>
                       </div>
                     </div>
@@ -5861,7 +5882,7 @@ export default function MutacionesResoluciones() {
                     </div>
                     <p className="text-xs text-slate-600">{predio.direccion || 'Sin dirección'}</p>
                     <p className="text-xs text-slate-500 mt-1">
-                      NPN: {predio.npn || 'N/A'} | Matrícula: {predio.matricula_inmobiliaria || 'Sin información'}
+                      NPN: {predio.npn || 'N/A'} | Matrícula: {getMatriculaInmobiliaria(predio)}
                     </p>
                     <p className="text-xs text-slate-500">
                       Área: {Number(predio.area_terreno || 0).toLocaleString()} m² | 
@@ -6527,7 +6548,7 @@ export default function MutacionesResoluciones() {
                           <p className="font-bold text-lg mt-2">{m1Data.predio.codigo_predial_nacional}</p>
                           <p className="text-sm text-slate-600">{m1Data.predio.direccion}</p>
                           <p className="text-xs text-slate-500 mt-1">
-                            Matrícula: {m1Data.predio.matricula_inmobiliaria || 'Sin información'} | 
+                            Matrícula: {getMatriculaInmobiliaria(m1Data.predio)} | 
                             Área: {m1Data.predio.area_terreno || 0} m²
                           </p>
                         </div>
