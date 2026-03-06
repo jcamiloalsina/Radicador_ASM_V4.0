@@ -3240,11 +3240,12 @@ export default function MutacionesResoluciones() {
                     key={idx}
                     className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm"
                     onClick={() => {
-                      setM4Data(prev => ({ ...prev, radicado: rad.numero || rad }));
+                      setM4Data(prev => ({ ...prev, radicado: rad.radicado || rad.numero || (typeof rad === 'string' ? rad : '') }));
                       setRadicadosDisponiblesM4([]);
                     }}
                   >
-                    {rad.numero || rad}
+                    <div className="font-medium">{rad.radicado || rad.numero || (typeof rad === 'string' ? rad : 'Sin radicado')}</div>
+                    {rad.nombre_completo && <div className="text-xs text-slate-500">{rad.nombre_completo}</div>}
                   </div>
                 ))}
               </div>

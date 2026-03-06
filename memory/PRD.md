@@ -108,7 +108,9 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - **Testing**: iteration_62.json - 100% éxito frontend y backend
 
 ## Issues Resueltos (Sesión Actual)
-- Bug "Objects are not valid as a React child" - NO REPRODUCIBLE (probablemente resuelto en sesión anterior)
+- ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
+  - Causa: `rad.numero || rad` intentaba renderizar el objeto completo cuando `rad.numero` era undefined
+  - Solución: Cambiar a `rad.radicado || rad.numero || typeof rad === 'string' ? rad : ''`
 - M4 formulario renderiza correctamente con ambos subtipos
 - Regresión M1/M2/M3 pasada exitosamente
 
