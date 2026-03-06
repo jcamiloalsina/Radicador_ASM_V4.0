@@ -218,6 +218,33 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosM5, setSearchingPrediosM5] = useState(false);
   const [showMunicipioDropdownM5, setShowMunicipioDropdownM5] = useState(false);
   const [radicadosDisponiblesM5, setRadicadosDisponiblesM5] = useState([]);
+  
+  // Estado para modal de creación de predio nuevo (M5 Inscripción)
+  const [showCrearPredioM5, setShowCrearPredioM5] = useState(false);
+  const [nuevoPredioDatos, setNuevoPredioDatos] = useState({
+    zona: '00',
+    sector: '00',
+    comuna: '00',
+    barrio: '00',
+    manzana_vereda: '0000',
+    terreno: '0001',
+    condicion: '0',
+    edificio: '00',
+    piso: '00',
+    unidad: '0000',
+    // Datos R1
+    matricula_inmobiliaria: '',
+    direccion: '',
+    destino_economico: 'H',
+    area_terreno: '',
+    area_construida: '0',
+    avaluo_catastral: '',
+    propietario_nombre: '',
+    propietario_documento: '',
+    propietario_tipo_doc: 'C'
+  });
+  const [codigoMunicipioM5, setCodigoMunicipioM5] = useState('');
+  const [guardandoPredioM5, setGuardandoPredioM5] = useState(false);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2802,6 +2829,117 @@ export default function MutacionesResoluciones() {
     setRadicadosDisponiblesM5([]);
   };
 
+  // Construir código predial de 30 dígitos para M5
+  const construirCodigoPredialM5 = () => {
+    return `${codigoMunicipioM5}${nuevoPredioDatos.zona}${nuevoPredioDatos.sector}${nuevoPredioDatos.comuna}${nuevoPredioDatos.barrio}${nuevoPredioDatos.manzana_vereda}${nuevoPredioDatos.terreno}${nuevoPredioDatos.condicion}${nuevoPredioDatos.edificio}${nuevoPredioDatos.piso}${nuevoPredioDatos.unidad}`;
+  };
+
+  // Guardar predio nuevo desde M5
+  const guardarPredioNuevoM5 = async () => {
+    // Validaciones básicas
+    if (!m5Data.municipio) {
+      toast.error('Seleccione un municipio primero');
+      return;
+    }
+    if (!nuevoPredioDatos.direccion) {
+      toast.error('La dirección es obligatoria');
+      return;
+    }
+    if (!nuevoPredioDatos.propietario_nombre) {
+      toast.error('El nombre del propietario es obligatorio');
+      return;
+    }
+
+    const codigoCompleto = construirCodigoPredialM5();
+    if (codigoCompleto.length !== 30) {
+      toast.error(`El código predial debe tener 30 dígitos (actual: ${codigoCompleto.length})`);
+      return;
+    }
+
+    setGuardandoPredioM5(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      const predioPayload = {
+        codigo_predial_nacional: codigoCompleto,
+        municipio: m5Data.municipio,
+        matricula_inmobiliaria: nuevoPredioDatos.matricula_inmobiliaria,
+        direccion: nuevoPredioDatos.direccion,
+        destino_economico: nuevoPredioDatos.destino_economico,
+        area_terreno: parseFloat(nuevoPredioDatos.area_terreno) || 0,
+        area_construida: parseFloat(nuevoPredioDatos.area_construida) || 0,
+        avaluo_catastral: parseFloat(nuevoPredioDatos.avaluo_catastral) || 0,
+        propietarios: [{
+          nombre_propietario: nuevoPredioDatos.propietario_nombre,
+          tipo_documento: nuevoPredioDatos.propietario_tipo_doc,
+          numero_documento: nuevoPredioDatos.propietario_documento
+        }],
+        es_predio_nuevo: true,
+        origen: 'M5_inscripcion'
+      };
+
+      const response = await axios.post(`${API}/predios/m5/crear`, predioPayload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.id) {
+        toast.success('Predio creado exitosamente');
+        
+        // Seleccionar el predio recién creado para M5
+        setM5Data(prev => ({
+          ...prev,
+          predio: {
+            id: response.data.id,
+            codigo_predial_nacional: codigoCompleto,
+            codigo_homologado: response.data.codigo_homologado,
+            matricula_inmobiliaria: nuevoPredioDatos.matricula_inmobiliaria,
+            direccion: nuevoPredioDatos.direccion,
+            destino_economico: nuevoPredioDatos.destino_economico,
+            area_terreno: parseFloat(nuevoPredioDatos.area_terreno) || 0,
+            area_construida: parseFloat(nuevoPredioDatos.area_construida) || 0,
+            avaluo: parseFloat(nuevoPredioDatos.avaluo_catastral) || 0,
+            propietarios: [{
+              nombre_propietario: nuevoPredioDatos.propietario_nombre,
+              tipo_documento: nuevoPredioDatos.propietario_tipo_doc,
+              numero_documento: nuevoPredioDatos.propietario_documento
+            }]
+          }
+        }));
+        
+        // Cerrar modal de creación
+        setShowCrearPredioM5(false);
+        
+        // Reset datos del formulario de creación
+        setNuevoPredioDatos({
+          zona: '00',
+          sector: '00',
+          comuna: '00',
+          barrio: '00',
+          manzana_vereda: '0000',
+          terreno: '0001',
+          condicion: '0',
+          edificio: '00',
+          piso: '00',
+          unidad: '0000',
+          matricula_inmobiliaria: '',
+          direccion: '',
+          destino_economico: 'H',
+          area_terreno: '',
+          area_construida: '0',
+          avaluo_catastral: '',
+          propietario_nombre: '',
+          propietario_documento: '',
+          propietario_tipo_doc: 'C'
+        });
+      }
+    } catch (error) {
+      console.error('Error creando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al crear el predio');
+    } finally {
+      setGuardandoPredioM5(false);
+    }
+  };
+
   // Catálogo de destinos económicos
   const DESTINOS_ECONOMICOS = [
     { codigo: 'A', nombre: 'A - Habitacional' },
@@ -3868,7 +4006,7 @@ export default function MutacionesResoluciones() {
             <>
               <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                 <p className="text-sm text-emerald-800 mb-3">
-                  <strong>Inscripción de Predio Nuevo:</strong> Debe crear el predio en el módulo de Gestión de Predios y luego seleccionarlo aquí.
+                  <strong>Inscripción de Predio Nuevo:</strong> Cree el predio o busque uno existente.
                 </p>
                 
                 {/* Si no hay predio seleccionado, mostrar opciones */}
@@ -3877,58 +4015,42 @@ export default function MutacionesResoluciones() {
                     <div className="flex flex-wrap gap-3">
                       <Button
                         onClick={() => {
-                          // Abrir Gestión de Predios en nueva pestaña con parámetro para crear
-                          const url = `/predios?crear=true&municipio=${encodeURIComponent(m5Data.municipio || '')}`;
-                          window.open(url, '_blank');
+                          const mun = MUNICIPIOS.find(m => m.nombre === m5Data.municipio);
+                          if (mun) setCodigoMunicipioM5(mun.codigo);
+                          setShowCrearPredioM5(true);
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700"
+                        disabled={!m5Data.municipio}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Crear Predio Nuevo
                       </Button>
-                      <span className="text-sm text-slate-500 self-center">o busque un predio recién creado:</span>
+                      <span className="text-sm text-slate-500 self-center">o busque un predio existente:</span>
                     </div>
                     
-                    {/* Búsqueda de predio recién creado */}
                     <div>
-                      <Label className="text-xs text-emerald-600">Buscar predio por código predial o código homologado</Label>
+                      <Label className="text-xs text-emerald-600">Buscar predio</Label>
                       <div className="flex gap-2 mt-1">
                         <Input
                           type="text"
                           value={searchPredioM5}
                           onChange={(e) => setSearchPredioM5(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && buscarPrediosM5()}
-                          placeholder="Código predial o código homologado..."
+                          placeholder="Código predial..."
                           className="flex-1"
-                          data-testid="m5-inscripcion-search-input"
                         />
-                        <Button 
-                          onClick={buscarPrediosM5} 
-                          disabled={searchingPrediosM5}
-                          variant="outline"
-                        >
+                        <Button onClick={buscarPrediosM5} disabled={searchingPrediosM5} variant="outline">
                           {searchingPrediosM5 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                         </Button>
                       </div>
                     </div>
                     
-                    {/* Resultados de búsqueda */}
                     {searchResultsM5.length > 0 && (
                       <div className="border rounded-lg max-h-48 overflow-y-auto">
                         {searchResultsM5.map((predio, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0"
-                            onClick={() => seleccionarPredioM5(predio)}
-                          >
-                            <p className="font-mono text-sm font-medium text-emerald-700">{predio.codigo_predial_nacional || predio.codigo_homologado || predio.NPN}</p>
+                          <div key={idx} className="p-3 hover:bg-emerald-50 cursor-pointer border-b" onClick={() => seleccionarPredioM5(predio)}>
+                            <p className="font-mono text-sm font-medium text-emerald-700">{predio.codigo_predial_nacional || predio.codigo_homologado}</p>
                             <p className="text-xs text-slate-500">{predio.direccion}</p>
-                            {predio.codigo_homologado && (
-                              <p className="text-xs text-emerald-500">Homologado: {predio.codigo_homologado}</p>
-                            )}
-                            {predio.propietarios?.[0] && (
-                              <p className="text-xs text-slate-400">{predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre}</p>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -3936,68 +4058,164 @@ export default function MutacionesResoluciones() {
                   </div>
                 )}
                 
-                {/* Si hay predio seleccionado, mostrarlo */}
                 {m5Data.predio && (
                   <Card className="bg-white border-emerald-300 mt-3">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <Badge className="bg-emerald-600">Predio a Inscribir</Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setM5Data(prev => ({ ...prev, predio: null }))}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setM5Data(prev => ({ ...prev, predio: null }))}>
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
-                      
-                      {/* Información completa del predio */}
                       <div className="bg-emerald-50 rounded-lg p-3 mb-3">
-                        <h4 className="font-bold text-emerald-800">{m5Data.predio.codigo_predial_nacional || m5Data.predio.codigo_homologado || m5Data.predio.NPN}</h4>
-                        <p className="text-sm text-slate-600">{m5Data.predio.direccion || 'Sin dirección'}</p>
-                        {m5Data.predio.codigo_homologado && (
-                          <p className="text-xs text-emerald-600 mt-1">Código Homologado: {m5Data.predio.codigo_homologado}</p>
-                        )}
+                        <h4 className="font-bold text-emerald-800">{m5Data.predio.codigo_predial_nacional || m5Data.predio.codigo_homologado}</h4>
+                        <p className="text-sm text-slate-600">{m5Data.predio.direccion}</p>
+                        {m5Data.predio.codigo_homologado && <p className="text-xs text-emerald-600 mt-1">Homologado: {m5Data.predio.codigo_homologado}</p>}
                       </div>
-                      
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="bg-slate-50 rounded p-2">
-                          <span className="text-xs text-slate-500 block">Matrícula</span>
-                          <span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span>
-                        </div>
-                        <div className="bg-slate-50 rounded p-2">
-                          <span className="text-xs text-slate-500 block">Destino</span>
-                          <span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span>
-                        </div>
-                        <div className="bg-slate-50 rounded p-2">
-                          <span className="text-xs text-slate-500 block">Área Terreno</span>
-                          <span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span>
-                        </div>
-                        <div className="bg-slate-50 rounded p-2">
-                          <span className="text-xs text-slate-500 block">Área Construida</span>
-                          <span className="font-medium">{(m5Data.predio.area_construida || 0).toLocaleString()} m²</span>
-                        </div>
-                        <div className="bg-slate-50 rounded p-2 col-span-2">
-                          <span className="text-xs text-slate-500 block">Avalúo Catastral</span>
-                          <span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || m5Data.predio.avaluo_catastral || 0).toLocaleString('es-CO')}</span>
-                        </div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
                       </div>
-                      
-                      {m5Data.predio.propietarios?.length > 0 && (
+                      {m5Data.predio.propietarios?.[0] && (
                         <div className="mt-3 bg-slate-50 rounded-lg p-2">
-                          <span className="text-xs text-slate-500 block mb-1">Propietario(s)</span>
-                          {m5Data.predio.propietarios.slice(0, 3).map((prop, idx) => (
-                            <div key={idx} className="text-sm">
-                              <span className="font-medium">{prop.nombre_propietario || prop.nombre}</span>
-                              {prop.numero_documento && <span className="text-slate-500 ml-1">({prop.tipo_documento || 'CC'} {prop.numero_documento})</span>}
-                            </div>
-                          ))}
+                          <span className="text-xs text-slate-500 block">Propietario</span>
+                          <span className="font-medium">{m5Data.predio.propietarios[0].nombre_propietario}</span>
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 )}
               </div>
+              
+              {/* Modal de Creación de Predio */}
+              <Dialog open={showCrearPredioM5} onOpenChange={setShowCrearPredioM5}>
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Crear Predio Nuevo - {m5Data.municipio}</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    {/* Código Predial Nacional */}
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                      <h4 className="font-semibold text-blue-800 mb-3">Código Predial Nacional (30 dígitos)</h4>
+                      <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
+                        <span className="text-blue-600 font-bold">{codigoMunicipioM5}</span>
+                        <span className="text-emerald-600">{nuevoPredioDatos.zona}</span>
+                        <span className="text-amber-600">{nuevoPredioDatos.sector}</span>
+                        <span className="text-purple-600">{nuevoPredioDatos.comuna}</span>
+                        <span className="text-pink-600">{nuevoPredioDatos.barrio}</span>
+                        <span className="text-cyan-600">{nuevoPredioDatos.manzana_vereda}</span>
+                        <span className="text-red-600 font-bold">{nuevoPredioDatos.terreno}</span>
+                        <span className="text-orange-600">{nuevoPredioDatos.condicion}</span>
+                        <span className="text-slate-500">{nuevoPredioDatos.edificio}{nuevoPredioDatos.piso}{nuevoPredioDatos.unidad}</span>
+                        <span className="text-xs text-slate-500 ml-2">({construirCodigoPredialM5().length}/30)</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-5 gap-2 mb-3">
+                        <div className="bg-blue-100 p-2 rounded">
+                          <Label className="text-xs text-blue-700">Municipio</Label>
+                          <Input value={codigoMunicipioM5} disabled className="font-mono bg-blue-50 text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Zona</Label>
+                          <Input value={nuevoPredioDatos.zona} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, zona: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Sector</Label>
+                          <Input value={nuevoPredioDatos.sector} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, sector: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Comuna</Label>
+                          <Input value={nuevoPredioDatos.comuna} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, comuna: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Barrio</Label>
+                          <Input value={nuevoPredioDatos.barrio} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, barrio: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        <div>
+                          <Label className="text-xs">Manzana</Label>
+                          <Input value={nuevoPredioDatos.manzana_vereda} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, manzana_vereda: e.target.value.padStart(4,'0').slice(-4)}))} maxLength={4} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Terreno</Label>
+                          <Input value={nuevoPredioDatos.terreno} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, terreno: e.target.value.padStart(4,'0').slice(-4)}))} maxLength={4} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Cond.</Label>
+                          <Input value={nuevoPredioDatos.condicion} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, condicion: e.target.value.slice(-1)||'0'}))} maxLength={1} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Edificio</Label>
+                          <Input value={nuevoPredioDatos.edificio} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, edificio: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Piso+Unidad</Label>
+                          <Input value={nuevoPredioDatos.piso + nuevoPredioDatos.unidad} onChange={(e) => {
+                            const val = e.target.value.padStart(6,'0').slice(-6);
+                            setNuevoPredioDatos(prev => ({...prev, piso: val.slice(0,2), unidad: val.slice(2)}));
+                          }} maxLength={6} className="font-mono text-center" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Datos R1 */}
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                      <h4 className="font-semibold text-emerald-800 mb-3">Datos del Predio</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label className="text-xs">Matrícula</Label><Input value={nuevoPredioDatos.matricula_inmobiliaria} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, matricula_inmobiliaria: e.target.value}))} placeholder="270-XXXXX" /></div>
+                        <div>
+                          <Label className="text-xs">Destino *</Label>
+                          <Select value={nuevoPredioDatos.destino_economico} onValueChange={(v) => setNuevoPredioDatos(prev => ({...prev, destino_economico: v}))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="H">H - Habitacional</SelectItem>
+                              <SelectItem value="C">C - Comercial</SelectItem>
+                              <SelectItem value="I">I - Industrial</SelectItem>
+                              <SelectItem value="A">A - Agropecuario</SelectItem>
+                              <SelectItem value="L">L - Lote</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2"><Label className="text-xs">Dirección *</Label><Input value={nuevoPredioDatos.direccion} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, direccion: e.target.value}))} placeholder="Dirección del predio" /></div>
+                        <div><Label className="text-xs">Área Terreno (m²) *</Label><Input type="number" value={nuevoPredioDatos.area_terreno} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, area_terreno: e.target.value}))} /></div>
+                        <div><Label className="text-xs">Área Construida (m²)</Label><Input type="number" value={nuevoPredioDatos.area_construida} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, area_construida: e.target.value}))} /></div>
+                        <div className="col-span-2"><Label className="text-xs">Avalúo Catastral ($) *</Label><Input type="number" value={nuevoPredioDatos.avaluo_catastral} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, avaluo_catastral: e.target.value}))} /></div>
+                      </div>
+                    </div>
+                    
+                    {/* Propietario */}
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                      <h4 className="font-semibold text-amber-800 mb-3">Propietario</h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2"><Label className="text-xs">Nombre *</Label><Input value={nuevoPredioDatos.propietario_nombre} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, propietario_nombre: e.target.value}))} placeholder="Nombre completo" /></div>
+                        <div>
+                          <Label className="text-xs">Tipo Doc</Label>
+                          <Select value={nuevoPredioDatos.propietario_tipo_doc} onValueChange={(v) => setNuevoPredioDatos(prev => ({...prev, propietario_tipo_doc: v}))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="C">CC</SelectItem>
+                              <SelectItem value="N">NIT</SelectItem>
+                              <SelectItem value="E">CE</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-3"><Label className="text-xs">Documento</Label><Input value={nuevoPredioDatos.propietario_documento} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, propietario_documento: e.target.value}))} placeholder="Número" /></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <DialogFooter className="mt-4">
+                    <Button variant="outline" onClick={() => setShowCrearPredioM5(false)}>Cancelar</Button>
+                    <Button onClick={guardarPredioNuevoM5} disabled={guardandoPredioM5} className="bg-emerald-600 hover:bg-emerald-700">
+                      {guardandoPredioM5 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-2" />Crear y Seleccionar</>}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </>
           )}
 

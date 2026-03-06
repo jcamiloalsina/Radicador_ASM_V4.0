@@ -1,0 +1,92 @@
+{
+  "summary": "M5 Module Testing Complete - Both Cancelación and Inscripción flows verified. M5 card visible and enabled on Mutaciones page. Dialog opens with two subtipo options. For 'Inscripción de Predio Nuevo', the embedded modal opens DIRECTLY within the M5 form (not redirect) after selecting municipio. The 'Crear Predio Nuevo' modal has all required fields. Backend endpoint POST /api/predios/m5/crear works correctly. After successful creation, modal closes and predio is auto-selected in M5 form.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/server.py (lines 12700-12850: POST /api/predios/m5/crear endpoint)",
+    "/app/frontend/src/pages/MutacionesResoluciones.js (lines 2838-2941: guardarPredioNuevoM5, lines 4093-4218: Dialog)"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: M5 card visible with 'Mutación Quinta' title and 'Cancelación o inscripción de predio' description",
+    "VERIFIED: M5 card is ENABLED (not grayed out like M6)",
+    "VERIFIED: M5 dialog shows two options: 'Cancelación de Predio' and 'Inscripción de Predio Nuevo'",
+    "VERIFIED: When 'Inscripción' selected, '+ Crear Predio Nuevo' button appears after municipio selection",
+    "VERIFIED: Clicking '+ Crear Predio Nuevo' opens EMBEDDED modal (not redirect) with title 'Crear Predio Nuevo - {municipio}'",
+    "VERIFIED: Modal has 'Código Predial Nacional (30 dígitos)' section with municipio code (54344 for Hacarí)",
+    "VERIFIED: Code builder has fields: Zona, Sector, Comuna, Barrio, Manzana, Terreno, Cond., Edificio, Piso+Unidad",
+    "VERIFIED: 'Datos del Predio' section with: Matrícula, Destino, Dirección*, Área Terreno*, Área Construida, Avalúo Catastral*",
+    "VERIFIED: 'Propietario' section with: Nombre*, Tipo Doc, Documento",
+    "VERIFIED: Backend POST /api/predios/m5/crear returns {id, codigo_predial_nacional, codigo_homologado, numero_predio}",
+    "VERIFIED: After creation, modal closes and 'Predio a Inscribir' badge appears with predio selected",
+    "VERIFIED: Toast 'Predio creado exitosamente' shown on success",
+    "VERIFIED: 'Cancelación de Predio' flow has: Buscar Predio a Cancelar, doble inscripción checkbox, Vigencia desde la cual se cancela"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (POST /api/predios/m5/crear endpoint tested and working)",
+    "frontend": "100% (All M5 UI elements verified)"
+  },
+  "test_credentials": {
+    "admin": {
+      "email": "catastro@asomunicipios.gov.co",
+      "password": "Asm*123*",
+      "role": "Administrador"
+    }
+  },
+  "seed_data_creation": "Test predios created via API and UI for validation (codigo contains TEST in name)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "M5 module fully tested and working. Supports two subtipos: 'cancelacion' (search and select existing predio to cancel) and 'inscripcion' (create new predio via embedded modal or search existing). The embedded modal for predio creation opens within M5 form (not redirect) and auto-selects created predio.",
+  "tests_performed": {
+    "frontend_ui_tests": {
+      "login": "PASS - Admin credentials work",
+      "navigate_to_mutaciones": "PASS - '/dashboard/mutaciones-resoluciones' loads correctly",
+      "m5_card_visible": "PASS - Shows 'M5' badge and 'Mutación Quinta' title",
+      "m5_card_enabled": "PASS - Not grayed out (M6 shows 'Próximamente' as disabled)",
+      "m5_dialog_opens": "PASS - Click opens dialog without error",
+      "m5_subtipo_cancelacion": "PASS - 'Cancelación de Predio' option works",
+      "m5_subtipo_inscripcion": "PASS - 'Inscripción de Predio Nuevo' option works",
+      "m5_municipio_dropdown": "PASS - Shows all 12 municipalities (tested Hacarí, Sardinata)",
+      "m5_crear_predio_button": "PASS - Green '+ Crear Predio Nuevo' button appears after municipio selection",
+      "m5_embedded_modal": "PASS - Modal opens WITHIN M5 form (not redirect)",
+      "m5_modal_codigo_section": "PASS - '30 dígitos' code builder with municipio prefix",
+      "m5_modal_datos_predio": "PASS - Matrícula, Destino, Dirección, Área fields present",
+      "m5_modal_propietario": "PASS - Nombre, Tipo Doc, Documento fields present",
+      "m5_modal_crear_button": "PASS - 'Crear y Seleccionar' button present",
+      "m5_modal_cancel_button": "PASS - 'Cancelar' button present",
+      "m5_predio_creation": "PASS - Predio created successfully via modal",
+      "m5_auto_selection": "PASS - Created predio auto-selected with 'Predio a Inscribir' badge",
+      "m5_toast_success": "PASS - Toast 'Predio creado exitosamente' shown"
+    },
+    "backend_api_tests": {
+      "POST /api/predios/m5/crear": "PASS - Returns {id, codigo_predial_nacional, codigo_homologado, numero_predio, message}"
+    },
+    "cancelacion_flow_tests": {
+      "cancelacion_option": "PASS - Form shows correct fields for cancellation",
+      "vigencia_cancelacion": "PASS - 'Vigencia desde la cual se cancela' dropdown present",
+      "buscar_predio_cancelar": "PASS - Search field for finding predio to cancel",
+      "doble_inscripcion": "PASS - Checkbox '¿Es cancelación por doble inscripción?' present",
+      "no_crear_button": "PASS - 'Crear Predio Nuevo' button NOT shown in Cancelación (correct)"
+    }
+  },
+  "features_verified": [
+    "1. M5 card visible on Mutaciones y Resoluciones page",
+    "2. M5 dialog shows two subtipos: Cancelación and Inscripción",
+    "3. Inscripción: '+ Crear Predio Nuevo' button appears after municipio selection",
+    "4. Embedded modal opens WITHIN M5 form (NOT redirect to another page)",
+    "5. Modal shows 30-digit código predial nacional builder",
+    "6. Modal has Dirección, Área Terreno, Área Construida, Avalúo fields",
+    "7. Modal has Propietario section (nombre, tipo doc, documento)",
+    "8. Backend POST /api/predios/m5/crear creates property correctly",
+    "9. After successful creation, modal closes and predio is auto-selected",
+    "10. Cancelación flow has predio search and doble inscripción option"
+  ]
+}

@@ -1047,7 +1047,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1185,7 +1185,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1251,7 +1251,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1289,7 +1289,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1342,7 +1342,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1381,7 +1381,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1411,7 +1411,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1444,7 +1444,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11597,7 +11597,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m4-workflow.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -12697,6 +12697,157 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
     }, exclude_user=current_user['id'])
     
     return {"message": "Predio eliminado exitosamente"}
+
+
+# ===== ENDPOINT SIMPLIFICADO PARA CREAR PREDIOS DESDE M5 =====
+
+class PredioM5Create(BaseModel):
+    """Modelo simplificado para crear predios desde M5 - Inscripción"""
+    codigo_predial_nacional: str  # Código completo de 30 dígitos
+    municipio: str  # Nombre del municipio
+    matricula_inmobiliaria: Optional[str] = None
+    direccion: str
+    destino_economico: str = "H"
+    area_terreno: float = 0
+    area_construida: float = 0
+    avaluo_catastral: float = 0
+    propietarios: List[dict]  # Lista de propietarios
+    es_predio_nuevo: bool = True
+    origen: Optional[str] = "M5_inscripcion"
+
+@api_router.post("/predios/m5/crear")
+async def crear_predio_m5(
+    predio_data: PredioM5Create,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un predio nuevo de forma simplificada desde el modal de M5.
+    Este endpoint usa un formato plano más simple que el endpoint principal.
+    """
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso para crear predios")
+    
+    # Validar código predial de 30 dígitos
+    if len(predio_data.codigo_predial_nacional) != 30:
+        raise HTTPException(status_code=400, detail=f"El código predial debe tener 30 dígitos, recibido: {len(predio_data.codigo_predial_nacional)}")
+    
+    # Extraer partes del código predial
+    codigo = predio_data.codigo_predial_nacional
+    prefijo_municipio = codigo[:5]
+    
+    # Obtener información del municipio desde el código
+    municipio_info = MUNICIPIOS_POR_CODIGO.get(prefijo_municipio)
+    if not municipio_info:
+        # Intentar buscar por nombre del municipio
+        divipola = MUNICIPIOS_DIVIPOLA.get(predio_data.municipio)
+        if not divipola:
+            raise HTTPException(status_code=400, detail=f"Municipio no válido: {predio_data.municipio}")
+        municipio_nombre = predio_data.municipio
+    else:
+        municipio_nombre = municipio_info.get("nombre", predio_data.municipio)
+    
+    # Verificar que el código no existe
+    existing = await db.predios.find_one({"codigo_predial_nacional": codigo, "deleted": {"$ne": True}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
+    
+    # Generar código homologado
+    codigo_homologado = await asignar_codigo_homologado(municipio_nombre, None)
+    if not codigo_homologado:
+        codigo_homologado, _ = await generate_codigo_homologado(municipio_nombre)
+    
+    # Obtener siguiente número de predio
+    last_predio = await db.predios.find_one(
+        {"municipio": municipio_nombre, "deleted": {"$ne": True}},
+        sort=[("numero_predio", -1)]
+    )
+    if last_predio:
+        num_predio = last_predio.get("numero_predio", 0)
+        if isinstance(num_predio, str):
+            try:
+                num_predio = int(num_predio)
+            except (ValueError, TypeError):
+                num_predio = 0
+        numero_predio = num_predio + 1
+    else:
+        numero_predio = 1
+    
+    # Extraer partes del código para la estructura del predio
+    zona = codigo[5:7]
+    sector = codigo[7:9]
+    comuna = codigo[9:11]
+    barrio = codigo[11:13]
+    manzana_vereda = codigo[13:17]
+    terreno = codigo[17:21]
+    condicion = codigo[21:22]
+    edificio = codigo[22:24]
+    piso = codigo[24:26]
+    unidad = codigo[26:30]
+    
+    # Obtener datos del primer propietario
+    prop_principal = predio_data.propietarios[0] if predio_data.propietarios else {}
+    
+    # Crear el predio
+    predio = {
+        "id": str(uuid.uuid4()),
+        "municipio": municipio_nombre,
+        "numero_predio": numero_predio,
+        "codigo_predial_nacional": codigo,
+        "codigo_homologado": codigo_homologado,
+        "zona": zona,
+        "sector": sector,
+        "comuna": comuna,
+        "barrio": barrio,
+        "manzana_vereda": manzana_vereda,
+        "terreno": terreno,
+        "terreno_num": int(terreno) if terreno.isdigit() else 1,
+        "condicion_predio": condicion + "000",  # Padding para compatibilidad
+        "predio_horizontal": edificio + piso + unidad,
+        
+        # Datos R1
+        "tipo_registro": 1,
+        "nombre_propietario": prop_principal.get("nombre_propietario", ""),
+        "tipo_documento": prop_principal.get("tipo_documento", "C"),
+        "numero_documento": prop_principal.get("numero_documento", ""),
+        "estado_civil": prop_principal.get("estado_civil", ""),
+        "direccion": predio_data.direccion,
+        "destino_economico": predio_data.destino_economico,
+        "area_terreno": predio_data.area_terreno,
+        "area_construida": predio_data.area_construida,
+        "avaluo": predio_data.avaluo_catastral,
+        "matricula_inmobiliaria": predio_data.matricula_inmobiliaria,
+        
+        # Lista completa de propietarios
+        "propietarios": predio_data.propietarios,
+        
+        # Metadata
+        "vigencia": datetime.now().year,
+        "es_predio_nuevo": True,
+        "origen": predio_data.origen or "M5_inscripcion",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": current_user["id"],
+        "created_by_name": current_user["full_name"],
+        "deleted": False,
+        "historial": [{
+            "accion": "Predio creado desde M5 - Inscripción",
+            "usuario": current_user["full_name"],
+            "usuario_id": current_user["id"],
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }]
+    }
+    
+    await db.predios.insert_one(predio)
+    
+    # Eliminar _id antes de retornar
+    predio.pop("_id", None)
+    
+    return {
+        "id": predio["id"],
+        "codigo_predial_nacional": predio["codigo_predial_nacional"],
+        "codigo_homologado": predio["codigo_homologado"],
+        "numero_predio": predio["numero_predio"],
+        "message": "Predio creado exitosamente"
+    }
 
 
 # ===== FLUJO DE TRABAJO PARA PREDIOS NUEVOS (CONSERVACIÓN) =====
