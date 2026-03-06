@@ -2841,14 +2841,27 @@ export default function MutacionesResoluciones() {
 
   // Construir código predial de 30 dígitos para M5
   const construirCodigoPredialM5 = () => {
-    return `${codigoMunicipioM5}${codigoManualM5.zona}${codigoManualM5.sector}${codigoManualM5.comuna}${codigoManualM5.barrio}${codigoManualM5.manzana_vereda}${codigoManualM5.terreno}${codigoManualM5.condicion}${codigoManualM5.edificio}${codigoManualM5.piso}${codigoManualM5.unidad}`;
+    // Aplicar padding al construir el código completo
+    const zona = (codigoManualM5.zona || '').padStart(2, '0');
+    const sector = (codigoManualM5.sector || '').padStart(2, '0');
+    const comuna = (codigoManualM5.comuna || '').padStart(2, '0');
+    const barrio = (codigoManualM5.barrio || '').padStart(2, '0');
+    const manzana = (codigoManualM5.manzana_vereda || '').padStart(4, '0');
+    const terreno = (codigoManualM5.terreno || '').padStart(4, '0');
+    const condicion = (codigoManualM5.condicion || '').padStart(1, '0');
+    const edificio = (codigoManualM5.edificio || '').padStart(2, '0');
+    const piso = (codigoManualM5.piso || '').padStart(2, '0');
+    const unidad = (codigoManualM5.unidad || '').padStart(4, '0');
+    return `${codigoMunicipioM5}${zona}${sector}${comuna}${barrio}${manzana}${terreno}${condicion}${edificio}${piso}${unidad}`;
   };
 
   // Manejar cambios en campos del código M5
   const handleCodigoChangeM5 = (campo, valor, maxLength) => {
+    // Solo permitir números
     const soloNumeros = valor.replace(/[^0-9]/g, '');
+    // Limitar al máximo de dígitos
     const valorFinal = soloNumeros.slice(0, maxLength);
-    setCodigoManualM5(prev => ({ ...prev, [campo]: valorFinal.padStart(maxLength, '0') }));
+    setCodigoManualM5(prev => ({ ...prev, [campo]: valorFinal }));
   };
 
   // Calcular áreas totales M5

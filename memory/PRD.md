@@ -166,6 +166,10 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - M2 (Desenglobe/Englobe) también muestra: Predios Cancelados, Predios Inscritos
   - Certificados siguen mostrando: Propietarios, Área Terreno, Avalúo
   - Corrección gramatical: "RESOLUCIÓN VÁLIDA" (femenino), "CERTIFICADO VÁLIDO" (masculino)
+- ✅ **M5 Inputs Numéricos No Funcionaban** - CORREGIDO (06/03/2026)
+  - Bug: Los campos del código predial (zona, sector, terreno, etc.) no permitían escribir números
+  - Causa: `padStart` se aplicaba en cada onChange, rellenando inmediatamente con ceros
+  - Fix: `handleCodigoChangeM5` ahora solo limita dígitos, padding se aplica en `construirCodigoPredialM5`
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
