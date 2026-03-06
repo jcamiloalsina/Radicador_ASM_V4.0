@@ -56,9 +56,9 @@ const TIPOS_MUTACION = {
   M5: { 
     codigo: 'M5', 
     nombre: 'Mutación Quinta', 
-    descripcion: 'Inscripción o eliminación de predio',
+    descripcion: 'Cancelación o inscripción de predio',
     color: 'bg-red-100 text-red-800',
-    enabled: false
+    enabled: true
   },
   M6: { 
     codigo: 'M6', 
@@ -200,6 +200,24 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosM4, setSearchingPrediosM4] = useState(false);
   const [showMunicipioDropdownM4, setShowMunicipioDropdownM4] = useState(false);
   const [radicadosDisponiblesM4, setRadicadosDisponiblesM4] = useState([]);
+
+  // Estado para M5 - Cancelación / Inscripción de predio
+  const [m5Data, setM5Data] = useState({
+    subtipo: '', // 'cancelacion' o 'inscripcion'
+    municipio: '',
+    radicado: '',
+    predio: null, // predio existente a cancelar O datos del nuevo predio a inscribir
+    vigencia: new Date().getFullYear(),
+    motivo_solicitud: '',
+    es_doble_inscripcion: false,
+    codigo_predio_duplicado: '',
+    observaciones: ''
+  });
+  const [searchPredioM5, setSearchPredioM5] = useState('');
+  const [searchResultsM5, setSearchResultsM5] = useState([]);
+  const [searchingPrediosM5, setSearchingPrediosM5] = useState(false);
+  const [showMunicipioDropdownM5, setShowMunicipioDropdownM5] = useState(false);
+  const [radicadosDisponiblesM5, setRadicadosDisponiblesM5] = useState([]);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2616,6 +2634,174 @@ export default function MutacionesResoluciones() {
     setRadicadosDisponiblesM4([]);
   };
 
+  // ===== FUNCIONES PARA M5 - CANCELACIÓN / INSCRIPCIÓN =====
+  
+  // Buscar radicados disponibles para M5
+  const buscarRadicadosM5 = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesM5([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setRadicadosDisponiblesM5(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados M5:', error);
+    }
+  };
+
+  // Buscar predios para M5 (cancelación)
+  const buscarPrediosM5 = async () => {
+    if (!m5Data.municipio) {
+      toast.warning('Seleccione un municipio primero');
+      return;
+    }
+    if (searchPredioM5.length < 3) {
+      toast.warning('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosM5(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === m5Data.municipio)?.codigo;
+      
+      const response = await axios.get(`${API}/predios/buscar`, {
+        params: { 
+          q: searchPredioM5,
+          municipio: codigoMunicipio,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setSearchResultsM5(response.data.predios || response.data || []);
+    } catch (error) {
+      console.error('Error buscando predios:', error);
+      toast.error('Error al buscar predios');
+    } finally {
+      setSearchingPrediosM5(false);
+    }
+  };
+
+  // Seleccionar predio para M5
+  const seleccionarPredioM5 = (predio) => {
+    setM5Data(prev => ({
+      ...prev,
+      predio: predio
+    }));
+    setSearchResultsM5([]);
+    setSearchPredioM5('');
+  };
+
+  // Generar resolución M5
+  const generarResolucionM5 = async () => {
+    // Validaciones
+    if (!m5Data.subtipo) {
+      toast.error('Debe seleccionar el tipo de solicitud (Cancelación o Inscripción)');
+      return;
+    }
+    if (!m5Data.municipio) {
+      toast.error('Debe seleccionar un municipio');
+      return;
+    }
+    if (!m5Data.radicado) {
+      toast.error('Debe ingresar un número de radicado');
+      return;
+    }
+    if (!m5Data.predio) {
+      toast.error('Debe seleccionar/ingresar los datos del predio');
+      return;
+    }
+    if (!m5Data.vigencia || m5Data.vigencia < 2000) {
+      toast.error('Debe ingresar una vigencia válida');
+      return;
+    }
+    if (m5Data.es_doble_inscripcion && !m5Data.codigo_predio_duplicado) {
+      toast.error('Debe ingresar el código del predio con el que está duplicado');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Extraer solicitante del predio
+      const propietarios = m5Data.predio.propietarios || [];
+      const solicitante = propietarios.length > 0 
+        ? { nombre: propietarios[0].nombre_propietario || propietarios[0].nombre || 'No especificado', documento: propietarios[0].numero_documento || '' }
+        : { nombre: 'No especificado', documento: '' };
+
+      const payload = {
+        tipo: 'M5',
+        subtipo: m5Data.subtipo,
+        municipio: m5Data.municipio,
+        radicado: m5Data.radicado,
+        solicitante: solicitante,
+        motivo_solicitud: m5Data.motivo_solicitud || 'Solicitud de trámite catastral',
+        vigencia_cancelacion: m5Data.subtipo === 'cancelacion' ? m5Data.vigencia : null,
+        vigencia_inscripcion: m5Data.subtipo === 'inscripcion' ? m5Data.vigencia : null,
+        es_doble_inscripcion: m5Data.es_doble_inscripcion,
+        codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
+        predio_m5: m5Data.predio,
+        observaciones: m5Data.observaciones
+      };
+
+      const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.mensaje || 'Solicitud M5 procesada exitosamente');
+        
+        if (response.data.pdf_url) {
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            numero: response.data.numero_resolucion
+          });
+          setShowPdfViewer(true);
+        }
+        
+        // Limpiar formulario
+        resetM5Form();
+        setShowMutacionDialog(false);
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando resolución M5:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario M5
+  const resetM5Form = () => {
+    setM5Data({
+      subtipo: '',
+      municipio: '',
+      radicado: '',
+      predio: null,
+      vigencia: new Date().getFullYear(),
+      motivo_solicitud: '',
+      es_doble_inscripcion: false,
+      codigo_predio_duplicado: '',
+      observaciones: ''
+    });
+    setSearchPredioM5('');
+    setSearchResultsM5([]);
+    setRadicadosDisponiblesM5([]);
+  };
+
   // Catálogo de destinos económicos
   const DESTINOS_ECONOMICOS = [
     { codigo: 'A', nombre: 'A - Habitacional' },
@@ -3411,6 +3597,430 @@ export default function MutacionesResoluciones() {
               value={m4Data.observaciones}
               onChange={(e) => setM4Data(prev => ({ ...prev, observaciones: e.target.value }))}
               data-testid="m4-observaciones-input"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Renderizar formulario M5 - Cancelación / Inscripción de Predio
+  const renderFormularioM5 = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Tipo de M5 */}
+      <div className="grid grid-cols-2 gap-4">
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m5Data.subtipo === 'cancelacion' 
+              ? 'border-red-600 bg-red-50' 
+              : 'border-slate-200 hover:border-red-300'
+          }`}
+          onClick={() => setM5Data(prev => ({ ...prev, subtipo: 'cancelacion', predio: null }))}
+          data-testid="m5-cancelacion-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m5Data.subtipo === 'cancelacion' ? 'border-red-600 bg-red-600' : 'border-slate-300'
+            }`}>
+              {m5Data.subtipo === 'cancelacion' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m5Data.subtipo === 'cancelacion' ? 'text-red-700' : 'text-slate-700'}`}>
+              Cancelación de Predio
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Eliminar un predio del catastro desde una vigencia específica
+          </p>
+        </div>
+        <div 
+          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+            m5Data.subtipo === 'inscripcion' 
+              ? 'border-emerald-600 bg-emerald-50' 
+              : 'border-slate-200 hover:border-emerald-300'
+          }`}
+          onClick={() => setM5Data(prev => ({ ...prev, subtipo: 'inscripcion', predio: null }))}
+          data-testid="m5-inscripcion-option"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              m5Data.subtipo === 'inscripcion' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+            }`}>
+              {m5Data.subtipo === 'inscripcion' && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className={`font-semibold ${m5Data.subtipo === 'inscripcion' ? 'text-emerald-700' : 'text-slate-700'}`}>
+              Inscripción de Predio Nuevo
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 ml-7">
+            Registrar un nuevo predio que no existe en el catastro
+          </p>
+        </div>
+      </div>
+
+      {/* Formulario según subtipo seleccionado */}
+      {m5Data.subtipo && (
+        <>
+          {/* Municipio */}
+          <div className="relative">
+            <Label className="text-sm font-medium">Municipio *</Label>
+            <div
+              className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+              onClick={() => setShowMunicipioDropdownM5(!showMunicipioDropdownM5)}
+              data-testid="m5-municipio-select"
+            >
+              <span className={m5Data.municipio ? 'text-slate-900' : 'text-slate-400'}>
+                {m5Data.municipio || 'Seleccione municipio'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </div>
+            {showMunicipioDropdownM5 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {MUNICIPIOS.map((mun) => (
+                  <div
+                    key={mun.codigo}
+                    className="px-3 py-2 hover:bg-red-50 cursor-pointer text-sm"
+                    onClick={() => {
+                      setM5Data(prev => ({ ...prev, municipio: mun.nombre }));
+                      setShowMunicipioDropdownM5(false);
+                    }}
+                  >
+                    {mun.nombre}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Radicado */}
+          <div className="relative">
+            <Label className="text-sm font-medium">Número de Radicado *</Label>
+            <Input
+              type="text"
+              value={m5Data.radicado}
+              onChange={(e) => {
+                setM5Data(prev => ({ ...prev, radicado: e.target.value }));
+                buscarRadicadosM5(e.target.value);
+              }}
+              placeholder="Buscar radicado..."
+              className="mt-1"
+              data-testid="m5-radicado-input"
+            />
+            {radicadosDisponiblesM5.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {radicadosDisponiblesM5.map((rad, idx) => (
+                  <div
+                    key={idx}
+                    className="px-3 py-2 hover:bg-red-50 cursor-pointer text-sm"
+                    onClick={() => {
+                      setM5Data(prev => ({ ...prev, radicado: rad.radicado || rad.numero || (typeof rad === 'string' ? rad : '') }));
+                      setRadicadosDisponiblesM5([]);
+                    }}
+                  >
+                    <div className="font-medium">{rad.radicado || rad.numero || (typeof rad === 'string' ? rad : 'Sin radicado')}</div>
+                    {rad.nombre_completo && <div className="text-xs text-slate-500">{rad.nombre_completo}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Vigencia */}
+          <div>
+            <Label className="text-sm font-medium">
+              {m5Data.subtipo === 'cancelacion' ? 'Vigencia desde la cual se cancela *' : 'Vigencia de inscripción *'}
+            </Label>
+            <Input
+              type="number"
+              value={m5Data.vigencia}
+              onChange={(e) => setM5Data(prev => ({ ...prev, vigencia: parseInt(e.target.value) || new Date().getFullYear() }))}
+              min="2000"
+              max="2100"
+              className="mt-1"
+              data-testid="m5-vigencia-input"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              {m5Data.subtipo === 'cancelacion' 
+                ? 'El predio se cancelará a partir del 01/01 de este año' 
+                : 'El predio se inscribirá a partir del 01/01 de este año'}
+            </p>
+          </div>
+
+          {/* Sección específica para CANCELACIÓN */}
+          {m5Data.subtipo === 'cancelacion' && (
+            <>
+              {/* Búsqueda de predio a cancelar */}
+              <div>
+                <Label className="text-sm font-medium">Buscar Predio a Cancelar *</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    type="text"
+                    value={searchPredioM5}
+                    onChange={(e) => setSearchPredioM5(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && buscarPrediosM5()}
+                    placeholder="Código predial, NPN o dirección..."
+                    className="flex-1"
+                    data-testid="m5-search-predio-input"
+                  />
+                  <Button 
+                    onClick={buscarPrediosM5} 
+                    disabled={searchingPrediosM5}
+                    data-testid="m5-search-btn"
+                  >
+                    {searchingPrediosM5 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Resultados de búsqueda */}
+              {searchResultsM5.length > 0 && (
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {searchResultsM5.map((predio, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 hover:bg-red-50 cursor-pointer border-b last:border-b-0"
+                      onClick={() => seleccionarPredioM5(predio)}
+                    >
+                      <p className="font-mono text-sm font-medium text-red-700">{predio.codigo_predial_nacional || predio.NPN}</p>
+                      <p className="text-xs text-slate-500">{predio.direccion}</p>
+                      {predio.propietarios?.[0] && (
+                        <p className="text-xs text-slate-400">{predio.propietarios[0].nombre_propietario}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Predio seleccionado para cancelar */}
+              {m5Data.predio && (
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <Badge className="bg-red-600">Predio a Cancelar</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setM5Data(prev => ({ ...prev, predio: null }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 mb-3">
+                      <h4 className="font-bold text-red-800">{m5Data.predio.codigo_predial_nacional || m5Data.predio.NPN}</h4>
+                      <p className="text-sm text-slate-600">{m5Data.predio.direccion || 'Sin dirección'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Matrícula</span>
+                        <span className="font-medium">{m5Data.predio.matricula_inmobiliaria || 'N/A'}</span>
+                      </div>
+                      <div className="bg-white rounded p-2">
+                        <span className="text-xs text-slate-500 block">Avalúo</span>
+                        <span className="font-bold text-red-700">${(m5Data.predio.avaluo || m5Data.predio.avaluo_catastral || 0).toLocaleString('es-CO')}</span>
+                      </div>
+                    </div>
+                    {m5Data.predio.propietarios?.length > 0 && (
+                      <div className="mt-2 bg-white rounded-lg p-2">
+                        <span className="text-xs text-slate-500 block mb-1">Propietario(s)</span>
+                        {m5Data.predio.propietarios.slice(0, 2).map((prop, idx) => (
+                          <div key={idx} className="text-sm">
+                            <span className="font-medium">{prop.nombre_propietario || prop.nombre}</span>
+                            {prop.numero_documento && <span className="text-slate-500 ml-1">({prop.tipo_documento || 'CC'} {prop.numero_documento})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Opción de doble inscripción */}
+              <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="doble-inscripcion"
+                    checked={m5Data.es_doble_inscripcion}
+                    onChange={(e) => setM5Data(prev => ({ ...prev, es_doble_inscripcion: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="doble-inscripcion" className="text-sm font-medium text-amber-800">
+                    ¿Es cancelación por doble inscripción?
+                  </Label>
+                </div>
+                {m5Data.es_doble_inscripcion && (
+                  <div className="mt-2">
+                    <Label className="text-xs text-amber-600">Código del predio con el que está duplicado</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.codigo_predio_duplicado}
+                      onChange={(e) => setM5Data(prev => ({ ...prev, codigo_predio_duplicado: e.target.value }))}
+                      placeholder="540030001000000..."
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Sección específica para INSCRIPCIÓN */}
+          {m5Data.subtipo === 'inscripcion' && (
+            <>
+              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                <p className="text-sm text-emerald-800 mb-3">
+                  <strong>Inscripción de Predio Nuevo:</strong> Ingrese los datos del predio que se inscribirá en el catastro.
+                </p>
+                
+                {/* Datos básicos del nuevo predio */}
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-emerald-600">Código Predial Nacional (a asignar)</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.predio?.codigo_predial_nacional || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { ...prev.predio, codigo_predial_nacional: e.target.value }
+                      }))}
+                      placeholder="540030001000..."
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-xs text-emerald-600">Matrícula Inmobiliaria</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.predio?.matricula_inmobiliaria || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { ...prev.predio, matricula_inmobiliaria: e.target.value }
+                      }))}
+                      placeholder="270-XXXX"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-xs text-emerald-600">Dirección</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.predio?.direccion || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { ...prev.predio, direccion: e.target.value }
+                      }))}
+                      placeholder="Calle, Carrera, Barrio..."
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-emerald-600">Área Terreno (m²)</Label>
+                      <Input
+                        type="number"
+                        value={m5Data.predio?.area_terreno || ''}
+                        onChange={(e) => setM5Data(prev => ({
+                          ...prev,
+                          predio: { ...prev.predio, area_terreno: parseFloat(e.target.value) || 0 }
+                        }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-emerald-600">Área Construida (m²)</Label>
+                      <Input
+                        type="number"
+                        value={m5Data.predio?.area_construida || ''}
+                        onChange={(e) => setM5Data(prev => ({
+                          ...prev,
+                          predio: { ...prev.predio, area_construida: parseFloat(e.target.value) || 0 }
+                        }))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-xs text-emerald-600">Avalúo Catastral ($)</Label>
+                    <Input
+                      type="number"
+                      value={m5Data.predio?.avaluo || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { ...prev.predio, avaluo: parseFloat(e.target.value) || 0 }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-xs text-emerald-600">Nombre del Propietario</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.predio?.propietarios?.[0]?.nombre_propietario || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { 
+                          ...prev.predio, 
+                          propietarios: [{ 
+                            ...prev.predio?.propietarios?.[0],
+                            nombre_propietario: e.target.value 
+                          }]
+                        }
+                      }))}
+                      placeholder="Nombre completo"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label className="text-xs text-emerald-600">Documento del Propietario</Label>
+                    <Input
+                      type="text"
+                      value={m5Data.predio?.propietarios?.[0]?.numero_documento || ''}
+                      onChange={(e) => setM5Data(prev => ({
+                        ...prev,
+                        predio: { 
+                          ...prev.predio, 
+                          propietarios: [{ 
+                            ...prev.predio?.propietarios?.[0],
+                            numero_documento: e.target.value,
+                            tipo_documento: 'CC'
+                          }]
+                        }
+                      }))}
+                      placeholder="Número de documento"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Motivo de la solicitud */}
+          <div>
+            <Label className="text-sm font-medium">Motivo de la Solicitud</Label>
+            <Textarea
+              value={m5Data.motivo_solicitud}
+              onChange={(e) => setM5Data(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
+              placeholder="Describa el motivo de la solicitud..."
+              rows={3}
+              className="mt-1"
+            />
+          </div>
+
+          {/* Observaciones */}
+          <div>
+            <Label className="text-sm font-medium">Observaciones (opcional)</Label>
+            <Textarea
+              value={m5Data.observaciones}
+              onChange={(e) => setM5Data(prev => ({ ...prev, observaciones: e.target.value }))}
+              placeholder="Observaciones adicionales..."
+              rows={2}
+              className="mt-1"
             />
           </div>
         </>
@@ -5056,6 +5666,8 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'M4' && renderFormularioM4()}
           
+          {tipoMutacionSeleccionado?.codigo === 'M5' && renderFormularioM5()}
+          
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               {/* Selección de Municipio - Dropdown personalizado */}
@@ -5397,6 +6009,17 @@ export default function MutacionesResoluciones() {
                 data-testid="m4-generar-btn"
               >
                 {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
+              </Button>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'M5' && m5Data.subtipo && (
+              <Button 
+                onClick={generarResolucionM5} 
+                disabled={generando || !m5Data.radicado || !m5Data.predio}
+                className={m5Data.subtipo === 'cancelacion' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                data-testid="m5-generar-btn"
+              >
+                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
+                  m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (

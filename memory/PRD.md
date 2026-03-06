@@ -7,6 +7,18 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 ### Funcionalidades Completadas (Marzo 2026)
 
+#### Módulo M5 - Cancelación / Inscripción de Predio (NUEVO - 06/03/2026)
+- **Cancelación de Predio**: Eliminar un predio del catastro desde una vigencia específica
+  - Búsqueda de predio existente a cancelar
+  - Vigencia de cancelación configurable
+  - Opción de cancelación por doble inscripción (con código del predio duplicado)
+- **Inscripción de Predio Nuevo**: Registrar un predio que no existe en el catastro
+  - Formulario para ingresar datos del nuevo predio
+  - Código predial, matrícula, dirección, áreas, avalúo, propietario
+- **PDF Generator**: `resolucion_m5_pdf_generator.py` con plantillas completas
+- **Frontend**: Formulario con selector de subtipo, búsqueda/entrada de predio, vigencia
+- **Vista de aprobación**: Sección M5 en Pendientes.js con todos los detalles
+
 #### Módulo M4 - Revisión de Avalúo y Autoestimación (VERIFICADO - 06/03/2026)
 - **Revisión de Avalúo**: Solicitud cuando el propietario considera que el avalúo es excesivo. El avalúo revisado se aplica en la **presente vigencia**.
 - **Autoestimación**: El propietario propone un valor autoestimado. Se aplica en la **vigencia venidera**.

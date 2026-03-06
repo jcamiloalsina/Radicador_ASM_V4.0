@@ -2291,6 +2291,97 @@ export default function Pendientes() {
                 </div>
               )}
               
+              {/* Información específica de M5 - Cancelación / Inscripción de Predio */}
+              {selectedMutacion.tipo === 'M5' && (
+                <div className="space-y-3">
+                  {/* Subtipo */}
+                  <div className={`p-3 rounded-lg border ${
+                    selectedMutacion.subtipo === 'cancelacion' 
+                      ? 'bg-red-50 border-red-200' 
+                      : 'bg-emerald-50 border-emerald-200'
+                  }`}>
+                    <p className={`text-xs font-medium ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-600' : 'text-emerald-600'
+                    }`}>Tipo de Solicitud</p>
+                    <p className={`text-lg font-bold ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-800' : 'text-emerald-800'
+                    }`}>
+                      {selectedMutacion.subtipo === 'cancelacion' ? '✗ CANCELACIÓN DE PREDIO' : '✓ INSCRIPCIÓN DE PREDIO NUEVO'}
+                    </p>
+                    <p className={`text-xs mt-1 ${
+                      selectedMutacion.subtipo === 'cancelacion' ? 'text-red-500' : 'text-emerald-500'
+                    }`}>
+                      {selectedMutacion.subtipo === 'cancelacion' 
+                        ? `Desde vigencia: ${selectedMutacion.vigencia_cancelacion || 'No especificada'}`
+                        : `Desde vigencia: ${selectedMutacion.vigencia_inscripcion || 'No especificada'}`}
+                    </p>
+                  </div>
+                  
+                  {/* Datos del predio */}
+                  {selectedMutacion.predio_m5 && (
+                    <div className={`p-3 rounded-lg border ${
+                      selectedMutacion.subtipo === 'cancelacion' 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-emerald-50 border-emerald-200'
+                    }`}>
+                      <p className={`text-xs font-medium mb-2 ${
+                        selectedMutacion.subtipo === 'cancelacion' ? 'text-red-600' : 'text-emerald-600'
+                      }`}>
+                        {selectedMutacion.subtipo === 'cancelacion' ? 'Predio a Cancelar' : 'Predio a Inscribir'}
+                      </p>
+                      <div className="bg-white p-3 rounded">
+                        <p className={`font-mono font-bold ${
+                          selectedMutacion.subtipo === 'cancelacion' ? 'text-red-700' : 'text-emerald-700'
+                        }`}>
+                          {selectedMutacion.predio_m5.codigo_predial_nacional || selectedMutacion.predio_m5.codigo_predial || selectedMutacion.predio_m5.NPN || 'Por asignar'}
+                        </p>
+                        {selectedMutacion.predio_m5.direccion && (
+                          <p className="text-sm text-slate-600 mt-1">{selectedMutacion.predio_m5.direccion}</p>
+                        )}
+                        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                          {selectedMutacion.predio_m5.matricula_inmobiliaria && (
+                            <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{selectedMutacion.predio_m5.matricula_inmobiliaria}</span></div>
+                          )}
+                          {(selectedMutacion.predio_m5.avaluo || selectedMutacion.predio_m5.avaluo_catastral) && (
+                            <div><span className="text-slate-500">Avalúo:</span> <span className="font-bold">${Number(selectedMutacion.predio_m5.avaluo || selectedMutacion.predio_m5.avaluo_catastral || 0).toLocaleString()}</span></div>
+                          )}
+                          {selectedMutacion.predio_m5.area_terreno && (
+                            <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(selectedMutacion.predio_m5.area_terreno).toLocaleString()} m²</span></div>
+                          )}
+                          {selectedMutacion.predio_m5.area_construida && (
+                            <div><span className="text-slate-500">Área const:</span> <span className="font-medium">{Number(selectedMutacion.predio_m5.area_construida).toLocaleString()} m²</span></div>
+                          )}
+                        </div>
+                        {selectedMutacion.predio_m5.propietarios?.length > 0 && (
+                          <div className="mt-2 pt-2 border-t">
+                            <p className="text-xs text-slate-500">Propietario:</p>
+                            <p className="text-sm font-medium">{selectedMutacion.predio_m5.propietarios[0].nombre_propietario || selectedMutacion.predio_m5.propietarios[0].nombre}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Si es cancelación por doble inscripción */}
+                  {selectedMutacion.subtipo === 'cancelacion' && selectedMutacion.es_doble_inscripcion && (
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium">⚠️ Cancelación por Doble Inscripción</p>
+                      <p className="text-sm text-amber-800 mt-1">
+                        Este predio está duplicado con: <span className="font-mono font-bold">{selectedMutacion.codigo_predio_duplicado}</span>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Motivo */}
+                  {selectedMutacion.motivo_solicitud && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-xs text-slate-500 font-medium">Motivo de la Solicitud</p>
+                      <p className="text-sm text-slate-700 mt-1">{selectedMutacion.motivo_solicitud}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Observaciones */}
               {selectedMutacion.observaciones && (
                 <div className="bg-slate-50 p-3 rounded-lg">
