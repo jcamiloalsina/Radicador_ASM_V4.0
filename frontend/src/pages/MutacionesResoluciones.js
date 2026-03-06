@@ -6130,8 +6130,13 @@ export default function MutacionesResoluciones() {
                         variant="outline" 
                         size="sm"
                         onClick={() => {
+                          // Normalizar pdf_path
+                          let pdfUrl = res.pdf_path;
+                          if (pdfUrl.startsWith('/resoluciones/') && !pdfUrl.startsWith('/api/')) {
+                            pdfUrl = pdfUrl.replace('/resoluciones/', '/api/resoluciones/descargar/');
+                          }
                           setPdfViewerData({
-                            url: `${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`,
+                            url: `${process.env.REACT_APP_BACKEND_URL}${pdfUrl}`,
                             title: `Resolución ${res.numero_resolucion}`,
                             fileName: `Resolucion_${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
                             resolucionId: res.id,

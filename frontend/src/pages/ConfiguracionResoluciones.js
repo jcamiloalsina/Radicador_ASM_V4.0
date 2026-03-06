@@ -582,7 +582,7 @@ export default function ConfiguracionResoluciones() {
                       <td className="px-4 py-3 text-center">
                         {res.pdf_path && (
                           <a
-                            href={`${process.env.REACT_APP_BACKEND_URL}${res.pdf_path}`}
+                            href={`${process.env.REACT_APP_BACKEND_URL}${res.pdf_path.startsWith('/resoluciones/') && !res.pdf_path.startsWith('/api/') ? res.pdf_path.replace('/resoluciones/', '/api/resoluciones/descargar/') : res.pdf_path}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800"

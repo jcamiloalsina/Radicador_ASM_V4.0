@@ -5797,7 +5797,14 @@ export default function Predios() {
                                 variant="default"
                                 size="sm"
                                 className="bg-emerald-600 hover:bg-emerald-700"
-                                onClick={() => window.open(`${BACKEND_URL}${r.pdf_path}`, '_blank')}
+                                onClick={() => {
+                                  // Normalizar pdf_path para asegurar que use el endpoint correcto
+                                  let pdfUrl = r.pdf_path;
+                                  if (pdfUrl.startsWith('/resoluciones/') && !pdfUrl.startsWith('/api/')) {
+                                    pdfUrl = pdfUrl.replace('/resoluciones/', '/api/resoluciones/descargar/');
+                                  }
+                                  window.open(`${BACKEND_URL}${pdfUrl}`, '_blank');
+                                }}
                               >
                                 <Download className="w-4 h-4 mr-1" />
                                 PDF

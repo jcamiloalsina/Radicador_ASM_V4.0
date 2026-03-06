@@ -175,6 +175,16 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Campo obligatorio con validación
   - Nombre aparece en el PDF: "Qué, el perito avaluador {nombre}, profesional especializado..."
   - Archivos modificados: MutacionesResoluciones.js, server.py, resolucion_m4_pdf_generator.py
+- ✅ **M4 Tablas Completas Estilo M2** - IMPLEMENTADO (06/03/2026)
+  - Tablas de CANCELACIÓN e INSCRIPCIÓN ahora muestran todas las columnas igual que M2
+  - Fila 1: N° PREDIAL, APELLIDOS Y NOMBRES, TIPO DOC., NRO. DOC., DESTINO
+  - Fila 2: CÓD. HOMOLOGADO, DIRECCIÓN, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL
+  - Fila 3: MATRÍCULA INMOBILIARIA
+- ✅ **PDF No Se Puede Descargar Desde Historial** - CORREGIDO (06/03/2026)
+  - Problema: `pdf_path` guardado como `/resoluciones/{filename}` pero endpoint es `/api/resoluciones/descargar/{filename}`
+  - Fix Backend: Todos los `pdf_path` ahora usan la ruta correcta del API
+  - Fix Frontend: Predios.js, ConfiguracionResoluciones.js, MutacionesResoluciones.js y PetitionDetail.js normalizan URLs antiguas automáticamente
+  - Las resoluciones antiguas con rutas incorrectas ahora funcionan gracias a la normalización en el frontend
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

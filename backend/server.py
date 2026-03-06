@@ -14134,7 +14134,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "predio_id": cambio.get("predio_id"),
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "codigo_verificacion": codigo_verificacion_res,  # Código QR igual que certificado
             "aprobado_por": aprobador.get("id"),
             "aprobado_por_nombre": aprobador.get("full_name", ""),
@@ -14180,7 +14180,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "estado": "activo",
             "generado_por": aprobador.get("id"),
             "generado_por_nombre": aprobador.get("full_name", ""),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
@@ -14230,7 +14230,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         return {
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "consecutivo": siguiente_numero,
             "tipo_mutacion": "M1",
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
@@ -14392,7 +14392,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "solicitud_id": solicitud.get('id'),
             "predios_cancelados": [p.get('codigo_predial_nacional') for p in predios_cancelados],
             "predios_inscritos": [p.get('codigo_predial_nacional') for p in predios_inscritos],
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
@@ -14442,7 +14442,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "predios_creados": len(predios_inscritos),
             "predios_cancelados": len(predios_cancelados)
         }
@@ -14602,7 +14602,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "solicitud_id": solicitud.get('id'),
             "predio_id": predio_id,
             "codigo_predial": predio.get('codigo_predial_nacional'),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
@@ -14651,7 +14651,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
-            "pdf_path": f"/resoluciones/{filename}"
+            "pdf_path": f"/api/resoluciones/descargar/{filename}"
         }
         
     except Exception as e:
@@ -14794,7 +14794,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "solicitud_id": solicitud.get('id'),
             "predio_id": predio_id,
             "codigo_predial": predio.get('codigo_predial_nacional'),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
@@ -14885,7 +14885,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
-            "pdf_path": f"/resoluciones/{filename}"
+            "pdf_path": f"/api/resoluciones/descargar/{filename}"
         }
         
     except Exception as e:
@@ -15127,7 +15127,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
-            "pdf_path": f"/resoluciones/{filename}"
+            "pdf_path": f"/api/resoluciones/descargar/{filename}"
         }
         
     except Exception as e:
@@ -27777,7 +27777,7 @@ async def generar_resolucion_m3(
             "radicado": request.radicado,
             "predio_id": predio.get("id"),
             "codigo_predial": predio.get("codigo_predial_nacional"),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "avaluo_anterior": request.avaluo_anterior,
             "avaluo_nuevo": request.avaluo_nuevo,
             "destino_anterior": request.destino_anterior,
@@ -29178,7 +29178,7 @@ async def generar_resolucion_manual(
             "predio_id": request.predio_id,
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "codigo_verificacion": codigo_verificacion_res,  # Código QR igual que certificado
             "radicado": request.radicado_peticion,
             "generado_por": current_user.get("id"),
@@ -29207,7 +29207,7 @@ async def generar_resolucion_manual(
             "estado": "activo",
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name", ""),
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
@@ -29230,7 +29230,7 @@ async def generar_resolucion_manual(
             "tipo_mutacion": request.tipo_mutacion,
             "fecha_resolucion": request.fecha_resolucion,
             "radicado": request.radicado_peticion,
-            "pdf_path": f"/resoluciones/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": current_user.get("full_name", ""),
             "fecha_generacion": datetime.now(timezone.utc).isoformat(),
             # Detalles de los cambios
