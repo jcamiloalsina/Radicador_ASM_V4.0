@@ -13,12 +13,18 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Vigencia de cancelación configurable
   - Opción de cancelación por doble inscripción (con código del predio duplicado)
 - **Inscripción de Predio Nuevo**: Registrar un predio que no existe en el catastro
-  - **MODAL EMBEBIDO dentro de M5** (no redirige a otra página) ✅
-  - Código predial nacional de 30 dígitos con constructor visual
-  - Datos del predio: matrícula, destino, dirección, áreas, avalúo
-  - Propietario: nombre, tipo doc, número de documento
+  - **MODAL COMPLETO EMBEBIDO dentro de M5** (IGUAL a Predios.js) ✅
+  - **3 Tabs**: Código Nacional (30 dígitos) | Propietario (R1) | Físico (R2)
+  - **Código Homologado Automático**: Muestra el siguiente disponible o indica que se generará
+  - **Últimos 5 predios en manzana**: Con siguiente terreno sugerido automáticamente
+  - **Verificación de código**: Botón para validar disponibilidad
+  - **Múltiples propietarios**: Con estado civil, tipo documento, número
+  - **Destinos económicos completos**: A-J disponibles
+  - **Zonas de Terreno**: Con subtotal automático → R1
+  - **Construcciones**: Con ID automático (A, B, C...) y subtotal → R1
+  - **Áreas calculadas del R2**: Automáticamente enviadas al R1
   - Al crear predio, se auto-selecciona en el formulario M5
-- **Backend**: Nuevo endpoint simplificado `POST /api/predios/m5/crear`
+- **Backend**: Endpoint simplificado `POST /api/predios/m5/crear`
 - **PDF Generator**: `resolucion_m5_pdf_generator.py` con plantillas completas
 - **Frontend**: Formulario con selector de subtipo, búsqueda/entrada de predio, vigencia
 - **Vista de aprobación**: Sección M5 en Pendientes.js con todos los detalles

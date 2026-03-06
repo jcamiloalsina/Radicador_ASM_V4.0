@@ -221,30 +221,40 @@ export default function MutacionesResoluciones() {
   
   // Estado para modal de creación de predio nuevo (M5 Inscripción)
   const [showCrearPredioM5, setShowCrearPredioM5] = useState(false);
-  const [nuevoPredioDatos, setNuevoPredioDatos] = useState({
-    zona: '00',
-    sector: '00',
-    comuna: '00',
-    barrio: '00',
-    manzana_vereda: '0000',
-    terreno: '0001',
-    condicion: '0',
-    edificio: '00',
-    piso: '00',
-    unidad: '0000',
-    // Datos R1
-    matricula_inmobiliaria: '',
-    direccion: '',
-    destino_economico: 'H',
-    area_terreno: '',
-    area_construida: '0',
-    avaluo_catastral: '',
-    propietario_nombre: '',
-    propietario_documento: '',
-    propietario_tipo_doc: 'C'
-  });
   const [codigoMunicipioM5, setCodigoMunicipioM5] = useState('');
   const [guardandoPredioM5, setGuardandoPredioM5] = useState(false);
+  const [tabCrearPredioM5, setTabCrearPredioM5] = useState('ubicacion');
+  
+  // Estados para constructor de código predial M5
+  const [codigoManualM5, setCodigoManualM5] = useState({
+    zona: '00', sector: '00', comuna: '00', barrio: '00',
+    manzana_vereda: '0000', terreno: '0001', condicion: '0',
+    edificio: '00', piso: '00', unidad: '0000'
+  });
+  const [estructuraCodigoM5, setEstructuraCodigoM5] = useState(null);
+  const [verificacionCodigoM5, setVerificacionCodigoM5] = useState(null);
+  const [prediosEnManzanaM5, setPrediosEnManzanaM5] = useState([]);
+  const [buscandoPrediosManzanaM5, setBuscandoPrediosManzanaM5] = useState(false);
+  const [siguienteTerrenoSugeridoM5, setSiguienteTerrenoSugeridoM5] = useState('0001');
+  const [siguienteCodigoHomologadoM5, setSiguienteCodigoHomologadoM5] = useState(null);
+  const [ultimaManzanaM5, setUltimaManzanaM5] = useState(null);
+  const [terrenoInfoM5, setTerrenoInfoM5] = useState(null);
+  
+  // Estados para datos R1/R2 del nuevo predio M5
+  const [propietariosM5, setPropietariosM5] = useState([{
+    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: 'sin_especificar'
+  }]);
+  const [zonasTermenoM5, setZonasTermenoM5] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  const [construccionesM5, setConstruccionesM5] = useState([{
+    id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+    tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+  }]);
+  const [datosR1M5, setDatosR1M5] = useState({
+    matricula_inmobiliaria: '',
+    direccion: '',
+    destino_economico: 'A',
+    avaluo: ''
+  });
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2831,7 +2841,222 @@ export default function MutacionesResoluciones() {
 
   // Construir código predial de 30 dígitos para M5
   const construirCodigoPredialM5 = () => {
-    return `${codigoMunicipioM5}${nuevoPredioDatos.zona}${nuevoPredioDatos.sector}${nuevoPredioDatos.comuna}${nuevoPredioDatos.barrio}${nuevoPredioDatos.manzana_vereda}${nuevoPredioDatos.terreno}${nuevoPredioDatos.condicion}${nuevoPredioDatos.edificio}${nuevoPredioDatos.piso}${nuevoPredioDatos.unidad}`;
+    return `${codigoMunicipioM5}${codigoManualM5.zona}${codigoManualM5.sector}${codigoManualM5.comuna}${codigoManualM5.barrio}${codigoManualM5.manzana_vereda}${codigoManualM5.terreno}${codigoManualM5.condicion}${codigoManualM5.edificio}${codigoManualM5.piso}${codigoManualM5.unidad}`;
+  };
+
+  // Manejar cambios en campos del código M5
+  const handleCodigoChangeM5 = (campo, valor, maxLength) => {
+    const soloNumeros = valor.replace(/[^0-9]/g, '');
+    const valorFinal = soloNumeros.slice(0, maxLength);
+    setCodigoManualM5(prev => ({ ...prev, [campo]: valorFinal.padStart(maxLength, '0') }));
+  };
+
+  // Calcular áreas totales M5
+  const calcularAreasTotalesM5 = () => {
+    const areaTerrenoTotal = zonasTermenoM5.reduce((sum, z) => sum + (parseFloat(z.area_terreno) || 0), 0);
+    const areaConstruidaTotal = construccionesM5.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
+    return { areaTerrenoTotal, areaConstruidaTotal };
+  };
+
+  // Funciones para propietarios M5
+  const agregarPropietarioM5 = () => {
+    setPropietariosM5([...propietariosM5, { nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: 'sin_especificar' }]);
+  };
+  const eliminarPropietarioM5 = (index) => {
+    if (propietariosM5.length > 1) setPropietariosM5(propietariosM5.filter((_, i) => i !== index));
+  };
+  const actualizarPropietarioM5 = (index, campo, valor) => {
+    setPropietariosM5(prev => { const n = [...prev]; n[index] = { ...n[index], [campo]: valor }; return n; });
+  };
+
+  // Funciones para zonas de terreno M5
+  const agregarZonaTerrenoM5 = () => {
+    setZonasTermenoM5([...zonasTermenoM5, { zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  };
+  const eliminarZonaTerrenoM5 = (index) => {
+    if (zonasTermenoM5.length > 1) setZonasTermenoM5(zonasTermenoM5.filter((_, i) => i !== index));
+  };
+  const actualizarZonaTerrenoM5 = (index, campo, valor) => {
+    setZonasTermenoM5(prev => { const n = [...prev]; n[index] = { ...n[index], [campo]: valor }; return n; });
+  };
+
+  // Funciones para construcciones M5
+  const generarIdConstruccionM5 = (index) => {
+    if (index < 26) return String.fromCharCode(65 + index);
+    const firstChar = String.fromCharCode(65 + Math.floor((index - 26) / 26));
+    const secondChar = String.fromCharCode(65 + ((index - 26) % 26));
+    return firstChar + secondChar;
+  };
+  const agregarConstruccionM5 = () => {
+    const nuevoId = generarIdConstruccionM5(construccionesM5.length);
+    setConstruccionesM5([...construccionesM5, { id: nuevoId, piso: '0', habitaciones: '0', banos: '0', locales: '0', tipificacion: '', uso: '', puntaje: '0', area_construida: '0' }]);
+  };
+  const eliminarConstruccionM5 = (index) => {
+    if (construccionesM5.length > 1) {
+      const nuevas = construccionesM5.filter((_, i) => i !== index).map((c, i) => ({ ...c, id: generarIdConstruccionM5(i) }));
+      setConstruccionesM5(nuevas);
+    }
+  };
+  const actualizarConstruccionM5 = (index, campo, valor) => {
+    setConstruccionesM5(prev => { const n = [...prev]; n[index] = { ...n[index], [campo]: valor }; return n; });
+  };
+
+  // Obtener estructura del código según municipio M5
+  const fetchEstructuraCodigoM5 = async () => {
+    if (!m5Data.municipio) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/estructura-codigo/${m5Data.municipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEstructuraCodigoM5(res.data);
+      setCodigoMunicipioM5(res.data.prefijo_fijo || '');
+    } catch (error) {
+      console.log('Error obteniendo estructura de código M5');
+    }
+  };
+
+  // Obtener siguiente código homologado para M5
+  const fetchSiguienteCodigoHomologadoM5 = async () => {
+    if (!m5Data.municipio) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/codigos-homologados/siguiente/${encodeURIComponent(m5Data.municipio)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSiguienteCodigoHomologadoM5(res.data);
+    } catch (error) {
+      console.error('Error obteniendo siguiente código homologado M5:', error);
+      setSiguienteCodigoHomologadoM5(null);
+    }
+  };
+
+  // Obtener última manzana del sector para M5
+  const fetchUltimaManzanaM5 = async () => {
+    if (!m5Data.municipio || !codigoManualM5.zona || !codigoManualM5.sector) return;
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({ zona: codigoManualM5.zona, sector: codigoManualM5.sector });
+      const res = await axios.get(`${API}/predios/ultima-manzana/${m5Data.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUltimaManzanaM5(res.data);
+    } catch (error) {
+      console.log('Error obteniendo última manzana M5');
+      setUltimaManzanaM5(null);
+    }
+  };
+
+  // Obtener predios en manzana para M5
+  const fetchPrediosEnManzanaM5 = async () => {
+    if (!m5Data.municipio || !codigoManualM5.manzana_vereda || codigoManualM5.manzana_vereda === '0000') {
+      setPrediosEnManzanaM5([]);
+      return;
+    }
+    setBuscandoPrediosManzanaM5(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManualM5.zona,
+        sector: codigoManualM5.sector,
+        comuna: codigoManualM5.comuna,
+        barrio: codigoManualM5.barrio,
+        manzana_vereda: codigoManualM5.manzana_vereda,
+        limit: 5
+      });
+      const res = await axios.get(`${API}/predios/por-manzana/${m5Data.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEnManzanaM5(res.data.predios || []);
+      setSiguienteTerrenoSugeridoM5(res.data.siguiente_terreno || '0001');
+    } catch (error) {
+      console.log('Error buscando predios en manzana M5:', error);
+      setPrediosEnManzanaM5([]);
+      setSiguienteTerrenoSugeridoM5('0001');
+    } finally {
+      setBuscandoPrediosManzanaM5(false);
+    }
+  };
+
+  // Sugerir siguiente código disponible para M5
+  const fetchSugerenciaCodigoM5 = async () => {
+    if (!m5Data.municipio || !codigoManualM5.zona || !codigoManualM5.manzana_vereda || codigoManualM5.manzana_vereda === '0000') return;
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        zona: codigoManualM5.zona,
+        sector: codigoManualM5.sector,
+        comuna: codigoManualM5.comuna,
+        barrio: codigoManualM5.barrio,
+        manzana_vereda: codigoManualM5.manzana_vereda
+      });
+      const res = await axios.get(`${API}/predios/sugerir-codigo/${m5Data.municipio}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTerrenoInfoM5(res.data);
+      if (res.data.siguiente_terreno) {
+        setCodigoManualM5(prev => ({ ...prev, terreno: res.data.siguiente_terreno }));
+      }
+    } catch (error) {
+      console.log('Error obteniendo sugerencia de código M5');
+    }
+  };
+
+  // Verificar código completo M5
+  const verificarCodigoCompletoM5 = async () => {
+    const codigoCompleto = construirCodigoPredialM5();
+    if (codigoCompleto.length !== 30) {
+      toast.error('El código debe tener exactamente 30 dígitos');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/verificar-codigo-completo/${codigoCompleto}?municipio=${m5Data.municipio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVerificacionCodigoM5(res.data);
+    } catch (error) {
+      toast.error('Error al verificar código');
+    }
+  };
+
+  // Effects para M5
+  useEffect(() => {
+    if (showCrearPredioM5 && m5Data.municipio) {
+      fetchEstructuraCodigoM5();
+      fetchSiguienteCodigoHomologadoM5();
+    }
+  }, [showCrearPredioM5, m5Data.municipio]);
+
+  useEffect(() => {
+    if (showCrearPredioM5 && m5Data.municipio && codigoManualM5.zona && codigoManualM5.sector) {
+      fetchUltimaManzanaM5();
+    }
+  }, [showCrearPredioM5, m5Data.municipio, codigoManualM5.zona, codigoManualM5.sector]);
+
+  useEffect(() => {
+    if (showCrearPredioM5 && m5Data.municipio && codigoManualM5.manzana_vereda && codigoManualM5.manzana_vereda !== '0000') {
+      const timer = setTimeout(() => {
+        fetchPrediosEnManzanaM5();
+        fetchSugerenciaCodigoM5();
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setPrediosEnManzanaM5([]);
+      setSiguienteTerrenoSugeridoM5('0001');
+    }
+  }, [showCrearPredioM5, m5Data.municipio, codigoManualM5.zona, codigoManualM5.sector, codigoManualM5.comuna, codigoManualM5.barrio, codigoManualM5.manzana_vereda]);
+
+  // Reset formulario crear predio M5
+  const resetCrearPredioM5 = () => {
+    setCodigoManualM5({ zona: '00', sector: '00', comuna: '00', barrio: '00', manzana_vereda: '0000', terreno: '0001', condicion: '0', edificio: '00', piso: '00', unidad: '0000' });
+    setPropietariosM5([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: 'sin_especificar' }]);
+    setZonasTermenoM5([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+    setConstruccionesM5([{ id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0', tipificacion: '', uso: '', puntaje: '0', area_construida: '0' }]);
+    setDatosR1M5({ matricula_inmobiliaria: '', direccion: '', destino_economico: 'A', avaluo: '' });
+    setTabCrearPredioM5('ubicacion');
+    setVerificacionCodigoM5(null);
+    setTerrenoInfoM5(null);
   };
 
   // Guardar predio nuevo desde M5
@@ -2841,11 +3066,11 @@ export default function MutacionesResoluciones() {
       toast.error('Seleccione un municipio primero');
       return;
     }
-    if (!nuevoPredioDatos.direccion) {
+    if (!datosR1M5.direccion) {
       toast.error('La dirección es obligatoria');
       return;
     }
-    if (!nuevoPredioDatos.propietario_nombre) {
+    if (!propietariosM5[0]?.nombre_propietario) {
       toast.error('El nombre del propietario es obligatorio');
       return;
     }
@@ -2856,6 +3081,8 @@ export default function MutacionesResoluciones() {
       return;
     }
 
+    const areas = calcularAreasTotalesM5();
+
     setGuardandoPredioM5(true);
     try {
       const token = localStorage.getItem('token');
@@ -2863,17 +3090,16 @@ export default function MutacionesResoluciones() {
       const predioPayload = {
         codigo_predial_nacional: codigoCompleto,
         municipio: m5Data.municipio,
-        matricula_inmobiliaria: nuevoPredioDatos.matricula_inmobiliaria,
-        direccion: nuevoPredioDatos.direccion,
-        destino_economico: nuevoPredioDatos.destino_economico,
-        area_terreno: parseFloat(nuevoPredioDatos.area_terreno) || 0,
-        area_construida: parseFloat(nuevoPredioDatos.area_construida) || 0,
-        avaluo_catastral: parseFloat(nuevoPredioDatos.avaluo_catastral) || 0,
-        propietarios: [{
-          nombre_propietario: nuevoPredioDatos.propietario_nombre,
-          tipo_documento: nuevoPredioDatos.propietario_tipo_doc,
-          numero_documento: nuevoPredioDatos.propietario_documento
-        }],
+        matricula_inmobiliaria: datosR1M5.matricula_inmobiliaria,
+        direccion: datosR1M5.direccion,
+        destino_economico: datosR1M5.destino_economico,
+        area_terreno: areas.areaTerrenoTotal,
+        area_construida: areas.areaConstruidaTotal,
+        avaluo_catastral: parseFloat(datosR1M5.avaluo) || 0,
+        propietarios: propietariosM5.filter(p => p.nombre_propietario),
+        zonas_terreno: zonasTermenoM5.filter(z => parseFloat(z.area_terreno) > 0),
+        construcciones: construccionesM5.filter(c => parseFloat(c.area_construida) > 0),
+        codigo_homologado_asignado: siguienteCodigoHomologadoM5?.codigo || null,
         es_predio_nuevo: true,
         origen: 'M5_inscripcion'
       };
@@ -2892,45 +3118,19 @@ export default function MutacionesResoluciones() {
             id: response.data.id,
             codigo_predial_nacional: codigoCompleto,
             codigo_homologado: response.data.codigo_homologado,
-            matricula_inmobiliaria: nuevoPredioDatos.matricula_inmobiliaria,
-            direccion: nuevoPredioDatos.direccion,
-            destino_economico: nuevoPredioDatos.destino_economico,
-            area_terreno: parseFloat(nuevoPredioDatos.area_terreno) || 0,
-            area_construida: parseFloat(nuevoPredioDatos.area_construida) || 0,
-            avaluo: parseFloat(nuevoPredioDatos.avaluo_catastral) || 0,
-            propietarios: [{
-              nombre_propietario: nuevoPredioDatos.propietario_nombre,
-              tipo_documento: nuevoPredioDatos.propietario_tipo_doc,
-              numero_documento: nuevoPredioDatos.propietario_documento
-            }]
+            matricula_inmobiliaria: datosR1M5.matricula_inmobiliaria,
+            direccion: datosR1M5.direccion,
+            destino_economico: datosR1M5.destino_economico,
+            area_terreno: areas.areaTerrenoTotal,
+            area_construida: areas.areaConstruidaTotal,
+            avaluo: parseFloat(datosR1M5.avaluo) || 0,
+            propietarios: propietariosM5.filter(p => p.nombre_propietario)
           }
         }));
         
         // Cerrar modal de creación
         setShowCrearPredioM5(false);
-        
-        // Reset datos del formulario de creación
-        setNuevoPredioDatos({
-          zona: '00',
-          sector: '00',
-          comuna: '00',
-          barrio: '00',
-          manzana_vereda: '0000',
-          terreno: '0001',
-          condicion: '0',
-          edificio: '00',
-          piso: '00',
-          unidad: '0000',
-          matricula_inmobiliaria: '',
-          direccion: '',
-          destino_economico: 'H',
-          area_terreno: '',
-          area_construida: '0',
-          avaluo_catastral: '',
-          propietario_nombre: '',
-          propietario_documento: '',
-          propietario_tipo_doc: 'C'
-        });
+        resetCrearPredioM5();
       }
     } catch (error) {
       console.error('Error creando predio:', error);
@@ -4089,127 +4289,440 @@ export default function MutacionesResoluciones() {
                 )}
               </div>
               
-              {/* Modal de Creación de Predio */}
-              <Dialog open={showCrearPredioM5} onOpenChange={setShowCrearPredioM5}>
-                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+              {/* Modal COMPLETO de Creación de Predio - Igual a Predios.js */}
+              <Dialog open={showCrearPredioM5} onOpenChange={(open) => { setShowCrearPredioM5(open); if (!open) resetCrearPredioM5(); }}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+                  <div className="max-h-[80vh] overflow-y-auto pr-2">
                   <DialogHeader>
-                    <DialogTitle>Crear Predio Nuevo - {m5Data.municipio}</DialogTitle>
+                    <DialogTitle className="text-xl font-outfit">Nuevo Predio - {m5Data.municipio}</DialogTitle>
                   </DialogHeader>
                   
-                  <div className="space-y-4">
-                    {/* Código Predial Nacional */}
-                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                      <h4 className="font-semibold text-blue-800 mb-3">Código Predial Nacional (30 dígitos)</h4>
-                      <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
-                        <span className="text-blue-600 font-bold">{codigoMunicipioM5}</span>
-                        <span className="text-emerald-600">{nuevoPredioDatos.zona}</span>
-                        <span className="text-amber-600">{nuevoPredioDatos.sector}</span>
-                        <span className="text-purple-600">{nuevoPredioDatos.comuna}</span>
-                        <span className="text-pink-600">{nuevoPredioDatos.barrio}</span>
-                        <span className="text-cyan-600">{nuevoPredioDatos.manzana_vereda}</span>
-                        <span className="text-red-600 font-bold">{nuevoPredioDatos.terreno}</span>
-                        <span className="text-orange-600">{nuevoPredioDatos.condicion}</span>
-                        <span className="text-slate-500">{nuevoPredioDatos.edificio}{nuevoPredioDatos.piso}{nuevoPredioDatos.unidad}</span>
-                        <span className="text-xs text-slate-500 ml-2">({construirCodigoPredialM5().length}/30)</span>
+                  {/* Información del Código Homologado */}
+                  {siguienteCodigoHomologadoM5 && (
+                    <div className={`p-3 rounded-lg border ${siguienteCodigoHomologadoM5.codigo ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className={`w-5 h-5 ${siguienteCodigoHomologadoM5.codigo ? 'text-emerald-600' : 'text-amber-600'}`} />
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">Código Homologado Asignado</p>
+                            {siguienteCodigoHomologadoM5.codigo ? (
+                              <p className="text-lg font-bold text-emerald-700 font-mono">{siguienteCodigoHomologadoM5.codigo}</p>
+                            ) : (
+                              <p className="text-sm text-amber-700">No hay códigos disponibles - se generará automáticamente</p>
+                            )}
+                          </div>
+                        </div>
+                        {siguienteCodigoHomologadoM5.codigo && (
+                          <Badge className="bg-emerald-100 text-emerald-700">{siguienteCodigoHomologadoM5.disponibles} disponibles</Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Tabs value={tabCrearPredioM5} onValueChange={setTabCrearPredioM5} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="ubicacion">Código Nacional (30 dígitos)</TabsTrigger>
+                      <TabsTrigger value="propietario">Propietario (R1)</TabsTrigger>
+                      <TabsTrigger value="fisico">Físico (R2)</TabsTrigger>
+                    </TabsList>
+                    
+                    {/* =========== TAB 1: CÓDIGO NACIONAL =========== */}
+                    <TabsContent value="ubicacion" className="space-y-4 mt-4">
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                        <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                          <FileText className="w-4 h-4" /> Código Predial Nacional (30 dígitos)
+                        </h4>
+                        
+                        {/* Visualización del código completo */}
+                        <div className="bg-white p-3 rounded border mb-4 font-mono text-lg tracking-wider text-center">
+                          <span className="text-blue-600 font-bold" title="Departamento + Municipio">{codigoMunicipioM5}</span>
+                          <span className="text-emerald-600" title="Zona">{codigoManualM5.zona}</span>
+                          <span className="text-amber-600" title="Sector">{codigoManualM5.sector}</span>
+                          <span className="text-purple-600" title="Comuna">{codigoManualM5.comuna}</span>
+                          <span className="text-pink-600" title="Barrio">{codigoManualM5.barrio}</span>
+                          <span className="text-cyan-600" title="Manzana/Vereda">{codigoManualM5.manzana_vereda}</span>
+                          <span className="text-red-600 font-bold" title="Terreno">{codigoManualM5.terreno}</span>
+                          <span className="text-orange-600" title="Condición">{codigoManualM5.condicion}</span>
+                          <span className="text-slate-500" title="Edificio">{codigoManualM5.edificio}</span>
+                          <span className="text-slate-500" title="Piso">{codigoManualM5.piso}</span>
+                          <span className="text-slate-500" title="Unidad">{codigoManualM5.unidad}</span>
+                          <span className="text-xs text-slate-500 ml-2">({construirCodigoPredialM5().length}/30)</span>
+                        </div>
+
+                        {/* Campos editables - Fila 1: Ubicación geográfica */}
+                        <div className="grid grid-cols-6 gap-2 mb-3">
+                          <div className="bg-blue-100 p-2 rounded">
+                            <Label className="text-xs text-blue-700">Dpto+Mpio (1-5)</Label>
+                            <Input value={codigoMunicipioM5} disabled className="font-mono bg-blue-50 text-blue-800 font-bold text-center" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-emerald-700">Zona (6-7)</Label>
+                            <Input value={codigoManualM5.zona} onChange={(e) => handleCodigoChangeM5('zona', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                            <span className="text-xs text-slate-400">00=Rural, 01=Urbano</span>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-amber-700">Sector (8-9)</Label>
+                            <Input value={codigoManualM5.sector} onChange={(e) => handleCodigoChangeM5('sector', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                            {ultimaManzanaM5 && ultimaManzanaM5.ultima_manzana && (
+                              <div className="mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded text-xs">
+                                <span className="text-amber-700">Última manzana: <strong>{ultimaManzanaM5.ultima_manzana}</strong></span>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs text-purple-700">Comuna (10-11)</Label>
+                            <Input value={codigoManualM5.comuna} onChange={(e) => handleCodigoChangeM5('comuna', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-pink-700">Barrio (12-13)</Label>
+                            <Input value={codigoManualM5.barrio} onChange={(e) => handleCodigoChangeM5('barrio', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-cyan-700">Manzana (14-17)</Label>
+                            <Input value={codigoManualM5.manzana_vereda} onChange={(e) => handleCodigoChangeM5('manzana_vereda', e.target.value, 4)} maxLength={4} className="font-mono text-center" placeholder="0000" />
+                          </div>
+                        </div>
+
+                        {/* Mostrar últimos predios existentes en la manzana */}
+                        {codigoManualM5.manzana_vereda !== '0000' && (
+                          <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs font-medium text-cyan-700 flex items-center gap-1">
+                                <FileText className="w-3 h-3" /> Terrenos existentes en manzana {codigoManualM5.manzana_vereda}
+                              </p>
+                              {buscandoPrediosManzanaM5 && <Loader2 className="w-3 h-3 animate-spin text-cyan-600" />}
+                            </div>
+                            {prediosEnManzanaM5.length > 0 ? (
+                              <div className="space-y-1">
+                                {prediosEnManzanaM5.map((p, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1.5 border border-cyan-100">
+                                    <span className="font-mono font-bold text-cyan-700 w-10">{p.terreno}</span>
+                                    <span className="text-slate-700 truncate flex-1">{p.direccion}</span>
+                                    {p.area_terreno && (
+                                      <span className="text-slate-500 text-[10px] w-16 text-right">{Number(p.area_terreno).toLocaleString()}m²</span>
+                                    )}
+                                    <span className="text-cyan-600 text-[10px] bg-cyan-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                      {p.registros} {p.registros === 1 ? 'reg' : 'regs'}
+                                    </span>
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-200">
+                                  <p className="text-[10px] text-cyan-600">Mostrando últimos {prediosEnManzanaM5.length} terrenos únicos</p>
+                                  <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                    💡 Siguiente: <span className="font-mono font-bold">{siguienteTerrenoSugeridoM5}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            ) : !buscandoPrediosManzanaM5 ? (
+                              <p className="text-xs text-cyan-600">No hay predios registrados en esta manzana</p>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {/* Campos editables - Fila 2: Predio y PH */}
+                        <div className="grid grid-cols-5 gap-2">
+                          <div className="bg-red-50 p-2 rounded border border-red-200">
+                            <Label className="text-xs text-red-700 font-semibold">Terreno (18-21) *</Label>
+                            <Input value={codigoManualM5.terreno} onChange={(e) => handleCodigoChangeM5('terreno', e.target.value, 4)} maxLength={4} className="font-mono font-bold text-red-700 text-center" placeholder="0001" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-orange-700">Condición (22)</Label>
+                            <Input type="number" min="0" max="9" value={codigoManualM5.condicion} onChange={(e) => { const v = e.target.value.slice(0, 1); setCodigoManualM5(prev => ({...prev, condicion: v || '0'})); }} maxLength={1} className="font-mono text-center" placeholder="0" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-600">Edificio (23-24)</Label>
+                            <Input value={codigoManualM5.edificio} onChange={(e) => handleCodigoChangeM5('edificio', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-600">Piso (25-26)</Label>
+                            <Input value={codigoManualM5.piso} onChange={(e) => handleCodigoChangeM5('piso', e.target.value, 2)} maxLength={2} className="font-mono text-center" placeholder="00" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-slate-600">Unidad (27-30)</Label>
+                            <Input value={codigoManualM5.unidad} onChange={(e) => handleCodigoChangeM5('unidad', e.target.value, 4)} maxLength={4} className="font-mono text-center" placeholder="0000" />
+                          </div>
+                        </div>
+
+                        {/* Botón de verificar */}
+                        <div className="mt-4 flex gap-3">
+                          <Button onClick={verificarCodigoCompletoM5} variant="outline" className="flex-1">
+                            <Search className="w-4 h-4 mr-2" /> Verificar Código
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Info del terreno disponible */}
+                      {terrenoInfoM5 && (
+                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+                          <h4 className="font-semibold text-emerald-800 mb-2 flex items-center gap-2">
+                            <MapPin className="w-4 h-4" /> Sugerencia para esta Manzana/Vereda
+                          </h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <span className="text-slate-500">Predios activos:</span>
+                              <p className="font-bold text-emerald-700">{terrenoInfoM5.total_activos}</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Siguiente terreno:</span>
+                              <p className="font-bold text-emerald-700 text-lg">{terrenoInfoM5.siguiente_terreno}</p>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1">
+                              <span className="text-slate-500">Código sugerido:</span>
+                              <p className="font-bold text-slate-800 text-xs font-mono break-all">{terrenoInfoM5.codigo_sugerido}</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Base Gráfica:</span>
+                              <p className={`font-bold ${terrenoInfoM5.tiene_geometria_gdb ? 'text-emerald-700' : 'text-amber-600'}`}>
+                                {terrenoInfoM5.tiene_geometria_gdb ? '✅ Disponible' : '⚠️ No disponible'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Resultado de verificación */}
+                      {verificacionCodigoM5 && (
+                        <div className={`p-4 rounded-lg border ${
+                          verificacionCodigoM5.estado === 'disponible' ? 'bg-emerald-50 border-emerald-300' :
+                          verificacionCodigoM5.estado === 'eliminado' ? 'bg-amber-50 border-amber-300' :
+                          'bg-red-50 border-red-300'
+                        }`}>
+                          <p className={`font-semibold ${
+                            verificacionCodigoM5.estado === 'disponible' ? 'text-emerald-800' :
+                            verificacionCodigoM5.estado === 'eliminado' ? 'text-amber-800' : 'text-red-800'
+                          }`}>
+                            {verificacionCodigoM5.mensaje}
+                          </p>
+                          {verificacionCodigoM5.estado === 'existente' && (
+                            <div className="mt-2 text-sm text-red-700">
+                              <p>Propietario actual: {verificacionCodigoM5.predio?.nombre_propietario}</p>
+                              <p>No puede crear un predio con este código.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    {/* =========== TAB 2: PROPIETARIO (R1) =========== */}
+                    <TabsContent value="propietario" className="space-y-4 mt-4">
+                      {/* Sección de Propietarios - Múltiples */}
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-semibold text-slate-800">Propietarios</h4>
+                        <Button type="button" variant="outline" size="sm" onClick={agregarPropietarioM5} className="text-emerald-700">
+                          <Plus className="w-4 h-4 mr-1" /> Agregar Propietario
+                        </Button>
                       </div>
                       
-                      <div className="grid grid-cols-5 gap-2 mb-3">
-                        <div className="bg-blue-100 p-2 rounded">
-                          <Label className="text-xs text-blue-700">Municipio</Label>
-                          <Input value={codigoMunicipioM5} disabled className="font-mono bg-blue-50 text-center" />
+                      {propietariosM5.map((prop, index) => (
+                        <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm font-medium text-slate-700">Propietario {index + 1}</span>
+                            {propietariosM5.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => eliminarPropietarioM5(index)} className="text-red-600 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nombre Completo *</Label>
+                              <Input value={prop.nombre_propietario || ''} onChange={(e) => actualizarPropietarioM5(index, 'nombre_propietario', e.target.value.toUpperCase())} placeholder="PÉREZ GARCÍA JUAN CARLOS" className="font-mono" />
+                            </div>
+                            <div className="col-span-2">
+                              <Label className="text-xs">Estado Civil</Label>
+                              <RadioGroup value={prop.estado_civil || 'sin_especificar'} onValueChange={(v) => actualizarPropietarioM5(index, 'estado_civil', v)} className="flex flex-wrap gap-2 mt-1">
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="sin_especificar" id={`m5_estado_${index}_sin`} /><Label htmlFor={`m5_estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="soltero" id={`m5_estado_${index}_sol`} /><Label htmlFor={`m5_estado_${index}_sol`} className="text-xs cursor-pointer">Soltero/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="casado_con" id={`m5_estado_${index}_cas`} /><Label htmlFor={`m5_estado_${index}_cas`} className="text-xs cursor-pointer">Casado/a con sociedad</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="union_marital" id={`m5_estado_${index}_um`} /><Label htmlFor={`m5_estado_${index}_um`} className="text-xs cursor-pointer">Unión marital</Label></div>
+                              </RadioGroup>
+                            </div>
+                            <div>
+                              <Label className="text-xs mb-2 block">Tipo Documento *</Label>
+                              <RadioGroup value={prop.tipo_documento} onValueChange={(v) => actualizarPropietarioM5(index, 'tipo_documento', v)} className="flex flex-wrap gap-3">
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m5_tipo_doc_${index}_C`} /><Label htmlFor={`m5_tipo_doc_${index}_C`} className="text-xs cursor-pointer">CC</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="N" id={`m5_tipo_doc_${index}_N`} /><Label htmlFor={`m5_tipo_doc_${index}_N`} className="text-xs cursor-pointer">NIT</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="E" id={`m5_tipo_doc_${index}_E`} /><Label htmlFor={`m5_tipo_doc_${index}_E`} className="text-xs cursor-pointer">CE</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="T" id={`m5_tipo_doc_${index}_T`} /><Label htmlFor={`m5_tipo_doc_${index}_T`} className="text-xs cursor-pointer">TI</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="P" id={`m5_tipo_doc_${index}_P`} /><Label htmlFor={`m5_tipo_doc_${index}_P`} className="text-xs cursor-pointer">Pasaporte</Label></div>
+                              </RadioGroup>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Número Documento *</Label>
+                              <Input value={prop.numero_documento || ''} onChange={(e) => { const valor = e.target.value.replace(/\D/g, '').slice(0, 12); actualizarPropietarioM5(index, 'numero_documento', valor); }} placeholder="Ej: 1091672736" />
+                              {prop.numero_documento && (<p className="text-xs text-emerald-600 mt-1">Formato final: <strong>{prop.numero_documento.padStart(12, '0')}</strong></p>)}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Zona</Label>
-                          <Input value={nuevoPredioDatos.zona} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, zona: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Sector</Label>
-                          <Input value={nuevoPredioDatos.sector} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, sector: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Comuna</Label>
-                          <Input value={nuevoPredioDatos.comuna} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, comuna: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Barrio</Label>
-                          <Input value={nuevoPredioDatos.barrio} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, barrio: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
+                      ))}
+                      
+                      {/* Información general del predio */}
+                      <div className="border-t border-slate-200 pt-4 mt-4">
+                        <h4 className="font-semibold text-slate-800 mb-3">Información del Predio</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2">
+                            <Label>Dirección *</Label>
+                            <Input value={datosR1M5.direccion} onChange={(e) => setDatosR1M5(prev => ({...prev, direccion: e.target.value.toUpperCase()}))} />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="mb-2 block">Destino Económico *</Label>
+                            <RadioGroup value={datosR1M5.destino_economico} onValueChange={(v) => setDatosR1M5(prev => ({...prev, destino_economico: v}))} className="flex flex-wrap gap-3">
+                              {DESTINOS_ECONOMICOS.slice(0, 10).map(d => (
+                                <div key={d.codigo} className="flex items-center space-x-1">
+                                  <RadioGroupItem value={d.codigo} id={`m5_destino_${d.codigo}`} />
+                                  <Label htmlFor={`m5_destino_${d.codigo}`} className="text-xs cursor-pointer">{d.nombre}</Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </div>
+                          <div>
+                            <Label>Matrícula Inmobiliaria</Label>
+                            <Input value={datosR1M5.matricula_inmobiliaria} onChange={(e) => setDatosR1M5(prev => ({...prev, matricula_inmobiliaria: e.target.value}))} placeholder="Ej: 270-8920" />
+                          </div>
+                          <div>
+                            <Label>Avalúo (COP) *</Label>
+                            <Input type="text" placeholder="Ej: 200.000" value={datosR1M5.avaluo} onChange={(e) => setDatosR1M5(prev => ({...prev, avaluo: e.target.value}))} />
+                          </div>
+                          
+                          {/* Áreas calculadas del R2 */}
+                          <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium text-blue-800">Áreas (calculadas del R2)</span>
+                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Automático</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-xs text-blue-700">Área Terreno Total (m²)</Label>
+                                <Input type="number" value={calcularAreasTotalesM5().areaTerrenoTotal.toFixed(2)} readOnly className="bg-blue-100 border-blue-300 text-blue-800 font-medium" />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-blue-700">Área Construida Total (m²)</Label>
+                                <Input type="number" value={calcularAreasTotalesM5().areaConstruidaTotal.toFixed(2)} readOnly className="bg-blue-100 border-blue-300 text-blue-800 font-medium" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-blue-600 mt-2">💡 Estas áreas se calculan sumando las zonas del R2. Modifique en pestaña "Físico (R2)".</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-5 gap-2">
-                        <div>
-                          <Label className="text-xs">Manzana</Label>
-                          <Input value={nuevoPredioDatos.manzana_vereda} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, manzana_vereda: e.target.value.padStart(4,'0').slice(-4)}))} maxLength={4} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Terreno</Label>
-                          <Input value={nuevoPredioDatos.terreno} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, terreno: e.target.value.padStart(4,'0').slice(-4)}))} maxLength={4} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Cond.</Label>
-                          <Input value={nuevoPredioDatos.condicion} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, condicion: e.target.value.slice(-1)||'0'}))} maxLength={1} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Edificio</Label>
-                          <Input value={nuevoPredioDatos.edificio} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, edificio: e.target.value.padStart(2,'0').slice(-2)}))} maxLength={2} className="font-mono text-center" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Piso+Unidad</Label>
-                          <Input value={nuevoPredioDatos.piso + nuevoPredioDatos.unidad} onChange={(e) => {
-                            const val = e.target.value.padStart(6,'0').slice(-6);
-                            setNuevoPredioDatos(prev => ({...prev, piso: val.slice(0,2), unidad: val.slice(2)}));
-                          }} maxLength={6} className="font-mono text-center" />
-                        </div>
-                      </div>
-                    </div>
+                    </TabsContent>
                     
-                    {/* Datos R1 */}
-                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
-                      <h4 className="font-semibold text-emerald-800 mb-3">Datos del Predio</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><Label className="text-xs">Matrícula</Label><Input value={nuevoPredioDatos.matricula_inmobiliaria} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, matricula_inmobiliaria: e.target.value}))} placeholder="270-XXXXX" /></div>
-                        <div>
-                          <Label className="text-xs">Destino *</Label>
-                          <Select value={nuevoPredioDatos.destino_economico} onValueChange={(v) => setNuevoPredioDatos(prev => ({...prev, destino_economico: v}))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="H">H - Habitacional</SelectItem>
-                              <SelectItem value="C">C - Comercial</SelectItem>
-                              <SelectItem value="I">I - Industrial</SelectItem>
-                              <SelectItem value="A">A - Agropecuario</SelectItem>
-                              <SelectItem value="L">L - Lote</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-2"><Label className="text-xs">Dirección *</Label><Input value={nuevoPredioDatos.direccion} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, direccion: e.target.value}))} placeholder="Dirección del predio" /></div>
-                        <div><Label className="text-xs">Área Terreno (m²) *</Label><Input type="number" value={nuevoPredioDatos.area_terreno} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, area_terreno: e.target.value}))} /></div>
-                        <div><Label className="text-xs">Área Construida (m²)</Label><Input type="number" value={nuevoPredioDatos.area_construida} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, area_construida: e.target.value}))} /></div>
-                        <div className="col-span-2"><Label className="text-xs">Avalúo Catastral ($) *</Label><Input type="number" value={nuevoPredioDatos.avaluo_catastral} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, avaluo_catastral: e.target.value}))} /></div>
+                    {/* =========== TAB 3: FÍSICO (R2) =========== */}
+                    <TabsContent value="fisico" className="space-y-4 mt-4">
+                      {/* Matrícula Inmobiliaria */}
+                      <div>
+                        <Label>Matrícula Inmobiliaria</Label>
+                        <Input value={datosR1M5.matricula_inmobiliaria} onChange={(e) => setDatosR1M5(prev => ({...prev, matricula_inmobiliaria: e.target.value}))} placeholder="Ej: 270-8920" />
                       </div>
-                    </div>
-                    
-                    {/* Propietario */}
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                      <h4 className="font-semibold text-amber-800 mb-3">Propietario</h4>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-2"><Label className="text-xs">Nombre *</Label><Input value={nuevoPredioDatos.propietario_nombre} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, propietario_nombre: e.target.value}))} placeholder="Nombre completo" /></div>
-                        <div>
-                          <Label className="text-xs">Tipo Doc</Label>
-                          <Select value={nuevoPredioDatos.propietario_tipo_doc} onValueChange={(v) => setNuevoPredioDatos(prev => ({...prev, propietario_tipo_doc: v}))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="C">CC</SelectItem>
-                              <SelectItem value="N">NIT</SelectItem>
-                              <SelectItem value="E">CE</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      
+                      {/* ═══════════ ZONAS DE TERRENO ═══════════ */}
+                      <div className="border-t border-slate-200 pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="font-semibold text-slate-800">Zonas de Terreno</h4>
+                          <Button type="button" variant="outline" size="sm" onClick={agregarZonaTerrenoM5} className="text-emerald-700">
+                            <Plus className="w-4 h-4 mr-1" /> Agregar Zona
+                          </Button>
                         </div>
-                        <div className="col-span-3"><Label className="text-xs">Documento</Label><Input value={nuevoPredioDatos.propietario_documento} onChange={(e) => setNuevoPredioDatos(prev => ({...prev, propietario_documento: e.target.value}))} placeholder="Número" /></div>
+                        
+                        {zonasTermenoM5.map((zona, index) => (
+                          <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-slate-700">Zona {index + 1}</span>
+                              {zonasTermenoM5.length > 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => eliminarZonaTerrenoM5(index)} className="text-red-600 hover:text-red-700 h-6 w-6 p-0">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label className="text-xs">Zona Física</Label>
+                                <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerrenoM5(index, 'zona_fisica', e.target.value)} placeholder="Ej: 03" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Zona Económica</Label>
+                                <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerrenoM5(index, 'zona_economica', e.target.value)} placeholder="Ej: 05" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Área Terreno (m²)</Label>
+                                <Input type="number" value={zona.area_terreno} onChange={(e) => actualizarZonaTerrenoM5(index, 'area_terreno', e.target.value)} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Subtotal Área Terreno */}
+                        <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                          <p className="text-sm text-blue-800">📊 <strong>Subtotal Área Terreno:</strong> {calcularAreasTotalesM5().areaTerrenoTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m² → R1</p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                      
+                      {/* ═══════════ CONSTRUCCIONES ═══════════ */}
+                      <div className="border-t border-slate-200 pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="font-semibold text-slate-800">Construcciones</h4>
+                          <Button type="button" variant="outline" size="sm" onClick={agregarConstruccionM5} className="text-emerald-700">
+                            <Plus className="w-4 h-4 mr-1" /> Agregar Construcción
+                          </Button>
+                        </div>
+                        
+                        {construccionesM5.map((const_, index) => (
+                          <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-slate-700">Construcción {const_.id}</span>
+                              {construccionesM5.length > 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => eliminarConstruccionM5(index)} className="text-red-600 hover:text-red-700 h-6 w-6 p-0">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                              <div>
+                                <Label className="text-xs">Piso</Label>
+                                <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccionM5(index, 'piso', e.target.value)} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Habitaciones</Label>
+                                <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccionM5(index, 'habitaciones', e.target.value)} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Baños</Label>
+                                <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccionM5(index, 'banos', e.target.value)} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Locales</Label>
+                                <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccionM5(index, 'locales', e.target.value)} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Tipificación</Label>
+                                <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccionM5(index, 'tipificacion', e.target.value)} placeholder="Ej: 01" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Uso</Label>
+                                <Input value={const_.uso} onChange={(e) => actualizarConstruccionM5(index, 'uso', e.target.value)} placeholder="Ej: 01" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Puntaje</Label>
+                                <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccionM5(index, 'puntaje', e.target.value)} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Área Const. (m²)</Label>
+                                <Input type="number" value={const_.area_construida} onChange={(e) => actualizarConstruccionM5(index, 'area_construida', e.target.value)} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Subtotal Área Construida */}
+                        <div className="bg-purple-50 border border-purple-200 rounded p-2 mt-2">
+                          <p className="text-sm text-purple-800">📊 <strong>Subtotal Área Construida:</strong> {calcularAreasTotalesM5().areaConstruidaTotal.toLocaleString('es-CO', {minimumFractionDigits: 2})} m² → R1</p>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                   
-                  <DialogFooter className="mt-4">
-                    <Button variant="outline" onClick={() => setShowCrearPredioM5(false)}>Cancelar</Button>
+                  </div>
+                  <DialogFooter className="mt-4 border-t pt-4">
+                    <Button variant="outline" onClick={() => { setShowCrearPredioM5(false); resetCrearPredioM5(); }}>Cancelar</Button>
                     <Button onClick={guardarPredioNuevoM5} disabled={guardandoPredioM5} className="bg-emerald-600 hover:bg-emerald-700">
                       {guardandoPredioM5 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : <><Save className="w-4 h-4 mr-2" />Crear y Seleccionar</>}
                     </Button>
