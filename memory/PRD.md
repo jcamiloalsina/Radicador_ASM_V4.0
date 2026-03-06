@@ -3,21 +3,26 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: M4 COMPLETADO Y VERIFICADO
+## Estado Actual: M5 COMPLETADO Y VERIFICADO
 
 ### Funcionalidades Completadas (Marzo 2026)
 
-#### Módulo M5 - Cancelación / Inscripción de Predio (NUEVO - 06/03/2026)
+#### Módulo M5 - Cancelación / Inscripción de Predio (VERIFICADO - 06/03/2026)
 - **Cancelación de Predio**: Eliminar un predio del catastro desde una vigencia específica
   - Búsqueda de predio existente a cancelar
   - Vigencia de cancelación configurable
   - Opción de cancelación por doble inscripción (con código del predio duplicado)
 - **Inscripción de Predio Nuevo**: Registrar un predio que no existe en el catastro
-  - Formulario para ingresar datos del nuevo predio
-  - Código predial, matrícula, dirección, áreas, avalúo, propietario
+  - **MODAL EMBEBIDO dentro de M5** (no redirige a otra página) ✅
+  - Código predial nacional de 30 dígitos con constructor visual
+  - Datos del predio: matrícula, destino, dirección, áreas, avalúo
+  - Propietario: nombre, tipo doc, número de documento
+  - Al crear predio, se auto-selecciona en el formulario M5
+- **Backend**: Nuevo endpoint simplificado `POST /api/predios/m5/crear`
 - **PDF Generator**: `resolucion_m5_pdf_generator.py` con plantillas completas
 - **Frontend**: Formulario con selector de subtipo, búsqueda/entrada de predio, vigencia
 - **Vista de aprobación**: Sección M5 en Pendientes.js con todos los detalles
+- **Testing**: iteration_63.json - 100% éxito frontend y backend
 
 #### Módulo M4 - Revisión de Avalúo y Autoestimación (VERIFICADO - 06/03/2026)
 - **Revisión de Avalúo**: Solicitud cuando el propietario considera que el avalúo es excesivo. El avalúo revisado se aplica en la **presente vigencia**.
@@ -78,7 +83,8 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 ## Endpoints Clave
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3/M4 (unificado) |
+| /api/predios/m5/crear | POST | Crear predio simplificado para M5 (nuevo) |
+| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3/M4/M5 (unificado) |
 | /api/solicitudes-mutacion | GET | Listar solicitudes |
 | /api/solicitudes-mutacion/{id}/accion | POST | Aprobar/rechazar solicitud |
 | /api/resoluciones/descargar/{filename} | GET | Descargar PDF (público) |
@@ -92,6 +98,7 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - [x] Fix compatibilidad codigo_predial
 - [x] M4 formulario frontend funcional
 - [x] Testing de regresión M1/M2/M3 completado
+- [x] **M5 Modal Embebido para crear predios COMPLETADO** (06/03/2026)
 
 ### P1 (Alta)
 1. **Eliminar endpoints deprecados**: `/resoluciones/generar-m2`, `/resoluciones/generar-m3` (código legacy no usado)
@@ -104,7 +111,7 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 3. Desenglobe masivo - verificar marcado correcto de predios matriz
 
 ### P3 (Baja/Futuro)
-- Módulos M5-M9
+- Módulos M6-M9
 - Exportación Excel/XTF
 - Gráficos en dashboards
 - Mutaciones encadenadas
@@ -116,8 +123,8 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 ## Última Actualización
 - **Fecha**: 06 Marzo 2026
-- **Estado**: M4 COMPLETADO Y VERIFICADO
-- **Testing**: iteration_62.json - 100% éxito frontend y backend
+- **Estado**: M5 COMPLETADO Y VERIFICADO  
+- **Testing**: iteration_63.json - 100% éxito frontend y backend
 
 ## Issues Resueltos (Sesión Actual)
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
@@ -133,6 +140,11 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Backend ahora devuelve `pdf_url` y `numero_resolucion` en la respuesta
   - Frontend abre el PDF en nueva pestaña automáticamente al aprobar
 - ✅ **Historial de solicitudes** - VERIFICADO FUNCIONANDO (31 aprobados, 5 rechazados)
+- ✅ **M5 Modal Embebido para Crear Predios** - COMPLETADO
+  - Modal se abre DENTRO de M5 (no redirige)
+  - Constructor visual de código predial de 30 dígitos
+  - Al crear predio, se cierra modal y auto-selecciona el predio creado
+  - Endpoint POST /api/predios/m5/crear funcionando
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
