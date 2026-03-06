@@ -146,11 +146,19 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Backend ahora devuelve `pdf_url` y `numero_resolucion` en la respuesta
   - Frontend abre el PDF en nueva pestaña automáticamente al aprobar
 - ✅ **Historial de solicitudes** - VERIFICADO FUNCIONANDO (31 aprobados, 5 rechazados)
-- ✅ **M5 Modal Embebido para Crear Predios** - COMPLETADO
-  - Modal se abre DENTRO de M5 (no redirige)
-  - Constructor visual de código predial de 30 dígitos
+- ✅ **M5 Modal Embebido para Crear Predios** - COMPLETADO Y VERIFICADO
+  - Modal COMPLETO igual a Predios.js con 3 Tabs (Código | R1 | R2)
+  - Código homologado automático de lista general
+  - Últimos 5 predios en manzana con siguiente terreno sugerido
+  - Múltiples propietarios, zonas de terreno, construcciones
+  - Áreas calculadas automáticamente R2 → R1
+  - Verificación de código disponible
   - Al crear predio, se cierra modal y auto-selecciona el predio creado
   - Endpoint POST /api/predios/m5/crear funcionando
+- ✅ **M5 Flujo de Aprobación** - VERIFICADO
+  - Usuarios con rol COORDINADOR/ADMINISTRADOR o permiso APPROVE_CHANGES: generan PDF directo
+  - Usuarios GESTOR sin permisos: crean solicitud pendiente de aprobación
+  - Vista en Pendientes.js muestra datos completos de M5 (subtipo, predio, vigencia, propietarios, doble inscripción)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
