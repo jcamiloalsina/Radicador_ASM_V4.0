@@ -138,7 +138,7 @@ def get_m4_plantilla_autoestimacion():
             "aportadas por el propietario poseedor o apoderado."
         ),
         "considerando_analisis": (
-            "Qué, el profesional especializado en el área de avalúos, inicia el análisis del avalúo comercial junto "
+            "Qué, el perito avaluador {perito_avaluador}, profesional especializado en el área de avalúos, inicia el análisis del avalúo comercial junto "
             "con los documentos anexos, para determinar las características económicas, físicas y jurídicas del inmueble; "
             "revisando la documentación aportada por el usuario."
         ),
@@ -269,6 +269,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     radicado = data.get('radicado', '')
     motivo_solicitud = data.get('motivo_solicitud', '')
     valor_autoestimado = data.get('valor_autoestimado', avaluo_nuevo)
+    perito_avaluador = data.get('perito_avaluador', '')
     
     # Usar código de verificación del servidor o generar uno local
     fecha_hora_gen = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -478,7 +479,11 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         
         dibujar_texto_justificado(plantilla['considerando_legal'])
     else:
-        dibujar_texto_justificado(plantilla['considerando_analisis'])
+        # Para autoestimación, formatear con el nombre del perito avaluador
+        texto_analisis_autoest = plantilla['considerando_analisis'].format(
+            perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
+        )
+        dibujar_texto_justificado(texto_analisis_autoest)
         y_position -= 10
         dibujar_texto_justificado(plantilla['considerando_legal_final'])
     

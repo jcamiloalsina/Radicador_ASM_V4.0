@@ -678,6 +678,7 @@ class SolicitudMutacionCreate(BaseModel):
     decision: Optional[str] = "aceptar"  # aceptar o rechazar
     codigo_predial: Optional[str] = None  # Código predial para mostrar en vista de aprobación
     predio_direccion: Optional[str] = None  # Dirección del predio
+    perito_avaluador: Optional[str] = None  # Nombre del perito avaluador (solo para autoestimación)
     # Para M5
     vigencia_cancelacion: Optional[int] = None  # Año desde el cual se cancela
     vigencia_inscripcion: Optional[int] = None  # Año desde el cual se inscribe
@@ -14705,6 +14706,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
             "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
             "valor_autoestimado": solicitud.get('valor_autoestimado') or solicitud.get('avaluo_nuevo', 0),
+            "perito_avaluador": solicitud.get('perito_avaluador', ''),
             "elaborado_por": aprobador.get("full_name", ""),
             "revisado_por": "",
             "codigo_verificacion": codigo_verificacion_m4
@@ -28358,6 +28360,7 @@ async def crear_solicitud_mutacion(
             "decision": data.decision or "aceptar",
             "codigo_predial": data.codigo_predial,
             "predio_direccion": data.predio_direccion,
+            "perito_avaluador": data.perito_avaluador,
             # Para M5
             "vigencia_cancelacion": data.vigencia_cancelacion,
             "vigencia_inscripcion": data.vigencia_inscripcion,

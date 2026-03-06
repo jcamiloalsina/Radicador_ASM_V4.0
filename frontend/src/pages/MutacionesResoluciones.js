@@ -193,7 +193,8 @@ export default function MutacionesResoluciones() {
     avaluo_nuevo: 0,
     valor_autoestimado: 0,
     motivo_solicitud: '',
-    observaciones: ''
+    observaciones: '',
+    perito_avaluador: '' // Nombre del perito avaluador (solo para autoestimación)
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
   const [searchResultsM4, setSearchResultsM4] = useState([]);
@@ -2596,6 +2597,10 @@ export default function MutacionesResoluciones() {
       toast.error('Debe ingresar el motivo de la solicitud de revisión');
       return;
     }
+    if (m4Data.subtipo === 'autoestimacion' && !m4Data.perito_avaluador) {
+      toast.error('Debe ingresar el nombre del perito avaluador');
+      return;
+    }
 
     setGenerando(true);
     try {
@@ -2619,7 +2624,8 @@ export default function MutacionesResoluciones() {
         avaluo_nuevo: m4Data.avaluo_nuevo,
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
         motivo_solicitud: m4Data.motivo_solicitud,
-        observaciones: m4Data.observaciones
+        observaciones: m4Data.observaciones,
+        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -2664,7 +2670,8 @@ export default function MutacionesResoluciones() {
       avaluo_nuevo: 0,
       valor_autoestimado: 0,
       motivo_solicitud: '',
-      observaciones: ''
+      observaciones: '',
+      perito_avaluador: ''
     });
     setSearchPredioM4('');
     setSearchResultsM4([]);
@@ -3910,6 +3917,21 @@ export default function MutacionesResoluciones() {
                 onChange={(e) => setM4Data(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
                 data-testid="m4-motivo-input"
               />
+            </div>
+          )}
+
+          {/* Perito Avaluador (solo para autoestimación) */}
+          {m4Data.subtipo === 'autoestimacion' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Perito Avaluador *</label>
+              <Input
+                type="text"
+                placeholder="Ingrese el nombre completo del perito avaluador"
+                value={m4Data.perito_avaluador}
+                onChange={(e) => setM4Data(prev => ({ ...prev, perito_avaluador: e.target.value }))}
+                data-testid="m4-perito-avaluador-input"
+              />
+              <p className="text-xs text-slate-500 mt-1">Este nombre aparecerá en la resolución como el profesional que realizó el análisis del avalúo</p>
             </div>
           )}
 

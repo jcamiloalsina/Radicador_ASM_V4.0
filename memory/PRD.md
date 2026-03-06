@@ -170,6 +170,11 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Bug: Los campos del código predial (zona, sector, terreno, etc.) no permitían escribir números
   - Causa: `padStart` se aplicaba en cada onChange, rellenando inmediatamente con ceros
   - Fix: `handleCodigoChangeM5` ahora solo limita dígitos, padding se aplica en `construirCodigoPredialM5`
+- ✅ **M4 Autoestimación - Campo Perito Avaluador** - IMPLEMENTADO (06/03/2026)
+  - Nuevo campo "Nombre del Perito Avaluador" visible solo para autoestimación
+  - Campo obligatorio con validación
+  - Nombre aparece en el PDF: "Qué, el perito avaluador {nombre}, profesional especializado..."
+  - Archivos modificados: MutacionesResoluciones.js, server.py, resolucion_m4_pdf_generator.py
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
