@@ -238,38 +238,33 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Código verificación
     codigo_verificacion = hashlib.md5(f"{numero_resolucion}{fecha_resolucion}".encode()).hexdigest()[:8]
     
-    # Cargar imágenes
+    # Cargar imágenes - IGUAL A M4
     encabezado_img = None
     pie_pagina_img = None
     logo_watermark = None
     firma_img = None
     
     try:
-        encabezado_base64 = get_encabezado_image()
-        if encabezado_base64:
-            encabezado_data = base64.b64decode(encabezado_base64)
-            encabezado_img = ImageReader(io.BytesIO(encabezado_data))
+        encabezado_img = ImageReader(get_encabezado_image())
     except Exception as e:
         print(f"Error cargando encabezado: {e}")
     
     try:
-        pie_base64 = get_pie_pagina_image()
-        if pie_base64:
-            pie_data = base64.b64decode(pie_base64)
-            pie_pagina_img = ImageReader(io.BytesIO(pie_data))
+        pie_pagina_img = ImageReader(get_pie_pagina_image())
     except Exception as e:
         print(f"Error cargando pie de página: {e}")
     
     try:
-        firma_base64 = get_firma_dalgie_image()
-        if firma_base64:
-            firma_data = base64.b64decode(firma_base64)
-            firma_img = ImageReader(io.BytesIO(firma_data))
+        firma_img = ImageReader(get_firma_dalgie_image())
     except Exception as e:
         print(f"Error cargando firma: {e}")
     
-    # Usar el mismo logo para watermark
-    logo_watermark = encabezado_img
+    try:
+        logo_path = "/app/frontend/public/watermark-gray.png"
+        if os.path.exists(logo_path):
+            logo_watermark = ImageReader(logo_path)
+    except Exception as e:
+        print(f"Error cargando marca de agua: {e}")
     
     # Fuentes
     font_normal = "Helvetica"
