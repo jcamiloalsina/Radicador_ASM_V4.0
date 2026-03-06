@@ -26450,6 +26450,11 @@ async def obtener_siguiente_numero_resolucion(
         mpio = codigo_municipio[2:]
         numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
         
+        # Usar zona horaria de Colombia
+        colombia_tz = ZoneInfo("America/Bogota")
+        fecha_colombia = datetime.now(colombia_tz).strftime("%d/%m/%Y")
+        logging.info(f"[DEBUG] Fecha Colombia calculada: {fecha_colombia}")
+        
         return {
             "success": True,
             "siguiente_numero": siguiente,
@@ -26457,7 +26462,7 @@ async def obtener_siguiente_numero_resolucion(
             "año": año,
             "codigo_municipio": codigo_municipio,
             "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-            "fecha_resolucion": datetime.now(ZoneInfo("America/Bogota")).strftime("%d/%m/%Y")
+            "fecha_resolucion": fecha_colombia
         }
     except Exception as e:
         logging.error(f"Error obteniendo siguiente número: {str(e)}")
