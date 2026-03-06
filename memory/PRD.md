@@ -159,6 +159,13 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Usuarios con rol COORDINADOR/ADMINISTRADOR o permiso APPROVE_CHANGES: generan PDF directo
   - Usuarios GESTOR sin permisos: crean solicitud pendiente de aprobación
   - Vista en Pendientes.js muestra datos completos de M5 (subtipo, predio, vigencia, propietarios, doble inscripción)
+- ✅ **Página de Verificación QR** - CORREGIDO (06/03/2026)
+  - Bug: Los campos mostraban "N/A" porque las resoluciones M2-M5 usaban claves de DB diferentes
+  - Fix: Endpoint `/api/verificar/{codigo}` ahora detecta tipo de documento y usa campos correctos
+  - Resoluciones muestran: No. Resolución, Tipo, Subtipo, Radicado, Código Predial, Municipio, Dirección, Solicitante
+  - M2 (Desenglobe/Englobe) también muestra: Predios Cancelados, Predios Inscritos
+  - Certificados siguen mostrando: Propietarios, Área Terreno, Avalúo
+  - Corrección gramatical: "RESOLUCIÓN VÁLIDA" (femenino), "CERTIFICADO VÁLIDO" (masculino)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

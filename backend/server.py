@@ -1047,7 +1047,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1185,7 +1185,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1251,7 +1251,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1289,7 +1289,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1342,7 +1342,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1381,7 +1381,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1411,7 +1411,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1444,7 +1444,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -11597,7 +11597,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m5-predio-modal.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qr-data-mismatch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -11721,16 +11721,47 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     # Verificar si tiene hash de PDF (sistema nuevo)
     tiene_verificacion_integridad = bool(certificado.get('hash_pdf'))
     
+    # Detectar si es una RESOLUCIÓN (M1-M5) vs CERTIFICADO
+    tipo_doc = certificado.get('tipo', '')
+    es_resolucion_db = tipo_doc.startswith('RESOLUCION_') or tipo_doc == 'RESOLUCION'
+    
+    # Para resoluciones, obtener campos específicos
+    if es_resolucion_db:
+        # Las resoluciones usan 'predio_codigo' y 'predio_direccion' en lugar de 'codigo_predial' y 'direccion'
+        codigo_predial_display = certificado.get('codigo_predial') or certificado.get('predio_codigo', 'N/A')
+        direccion_display = certificado.get('direccion') or certificado.get('predio_direccion', 'N/A')
+        # Las resoluciones usan 'generado_por' en lugar de 'generado_por_nombre'
+        generado_por_display = certificado.get('generado_por_nombre') or certificado.get('generado_por', 'N/A')
+        # Obtener número de resolución y radicado
+        numero_resolucion = certificado.get('numero_resolucion', 'N/A')
+        radicado = certificado.get('radicado', 'N/A')
+        solicitante = certificado.get('solicitante', 'N/A')
+        subtipo = certificado.get('subtipo', '')
+        # Para M2 (desenglobe/englobe)
+        predios_cancelados = certificado.get('predios_cancelados', 0)
+        predios_inscritos = certificado.get('predios_inscritos', 0)
+    else:
+        codigo_predial_display = certificado.get('codigo_predial', 'N/A')
+        direccion_display = certificado.get('direccion', 'N/A')
+        generado_por_display = certificado.get('generado_por_nombre', 'N/A')
+        numero_resolucion = None
+        radicado = None
+        solicitante = None
+        subtipo = None
+        predios_cancelados = 0
+        predios_inscritos = 0
+    
     if es_valido:
         # Documento VÁLIDO (Certificado o Resolución)
         titulo_documento = tipo_documento.title()  # "Certificado" o "Resolución"
+        valido_genero = "VÁLIDA" if es_resolucion_db else "VÁLIDO"  # Femenino para resolución
         html_content = f"""
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>✅ {titulo_documento} Válido - Asomunicipios</title>
+            <title>✅ {titulo_documento} {"Válida" if es_resolucion_db else "Válido"} - Asomunicipios</title>
             <style>
                 body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f0fdf4; }}
                 .container {{ max-width: 650px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }}
@@ -11762,7 +11793,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             <div class="container">
                 <div class="header">
                     <img src="{logo_url}" alt="Asomunicipios">
-                    <h1>✅ {tipo_documento} VÁLIDO</h1>
+                    <h1>✅ {tipo_documento} {valido_genero}</h1>
                     <span class="badge">Verificado por Asomunicipios</span>
                 </div>
                 <div class="content">
@@ -11771,12 +11802,29 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         {codigo_verificacion}
                     </div>
                     
-                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos del {titulo_documento}</h3>
+                    <h3 style="color: #009846; border-bottom: 2px solid #009846; padding-bottom: 10px;">📋 Datos {"de la" if es_resolucion_db else "del"} {titulo_documento}</h3>
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Compare estos datos con su documento físico o digital</p>
+                    
+                    {"" if not es_resolucion_db else f'''
+                    <div class="info-row">
+                        <span class="info-label">📄 No. Resolución:</span>
+                        <span class="info-value"><strong>{numero_resolucion}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📁 Tipo:</span>
+                        <span class="info-value">{tipo_doc} {f"({subtipo})" if subtipo else ""}</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">📋 Radicado:</span>
+                        <span class="info-value">{radicado}</span>
+                    </div>
+                    '''}
                     
                     <div class="info-row">
                         <span class="info-label">📋 Código Predial:</span>
-                        <span class="info-value"><strong>{certificado.get('codigo_predial', 'N/A')}</strong></span>
+                        <span class="info-value"><strong>{codigo_predial_display}</strong></span>
                     </div>
                     
                     <div class="info-row">
@@ -11786,9 +11834,10 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">📍 Dirección:</span>
-                        <span class="info-value">{certificado.get('direccion', 'N/A')}</span>
+                        <span class="info-value">{direccion_display}</span>
                     </div>
                     
+                    {"" if es_resolucion_db else f'''
                     <div class="info-row">
                         <span class="info-label">👥 Propietarios:</span>
                         <span class="info-value"><strong>{propietarios_html}</strong></span>
@@ -11803,6 +11852,26 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                         <span class="info-label">💰 Avalúo:</span>
                         <span class="info-value"><strong>{avaluo}</strong></span>
                     </div>
+                    '''}
+                    
+                    {"" if not es_resolucion_db else f'''
+                    <div class="info-row">
+                        <span class="info-label">👤 Solicitante:</span>
+                        <span class="info-value">{solicitante}</span>
+                    </div>
+                    ''' if solicitante and solicitante != 'N/A' else ""}
+                    
+                    {"" if not (es_resolucion_db and tipo_doc == 'RESOLUCION_M2') else f'''
+                    <div class="info-row">
+                        <span class="info-label">🔴 Predios Cancelados:</span>
+                        <span class="info-value"><strong>{predios_cancelados}</strong></span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">🟢 Predios Inscritos:</span>
+                        <span class="info-value"><strong>{predios_inscritos}</strong></span>
+                    </div>
+                    '''}
                     
                     <div class="info-row">
                         <span class="info-label">📅 Generado:</span>
@@ -11811,7 +11880,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
                     
                     <div class="info-row">
                         <span class="info-label">👤 Elaborado por:</span>
-                        <span class="info-value">{certificado.get('generado_por_nombre', 'N/A')}</span>
+                        <span class="info-value">{generado_por_display}</span>
                     </div>
                     
                     <div class="verify-section">
