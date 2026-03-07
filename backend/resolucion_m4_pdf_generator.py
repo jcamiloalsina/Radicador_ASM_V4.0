@@ -692,20 +692,20 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         nonlocal y_position
         verificar_espacio(60)
         c.setFont(font_bold, 10)
-        c.drawString(MARGIN_LEFT, y_position, f"Artículo {num_articulo}.")
+        titulo = f"Artículo {num_articulo}. "
+        titulo_width = c.stringWidth(titulo, font_bold, 10)
+        c.drawString(MARGIN_LEFT, y_position, titulo)
         
-        # Calcular ancho para la primera línea (después de "Artículo X.")
-        indent = 60
         c.setFont(font_normal, 10)
         espacio_normal = c.stringWidth(' ', font_normal, 10)
         max_space = espacio_normal * 3
         
-        # Primera línea con indent
-        first_line_width = CONTENT_WIDTH - indent
+        # Primera línea después del título
+        first_line_width = CONTENT_WIDTH - titulo_width
         first_lines = simpleSplit(texto, font_normal, 10, first_line_width)
         
         if first_lines:
-            c.drawString(MARGIN_LEFT + indent, y_position, first_lines[0])
+            c.drawString(MARGIN_LEFT + titulo_width, y_position, first_lines[0])
             y_position -= 14
             
             # Texto restante después de la primera línea
@@ -713,7 +713,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             remaining_text = texto[first_line_len:].strip()
             
             if remaining_text:
-                # Líneas siguientes usando todo el CONTENT_WIDTH
+                # Líneas siguientes usando todo el CONTENT_WIDTH - JUSTIFICADAS
                 lines = simpleSplit(remaining_text, font_normal, 10, CONTENT_WIDTH)
                 
                 for i, line in enumerate(lines):
@@ -721,7 +721,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                     
                     line_width = c.stringWidth(line, font_normal, 10)
                     # Última línea o línea corta - no justificar
-                    if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.85:
+                    if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
                         c.drawString(MARGIN_LEFT, y_position, line)
                     else:
                         # Justificar

@@ -635,14 +635,15 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # ==========================================
     y_position = draw_header()
     
-    # Número de resolución y fecha
+    # Número de resolución
     c.setFillColor(NEGRO)
     c.setFont(font_bold, 12)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No. {numero_resolucion}")
     y_position -= 16
     
-    c.setFont(font_normal, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"({fecha_resolucion})")
+    # Fecha de resolución - Igual a M1
+    c.setFont(font_bold, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
     y_position -= 25
     
     # Título

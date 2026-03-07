@@ -195,7 +195,8 @@ export default function MutacionesResoluciones() {
     avaluo_anterior: 0,
     avaluo_nuevo: 0,
     fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
-    observaciones: ''
+    observaciones: '',
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' }
   });
   const [searchPredioM3, setSearchPredioM3] = useState('');
   const [searchResultsM3, setSearchResultsM3] = useState([]);
@@ -215,7 +216,8 @@ export default function MutacionesResoluciones() {
     valor_autoestimado: 0,
     motivo_solicitud: '',
     observaciones: '',
-    perito_avaluador: '' // Nombre del perito avaluador (solo para autoestimación)
+    perito_avaluador: '', // Nombre del perito avaluador (solo para autoestimación)
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' }
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
   const [searchResultsM4, setSearchResultsM4] = useState([]);
@@ -2419,7 +2421,8 @@ export default function MutacionesResoluciones() {
         avaluo_anterior: m3Data.avaluo_anterior,
         avaluo_nuevo: m3Data.avaluo_nuevo,
         fechas_inscripcion: m3Data.fechas_inscripcion || [],
-        observaciones: m3Data.observaciones || ''
+        observaciones: m3Data.observaciones || '',
+        solicitante: m3Data.solicitante || { nombre: '', documento: '' }
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2626,10 +2629,15 @@ export default function MutacionesResoluciones() {
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
+      // Usar solicitante del formulario, o del predio como fallback
       const propietarios = m4Data.predio.propietarios || [];
-      const solicitante = propietarios.length > 0 
-        ? { nombre: propietarios[0].nombre_propietario || 'No especificado', documento: propietarios[0].numero_documento || '' }
-        : { nombre: 'No especificado', documento: '' };
+      const solicitanteFallback = propietarios.length > 0 
+        ? { nombre: propietarios[0].nombre_propietario || '', documento: propietarios[0].numero_documento || '' }
+        : { nombre: '', documento: '' };
+      
+      const solicitanteFinal = (m4Data.solicitante?.nombre) 
+        ? m4Data.solicitante 
+        : solicitanteFallback;
 
       const payload = {
         tipo: 'M4',
@@ -2640,7 +2648,7 @@ export default function MutacionesResoluciones() {
         predio_id: m4Data.predio.id,
         codigo_predial: m4Data.predio.codigo_predial_nacional || m4Data.predio.NPN || '',
         predio_direccion: m4Data.predio.direccion || '',
-        solicitante: solicitante,
+        solicitante: solicitanteFinal,
         avaluo_anterior: m4Data.avaluo_anterior,
         avaluo_nuevo: m4Data.avaluo_nuevo,
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
@@ -3324,6 +3332,66 @@ export default function MutacionesResoluciones() {
             </div>
           </div>
 
+          {/* Datos del Solicitante M3 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                <User className="w-4 h-4" />
+                Datos del Solicitante
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Nombre Completo *</Label>
+                  <Input
+                    value={m3Data.solicitante?.nombre || ''}
+                    onChange={(e) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
+                    }))}
+                    placeholder="Nombre del solicitante"
+                    className="h-9"
+                    data-testid="m3-solicitante-nombre"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo Documento</Label>
+                  <Select
+                    value={m3Data.solicitante?.tipo_documento || 'CC'}
+                    onValueChange={(v) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, tipo_documento: v }
+                    }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
+                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
+                      <SelectItem value="NIT">NIT</SelectItem>
+                      <SelectItem value="PA">Pasaporte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Número de Documento *</Label>
+                  <Input
+                    value={m3Data.solicitante?.documento || ''}
+                    onChange={(e) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, documento: e.target.value.replace(/[^0-9]/g, '') }
+                    }))}
+                    placeholder="Número de documento"
+                    className="h-9"
+                    data-testid="m3-solicitante-documento"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Búsqueda de Predio */}
           <Card className="border-amber-200 bg-amber-50/30">
             <CardHeader className="py-3">
@@ -3819,6 +3887,66 @@ export default function MutacionesResoluciones() {
               </div>
             )}
           </div>
+
+          {/* Datos del Solicitante M4 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                <User className="w-4 h-4" />
+                Datos del Solicitante
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Nombre Completo *</Label>
+                  <Input
+                    value={m4Data.solicitante?.nombre || ''}
+                    onChange={(e) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
+                    }))}
+                    placeholder="Nombre del solicitante"
+                    className="h-9"
+                    data-testid="m4-solicitante-nombre"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo Documento</Label>
+                  <Select
+                    value={m4Data.solicitante?.tipo_documento || 'CC'}
+                    onValueChange={(v) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, tipo_documento: v }
+                    }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
+                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
+                      <SelectItem value="NIT">NIT</SelectItem>
+                      <SelectItem value="PA">Pasaporte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Número de Documento *</Label>
+                  <Input
+                    value={m4Data.solicitante?.documento || ''}
+                    onChange={(e) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, documento: e.target.value.replace(/[^0-9]/g, '') }
+                    }))}
+                    placeholder="Número de documento"
+                    className="h-9"
+                    data-testid="m4-solicitante-documento"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Buscar Predio */}
           {m4Data.municipio && (

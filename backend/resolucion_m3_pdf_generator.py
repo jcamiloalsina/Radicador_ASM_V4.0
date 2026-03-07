@@ -307,6 +307,64 @@ def generate_resolucion_m3_pdf(
             
             y_position -= line_height
     
+    def dibujar_articulo_justificado(numero_articulo, texto, font_size=10, line_height=14):
+        """Dibuja un artículo con título en bold y texto justificado"""
+        nonlocal y_position
+        verificar_espacio(80)
+        
+        # Título del artículo en bold
+        c.setFont(font_bold, font_size)
+        c.setFillColor(NEGRO)
+        titulo = f"Artículo {numero_articulo}. "
+        titulo_width = c.stringWidth(titulo, font_bold, font_size)
+        c.drawString(MARGIN_LEFT, y_position, titulo)
+        
+        # Primera línea del texto después del título
+        c.setFont(font_normal, font_size)
+        lines = simpleSplit(texto, font_normal, font_size, CONTENT_WIDTH - titulo_width)
+        
+        if lines:
+            c.drawString(MARGIN_LEFT + titulo_width, y_position, lines[0])
+            y_position -= line_height
+        
+        # Resto del texto justificado
+        if len(lines) > 1:
+            resto_texto = ' '.join(lines[1:])
+            all_lines = simpleSplit(resto_texto, font_normal, font_size, CONTENT_WIDTH)
+            
+            espacio_normal = c.stringWidth(' ', font_normal, font_size)
+            max_space = espacio_normal * 3
+            
+            for i, line in enumerate(all_lines):
+                verificar_espacio(line_height)
+                line_width = c.stringWidth(line, font_normal, font_size)
+                
+                # No justificar la última línea
+                if i == len(all_lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
+                    c.drawString(MARGIN_LEFT, y_position, line)
+                else:
+                    words = line.split(' ')
+                    if len(words) > 1:
+                        total_words_width = sum(c.stringWidth(word, font_normal, font_size) for word in words)
+                        total_space = CONTENT_WIDTH - total_words_width
+                        space_between = total_space / (len(words) - 1)
+                        
+                        if space_between > max_space:
+                            c.drawString(MARGIN_LEFT, y_position, line)
+                        else:
+                            x = MARGIN_LEFT
+                            for j, word in enumerate(words):
+                                c.drawString(x, y_position, word)
+                                x += c.stringWidth(word, font_normal, font_size)
+                                if j < len(words) - 1:
+                                    x += space_between
+                    else:
+                        c.drawString(MARGIN_LEFT, y_position, line)
+                
+                y_position -= line_height
+        
+        y_position -= 10  # Espacio después del artículo
+    
     def dibujar_tabla_predio(titulo_seccion, destino_val, avaluo_val, es_cancelacion=True):
         """Dibuja tabla de predio IDÉNTICO al M2 - con encabezado verde y texto blanco"""
         nonlocal y_position
@@ -672,88 +730,16 @@ def generate_resolucion_m3_pdf(
     
     y_position -= 20  # Espacio adicional después de las tablas
     
-    # Artículo 2
-    verificar_espacio(80)
-    c.setFont(font_bold, 10)
-    c.setFillColor(NEGRO)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 2.")
-    c.setFont(font_normal, 10)
+    # Artículo 2 - Justificado
+    dibujar_articulo_justificado(2, plantilla["articulo_2"])
     
-    # Texto del artículo 2 de M2
-    art2_texto = plantilla["articulo_2"]
-    art2_lines = []
-    words = art2_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art2_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art2_lines.append(current_line)
+    # Artículo 3 - Justificado
+    dibujar_articulo_justificado(3, plantilla["articulo_3"])
     
-    c.drawString(MARGIN_LEFT + 55, y_position, art2_lines[0] if art2_lines else "")
-    y_position -= 14
-    for line in art2_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 10
+    # Artículo 4 - Justificado
+    dibujar_articulo_justificado(4, plantilla["articulo_4"])
     
-    # Artículo 3
-    verificar_espacio(80)
-    c.setFont(font_bold, 10)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 3.")
-    c.setFont(font_normal, 10)
-    
-    art3_texto = plantilla["articulo_3"]
-    art3_lines = []
-    words = art3_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art3_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art3_lines.append(current_line)
-    
-    c.drawString(MARGIN_LEFT + 55, y_position, art3_lines[0] if art3_lines else "")
-    y_position -= 14
-    for line in art3_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 10
-    
-    # Artículo 4
-    verificar_espacio(60)
-    c.setFont(font_bold, 10)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 4.")
-    c.setFont(font_normal, 10)
-    
-    art4_texto = plantilla["articulo_4"]
-    art4_lines = []
-    words = art4_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art4_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art4_lines.append(current_line)
-    
-    c.drawString(MARGIN_LEFT + 55, y_position, art4_lines[0] if art4_lines else "")
-    y_position -= 14
-    for line in art4_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 30
+    y_position -= 20
     
     # ==========================================
     # FIRMA Y QR DE VERIFICACIÓN
