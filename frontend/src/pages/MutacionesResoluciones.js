@@ -74,6 +74,14 @@ const TIPOS_MUTACION = {
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
     enabled: true
+  },
+  BLOQUEO: { 
+    codigo: 'BLOQUEO', 
+    nombre: 'Bloqueo de Predio', 
+    descripcion: 'Bloquear/desbloquear predios por proceso legal',
+    color: 'bg-red-100 text-red-800',
+    enabled: true,
+    soloCoordinador: true
   }
 };
 
@@ -6330,6 +6338,320 @@ export default function MutacionesResoluciones() {
     </div>
   );
 
+  // Renderizar formulario de Bloqueo de Predios
+  const renderFormularioBloqueo = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Lock className="w-5 h-5 text-red-600" />
+          <h3 className="font-semibold text-red-800">Bloqueo de Predios por Proceso Legal</h3>
+        </div>
+        <p className="text-sm text-red-700">
+          Bloquee predios que tienen procesos legales activos para evitar modificaciones no autorizadas.
+          Solo los coordinadores pueden bloquear y desbloquear predios.
+        </p>
+      </div>
+
+      {/* Tabs internos: Bloquear / Ver Bloqueados */}
+      <Tabs value={bloqueoTab} onValueChange={(val) => {
+        setBloqueoTab(val);
+        if (val === 'bloqueados') {
+          cargarPrediosBloqueados();
+        }
+      }}>
+        <TabsList className="grid w-full grid-cols-2 max-w-md mb-4">
+          <TabsTrigger value="bloquear" className="flex items-center gap-2">
+            <Lock className="w-4 h-4" />
+            Bloquear Predio
+          </TabsTrigger>
+          <TabsTrigger value="bloqueados" className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Bloqueados ({prediosBloqueados.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="bloquear" className="space-y-4">
+          {/* Municipio */}
+          <div className="relative">
+            <Label className="text-sm font-medium">Municipio *</Label>
+            <div
+              className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+              onClick={() => setShowBloqueoMunicipioDropdown(!showBloqueoMunicipioDropdown)}
+              data-testid="bloqueo-municipio-select"
+            >
+              <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
+                {bloqueoMunicipio || 'Seleccione municipio'}
+              </span>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+            {showBloqueoMunicipioDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {MUNICIPIOS.map(mun => (
+                  <div
+                    key={mun.codigo}
+                    className="p-2 hover:bg-slate-100 cursor-pointer"
+                    onClick={() => {
+                      setBloqueoMunicipio(mun.nombre);
+                      setShowBloqueoMunicipioDropdown(false);
+                      setBloqueoPredioSeleccionado(null);
+                      setBloqueoPredioSearch('');
+                      setBloqueoPredioResults([]);
+                    }}
+                  >
+                    {mun.nombre}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Buscar Predio */}
+          {bloqueoMunicipio && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Buscar Predio *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  value={bloqueoPredioSearch}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setBloqueoPredioSearch(valor);
+                    if (valor.length >= 3) {
+                      buscarPredioParaBloqueo(valor);
+                    } else {
+                      setBloqueoPredioResults([]);
+                    }
+                  }}
+                  placeholder="Buscar por código predial, dirección o propietario (mín. 3 caracteres)..."
+                  className="pl-10 pr-10"
+                  data-testid="bloqueo-buscar-predio"
+                />
+                {bloqueoPredioSearching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                )}
+              </div>
+              
+              {/* Resultados de búsqueda */}
+              {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {bloqueoPredioResults.map((predio, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
+                      onClick={() => {
+                        if (predio.bloqueado) {
+                          toast.error('Este predio ya está bloqueado');
+                          return;
+                        }
+                        setBloqueoPredioSeleccionado(predio);
+                        setBloqueoPredioSearch('');
+                        setBloqueoPredioResults([]);
+                      }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                          <p className="text-xs text-slate-500">{predio.direccion}</p>
+                          <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                        </div>
+                        {predio.bloqueado && (
+                          <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Predio Seleccionado */}
+          {bloqueoPredioSeleccionado && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-amber-600" />
+                    Predio a Bloquear
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setBloqueoPredioSeleccionado(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-slate-500">Código:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Dirección:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.direccion || 'Sin dirección'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Propietario:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.nombre_propietario || 'No registrado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Municipio:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.municipio || bloqueoMunicipio}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Formulario de Bloqueo */}
+          {bloqueoPredioSeleccionado && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Información del Bloqueo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Motivo del Bloqueo *</Label>
+                  <Textarea
+                    value={bloqueoFormData.motivo}
+                    onChange={(e) => setBloqueoFormData(prev => ({ ...prev, motivo: e.target.value }))}
+                    placeholder="Ej: Proceso legal activo - Embargo ordenado por el Juzgado..."
+                    rows={3}
+                    data-testid="bloqueo-motivo"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">Número de Proceso</Label>
+                    <Input
+                      value={bloqueoFormData.numero_proceso}
+                      onChange={(e) => setBloqueoFormData(prev => ({ ...prev, numero_proceso: e.target.value }))}
+                      placeholder="Ej: 2024-00123"
+                      data-testid="bloqueo-numero-proceso"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Entidad Judicial</Label>
+                    <Input
+                      value={bloqueoFormData.entidad_judicial}
+                      onChange={(e) => setBloqueoFormData(prev => ({ ...prev, entidad_judicial: e.target.value }))}
+                      placeholder="Ej: Juzgado 3ro Civil Municipal"
+                      data-testid="bloqueo-entidad"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm">Observaciones Adicionales</Label>
+                  <Textarea
+                    value={bloqueoFormData.observaciones}
+                    onChange={(e) => setBloqueoFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                    placeholder="Observaciones adicionales..."
+                    rows={2}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bloqueados" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-slate-500">
+              {prediosBloqueados.length} predio(s) bloqueado(s)
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={cargarPrediosBloqueados}
+              disabled={loadingBloqueados}
+            >
+              {loadingBloqueados ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {loadingBloqueados ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            </div>
+          ) : prediosBloqueados.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Lock className="w-12 h-12 mx-auto mb-4 opacity-30" />
+              <p>No hay predios bloqueados</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {prediosBloqueados.map((predio, idx) => (
+                <Card key={idx} className="border-red-200 bg-red-50">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lock className="w-4 h-4 text-red-600" />
+                          <span className="font-medium text-red-800">
+                            {predio.codigo_predial_nacional || predio.codigo_predial}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600">{predio.direccion}</p>
+                        <p className="text-xs text-slate-500">{predio.municipio}</p>
+                        
+                        {predio.bloqueo_info && (
+                          <div className="mt-2 p-2 bg-white rounded border border-red-100">
+                            <p className="text-sm font-medium text-red-800">
+                              {predio.bloqueo_info.motivo}
+                            </p>
+                            {predio.bloqueo_info.numero_proceso && (
+                              <p className="text-xs text-slate-500">
+                                Proceso: {predio.bloqueo_info.numero_proceso}
+                              </p>
+                            )}
+                            <p className="text-xs text-slate-400 mt-1">
+                              Bloqueado por: {predio.bloqueo_info.bloqueado_por_nombre}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => verHistorialBloqueo(predio)}
+                          className="text-xs"
+                        >
+                          <History className="w-3 h-3 mr-1" />
+                          Historial
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setPredioADesbloquear(predio);
+                            setShowDesbloqueoModal(true);
+                          }}
+                          className="bg-green-600 hover:bg-green-700 text-xs"
+                        >
+                          <Unlock className="w-3 h-3 mr-1" />
+                          Desbloquear
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
   // Renderizar selector de tipo de mutación
   const renderSelectorTipo = () => (
     <div className="space-y-4">
@@ -6353,12 +6675,19 @@ export default function MutacionesResoluciones() {
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.values(TIPOS_MUTACION).map((tipo) => (
+        {Object.values(TIPOS_MUTACION)
+          .filter((tipo) => {
+            // Ocultar BLOQUEO si no es coordinador/admin
+            if (tipo.soloCoordinador && !puedeAprobar) return false;
+            return true;
+          })
+          .map((tipo) => (
           <Card 
             key={tipo.codigo}
             data-testid={`mutacion-card-${tipo.codigo}`}
             className={`cursor-pointer transition-all hover:shadow-lg ${
-              !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500'
+              !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 
+              tipo.codigo === 'BLOQUEO' ? 'hover:border-red-500 border-red-200' : 'hover:border-emerald-500'
             }`}
             onClick={() => {
               if (tipo.enabled) {
@@ -6369,12 +6698,19 @@ export default function MutacionesResoluciones() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <Badge className={tipo.color}>{tipo.codigo}</Badge>
+                  <Badge className={tipo.color}>
+                    {tipo.codigo === 'BLOQUEO' && <Lock className="w-3 h-3 mr-1 inline" />}
+                    {tipo.codigo}
+                  </Badge>
                   <h3 className="font-semibold text-lg mt-2">{tipo.nombre}</h3>
                   <p className="text-sm text-slate-600 mt-1">{tipo.descripcion}</p>
                 </div>
                 {tipo.enabled ? (
-                  <ArrowRight className="w-5 h-5 text-emerald-600" />
+                  tipo.codigo === 'BLOQUEO' ? (
+                    <Lock className="w-5 h-5 text-red-600" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5 text-emerald-600" />
+                  )
                 ) : (
                   <Badge variant="outline" className="text-xs">Próximamente</Badge>
                 )}
@@ -7950,13 +8286,8 @@ export default function MutacionesResoluciones() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(val) => {
-        setActiveTab(val);
-        if (val === 'bloqueos' && puedeAprobar) {
-          cargarPrediosBloqueados();
-        }
-      }}>
-        <TabsList className={`grid w-full ${puedeVerConfiguracion ? 'grid-cols-4' : puedeAprobar ? 'grid-cols-3' : 'grid-cols-2'} max-w-2xl`}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className={`grid w-full ${puedeVerConfiguracion ? 'grid-cols-3' : 'grid-cols-2'} max-w-lg`}>
           <TabsTrigger value="nueva" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Nueva Mutación
@@ -7965,12 +8296,6 @@ export default function MutacionesResoluciones() {
             <History className="w-4 h-4" />
             Historial
           </TabsTrigger>
-          {puedeAprobar && (
-            <TabsTrigger value="bloqueos" className="flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Bloqueos
-            </TabsTrigger>
-          )}
           {puedeVerConfiguracion && (
             <TabsTrigger value="configuracion" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -7986,329 +8311,6 @@ export default function MutacionesResoluciones() {
         <TabsContent value="historial" className="mt-6">
           {renderHistorial()}
         </TabsContent>
-        
-        {puedeAprobar && (
-          <TabsContent value="bloqueos" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-red-600" />
-                  Gestión de Bloqueos de Predios
-                </CardTitle>
-                <p className="text-sm text-slate-500">
-                  Bloquee predios que tienen procesos legales activos para evitar modificaciones no autorizadas.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={bloqueoTab} onValueChange={setBloqueoTab}>
-                  <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
-                    <TabsTrigger value="bloquear" className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      Bloquear Predio
-                    </TabsTrigger>
-                    <TabsTrigger value="bloqueados" className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />
-                      Predios Bloqueados ({prediosBloqueados.length})
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="bloquear">
-                    <div className="space-y-6">
-                      {/* Selector de Municipio */}
-                      <div className="relative">
-                        <Label className="text-sm font-medium">Municipio *</Label>
-                        <div
-                          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
-                          onClick={() => setShowBloqueoMunicipioDropdown(!showBloqueoMunicipioDropdown)}
-                          data-testid="bloqueo-municipio-select"
-                        >
-                          <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
-                            {bloqueoMunicipio || 'Seleccione municipio'}
-                          </span>
-                          <ChevronDown className="w-4 h-4" />
-                        </div>
-                        {showBloqueoMunicipioDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            {MUNICIPIOS.map(mun => (
-                              <div
-                                key={mun.codigo}
-                                className="p-2 hover:bg-slate-100 cursor-pointer"
-                                onClick={() => {
-                                  setBloqueoMunicipio(mun.nombre);
-                                  setShowBloqueoMunicipioDropdown(false);
-                                  setBloqueoPredioSeleccionado(null);
-                                  setBloqueoPredioSearch('');
-                                  setBloqueoPredioResults([]);
-                                }}
-                              >
-                                {mun.nombre}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Buscador de Predio */}
-                      {bloqueoMunicipio && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Buscar Predio *</Label>
-                          <div className="relative">
-                            <Input
-                              value={bloqueoPredioSearch}
-                              onChange={(e) => {
-                                setBloqueoPredioSearch(e.target.value);
-                                buscarPredioParaBloqueo(e.target.value);
-                              }}
-                              placeholder="Buscar por código predial, dirección o propietario..."
-                              className="pr-10"
-                              data-testid="bloqueo-buscar-predio"
-                            />
-                            {bloqueoPredioSearching && (
-                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
-                            )}
-                          </div>
-                          
-                          {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
-                            <div className="border rounded-lg max-h-48 overflow-y-auto">
-                              {bloqueoPredioResults.map((predio, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
-                                  onClick={() => {
-                                    if (predio.bloqueado) {
-                                      toast.error('Este predio ya está bloqueado');
-                                      return;
-                                    }
-                                    setBloqueoPredioSeleccionado(predio);
-                                    setBloqueoPredioSearch('');
-                                    setBloqueoPredioResults([]);
-                                  }}
-                                >
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
-                                      <p className="text-xs text-slate-500">{predio.direccion}</p>
-                                      <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
-                                    </div>
-                                    {predio.bloqueado && (
-                                      <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Predio Seleccionado */}
-                      {bloqueoPredioSeleccionado && (
-                        <Card className="border-amber-200 bg-amber-50">
-                          <CardHeader className="pb-2">
-                            <div className="flex justify-between items-center">
-                              <CardTitle className="text-sm flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-amber-600" />
-                                Predio a Bloquear
-                              </CardTitle>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => setBloqueoPredioSeleccionado(null)}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="text-slate-500">Código:</span>
-                                <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional}</p>
-                              </div>
-                              <div>
-                                <span className="text-slate-500">Dirección:</span>
-                                <p className="font-medium">{bloqueoPredioSeleccionado.direccion || 'Sin dirección'}</p>
-                              </div>
-                              <div>
-                                <span className="text-slate-500">Propietario:</span>
-                                <p className="font-medium">{bloqueoPredioSeleccionado.nombre_propietario || 'No registrado'}</p>
-                              </div>
-                              <div>
-                                <span className="text-slate-500">Municipio:</span>
-                                <p className="font-medium">{bloqueoPredioSeleccionado.municipio || bloqueoMunicipio}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Formulario de Bloqueo */}
-                      {bloqueoPredioSeleccionado && (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <FileText className="w-4 h-4" />
-                              Información del Bloqueo
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div>
-                              <Label className="text-sm font-medium">Motivo del Bloqueo *</Label>
-                              <Textarea
-                                value={bloqueoFormData.motivo}
-                                onChange={(e) => setBloqueoFormData(prev => ({ ...prev, motivo: e.target.value }))}
-                                placeholder="Ej: Proceso legal activo - Embargo ordenado por el Juzgado..."
-                                rows={3}
-                                data-testid="bloqueo-motivo"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label className="text-sm">Número de Proceso</Label>
-                                <Input
-                                  value={bloqueoFormData.numero_proceso}
-                                  onChange={(e) => setBloqueoFormData(prev => ({ ...prev, numero_proceso: e.target.value }))}
-                                  placeholder="Ej: 2024-00123"
-                                  data-testid="bloqueo-numero-proceso"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-sm">Entidad Judicial</Label>
-                                <Input
-                                  value={bloqueoFormData.entidad_judicial}
-                                  onChange={(e) => setBloqueoFormData(prev => ({ ...prev, entidad_judicial: e.target.value }))}
-                                  placeholder="Ej: Juzgado 3ro Civil Municipal"
-                                  data-testid="bloqueo-entidad"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="text-sm">Observaciones Adicionales</Label>
-                              <Textarea
-                                value={bloqueoFormData.observaciones}
-                                onChange={(e) => setBloqueoFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                                placeholder="Observaciones adicionales..."
-                                rows={2}
-                              />
-                            </div>
-
-                            <Button 
-                              onClick={bloquearPredio}
-                              disabled={procesandoBloqueo || !bloqueoFormData.motivo.trim()}
-                              className="w-full bg-red-600 hover:bg-red-700"
-                              data-testid="bloqueo-confirmar-btn"
-                            >
-                              {procesandoBloqueo ? (
-                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
-                              ) : (
-                                <><Lock className="w-4 h-4 mr-2" /> Bloquear Predio</>
-                              )}
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="bloqueados">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm text-slate-500">
-                          {prediosBloqueados.length} predio(s) bloqueado(s)
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={cargarPrediosBloqueados}
-                          disabled={loadingBloqueados}
-                        >
-                          {loadingBloqueados ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        </Button>
-                      </div>
-
-                      {loadingBloqueados ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-                        </div>
-                      ) : prediosBloqueados.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
-                          <Lock className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                          <p>No hay predios bloqueados</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {prediosBloqueados.map((predio, idx) => (
-                            <Card key={idx} className="border-red-200 bg-red-50">
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Lock className="w-4 h-4 text-red-600" />
-                                      <span className="font-medium text-red-800">
-                                        {predio.codigo_predial_nacional || predio.codigo_predial}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-slate-600">{predio.direccion}</p>
-                                    <p className="text-xs text-slate-500">{predio.municipio}</p>
-                                    
-                                    {predio.bloqueo_info && (
-                                      <div className="mt-2 p-2 bg-white rounded border border-red-100">
-                                        <p className="text-sm font-medium text-red-800">
-                                          {predio.bloqueo_info.motivo}
-                                        </p>
-                                        {predio.bloqueo_info.numero_proceso && (
-                                          <p className="text-xs text-slate-500">
-                                            Proceso: {predio.bloqueo_info.numero_proceso}
-                                          </p>
-                                        )}
-                                        {predio.bloqueo_info.entidad_judicial && (
-                                          <p className="text-xs text-slate-500">
-                                            Entidad: {predio.bloqueo_info.entidad_judicial}
-                                          </p>
-                                        )}
-                                        <p className="text-xs text-slate-400 mt-1">
-                                          Bloqueado por: {predio.bloqueo_info.bloqueado_por_nombre} el {new Date(predio.bloqueo_info.fecha_bloqueo).toLocaleDateString('es-CO')}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="flex flex-col gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => verHistorialBloqueo(predio)}
-                                      className="text-xs"
-                                    >
-                                      <History className="w-3 h-3 mr-1" />
-                                      Historial
-                                    </Button>
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      onClick={() => {
-                                        setPredioADesbloquear(predio);
-                                        setShowDesbloqueoModal(true);
-                                      }}
-                                      className="bg-green-600 hover:bg-green-700 text-xs"
-                                    >
-                                      <Unlock className="w-3 h-3 mr-1" />
-                                      Desbloquear
-                                    </Button>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
         
         {puedeVerConfiguracion && (
           <TabsContent value="configuracion" className="mt-6">
@@ -8338,6 +8340,8 @@ export default function MutacionesResoluciones() {
           {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && renderFormularioRectificacionArea()}
           
           {tipoMutacionSeleccionado?.codigo === 'COMP' && renderFormularioComplementacion()}
+          
+          {tipoMutacionSeleccionado?.codigo === 'BLOQUEO' && renderFormularioBloqueo()}
           
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
@@ -9111,6 +9115,20 @@ export default function MutacionesResoluciones() {
                   </Button>
                 )}
               </div>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'BLOQUEO' && bloqueoPredioSeleccionado && bloqueoTab === 'bloquear' && (
+              <Button 
+                onClick={bloquearPredio}
+                disabled={procesandoBloqueo || !bloqueoFormData.motivo.trim()}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="bloqueo-confirmar-btn"
+              >
+                {procesandoBloqueo ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                ) : (
+                  <><Lock className="w-4 h-4 mr-2" /> Bloquear Predio</>
+                )}
+              </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
               <div className="flex items-center gap-2 flex-wrap">
