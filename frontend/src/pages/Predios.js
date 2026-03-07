@@ -14,7 +14,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
-  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight
+  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -3334,11 +3334,18 @@ export default function Predios() {
                         const paginatedPredios = predios.slice(startIndex, endIndex);
                         
                         return paginatedPredios.map((predio) => (
-                        <tr key={predio.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <tr key={predio.id} className={`border-b border-slate-100 hover:bg-slate-50 ${predio.bloqueado ? 'bg-red-50' : ''}`}>
                           <td className="py-3 px-4">
-                            <div>
-                              <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
-                              <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
+                            <div className="flex items-center gap-2">
+                              {predio.bloqueado && (
+                                <span className="flex items-center gap-1 bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full" title={`Bloqueado: ${predio.bloqueo_info?.motivo || 'Proceso legal'}`}>
+                                  <Lock className="w-3 h-3" />
+                                </span>
+                              )}
+                              <div>
+                                <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
+                                <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
+                              </div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
@@ -5457,6 +5464,48 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
+              {/* Indicador de Bloqueo */}
+              {selectedPredio.bloqueado && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="w-5 h-5 text-red-600" />
+                    <h3 className="font-semibold text-red-800">Predio Bloqueado por Proceso Legal</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-red-600">Motivo:</span>
+                      <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info?.motivo || 'Sin información'}</p>
+                    </div>
+                    <div>
+                      <span className="text-red-600">Bloqueado por:</span>
+                      <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info?.bloqueado_por_nombre || 'Sin información'}</p>
+                    </div>
+                    {selectedPredio.bloqueo_info?.numero_proceso && (
+                      <div>
+                        <span className="text-red-600">Número de Proceso:</span>
+                        <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info.numero_proceso}</p>
+                      </div>
+                    )}
+                    {selectedPredio.bloqueo_info?.entidad_judicial && (
+                      <div>
+                        <span className="text-red-600">Entidad Judicial:</span>
+                        <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info.entidad_judicial}</p>
+                      </div>
+                    )}
+                    {selectedPredio.bloqueo_info?.fecha_bloqueo && (
+                      <div className="col-span-2">
+                        <span className="text-red-600">Fecha de Bloqueo:</span>
+                        <p className="text-red-800 font-medium">
+                          {new Date(selectedPredio.bloqueo_info.fecha_bloqueo).toLocaleDateString('es-CO', {
+                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Nota informativa sobre edición - Link clickeable */}
               <div 
                 className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"

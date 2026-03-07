@@ -6630,6 +6630,7 @@ async def listar_predios_bloqueados_v2(
             "avaluo": 1,
             "bloqueado": 1,
             "bloqueo_info": 1,
+            "historial_bloqueos": 1,
             "r2_registros": 1
         }
     ).sort("bloqueo_info.fecha_bloqueo", -1).skip(skip).limit(limit).to_list(length=limit)
@@ -16800,7 +16801,7 @@ async def bloquear_predio(
         "observaciones": request.observaciones or ""
     }
     
-    # Actualizar el predio
+    # Actualizar el predio seleccionado
     await db.predios.update_one(
         {"id": predio_id},
         {
@@ -16814,6 +16815,27 @@ async def bloquear_predio(
             }
         }
     )
+    
+    # Propagar el bloqueo a TODAS las vigencias del mismo código predial
+    codigo_predial = predio.get("codigo_predial_nacional", "")
+    if codigo_predial:
+        result = await db.predios.update_many(
+            {
+                "codigo_predial_nacional": codigo_predial,
+                "id": {"$ne": predio_id}  # Excluir el que ya actualizamos
+            },
+            {
+                "$set": {
+                    "bloqueado": True,
+                    "bloqueo_info": bloqueo_info,
+                    "ultima_actualizacion": fecha_actual
+                },
+                "$push": {
+                    "historial_bloqueos": historial_entry
+                }
+            }
+        )
+        logging.info(f"🔒 Bloqueo propagado a {result.modified_count} vigencias adicionales del predio {codigo_predial}")
     
     # Registrar en log de actividades
     await registrar_log_actividad(
@@ -16883,7 +16905,7 @@ async def desbloquear_predio(
         "bloqueo_anterior": predio.get("bloqueo_info", {})
     }
     
-    # Actualizar el predio
+    # Actualizar el predio seleccionado
     await db.predios.update_one(
         {"id": predio_id},
         {
@@ -16897,6 +16919,27 @@ async def desbloquear_predio(
             }
         }
     )
+    
+    # Propagar el desbloqueo a TODAS las vigencias del mismo código predial
+    codigo_predial = predio.get("codigo_predial_nacional", "")
+    if codigo_predial:
+        result = await db.predios.update_many(
+            {
+                "codigo_predial_nacional": codigo_predial,
+                "id": {"$ne": predio_id}  # Excluir el que ya actualizamos
+            },
+            {
+                "$set": {
+                    "bloqueado": False,
+                    "bloqueo_info": None,
+                    "ultima_actualizacion": fecha_actual
+                },
+                "$push": {
+                    "historial_bloqueos": historial_entry
+                }
+            }
+        )
+        logging.info(f"🔓 Desbloqueo propagado a {result.modified_count} vigencias adicionales del predio {codigo_predial}")
     
     # Registrar en log de actividades
     await registrar_log_actividad(
