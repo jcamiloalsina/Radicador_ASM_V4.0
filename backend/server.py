@@ -14133,8 +14133,18 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Importar y generar PDF
         from resolucion_pdf_generator import generate_resolucion_pdf
         
-        # Obtener datos de R1/R2 para los valores NUEVOS (INSCRIPCIÓN)
-        datos_r1_r2_nuevos = obtener_datos_r1_r2(datos_predio)
+        # Para la sección INSCRIPCIÓN, usar datos_propuestos (datos nuevos del formulario)
+        # Los datos nuevos NO están en R1/R2 porque aún no se han inscrito
+        # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
+        datos_inscripcion = {
+            "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
+            "area_construida": datos_propuestos.get("area_construida") or datos_predio.get("area_construida") or 0,
+            "avaluo": datos_propuestos.get("avaluo") or datos_predio.get("avaluo") or 0,
+            "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
+            "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
+            "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
+            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+        }
         
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=numero_resolucion,
@@ -14144,20 +14154,21 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             radicado=cambio.get("radicado", datos_predio.get("radicado", f"RASMGC-{datetime.now().strftime('%Y%m%d')}")),
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo,
-            matricula_inmobiliaria=datos_r1_r2_nuevos.get("matricula_inmobiliaria") or "Sin información",
-            direccion=datos_r1_r2_nuevos.get("direccion") or "",
-            avaluo=f"${datos_r1_r2_nuevos.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_nuevos.get('avaluo') else "$0",
+            # Datos de INSCRIPCIÓN (nuevos) - vienen del formulario, no de R1/R2
+            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            direccion=datos_inscripcion.get("direccion") or "",
+            avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
-            area_terreno=str(datos_r1_r2_nuevos.get("area_terreno") or 0),
-            area_construida=str(datos_r1_r2_nuevos.get("area_construida") or 0),
-            destino_economico=datos_r1_r2_nuevos.get("destino_economico") or "A",
-            codigo_homologado=datos_r1_r2_nuevos.get("codigo_homologado") or "",
+            area_terreno=str(datos_inscripcion.get("area_terreno") or 0),
+            area_construida=str(datos_inscripcion.get("area_construida") or 0),
+            destino_economico=datos_inscripcion.get("destino_economico") or "A",
+            codigo_homologado=datos_inscripcion.get("codigo_homologado") or "",
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=elaboro,
             aprobo=aprobador.get("full_name", ""),
             plantilla=plantilla_textos,
-            # Datos anteriores para la sección CANCELACIÓN
+            # Datos anteriores para la sección CANCELACIÓN (sí vienen de R1/R2)
             area_terreno_anterior=datos_anteriores.get("area_terreno"),
             area_construida_anterior=datos_anteriores.get("area_construida"),
             avaluo_anterior=datos_anteriores.get("avaluo"),
@@ -29318,8 +29329,32 @@ async def generar_resolucion_manual(
         fecha_resolucion = request.fecha_resolucion or datetime.now().strftime('%d/%m/%Y')
         fecha_formateada = fecha_resolucion.replace('/', '-')
         
-        # Obtener datos de R1/R2 para la sección INSCRIPCIÓN (datos nuevos)
-        datos_r1_r2_nuevos = obtener_datos_r1_r2(datos_predio)
+        # Para la sección INSCRIPCIÓN:
+        # - Si hay datos_predio del request (datos nuevos), usarlos directamente
+        # - Si no, usar datos de R1/R2 del predio actual
+        if request.datos_predio:
+            # Datos nuevos del formulario - no están en R1/R2 aún
+            datos_inscripcion = {
+                "area_terreno": request.datos_predio.get("area_terreno") or datos_predio.get("area_terreno") or 0,
+                "area_construida": request.datos_predio.get("area_construida") or datos_predio.get("area_construida") or 0,
+                "avaluo": request.datos_predio.get("avaluo") or datos_predio.get("avaluo") or 0,
+                "direccion": request.datos_predio.get("direccion") or datos_predio.get("direccion") or "",
+                "destino_economico": request.datos_predio.get("destino_economico") or datos_predio.get("destino_economico") or "A",
+                "codigo_homologado": request.datos_predio.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
+                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+            }
+        else:
+            # No hay datos nuevos del formulario, obtener de R1/R2 del predio actual
+            datos_r1_r2_predio = obtener_datos_r1_r2(datos_predio)
+            datos_inscripcion = {
+                "area_terreno": datos_r1_r2_predio.get("area_terreno") or 0,
+                "area_construida": datos_r1_r2_predio.get("area_construida") or 0,
+                "avaluo": datos_r1_r2_predio.get("avaluo") or 0,
+                "direccion": datos_r1_r2_predio.get("direccion") or "",
+                "destino_economico": datos_r1_r2_predio.get("destino_economico") or "A",
+                "codigo_homologado": datos_r1_r2_predio.get("codigo_homologado") or "",
+                "matricula_inmobiliaria": datos_r1_r2_predio.get("matricula_inmobiliaria") or "Sin información",
+            }
         
         pdf_bytes = generate_resolucion_pdf(
             numero_resolucion=request.numero_resolucion,
@@ -29329,20 +29364,21 @@ async def generar_resolucion_manual(
             radicado=request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo or "",
-            matricula_inmobiliaria=datos_r1_r2_nuevos.get("matricula_inmobiliaria") or "Sin información",
-            direccion=datos_r1_r2_nuevos.get("direccion") or "",
-            avaluo=f"${datos_r1_r2_nuevos.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2_nuevos.get('avaluo') else "$0",
+            # Datos de INSCRIPCIÓN
+            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            direccion=datos_inscripcion.get("direccion") or "",
+            avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
-            area_terreno=str(datos_r1_r2_nuevos.get("area_terreno") or 0),
-            area_construida=str(datos_r1_r2_nuevos.get("area_construida") or 0),
-            destino_economico=datos_r1_r2_nuevos.get("destino_economico") or "A",
-            codigo_homologado=datos_r1_r2_nuevos.get("codigo_homologado") or "",
+            area_terreno=str(datos_inscripcion.get("area_terreno") or 0),
+            area_construida=str(datos_inscripcion.get("area_construida") or 0),
+            destino_economico=datos_inscripcion.get("destino_economico") or "A",
+            codigo_homologado=datos_inscripcion.get("codigo_homologado") or "",
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get("full_name", ""),
             aprobo=current_user.get("full_name", ""),
             plantilla=plantilla_textos,
-            # Datos anteriores para la sección CANCELACIÓN (ya obtenidos de R1/R2)
+            # Datos anteriores para la sección CANCELACIÓN (de R1/R2 del predio original)
             area_terreno_anterior=datos_anteriores["area_terreno"],
             area_construida_anterior=datos_anteriores["area_construida"],
             avaluo_anterior=datos_anteriores["avaluo"],
