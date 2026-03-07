@@ -196,7 +196,8 @@ export default function MutacionesResoluciones() {
     avaluo_nuevo: 0,
     fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
     observaciones: '',
-    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' }
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM3, setSearchPredioM3] = useState('');
   const [searchResultsM3, setSearchResultsM3] = useState([]);
@@ -217,7 +218,8 @@ export default function MutacionesResoluciones() {
     motivo_solicitud: '',
     observaciones: '',
     perito_avaluador: '', // Nombre del perito avaluador (solo para autoestimación)
-    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' }
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
   const [searchResultsM4, setSearchResultsM4] = useState([]);
@@ -2422,7 +2424,8 @@ export default function MutacionesResoluciones() {
         avaluo_nuevo: m3Data.avaluo_nuevo,
         fechas_inscripcion: m3Data.fechas_inscripcion || [],
         observaciones: m3Data.observaciones || '',
-        solicitante: m3Data.solicitante || { nombre: '', documento: '' }
+        solicitante: m3Data.solicitante || { nombre: '', documento: '' },
+        texto_considerando: m3Data.texto_considerando || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2654,7 +2657,8 @@ export default function MutacionesResoluciones() {
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
         motivo_solicitud: m4Data.motivo_solicitud,
         observaciones: m4Data.observaciones,
-        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null
+        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null,
+        texto_considerando: m4Data.texto_considerando || ''
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -3736,6 +3740,32 @@ export default function MutacionesResoluciones() {
               </CardContent>
             </Card>
           )}
+
+          {/* Campo de Considerando Personalizado */}
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m3Data.texto_considerando || ''}
+                onChange={(e) => setM3Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, el(la) ciudadano(a) ${m3Data.solicitante?.nombre || '[NOMBRE]'}, identificado(a) con Cédula de Ciudadanía No. ${m3Data.solicitante?.documento || '[DOCUMENTO]'}, radicó solicitud de cambio de destino económico para el predio con código predial ${m3Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
+                rows={6}
+                className="font-mono text-sm"
+                data-testid="m3-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{destino_anterior}'}, {'{destino_nuevo}'}
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -4121,6 +4151,32 @@ export default function MutacionesResoluciones() {
               data-testid="m4-observaciones-input"
             />
           </div>
+
+          {/* Campo de Considerando Personalizado */}
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m4Data.texto_considerando || ''}
+                onChange={(e) => setM4Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, el señor ${m4Data.solicitante?.nombre || '[NOMBRE]'}, identificado con Cédula de Ciudadanía No. ${m4Data.solicitante?.documento || '[DOCUMENTO]'}, radicó solicitud de revisión de avalúo catastral para el predio ubicado en ${m4Data.predio?.direccion || '[DIRECCIÓN]'}...`}
+                rows={6}
+                className="font-mono text-sm"
+                data-testid="m4-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{avaluo_anterior}'}, {'{avaluo_nuevo}'}
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

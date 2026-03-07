@@ -196,6 +196,7 @@ def generate_resolucion_m3_pdf(
     plantilla = get_m3_plantilla()
     elaboro = data.get("elaborado_por", "")
     aprobo = data.get("revisado_por", "")
+    texto_considerando_personalizado = data.get("texto_considerando")  # Texto personalizado de considerandos
     
     # Datos del solicitante
     solicitante_nombre = solicitante.get("nombre", "NO ESPECIFICADO")
@@ -596,7 +597,21 @@ def generate_resolucion_m3_pdf(
     dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
     y_position -= 10
     
-    if subtipo == "cambio_destino":
+    # Usar texto personalizado si está disponible, sino usar plantilla estándar
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado
+        texto_considerando = texto_considerando_personalizado.format(
+            solicitante=solicitante_nombre,
+            documento=solicitante_documento,
+            codigo_predial=codigo_predial,
+            municipio=municipio,
+            radicado=radicado,
+            matricula=predio.get("matricula_inmobiliaria", "Sin información"),
+            destino_anterior=data.get("destino_anterior", ""),
+            destino_nuevo=data.get("destino_nuevo", ""),
+            vigencia=datetime.now().year
+        )
+    elif subtipo == "cambio_destino":
         texto_considerando = plantilla["considerando_cambio_destino"].format(
             solicitante_nombre=solicitante_nombre,
             solicitante_documento=solicitante_documento,

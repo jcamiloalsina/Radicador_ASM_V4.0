@@ -307,6 +307,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     motivo_solicitud = data.get('motivo_solicitud', '')
     valor_autoestimado = data.get('valor_autoestimado', avaluo_nuevo)
     perito_avaluador = data.get('perito_avaluador', '')
+    texto_considerando_personalizado = data.get('texto_considerando')  # Texto personalizado de considerandos
     
     # Usar código de verificación del servidor o generar uno local
     fecha_hora_gen = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -467,62 +468,85 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     dibujar_texto_justificado(plantilla['considerando_intro'])
     y_position -= 10
     
-    # Considerando solicitud
-    if subtipo == 'revision_avaluo':
-        texto_solicitud = plantilla['considerando_solicitud'].format(
-            solicitante_nombre=solicitante_nombre,
-            solicitante_documento=solicitante_documento,
-            radicado=radicado,
-            codigo_predial=codigo_predial
-        )
+    # Usar texto personalizado si está disponible
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado
+        try:
+            texto_considerando = texto_considerando_personalizado.format(
+                solicitante=solicitante_nombre,
+                documento=solicitante_documento,
+                codigo_predial=codigo_predial,
+                municipio=municipio,
+                radicado=radicado,
+                avaluo_anterior=formatear_moneda(avaluo_anterior),
+                avaluo_nuevo=formatear_moneda(avaluo_nuevo),
+                matricula=matricula,
+                vigencia=datetime.now().year
+            )
+        except KeyError:
+            # Si hay variables que no existen, usar el texto sin formato
+            texto_considerando = texto_considerando_personalizado
+        
+        dibujar_texto_justificado(texto_considerando)
+        y_position -= 10
     else:
-        texto_solicitud = plantilla['considerando_solicitud'].format(
-            solicitante_nombre=solicitante_nombre,
-            solicitante_documento=solicitante_documento,
-            codigo_predial=codigo_predial,
-            matricula_inmobiliaria=matricula,
-            radicado=radicado,
-            municipio=municipio,
-            valor_autoestimado=formatear_moneda(valor_autoestimado)
-        )
-    
-    dibujar_texto_justificado(texto_solicitud)
-    y_position -= 10
-    
-    # Considerando motivo (solo para revisión de avalúo)
-    if subtipo == 'revision_avaluo' and motivo_solicitud:
-        texto_motivo = plantilla['considerando_motivo'].format(motivo_solicitud=motivo_solicitud)
-        dibujar_texto_justificado(texto_motivo)
-        y_position -= 10
-    
-    # Considerando legal autoestimación
-    if subtipo == 'autoestimacion':
-        dibujar_texto_justificado(plantilla['considerando_legal_autoestimacion'])
-        y_position -= 10
-    
-    # Considerando análisis
-    if subtipo == 'revision_avaluo':
-        texto_analisis = plantilla['considerando_analisis'].format(
-            area_terreno=area_terreno,
-            area_construida=area_construida,
-            destino_economico=destino_economico
-        )
-        dibujar_texto_justificado(texto_analisis)
+        # Usar plantilla estándar
+        # Considerando solicitud
+        if subtipo == 'revision_avaluo':
+            texto_solicitud = plantilla['considerando_solicitud'].format(
+                solicitante_nombre=solicitante_nombre,
+                solicitante_documento=solicitante_documento,
+                radicado=radicado,
+                codigo_predial=codigo_predial
+            )
+        else:
+            texto_solicitud = plantilla['considerando_solicitud'].format(
+                solicitante_nombre=solicitante_nombre,
+                solicitante_documento=solicitante_documento,
+                codigo_predial=codigo_predial,
+                matricula_inmobiliaria=matricula,
+                radicado=radicado,
+                municipio=municipio,
+                valor_autoestimado=formatear_moneda(valor_autoestimado)
+            )
+        
+        dibujar_texto_justificado(texto_solicitud)
         y_position -= 10
         
-        texto_mod = plantilla['considerando_modificacion'].format(codigo_predial=codigo_predial)
-        dibujar_texto_justificado(texto_mod)
-        y_position -= 10
+        # Considerando motivo (solo para revisión de avalúo)
+        if subtipo == 'revision_avaluo' and motivo_solicitud:
+            texto_motivo = plantilla['considerando_motivo'].format(motivo_solicitud=motivo_solicitud)
+            dibujar_texto_justificado(texto_motivo)
+            y_position -= 10
         
-        dibujar_texto_justificado(plantilla['considerando_legal'])
-    else:
-        # Para autoestimación, formatear con el nombre del perito avaluador
-        texto_analisis_autoest = plantilla['considerando_analisis'].format(
-            perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
-        )
-        dibujar_texto_justificado(texto_analisis_autoest)
-        y_position -= 10
-        dibujar_texto_justificado(plantilla['considerando_legal_final'])
+        # Considerando legal autoestimación
+        if subtipo == 'autoestimacion':
+            dibujar_texto_justificado(plantilla['considerando_legal_autoestimacion'])
+            y_position -= 10
+        
+        # Considerando análisis
+        if subtipo == 'revision_avaluo':
+            texto_analisis = plantilla['considerando_analisis'].format(
+                area_terreno=area_terreno,
+                area_construida=area_construida,
+                destino_economico=destino_economico
+            )
+            dibujar_texto_justificado(texto_analisis)
+            y_position -= 10
+            
+            texto_mod = plantilla['considerando_modificacion'].format(codigo_predial=codigo_predial)
+            dibujar_texto_justificado(texto_mod)
+            y_position -= 10
+            
+            dibujar_texto_justificado(plantilla['considerando_legal'])
+        else:
+            # Para autoestimación, formatear con el nombre del perito avaluador
+            texto_analisis_autoest = plantilla['considerando_analisis'].format(
+                perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
+            )
+            dibujar_texto_justificado(texto_analisis_autoest)
+            y_position -= 10
+            dibujar_texto_justificado(plantilla['considerando_legal_final'])
     
     y_position -= 15
     

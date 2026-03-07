@@ -685,6 +685,8 @@ class SolicitudMutacionCreate(BaseModel):
     es_doble_inscripcion: Optional[bool] = False  # Si la cancelación es por doble inscripción
     codigo_predio_duplicado: Optional[str] = None  # Código del predio con el que está duplicado
     predio_m5: Optional[dict] = None  # Datos del predio para M5 (cancelar o inscribir)
+    # Campo universal para texto personalizado de considerandos
+    texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
 
 class SolicitudMutacionAccion(BaseModel):
     """Modelo para acciones sobre una solicitud de mutación"""
@@ -14629,7 +14631,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
             "elaborado_por": aprobador.get("full_name", ""),
             "revisado_por": "",
-            "codigo_verificacion": codigo_verificacion_m3
+            "codigo_verificacion": codigo_verificacion_m3,
+            "texto_considerando": solicitud.get('texto_considerando')  # Texto personalizado para considerandos
         }
         
         # Crear directorio si no existe
@@ -14849,7 +14852,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "perito_avaluador": solicitud.get('perito_avaluador', ''),
             "elaborado_por": aprobador.get("full_name", ""),
             "revisado_por": "",
-            "codigo_verificacion": codigo_verificacion_m4
+            "codigo_verificacion": codigo_verificacion_m4,
+            "texto_considerando": solicitud.get('texto_considerando')  # Texto personalizado para considerandos
         }
         
         # Crear directorio si no existe
@@ -28571,6 +28575,8 @@ async def crear_solicitud_mutacion(
             "es_doble_inscripcion": data.es_doble_inscripcion,
             "codigo_predio_duplicado": data.codigo_predio_duplicado,
             "predio_m5": data.predio_m5,
+            # Texto personalizado para considerandos
+            "texto_considerando": data.texto_considerando,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
