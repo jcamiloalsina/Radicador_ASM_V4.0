@@ -14,7 +14,8 @@ import {
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
-  Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet
+  Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
+  Unlock, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -363,6 +364,30 @@ export default function MutacionesResoluciones() {
   const [buscandoPrediosManzanaNuevo, setBuscandoPrediosManzanaNuevo] = useState(false);
   const [siguienteTerrenoSugeridoNuevo, setSiguienteTerrenoSugeridoNuevo] = useState('0001');
   const [siguienteCodigoHomologadoNuevo, setSiguienteCodigoHomologadoNuevo] = useState(null);
+
+  // ========== ESTADOS PARA BLOQUEO DE PREDIOS ==========
+  const [bloqueoTab, setBloqueoTab] = useState('bloquear'); // 'bloquear' o 'bloqueados'
+  const [bloqueoPredioSearch, setBloqueoPredioSearch] = useState('');
+  const [bloqueoPredioResults, setBloqueoPredioResults] = useState([]);
+  const [bloqueoPredioSearching, setBloqueoPredioSearching] = useState(false);
+  const [bloqueoPredioSeleccionado, setBloqueoPredioSeleccionado] = useState(null);
+  const [bloqueoMunicipio, setBloqueoMunicipio] = useState('');
+  const [showBloqueoMunicipioDropdown, setShowBloqueoMunicipioDropdown] = useState(false);
+  const [bloqueoFormData, setBloqueoFormData] = useState({
+    motivo: '',
+    numero_proceso: '',
+    entidad_judicial: '',
+    observaciones: ''
+  });
+  const [prediosBloqueados, setPrediosBloqueados] = useState([]);
+  const [loadingBloqueados, setLoadingBloqueados] = useState(false);
+  const [procesandoBloqueo, setProcesandoBloqueo] = useState(false);
+  const [desbloqueoMotivo, setDesbloqueoMotivo] = useState('');
+  const [showDesbloqueoModal, setShowDesbloqueoModal] = useState(false);
+  const [predioADesbloquear, setPredioADesbloquear] = useState(null);
+  const [showHistorialBloqueoModal, setShowHistorialBloqueoModal] = useState(false);
+  const [historialBloqueo, setHistorialBloqueo] = useState([]);
+  const [predioHistorialBloqueo, setPredioHistorialBloqueo] = useState(null);
   const [ultimaManzanaEncontrada, setUltimaManzanaEncontrada] = useState(null);
   const [buscandoUltimaManzana, setBuscandoUltimaManzana] = useState(false);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
@@ -715,6 +740,130 @@ export default function MutacionesResoluciones() {
       setNumeracionMunicipios(inicial);
     } finally {
       setCargandoConfig(false);
+    }
+  };
+
+  // ========== FUNCIONES DE BLOQUEO DE PREDIOS ==========
+  
+  const cargarPrediosBloqueados = async () => {
+    setLoadingBloqueados(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/predios/bloqueados`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosBloqueados(response.data.predios || []);
+    } catch (error) {
+      console.error('Error cargando predios bloqueados:', error);
+      toast.error('Error al cargar predios bloqueados');
+    } finally {
+      setLoadingBloqueados(false);
+    }
+  };
+
+  const bloquearPredio = async () => {
+    if (!bloqueoPredioSeleccionado) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+    if (!bloqueoFormData.motivo.trim()) {
+      toast.error('Debe ingresar el motivo del bloqueo');
+      return;
+    }
+
+    setProcesandoBloqueo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/predios/${bloqueoPredioSeleccionado.id}/bloquear`,
+        bloqueoFormData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        toast.success('Predio bloqueado exitosamente');
+        setBloqueoPredioSeleccionado(null);
+        setBloqueoPredioSearch('');
+        setBloqueoFormData({
+          motivo: '',
+          numero_proceso: '',
+          entidad_judicial: '',
+          observaciones: ''
+        });
+        cargarPrediosBloqueados();
+        setBloqueoTab('bloqueados');
+      }
+    } catch (error) {
+      console.error('Error bloqueando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al bloquear predio');
+    } finally {
+      setProcesandoBloqueo(false);
+    }
+  };
+
+  const desbloquearPredio = async () => {
+    if (!predioADesbloquear) return;
+    if (!desbloqueoMotivo.trim()) {
+      toast.error('Debe ingresar el motivo del desbloqueo');
+      return;
+    }
+
+    setProcesandoBloqueo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/predios/${predioADesbloquear.id}/desbloquear`,
+        { motivo: desbloqueoMotivo },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        toast.success('Predio desbloqueado exitosamente');
+        setShowDesbloqueoModal(false);
+        setPredioADesbloquear(null);
+        setDesbloqueoMotivo('');
+        cargarPrediosBloqueados();
+      }
+    } catch (error) {
+      console.error('Error desbloqueando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al desbloquear predio');
+    } finally {
+      setProcesandoBloqueo(false);
+    }
+  };
+
+  const verHistorialBloqueo = async (predio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/predios/${predio.id}/historial-bloqueos`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setHistorialBloqueo(response.data.historial || []);
+      setPredioHistorialBloqueo(predio);
+      setShowHistorialBloqueoModal(true);
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      toast.error('Error al cargar historial de bloqueos');
+    }
+  };
+
+  const buscarPredioParaBloqueo = async (query) => {
+    if (query.length < 3 || !bloqueoMunicipio) return;
+    
+    setBloqueoPredioSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioCodigo = MUNICIPIOS.find(m => m.nombre === bloqueoMunicipio)?.codigo;
+      const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
+        params: { q: query, limit: 10 },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBloqueoPredioResults(response.data.predios || []);
+    } catch (error) {
+      console.error('Error buscando predios:', error);
+    } finally {
+      setBloqueoPredioSearching(false);
     }
   };
 
@@ -7801,8 +7950,13 @@ export default function MutacionesResoluciones() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${puedeVerConfiguracion ? 'grid-cols-3' : 'grid-cols-2'} max-w-lg`}>
+      <Tabs value={activeTab} onValueChange={(val) => {
+        setActiveTab(val);
+        if (val === 'bloqueos' && puedeAprobar) {
+          cargarPrediosBloqueados();
+        }
+      }}>
+        <TabsList className={`grid w-full ${puedeVerConfiguracion ? 'grid-cols-4' : puedeAprobar ? 'grid-cols-3' : 'grid-cols-2'} max-w-2xl`}>
           <TabsTrigger value="nueva" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
             Nueva Mutación
@@ -7811,6 +7965,12 @@ export default function MutacionesResoluciones() {
             <History className="w-4 h-4" />
             Historial
           </TabsTrigger>
+          {puedeAprobar && (
+            <TabsTrigger value="bloqueos" className="flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              Bloqueos
+            </TabsTrigger>
+          )}
           {puedeVerConfiguracion && (
             <TabsTrigger value="configuracion" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -7826,6 +7986,329 @@ export default function MutacionesResoluciones() {
         <TabsContent value="historial" className="mt-6">
           {renderHistorial()}
         </TabsContent>
+        
+        {puedeAprobar && (
+          <TabsContent value="bloqueos" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-red-600" />
+                  Gestión de Bloqueos de Predios
+                </CardTitle>
+                <p className="text-sm text-slate-500">
+                  Bloquee predios que tienen procesos legales activos para evitar modificaciones no autorizadas.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={bloqueoTab} onValueChange={setBloqueoTab}>
+                  <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
+                    <TabsTrigger value="bloquear" className="flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Bloquear Predio
+                    </TabsTrigger>
+                    <TabsTrigger value="bloqueados" className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Predios Bloqueados ({prediosBloqueados.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="bloquear">
+                    <div className="space-y-6">
+                      {/* Selector de Municipio */}
+                      <div className="relative">
+                        <Label className="text-sm font-medium">Municipio *</Label>
+                        <div
+                          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+                          onClick={() => setShowBloqueoMunicipioDropdown(!showBloqueoMunicipioDropdown)}
+                          data-testid="bloqueo-municipio-select"
+                        >
+                          <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
+                            {bloqueoMunicipio || 'Seleccione municipio'}
+                          </span>
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                        {showBloqueoMunicipioDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            {MUNICIPIOS.map(mun => (
+                              <div
+                                key={mun.codigo}
+                                className="p-2 hover:bg-slate-100 cursor-pointer"
+                                onClick={() => {
+                                  setBloqueoMunicipio(mun.nombre);
+                                  setShowBloqueoMunicipioDropdown(false);
+                                  setBloqueoPredioSeleccionado(null);
+                                  setBloqueoPredioSearch('');
+                                  setBloqueoPredioResults([]);
+                                }}
+                              >
+                                {mun.nombre}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Buscador de Predio */}
+                      {bloqueoMunicipio && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Buscar Predio *</Label>
+                          <div className="relative">
+                            <Input
+                              value={bloqueoPredioSearch}
+                              onChange={(e) => {
+                                setBloqueoPredioSearch(e.target.value);
+                                buscarPredioParaBloqueo(e.target.value);
+                              }}
+                              placeholder="Buscar por código predial, dirección o propietario..."
+                              className="pr-10"
+                              data-testid="bloqueo-buscar-predio"
+                            />
+                            {bloqueoPredioSearching && (
+                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                            )}
+                          </div>
+                          
+                          {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
+                            <div className="border rounded-lg max-h-48 overflow-y-auto">
+                              {bloqueoPredioResults.map((predio, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
+                                  onClick={() => {
+                                    if (predio.bloqueado) {
+                                      toast.error('Este predio ya está bloqueado');
+                                      return;
+                                    }
+                                    setBloqueoPredioSeleccionado(predio);
+                                    setBloqueoPredioSearch('');
+                                    setBloqueoPredioResults([]);
+                                  }}
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                                      <p className="text-xs text-slate-500">{predio.direccion}</p>
+                                      <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                                    </div>
+                                    {predio.bloqueado && (
+                                      <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Predio Seleccionado */}
+                      {bloqueoPredioSeleccionado && (
+                        <Card className="border-amber-200 bg-amber-50">
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-center">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-amber-600" />
+                                Predio a Bloquear
+                              </CardTitle>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => setBloqueoPredioSeleccionado(null)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-slate-500">Código:</span>
+                                <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Dirección:</span>
+                                <p className="font-medium">{bloqueoPredioSeleccionado.direccion || 'Sin dirección'}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Propietario:</span>
+                                <p className="font-medium">{bloqueoPredioSeleccionado.nombre_propietario || 'No registrado'}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Municipio:</span>
+                                <p className="font-medium">{bloqueoPredioSeleccionado.municipio || bloqueoMunicipio}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Formulario de Bloqueo */}
+                      {bloqueoPredioSeleccionado && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                              <FileText className="w-4 h-4" />
+                              Información del Bloqueo
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div>
+                              <Label className="text-sm font-medium">Motivo del Bloqueo *</Label>
+                              <Textarea
+                                value={bloqueoFormData.motivo}
+                                onChange={(e) => setBloqueoFormData(prev => ({ ...prev, motivo: e.target.value }))}
+                                placeholder="Ej: Proceso legal activo - Embargo ordenado por el Juzgado..."
+                                rows={3}
+                                data-testid="bloqueo-motivo"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-sm">Número de Proceso</Label>
+                                <Input
+                                  value={bloqueoFormData.numero_proceso}
+                                  onChange={(e) => setBloqueoFormData(prev => ({ ...prev, numero_proceso: e.target.value }))}
+                                  placeholder="Ej: 2024-00123"
+                                  data-testid="bloqueo-numero-proceso"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Entidad Judicial</Label>
+                                <Input
+                                  value={bloqueoFormData.entidad_judicial}
+                                  onChange={(e) => setBloqueoFormData(prev => ({ ...prev, entidad_judicial: e.target.value }))}
+                                  placeholder="Ej: Juzgado 3ro Civil Municipal"
+                                  data-testid="bloqueo-entidad"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm">Observaciones Adicionales</Label>
+                              <Textarea
+                                value={bloqueoFormData.observaciones}
+                                onChange={(e) => setBloqueoFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                                placeholder="Observaciones adicionales..."
+                                rows={2}
+                              />
+                            </div>
+
+                            <Button 
+                              onClick={bloquearPredio}
+                              disabled={procesandoBloqueo || !bloqueoFormData.motivo.trim()}
+                              className="w-full bg-red-600 hover:bg-red-700"
+                              data-testid="bloqueo-confirmar-btn"
+                            >
+                              {procesandoBloqueo ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                              ) : (
+                                <><Lock className="w-4 h-4 mr-2" /> Bloquear Predio</>
+                              )}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="bloqueados">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-slate-500">
+                          {prediosBloqueados.length} predio(s) bloqueado(s)
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={cargarPrediosBloqueados}
+                          disabled={loadingBloqueados}
+                        >
+                          {loadingBloqueados ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        </Button>
+                      </div>
+
+                      {loadingBloqueados ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                        </div>
+                      ) : prediosBloqueados.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                          <Lock className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                          <p>No hay predios bloqueados</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {prediosBloqueados.map((predio, idx) => (
+                            <Card key={idx} className="border-red-200 bg-red-50">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Lock className="w-4 h-4 text-red-600" />
+                                      <span className="font-medium text-red-800">
+                                        {predio.codigo_predial_nacional || predio.codigo_predial}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-slate-600">{predio.direccion}</p>
+                                    <p className="text-xs text-slate-500">{predio.municipio}</p>
+                                    
+                                    {predio.bloqueo_info && (
+                                      <div className="mt-2 p-2 bg-white rounded border border-red-100">
+                                        <p className="text-sm font-medium text-red-800">
+                                          {predio.bloqueo_info.motivo}
+                                        </p>
+                                        {predio.bloqueo_info.numero_proceso && (
+                                          <p className="text-xs text-slate-500">
+                                            Proceso: {predio.bloqueo_info.numero_proceso}
+                                          </p>
+                                        )}
+                                        {predio.bloqueo_info.entidad_judicial && (
+                                          <p className="text-xs text-slate-500">
+                                            Entidad: {predio.bloqueo_info.entidad_judicial}
+                                          </p>
+                                        )}
+                                        <p className="text-xs text-slate-400 mt-1">
+                                          Bloqueado por: {predio.bloqueo_info.bloqueado_por_nombre} el {new Date(predio.bloqueo_info.fecha_bloqueo).toLocaleDateString('es-CO')}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex flex-col gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => verHistorialBloqueo(predio)}
+                                      className="text-xs"
+                                    >
+                                      <History className="w-3 h-3 mr-1" />
+                                      Historial
+                                    </Button>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      onClick={() => {
+                                        setPredioADesbloquear(predio);
+                                        setShowDesbloqueoModal(true);
+                                      }}
+                                      className="bg-green-600 hover:bg-green-700 text-xs"
+                                    >
+                                      <Unlock className="w-3 h-3 mr-1" />
+                                      Desbloquear
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
         
         {puedeVerConfiguracion && (
           <TabsContent value="configuracion" className="mt-6">
@@ -9728,6 +10211,116 @@ export default function MutacionesResoluciones() {
           }
         }}
       />
+
+      {/* Modal de Desbloqueo */}
+      <Dialog open={showDesbloqueoModal} onOpenChange={setShowDesbloqueoModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="w-5 h-5 text-green-600" />
+              Desbloquear Predio
+            </DialogTitle>
+          </DialogHeader>
+          
+          {predioADesbloquear && (
+            <div className="space-y-4">
+              <Card className="border-slate-200">
+                <CardContent className="p-3">
+                  <p className="font-medium text-sm">{predioADesbloquear.codigo_predial_nacional}</p>
+                  <p className="text-xs text-slate-500">{predioADesbloquear.direccion}</p>
+                  {predioADesbloquear.bloqueo_info && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Motivo actual: {predioADesbloquear.bloqueo_info.motivo}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <div>
+                <Label className="text-sm font-medium">Motivo del Desbloqueo *</Label>
+                <Textarea
+                  value={desbloqueoMotivo}
+                  onChange={(e) => setDesbloqueoMotivo(e.target.value)}
+                  placeholder="Ej: Proceso legal finalizado, levantamiento de embargo..."
+                  rows={3}
+                  data-testid="desbloqueo-motivo"
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDesbloqueoModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={desbloquearPredio}
+              disabled={procesandoBloqueo || !desbloqueoMotivo.trim()}
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="desbloqueo-confirmar-btn"
+            >
+              {procesandoBloqueo ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+              ) : (
+                <><Unlock className="w-4 h-4 mr-2" /> Confirmar Desbloqueo</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Historial de Bloqueos */}
+      <Dialog open={showHistorialBloqueoModal} onOpenChange={setShowHistorialBloqueoModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Historial de Bloqueos
+            </DialogTitle>
+          </DialogHeader>
+          
+          {predioHistorialBloqueo && (
+            <div className="mb-4 p-2 bg-slate-100 rounded">
+              <p className="font-medium text-sm">{predioHistorialBloqueo.codigo_predial_nacional}</p>
+              <p className="text-xs text-slate-500">{predioHistorialBloqueo.direccion}</p>
+            </div>
+          )}
+          
+          <div className="max-h-80 overflow-y-auto space-y-3">
+            {historialBloqueo.length === 0 ? (
+              <p className="text-center text-slate-500 py-4">Sin historial de bloqueos</p>
+            ) : (
+              historialBloqueo.map((item, idx) => (
+                <Card key={idx} className={item.accion === 'BLOQUEO' ? 'border-red-200' : 'border-green-200'}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      {item.accion === 'BLOQUEO' ? (
+                        <Lock className="w-4 h-4 text-red-600" />
+                      ) : (
+                        <Unlock className="w-4 h-4 text-green-600" />
+                      )}
+                      <span className={`font-medium text-sm ${item.accion === 'BLOQUEO' ? 'text-red-700' : 'text-green-700'}`}>
+                        {item.accion}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-auto">
+                        {new Date(item.fecha).toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700">{item.motivo}</p>
+                    {item.numero_proceso && (
+                      <p className="text-xs text-slate-500">Proceso: {item.numero_proceso}</p>
+                    )}
+                    {item.entidad_judicial && (
+                      <p className="text-xs text-slate-500">Entidad: {item.entidad_judicial}</p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Por: {item.usuario_nombre}</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -14208,6 +14208,18 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
     Retorna los datos de la resolución generada o None si no aplica.
     """
     try:
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        predio_id = cambio.get("predio_id")
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
+        
         # Determinar si el cambio requiere resolución (por ahora solo M1 para cambios de propietario)
         tipo_cambio = cambio.get("tipo_cambio", "")
         datos_propuestos = cambio.get("datos_propuestos", {})
@@ -14583,6 +14595,19 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         predios_inscritos = solicitud.get('predios_inscritos', [])
         solicitante = solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""}
         
+        # === VERIFICAR SI ALGÚN PREDIO ESTÁ BLOQUEADO ===
+        for predio_data in predios_cancelados:
+            predio_id = predio_data.get('id') or predio_data.get('predio_id')
+            if predio_id:
+                bloqueo_check = await verificar_predio_bloqueado(predio_id)
+                if bloqueo_check.get("bloqueado"):
+                    bloqueo_info = bloqueo_check.get("info", {})
+                    raise Exception(
+                        f"El predio {predio_data.get('codigo_predial_nacional', predio_id)} está bloqueado. "
+                        f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                        f"Contacte al coordinador."
+                    )
+        
         # Obtener nombre del municipio
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
         
@@ -14832,6 +14857,17 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         radicado = solicitud.get('radicado', '')
         predio_id = solicitud.get('predio_id', '')
         subtipo = solicitud.get('subtipo', '')  # cambio_destino o incorporacion_construccion
+        
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
         
         # Obtener predio
         predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
@@ -15085,6 +15121,17 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         predio_id = solicitud.get('predio_id', '')
         subtipo = solicitud.get('subtipo', 'revision_avaluo')  # revision_avaluo o autoestimacion
         decision = solicitud.get('decision', 'aceptar')  # aceptar o rechazar
+        
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
         
         # Obtener predio
         predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
@@ -15353,6 +15400,18 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         es_doble_inscripcion = solicitud.get('es_doble_inscripcion', False)
         codigo_predio_duplicado = solicitud.get('codigo_predio_duplicado', '')
         
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        predio_id = solicitud.get('predio_id') or predio_m5.get('id')
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
+        
         # Determinar vigencia
         colombia_tz = ZoneInfo("America/Bogota")
         año_actual = datetime.now(colombia_tz).year
@@ -15619,6 +15678,18 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         radicado = solicitud.get('radicado', '')
         solicitante = solicitud.get('solicitante', {})
         predio_data = solicitud.get('predio_rectificacion', {})
+        
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        predio_id = solicitud.get('predio_id') or predio_data.get('id')
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
         
         # Áreas anteriores y nuevas
         area_terreno_anterior = solicitud.get('area_terreno_anterior', 0)
@@ -15999,6 +16070,17 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         predio_db = None
         if predio_id:
             predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        # === VERIFICAR SI EL PREDIO ESTÁ BLOQUEADO ===
+        if predio_id:
+            bloqueo_check = await verificar_predio_bloqueado(predio_id)
+            if bloqueo_check.get("bloqueado"):
+                bloqueo_info = bloqueo_check.get("info", {})
+                raise Exception(
+                    f"El predio está bloqueado por proceso legal. "
+                    f"Motivo: {bloqueo_info.get('motivo', 'No especificado')}. "
+                    f"Bloqueado por: {bloqueo_info.get('bloqueado_por_nombre', 'Desconocido')}"
+                )
         
         # Datos R1/R2 del predio
         def obtener_datos_r1_r2_comp(predio):
@@ -16505,6 +16587,281 @@ async def get_stats_apoyo(
     return {
         "mis_asignaciones_pendientes": mis_asignaciones,
         "total_en_digitalizacion": total_en_digitalizacion
+    }
+
+
+# ========================================
+# ENDPOINTS DE BLOQUEO DE PREDIOS
+# ========================================
+
+class BloquearPredioRequest(BaseModel):
+    motivo: str
+    numero_proceso: Optional[str] = None
+    entidad_judicial: Optional[str] = None
+    observaciones: Optional[str] = None
+
+class DesbloquearPredioRequest(BaseModel):
+    motivo: str
+    observaciones: Optional[str] = None
+
+
+@api_router.post("/predios/{predio_id}/bloquear")
+async def bloquear_predio(
+    predio_id: str,
+    request: BloquearPredioRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bloquea un predio por proceso legal. Solo coordinadores pueden bloquear.
+    El predio bloqueado no podrá ser modificado por ninguna mutación.
+    """
+    # Solo coordinadores pueden bloquear
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Solo los coordinadores pueden bloquear predios"
+        )
+    
+    # Buscar el predio
+    predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Verificar si ya está bloqueado
+    if predio.get("bloqueado"):
+        raise HTTPException(
+            status_code=400, 
+            detail="El predio ya está bloqueado"
+        )
+    
+    # Crear información de bloqueo
+    fecha_actual = datetime.now(timezone.utc).isoformat()
+    bloqueo_info = {
+        "motivo": request.motivo,
+        "numero_proceso": request.numero_proceso or "",
+        "entidad_judicial": request.entidad_judicial or "",
+        "observaciones": request.observaciones or "",
+        "fecha_bloqueo": fecha_actual,
+        "bloqueado_por_id": current_user['id'],
+        "bloqueado_por_nombre": current_user['full_name']
+    }
+    
+    # Entrada para historial
+    historial_entry = {
+        "accion": "BLOQUEO",
+        "fecha": fecha_actual,
+        "usuario_id": current_user['id'],
+        "usuario_nombre": current_user['full_name'],
+        "motivo": request.motivo,
+        "numero_proceso": request.numero_proceso or "",
+        "entidad_judicial": request.entidad_judicial or "",
+        "observaciones": request.observaciones or ""
+    }
+    
+    # Actualizar el predio
+    await db.predios.update_one(
+        {"id": predio_id},
+        {
+            "$set": {
+                "bloqueado": True,
+                "bloqueo_info": bloqueo_info,
+                "ultima_actualizacion": fecha_actual
+            },
+            "$push": {
+                "historial_bloqueos": historial_entry
+            }
+        }
+    )
+    
+    # Registrar en log de actividades
+    await registrar_log_actividad(
+        accion="bloquear_predio",
+        categoria="predios",
+        descripcion=f"Bloqueó el predio {predio.get('codigo_predial_nacional', predio_id)} por proceso legal",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        municipio=predio.get('municipio', ''),
+        detalles={
+            "predio_id": predio_id,
+            "codigo_predial": predio.get('codigo_predial_nacional', ''),
+            "motivo": request.motivo,
+            "numero_proceso": request.numero_proceso
+        }
+    )
+    
+    logging.info(f"🔒 Predio {predio_id} bloqueado por {current_user['full_name']}")
+    
+    return {
+        "success": True,
+        "mensaje": "Predio bloqueado exitosamente",
+        "predio_id": predio_id,
+        "bloqueo_info": bloqueo_info
+    }
+
+
+@api_router.post("/predios/{predio_id}/desbloquear")
+async def desbloquear_predio(
+    predio_id: str,
+    request: DesbloquearPredioRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Desbloquea un predio. Solo coordinadores pueden desbloquear.
+    """
+    # Solo coordinadores pueden desbloquear
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Solo los coordinadores pueden desbloquear predios"
+        )
+    
+    # Buscar el predio
+    predio = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    # Verificar si está bloqueado
+    if not predio.get("bloqueado"):
+        raise HTTPException(
+            status_code=400, 
+            detail="El predio no está bloqueado"
+        )
+    
+    fecha_actual = datetime.now(timezone.utc).isoformat()
+    
+    # Entrada para historial
+    historial_entry = {
+        "accion": "DESBLOQUEO",
+        "fecha": fecha_actual,
+        "usuario_id": current_user['id'],
+        "usuario_nombre": current_user['full_name'],
+        "motivo": request.motivo,
+        "observaciones": request.observaciones or "",
+        "bloqueo_anterior": predio.get("bloqueo_info", {})
+    }
+    
+    # Actualizar el predio
+    await db.predios.update_one(
+        {"id": predio_id},
+        {
+            "$set": {
+                "bloqueado": False,
+                "bloqueo_info": None,
+                "ultima_actualizacion": fecha_actual
+            },
+            "$push": {
+                "historial_bloqueos": historial_entry
+            }
+        }
+    )
+    
+    # Registrar en log de actividades
+    await registrar_log_actividad(
+        accion="desbloquear_predio",
+        categoria="predios",
+        descripcion=f"Desbloqueó el predio {predio.get('codigo_predial_nacional', predio_id)}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        municipio=predio.get('municipio', ''),
+        detalles={
+            "predio_id": predio_id,
+            "codigo_predial": predio.get('codigo_predial_nacional', ''),
+            "motivo": request.motivo
+        }
+    )
+    
+    logging.info(f"🔓 Predio {predio_id} desbloqueado por {current_user['full_name']}")
+    
+    return {
+        "success": True,
+        "mensaje": "Predio desbloqueado exitosamente",
+        "predio_id": predio_id
+    }
+
+
+@api_router.get("/predios/bloqueados")
+async def listar_predios_bloqueados(
+    municipio: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista todos los predios bloqueados. Accesible para todos los usuarios.
+    """
+    filtro = {"bloqueado": True}
+    
+    if municipio:
+        filtro["municipio"] = {"$regex": municipio, "$options": "i"}
+    
+    total = await db.predios.count_documents(filtro)
+    
+    predios = await db.predios.find(
+        filtro,
+        {
+            "_id": 0,
+            "id": 1,
+            "codigo_predial_nacional": 1,
+            "codigo_predial": 1,
+            "direccion": 1,
+            "municipio": 1,
+            "nombre_propietario": 1,
+            "bloqueado": 1,
+            "bloqueo_info": 1
+        }
+    ).sort("bloqueo_info.fecha_bloqueo", -1).skip(skip).limit(limit).to_list(length=limit)
+    
+    return {
+        "predios": predios,
+        "total": total,
+        "pagina_actual": skip // limit + 1,
+        "total_paginas": (total + limit - 1) // limit
+    }
+
+
+@api_router.get("/predios/{predio_id}/historial-bloqueos")
+async def obtener_historial_bloqueos(
+    predio_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene el historial de bloqueos/desbloqueos de un predio.
+    """
+    predio = await db.predios.find_one(
+        {"id": predio_id},
+        {"_id": 0, "historial_bloqueos": 1, "bloqueado": 1, "bloqueo_info": 1}
+    )
+    
+    if not predio:
+        raise HTTPException(status_code=404, detail="Predio no encontrado")
+    
+    return {
+        "bloqueado": predio.get("bloqueado", False),
+        "bloqueo_info": predio.get("bloqueo_info"),
+        "historial": predio.get("historial_bloqueos", [])
+    }
+
+
+# Función auxiliar para verificar si un predio está bloqueado
+async def verificar_predio_bloqueado(predio_id: str) -> dict:
+    """
+    Verifica si un predio está bloqueado.
+    Retorna {"bloqueado": True/False, "info": {...}} 
+    """
+    predio = await db.predios.find_one(
+        {"id": predio_id},
+        {"_id": 0, "bloqueado": 1, "bloqueo_info": 1}
+    )
+    
+    if not predio:
+        return {"bloqueado": False, "info": None, "existe": False}
+    
+    return {
+        "bloqueado": predio.get("bloqueado", False),
+        "info": predio.get("bloqueo_info"),
+        "existe": True
     }
 
 
