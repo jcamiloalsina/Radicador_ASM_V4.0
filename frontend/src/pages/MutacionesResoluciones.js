@@ -60,12 +60,12 @@ const TIPOS_MUTACION = {
     color: 'bg-red-100 text-red-800',
     enabled: true
   },
-  M6: { 
-    codigo: 'M6', 
-    nombre: 'Mutación Sexta', 
-    descripcion: 'Rectificación de área',
+  RECTIFICACION_AREA: { 
+    codigo: 'RECTIFICACION_AREA', 
+    nombre: 'Rectificación de Área', 
+    descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
-    enabled: false
+    enabled: true
   },
   COMP: { 
     codigo: 'COMP', 
@@ -284,6 +284,26 @@ export default function MutacionesResoluciones() {
     destino_economico: 'A',
     avaluo: ''
   });
+
+  // Estado para Rectificación de Área
+  const [rectificacionData, setRectificacionData] = useState({
+    municipio: '',
+    radicado: '',
+    predio: null,
+    area_terreno_anterior: 0,
+    area_terreno_nueva: 0,
+    area_construida_anterior: 0,
+    area_construida_nueva: 0,
+    avaluo_nuevo: 0,
+    motivo_solicitud: '',
+    observaciones: '',
+    texto_considerando: ''
+  });
+  const [searchPredioRectificacion, setSearchPredioRectificacion] = useState('');
+  const [searchResultsRectificacion, setSearchResultsRectificacion] = useState([]);
+  const [searchingPrediosRectificacion, setSearchingPrediosRectificacion] = useState(false);
+  const [showMunicipioDropdownRectificacion, setShowMunicipioDropdownRectificacion] = useState(false);
+  const [radicadosDisponiblesRectificacion, setRadicadosDisponiblesRectificacion] = useState([]);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2885,6 +2905,197 @@ export default function MutacionesResoluciones() {
     setRadicadosDisponiblesM5([]);
   };
 
+  // =====================
+  // FUNCIONES PARA RECTIFICACIÓN DE ÁREA
+  // =====================
+
+  // Buscar radicados para Rectificación de Área
+  const buscarRadicadosRectificacion = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesRectificacion([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRadicadosDisponiblesRectificacion(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados Rectificación:', error);
+    }
+  };
+
+  // Buscar predios para Rectificación de Área
+  const buscarPrediosRectificacion = async () => {
+    if (!rectificacionData.municipio) {
+      toast.error('Primero seleccione un municipio');
+      return;
+    }
+    if (searchPredioRectificacion.length < 3) {
+      toast.error('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosRectificacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === rectificacionData.municipio)?.codigo;
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia_actual;
+      
+      const response = await axios.get(`${API}/predios`, {
+        params: { 
+          q: searchPredioRectificacion,
+          codigo_municipio: codigoMunicipio,
+          vigencia: vigenciaActual,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSearchResultsRectificacion(response.data.predios || []);
+      if (!response.data.predios?.length) {
+        toast.info('No se encontraron predios');
+      }
+    } catch (error) {
+      console.error('Error buscando predios:', error);
+      toast.error('Error al buscar predios');
+    } finally {
+      setSearchingPrediosRectificacion(false);
+    }
+  };
+
+  // Seleccionar predio para Rectificación de Área
+  const seleccionarPredioRectificacion = (predio) => {
+    // Obtener áreas desde R1 si existe
+    const r1 = predio.r1_registros?.[0] || {};
+    const areaTerrenoActual = r1.area_terreno || predio.area_terreno || 0;
+    const areaConstruidaActual = r1.area_construida || predio.area_construida || 0;
+    const avaluoActual = r1.avaluo || predio.avaluo || 0;
+    
+    setRectificacionData(prev => ({
+      ...prev,
+      predio: predio,
+      area_terreno_anterior: areaTerrenoActual,
+      area_terreno_nueva: areaTerrenoActual, // Iniciar con el mismo valor
+      area_construida_anterior: areaConstruidaActual,
+      area_construida_nueva: areaConstruidaActual, // Iniciar con el mismo valor
+      avaluo_nuevo: avaluoActual // Iniciar con el mismo valor
+    }));
+    setSearchPredioRectificacion('');
+    setSearchResultsRectificacion([]);
+  };
+
+  // Generar resolución de Rectificación de Área
+  const generarResolucionRectificacion = async () => {
+    // Validaciones
+    if (!rectificacionData.municipio) {
+      toast.error('Debe seleccionar un municipio');
+      return;
+    }
+    if (!rectificacionData.radicado) {
+      toast.error('Debe ingresar un número de radicado');
+      return;
+    }
+    if (!rectificacionData.predio) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+    if (!rectificacionData.area_terreno_nueva || rectificacionData.area_terreno_nueva <= 0) {
+      toast.error('Debe ingresar el área de terreno nueva');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Extraer solicitante del predio
+      const propietarios = rectificacionData.predio.propietarios || 
+                          rectificacionData.predio.r2_registros?.[0]?.propietarios || [];
+      const solicitante = propietarios.length > 0 
+        ? { 
+            nombre: propietarios[0].nombre_propietario || propietarios[0].nombre || 'No especificado', 
+            documento: propietarios[0].numero_documento || '' 
+          }
+        : { nombre: 'No especificado', documento: '' };
+
+      const payload = {
+        tipo: 'RECTIFICACION_AREA',
+        subtipo: 'rectificacion_area',
+        municipio: rectificacionData.municipio,
+        radicado: rectificacionData.radicado,
+        solicitante: solicitante,
+        predio_id: rectificacionData.predio.id,
+        predio_rectificacion: rectificacionData.predio,
+        area_terreno_anterior: parseFloat(rectificacionData.area_terreno_anterior) || 0,
+        area_terreno_nueva: parseFloat(rectificacionData.area_terreno_nueva) || 0,
+        area_construida_anterior: parseFloat(rectificacionData.area_construida_anterior) || 0,
+        area_construida_nueva: parseFloat(rectificacionData.area_construida_nueva) || 0,
+        avaluo_anterior: rectificacionData.predio.avaluo || 0,
+        avaluo_nuevo: parseFloat(rectificacionData.avaluo_nuevo) || rectificacionData.predio.avaluo || 0,
+        motivo_solicitud: rectificacionData.motivo_solicitud || 'Rectificación de área catastral',
+        observaciones: rectificacionData.observaciones,
+        texto_considerando: rectificacionData.texto_considerando || ''
+      };
+
+      const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.mensaje || 'Solicitud de Rectificación de Área procesada exitosamente');
+        
+        if (response.data.pdf_url) {
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            fileName: `Resolucion_Rectificacion_Area_${response.data.numero_resolucion?.replace(/\//g, '-') || 'N'}.pdf`,
+            resolucionId: response.data.id,
+            radicado: rectificacionData.radicado
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
+        }
+        
+        // Limpiar formulario
+        resetRectificacionForm();
+        setShowMutacionDialog(false);
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando resolución Rectificación de Área:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario Rectificación de Área
+  const resetRectificacionForm = () => {
+    setRectificacionData({
+      municipio: '',
+      radicado: '',
+      predio: null,
+      area_terreno_anterior: 0,
+      area_terreno_nueva: 0,
+      area_construida_anterior: 0,
+      area_construida_nueva: 0,
+      avaluo_nuevo: 0,
+      motivo_solicitud: '',
+      observaciones: '',
+      texto_considerando: ''
+    });
+    setSearchPredioRectificacion('');
+    setSearchResultsRectificacion([]);
+    setRadicadosDisponiblesRectificacion([]);
+  };
+
   // Construir código predial de 30 dígitos para M5
   const construirCodigoPredialM5 = () => {
     // Aplicar padding al construir el código completo
@@ -5032,6 +5243,342 @@ export default function MutacionesResoluciones() {
     </div>
   );
 
+  // Renderizar formulario de Rectificación de Área
+  const renderFormularioRectificacionArea = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers className="w-5 h-5 text-cyan-600" />
+          <h3 className="font-semibold text-cyan-800">Rectificación de Área</h3>
+        </div>
+        <p className="text-sm text-cyan-700">
+          Este trámite permite corregir el área de terreno y/o construcción de un predio 
+          cuando existe una diferencia entre el área registrada en el catastro y el área real.
+        </p>
+      </div>
+
+      {/* Municipio */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Municipio *</Label>
+        <div
+          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+          onClick={() => setShowMunicipioDropdownRectificacion(!showMunicipioDropdownRectificacion)}
+          data-testid="rectificacion-municipio-select"
+        >
+          <span className={rectificacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
+            {rectificacionData.municipio || 'Seleccione municipio'}
+          </span>
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        </div>
+        {showMunicipioDropdownRectificacion && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {MUNICIPIOS.map((mun) => (
+              <div
+                key={mun.codigo}
+                className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                onClick={() => {
+                  setRectificacionData(prev => ({ ...prev, municipio: mun.nombre, predio: null }));
+                  setShowMunicipioDropdownRectificacion(false);
+                }}
+              >
+                {mun.nombre}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Radicado */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Número de Radicado *</Label>
+        <Input
+          type="text"
+          value={rectificacionData.radicado}
+          onChange={(e) => {
+            setRectificacionData(prev => ({ ...prev, radicado: e.target.value }));
+            buscarRadicadosRectificacion(e.target.value);
+          }}
+          placeholder="Buscar radicado..."
+          className="mt-1"
+          data-testid="rectificacion-radicado-input"
+        />
+        {radicadosDisponiblesRectificacion.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {radicadosDisponiblesRectificacion.map((rad, idx) => (
+              <div
+                key={idx}
+                className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                onClick={() => {
+                  setRectificacionData(prev => ({ ...prev, radicado: rad.radicado || rad.numero || (typeof rad === 'string' ? rad : '') }));
+                  setRadicadosDisponiblesRectificacion([]);
+                }}
+              >
+                <div className="font-medium">{rad.radicado || rad.numero || (typeof rad === 'string' ? rad : 'Sin radicado')}</div>
+                {rad.nombre_completo && <div className="text-xs text-slate-500">{rad.nombre_completo}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Búsqueda de Predio */}
+      <Card className="border-cyan-200 bg-cyan-50/30">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-cyan-800">
+            <Search className="w-4 h-4" />
+            Buscar Predio a Rectificar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-2 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={searchPredioRectificacion}
+              onChange={(e) => setSearchPredioRectificacion(e.target.value)}
+              placeholder="Código predial, dirección, propietario..."
+              onKeyPress={(e) => e.key === 'Enter' && buscarPrediosRectificacion()}
+              disabled={!rectificacionData.municipio}
+              data-testid="rectificacion-search-predio"
+            />
+            <Button
+              onClick={buscarPrediosRectificacion}
+              disabled={searchingPrediosRectificacion || !rectificacionData.municipio}
+              className="bg-cyan-600 hover:bg-cyan-700"
+              data-testid="rectificacion-search-btn"
+            >
+              {searchingPrediosRectificacion ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {/* Resultados de búsqueda */}
+          {searchResultsRectificacion.length > 0 && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {searchResultsRectificacion.map((predio) => (
+                <div
+                  key={predio.id}
+                  className="p-3 hover:bg-cyan-50 cursor-pointer border-b last:border-b-0"
+                  onClick={() => seleccionarPredioRectificacion(predio)}
+                  data-testid={`rectificacion-predio-result-${predio.id}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-mono text-xs text-slate-600">{predio.codigo_predial_nacional || predio.NPN}</p>
+                      <p className="font-medium text-sm">{predio.direccion || 'Sin dirección'}</p>
+                      <p className="text-xs text-slate-500">
+                        {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'Sin propietario'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Área Terreno: {predio.area_terreno || 0} m²</p>
+                      <p className="text-xs text-slate-500">Área Const: {predio.area_construida || 0} m²</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Predio Seleccionado */}
+      {rectificacionData.predio && (
+        <Card className="border-cyan-300 bg-cyan-50">
+          <CardHeader className="py-3">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-sm text-cyan-800">Predio Seleccionado</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setRectificacionData(prev => ({ ...prev, predio: null }))}
+                className="text-cyan-700"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-slate-500">Código Predial</p>
+                <p className="font-mono font-medium">{rectificacionData.predio.codigo_predial_nacional || rectificacionData.predio.NPN}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Matrícula</p>
+                <p className="font-medium">{getMatriculaInmobiliaria(rectificacionData.predio)}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500">Dirección</p>
+                <p className="font-medium">{rectificacionData.predio.direccion || 'Sin dirección'}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500">Propietario</p>
+                <p className="font-medium">
+                  {rectificacionData.predio.propietarios?.[0]?.nombre_propietario || 
+                   rectificacionData.predio.nombre_propietario || 'Sin propietario'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sección de Áreas - Solo visible si hay predio seleccionado */}
+      {rectificacionData.predio && (
+        <>
+          <Card className="border-amber-200 bg-amber-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm text-amber-800 flex items-center gap-2">
+                <Layers className="w-4 h-4" />
+                Datos de Área
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 space-y-4">
+              {/* Área de Terreno */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">Área Terreno Actual (m²)</Label>
+                  <Input
+                    type="number"
+                    value={rectificacionData.area_terreno_anterior}
+                    disabled
+                    className="mt-1 bg-slate-100"
+                    data-testid="rectificacion-area-terreno-anterior"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Valor actual en catastro</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-cyan-700">Nueva Área Terreno (m²) *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={rectificacionData.area_terreno_nueva}
+                    onChange={(e) => setRectificacionData(prev => ({ ...prev, area_terreno_nueva: e.target.value }))}
+                    className="mt-1 border-cyan-300 focus:border-cyan-500"
+                    data-testid="rectificacion-area-terreno-nueva"
+                  />
+                  <p className="text-xs text-cyan-600 mt-1">Área rectificada según medición</p>
+                </div>
+              </div>
+
+              {/* Área de Construcción */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-slate-600">Área Construcción Actual (m²)</Label>
+                  <Input
+                    type="number"
+                    value={rectificacionData.area_construida_anterior}
+                    disabled
+                    className="mt-1 bg-slate-100"
+                    data-testid="rectificacion-area-const-anterior"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-cyan-700">Nueva Área Construcción (m²)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={rectificacionData.area_construida_nueva}
+                    onChange={(e) => setRectificacionData(prev => ({ ...prev, area_construida_nueva: e.target.value }))}
+                    className="mt-1 border-cyan-300 focus:border-cyan-500"
+                    data-testid="rectificacion-area-const-nueva"
+                  />
+                </div>
+              </div>
+
+              {/* Diferencia de áreas */}
+              {rectificacionData.area_terreno_nueva && rectificacionData.area_terreno_anterior && (
+                <div className={`p-3 rounded-lg ${
+                  parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior)
+                    ? 'bg-green-50 border border-green-200'
+                    : parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior)
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-slate-50 border border-slate-200'
+                }`}>
+                  <p className="text-sm font-medium">
+                    Diferencia de Área de Terreno: {' '}
+                    <span className={
+                      parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior)
+                        ? 'text-green-700'
+                        : parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior)
+                        ? 'text-red-700'
+                        : 'text-slate-700'
+                    }>
+                      {(parseFloat(rectificacionData.area_terreno_nueva) - parseFloat(rectificacionData.area_terreno_anterior)).toFixed(2)} m²
+                      {parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior) && ' (aumenta)'}
+                      {parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior) && ' (disminuye)'}
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Nuevo Avalúo */}
+              <div>
+                <Label className="text-sm font-medium text-cyan-700">Nuevo Avalúo ($)</Label>
+                <Input
+                  type="number"
+                  step="1000"
+                  value={rectificacionData.avaluo_nuevo}
+                  onChange={(e) => setRectificacionData(prev => ({ ...prev, avaluo_nuevo: e.target.value }))}
+                  className="mt-1 border-cyan-300 focus:border-cyan-500"
+                  data-testid="rectificacion-avaluo-nuevo"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Avalúo actual: ${Number(rectificacionData.predio.avaluo || 0).toLocaleString('es-CO')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Motivo de la solicitud */}
+          <div>
+            <Label className="text-sm font-medium">Motivo de la Rectificación</Label>
+            <Textarea
+              value={rectificacionData.motivo_solicitud}
+              onChange={(e) => setRectificacionData(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
+              placeholder="Ej: Corrección de área según medición técnica realizada..."
+              className="mt-1"
+              rows={2}
+              data-testid="rectificacion-motivo"
+            />
+          </div>
+
+          {/* Observaciones */}
+          <div>
+            <Label className="text-sm font-medium">Observaciones Adicionales</Label>
+            <Textarea
+              value={rectificacionData.observaciones}
+              onChange={(e) => setRectificacionData(prev => ({ ...prev, observaciones: e.target.value }))}
+              placeholder="Observaciones adicionales..."
+              className="mt-1"
+              rows={2}
+              data-testid="rectificacion-observaciones"
+            />
+          </div>
+
+          {/* Texto de Considerandos */}
+          <Card className="border-slate-200">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm text-slate-700">Texto de Considerandos (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={rectificacionData.texto_considerando}
+                onChange={(e) => setRectificacionData(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder="Deje en blanco para usar el texto predeterminado..."
+                rows={4}
+                className="text-sm"
+                data-testid="rectificacion-considerandos"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (area_terreno_anterior), (area_terreno_nueva), (area_construida_anterior), (area_construida_nueva)
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
   // Renderizar selector de tipo de mutación
   const renderSelectorTipo = () => (
     <div className="space-y-4">
@@ -6703,6 +7250,8 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'M5' && renderFormularioM5()}
           
+          {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && renderFormularioRectificacionArea()}
+          
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               {/* Selección de Municipio - Dropdown personalizado */}
@@ -7081,6 +7630,16 @@ export default function MutacionesResoluciones() {
               >
                 {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
                   m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
+              </Button>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && (
+              <Button 
+                onClick={generarResolucionRectificacion} 
+                disabled={generando || !rectificacionData.radicado || !rectificacionData.predio || !rectificacionData.area_terreno_nueva}
+                className="bg-cyan-600 hover:bg-cyan-700"
+                data-testid="rectificacion-generar-btn"
+              >
+                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Rectificación'}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (

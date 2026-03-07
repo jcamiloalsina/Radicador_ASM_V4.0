@@ -685,6 +685,14 @@ class SolicitudMutacionCreate(BaseModel):
     es_doble_inscripcion: Optional[bool] = False  # Si la cancelación es por doble inscripción
     codigo_predio_duplicado: Optional[str] = None  # Código del predio con el que está duplicado
     predio_m5: Optional[dict] = None  # Datos del predio para M5 (cancelar o inscribir)
+    # Para Rectificación de Área (anteriormente M6)
+    predio_rectificacion: Optional[dict] = None  # Datos del predio a rectificar
+    area_terreno_anterior: Optional[float] = None  # Área de terreno antes de rectificación
+    area_terreno_nueva: Optional[float] = None  # Nueva área de terreno
+    area_construida_anterior: Optional[float] = None  # Área construida antes (opcional)
+    area_construida_nueva: Optional[float] = None  # Nueva área construida (opcional)
+    avaluo_nuevo: Optional[float] = None  # Nuevo avalúo después de rectificación
+    linderos_nuevos: Optional[dict] = None  # Nuevos linderos (norte, sur, este, oeste)
     # Campo universal para texto personalizado de considerandos
     texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
 
@@ -801,7 +809,6 @@ class ActividadUpdate(BaseModel):
 
 # ===== UTILITY FUNCTIONS =====
 
-import re
 
 def validate_password(password: str) -> tuple[bool, str]:
     """
@@ -1050,7 +1057,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1188,7 +1195,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1254,7 +1261,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1292,7 +1299,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1345,7 +1352,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1384,7 +1391,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1414,7 +1421,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1447,7 +1454,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -2415,7 +2422,7 @@ async def migrate_ciudadano_to_usuario(current_user: dict = Depends(get_current_
     usuario_count = await db.users.count_documents({'role': 'usuario'})
     
     return {
-        "message": f"Migración completada",
+        "message": "Migración completada",
         "users_with_ciudadano_before": before_count,
         "users_migrated": result.modified_count,
         "users_with_usuario_after": usuario_count
@@ -2448,7 +2455,7 @@ async def format_user_names(current_user: dict = Depends(get_current_user)):
                 examples.append({"original": original_name, "formatted": formatted_name})
     
     return {
-        "message": f"Formateo de nombres completado",
+        "message": "Formateo de nombres completado",
         "total_users": len(users),
         "users_updated": updated_count,
         "examples": examples
@@ -2485,7 +2492,7 @@ async def format_petition_names(current_user: dict = Depends(get_current_user)):
                     examples.append({"original": original_name, "formatted": formatted_name})
     
     return {
-        "message": f"Formateo de nombres en peticiones completado",
+        "message": "Formateo de nombres en peticiones completado",
         "total_petitions": len(petitions),
         "petitions_updated": updated_count,
         "examples": examples
@@ -5699,7 +5706,7 @@ async def cargar_codigos_homologados(
         
         return {
             "success": True,
-            "message": f"Códigos cargados exitosamente",
+            "message": "Códigos cargados exitosamente",
             "codigos_insertados": codigos_insertados,
             "codigos_duplicados": codigos_duplicados,
             "codigos_usados": codigos_usados,
@@ -6256,7 +6263,6 @@ async def recalcular_codigos_municipio(
             codigos_en_predios[codigo] = predio
     
     # 4. Preparar operaciones bulk
-    from pymongo import UpdateOne
     operaciones = []
     fecha_ahora = datetime.utcnow().isoformat()
     
@@ -8292,7 +8298,7 @@ async def rechazar_reaparicion(
     # Enviar notificación por correo al gestor
     if gestor_email:
         try:
-            asunto = f"[Asomunicipios] Reaparición Rechazada - Requiere Subsanación"
+            asunto = "[Asomunicipios] Reaparición Rechazada - Requiere Subsanación"
             cuerpo = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -8431,7 +8437,7 @@ async def subsanar_reaparicion(
     coordinador = await db.users.find_one({"id": subsanacion.get("rechazado_por")})
     if coordinador and coordinador.get("email"):
         try:
-            asunto = f"[Asomunicipios] Reaparición Subsanada - Pendiente de Revisión"
+            asunto = "[Asomunicipios] Reaparición Subsanada - Pendiente de Revisión"
             cuerpo = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -8455,7 +8461,7 @@ async def subsanar_reaparicion(
             print(f"Error enviando notificación al coordinador: {e}")
     
     return {
-        "message": f"Reaparición subsanada y reenviada para aprobación",
+        "message": "Reaparición subsanada y reenviada para aprobación",
         "codigo_predial": codigo_predial,
         "intentos": subsanacion.get("intentos", 1) + 1
     }
@@ -8552,7 +8558,7 @@ async def aprobar_subsanacion(
         gestor = await db.users.find_one({"id": subsanacion["gestor_asignado"]})
         if gestor and gestor.get("email"):
             try:
-                asunto = f"[Asomunicipios] Reaparición APROBADA"
+                asunto = "[Asomunicipios] Reaparición APROBADA"
                 cuerpo = f"""
                 <html>
                 <body style="font-family: Arial, sans-serif;">
@@ -8647,7 +8653,7 @@ async def rechazar_subsanacion_nuevamente(
                 "vigencia": predio.get("vigencia")
             })
         
-        mensaje = f"Reaparición RECHAZADA DEFINITIVAMENTE - Predio eliminado"
+        mensaje = "Reaparición RECHAZADA DEFINITIVAMENTE - Predio eliminado"
     else:
         # Permitir otro intento de subsanación
         historial_entry = {
@@ -9508,7 +9514,7 @@ async def import_predios_excel(
                 wb.close()
                 temp_path.unlink()
                 
-                logger.warning(f"[SEGURIDAD] Importación BLOQUEADA - Diferencia significativa detectada")
+                logger.warning("[SEGURIDAD] Importación BLOQUEADA - Diferencia significativa detectada")
                 logger.warning(f"  - Predios existentes: {predios_existentes_count}")
                 logger.warning(f"  - Predios en Excel: {predios_nuevos_count}")
                 logger.warning(f"  - Porcentaje: {porcentaje:.1f}%")
@@ -9528,7 +9534,7 @@ async def import_predios_excel(
             
             # Si se forzó pero hay diferencia muy grande (menos del 30%), registrar advertencia crítica
             if porcentaje < 30 and force:
-                logger.critical(f"[SEGURIDAD] Importación FORZADA con diferencia CRÍTICA")
+                logger.critical("[SEGURIDAD] Importación FORZADA con diferencia CRÍTICA")
                 logger.critical(f"  - Predios existentes: {predios_existentes_count}")
                 logger.critical(f"  - Predios en Excel: {predios_nuevos_count}")
                 logger.critical(f"  - Usuario: {current_user.get('email')}")
@@ -9658,7 +9664,7 @@ async def import_predios_excel(
         
         if predios_despues < predios_esperados * 0.9:  # Si hay más del 10% de diferencia
             logger.error(f"[SEGURIDAD] VERIFICACIÓN FALLIDA - Predios después de importación: {predios_despues}, esperados: {predios_esperados}")
-            logger.error(f"[SEGURIDAD] Posible pérdida de datos durante la importación")
+            logger.error("[SEGURIDAD] Posible pérdida de datos durante la importación")
             
             # Registrar la anomalía
             await db.logs_importacion.update_one(
@@ -10432,7 +10438,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
         pie_pagina_img = ImageReader(get_pie_pagina_image())
         firma_dalgie_img = ImageReader(get_firma_dalgie_image())
         imagenes_embebidas_ok = True
-        print(f"📋 Generando certificado - Usando imágenes embebidas (Base64)")
+        print("📋 Generando certificado - Usando imágenes embebidas (Base64)")
     except Exception as e:
         print(f"⚠️ Error cargando imágenes embebidas: {e}")
         imagenes_embebidas_ok = False
@@ -11600,7 +11606,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -13005,7 +13011,7 @@ async def crear_predio_nuevo(
         if not aprobacion:
             raise HTTPException(status_code=400, detail={
                 "error": "PREDIO_ELIMINADO",
-                "mensaje": f"Este código predial fue ELIMINADO. Debe solicitar reaparición."
+                "mensaje": "Este código predial fue ELIMINADO. Debe solicitar reaparición."
             })
     
     # Generar código homologado - Primero intentar de la colección de códigos cargados del Excel
@@ -15183,9 +15189,9 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         # Verificar que se guardó
         verificacion = await db.resoluciones.find_one({"numero_resolucion": numero_resolucion})
         if verificacion:
-            logger.info(f"✅ M5: Verificación exitosa - resolución encontrada")
+            logger.info("✅ M5: Verificación exitosa - resolución encontrada")
         else:
-            logger.error(f"❌ M5: Error - resolución NO encontrada después de insert")
+            logger.error("❌ M5: Error - resolución NO encontrada después de insert")
         
         # Registrar en certificados_verificables para que el QR funcione
         verificable_record = {
@@ -15204,7 +15210,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_record)
-        logger.info(f"✅ M5: Certificado verificable guardado")
+        logger.info("✅ M5: Certificado verificable guardado")
         
         # Actualizar historial del predio según subtipo
         predio_id = predio_m5.get('id')
@@ -15335,6 +15341,310 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         
     except Exception as e:
         logging.error(f"Error en _generar_resolucion_m5_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera internamente una resolución de Rectificación de Área.
+    Actualiza el área del predio en la base de datos.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        from resolucion_m6_pdf_generator import generate_m6_resolution_pdf
+        
+        municipio = solicitud.get('municipio', '')
+        radicado = solicitud.get('radicado', '')
+        solicitante = solicitud.get('solicitante', {})
+        predio_data = solicitud.get('predio_rectificacion', {})
+        
+        # Áreas anteriores y nuevas
+        area_terreno_anterior = solicitud.get('area_terreno_anterior', 0)
+        area_terreno_nueva = solicitud.get('area_terreno_nueva', 0)
+        area_construida_anterior = solicitud.get('area_construida_anterior', 0)
+        area_construida_nueva = solicitud.get('area_construida_nueva', 0)
+        avaluo_anterior = solicitud.get('avaluo_anterior', predio_data.get('avaluo', 0))
+        avaluo_nuevo = solicitud.get('avaluo_nuevo', avaluo_anterior)
+        
+        # Obtener código de municipio
+        codigo_municipio = None
+        for codigo, nombre in MUNICIPIOS_R1R2.items():
+            if nombre.lower() == municipio.lower() or municipio.lower() in nombre.lower():
+                codigo_municipio = codigo
+                break
+        if not codigo_municipio:
+            codigo_municipio = "54003"
+        
+        # Obtener siguiente número de resolución
+        numero_info = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
+        numero_resolucion = numero_info['numero_resolucion']
+        fecha_resolucion = numero_info['fecha_resolucion']
+        municipio_nombre = numero_info['municipio']
+        
+        # Obtener datos R1/R2 del predio
+        predio_id = predio_data.get('id')
+        predio_db = None
+        if predio_id:
+            predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        # Función auxiliar para obtener datos R1/R2
+        def obtener_datos_r1_r2_m6(predio):
+            resultado = {}
+            if not predio:
+                return resultado
+            r1_registros = predio.get('r1_registros', [])
+            if r1_registros and len(r1_registros) > 0:
+                r1 = r1_registros[0]
+                resultado['codigo_homologado'] = r1.get('codigo_homologado') or r1.get('nupre') or ''
+                resultado['destino_economico'] = r1.get('destino_economico') or 'A'
+                resultado['direccion'] = r1.get('direccion') or predio.get('direccion', '')
+            else:
+                resultado['codigo_homologado'] = predio.get('codigo_homologado', '')
+                resultado['destino_economico'] = predio.get('destino_economico', 'A')
+                resultado['direccion'] = predio.get('direccion', '')
+            
+            r2_registros = predio.get('r2_registros', [])
+            if r2_registros and len(r2_registros) > 0:
+                r2 = r2_registros[0]
+                resultado['matricula_inmobiliaria'] = r2.get('matricula_inmobiliaria') or ''
+                resultado['propietarios'] = r2.get('propietarios') or predio.get('propietarios', [])
+            else:
+                resultado['matricula_inmobiliaria'] = predio.get('matricula_inmobiliaria', '')
+                resultado['propietarios'] = predio.get('propietarios', [])
+            return resultado
+        
+        datos_r1_r2 = obtener_datos_r1_r2_m6(predio_db or predio_data)
+        
+        # Obtener nombre del elaborador
+        elaboro_nombre = ""
+        proponente_id = solicitud.get('creado_por', solicitud.get('created_by'))
+        if proponente_id:
+            proponente = await db.users.find_one({"id": proponente_id})
+            if proponente:
+                elaboro_nombre = proponente.get('full_name', '')
+        
+        # Generar código de verificación para QR
+        codigo_verificacion = generar_codigo_verificacion_resolucion()
+        
+        # Preparar predio con datos R1/R2 incorporados
+        predio_completo = {
+            **predio_data,
+            'codigo_homologado': datos_r1_r2.get('codigo_homologado', ''),
+            'matricula_inmobiliaria': datos_r1_r2.get('matricula_inmobiliaria', ''),
+            'destino_economico': datos_r1_r2.get('destino_economico', 'A'),
+            'direccion': datos_r1_r2.get('direccion', ''),
+            'propietarios': datos_r1_r2.get('propietarios', [])
+        }
+        
+        # Vigencias
+        colombia_tz = ZoneInfo("America/Bogota")
+        año_actual = datetime.now(colombia_tz).year
+        vigencia_anterior = f"01/01/{año_actual - 1}"
+        vigencia_nueva = f"01/01/{año_actual}"
+        
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "municipio": municipio_nombre,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predio": predio_completo,
+            "area_terreno_anterior": area_terreno_anterior,
+            "area_terreno_nueva": area_terreno_nueva,
+            "area_construida_anterior": area_construida_anterior,
+            "area_construida_nueva": area_construida_nueva,
+            "avaluo_anterior": avaluo_anterior,
+            "avaluo_nuevo": avaluo_nuevo,
+            "vigencia_anterior": vigencia_anterior,
+            "vigencia_nueva": vigencia_nueva,
+            "elaborado_por": elaboro_nombre or aprobador.get('full_name', ''),
+            "revisado_por": aprobador.get('full_name', ''),
+            "codigo_verificacion": codigo_verificacion,
+            "texto_considerando": solicitud.get('texto_considerando')
+        }
+        
+        # Generar PDF
+        pdf_bytes = generate_m6_resolution_pdf(pdf_data)
+        
+        # Guardar archivo
+        filename = f"Rectificacion_Area_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filepath = f"/app/backend/static/resoluciones/{filename}"
+        
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(pdf_bytes)
+        
+        # Registrar en base de datos
+        codigo_predial = predio_data.get('codigo_predial_nacional') or predio_data.get('codigo_predial') or predio_data.get('NPN', '')
+        
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "numero_resolucion": numero_resolucion,
+            "tipo": "RECTIFICACION_AREA",
+            "subtipo": "rectificacion_area",
+            "municipio": municipio_nombre,
+            "codigo_municipio": codigo_municipio,
+            "radicado": radicado,
+            "fecha_resolucion": fecha_resolucion,
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "filename": filename,
+            "solicitante": solicitante,
+            "predio_id": predio_id,
+            "codigo_predial": codigo_predial,
+            "area_terreno_anterior": area_terreno_anterior,
+            "area_terreno_nueva": area_terreno_nueva,
+            "area_construida_anterior": area_construida_anterior,
+            "area_construida_nueva": area_construida_nueva,
+            "avaluo_anterior": avaluo_anterior,
+            "avaluo_nuevo": avaluo_nuevo,
+            "año": numero_info['año'],
+            "creado_por_id": aprobador.get('id'),
+            "creado_por_nombre": aprobador.get('full_name'),
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "codigo_verificacion": codigo_verificacion
+        }
+        
+        logger.info(f"🔵 Rectificación Área: Guardando resolución {numero_resolucion}")
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Registrar en certificados_verificables para que el QR funcione
+        verificable_record = {
+            "codigo_verificacion": codigo_verificacion,
+            "tipo": "RESOLUCION_RECTIFICACION_AREA",
+            "subtipo": "RECTIFICACION_AREA",
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio_nombre,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "solicitante": solicitante,
+            "predio_codigo": codigo_predial,
+            "predio_direccion": predio_completo.get('direccion', ''),
+            "area_terreno_anterior": area_terreno_anterior,
+            "area_terreno_nueva": area_terreno_nueva,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+        }
+        await db.certificados_verificables.insert_one(verificable_record)
+        logger.info("✅ Rectificación Área: Certificado verificable guardado")
+        
+        # Actualizar predio en la base de datos con las nuevas áreas
+        if predio_id:
+            historial_entry = {
+                "tipo_mutacion": "RECTIFICACION_AREA",
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": fecha_resolucion,
+                "radicado": radicado,
+                "generado_por": aprobador.get('full_name'),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "area_terreno_anterior": area_terreno_anterior,
+                "area_terreno_nueva": area_terreno_nueva,
+                "area_construida_anterior": area_construida_anterior,
+                "area_construida_nueva": area_construida_nueva,
+                "avaluo_anterior": avaluo_anterior,
+                "avaluo_nuevo": avaluo_nuevo,
+                "fecha": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Actualizar áreas del predio
+            await db.predios.update_one(
+                {"id": predio_id},
+                {
+                    "$set": {
+                        "area_terreno": area_terreno_nueva,
+                        "area_construida": area_construida_nueva,
+                        "avaluo": avaluo_nuevo,
+                        "ultima_rectificacion_area": fecha_resolucion,
+                        "resolucion_rectificacion": numero_resolucion,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    "$push": {"historial_resoluciones": historial_entry}
+                }
+            )
+            logger.info(f"✅ Predio {predio_id} actualizado con nuevas áreas")
+            
+            # También actualizar R1 si existe
+            await db.predios.update_one(
+                {"id": predio_id, "r1_registros.0": {"$exists": True}},
+                {
+                    "$set": {
+                        "r1_registros.0.area_terreno": area_terreno_nueva,
+                        "r1_registros.0.area_construida": area_construida_nueva,
+                        "r1_registros.0.avaluo": avaluo_nuevo
+                    }
+                }
+            )
+        
+        # Registrar actividad
+        await db.actividad.insert_one({
+            "id": str(uuid.uuid4()),
+            "tipo": "resolucion_rectificacion_area",
+            "usuario_id": aprobador.get('id'),
+            "usuario_nombre": aprobador.get('full_name'),
+            "fecha": datetime.now(timezone.utc).isoformat(),
+            "descripcion": f"Resolución Rectificación de Área {numero_resolucion} generada",
+            "predio_id": predio_id,
+            "codigo_predial": codigo_predial,
+            "numero_resolucion": numero_resolucion
+        })
+        
+        # Enviar correo y finalizar petición
+        try:
+            peticion = None
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=codigo_predial,
+                    tipo_mutacion="Rectificación de Área"
+                )
+                
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución Rectificación de Área - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                logging.info(f"Correo de resolución Rectificación de Área enviado a {email_solicitante}")
+            
+            # Finalizar la petición
+            if peticion:
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución Rectificación de Área: {str(email_error)}")
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_m6_interno: {str(e)}")
         import traceback
         traceback.print_exc()
         raise
@@ -17446,7 +17756,7 @@ async def process_gdb_upload_background(
                 layers_info = pyogrio.list_layers(str(gdb_found))
                 available_layers = [layer[0] for layer in layers_info]
                 logger.info(f"GDB {gdb_name}: Capas disponibles: {available_layers}")
-                await update_progress("analizando", 28, f"Analizando estructura del archivo GDB...")
+                await update_progress("analizando", 28, "Analizando estructura del archivo GDB...")
             except Exception as e:
                 logger.warning(f"No se pudo listar capas: {e}")
             
@@ -17507,7 +17817,7 @@ async def process_gdb_upload_background(
                                 codigos_gdb.update(gdf_rural[col].dropna().astype(str).tolist())
                                 break
                         break
-                except Exception as layer_err:
+                except Exception:
                     continue
             
             if not rural_layer_found:
@@ -17586,7 +17896,7 @@ async def process_gdb_upload_background(
         else:
             # INCREMENTAL sin capa específica: No eliminar nada, solo añadir/actualizar
             logger.info(f"GDB {municipio_nombre}: Modo incremental - añadiendo sin eliminar existentes")
-            await update_progress("limpiando", 52, f"Modo incremental: añadiendo nuevas geometrías...")
+            await update_progress("limpiando", 52, "Modo incremental: añadiendo nuevas geometrías...")
         
         # Guardar las geometrías con sus códigos
         # Inicializar diccionario de errores para el reporte de calidad
@@ -18487,7 +18797,7 @@ async def generar_reporte_calidad_gdb(
     
     vinculacion_data = [
         ["Concepto", "Cantidad"],
-        [f"Vigencia analizada", f"{vigencia_usada}"],
+        ["Vigencia analizada", f"{vigencia_usada}"],
         [f"Predios R1/R2 (vigencia {vigencia_usada})", f"{stats.get('predios_municipio', 0):,}"],
         ["Predios con cartografía (vinculados)", f"{stats.get('predios_con_cartografia', 0):,}"],
         ["Predios sin cartografía", f"{max(0, stats.get('predios_municipio', 0) - stats.get('predios_con_cartografia', 0)):,}"],
@@ -18932,11 +19242,11 @@ async def recalcular_areas_gdb(
                 )
             
             actualizadas += 1
-        except Exception as e:
+        except Exception:
             errores += 1
     
     return {
-        "mensaje": f"Áreas recalculadas",
+        "mensaje": "Áreas recalculadas",
         "geometrias_procesadas": len(geometrias),
         "actualizadas": actualizadas,
         "errores": errores
@@ -18981,7 +19291,6 @@ async def sincronizar_areas_predios(
         areas_gdb[geo["codigo"]] = geo["area_m2"]
     
     # Actualizar predios usando bulk_write
-    from pymongo import UpdateOne
     actualizados = 0
     
     if areas_gdb:
@@ -20291,7 +20600,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
     temp_dir = tempfile.mkdtemp()
     try:
         # Extraer ZIP
-        logger.info(f"[GDB Actualizacion] Extrayendo ZIP...")
+        logger.info("[GDB Actualizacion] Extrayendo ZIP...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
         
@@ -20378,7 +20687,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
         # Lógica de eliminación según modo de carga
         if modo_carga == "reemplazar":
             # Eliminar TODAS las geometrías anteriores del proyecto
-            logger.info(f"[GDB Actualizacion] Modo REEMPLAZAR: Eliminando todas las geometrías anteriores...")
+            logger.info("[GDB Actualizacion] Modo REEMPLAZAR: Eliminando todas las geometrías anteriores...")
             deleted_geom = await db.geometrias_actualizacion.delete_many({"proyecto_id": proyecto_id})
             deleted_const = await db.construcciones_actualizacion.delete_many({"proyecto_id": proyecto_id})
             logger.info(f"[GDB Actualizacion] Eliminadas {deleted_geom.deleted_count} geometrías y {deleted_const.deleted_count} construcciones")
@@ -20392,7 +20701,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
             logger.info(f"[GDB Actualizacion] Eliminadas {deleted.deleted_count} geometrías de capa '{capa_especifica}'")
         else:
             # Incremental sin capa específica: no eliminar nada
-            logger.info(f"[GDB Actualizacion] Modo INCREMENTAL: Añadiendo sin eliminar...")
+            logger.info("[GDB Actualizacion] Modo INCREMENTAL: Añadiendo sin eliminar...")
         
         # Si hay capa específica, procesar solo esa capa
         if capa_especifica:
@@ -20711,7 +21020,7 @@ async def resync_gdb_geometrias(
                 gdb_path = gdb_file
             
             if not gdb_path or not gdb_path.exists():
-                logger.error(f"Resync: No se encontró GDB válido")
+                logger.error("Resync: No se encontró GDB válido")
                 return
             
             import fiona
@@ -20735,7 +21044,7 @@ async def resync_gdb_geometrias(
                         continue
             
             if not capa_terrenos:
-                logger.error(f"Resync: No se encontró capa de terrenos")
+                logger.error("Resync: No se encontró capa de terrenos")
                 return
             
             # Eliminar geometrías existentes
@@ -22545,17 +22854,17 @@ async def crear_propuesta_cambio(
         if tipo_propuesta == 'cancelacion':
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
+                detail="Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
             )
         elif tipo_propuesta == 'predio_nuevo':
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de PREDIO NUEVO pendiente para este código."
+                detail="Ya existe una solicitud de PREDIO NUEVO pendiente para este código."
             )
         else:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
+                detail="Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador o cancele la solicitud anterior."
             )
     
     # Obtener proyecto para el municipio
@@ -22780,17 +23089,17 @@ async def proponer_cancelacion_predio(
         if tipo_propuesta == 'cancelacion':
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador."
+                detail="Ya existe una solicitud de ELIMINACIÓN pendiente para este predio. Espere la respuesta del coordinador."
             )
         elif tipo_propuesta == 'predio_nuevo':
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de PREDIO NUEVO pendiente para este código. Espere la respuesta del coordinador."
+                detail="Ya existe una solicitud de PREDIO NUEVO pendiente para este código. Espere la respuesta del coordinador."
             )
         else:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador."
+                detail="Ya existe una solicitud de CAMBIO pendiente para este predio. Espere la respuesta del coordinador."
             )
     
     # Verificar que el predio no tenga cancelación pendiente ya marcada
@@ -23210,7 +23519,7 @@ async def rechazar_propuesta(
             proyecto = await db.proyectos_actualizacion.find_one({"id": propuesta['proyecto_id']})
             municipio = proyecto.get('municipio', 'N/A') if proyecto else 'N/A'
             
-            asunto = f"[Asomunicipios] Propuesta de Cambio Requiere Subsanación"
+            asunto = "[Asomunicipios] Propuesta de Cambio Requiere Subsanación"
             cuerpo = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -23291,7 +23600,7 @@ async def subsanar_propuesta(
     coordinador_email = propuesta.get('revisado_por')
     if coordinador_email:
         try:
-            asunto = f"[Asomunicipios] Propuesta Subsanada - Pendiente de Revisión"
+            asunto = "[Asomunicipios] Propuesta Subsanada - Pendiente de Revisión"
             cuerpo = f"""
             <html>
             <body style="font-family: Arial, sans-serif;">
@@ -25083,7 +25392,7 @@ async def restore_backup(
         
         return {
             "success": True,
-            "message": f"Backup restaurado exitosamente",
+            "message": "Backup restaurado exitosamente",
             "colecciones_restauradas": restored_collections,
             "total_registros": total_restored
         }
@@ -25569,7 +25878,7 @@ async def limpiar_backups_antiguos(current_user: dict = Depends(get_current_user
         eliminados += 1
     
     return {
-        "message": f"Limpieza completada",
+        "message": "Limpieza completada",
         "eliminados": eliminados,
         "retenidos": retener
     }
@@ -28618,6 +28927,8 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
                 elif tipo_mutacion == "M5":
                     pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
+                elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
+                    pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
                     if data.predio_id:
@@ -28868,7 +29179,7 @@ async def ejecutar_accion_solicitud(
                 "titulo": "📋 Nueva asignación de cartografía",
                 "mensaje": f"Te han asignado la cartografía para la solicitud {solicitud['tipo']} - {solicitud['radicado']}",
                 "tipo": "info",
-                "enlace": f"/dashboard/pendientes?tab=mis-asignaciones"
+                "enlace": "/dashboard/pendientes?tab=mis-asignaciones"
             })
         
         # ===== FINALIZAR CARTOGRAFÍA (Gestor de apoyo) =====
@@ -28897,16 +29208,16 @@ async def ejecutar_accion_solicitud(
                     "titulo": f"📋 Solicitud {solicitud['tipo']} lista para aprobación",
                     "mensaje": f"La solicitud {solicitud['radicado']} está lista para aprobar. Cartografía completada por {current_user['full_name']}.",
                     "tipo": "warning",
-                    "enlace": f"/dashboard/pendientes?tab=mutaciones"
+                    "enlace": "/dashboard/pendientes?tab=mutaciones"
                 })
             
             # Notificar al gestor original
             notificaciones.append({
                 "usuario_id": solicitud['creado_por_id'],
-                "titulo": f"📋 Cartografía completada",
+                "titulo": "📋 Cartografía completada",
                 "mensaje": f"El gestor de apoyo {current_user['full_name']} ha completado la cartografía de tu solicitud {solicitud['radicado']}. Enviada a aprobación.",
                 "tipo": "success",
-                "enlace": f"/dashboard/pendientes?tab=mutaciones"
+                "enlace": "/dashboard/pendientes?tab=mutaciones"
             })
         
         # ===== ENVIAR A APROBACIÓN (sin gestor de apoyo) =====
@@ -28927,7 +29238,7 @@ async def ejecutar_accion_solicitud(
                     "titulo": f"📋 Nueva solicitud {solicitud['tipo']} pendiente",
                     "mensaje": f"La solicitud {solicitud['radicado']} requiere aprobación. Creada por {current_user['full_name']}.",
                     "tipo": "warning",
-                    "enlace": f"/dashboard/pendientes?tab=mutaciones"
+                    "enlace": "/dashboard/pendientes?tab=mutaciones"
                 })
         
         # ===== APROBAR =====
@@ -28969,6 +29280,10 @@ async def ejecutar_accion_solicitud(
                 elif tipo_mutacion == "M5":
                     # Generar resolución M5 (Cancelación / Inscripción de predio)
                     pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
+                
+                elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
+                    # Generar resolución Rectificación de Área
+                    pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
                     
                 else:
                     # M1 - usar lógica existente
@@ -29001,7 +29316,7 @@ async def ejecutar_accion_solicitud(
                 "titulo": f"✅ Solicitud {solicitud['tipo']} aprobada",
                 "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido aprobada por {current_user['full_name']}.",
                 "tipo": "success",
-                "enlace": f"/dashboard/mutaciones"
+                "enlace": "/dashboard/mutaciones"
             })
         
         # ===== DEVOLVER =====
@@ -29021,7 +29336,7 @@ async def ejecutar_accion_solicitud(
                 "titulo": f"⚠️ Solicitud {solicitud['tipo']} devuelta",
                 "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido devuelta para correcciones. Observaciones: {data.observaciones or 'Sin observaciones'}",
                 "tipo": "warning",
-                "enlace": f"/dashboard/mutaciones"
+                "enlace": "/dashboard/mutaciones"
             })
         
         # ===== RECHAZAR =====
@@ -29041,7 +29356,7 @@ async def ejecutar_accion_solicitud(
                 "titulo": f"❌ Solicitud {solicitud['tipo']} rechazada",
                 "mensaje": f"Tu solicitud {solicitud['radicado']} ha sido rechazada. Motivo: {data.observaciones or 'Sin motivo especificado'}",
                 "tipo": "error",
-                "enlace": f"/dashboard/mutaciones"
+                "enlace": "/dashboard/mutaciones"
             })
         
         else:
@@ -30184,8 +30499,8 @@ async def create_default_admin():
             
             logger.warning("-" * 60)
             logger.warning("DEFAULT ADMIN USER CREATED SUCCESSFULLY")
-            logger.warning(f"  Email: catastro@asomunicipios.gov.co")
-            logger.warning(f"  Password: Asm*123*")
+            logger.warning("  Email: catastro@asomunicipios.gov.co")
+            logger.warning("  Password: Asm*123*")
             logger.warning(f"  Role: {UserRole.ADMINISTRADOR}")
             logger.warning("-" * 60)
             logger.warning("⚠️  SECURITY WARNING: Please change this password immediately!")

@@ -104,7 +104,7 @@ def get_email_template(
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -226,7 +226,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -252,7 +252,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor revise la petición y tome las acciones correspondientes.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Recibida",
@@ -283,7 +283,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://r1-r2-data-sync.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Petición Recibida",

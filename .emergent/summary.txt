@@ -1,64 +1,53 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to finalize the Mutaciones y Resoluciones module. This expanded into a series of bug fixes and feature requests, including:
-1.  Fixing a QR code verification page that showed N/A for data, had grammatical errors, and used the wrong timezone.
-2.  Fixing a bug in the M5 Create Predio modal where number input fields were unresponsive.
-3.  Adding a Perito Avaluador (Appraiser) field to the M4 Autoestimación form and its corresponding PDF.
-4.  Fixing an issue where generating a resolution PDF did not automatically finalize the associated user request (petición).
-5.  Standardizing data display, such as ensuring matrícula shows Sin información instead of N/A and that PDF tables are consistent across all mutation types.
-6.  The final and current task is to ensure that all data for the cancelación e inscripción tables in all mutation PDFs (M1-M5) is sourced correctly from the  and  sub-documents in the database, as this is the designated source of truth.
+The user's initial goal was to finalize the Mutaciones y Resoluciones module by ensuring PDF data integrity. This involved:
+1.  Fixing PDF generators (M1-M5) to source data correctly from  and  for cancelación tables and from form data for inscripción tables.
+2.  Resolving various UI/PDF bugs, including text justification, missing titles, and incorrect data display.
+3.  Adding a Datos del Solicitante field to the M3 and M4 mutation forms and PDFs to address No especificado errors.
+4.  Implementing a flexible Texto de Considerandos feature for all mutations (M1-M5), allowing users to provide custom, editable text with variables for the PDF's CONSIDERANDO section.
+5.  Standardizing the legal name of the association (Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios) across all generated PDFs.
+6.  The current primary task is to implement a new mutation type, M6 - Rectificación de área, including its frontend form, backend logic, and PDF generator, based on a user-provided sample document.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-- The QR verification page is now functional, displaying correct data, grammar, and timezone-adjusted timestamps.
-- The M5 modal for creating new properties is fixed and allows number inputs.
-- The Perito Avaluador feature for M4 is fully implemented in the UI and PDF.
-- The backend logic correctly updates the status of a petición to Finalizado when a resolution is generated for any mutation type (M1-M5).
-- Frontend UI/UX has been improved to handle missing data more gracefully (e.g., Sin información for ) and to correctly source the  from R2 records.
-- The backend is currently undergoing a refactor to standardize data sourcing for all PDF generators. A helper function  has been added to , and the agent was in the process of applying it to all PDF generation scripts.
+- The data sourcing logic for all mutation PDFs (M1-M5) has been corrected and verified. Cancelación data is pulled from R1/R2 records, while Inscripción data is correctly sourced from new form data ().
+- The backend testing agent successfully validated the R1/R2 data sourcing fix.
+- Several UI and PDF formatting bugs have been fixed, including text justification in M3/M4 articles and adding the Fecha de resolución title to the M5 PDF.
+- Datos del Solicitante fields have been added to the M3 and M4 frontend forms, and the backend now correctly uses this data in the generated PDFs.
+- A Texto de Considerandos feature is fully implemented for M1-M5. This adds a textarea to each mutation form, allowing users to input custom text that overrides the default CONSIDERANDO section in the PDF. This feature supports dynamic variables like , , etc.
+- The name of the managing association has been corrected to Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios in all relevant PDF generators.
+- The initial scaffolding for M6 (Rectificación de área) has been started. The agent has created  and begun modifying  with the new models and endpoint structure.
 
 **Last working item**:
--   **Last item agent was working:** The agent was implementing the user's request to ensure all PDF generators (M1-M5) source data for the cancelación e inscripción tables from the correct R1/R2 records. The user was insistent that  must come from R1. The agent had created a Python helper function  in  and was in the process of modifying all the individual PDF generator files ( through ) to use this new standardized data fetching logic.
+-   **Last item agent was working:** The agent was in the initial stages of implementing the new M6 - Rectificación de área mutation. After analyzing the user-provided PDF, the agent created the new PDF generator file () and started adding the required Pydantic models, endpoints, and internal functions to the monolithic .
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. The agent should instruct the testing agent to:
-    1.  Create a test property with distinct data in both the root fields and the / arrays.
-    2.  Generate a PDF for each mutation type (M1 through M5) using this test property.
-    3.  The test agent must then download and parse each PDF to verify that the data displayed in the cancelación e inscripción tables matches the data from the  and  arrays, not the root-level fields. Special attention must be paid to , , , and .
+-   **Which testing method agent to use?** both. The implementation will require both frontend and backend work.
+    1.  **Backend Testing Agent:** To create an M6 request via the API, approve it, and verify that the PDF is generated correctly and the property data (area, boundaries) is updated in the database.
+    2.  **Frontend Testing Agent:** To test the new M6 form in the UI, ensuring all fields work and the request is sent correctly.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Ensure PDF generators use R1/R2 data (P0)**
-
-**Issues Detail:**
--   **Issue 1: Ensure PDF generators use R1/R2 data**
-    -   **Attempted fixes:** The agent created a helper function  in  and started refactoring the PDF generator scripts ( (M1), , etc.) to use it. The implementation is partially complete.
-    -   **Next debug checklist:**
-        1.  Verify that the  function in  is complete and correctly reflects the data structure (i.e.,  from R1,  from R2).
-        2.  Systematically review each PDF generator script:  (for M1), and  through .
-        3.  In each script, replace direct data access (e.g., ) with calls to the new helper function to populate the data for the cancelación e inscripción tables.
-        4.  Also verify the logic in  that calls these generators, ensuring the  object passed has the necessary R1/R2 data.
-        5.  Finally, perform a comprehensive test by generating a PDF for each mutation type and confirming the data source is correct.
-    -   **Why fix this issue and what will be achieved with the fix?** To ensure data consistency and integrity in the generated legal documents (resolutions). The official record (R1/R2) should be the source of truth, not potentially outdated data in the property's root fields.
-    -   **Status:** IN PROGRESS
-    -   **Is recurring issue?** Y (The problem of data sourcing has come up multiple times).
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue:** None
+- There are no pending high-priority issues. The work is focused on the new M6 feature development.
 
 **In progress Task List**:
--   **Task 1: Refactor all PDF generators to use R1/R2 data (P0)**
-    -   **Where to resume:** The agent has created the helper function  in  and modified  (M1). The next step is to complete the refactoring for , , , and , ensuring each one correctly uses the helper function to populate its data tables.
-    -   **What will be achieved with this?** Standardized and accurate data sourcing for all generated PDF resolutions, ensuring legal documents reflect the official data of record.
+-   **Task 1: Complete Implementation of M6 - Rectificación de Área (P0)**
+    -   **Where to resume:** The agent has created the basic files and backend structures. The next steps are:
+        1.  **Frontend:** In , create the state, form fields (area, boundaries, etc.), and submission logic for M6.
+        2.  **Backend:** In , complete the  function. This must include the logic to update the property's area and boundary data in the database upon approval.
+        3.  **PDF Generator:** Fully implement  to match the structure of the user-provided , including the specific tables and text sections.
+        4.  **Integration:** Ensure the Texto de Considerandos feature is also available for M6.
+    -   **What will be achieved with this?** A fully functional new mutation type for area rectification, completing the user's latest request.
     -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** Backend
+    -   **Should Test frontend/backend/both after fix?** Both
     -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **(P1) Full Regression Test:** After the R1/R2 data sourcing is fixed, run a comprehensive regression test for all mutations (M1-M5), covering creation, approval, PDF generation (with correct data), and QR code verification.
--   **(P1) Backend Refactoring:** Migrate all mutation logic (M1-M5) from the monolithic  into the modular structure at . This is critical to improve maintainability.
--   **(P1) Deprecate Old/Duplicate Endpoints:** Clean up unused endpoints in .
--   **(P2) Frontend Refactoring:** Break down  and  into smaller, manageable child components.
+-   **(P1) Full Regression Test:** After the M6 implementation is complete, run a comprehensive regression test for all mutations (M1-M6), covering creation, approval, PDF generation (with correct data sourcing and custom considerandos), and QR code verification.
+-   **(P1) Backend Refactoring:** Migrate all mutation logic (M1-M6) from the monolithic  into the modular structure at . This is critical to improve maintainability.
+-   **(P2) Deprecate Old/Duplicate Endpoints:** Clean up unused endpoints in .
+-   **(P2) Frontend Refactoring:** Break down  into smaller, manageable child components.
 
 **Future Tasks:**
 -   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
@@ -69,18 +58,22 @@ The user's initial goal was to finalize the Mutaciones y Resoluciones module. Th
 -   Add graphs/charts to dashboards.
 
 **Completed work in this session**
--   **Fixed:** QR verification page now displays correct data, timezone, and grammar (Resolución Válida).
--   **Fixed:** The number input fields in the M5 Create Predio modal now work correctly.
--   **Implemented:** Added Perito Avaluador field to M4 Autoestimación form and its corresponding PDF.
--   **Fixed:** Resolved the M1 PDF download issue from the predio history by correcting the  on the backend and adding a fallback on the frontend.
--   **Fixed:** The backend now correctly marks associated peticiones as Finalizado upon generating a resolution PDF for all mutation types (M1-M5).
--   **Implemented:** Added a frontend helper function to  to correctly source the  from R2 records for display in the UI.
+-   **Fixed:** Corrected data sourcing logic for PDF Inscripción tables to use new form data, not R1/R2 records.
+-   **Fixed:** Resolved a bug in the M3 PDF generator where  could be .
+-   **Fixed:** Resolved a bug in the M5 PDF generator where  was .
+-   **Fixed:** Justified article text in M3 & M4 PDFs.
+-   **Fixed:** Added Fecha de resolución title to M5 PDFs.
+-   **Implemented:** Added a Datos del Solicitante section to M3 & M4 forms to capture user details and display them in the PDF.
+-   **Implemented:** Created a dynamic Texto de Considerandos feature for M1-M5, allowing users to override the default PDF text with custom content and variables.
+-   **Updated:** Changed the syntax for variables in Considerandos from  to .
+-   **Standardized:** Corrected the association's name to Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios across all PDF generators (, ).
+-   **Tested:** Successfully used the backend testing agent to verify the primary R1/R2 data sourcing logic.
 
 **Earlier issues found/mentioned but not fixed**
--   Incorrect Historical PDFs being served (might be serving live data). This might be resolved by the  fix, but needs verification.
+-   Incorrect Historical PDFs being served (might be serving live data).
 -   Slow Visit Form performance on mobile devices.
 -   The resolution counter is not atomic and could lead to race conditions.
--   Mass desenglobe does not correctly mark the original property as cancelled (Needs verification).
+-   Mass desenglobe does not correctly mark the original property as cancelled.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Intermittent Save/Sync Failures on Slow Connections.
@@ -88,59 +81,62 @@ The user's initial goal was to finalize the Mutaciones y Resoluciones module. Th
 -   **Status:** NOT STARTED.
 
 **Code Architecture**
-obtener_datos_r1_r2getMatriculaInmobiliaria
+
 
 **Key Technical Concepts**
--   **Backend Data Sourcing:** Implementing a standardized Python helper () to consolidate business logic for retrieving data from nested sub-documents (, ) with fallbacks to root-level fields.
--   **Frontend Data Sourcing:** Implementing a Javascript helper () to correctly display data from nested objects in a React component.
--   **Monolith Modification:** The session involved extensive modifications to the large  file, reinforcing the need for refactoring. This included fixing bugs, adding new features, and updating data models across multiple, disconnected functions within the same file.
--   **State Management (React):** Debugging and fixing issues with controlled components in React, specifically how  interacted with the component's state updates, causing input fields to be blocked.
--   **PDF Generation (ReportLab):** Modifying multiple PDF generation scripts to standardize table layouts and ensure correct data is being passed and rendered.
+-   **Dynamic PDF Content Generation:** Implemented a system where PDF content can be dynamically switched between a hardcoded template and user-provided text. This was achieved by adding an optional  field to the request and using conditional logic in the ReportLab PDF generators.
+-   **Text Templating with Variables:** Created a simple templating engine using Python's  method to substitute placeholders like  with actual data before rendering the PDF.
+-   **Extensible Frontend Forms (React):** Added new state variables and UI components (e.g., ) to a large, existing React form to support the new Texto de Considerandos feature for all mutation types.
+-   **Extensible Backend Models (Pydantic):** Added new optional fields () to the Pydantic models (, ) to handle the new data from the frontend without breaking existing functionality.
 
 **key DB schema**
--   ****: Contains property information. It's now established that  and  are the source of truth for legal/economic data for PDFs, even if the root object has similar fields.
--   ****: The documents for QR verification were updated to include more fields (, , ) and to handle different resolution types gracefully on the verification page.
--   ****: The schema includes , , , and . The logic was fixed to ensure these fields are correctly populated when a resolution is generated.
+-   ****: The documents in this collection now support an optional  string field, which stores the custom text for the resolution's CONSIDERANDO section.
 
 **All files of reference**
--   : Heavily modified. Contains the new helper function , fixes for  status updates, QR verification data, M1 PDF path, and logic for adding  to R1 records.
--    (M1), , , , : All of these PDF generator scripts were being refactored to use the new standardized data sourcing logic.
--   : Modified to fix the M5 modal input bug, add the M4 Perito field, change N/A to Sin información, and add the  helper function.
--   , , : Modified to fix broken PDF download links.
+-   : Heavily modified to fix data sourcing, add logic for the solicitante and texto_considerando fields, correct the association name, and scaffold the new M6 mutation.
+-   : All five generators were updated to fix bugs, correct the association name, and implement the conditional logic for .
+-   : Newly created file for the M6 mutation.
+-   : Name correction.
+-   : Heavily modified to add the Datos del Solicitante fields (M3, M4) and the Texto de Considerandos textarea (M1-M5).
 
 **Areas that need refactoring**:
--   : **CRITICAL**. The current task of modifying 6 different files to implement one data sourcing change proves this monolith is unmaintainable and a primary source of friction. It must be broken down into routers.
--   : This component is still very large. Breaking it down by mutation type would improve maintainability.
--   **PDF Generators**: There is significant duplicated code across the 5 PDF generator files (e.g., drawing headers, footers, tables). This could be abstracted into a common PDF utility module.
+-   : **CRITICAL**. This file has grown even larger with the addition of M6 logic. Its monolithic nature makes maintenance difficult and error-prone. It must be broken down into a router-based structure.
+-   **PDF Generators**: There is significant duplicated code across the six PDF generator files (e.g., drawing headers, footers, justified text functions). This should be abstracted into a common PDF utility module to improve maintainability and ensure consistency.
 
 **key api endpoints**
--   ****: These endpoints now correctly update the associated  status to Finalizado.
--   ****: Endpoint for the QR verification page. Was significantly improved to show more data, handle different resolution types, and display correct grammar and timezone.
--   ****: The endpoint to download PDFs. The frontend was fixed to always construct the correct URL to use this endpoint.
+-   ****: These endpoints now accept an optional  field in the payload.
+-   ****: Logic was updated to pass the  from the saved request to the PDF generator.
+-   ****: (In Progress) New endpoint being created for M6.
+-   ****: (In Progress) New endpoint being created for M6.
 
 **Critical Info for New Agent**
--   Your immediate priority is to finish the refactoring of all PDF generators (M1-M5) to use the new  helper function from . The goal is to ensure the cancelación e inscripción tables in the PDFs are populated with data from  and . The user has been very clear that  must come from R1.
--   After finishing the refactor, you must test it thoroughly. Propose a plan to the user to generate a PDF for each mutation type (M1-M5) to verify the data is sourced correctly from R1/R2.
--   The next logical step after this fix is to strongly advocate for refactoring . The pain of this last task is a perfect justification for it.
+-   Your immediate and highest priority is to **complete the implementation of the M6 - Rectificación de área mutation**.
+-   **Plan:**
+    1.  First, build the frontend form for M6 inside . It should capture the necessary data like new area and boundaries.
+    2.  Next, complete the backend logic in , specifically the  function. This function must handle the database update to change the property's area.
+    3.  Then, finish coding the PDF generator  to match the user's sample document.
+    4.  Finally, test the entire M6 flow end-to-end.
+-   The user is very attentive to detail. Ensure the M6 PDF matches the provided sample in structure, headers, footers, and table formats.
+-   After completing M6, the next logical step is to propose a full regression test of all 6 mutations to ensure nothing has broken.
 
 **documents and test reports created in this job**
--   The  file was updated throughout the session.
+-   /app/test_reports/iteration_0.json
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Yes, correct, for the mutation PDFs the homologated code should be called from there. Adjust this to the previous pending task. (**Status: IN PROGRESS**)
-2.  **User:** The homologated code for the cancellation and inscription tables should be called from R1. They are in R1. (**Status: RESOLVED** - acknowledged, being implemented)
-3.  **User:** where do you insert the homologated codes when the property management pdf is generated? (**Status: RESOLVED** - agent investigated)
-4.  **User:** But if generating the property management excel is already exporting the homologated code in the correct position. I don't understand why you say you can't find it in R1? (**Status: RESOLVED** - agent corrected understanding)
-5.  **User:** The homologated code comes from R1... (**Status: RESOLVED** - agent corrected understanding)
-6.  **User:** Yes, check that the existing data used by the cancellation and inscription table are called from R1/R2. (**Status: RESOLVED** - acknowledged, being implemented)
-7.  **User:** In all cancellation and inscription tables, all information must appear like M1. This applies to all Mutation procedures. Review and show me before applying. (**Status: RESOLVED** - agent analyzed and confirmed existing structure was correct)
-8.  **User:** when generating the pdf the process is not being finalized, the email is sent and the resolution is loaded, but the related request is not finalized. (**Status: RESOLVED - Fixed**)
-9.  **User:** Confirmed, so you are calling R2 to bring the matricula? (**Status: RESOLVED - Fixed**)
-10. **User:** Appraisal review, does not call matricula, property that does not have a matricula should show Sin información (**Status: RESOLVED - Fixed**)
+1.  **User:** Now, we move to M6, its real name is Rectificación de área. I'm sharing the test PDF, it needs the same header, footer, QR signature, change approval, cancellation/inscription tables, etc. (**Status: IN PROGRESS** - Agent has started scaffolding M6.)
+2.  **User:** The correct name is Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios. It must be corrected in all PDFs. (**Status: RESOLVED** - Agent fixed this in all generators.)
+3.  **User:** And could you change from brackets to parentheses or quotes? It's easier. (**Status: RESOLVED** - Agent changed variable syntax to .)
+4.  **User:** How do the variables work? (**Status: RESOLVED** - Agent provided a detailed explanation and a list of available variables.)
+5.  **User:** Yes, correct, add it to M1, M2, and M5. (**Status: RESOLVED** - Agent implemented the Texto de Considerandos feature for M1, M2, and M5.)
+6.  **User:** This is getting complex, each mutation can be different and the document must be adapted. What if we just add a Considering box and the text is taken from there to send to the resolution? Review this idea and show me. (**Status: RESOLVED** - Agent implemented this idea for M3/M4.)
+7.  **User:** I'm very concerned that the considerandos of the resolutions are not fixed text blocks but in theory should be changeable depending on the need. What do you propose to eliminate this concern? (**Status: RESOLVED** - Agent proposed a flexible solution.)
+8.  **User:** M3 and M4, the articles are not justified. In different mutations, it says Mr. Not specified, identified with citizenship card No. but I don't see where to add this in the form. M5 doesn't have the title Resolution date XXXXX. (**Status: RESOLVED** - Agent fixed all three issues.)
+9.  **User:** Run tests for the 5 mutations now and generate the 5 links for me to see the PDFs. (**Status: RESOLVED** - Agent ran tests, fixed bugs found, and provided the links.)
+10. **User:** Perfect, but if the data is called from R1/R2, how does it articulate with the changes for inscription if it's not yet in R1/R2? (**Status: RESOLVED** - User raised a valid concern, agent investigated and corrected the logic to use form data for inscription.)
 
 **Project Health Check:**
 -   **Broken:**
-    -   Data sourcing in PDF generation is inconsistent. Some data might be pulled from outdated root-level fields instead of the  /  source of truth. The fix is currently in progress.
+    -   The M6 - Rectificación de área feature is incomplete.
 -   **Mocked:**
     -   None.
 
@@ -151,10 +147,10 @@ obtener_datos_r1_r2getMatriculaInmobiliaria
 -   qrcode (for PDF verification QR codes)
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES (For the R1/R2 data sourcing fix).
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** A full regression test has not been performed since the recent batch of fixes.
+-   **Known regressions:** A full regression test has not been performed since the implementation of the Considerandos feature and other recent fixes.
 
 **Credentials to test flow:**
 -   **Administrator / Aprobador:**  / 
@@ -162,5 +158,5 @@ obtener_datos_r1_r2getMatriculaInmobiliaria
 -   **Atención Usuario (with approval rights):**  / 
 
 **What agent forgot to execute**
--   A full regression test has not been performed after the numerous fixes implemented during the session.
--   The major refactoring of the  monolith is still pending and has become increasingly critical.</analysis>
+-   The long-term refactoring of  and the PDF generators remains pending and is becoming more critical with each new feature addition.
+-   A full regression test after the recent wave of changes has not been performed.</analysis>
