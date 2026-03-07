@@ -51,7 +51,7 @@
       "status": "PASSED",
       "details": "Clicking 'Ver Mapa' button navigates to visor with codigo parameter",
       "url_pattern": "/dashboard/visor-actualizacion/{proyectoId}?codigo={codigoPredial}",
-      "actual_url": "https://mutation-m6-styling.preview.emergentagent.com/dashboard/visor-actualizacion/32ba040f-ed50-45e2-a115-22ab3a351423?codigo=547200101000000010001000000000",
+      "actual_url": "https://mutations-label-fix.preview.emergentagent.com/dashboard/visor-actualizacion/32ba040f-ed50-45e2-a115-22ab3a351423?codigo=547200101000000010001000000000",
       "screenshot": ".screenshots/14_visor.png"
     },
     "5_editar_predio_modal": {

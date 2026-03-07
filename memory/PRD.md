@@ -3,7 +3,11 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: RECTIFICACIÓN DE ÁREA COMPLETADO Y VERIFICADO
+## Estado Actual: BLOQUEO DE PREDIOS Y AJUSTE DE ÁREA FUNCIONAL
+
+### Correcciones Recientes (07/03/2026)
+- **Etiqueta "Ajuste de Área"**: Cambiada de "Rectificación de Área" / "M6" / "Rect. Área" a "Ajuste de Área" según preferencia del usuario
+- **Buscador de Bloqueo de Predios**: Verificado y funcionando correctamente con lupa visible, búsqueda por código predial, dirección o propietario
 
 ### Funcionalidades Completadas (Marzo 2026)
 

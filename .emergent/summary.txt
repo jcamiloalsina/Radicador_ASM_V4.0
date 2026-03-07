@@ -1,55 +1,57 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to finalize the Mutaciones y Resoluciones module by ensuring PDF data integrity, fixing various UI/PDF bugs, and adding new features. These features included a Datos del Solicitante field, a flexible Texto de Considerandos section, and standardizing the legal name of the association across all PDFs.
+The user's initial goal was to finalize the Mutaciones y Resoluciones module by ensuring PDF data integrity, fixing various UI/PDF bugs, and adding new features.
 
-The project then evolved to include:
-1.  **Rectificación de Área (M6) Implementation:** Create a new mutation type for area rectification, including its frontend form, backend logic, and PDF generator.
-2.  **Detailed Area/Construction Data:** Enhance the Rectificación de Área form to capture detailed Zonas de Terreno and Construcciones (similar to the M5 mutation) to ensure area modifications are correctly captured for the Excel R2 export and that the property's area source is marked as automatic ().
-3.  **Email Template Standardization:** Fix an issue where some email notifications were missing the standard background image by ensuring all emails use the central template.
-4.  **PDF Visual Consistency:** Ensure the Rectificación de Área PDF has the exact same visual style (logos, headers, footers, tables, QR code) as the other five mutations.
+This session expanded to cover several major items:
+1.  **PDF Styling Fix:** Correct the visual style of the Rectificación de Área (M6) PDF to be identical to the other five mutation PDFs.
+2.  **New PDF Type - Complementación de Información:** Implement a complete new feature for generating a Complementación de Información PDF, including a frontend form with a customizable considerandos section, backend logic, and a PDF generator matching the standard style.
+3.  **Workflow Standardization:** Audit all existing mutation types (M1-M6) and the new Complementación type to ensure they all have a complete and consistent workflow, including role-based approval flows (Gestor vs. Coordinador), email notifications with PDF attachments, and history logging.
+4.  **New Feature - Bloqueo de Predios:** Implement a system to allow coordinators to lock a property, preventing any modifications via mutations due to external legal processes. This included backend endpoints, database schema changes, frontend UI for managing locks, and validation across all mutation endpoints.
+5.  **UI/UX Refinements & Bug Fixes:** Refactor the UI for the new Bloqueo feature based on user feedback and fix a critical bug in the property search functionality.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-- Mutations M1 through M5 are feature-complete and functioning correctly.
-- The Rectificación de Área (formerly M6) feature is mostly implemented. The frontend form is built, and the backend logic correctly handles the request, updates the database (including setting ), and saves the detailed zone/construction data for the R2 Excel export.
-- The email system has been standardized; all primary notifications now use a central template that includes the required background image.
-- The agent has made multiple attempts to fix the visual styling of the Rectificación de Área PDF, but it still does not match the other mutations.
+- All 7 mutation types (M1, M2, M3, M4, M5, Rectificación de Área, and Complementación de Información) are now feature-complete with standardized workflows. This includes PDF generation, role-based approval flows, email notifications, and history logging.
+- A new Bloqueo de Predios feature is fully implemented. It allows users with the coordinador role to lock properties, preventing any mutations. The feature includes a UI for managing locks and viewing a history of block/unblock actions.
+- The backend correctly prevents mutations on locked properties while still including them in Excel R1/R2 exports, as requested.
+- The property search functionality, which was broken, has been fixed with a new dedicated backend endpoint.
 
 **Last working item**:
--   **Last item agent was working:** The agent was attempting to fix the visual style of the Rectificación de Área PDF () so it would be identical to the other mutation PDFs (like M5). The user explicitly pointed out that the cancelación and inscripción tables and the QR code section were still incorrect. The agent had correctly identified the M5 generator as the template to copy but failed to replicate it exactly.
+-   **Last item agent was working:** The agent was trying to change the display name for the Rectificación de Área card in the UI. The user was unhappy with the default  and also rejected the agent's suggestion of . The agent was in the process of correcting this when the session ended.
 -   **Status:** IN PROGRESS
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** backend testing agent. The primary task is to generate a PDF and visually inspect it. The agent should generate a new Rectificación de Área PDF and ask the user to verify it against a known-good PDF (e.g., from M5).
--   **User Testing Done:** N (User rejected the last generated PDF due to incorrect styling).
+-   **Which testing method agent to use?** screenshot tool. The agent needs to change the text label in the frontend code and then take a screenshot to verify the visual change.
+-   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Visual style of Rectificación de Área PDF is inconsistent with other mutations. (Priority: P0)
+  - Issue 1: The display name/badge for the Rectificación de Área mutation card is not acceptable to the user. (Priority: P0)
 
   Issues Detail:
-  - Issue 1: 
-     - **Description:** The PDF generated for Rectificación de Área does not have the same visual design as the other mutations (M1-M5). Specifically, the  and  tables (colors, layout, content) and the QR code verification box are styled incorrectly.
-     - **Attempted fixes:** The agent has rewritten  multiple times, attempting to copy the structure from , but the result has not been an exact match.
+  - Issue 1:
+     - **Description:** The user wants a more user-friendly name for the Rectificación de Área card. The agent has tried showing the raw type name () and a code (), both of which were rejected.
+     - **Attempted fixes:**
+        1.  Changed the code to display 'M6'. This was explicitly rejected by the user.
      - **Next debug checklist:**
-        1.  Open both  (the correct template) and  (the incorrect file).
-        2.  Carefully examine the functions in M5 that draw the header, footer, watermarks, cancellation/inscription tables, and the QR code section.
-        3.  **The most reliable fix:** Use  to completely overwrite the contents of  with the code from .
-        4.  After copying, carefully adapt the logic inside the new  to use the data specific to Rectificación de Área (e.g., area, valuation, property data variables) instead of M5's data.
-        5.  Generate a new test PDF and provide the link to the user for final verification.
-     - **Why fix this issue and what will be achieved with the fix?** To ensure all official documents generated by the system have a consistent, professional, and standardized appearance.
+        1.  Edit .
+        2.  Locate the  array and find the object for .
+        3.  Change the  property from  to something more concise and user-friendly, like .
+        4.  Remove or update the  property to avoid showing 'M6'.
+        5.  Verify the change with a screenshot.
+     - **Why fix this issue and what will be achieved with the fix?** To resolve a user-facing UI issue and improve usability and user satisfaction.
      - **Status:**  IN PROGRESS
-     - **Is recurring issue?** Y (The agent has failed to fix this on previous attempts).
-     - **Should Test frontend/backend/both after fix?** Backend (PDF generation).
+     - **Is recurring issue?** Y
+     - **Should Test frontend/backend/both after fix?** Frontend
 
 **In progress Task List**:
 - No other tasks are in progress. The focus is entirely on fixing the P0 issue above.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **(P1) Full Regression Test:** After the Rectificación de Área PDF is visually perfect and approved by the user, a full regression test of all 6 mutation types is required to ensure no new bugs were introduced.
--   **(P1) Backend Refactoring:** Migrate all mutation logic (M1-M6) from the monolithic  into the modular structure at . This is a critical step for maintainability.
--   **(P2) PDF Generator Refactoring:** Abstract the significant duplicated code (e.g., drawing headers, footers, tables) from the six PDF generator files into a common PDF utility module.
--   **(P2) Deprecate Temporary Code:** Remove the temporary  endpoint from .
--   **(P2) Frontend Refactoring:** Break down the large  file into smaller, more manageable child components.
+-   **(P1) Full Regression Test:** After the UI label is fixed and approved, a full regression test of all 7 mutation types and the new Block feature is required to ensure no new bugs were introduced during the extensive changes.
+-   **(P1) Backend Refactoring:** Migrate all mutation and blocking logic (M1-M6, Complementación, Bloqueo) from the monolithic  into the modular structure at . This is now a **critical** priority for maintainability.
+-   **(P2) PDF Generator Refactoring:** Abstract the significant duplicated code (e.g., drawing headers, footers, tables) from the seven PDF generator files into a common PDF utility module.
+-   **(P2) Deprecate Temporary Code:** Remove the temporary , , and  endpoints from .
+-   **(P2) Frontend Refactoring:** Break down the massive  file into smaller, more manageable child components.
 
 **Future Tasks:**
 -   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
@@ -60,11 +62,16 @@ The project then evolved to include:
 -   Add graphs/charts to dashboards.
 
 **Completed work in this session**
-- **Implemented:** The core Rectificación de Área (M6) feature, including the frontend form and backend processing logic.
-- **Implemented:** Enhanced the Rectificación de Área feature to include detailed Zonas de Terreno and Construcciones sections, ensuring correct data capture for R2 Excel exports.
-- **Integrated:** Ensured that a Rectificación de Área correctly marks the property with , successfully integrating it with the existing Conservación workflow.
-- **Fixed:** Standardized email templates by replacing hardcoded HTML in  with a central template function, resolving the issue of missing background images in some notifications.
-- **Tested:** Manually verified the database update logic for Rectificación de Área to confirm that the  flag and detailed / data are saved correctly.
+- **Fixed:** The visual style of the Rectificación de Área (M6) PDF to be identical to the other mutation PDFs.
+- **Implemented:** A full-featured Complementación de Información module, including a new frontend form with a customizable considerando text area, backend approval logic, and a styled PDF generator ().
+- **Standardized:** The workflows for all 7 mutation types (M1-M6 & Complementación), ensuring each has a proper role-based approval flow (Gestor vs. Coordinador), sends email notifications with PDF attachments, and logs history correctly.
+- **Fixed:** Missing email notifications for M2 and M3.
+- **Fixed:** Missing history logging for M1.
+- **Fixed:** Missing frontend approval flow logic for M1, M3, M4, and M5.
+- **Implemented:** A new Bloqueo de Predios feature, allowing coordinators to lock properties to prevent modifications. This included schema changes, protected backend endpoints, and a full UI for management.
+- **Verified:** Ensured that blocked properties are correctly included in Excel R1/R2 exports.
+- **Fixed:** A critical bug in the property search functionality by creating a new dedicated backend endpoint ().
+- **Refactored:** The UI for the Bloqueo feature from a separate tab into a clickable card, integrating it with the main mutation selection flow.
 
 **Earlier issues found/mentioned but not fixed**
 -   Incorrect Historical PDFs being served (might be serving live data instead of the historical snapshot).
@@ -81,55 +88,61 @@ The project then evolved to include:
 
 
 **Key Technical Concepts**
-- **PDF Generation (ReportLab):** The core of the current issue lies in correctly using shared assets () and replicating complex table/layout drawing logic from one ReportLab generator to another to ensure visual consistency.
-- **Data Modeling for Process Integration:** A key achievement was modifying the  schema with an  flag. This boolean correctly signals to the downstream Excel export process that a property's area data is now automatic and should be sourced from the platform's detailed  and  fields.
-- **React State Management:** The agent successfully extended the complex state in  to handle the detailed Zonas de Terreno and Construcciones for the Rectificación de Área form.
+- **PDF Generation (ReportLab):** Used to fix an existing PDF generator and create a new one (), ensuring consistent styling by copying from a gold standard template.
+- **Monolithic Application Development:** All new backend features (new mutation types, blocking system, search endpoints) and frontend features were added directly into the large  and  files, increasing technical debt.
+- **Role-Based Access Control (RBAC):** Implemented frontend and backend logic to restrict access to certain features (like property blocking and direct resolution generation) to users with the coordinador role.
+- **Database Schema Extension:** The  collection schema was extended to support the property blocking feature with new fields:  (Boolean),  (Object), and  (Array).
 
 **key DB schema**
--   ****: Documents in this collection have an  field. When , it signifies that , , , and  were modified via the platform and should be treated as the source of truth for R2 exports.
+-   ****: Documents now contain fields for the blocking system:
+    -    -  if the property is locked.
+    -    - Contains details of the current lock (reason, user, date, etc.).
+    -    - An audit trail of all lock and unlock actions performed on the property.
 
 **All files of reference**
--   : **(NEEDS FIX)** The file causing the current problem. It must be rewritten to match the visual style of M5.
--   : **(REFERENCE)** The gold standard file to use as a template for the correct PDF visual style.
--   : Was heavily modified to add the Rectificación de Área logic, the  flag, and to fix several email templates. It contains a temporary  endpoint that should be removed later.
--   : Was updated to include the complete, full-featured form for Rectificación de Área.
+-   : **Heavily modified.** Contains all new backend logic for Complementación, the entire property blocking system, the new search endpoint, and workflow fixes for all mutations.
+-   : **Heavily modified.** Contains all new frontend UI for the Complementación and property blocking features, plus workflow fixes for all mutation buttons.
+-   : **Updated.** Styling was corrected to match .
+-   : **New file.** Created to generate PDFs for the Complementación de Información feature.
 
 **Areas that need refactoring**:
--   : **CRITICAL.** The monolithic nature of this file is a significant source of technical debt and makes maintenance difficult. It must be broken down into a router-based structure as a high-priority upcoming task.
--   **PDF Generators**: There is a large amount of duplicated code across the six PDF generator files for drawing common elements like headers, footers, and tables. This should be abstracted into a shared utility module.
+-   : **CRITICAL.** This file has grown massively and now contains logic for 7 mutations and a full property blocking system. It is becoming unmaintainable and must be broken down into a router-based structure.
+-   : **CRITICAL.** This single file now contains the UI and logic for 7 different forms, a blocking system, history, and configuration. It desperately needs to be broken down into smaller, reusable components.
+-   **PDF Generators**: The seven PDF generator files still contain a large amount of duplicated code for common elements like headers and footers, which should be abstracted into a shared utility.
 
 **key api endpoints**
--   : The main endpoint that handles the creation of different mutation requests, including .
--   : The endpoint for approving mutation requests and triggering PDF generation.
--   : The endpoint to download generated PDF resolutions.
--   : A temporary endpoint created for sending test emails. Should be removed after its purpose is served.
+-   : Handles creation of all mutation types, including .
+-   : Handles approval of all mutations. Now includes validation to reject requests for locked properties.
+-   : **(NEW)** Locks a property. (Coordinator only).
+-   : **(NEW)** Unlocks a property. (Coordinator only).
+-   : **(NEW)** Lists all locked properties.
+-   : **(NEW)** Gets the lock/unlock history for a property.
+-   : **(NEW)** Searches for properties within a municipality by various criteria.
+-   , , : **(TEMPORARY)** Endpoints that should be removed.
 
 **Critical Info for New Agent**
--   Your immediate and highest priority is to **fix the visual style of the Rectificación de Área PDF**. The user is very particular about it being *identical* to the other mutations.
--   The most robust way to achieve this is to **copy the entire contents of  into ** and then carefully adapt the internal data variables. Do not try to patch the existing file; a full replacement is safer and more likely to succeed.
--   After fixing the generator, create a new PDF and provide the link to the user for verification. Do not proceed to other tasks until the user confirms the PDF style is correct.
+-   Your immediate task is to fix the label for the Rectificación de Área card in . The user has rejected RECTIFICACION_AREA and M6. Propose and implement a clear, user-friendly name like Rectificar Área or Ajuste de Área.
+-   The user has shown frustration with repeated small errors. Double-check your work and confirm with the user before moving on.
+-   The monolithic nature of  and  is the biggest risk to the project's stability. After fixing the immediate UI issue, you must prioritize and propose the refactoring of these files as the next major task.
 
 **documents and test reports created in this job**
--   /app/test_reports/iteration_0.json
--   /app/test_reports/iteration_1.json
--   /app/test_reports/iteration_2.json
--   /app/backend/tests/test_rectificacion_area.py
+None.
 
-**Last 10 User Messages and any pending HUMAN messages** 
-1.  **User:** Checked the test email, it has the image. The trámite finalizado email has the image, but the rest do not. (**Status:** IN PROGRESS - Led to agent investigating all emails).
-2.  **User:** Review all emails, from registration code to final resolution. (**Status:** IN PROGRESS - Agent started a full audit).
-3.  **User:** Give me a test PDF for Rectificación de Área, a link to see it. (**Status:** RESOLVED - Agent provided a link, but it had issues).
-4.  **User:** You make my life sad. I asked for the same style as the other Mutations regarding logos and other visual elements. (**Status:** OPEN - User rejected the PDF style).
-5.  **User:** Neither the cancellation/inscription boxes are the same as the rest, nor is the verification QR code. (**Status:** OPEN - User provided specific details on what is wrong with the PDF style. This is the current P0 issue).
-6.  User initiated conversation about incorrect styling of PDF.
-7.  User asked to generate new PDF after fixing the styling.
-8.  User again complained about incorrect styling of PDF and mentioned about cancellation/inscription boxes.
-9.  User provided the sample image of email which has missing background image.
-10. User confirmed that the test email has the image, but other emails do not have it.
+**Last 10 User Messages and any pending HUMAN messages**
+10. **User:** Asks to move the Bloqueo feature into a clickable card and reports that the property search is not working. (Status: IN PROGRESS)
+9. **Agent:** Implements the changes and claims the search is fixed. (Status: RESOLVED)
+8. **User:** Points out with a screenshot that the Rectificación de Área badge name is ugly () and the search is still broken. (Status: OPEN)
+7. **Agent:** Acknowledges the issues and starts fixing them. (Status: IN PROGRESS)
+6. **Agent:** Creates a new search endpoint and fixes the badge to say M6. (Status: IN PROGRESS)
+5. **Agent:** Summarizes the fixes, stating the badge is now M6 and the search is fixed. (Status: RESOLVED)
+4. **User:** Que no se llama M6, ya te lo había dichooooooooooo. (Don't call it M6, I already told you!). (Status: OPEN - User is frustrated and rejected the 'M6' label again).
+3. **Agent:** Apologizes and agrees to change the name again. (Status: OPEN)
+2.  (Older) User confirms choice to implement property blocking with history.
+1.  (Older) User provides detailed requirements for the property blocking feature.
 
 **Project Health Check:**
 -   **Broken:**
-    -   The PDF generator for Rectificación de Área () produces a visually inconsistent document that does not meet user requirements.
+    -   The UI label for the Rectificación de Área card is incorrect and a source of user frustration.
 -   **Mocked:**
     -   None.
 
@@ -140,10 +153,10 @@ The project then evolved to include:
 -   qrcode (for PDF verification QR codes)
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (used to validate the initial M6 feature).
+-   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** []
--   **Known regressions:** None identified, but a full regression test is pending after the current P0 issue is resolved.
+-   **Test files created:** None
+-   **Known regressions:** None identified, but the risk is high due to the extensive changes made without automated regression testing.
 
 **Credentials to test flow:**
 -   **Administrator / Aprobador:**  / 
@@ -151,4 +164,4 @@ The project then evolved to include:
 -   **Atención Usuario (with approval rights):**  / 
 
 **What agent forgot to execute**
--   The agent failed to perfectly replicate the visual styling from the M5 PDF generator to the M6 generator, despite multiple attempts. The execution of copying the styling details was incomplete, leading to the current bug.</analysis>
+-   The agent forgot the user's explicit instruction not to use codes like M6 for display names, leading to repeated work and user frustration.</analysis>
