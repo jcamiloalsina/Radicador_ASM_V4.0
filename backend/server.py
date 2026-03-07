@@ -10457,7 +10457,7 @@ def generate_certificado_catastral(predio: dict, firmante: dict, proyectado_por:
             # Encabezado alternativo si las imágenes embebidas fallaron
             c.setFillColor(verde_institucional)
             c.setFont(fuente_bold, 14)
-            c.drawCentredString(width/2, height - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(width/2, height - 1.5 * cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         return height - 2.8 * cm
     
     def draw_footer():

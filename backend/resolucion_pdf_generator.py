@@ -22,13 +22,13 @@ def get_default_plantilla():
     """Retorna la plantilla de textos por defecto - Basada en documento oficial M1"""
     return {
         "preambulo": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – "
-            "Asomunicipios en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
             "en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "
             '"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y '
             'difusión catastral con enfoque multipropósito", y'
         ),
-        "considerando_1": "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
+        "considerando_1": "Qué, ante la oficina de gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
         "considerando_2_intro": "Qué, se aportaron como soportes los siguientes documentos:",
         "considerando_2_docs": [
             "Oficio de solicitud.",
@@ -215,7 +215,7 @@ def generate_resolucion_pdf(
             # Encabezado alternativo
             c.setFillColor(verde_institucional)
             c.setFont(font_bold, 14)
-            c.drawCentredString(width/2, height - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(width/2, height - 1.5 * cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         return height - 2.8 * cm
     
     def draw_footer():

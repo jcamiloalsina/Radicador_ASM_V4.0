@@ -83,7 +83,7 @@ def get_m2_plantilla():
             "Qué, el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía No. {solicitante_documento}, "
             "en su condición de propietario de un predio que hace parte de uno de mayor "
             "extensión identificado con el código catastral {codigo_origen}, del Municipio de {municipio}, "
-            "radicó con el número {radicado}, ante el Gestor catastral de Asociación de Municipios del Catatumbo, "
+            "radicó con el número {radicado}, ante el Gestor Catastral de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios, una solicitud de trámite catastral "
             "con Radicado {radicado} y soportado en los siguientes documentos justificativos:"
         ),
@@ -238,7 +238,7 @@ def generate_resolucion_m2_pdf(
         else:
             c.setFillColor(VERDE_INSTITUCIONAL)
             c.setFont(font_bold, 14)
-            c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         
         y_position = PAGE_HEIGHT - 2.8 * cm
         return y_position

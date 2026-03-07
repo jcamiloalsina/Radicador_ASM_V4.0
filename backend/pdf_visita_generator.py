@@ -76,7 +76,7 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
         else:
             c.setFillColor(VERDE_PRINCIPAL)
             c.setFont("Helvetica-Bold", 12)
-            c.drawCentredString(width/2, height - 1.2*cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(width/2, height - 1.2*cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         return height - 2.5*cm
     
     def draw_footer():

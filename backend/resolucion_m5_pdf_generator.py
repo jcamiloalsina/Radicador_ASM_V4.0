@@ -76,8 +76,8 @@ def get_m5_plantilla_cancelacion():
         "subtipo": "cancelacion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE CANCELACIÓN DE PREDIO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
             "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
@@ -85,7 +85,8 @@ def get_m5_plantilla_cancelacion():
         ),
         "considerando_solicitud": (
             "Qué, el/la señor(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la CANCELACIÓN del predio identificado con código predial nacional {codigo_predial}, "
             "lo anterior en su calidad de propietario(a) del predio."
         ),
@@ -145,8 +146,8 @@ def get_m5_plantilla_inscripcion():
         "subtipo": "inscripcion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE INSCRIPCIÓN DE PREDIO NUEVO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
             "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
@@ -154,7 +155,8 @@ def get_m5_plantilla_inscripcion():
         ),
         "considerando_solicitud": (
             "Qué, el/la señor(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la INSCRIPCIÓN de un predio nuevo en el catastro municipal, identificado con la matrícula "
             "inmobiliaria No. {matricula_inmobiliaria}, lo anterior en su calidad de propietario(a) del predio."
         ),

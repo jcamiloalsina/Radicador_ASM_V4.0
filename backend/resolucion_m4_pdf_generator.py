@@ -73,8 +73,8 @@ def get_m4_plantilla_revision():
         "subtipo": "revision_avaluo",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE REVISIÓN DE AVALÚO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
             "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
@@ -82,7 +82,8 @@ def get_m4_plantilla_revision():
         ),
         "considerando_solicitud": (
             "Qué, el señor {solicitante_nombre}, identificado con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita una revisión de avalúo catastral, para el código predial nacional {codigo_predial}, "
             "lo anterior en su calidad de propietario del predio."
         ),
@@ -151,8 +152,8 @@ def get_m4_plantilla_autoestimacion():
         "subtipo": "autoestimacion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE AUTOESTIMACIÓN DE AVALÚO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
             "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
