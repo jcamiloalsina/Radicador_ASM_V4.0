@@ -28963,6 +28963,16 @@ async def crear_solicitud_mutacion(
             "es_doble_inscripcion": data.es_doble_inscripcion,
             "codigo_predio_duplicado": data.codigo_predio_duplicado,
             "predio_m5": data.predio_m5,
+            # Para Rectificación de Área
+            "predio_rectificacion": data.predio_rectificacion,
+            "area_terreno_anterior": data.area_terreno_anterior,
+            "area_terreno_nueva": data.area_terreno_nueva,
+            "area_construida_anterior": data.area_construida_anterior,
+            "area_construida_nueva": data.area_construida_nueva,
+            "zonas_terreno_anteriores": data.zonas_terreno_anteriores,
+            "zonas_terreno_nuevas": data.zonas_terreno_nuevas,
+            "construcciones_anteriores": data.construcciones_anteriores,
+            "construcciones_nuevas": data.construcciones_nuevas,
             # Texto personalizado para considerandos
             "texto_considerando": data.texto_considerando,
             # Gestor de apoyo
