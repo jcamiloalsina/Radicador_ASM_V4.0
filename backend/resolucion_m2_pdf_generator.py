@@ -136,6 +136,7 @@ def generate_resolucion_m2_pdf(
     imagen_firma_b64: str = None,
     elaboro: str = "",
     aprobo: str = "",
+    texto_considerando: str = None,  # Texto personalizado para considerandos
 ) -> bytes:
     """
     Genera un PDF de resolución M2 (Englobe/Desengloble)
@@ -376,49 +377,67 @@ def generate_resolucion_m2_pdf(
     npn_origen = predios_cancelados[0].get("npn", "") if predios_cancelados else ""
     matricula_origen = predios_cancelados[0].get("matricula_inmobiliaria", "") if predios_cancelados else ""
     
-    considerando_intro = plantilla["considerando_intro"].format(
-        solicitante_nombre=solicitante.get("nombre", ""),
-        solicitante_documento=solicitante.get("documento", ""),
-        municipio=municipio,
-        codigo_origen=codigo_origen,
-        radicado=radicado
-    )
-    dibujar_texto_justificado(considerando_intro, font_size=10)
-    y_position -= 10
-    
-    # Documentos soporte (bullets)
-    # Obtener las matrículas de los predios a inscribir (los nuevos)
-    matriculas_inscritos = []
-    for predio in predios_inscritos:
-        mat = predio.get("matricula_inmobiliaria", "")
-        if mat and mat not in matriculas_inscritos:
-            matriculas_inscritos.append(mat)
-    matriculas_texto = ", ".join(matriculas_inscritos) if matriculas_inscritos else matricula_origen
-    
-    c.setFont(font_normal, 10)
-    for doc in plantilla["documentos_soporte"]:
-        verificar_espacio(20)
-        doc_formateado = doc.format(
-            matricula=matriculas_texto
-        )
-        c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
-        y_position -= 14
-    y_position -= 10
-    
-    # Considerando estudio
-    if subtipo == "desengloble":
-        considerando_estudio = plantilla["considerando_estudio_desengloble"].format(
-            codigo_origen=codigo_origen,
-            npn_origen=npn_origen
-        )
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando:
+        # Reemplazar variables en el texto personalizado
+        texto_procesado = texto_considerando
+        try:
+            texto_procesado = texto_procesado.replace('{solicitante}', solicitante.get("nombre", ""))
+            texto_procesado = texto_procesado.replace('{documento}', solicitante.get("documento", ""))
+            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
+            texto_procesado = texto_procesado.replace('{codigo_predial}', codigo_origen or '')
+            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
+            texto_procesado = texto_procesado.replace('{matricula}', matricula_origen or '')
+            texto_procesado = texto_procesado.replace('{subtipo}', subtipo or '')
+        except Exception:
+            pass
+        dibujar_texto_justificado(texto_procesado, font_size=10)
+        y_position -= 15
     else:
-        considerando_estudio = plantilla["considerando_estudio_englobe"]
-    dibujar_texto_justificado(considerando_estudio, font_size=10)
-    y_position -= 10
-    
-    # Considerando final
-    dibujar_texto_justificado(plantilla["considerando_final"], font_size=10)
-    y_position -= 15
+        # Usar plantilla estándar
+        considerando_intro = plantilla["considerando_intro"].format(
+            solicitante_nombre=solicitante.get("nombre", ""),
+            solicitante_documento=solicitante.get("documento", ""),
+            municipio=municipio,
+            codigo_origen=codigo_origen,
+            radicado=radicado
+        )
+        dibujar_texto_justificado(considerando_intro, font_size=10)
+        y_position -= 10
+        
+        # Documentos soporte (bullets)
+        # Obtener las matrículas de los predios a inscribir (los nuevos)
+        matriculas_inscritos = []
+        for predio in predios_inscritos:
+            mat = predio.get("matricula_inmobiliaria", "")
+            if mat and mat not in matriculas_inscritos:
+                matriculas_inscritos.append(mat)
+        matriculas_texto = ", ".join(matriculas_inscritos) if matriculas_inscritos else matricula_origen
+        
+        c.setFont(font_normal, 10)
+        for doc in plantilla["documentos_soporte"]:
+            verificar_espacio(20)
+            doc_formateado = doc.format(
+                matricula=matriculas_texto
+            )
+            c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
+            y_position -= 14
+        y_position -= 10
+        
+        # Considerando estudio
+        if subtipo == "desengloble":
+            considerando_estudio = plantilla["considerando_estudio_desengloble"].format(
+                codigo_origen=codigo_origen,
+                npn_origen=npn_origen
+            )
+        else:
+            considerando_estudio = plantilla["considerando_estudio_englobe"]
+        dibujar_texto_justificado(considerando_estudio, font_size=10)
+        y_position -= 10
+        
+        # Considerando final
+        dibujar_texto_justificado(plantilla["considerando_final"], font_size=10)
+        y_position -= 15
     
     # RESUELVE
     dibujar_seccion_titulo("RESUELVE")

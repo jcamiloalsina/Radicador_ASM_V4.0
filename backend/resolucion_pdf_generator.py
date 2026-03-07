@@ -87,6 +87,8 @@ def generate_resolucion_pdf(
     # Código de verificación para QR idéntico al certificado catastral
     codigo_verificacion: str = None,
     verificacion_base_url: str = None,
+    # Texto personalizado para considerandos
+    texto_considerando: str = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -340,34 +342,55 @@ def generate_resolucion_pdf(
     c.drawCentredString(width/2, y, "CONSIDERANDO")
     y -= espaciado_secciones
     
-    # Considerando 1
-    c.setFont(font_normal, fuente_cuerpo)
-    texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
-    y = dibujar_texto_justificado(texto_c1, y)
-    y -= 8
-    
-    # Considerando 2 - Intro
-    y = check_page_break(y, 30)
-    y = dibujar_texto_justificado(textos['considerando_2_intro'], y)
-    
-    # Lista de documentos
-    for doc in textos['considerando_2_docs']:
-        y = check_page_break(y, 15)
-        doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or '---')
-        c.drawString(left_margin + 15, y, f"• {doc_texto}")
-        y -= espaciado_parrafos
-    y -= 8
-    
-    # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
-    y = check_page_break(y, 30)
-    texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
-    y = dibujar_texto_justificado(texto_c3, y)
-    y -= 8
-    
-    # Considerando final
-    y = check_page_break(y, 40)
-    y = dibujar_texto_justificado(textos['considerando_final'], y)
-    y -= espaciado_secciones
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando:
+        c.setFont(font_normal, fuente_cuerpo)
+        # Reemplazar variables en el texto personalizado
+        texto_procesado = texto_considerando
+        try:
+            texto_procesado = texto_procesado.replace('{tipo_tramite}', tipo_tramite or '')
+            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
+            texto_procesado = texto_procesado.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('{matricula}', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('{npn}', npn or '')
+            texto_procesado = texto_procesado.replace('{codigo_predial}', npn or '')
+            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
+            texto_procesado = texto_procesado.replace('{direccion}', direccion or '')
+            texto_procesado = texto_procesado.replace('{avaluo}', avaluo or '')
+        except Exception:
+            pass
+        y = dibujar_texto_justificado(texto_procesado, y)
+        y -= espaciado_secciones
+    else:
+        # Usar la plantilla estándar
+        # Considerando 1
+        c.setFont(font_normal, fuente_cuerpo)
+        texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
+        y = dibujar_texto_justificado(texto_c1, y)
+        y -= 8
+        
+        # Considerando 2 - Intro
+        y = check_page_break(y, 30)
+        y = dibujar_texto_justificado(textos['considerando_2_intro'], y)
+        
+        # Lista de documentos
+        for doc in textos['considerando_2_docs']:
+            y = check_page_break(y, 15)
+            doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or '---')
+            c.drawString(left_margin + 15, y, f"• {doc_texto}")
+            y -= espaciado_parrafos
+        y -= 8
+        
+        # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
+        y = check_page_break(y, 30)
+        texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
+        y = dibujar_texto_justificado(texto_c3, y)
+        y -= 8
+        
+        # Considerando final
+        y = check_page_break(y, 40)
+        y = dibujar_texto_justificado(textos['considerando_final'], y)
+        y -= espaciado_secciones
     
     # === RESUELVE ===
     y = check_page_break(y, 30)

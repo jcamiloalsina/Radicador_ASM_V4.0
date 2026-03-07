@@ -213,6 +213,7 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Obtener datos
     subtipo = data.get('subtipo', 'inscripcion')
     plantilla = get_m5_plantilla_cancelacion() if subtipo == 'cancelacion' else get_m5_plantilla_inscripcion()
+    texto_considerando_personalizado = data.get('texto_considerando')  # Texto personalizado de considerandos
     
     municipio = data.get('municipio', '').upper()
     numero_resolucion = data.get('numero_resolucion', '')
@@ -661,43 +662,62 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     dibujar_seccion_titulo("CONSIDERANDO:")
     y_position -= 5
     
-    # Intro
-    c.setFillColor(NEGRO)
-    dibujar_texto_justificado(plantilla["considerando_intro"])
-    y_position -= 10
-    
-    # Solicitud
-    texto_solicitud = plantilla["considerando_solicitud"].format(
-        solicitante_nombre=solicitante_nombre,
-        solicitante_documento=solicitante_documento,
-        radicado=radicado,
-        codigo_predial=codigo_predial,
-        matricula_inmobiliaria=matricula
-    )
-    dibujar_texto_justificado(texto_solicitud)
-    y_position -= 10
-    
-    # Motivo
-    texto_motivo = plantilla["considerando_motivo"].format(motivo_solicitud=motivo_solicitud)
-    dibujar_texto_justificado(texto_motivo)
-    y_position -= 10
-    
-    # Análisis
-    dibujar_texto_justificado(plantilla["considerando_analisis"])
-    y_position -= 10
-    
-    # Doble inscripción (solo para cancelación)
-    if subtipo == 'cancelacion' and es_doble_inscripcion and codigo_predio_duplicado:
-        texto_doble = plantilla["considerando_doble_inscripcion"].format(
-            codigo_predial=codigo_predial,
-            codigo_predio_duplicado=codigo_predio_duplicado
-        )
-        dibujar_texto_justificado(texto_doble)
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado
+        texto_procesado = texto_considerando_personalizado
+        try:
+            texto_procesado = texto_procesado.replace('{solicitante}', solicitante_nombre or '')
+            texto_procesado = texto_procesado.replace('{documento}', solicitante_documento or '')
+            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
+            texto_procesado = texto_procesado.replace('{codigo_predial}', codigo_predial or '')
+            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
+            texto_procesado = texto_procesado.replace('{matricula}', matricula or '')
+            texto_procesado = texto_procesado.replace('{vigencia}', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
+        except Exception:
+            pass
+        c.setFillColor(NEGRO)
+        dibujar_texto_justificado(texto_procesado)
+        y_position -= 15
+    else:
+        # Usar plantilla estándar
+        # Intro
+        c.setFillColor(NEGRO)
+        dibujar_texto_justificado(plantilla["considerando_intro"])
         y_position -= 10
-    
-    # Legal
-    dibujar_texto_justificado(plantilla["considerando_legal"])
-    y_position -= 15
+        
+        # Solicitud
+        texto_solicitud = plantilla["considerando_solicitud"].format(
+            solicitante_nombre=solicitante_nombre,
+            solicitante_documento=solicitante_documento,
+            radicado=radicado,
+            codigo_predial=codigo_predial,
+            matricula_inmobiliaria=matricula
+        )
+        dibujar_texto_justificado(texto_solicitud)
+        y_position -= 10
+        
+        # Motivo
+        texto_motivo = plantilla["considerando_motivo"].format(motivo_solicitud=motivo_solicitud)
+        dibujar_texto_justificado(texto_motivo)
+        y_position -= 10
+        
+        # Análisis
+        dibujar_texto_justificado(plantilla["considerando_analisis"])
+        y_position -= 10
+        
+        # Doble inscripción (solo para cancelación)
+        if subtipo == 'cancelacion' and es_doble_inscripcion and codigo_predio_duplicado:
+            texto_doble = plantilla["considerando_doble_inscripcion"].format(
+                codigo_predial=codigo_predial,
+                codigo_predio_duplicado=codigo_predio_duplicado
+            )
+            dibujar_texto_justificado(texto_doble)
+            y_position -= 10
+        
+        # Legal
+        dibujar_texto_justificado(plantilla["considerando_legal"])
+        y_position -= 15
     
     # ==========================================
     # RESUELVE

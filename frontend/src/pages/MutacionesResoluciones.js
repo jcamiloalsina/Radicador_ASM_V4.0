@@ -153,7 +153,8 @@ export default function MutacionesResoluciones() {
     // Campos específicos para Englobe
     tipo_englobe: '', // 'total' o 'absorcion'
     predio_matriz_id: null, // ID del predio que absorbe (solo para absorción)
-    predio_resultante: null // Datos del predio resultante (editable)
+    predio_resultante: null, // Datos del predio resultante (editable)
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   
   // Estado para búsqueda de predios
@@ -172,7 +173,8 @@ export default function MutacionesResoluciones() {
     fecha_resolucion: '',
     radicado_peticion: '',
     propietarios_anteriores: [],
-    propietarios_nuevos: []
+    propietarios_nuevos: [],
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM1, setSearchPredioM1] = useState('');
   const [searchResultsM1, setSearchResultsM1] = useState([]);
@@ -237,7 +239,8 @@ export default function MutacionesResoluciones() {
     motivo_solicitud: '',
     es_doble_inscripcion: false,
     codigo_predio_duplicado: '',
-    observaciones: ''
+    observaciones: '',
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM5, setSearchPredioM5] = useState('');
   const [searchResultsM5, setSearchResultsM5] = useState([]);
@@ -1040,7 +1043,8 @@ export default function MutacionesResoluciones() {
         datos_predio: {
           ...m1Data.predio,
           propietarios: m1Data.propietarios_nuevos
-        }
+        },
+        texto_considerando: m1Data.texto_considerando || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2192,7 +2196,8 @@ export default function MutacionesResoluciones() {
         solicitante: m2Data.solicitante,
         predios_cancelados: m2Data.predios_cancelados,
         predios_inscritos: prediosInscribirOrdenados,
-        observaciones: m2Data.observaciones || ''
+        observaciones: m2Data.observaciones || '',
+        texto_considerando: m2Data.texto_considerando || ''
       };
       
       // Para ENGLOBE: usar el predio_resultante como único predio inscrito
@@ -2827,7 +2832,8 @@ export default function MutacionesResoluciones() {
         es_doble_inscripcion: m5Data.es_doble_inscripcion,
         codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
         predio_m5: m5Data.predio,
-        observaciones: m5Data.observaciones
+        observaciones: m5Data.observaciones,
+        texto_considerando: m5Data.texto_considerando || ''
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -4995,6 +5001,32 @@ export default function MutacionesResoluciones() {
               className="mt-1"
             />
           </div>
+
+          {/* Campo de Considerando Personalizado M5 */}
+          <Card className="border-purple-200 bg-purple-50/30 mt-4">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m5Data.texto_considerando || ''}
+                onChange={(e) => setM5Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, mediante solicitud radicada ${m5Data.radicado || '[RADICADO]'}, se solicita la ${m5Data.subtipo === 'cancelacion' ? 'cancelación' : 'inscripción'} del predio identificado con código predial ${m5Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'} en el municipio de ${m5Data.municipio || '[MUNICIPIO]'}...`}
+                rows={5}
+                className="font-mono text-sm"
+                data-testid="m5-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{vigencia}'}
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -6281,6 +6313,32 @@ export default function MutacionesResoluciones() {
         </CardContent>
       </Card>
       )}
+
+      {/* Campo de Considerando Personalizado M2 */}
+      <Card className="border-purple-200 bg-purple-50/30">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+            <FileText className="w-4 h-4" />
+            Texto de Considerandos (Resolución)
+          </CardTitle>
+          <p className="text-xs text-purple-600 mt-1">
+            Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+          </p>
+        </CardHeader>
+        <CardContent className="py-2">
+          <Textarea
+            value={m2Data.texto_considerando || ''}
+            onChange={(e) => setM2Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+            placeholder={`Ejemplo: Qué, el(la) ciudadano(a) ${m2Data.solicitante?.nombre || '[NOMBRE]'}, identificado(a) con Cédula de Ciudadanía No. ${m2Data.solicitante?.documento || '[DOCUMENTO]'}, mediante radicado ${m2Data.radicado || '[RADICADO]'}, solicita ${m2Data.subtipo === 'englobe' ? 'englobe' : 'desenglobe'} de predios ubicados en ${m2Data.municipio || '[MUNICIPIO]'}...`}
+            rows={5}
+            className="font-mono text-sm"
+            data-testid="m2-considerando-input"
+          />
+          <div className="mt-2 text-xs text-slate-500">
+            <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{subtipo}'}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -6931,6 +6989,32 @@ export default function MutacionesResoluciones() {
                           </div>
                         ))
                       )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Campo de Considerando Personalizado M1 */}
+                  <Card className="border-purple-200 bg-purple-50/30">
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                        <FileText className="w-4 h-4" />
+                        Texto de Considerandos (Resolución)
+                      </CardTitle>
+                      <p className="text-xs text-purple-600 mt-1">
+                        Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+                      </p>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      <Textarea
+                        value={m1Data.texto_considerando || ''}
+                        onChange={(e) => setM1Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                        placeholder={`Ejemplo: Qué, el(la) ciudadano(a) [NOMBRE DEL NUEVO PROPIETARIO], identificado(a) con Cédula de Ciudadanía No. [DOCUMENTO], mediante radicado ${m1Data.radicado_peticion || '[RADICADO]'}, solicita el cambio de propietario del predio identificado con código predial ${m1Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
+                        rows={5}
+                        className="font-mono text-sm"
+                        data-testid="m1-considerando-input"
+                      />
+                      <div className="mt-2 text-xs text-slate-500">
+                        <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}
+                      </div>
                     </CardContent>
                   </Card>
 

@@ -14415,7 +14415,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             predios_cancelados=predios_cancelados,
             predios_inscritos=predios_inscritos,
             elaboro=aprobador.get("full_name", ""),
-            aprobo=""
+            aprobo="",
+            texto_considerando=solicitud.get('texto_considerando')
         )
         with open(filepath, 'wb') as f:
             f.write(pdf_bytes)
@@ -15135,7 +15136,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "codigo_predio_duplicado": codigo_predio_duplicado,
             "elaboro": elaboro_nombre or aprobador.get('full_name', ''),
             "aprobo": aprobador.get('full_name', ''),
-            "codigo_verificacion": codigo_verificacion
+            "codigo_verificacion": codigo_verificacion,
+            "texto_considerando": solicitud.get('texto_considerando')  # Texto personalizado de considerandos
         }
         
         # Generar PDF
@@ -29135,6 +29137,8 @@ class GenerarResolucionManualRequest(BaseModel):
     # Campos opcionales para propietarios (si se conocen los anteriores/nuevos explícitamente)
     propietarios_anteriores: Optional[list] = None
     propietarios_nuevos: Optional[list] = None
+    # Texto personalizado para considerandos
+    texto_considerando: Optional[str] = None
 
 
 @api_router.post("/resoluciones/generar-manual")
@@ -29395,6 +29399,8 @@ async def generar_resolucion_manual(
             # Código de verificación para QR idéntico al certificado catastral
             codigo_verificacion=codigo_verificacion_res,
             verificacion_base_url=VERIFICACION_BASE_URL,
+            # Texto personalizado para considerandos
+            texto_considerando=request.texto_considerando,
         )
         
         # 7. Guardar el PDF
