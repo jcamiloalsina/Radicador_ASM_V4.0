@@ -1046,6 +1046,7 @@ async def send_email(to_email: str, subject: str, body: str, attachment_path: st
         server.send_message(msg)
         server.quit()
         logging.info(f"Email sent to {to_email} with {len(archivos_adjuntar)} attachment(s)")
+        return True
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
 
@@ -1171,6 +1172,41 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
     </body>
     </html>
     '''
+
+
+# Endpoint temporal para enviar correo de prueba
+@api_router.post("/test-email-template")
+async def test_email_template(
+    to_email: str = "camilo.alsina1@hotmail.com",
+    current_user: dict = Depends(get_current_user)
+):
+    """Envía un correo de prueba para verificar la plantilla"""
+    contenido = """
+    <p>Estimado(a) <strong>Camilo Alsina</strong>,</p>
+    <p>Este es un correo de prueba para verificar la plantilla de email del Sistema de Gestión Catastral.</p>
+    <p>Por favor revise:</p>
+    <ul>
+        <li>¿Se ve la imagen de fondo de calles/urbanismo en el header?</li>
+        <li>¿El logo de Asomunicipios aparece correctamente?</li>
+        <li>¿Los colores y estilos se ven bien?</li>
+    </ul>
+    <p>Si la imagen de fondo no se ve, es posible que su cliente de correo esté bloqueando imágenes externas.</p>
+    """
+    
+    email_html = get_email_template(
+        titulo="Correo de Prueba - Verificación de Plantilla",
+        contenido=contenido,
+        radicado="TEST-CORREO-001",
+        tipo_notificacion="success"
+    )
+    
+    result = await send_email(
+        to_email=to_email,
+        subject="[PRUEBA] Verificación de Plantilla de Email - Asomunicipios",
+        body=email_html
+    )
+    
+    return {"success": result, "message": f"Correo enviado a {to_email}" if result else "Error al enviar correo"}
 
 
 def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante: str, con_archivos: bool = False) -> str:
