@@ -15566,12 +15566,13 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 "avaluo": avaluo_nuevo,
                 "ultima_rectificacion_area": fecha_resolucion,
                 "resolucion_rectificacion": numero_resolucion,
+                "area_editada_en_plataforma": True,  # Marcar como editado en plataforma (área automática)
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
             
-            # Si hay zonas de terreno nuevas, actualizar zonas_homogeneas
+            # Si hay zonas de terreno nuevas, actualizar zonas_homogeneas y zonas (para R2)
             if zonas_terreno_nuevas:
-                update_fields["zonas_homogeneas"] = [
+                zonas_formateadas = [
                     {
                         "zona_fisica": z.get("zona_fisica", ""),
                         "zona_economica": z.get("zona_economica", ""),
@@ -15579,13 +15580,16 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     }
                     for z in zonas_terreno_nuevas
                 ]
+                update_fields["zonas_homogeneas"] = zonas_formateadas
+                update_fields["zonas"] = zonas_formateadas  # Para exportación R2
             
-            # Si hay construcciones nuevas, actualizar construcciones
+            # Si hay construcciones nuevas, actualizar construcciones (para R2)
             if construcciones_nuevas:
-                update_fields["construcciones"] = [
+                construcciones_formateadas = [
                     {
                         "id": c.get("id", f"C{i+1}"),
                         "piso": int(c.get("piso", 0)),
+                        "pisos": int(c.get("piso", 0)),  # Alias para compatibilidad con export R2
                         "habitaciones": int(c.get("habitaciones", 0)),
                         "banos": int(c.get("banos", 0)),
                         "locales": int(c.get("locales", 0)),
@@ -15596,6 +15600,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     }
                     for i, c in enumerate(construcciones_nuevas)
                 ]
+                update_fields["construcciones"] = construcciones_formateadas
             
             # Actualizar áreas del predio
             await db.predios.update_one(
@@ -15631,6 +15636,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     {
                         "id": c.get("id", f"C{i+1}"),
                         "piso": int(c.get("piso", 0)),
+                        "pisos": int(c.get("piso", 0)),  # Alias para compatibilidad
                         "habitaciones": int(c.get("habitaciones", 0)),
                         "banos": int(c.get("banos", 0)),
                         "locales": int(c.get("locales", 0)),
