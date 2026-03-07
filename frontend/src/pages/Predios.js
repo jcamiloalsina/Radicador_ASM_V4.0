@@ -3088,15 +3088,10 @@ export default function Predios() {
                         key={item.municipio}
                         municipio={item.municipio}
                         count={item.count}
-                        reaparicionesCount={reaparicionesCount}
-                        showReapariciones={user && ['coordinador', 'administrador'].includes(user.role)}
+                        showReapariciones={false}
                         onSelect={() => {
                           setFilterMunicipio(item.municipio);
                           setFilterVigencia(String(vigenciaReciente || '2025'));
-                        }}
-                        onReaparicionesClick={() => {
-                          setFilterMunicipio(item.municipio);
-                          setShowReaparicionesDialog(true);
                         }}
                       />
                     );
