@@ -3,9 +3,31 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: M5 COMPLETADO Y VERIFICADO
+## Estado Actual: RECTIFICACIÓN DE ÁREA COMPLETADO Y VERIFICADO
 
 ### Funcionalidades Completadas (Marzo 2026)
+
+#### Módulo "Rectificación de Área" (VERIFICADO - 07/03/2026) ✨ NUEVO
+- **Corrección del área de terreno** de un predio cuando existe diferencia entre el área registrada y el área real
+- **Campos soportados**:
+  - Área de Terreno (actual y nueva)
+  - Área de Construcción (actual y nueva)
+  - Nuevo Avalúo (opcional)
+  - Motivo de la rectificación
+  - Texto de Considerandos personalizado (opcional)
+- **Frontend**: Formulario completo en MutacionesResoluciones.js con:
+  - Selector de municipio
+  - Campo de radicado con autocompletado
+  - Búsqueda de predio con resultados
+  - Vista de diferencia de áreas (aumenta/disminuye)
+  - Variables disponibles para considerandos
+- **Backend**: 
+  - Endpoint unificado acepta `tipo='RECTIFICACION_AREA'`
+  - Función `_generar_resolucion_m6_interno` genera PDF y actualiza DB
+  - Actualiza `area_terreno`, `area_construida`, `avaluo` del predio
+  - También actualiza `r1_registros[0]` con las nuevas áreas
+- **PDF Generator**: `resolucion_m6_pdf_generator.py` con formato institucional
+- **Testing**: iteration_65.json - 100% éxito frontend y backend (11/11 tests)
 
 #### Módulo M5 - Cancelación / Inscripción de Predio (VERIFICADO - 06/03/2026)
 - **Cancelación de Predio**: Eliminar un predio del catastro desde una vigencia específica
@@ -76,12 +98,14 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 │   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2
 │   ├── resolucion_m3_pdf_generator.py     # Generador PDF M3
 │   ├── resolucion_m4_pdf_generator.py     # Generador PDF M4
-│   └── static/resoluciones/               # PDFs M2/M3/M4
+│   ├── resolucion_m5_pdf_generator.py     # Generador PDF M5
+│   ├── resolucion_m6_pdf_generator.py     # Generador PDF Rectificación de Área
+│   └── static/resoluciones/               # PDFs M2/M3/M4/M5/Rectificación
 ├── frontend/
 │   ├── public/resoluciones/               # PDFs M1
 │   └── src/
 │       └── pages/
-│           └── MutacionesResoluciones.js  # UI M1, M2, M3, M4
+│           └── MutacionesResoluciones.js  # UI M1, M2, M3, M4, M5, Rectificación de Área
 └── memory/
     └── PRD.md
 ```
@@ -90,7 +114,7 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
 | /api/predios/m5/crear | POST | Crear predio simplificado para M5 (nuevo) |
-| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3/M4/M5 (unificado) |
+| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3/M4/M5/Rectificación (unificado) |
 | /api/solicitudes-mutacion | GET | Listar solicitudes |
 | /api/solicitudes-mutacion/{id}/accion | POST | Aprobar/rechazar solicitud |
 | /api/resoluciones/descargar/{filename} | GET | Descargar PDF (público) |
@@ -105,6 +129,7 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 - [x] M4 formulario frontend funcional
 - [x] Testing de regresión M1/M2/M3 completado
 - [x] **M5 Modal Embebido para crear predios COMPLETADO** (06/03/2026)
+- [x] **Rectificación de Área COMPLETADO** (07/03/2026)
 
 ### P1 (Alta)
 1. **Eliminar endpoints deprecados**: `/resoluciones/generar-m2`, `/resoluciones/generar-m3` (código legacy no usado)
@@ -117,7 +142,7 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 3. Desenglobe masivo - verificar marcado correcto de predios matriz
 
 ### P3 (Baja/Futuro)
-- Módulos M6-M9
+- Otros módulos de mutación
 - Exportación Excel/XTF
 - Gráficos en dashboards
 - Mutaciones encadenadas
@@ -129,8 +154,8 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 ## Última Actualización
 - **Fecha**: 07 Marzo 2026
-- **Estado**: DATOS R1/R2 EN PDFs COMPLETADO Y VERIFICADO  
-- **Testing**: iteration_64.json - 100% éxito backend (13/13 tests)
+- **Estado**: RECTIFICACIÓN DE ÁREA COMPLETADO Y VERIFICADO  
+- **Testing**: iteration_65.json - 100% éxito (11/11 tests backend, UI verificada)
 
 ## Issues Resueltos (Sesión Actual)
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
@@ -207,6 +232,14 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - Nueva función `obtener_datos_r1_r2()` en server.py centraliza la lógica
   - Cada generador (M2-M5) tiene `obtener_datos_r1_r2_pdf()` para consistencia
   - Testing: iteration_64.json - 100% éxito backend (13/13 tests)
+
+- ✅ **Rectificación de Área** - IMPLEMENTADO (07/03/2026)
+  - Nuevo tipo de mutación para corregir el área de terreno de un predio
+  - Frontend: Formulario completo con búsqueda de predio, campos de área actual/nueva, diferencia visual
+  - Backend: Función `_generar_resolucion_m6_interno` genera PDF y actualiza predio en DB
+  - PDF: `resolucion_m6_pdf_generator.py` con formato institucional estándar
+  - Soporta: Área terreno, área construcción, nuevo avalúo, texto de considerandos personalizado
+  - Testing: iteration_65.json - 100% éxito (11/11 tests)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles
