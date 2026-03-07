@@ -34,6 +34,40 @@ NEGRO = colors.HexColor('#000000')
 BLANCO = colors.HexColor('#FFFFFF')
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m3_plantilla():
     """Retorna la plantilla de textos para M3"""
     return {
@@ -78,15 +112,24 @@ def get_m3_plantilla():
 
 
 def formatear_area(area):
-    """Formatea el área con unidades"""
+    """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
     try:
-        area = float(area)
-        if area >= 10000:
-            return f"{area/10000:,.2f} ha"
+        area = float(area or 0)
+        if area == 0:
+            return "0 m²"
+        
+        hectareas = int(area // 10000)
+        metros = area % 10000
+        
+        if hectareas > 0:
+            # Formato: 84 ha 3.750 m²
+            metros_fmt = f"{metros:,.0f}".replace(",", ".")
+            return f"{hectareas} ha {metros_fmt} m²"
         else:
-            return f"{area:,.0f} m²"
+            # Solo metros cuadrados con separador de miles
+            return f"{area:,.0f}".replace(",", ".") + " m²"
     except:
-        return "0 m²"
+        return str(area or "0") + " m²"
 
 
 def generate_resolucion_m3_pdf(
@@ -162,6 +205,7 @@ def generate_resolucion_m3_pdf(
     plantilla = get_m3_plantilla()
     elaboro = data.get("elaborado_por", "")
     aprobo = data.get("revisado_por", "")
+    texto_considerando_personalizado = data.get("texto_considerando")  # Texto personalizado de considerandos
     
     # Datos del solicitante
     solicitante_nombre = solicitante.get("nombre", "NO ESPECIFICADO")
@@ -273,6 +317,64 @@ def generate_resolucion_m3_pdf(
             
             y_position -= line_height
     
+    def dibujar_articulo_justificado(numero_articulo, texto, font_size=10, line_height=14):
+        """Dibuja un artículo con título en bold y texto justificado"""
+        nonlocal y_position
+        verificar_espacio(80)
+        
+        # Título del artículo en bold
+        c.setFont(font_bold, font_size)
+        c.setFillColor(NEGRO)
+        titulo = f"Artículo {numero_articulo}. "
+        titulo_width = c.stringWidth(titulo, font_bold, font_size)
+        c.drawString(MARGIN_LEFT, y_position, titulo)
+        
+        # Primera línea del texto después del título
+        c.setFont(font_normal, font_size)
+        lines = simpleSplit(texto, font_normal, font_size, CONTENT_WIDTH - titulo_width)
+        
+        if lines:
+            c.drawString(MARGIN_LEFT + titulo_width, y_position, lines[0])
+            y_position -= line_height
+        
+        # Resto del texto justificado
+        if len(lines) > 1:
+            resto_texto = ' '.join(lines[1:])
+            all_lines = simpleSplit(resto_texto, font_normal, font_size, CONTENT_WIDTH)
+            
+            espacio_normal = c.stringWidth(' ', font_normal, font_size)
+            max_space = espacio_normal * 3
+            
+            for i, line in enumerate(all_lines):
+                verificar_espacio(line_height)
+                line_width = c.stringWidth(line, font_normal, font_size)
+                
+                # No justificar la última línea
+                if i == len(all_lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
+                    c.drawString(MARGIN_LEFT, y_position, line)
+                else:
+                    words = line.split(' ')
+                    if len(words) > 1:
+                        total_words_width = sum(c.stringWidth(word, font_normal, font_size) for word in words)
+                        total_space = CONTENT_WIDTH - total_words_width
+                        space_between = total_space / (len(words) - 1)
+                        
+                        if space_between > max_space:
+                            c.drawString(MARGIN_LEFT, y_position, line)
+                        else:
+                            x = MARGIN_LEFT
+                            for j, word in enumerate(words):
+                                c.drawString(x, y_position, word)
+                                x += c.stringWidth(word, font_normal, font_size)
+                                if j < len(words) - 1:
+                                    x += space_between
+                    else:
+                        c.drawString(MARGIN_LEFT, y_position, line)
+                
+                y_position -= line_height
+        
+        y_position -= 10  # Espacio después del artículo
+    
     def dibujar_tabla_predio(titulo_seccion, destino_val, avaluo_val, es_cancelacion=True):
         """Dibuja tabla de predio IDÉNTICO al M2 - con encabezado verde y texto blanco"""
         nonlocal y_position
@@ -355,16 +457,20 @@ def generate_resolucion_m3_pdf(
             x += col_widths2[i]
         y_position -= 12
         
-        # Valores
+        # Valores - OBTENER DE R1/R2
         c.setFont(font_normal, 7)
-        codigo_hom = predio.get("codigo_homologado", "")
-        direccion = predio.get("direccion", "")[:20]
-        area_terreno = predio.get("area_terreno", 0)
-        area_construida = predio.get("area_construida", 0)
+        datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
+        codigo_hom = datos_r1_r2.get("codigo_homologado", "")
+        direccion = (datos_r1_r2.get("direccion", "") or "")[:20]
+        area_terreno = datos_r1_r2.get("area_terreno", 0)
+        area_construida = datos_r1_r2.get("area_construida", 0)
+        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
         
         area_terreno_fmt = formatear_area(area_terreno)
         area_construida_fmt = formatear_area(area_construida)
-        avaluo_fmt = f"${avaluo_val:,.0f}"
+        # Usar avaluo_val del parámetro o de R1/R2 como fallback
+        avaluo_para_tabla = avaluo_val if avaluo_val is not None else datos_r1_r2.get("avaluo", 0)
+        avaluo_fmt = f"${avaluo_para_tabla:,.0f}" if avaluo_para_tabla else "$0"
         vigencia = str(datetime.now().year)
         
         x = MARGIN_LEFT
@@ -402,7 +508,6 @@ def generate_resolucion_m3_pdf(
         c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 9, "MATRÍCULA INMOBILIARIA")
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
-        matricula = predio.get("matricula_inmobiliaria", "")
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
         y_position -= 15
         
@@ -501,7 +606,23 @@ def generate_resolucion_m3_pdf(
     dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
     y_position -= 10
     
-    if subtipo == "cambio_destino":
+    # Usar texto personalizado si está disponible, sino usar plantilla estándar
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        texto_considerando = texto_considerando_personalizado
+        try:
+            texto_considerando = texto_considerando.replace('(solicitante)', solicitante_nombre)
+            texto_considerando = texto_considerando.replace('(documento)', solicitante_documento)
+            texto_considerando = texto_considerando.replace('(codigo_predial)', codigo_predial)
+            texto_considerando = texto_considerando.replace('(municipio)', municipio)
+            texto_considerando = texto_considerando.replace('(radicado)', radicado)
+            texto_considerando = texto_considerando.replace('(matricula)', predio.get("matricula_inmobiliaria", "Sin información"))
+            texto_considerando = texto_considerando.replace('(destino_anterior)', data.get("destino_anterior", ""))
+            texto_considerando = texto_considerando.replace('(destino_nuevo)', data.get("destino_nuevo", ""))
+            texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
+        except Exception:
+            pass
+    elif subtipo == "cambio_destino":
         texto_considerando = plantilla["considerando_cambio_destino"].format(
             solicitante_nombre=solicitante_nombre,
             solicitante_documento=solicitante_documento,
@@ -635,88 +756,16 @@ def generate_resolucion_m3_pdf(
     
     y_position -= 20  # Espacio adicional después de las tablas
     
-    # Artículo 2
-    verificar_espacio(80)
-    c.setFont(font_bold, 10)
-    c.setFillColor(NEGRO)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 2.")
-    c.setFont(font_normal, 10)
+    # Artículo 2 - Justificado
+    dibujar_articulo_justificado(2, plantilla["articulo_2"])
     
-    # Texto del artículo 2 de M2
-    art2_texto = plantilla["articulo_2"]
-    art2_lines = []
-    words = art2_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art2_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art2_lines.append(current_line)
+    # Artículo 3 - Justificado
+    dibujar_articulo_justificado(3, plantilla["articulo_3"])
     
-    c.drawString(MARGIN_LEFT + 55, y_position, art2_lines[0] if art2_lines else "")
-    y_position -= 14
-    for line in art2_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 10
+    # Artículo 4 - Justificado
+    dibujar_articulo_justificado(4, plantilla["articulo_4"])
     
-    # Artículo 3
-    verificar_espacio(80)
-    c.setFont(font_bold, 10)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 3.")
-    c.setFont(font_normal, 10)
-    
-    art3_texto = plantilla["articulo_3"]
-    art3_lines = []
-    words = art3_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art3_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art3_lines.append(current_line)
-    
-    c.drawString(MARGIN_LEFT + 55, y_position, art3_lines[0] if art3_lines else "")
-    y_position -= 14
-    for line in art3_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 10
-    
-    # Artículo 4
-    verificar_espacio(60)
-    c.setFont(font_bold, 10)
-    c.drawString(MARGIN_LEFT, y_position, "Artículo 4.")
-    c.setFont(font_normal, 10)
-    
-    art4_texto = plantilla["articulo_4"]
-    art4_lines = []
-    words = art4_texto.split()
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if c.stringWidth(test_line, font_normal, 10) < (CONTENT_WIDTH - 60):
-            current_line = test_line
-        else:
-            art4_lines.append(current_line)
-            current_line = word
-    if current_line:
-        art4_lines.append(current_line)
-    
-    c.drawString(MARGIN_LEFT + 55, y_position, art4_lines[0] if art4_lines else "")
-    y_position -= 14
-    for line in art4_lines[1:]:
-        c.drawString(MARGIN_LEFT, y_position, line)
-        y_position -= 14
-    y_position -= 30
+    y_position -= 20
     
     # ==========================================
     # FIRMA Y QR DE VERIFICACIÓN

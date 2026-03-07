@@ -14,7 +14,8 @@ import {
   ArrowRight, X, Check, AlertCircle, Building,
   Users, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
-  Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet
+  Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
+  Unlock, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -60,20 +61,49 @@ const TIPOS_MUTACION = {
     color: 'bg-red-100 text-red-800',
     enabled: true
   },
-  M6: { 
-    codigo: 'M6', 
-    nombre: 'Mutación Sexta', 
-    descripcion: 'Rectificación de área',
+  RECTIFICACION_AREA: { 
+    codigo: 'RECTIFICACION_AREA', 
+    codigoDisplay: 'Ajuste Área',
+    nombre: 'Ajuste de Área', 
+    descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
-    enabled: false
+    enabled: true
   },
   COMP: { 
     codigo: 'COMP', 
     nombre: 'Complementación', 
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
-    enabled: false
+    enabled: true
+  },
+  BLOQUEO: { 
+    codigo: 'BLOQUEO', 
+    nombre: 'Bloqueo de Predio', 
+    descripcion: 'Bloquear/desbloquear predios por proceso legal',
+    color: 'bg-red-100 text-red-800',
+    enabled: true,
+    soloCoordinador: true
+  },
+  ELIMINADOS: { 
+    codigo: 'ELIMINADOS', 
+    nombre: 'Predios Eliminados', 
+    descripcion: 'Consultar predios eliminados del sistema',
+    color: 'bg-gray-100 text-gray-800',
+    enabled: true,
+    soloCoordinador: true
   }
+};
+
+// Helper para formatear área en hectáreas + m²
+const formatAreaHectareas = (m2) => {
+  if (!m2 || m2 === 0) return '0 m²';
+  const area = Number(m2);
+  const hectareas = Math.floor(area / 10000);
+  const metros = area % 10000;
+  if (hectareas > 0) {
+    return `${hectareas} ha ${metros.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
+  }
+  return `${area.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
 };
 
 // Municipios R1/R2 - Los 12 municipios del sistema
@@ -153,7 +183,8 @@ export default function MutacionesResoluciones() {
     // Campos específicos para Englobe
     tipo_englobe: '', // 'total' o 'absorcion'
     predio_matriz_id: null, // ID del predio que absorbe (solo para absorción)
-    predio_resultante: null // Datos del predio resultante (editable)
+    predio_resultante: null, // Datos del predio resultante (editable)
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   
   // Estado para búsqueda de predios
@@ -172,7 +203,8 @@ export default function MutacionesResoluciones() {
     fecha_resolucion: '',
     radicado_peticion: '',
     propietarios_anteriores: [],
-    propietarios_nuevos: []
+    propietarios_nuevos: [],
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM1, setSearchPredioM1] = useState('');
   const [searchResultsM1, setSearchResultsM1] = useState([]);
@@ -195,7 +227,9 @@ export default function MutacionesResoluciones() {
     avaluo_anterior: 0,
     avaluo_nuevo: 0,
     fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
-    observaciones: ''
+    observaciones: '',
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM3, setSearchPredioM3] = useState('');
   const [searchResultsM3, setSearchResultsM3] = useState([]);
@@ -215,7 +249,9 @@ export default function MutacionesResoluciones() {
     valor_autoestimado: 0,
     motivo_solicitud: '',
     observaciones: '',
-    perito_avaluador: '' // Nombre del perito avaluador (solo para autoestimación)
+    perito_avaluador: '', // Nombre del perito avaluador (solo para autoestimación)
+    solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM4, setSearchPredioM4] = useState('');
   const [searchResultsM4, setSearchResultsM4] = useState([]);
@@ -233,7 +269,8 @@ export default function MutacionesResoluciones() {
     motivo_solicitud: '',
     es_doble_inscripcion: false,
     codigo_predio_duplicado: '',
-    observaciones: ''
+    observaciones: '',
+    texto_considerando: '' // Texto personalizado para los considerandos de la resolución
   });
   const [searchPredioM5, setSearchPredioM5] = useState('');
   const [searchResultsM5, setSearchResultsM5] = useState([]);
@@ -278,6 +315,53 @@ export default function MutacionesResoluciones() {
     avaluo: ''
   });
 
+  // Estado para Rectificación de Área
+  const [rectificacionData, setRectificacionData] = useState({
+    municipio: '',
+    radicado: '',
+    predio: null,
+    area_terreno_anterior: 0,
+    area_terreno_nueva: 0,
+    area_construida_anterior: 0,
+    area_construida_nueva: 0,
+    avaluo_nuevo: 0,
+    motivo_solicitud: '',
+    observaciones: '',
+    texto_considerando: ''
+  });
+  const [searchPredioRectificacion, setSearchPredioRectificacion] = useState('');
+  const [searchResultsRectificacion, setSearchResultsRectificacion] = useState([]);
+  const [searchingPrediosRectificacion, setSearchingPrediosRectificacion] = useState(false);
+  const [showMunicipioDropdownRectificacion, setShowMunicipioDropdownRectificacion] = useState(false);
+  const [radicadosDisponiblesRectificacion, setRadicadosDisponiblesRectificacion] = useState([]);
+  
+  // Estados para Zonas de Terreno y Construcciones en Rectificación
+  const [zonasTerreno_Rect_Anterior, setZonasTerreno_Rect_Anterior] = useState([]);
+  const [zonasTerreno_Rect_Nueva, setZonasTerreno_Rect_Nueva] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  const [construcciones_Rect_Anterior, setConstrucciones_Rect_Anterior] = useState([]);
+  const [construcciones_Rect_Nueva, setConstrucciones_Rect_Nueva] = useState([{
+    id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+    tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+  }]);
+
+  // Estado para Complementación de Información
+  const [complementacionData, setComplementacionData] = useState({
+    municipio: '',
+    radicado: '',
+    predio: null,
+    area_terreno_nueva: 0,
+    area_construida_nueva: 0,
+    avaluo_nuevo: 0,
+    documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
+    observaciones: '',
+    texto_considerando: ''
+  });
+  const [searchPredioComplementacion, setSearchPredioComplementacion] = useState('');
+  const [searchResultsComplementacion, setSearchResultsComplementacion] = useState([]);
+  const [searchingPrediosComplementacion, setSearchingPrediosComplementacion] = useState(false);
+  const [showMunicipioDropdownComplementacion, setShowMunicipioDropdownComplementacion] = useState(false);
+  const [radicadosDisponiblesComplementacion, setRadicadosDisponiblesComplementacion] = useState([]);
+
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
   const [predioEditando, setPredioEditando] = useState(null); // datos del predio en edición
@@ -309,6 +393,39 @@ export default function MutacionesResoluciones() {
   const [buscandoPrediosManzanaNuevo, setBuscandoPrediosManzanaNuevo] = useState(false);
   const [siguienteTerrenoSugeridoNuevo, setSiguienteTerrenoSugeridoNuevo] = useState('0001');
   const [siguienteCodigoHomologadoNuevo, setSiguienteCodigoHomologadoNuevo] = useState(null);
+
+  // ========== ESTADOS PARA BLOQUEO DE PREDIOS ==========
+  const [bloqueoTab, setBloqueoTab] = useState('bloquear'); // 'bloquear' o 'bloqueados'
+  const [bloqueoPredioSearch, setBloqueoPredioSearch] = useState('');
+  const [bloqueoPredioResults, setBloqueoPredioResults] = useState([]);
+  const [bloqueoPredioSearching, setBloqueoPredioSearching] = useState(false);
+  const [bloqueoPredioSeleccionado, setBloqueoPredioSeleccionado] = useState(null);
+  const [bloqueoMunicipio, setBloqueoMunicipio] = useState('');
+  const [showBloqueoMunicipioDropdown, setShowBloqueoMunicipioDropdown] = useState(false);
+  const [bloqueoFormData, setBloqueoFormData] = useState({
+    motivo: '',
+    numero_proceso: '',
+    entidad_judicial: '',
+    observaciones: ''
+  });
+  const [prediosBloqueados, setPrediosBloqueados] = useState([]);
+  const [loadingBloqueados, setLoadingBloqueados] = useState(false);
+  const [procesandoBloqueo, setProcesandoBloqueo] = useState(false);
+  const [desbloqueoMotivo, setDesbloqueoMotivo] = useState('');
+  const [showDesbloqueoModal, setShowDesbloqueoModal] = useState(false);
+  const [predioADesbloquear, setPredioADesbloquear] = useState(null);
+  const [showHistorialBloqueoModal, setShowHistorialBloqueoModal] = useState(false);
+  const [historialBloqueo, setHistorialBloqueo] = useState([]);
+  const [predioHistorialBloqueo, setPredioHistorialBloqueo] = useState(null);
+  
+  // Estados para Predios Eliminados
+  const [showEliminadosModal, setShowEliminadosModal] = useState(false);
+  const [prediosEliminados, setPrediosEliminados] = useState([]);
+  const [prediosEliminadosFiltrados, setPrediosEliminadosFiltrados] = useState([]);
+  const [eliminadosSearch, setEliminadosSearch] = useState('');
+  const [eliminadosMunicipio, setEliminadosMunicipio] = useState('');
+  const [eliminadosLoading, setEliminadosLoading] = useState(false);
+  
   const [ultimaManzanaEncontrada, setUltimaManzanaEncontrada] = useState(null);
   const [buscandoUltimaManzana, setBuscandoUltimaManzana] = useState(false);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
@@ -664,6 +781,175 @@ export default function MutacionesResoluciones() {
     }
   };
 
+  // ========== FUNCIONES DE BLOQUEO DE PREDIOS ==========
+  
+  const cargarPrediosBloqueados = async () => {
+    setLoadingBloqueados(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/predios/lista-bloqueados`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosBloqueados(response.data.predios || []);
+    } catch (error) {
+      console.error('Error cargando predios bloqueados:', error);
+      toast.error('Error al cargar predios bloqueados');
+    } finally {
+      setLoadingBloqueados(false);
+    }
+  };
+
+  // Cargar predios eliminados
+  const cargarPrediosEliminados = async (municipioFilter = '') => {
+    setEliminadosLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (municipioFilter) params.append('municipio', municipioFilter);
+      params.append('limit', '500');
+      
+      const response = await axios.get(`${API}/predios/eliminados?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEliminados(response.data.predios || []);
+      setPrediosEliminadosFiltrados(response.data.predios || []);
+    } catch (error) {
+      console.error('Error cargando predios eliminados:', error);
+      toast.error('Error al cargar predios eliminados');
+    } finally {
+      setEliminadosLoading(false);
+    }
+  };
+  
+  // Filtrar predios eliminados por búsqueda local
+  useEffect(() => {
+    if (!eliminadosSearch.trim()) {
+      setPrediosEliminadosFiltrados(prediosEliminados);
+      return;
+    }
+    
+    const searchLower = eliminadosSearch.toLowerCase();
+    const filtered = prediosEliminados.filter(p => 
+      p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+      p.codigo_homologado?.toLowerCase().includes(searchLower) ||
+      p.nombre_propietario?.toLowerCase().includes(searchLower) ||
+      p.municipio?.toLowerCase().includes(searchLower) ||
+      p.motivo?.toLowerCase().includes(searchLower)
+    );
+    setPrediosEliminadosFiltrados(filtered);
+  }, [eliminadosSearch, prediosEliminados]);
+
+  const bloquearPredio = async () => {
+    if (!bloqueoPredioSeleccionado) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+    if (!bloqueoFormData.motivo.trim()) {
+      toast.error('Debe ingresar el motivo del bloqueo');
+      return;
+    }
+
+    setProcesandoBloqueo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/predios/${bloqueoPredioSeleccionado.id}/bloquear`,
+        bloqueoFormData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        toast.success('Predio bloqueado exitosamente');
+        setBloqueoPredioSeleccionado(null);
+        setBloqueoPredioSearch('');
+        setBloqueoFormData({
+          motivo: '',
+          numero_proceso: '',
+          entidad_judicial: '',
+          observaciones: ''
+        });
+        cargarPrediosBloqueados();
+        setBloqueoTab('bloqueados');
+      }
+    } catch (error) {
+      console.error('Error bloqueando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al bloquear predio');
+    } finally {
+      setProcesandoBloqueo(false);
+    }
+  };
+
+  const desbloquearPredio = async () => {
+    if (!predioADesbloquear) return;
+    if (!desbloqueoMotivo.trim()) {
+      toast.error('Debe ingresar el motivo del desbloqueo');
+      return;
+    }
+
+    setProcesandoBloqueo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/predios/${predioADesbloquear.id}/desbloquear`,
+        { motivo: desbloqueoMotivo },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        toast.success('Predio desbloqueado exitosamente');
+        setShowDesbloqueoModal(false);
+        setPredioADesbloquear(null);
+        setDesbloqueoMotivo('');
+        cargarPrediosBloqueados();
+      }
+    } catch (error) {
+      console.error('Error desbloqueando predio:', error);
+      toast.error(error.response?.data?.detail || 'Error al desbloquear predio');
+    } finally {
+      setProcesandoBloqueo(false);
+    }
+  };
+
+  const verHistorialBloqueo = async (predio) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${API}/predios/${predio.id}/historial-bloqueos`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setHistorialBloqueo(response.data.historial || []);
+      setPredioHistorialBloqueo(predio);
+      setShowHistorialBloqueoModal(true);
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      toast.error('Error al cargar historial de bloqueos');
+    }
+  };
+
+  const buscarPredioParaBloqueo = async (query) => {
+    if (query.length < 3 || !bloqueoMunicipio) return;
+    
+    setBloqueoPredioSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      const municipioCodigo = MUNICIPIOS.find(m => m.nombre === bloqueoMunicipio)?.codigo;
+      if (!municipioCodigo) {
+        console.error('No se encontró código de municipio para:', bloqueoMunicipio);
+        return;
+      }
+      const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
+        params: { q: query, limit: 15 },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBloqueoPredioResults(response.data.predios || []);
+    } catch (error) {
+      console.error('Error buscando predios:', error);
+      toast.error('Error al buscar predios');
+    } finally {
+      setBloqueoPredioSearching(false);
+    }
+  };
+
   const seleccionarPlantilla = (plantilla) => {
     setPlantillaSeleccionada(plantilla);
     setTextoPlantilla(plantilla.texto || '');
@@ -813,6 +1099,13 @@ export default function MutacionesResoluciones() {
 
   // Manejar apertura de diálogo de mutación
   const handleAbrirMutacion = (tipo) => {
+    // Si es ELIMINADOS, abrir modal específico
+    if (tipo.codigo === 'ELIMINADOS') {
+      setShowEliminadosModal(true);
+      cargarPrediosEliminados();
+      return;
+    }
+    
     setTipoMutacionSeleccionado(tipo);
     setShowMutacionDialog(true);
     
@@ -1036,7 +1329,8 @@ export default function MutacionesResoluciones() {
         datos_predio: {
           ...m1Data.predio,
           propietarios: m1Data.propietarios_nuevos
-        }
+        },
+        texto_considerando: m1Data.texto_considerando || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1525,7 +1819,7 @@ export default function MutacionesResoluciones() {
       } else if (res.data.estado === 'disponible') {
         toast.success('Código disponible');
       } else if (res.data.estado === 'eliminado') {
-        toast.warning('Este código perteneció a un predio eliminado');
+        toast.warning('Este código pertenece a un predio ELIMINADO. Puede reactivarlo completando el proceso de mutación.');
       }
     } catch (error) {
       toast.error('Error verificando código');
@@ -2188,7 +2482,8 @@ export default function MutacionesResoluciones() {
         solicitante: m2Data.solicitante,
         predios_cancelados: m2Data.predios_cancelados,
         predios_inscritos: prediosInscribirOrdenados,
-        observaciones: m2Data.observaciones || ''
+        observaciones: m2Data.observaciones || '',
+        texto_considerando: m2Data.texto_considerando || ''
       };
       
       // Para ENGLOBE: usar el predio_resultante como único predio inscrito
@@ -2419,7 +2714,9 @@ export default function MutacionesResoluciones() {
         avaluo_anterior: m3Data.avaluo_anterior,
         avaluo_nuevo: m3Data.avaluo_nuevo,
         fechas_inscripcion: m3Data.fechas_inscripcion || [],
-        observaciones: m3Data.observaciones || ''
+        observaciones: m3Data.observaciones || '',
+        solicitante: m3Data.solicitante || { nombre: '', documento: '' },
+        texto_considerando: m3Data.texto_considerando || ''
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2626,10 +2923,15 @@ export default function MutacionesResoluciones() {
     setGenerando(true);
     try {
       const token = localStorage.getItem('token');
+      // Usar solicitante del formulario, o del predio como fallback
       const propietarios = m4Data.predio.propietarios || [];
-      const solicitante = propietarios.length > 0 
-        ? { nombre: propietarios[0].nombre_propietario || 'No especificado', documento: propietarios[0].numero_documento || '' }
-        : { nombre: 'No especificado', documento: '' };
+      const solicitanteFallback = propietarios.length > 0 
+        ? { nombre: propietarios[0].nombre_propietario || '', documento: propietarios[0].numero_documento || '' }
+        : { nombre: '', documento: '' };
+      
+      const solicitanteFinal = (m4Data.solicitante?.nombre) 
+        ? m4Data.solicitante 
+        : solicitanteFallback;
 
       const payload = {
         tipo: 'M4',
@@ -2640,13 +2942,14 @@ export default function MutacionesResoluciones() {
         predio_id: m4Data.predio.id,
         codigo_predial: m4Data.predio.codigo_predial_nacional || m4Data.predio.NPN || '',
         predio_direccion: m4Data.predio.direccion || '',
-        solicitante: solicitante,
+        solicitante: solicitanteFinal,
         avaluo_anterior: m4Data.avaluo_anterior,
         avaluo_nuevo: m4Data.avaluo_nuevo,
         valor_autoestimado: m4Data.subtipo === 'autoestimacion' ? m4Data.avaluo_nuevo : null,
         motivo_solicitud: m4Data.motivo_solicitud,
         observaciones: m4Data.observaciones,
-        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null
+        perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null,
+        texto_considerando: m4Data.texto_considerando || ''
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -2815,7 +3118,8 @@ export default function MutacionesResoluciones() {
         es_doble_inscripcion: m5Data.es_doble_inscripcion,
         codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
         predio_m5: m5Data.predio,
-        observaciones: m5Data.observaciones
+        observaciones: m5Data.observaciones,
+        texto_considerando: m5Data.texto_considerando || ''
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -2865,6 +3169,393 @@ export default function MutacionesResoluciones() {
     setSearchPredioM5('');
     setSearchResultsM5([]);
     setRadicadosDisponiblesM5([]);
+  };
+
+  // =====================
+  // FUNCIONES PARA RECTIFICACIÓN DE ÁREA
+  // =====================
+
+  // Buscar radicados para Rectificación de Área
+  const buscarRadicadosRectificacion = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesRectificacion([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRadicadosDisponiblesRectificacion(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados Rectificación:', error);
+    }
+  };
+
+  // Buscar predios para Rectificación de Área
+  const buscarPrediosRectificacion = async () => {
+    if (!rectificacionData.municipio) {
+      toast.error('Primero seleccione un municipio');
+      return;
+    }
+    if (searchPredioRectificacion.length < 3) {
+      toast.error('Ingrese al menos 3 caracteres para buscar');
+      return;
+    }
+    
+    setSearchingPrediosRectificacion(true);
+    try {
+      const token = localStorage.getItem('token');
+      const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === rectificacionData.municipio)?.codigo;
+      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const vigenciaActual = statsResponse.data.vigencia_actual;
+      
+      const response = await axios.get(`${API}/predios`, {
+        params: { 
+          q: searchPredioRectificacion,
+          codigo_municipio: codigoMunicipio,
+          vigencia: vigenciaActual,
+          limit: 20
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSearchResultsRectificacion(response.data.predios || []);
+      if (!response.data.predios?.length) {
+        toast.info('No se encontraron predios');
+      }
+    } catch (error) {
+      console.error('Error buscando predios:', error);
+      toast.error('Error al buscar predios');
+    } finally {
+      setSearchingPrediosRectificacion(false);
+    }
+  };
+
+  // Seleccionar predio para Rectificación de Área
+  const seleccionarPredioRectificacion = (predio) => {
+    // Obtener áreas desde R1 si existe
+    const r1 = predio.r1_registros?.[0] || {};
+    const areaTerrenoActual = r1.area_terreno || predio.area_terreno || 0;
+    const areaConstruidaActual = r1.area_construida || predio.area_construida || 0;
+    const avaluoActual = r1.avaluo || predio.avaluo || 0;
+    
+    // Cargar zonas de terreno existentes del predio (si existen)
+    const zonasExistentes = r1.zonas_homogeneas || predio.zonas_homogeneas || predio.zonas_terreno || [];
+    if (zonasExistentes.length > 0) {
+      setZonasTerreno_Rect_Anterior(zonasExistentes.map(z => ({
+        zona_fisica: z.zona_fisica || z.zona || '',
+        zona_economica: z.zona_economica || '',
+        area_terreno: z.area_terreno || z.area || '0'
+      })));
+      // Inicializar las nuevas con los mismos valores
+      setZonasTerreno_Rect_Nueva(zonasExistentes.map(z => ({
+        zona_fisica: z.zona_fisica || z.zona || '',
+        zona_economica: z.zona_economica || '',
+        area_terreno: z.area_terreno || z.area || '0'
+      })));
+    } else {
+      // Si no hay zonas, crear una zona con el área total
+      setZonasTerreno_Rect_Anterior([{ zona_fisica: '', zona_economica: '', area_terreno: String(areaTerrenoActual) }]);
+      setZonasTerreno_Rect_Nueva([{ zona_fisica: '', zona_economica: '', area_terreno: String(areaTerrenoActual) }]);
+    }
+    
+    // Cargar construcciones existentes del predio (si existen)
+    const construccionesExistentes = r1.construcciones || predio.construcciones || [];
+    if (construccionesExistentes.length > 0) {
+      const constFormateadas = construccionesExistentes.map((c, i) => ({
+        id: c.id || String.fromCharCode(65 + i),
+        piso: String(c.piso || c.pisos || '0'),
+        habitaciones: String(c.habitaciones || '0'),
+        banos: String(c.banos || '0'),
+        locales: String(c.locales || '0'),
+        tipificacion: c.tipificacion || '',
+        uso: c.uso || '',
+        puntaje: String(c.puntaje || '0'),
+        area_construida: String(c.area_construida || '0')
+      }));
+      setConstrucciones_Rect_Anterior(constFormateadas);
+      setConstrucciones_Rect_Nueva(constFormateadas.map(c => ({ ...c })));
+    } else if (areaConstruidaActual > 0) {
+      // Si hay área construida pero no detalle de construcciones
+      const constDefault = [{
+        id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: String(areaConstruidaActual)
+      }];
+      setConstrucciones_Rect_Anterior(constDefault);
+      setConstrucciones_Rect_Nueva(constDefault.map(c => ({ ...c })));
+    } else {
+      // Sin construcciones
+      setConstrucciones_Rect_Anterior([]);
+      setConstrucciones_Rect_Nueva([{
+        id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+      }]);
+    }
+    
+    setRectificacionData(prev => ({
+      ...prev,
+      predio: predio,
+      area_terreno_anterior: areaTerrenoActual,
+      area_terreno_nueva: areaTerrenoActual, // Iniciar con el mismo valor
+      area_construida_anterior: areaConstruidaActual,
+      area_construida_nueva: areaConstruidaActual, // Iniciar con el mismo valor
+      avaluo_nuevo: avaluoActual // Iniciar con el mismo valor
+    }));
+    setSearchPredioRectificacion('');
+    setSearchResultsRectificacion([]);
+  };
+
+  // Funciones para zonas de terreno en Rectificación
+  const agregarZonaTerreno_Rect = () => {
+    setZonasTerreno_Rect_Nueva(prev => [...prev, { zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  };
+
+  const eliminarZonaTerreno_Rect = (index) => {
+    if (zonasTerreno_Rect_Nueva.length > 1) {
+      setZonasTerreno_Rect_Nueva(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarZonaTerreno_Rect = (index, campo, valor) => {
+    setZonasTerreno_Rect_Nueva(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Funciones para construcciones en Rectificación
+  const agregarConstruccion_Rect = () => {
+    setConstrucciones_Rect_Nueva(prev => {
+      const nextId = String.fromCharCode(65 + prev.length);
+      return [...prev, {
+        id: nextId, piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+      }];
+    });
+  };
+
+  const eliminarConstruccion_Rect = (index) => {
+    if (construcciones_Rect_Nueva.length > 1) {
+      setConstrucciones_Rect_Nueva(prev => {
+        const nuevas = prev.filter((_, i) => i !== index);
+        return nuevas.map((c, i) => ({ ...c, id: String.fromCharCode(65 + i) }));
+      });
+    }
+  };
+
+  const actualizarConstruccion_Rect = (index, campo, valor) => {
+    setConstrucciones_Rect_Nueva(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Calcular totales para Rectificación de Área
+  const calcularTotales_Rect = () => {
+    const areaTerrenoNueva = zonasTerreno_Rect_Nueva.reduce((sum, z) => sum + (parseFloat(z.area_terreno) || 0), 0);
+    const areaConstruidaNueva = construcciones_Rect_Nueva.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
+    return { areaTerrenoNueva, areaConstruidaNueva };
+  };
+
+  // Generar resolución de Rectificación de Área
+  const generarResolucionRectificacion = async () => {
+    // Calcular totales desde las zonas y construcciones
+    const totales = calcularTotales_Rect();
+    
+    // Validaciones
+    if (!rectificacionData.municipio) {
+      toast.error('Debe seleccionar un municipio');
+      return;
+    }
+    if (!rectificacionData.radicado) {
+      toast.error('Debe ingresar un número de radicado');
+      return;
+    }
+    if (!rectificacionData.predio) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+    if (totales.areaTerrenoNueva <= 0) {
+      toast.error('Debe ingresar al menos una zona de terreno con área mayor a 0');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Extraer solicitante del predio
+      const propietarios = rectificacionData.predio.propietarios || 
+                          rectificacionData.predio.r2_registros?.[0]?.propietarios || [];
+      const solicitante = propietarios.length > 0 
+        ? { 
+            nombre: propietarios[0].nombre_propietario || propietarios[0].nombre || 'No especificado', 
+            documento: propietarios[0].numero_documento || '' 
+          }
+        : { nombre: 'No especificado', documento: '' };
+
+      const payload = {
+        tipo: 'RECTIFICACION_AREA',
+        subtipo: 'rectificacion_area',
+        municipio: rectificacionData.municipio,
+        radicado: rectificacionData.radicado,
+        solicitante: solicitante,
+        predio_id: rectificacionData.predio.id,
+        predio_rectificacion: rectificacionData.predio,
+        area_terreno_anterior: parseFloat(rectificacionData.area_terreno_anterior) || 0,
+        area_terreno_nueva: totales.areaTerrenoNueva,
+        area_construida_anterior: parseFloat(rectificacionData.area_construida_anterior) || 0,
+        area_construida_nueva: totales.areaConstruidaNueva,
+        avaluo_anterior: rectificacionData.predio.avaluo || 0,
+        avaluo_nuevo: parseFloat(rectificacionData.avaluo_nuevo) || rectificacionData.predio.avaluo || 0,
+        motivo_solicitud: rectificacionData.motivo_solicitud || 'Rectificación de área catastral',
+        observaciones: rectificacionData.observaciones,
+        texto_considerando: rectificacionData.texto_considerando || '',
+        // Datos detallados de zonas y construcciones (para R2)
+        zonas_terreno_anteriores: zonasTerreno_Rect_Anterior,
+        zonas_terreno_nuevas: zonasTerreno_Rect_Nueva,
+        construcciones_anteriores: construcciones_Rect_Anterior,
+        construcciones_nuevas: construcciones_Rect_Nueva
+      };
+
+      const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.mensaje || 'Solicitud de Rectificación de Área procesada exitosamente');
+        
+        if (response.data.pdf_url) {
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución ${response.data.numero_resolucion}`,
+            fileName: `Resolucion_Rectificacion_Area_${response.data.numero_resolucion?.replace(/\//g, '-') || 'N'}.pdf`,
+            resolucionId: response.data.id,
+            radicado: rectificacionData.radicado
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
+        }
+        
+        // Limpiar formulario
+        resetRectificacionForm();
+        setShowMutacionDialog(false);
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando resolución Rectificación de Área:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario Rectificación de Área
+  const resetRectificacionForm = () => {
+    setRectificacionData({
+      municipio: '',
+      radicado: '',
+      predio: null,
+      area_terreno_anterior: 0,
+      area_terreno_nueva: 0,
+      area_construida_anterior: 0,
+      area_construida_nueva: 0,
+      avaluo_nuevo: 0,
+      motivo_solicitud: '',
+      observaciones: '',
+      texto_considerando: ''
+    });
+    setSearchPredioRectificacion('');
+    setSearchResultsRectificacion([]);
+    setRadicadosDisponiblesRectificacion([]);
+    setZonasTerreno_Rect_Anterior([]);
+    setZonasTerreno_Rect_Nueva([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+    setConstrucciones_Rect_Anterior([]);
+    setConstrucciones_Rect_Nueva([{
+      id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+      tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+    }]);
+  };
+
+  // Generar resolución de Complementación de Información
+  const generarResolucionComplementacion = async () => {
+    if (!complementacionData.predio) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const predio = complementacionData.predio;
+      const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+      const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+      const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+
+      const payload = {
+        tipo_mutacion: 'COMPLEMENTACION',
+        municipio: complementacionData.municipio,
+        predio: predio,
+        solicitante: {
+          nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+          documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+        },
+        area_terreno_anterior: areaTerreno,
+        area_construida_anterior: areaConstruida,
+        avaluo_anterior: avaluo,
+        area_terreno_nueva: complementacionData.area_terreno_nueva,
+        area_construida_nueva: complementacionData.area_construida_nueva,
+        avaluo_nuevo: complementacionData.avaluo_nuevo,
+        documentos_soporte: complementacionData.documentos_soporte,
+        observaciones: complementacionData.observaciones,
+        texto_considerando: complementacionData.texto_considerando || ''
+      };
+
+      const response = await axios.post(
+        `${API_URL}/api/solicitudes-mutacion`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.exito) {
+        toast.success(response.data.mensaje || 'Solicitud de Complementación procesada exitosamente');
+        resetComplementacionForm();
+        setTipoMutacionSeleccionado(null);
+        setActiveTab('historial');
+        cargarSolicitudesPendientes();
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando resolución Complementación:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario Complementación
+  const resetComplementacionForm = () => {
+    setComplementacionData({
+      municipio: '',
+      radicado: '',
+      predio: null,
+      area_terreno_nueva: 0,
+      area_construida_nueva: 0,
+      avaluo_nuevo: 0,
+      documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
+      observaciones: '',
+      texto_considerando: ''
+    });
+    setSearchPredioComplementacion('');
+    setSearchResultsComplementacion([]);
+    setRadicadosDisponiblesComplementacion([]);
   };
 
   // Construir código predial de 30 dígitos para M5
@@ -3324,6 +4015,66 @@ export default function MutacionesResoluciones() {
             </div>
           </div>
 
+          {/* Datos del Solicitante M3 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                <User className="w-4 h-4" />
+                Datos del Solicitante
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Nombre Completo *</Label>
+                  <Input
+                    value={m3Data.solicitante?.nombre || ''}
+                    onChange={(e) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
+                    }))}
+                    placeholder="Nombre del solicitante"
+                    className="h-9"
+                    data-testid="m3-solicitante-nombre"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo Documento</Label>
+                  <Select
+                    value={m3Data.solicitante?.tipo_documento || 'CC'}
+                    onValueChange={(v) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, tipo_documento: v }
+                    }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
+                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
+                      <SelectItem value="NIT">NIT</SelectItem>
+                      <SelectItem value="PA">Pasaporte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Número de Documento *</Label>
+                  <Input
+                    value={m3Data.solicitante?.documento || ''}
+                    onChange={(e) => setM3Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, documento: e.target.value.replace(/[^0-9]/g, '') }
+                    }))}
+                    placeholder="Número de documento"
+                    className="h-9"
+                    data-testid="m3-solicitante-documento"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Búsqueda de Predio */}
           <Card className="border-amber-200 bg-amber-50/30">
             <CardHeader className="py-3">
@@ -3382,7 +4133,7 @@ export default function MutacionesResoluciones() {
                       <p className="text-sm text-slate-600">{m3Data.predio.direccion}</p>
                       <p className="text-xs text-slate-500 mt-1">
                         Destino: {m3Data.predio.destino_economico} | 
-                        Área T: {(m3Data.predio.area_terreno || 0).toLocaleString()} m² | 
+                        Área T: {formatAreaHectareas(m3Data.predio.area_terreno)} | 
                         Área C: {(m3Data.predio.area_construida || 0).toLocaleString()} m²
                       </p>
                       <p className="text-xs text-slate-500">
@@ -3668,6 +4419,32 @@ export default function MutacionesResoluciones() {
               </CardContent>
             </Card>
           )}
+
+          {/* Campo de Considerando Personalizado */}
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m3Data.texto_considerando || ''}
+                onChange={(e) => setM3Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, el(la) ciudadano(a) ${m3Data.solicitante?.nombre || '[NOMBRE]'}, identificado(a) con Cédula de Ciudadanía No. ${m3Data.solicitante?.documento || '[DOCUMENTO]'}, radicó solicitud de cambio de destino económico para el predio con código predial ${m3Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
+                rows={6}
+                className="font-mono text-sm"
+                data-testid="m3-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (destino_anterior), (destino_nuevo)
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -3820,6 +4597,66 @@ export default function MutacionesResoluciones() {
             )}
           </div>
 
+          {/* Datos del Solicitante M4 */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-blue-800">
+                <User className="w-4 h-4" />
+                Datos del Solicitante
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Nombre Completo *</Label>
+                  <Input
+                    value={m4Data.solicitante?.nombre || ''}
+                    onChange={(e) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, nombre: e.target.value.toUpperCase() }
+                    }))}
+                    placeholder="Nombre del solicitante"
+                    className="h-9"
+                    data-testid="m4-solicitante-nombre"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo Documento</Label>
+                  <Select
+                    value={m4Data.solicitante?.tipo_documento || 'CC'}
+                    onValueChange={(v) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, tipo_documento: v }
+                    }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
+                      <SelectItem value="CE">Cédula de Extranjería</SelectItem>
+                      <SelectItem value="NIT">NIT</SelectItem>
+                      <SelectItem value="PA">Pasaporte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Número de Documento *</Label>
+                  <Input
+                    value={m4Data.solicitante?.documento || ''}
+                    onChange={(e) => setM4Data(prev => ({
+                      ...prev,
+                      solicitante: { ...prev.solicitante, documento: e.target.value.replace(/[^0-9]/g, '') }
+                    }))}
+                    placeholder="Número de documento"
+                    className="h-9"
+                    data-testid="m4-solicitante-documento"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Buscar Predio */}
           {m4Data.municipio && (
             <div className="space-y-2">
@@ -3889,7 +4726,7 @@ export default function MutacionesResoluciones() {
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Área Terreno</span>
-                        <span className="font-medium">{(m4Data.predio.area_terreno || 0).toLocaleString()} m²</span>
+                        <span className="font-medium">{formatAreaHectareas(m4Data.predio.area_terreno)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Área Construida</span>
@@ -3993,6 +4830,32 @@ export default function MutacionesResoluciones() {
               data-testid="m4-observaciones-input"
             />
           </div>
+
+          {/* Campo de Considerando Personalizado */}
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m4Data.texto_considerando || ''}
+                onChange={(e) => setM4Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, el señor ${m4Data.solicitante?.nombre || '[NOMBRE]'}, identificado con Cédula de Ciudadanía No. ${m4Data.solicitante?.documento || '[DOCUMENTO]'}, radicó solicitud de revisión de avalúo catastral para el predio ubicado en ${m4Data.predio?.direccion || '[DIRECCIÓN]'}...`}
+                rows={6}
+                className="font-mono text-sm"
+                data-testid="m4-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (avaluo_anterior), (avaluo_nuevo)
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -4331,7 +5194,7 @@ export default function MutacionesResoluciones() {
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{getMatriculaInmobiliaria(predio)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
-                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{formatAreaHectareas(m5Data.predio.area_terreno)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
                       </div>
                       {m5Data.predio.propietarios?.[0] && (
@@ -4811,8 +5674,1099 @@ export default function MutacionesResoluciones() {
               className="mt-1"
             />
           </div>
+
+          {/* Campo de Considerando Personalizado M5 */}
+          <Card className="border-purple-200 bg-purple-50/30 mt-4">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                <FileText className="w-4 h-4" />
+                Texto de Considerandos (Resolución)
+              </CardTitle>
+              <p className="text-xs text-purple-600 mt-1">
+                Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+              </p>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={m5Data.texto_considerando || ''}
+                onChange={(e) => setM5Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder={`Ejemplo: Qué, mediante solicitud radicada ${m5Data.radicado || '[RADICADO]'}, se solicita la ${m5Data.subtipo === 'cancelacion' ? 'cancelación' : 'inscripción'} del predio identificado con código predial ${m5Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'} en el municipio de ${m5Data.municipio || '[MUNICIPIO]'}...`}
+                rows={5}
+                className="font-mono text-sm"
+                data-testid="m5-considerando-input"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (vigencia)
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
+    </div>
+  );
+
+  // Renderizar formulario de Rectificación de Área
+  const renderFormularioRectificacionArea = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers className="w-5 h-5 text-cyan-600" />
+          <h3 className="font-semibold text-cyan-800">Rectificación de Área</h3>
+        </div>
+        <p className="text-sm text-cyan-700">
+          Este trámite permite corregir el área de terreno y/o construcción de un predio 
+          cuando existe una diferencia entre el área registrada en el catastro y el área real.
+        </p>
+      </div>
+
+      {/* Municipio */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Municipio *</Label>
+        <div
+          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+          onClick={() => setShowMunicipioDropdownRectificacion(!showMunicipioDropdownRectificacion)}
+          data-testid="rectificacion-municipio-select"
+        >
+          <span className={rectificacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
+            {rectificacionData.municipio || 'Seleccione municipio'}
+          </span>
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        </div>
+        {showMunicipioDropdownRectificacion && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {MUNICIPIOS.map((mun) => (
+              <div
+                key={mun.codigo}
+                className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                onClick={() => {
+                  setRectificacionData(prev => ({ ...prev, municipio: mun.nombre, predio: null }));
+                  setShowMunicipioDropdownRectificacion(false);
+                }}
+              >
+                {mun.nombre}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Radicado */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Número de Radicado *</Label>
+        <Input
+          type="text"
+          value={rectificacionData.radicado}
+          onChange={(e) => {
+            setRectificacionData(prev => ({ ...prev, radicado: e.target.value }));
+            buscarRadicadosRectificacion(e.target.value);
+          }}
+          placeholder="Buscar radicado..."
+          className="mt-1"
+          data-testid="rectificacion-radicado-input"
+        />
+        {radicadosDisponiblesRectificacion.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {radicadosDisponiblesRectificacion.map((rad, idx) => (
+              <div
+                key={idx}
+                className="px-3 py-2 hover:bg-cyan-50 cursor-pointer text-sm"
+                onClick={() => {
+                  setRectificacionData(prev => ({ ...prev, radicado: rad.radicado || rad.numero || (typeof rad === 'string' ? rad : '') }));
+                  setRadicadosDisponiblesRectificacion([]);
+                }}
+              >
+                <div className="font-medium">{rad.radicado || rad.numero || (typeof rad === 'string' ? rad : 'Sin radicado')}</div>
+                {rad.nombre_completo && <div className="text-xs text-slate-500">{rad.nombre_completo}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Búsqueda de Predio */}
+      <Card className="border-cyan-200 bg-cyan-50/30">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-cyan-800">
+            <Search className="w-4 h-4" />
+            Buscar Predio a Rectificar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-2 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={searchPredioRectificacion}
+              onChange={(e) => setSearchPredioRectificacion(e.target.value)}
+              placeholder="Código predial, dirección, propietario..."
+              onKeyPress={(e) => e.key === 'Enter' && buscarPrediosRectificacion()}
+              disabled={!rectificacionData.municipio}
+              data-testid="rectificacion-search-predio"
+            />
+            <Button
+              onClick={buscarPrediosRectificacion}
+              disabled={searchingPrediosRectificacion || !rectificacionData.municipio}
+              className="bg-cyan-600 hover:bg-cyan-700"
+              data-testid="rectificacion-search-btn"
+            >
+              {searchingPrediosRectificacion ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {/* Resultados de búsqueda */}
+          {searchResultsRectificacion.length > 0 && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {searchResultsRectificacion.map((predio) => (
+                <div
+                  key={predio.id}
+                  className="p-3 hover:bg-cyan-50 cursor-pointer border-b last:border-b-0"
+                  onClick={() => seleccionarPredioRectificacion(predio)}
+                  data-testid={`rectificacion-predio-result-${predio.id}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-mono text-xs text-slate-600">{predio.codigo_predial_nacional || predio.NPN}</p>
+                      <p className="font-medium text-sm">{predio.direccion || 'Sin dirección'}</p>
+                      <p className="text-xs text-slate-500">
+                        {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'Sin propietario'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Área Terreno: {predio.area_terreno || 0} m²</p>
+                      <p className="text-xs text-slate-500">Área Const: {predio.area_construida || 0} m²</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Predio Seleccionado */}
+      {rectificacionData.predio && (
+        <Card className="border-cyan-300 bg-cyan-50">
+          <CardHeader className="py-3">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-sm text-cyan-800">Predio Seleccionado</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setRectificacionData(prev => ({ ...prev, predio: null }))}
+                className="text-cyan-700"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-slate-500">Código Predial</p>
+                <p className="font-mono font-medium">{rectificacionData.predio.codigo_predial_nacional || rectificacionData.predio.NPN}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Matrícula</p>
+                <p className="font-medium">{getMatriculaInmobiliaria(rectificacionData.predio)}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500">Dirección</p>
+                <p className="font-medium">{rectificacionData.predio.direccion || 'Sin dirección'}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500">Propietario</p>
+                <p className="font-medium">
+                  {rectificacionData.predio.propietarios?.[0]?.nombre_propietario || 
+                   rectificacionData.predio.nombre_propietario || 'Sin propietario'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sección de Áreas - Solo visible si hay predio seleccionado */}
+      {rectificacionData.predio && (
+        <>
+          {/* Zonas de Terreno */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Zonas de Terreno - Rectificación
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="py-2 space-y-3">
+              {/* Área anterior (solo lectura) */}
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Área Actual en Catastro</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-700">{Number(rectificacionData.area_terreno_anterior).toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                  <span className="text-xs text-slate-500">({zonasTerreno_Rect_Anterior.length} zona{zonasTerreno_Rect_Anterior.length !== 1 ? 's' : ''})</span>
+                </div>
+              </div>
+              
+              {/* Nueva área editable */}
+              <div className="border-2 border-cyan-300 rounded-lg p-3 bg-white">
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-semibold text-cyan-700">Nueva Área de Terreno (Zonas Rectificadas)</p>
+                  <Button size="sm" onClick={agregarZonaTerreno_Rect} variant="outline" className="text-cyan-700 h-7">
+                    <Plus className="w-3 h-3 mr-1" /> Agregar Zona
+                  </Button>
+                </div>
+                
+                {zonasTerreno_Rect_Nueva.map((zona, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-slate-600">Zona {index + 1}</span>
+                      {zonasTerreno_Rect_Nueva.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => eliminarZonaTerreno_Rect(index)} className="text-red-600 h-6 w-6 p-0">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs">Zona Física</Label>
+                        <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno_Rect(index, 'zona_fisica', e.target.value)} placeholder="Ej: 03" className="h-7 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Zona Económica</Label>
+                        <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno_Rect(index, 'zona_economica', e.target.value)} placeholder="Ej: 05" className="h-7 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área (m²) *</Label>
+                        <Input type="number" step="0.01" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno_Rect(index, 'area_terreno', e.target.value)} className="h-7 text-xs border-cyan-300" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Subtotal y diferencia */}
+                <div className="mt-3 space-y-2">
+                  <div className="bg-cyan-50 border border-cyan-200 rounded p-2">
+                    <p className="text-sm text-cyan-800">
+                      📊 <strong>Subtotal Nueva Área Terreno:</strong> {calcularTotales_Rect().areaTerrenoNueva.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                    </p>
+                  </div>
+                  {calcularTotales_Rect().areaTerrenoNueva !== rectificacionData.area_terreno_anterior && (
+                    <div className={`p-2 rounded ${
+                      calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <p className="text-sm font-medium">
+                        Diferencia: {' '}
+                        <span className={calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior ? 'text-green-700' : 'text-red-700'}>
+                          {(calcularTotales_Rect().areaTerrenoNueva - rectificacionData.area_terreno_anterior).toFixed(2)} m²
+                          {calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior ? ' (aumenta)' : ' (disminuye)'}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Construcciones */}
+          <Card className="border-amber-200 bg-amber-50/30">
+            <CardHeader className="py-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm text-amber-800 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Construcciones - Rectificación
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="py-2 space-y-3">
+              {/* Área construida anterior (solo lectura) */}
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Área Construida Actual</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-700">{Number(rectificacionData.area_construida_anterior).toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                  <span className="text-xs text-slate-500">({construcciones_Rect_Anterior.length} construcción{construcciones_Rect_Anterior.length !== 1 ? 'es' : ''})</span>
+                </div>
+              </div>
+              
+              {/* Nuevas construcciones editables */}
+              <div className="border-2 border-amber-300 rounded-lg p-3 bg-white">
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-semibold text-amber-700">Nuevas Construcciones (Rectificadas)</p>
+                  <Button size="sm" onClick={agregarConstruccion_Rect} variant="outline" className="text-amber-700 h-7">
+                    <Plus className="w-3 h-3 mr-1" /> Agregar Construcción
+                  </Button>
+                </div>
+                
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {construcciones_Rect_Nueva.map((const_, index) => (
+                    <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50/50">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-semibold text-amber-800">Construcción {const_.id}</span>
+                        {construcciones_Rect_Nueva.length > 1 && (
+                          <Button variant="ghost" size="sm" onClick={() => eliminarConstruccion_Rect(index)} className="text-red-600 h-6 w-6 p-0">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <Label className="text-xs">Piso</Label>
+                          <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion_Rect(index, 'piso', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Habitaciones</Label>
+                          <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion_Rect(index, 'habitaciones', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Baños</Label>
+                          <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion_Rect(index, 'banos', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Locales</Label>
+                          <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccion_Rect(index, 'locales', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Tipificación</Label>
+                          <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccion_Rect(index, 'tipificacion', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Uso</Label>
+                          <Input value={const_.uso} onChange={(e) => actualizarConstruccion_Rect(index, 'uso', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Puntaje</Label>
+                          <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccion_Rect(index, 'puntaje', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Área (m²) *</Label>
+                          <Input type="number" step="0.01" value={const_.area_construida} onChange={(e) => actualizarConstruccion_Rect(index, 'area_construida', e.target.value)} className="h-7 text-xs border-amber-400" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Subtotal área construida */}
+                <div className="mt-3 space-y-2">
+                  <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                    <p className="text-sm text-amber-800">
+                      📊 <strong>Subtotal Nueva Área Construida:</strong> {calcularTotales_Rect().areaConstruidaNueva.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                    </p>
+                  </div>
+                  {calcularTotales_Rect().areaConstruidaNueva !== rectificacionData.area_construida_anterior && (
+                    <div className={`p-2 rounded ${
+                      calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <p className="text-sm font-medium">
+                        Diferencia: {' '}
+                        <span className={calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior ? 'text-green-700' : 'text-red-700'}>
+                          {(calcularTotales_Rect().areaConstruidaNueva - rectificacionData.area_construida_anterior).toFixed(2)} m²
+                          {calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior ? ' (aumenta)' : ' (disminuye)'}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Nuevo Avalúo */}
+          <Card className="border-emerald-200 bg-emerald-50/30">
+            <CardHeader className="py-2">
+              <CardTitle className="text-sm text-emerald-800 flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Avalúo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-slate-600">Avalúo Actual ($)</Label>
+                  <div className="mt-1 p-2 bg-slate-100 rounded text-sm font-medium">
+                    ${Number(rectificacionData.predio.avaluo || 0).toLocaleString('es-CO')}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-emerald-700 font-medium">Nuevo Avalúo ($)</Label>
+                  <Input
+                    type="number"
+                    step="1000"
+                    value={rectificacionData.avaluo_nuevo}
+                    onChange={(e) => setRectificacionData(prev => ({ ...prev, avaluo_nuevo: e.target.value }))}
+                    className="mt-1 h-9 border-emerald-300 focus:border-emerald-500"
+                    data-testid="rectificacion-avaluo-nuevo"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Motivo de la solicitud */}
+          <div>
+            <Label className="text-sm font-medium">Motivo de la Rectificación</Label>
+            <Textarea
+              value={rectificacionData.motivo_solicitud}
+              onChange={(e) => setRectificacionData(prev => ({ ...prev, motivo_solicitud: e.target.value }))}
+              placeholder="Ej: Corrección de área según medición técnica realizada..."
+              className="mt-1"
+              rows={2}
+              data-testid="rectificacion-motivo"
+            />
+          </div>
+
+          {/* Observaciones */}
+          <div>
+            <Label className="text-sm font-medium">Observaciones Adicionales</Label>
+            <Textarea
+              value={rectificacionData.observaciones}
+              onChange={(e) => setRectificacionData(prev => ({ ...prev, observaciones: e.target.value }))}
+              placeholder="Observaciones adicionales..."
+              className="mt-1"
+              rows={2}
+              data-testid="rectificacion-observaciones"
+            />
+          </div>
+
+          {/* Texto de Considerandos */}
+          <Card className="border-slate-200">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm text-slate-700">Texto de Considerandos (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <Textarea
+                value={rectificacionData.texto_considerando}
+                onChange={(e) => setRectificacionData(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder="Deje en blanco para usar el texto predeterminado..."
+                rows={4}
+                className="text-sm"
+                data-testid="rectificacion-considerandos"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (area_terreno_anterior), (area_terreno_nueva), (area_construida_anterior), (area_construida_nueva)
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
+  // Renderizar formulario de Complementación de Información
+  const renderFormularioComplementacion = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-5 h-5 text-slate-600" />
+          <h3 className="font-semibold text-slate-800">Complementación de Información</h3>
+        </div>
+        <p className="text-sm text-slate-700">
+          Este trámite permite complementar la información catastral de un predio 
+          cuando se requiere agregar o corregir datos faltantes en el registro.
+        </p>
+      </div>
+
+      {/* Municipio */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Municipio *</Label>
+        <div
+          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+          onClick={() => setShowMunicipioDropdownComplementacion(!showMunicipioDropdownComplementacion)}
+          data-testid="complementacion-municipio-select"
+        >
+          <span className={complementacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
+            {complementacionData.municipio || 'Seleccione municipio'}
+          </span>
+          <ChevronDown className="w-4 h-4" />
+        </div>
+        {showMunicipioDropdownComplementacion && (
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {MUNICIPIOS.map(mun => (
+              <div
+                key={mun.codigo}
+                className="p-2 hover:bg-slate-100 cursor-pointer"
+                onClick={() => {
+                  setComplementacionData(prev => ({ ...prev, municipio: mun.nombre, predio: null }));
+                  setShowMunicipioDropdownComplementacion(false);
+                  setSearchPredioComplementacion('');
+                  setSearchResultsComplementacion([]);
+                }}
+              >
+                {mun.nombre}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Buscar Predio */}
+      {complementacionData.municipio && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Buscar Predio *</Label>
+          <div className="relative">
+            <Input
+              value={searchPredioComplementacion}
+              onChange={async (e) => {
+                const valor = e.target.value;
+                setSearchPredioComplementacion(valor);
+                
+                if (valor.length >= 3) {
+                  setSearchingPrediosComplementacion(true);
+                  try {
+                    const municipioCodigo = MUNICIPIOS.find(m => m.nombre === complementacionData.municipio)?.codigo;
+                    const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
+                      params: { q: valor, limit: 10 },
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setSearchResultsComplementacion(response.data.predios || []);
+                  } catch (error) {
+                    console.error('Error buscando predios:', error);
+                  } finally {
+                    setSearchingPrediosComplementacion(false);
+                  }
+                } else {
+                  setSearchResultsComplementacion([]);
+                }
+              }}
+              placeholder="Buscar por código predial, dirección o propietario..."
+              className="pr-10"
+              data-testid="complementacion-buscar-predio"
+            />
+            {searchingPrediosComplementacion && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+            )}
+          </div>
+          
+          {/* Resultados de búsqueda */}
+          {searchResultsComplementacion.length > 0 && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {searchResultsComplementacion.map((predio, idx) => (
+                <div
+                  key={idx}
+                  className="p-2 hover:bg-slate-100 cursor-pointer border-b last:border-b-0"
+                  onClick={() => {
+                    const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                    const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                    const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                    
+                    setComplementacionData(prev => ({
+                      ...prev,
+                      predio: predio,
+                      area_terreno_nueva: areaTerreno,
+                      area_construida_nueva: areaConstruida,
+                      avaluo_nuevo: avaluo
+                    }));
+                    setSearchPredioComplementacion('');
+                    setSearchResultsComplementacion([]);
+                  }}
+                >
+                  <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                  <p className="text-xs text-slate-500">{predio.direccion}</p>
+                  <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Predio Seleccionado */}
+      {complementacionData.predio && (
+        <>
+          <Card className="border-slate-200">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm">Predio Seleccionado</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setComplementacionData(prev => ({ ...prev, predio: null }))}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-500">Código:</span>
+                  <p className="font-medium">{complementacionData.predio.codigo_predial_nacional}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Dirección:</span>
+                  <p className="font-medium">{complementacionData.predio.direccion || 'Sin dirección'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Área Terreno:</span>
+                  <p className="font-medium">{complementacionData.predio.area_terreno || complementacionData.predio.r1_registros?.[0]?.area_terreno || 0} m²</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Área Construida:</span>
+                  <p className="font-medium">{complementacionData.predio.area_construida || complementacionData.predio.r1_registros?.[0]?.area_construida || 0} m²</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Nuevos valores */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Edit className="w-4 h-4 text-slate-600" />
+                Información a Complementar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Nueva Área Terreno (m²)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={complementacionData.area_terreno_nueva}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_terreno_nueva: parseFloat(e.target.value) || 0 }))}
+                    data-testid="complementacion-area-terreno"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Nueva Área Construida (m²)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={complementacionData.area_construida_nueva}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_construida_nueva: parseFloat(e.target.value) || 0 }))}
+                    data-testid="complementacion-area-construida"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Nuevo Avalúo ($)</Label>
+                <Input
+                  type="number"
+                  value={complementacionData.avaluo_nuevo}
+                  onChange={(e) => setComplementacionData(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                  data-testid="complementacion-avaluo"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Documentos de Soporte */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                Documentos de Soporte
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.documentos_soporte}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, documentos_soporte: e.target.value }))}
+                placeholder="Ej: Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición..."
+                rows={3}
+                className="text-sm"
+                data-testid="complementacion-documentos"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Texto de Considerandos */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                Texto de Considerandos (Opcional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.texto_considerando}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder="Deje en blanco para usar el texto predeterminado..."
+                rows={4}
+                className="text-sm"
+                data-testid="complementacion-considerandos"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (vigencia)
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Observaciones */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Observaciones</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.observaciones}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, observaciones: e.target.value }))}
+                placeholder="Observaciones adicionales..."
+                rows={2}
+                className="text-sm"
+                data-testid="complementacion-observaciones"
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
+  // Renderizar formulario de Bloqueo de Predios
+  const renderFormularioBloqueo = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Lock className="w-5 h-5 text-red-600" />
+          <h3 className="font-semibold text-red-800">Bloqueo de Predios por Proceso Legal</h3>
+        </div>
+        <p className="text-sm text-red-700">
+          Bloquee predios que tienen procesos legales activos para evitar modificaciones no autorizadas.
+          Solo los coordinadores pueden bloquear y desbloquear predios.
+        </p>
+      </div>
+
+      {/* Tabs internos: Bloquear / Ver Bloqueados */}
+      <Tabs value={bloqueoTab} onValueChange={(val) => {
+        setBloqueoTab(val);
+        if (val === 'bloqueados') {
+          cargarPrediosBloqueados();
+        }
+      }}>
+        <TabsList className="grid w-full grid-cols-2 max-w-md mb-4">
+          <TabsTrigger value="bloquear" className="flex items-center gap-2">
+            <Lock className="w-4 h-4" />
+            Bloquear Predio
+          </TabsTrigger>
+          <TabsTrigger value="bloqueados" className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Bloqueados ({prediosBloqueados.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="bloquear" className="space-y-4">
+          {/* Municipio */}
+          <div className="relative">
+            <Label className="text-sm font-medium">Municipio *</Label>
+            <div
+              className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+              onClick={() => setShowBloqueoMunicipioDropdown(!showBloqueoMunicipioDropdown)}
+              data-testid="bloqueo-municipio-select"
+            >
+              <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
+                {bloqueoMunicipio || 'Seleccione municipio'}
+              </span>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+            {showBloqueoMunicipioDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {MUNICIPIOS.map(mun => (
+                  <div
+                    key={mun.codigo}
+                    className="p-2 hover:bg-slate-100 cursor-pointer"
+                    onClick={() => {
+                      setBloqueoMunicipio(mun.nombre);
+                      setShowBloqueoMunicipioDropdown(false);
+                      setBloqueoPredioSeleccionado(null);
+                      setBloqueoPredioSearch('');
+                      setBloqueoPredioResults([]);
+                    }}
+                  >
+                    {mun.nombre}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Buscar Predio */}
+          {bloqueoMunicipio && (
+            <div className="space-y-2 relative" style={{ zIndex: 100 }}>
+              <Label className="text-sm font-medium">Buscar Predio *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  value={bloqueoPredioSearch}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    setBloqueoPredioSearch(valor);
+                    if (valor.length >= 3) {
+                      buscarPredioParaBloqueo(valor);
+                    } else {
+                      setBloqueoPredioResults([]);
+                    }
+                  }}
+                  placeholder="Buscar por código, dirección, propietario o matrícula (mín. 3 caracteres)..."
+                  className="pl-10 pr-10"
+                  data-testid="bloqueo-buscar-predio"
+                />
+                {bloqueoPredioSearching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                )}
+              </div>
+              
+              {/* Resultados de búsqueda - contenedor separado que no se corta */}
+              {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
+                <div className="bg-white border rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {bloqueoPredioResults.map((predio, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
+                      onClick={() => {
+                        if (predio.bloqueado) {
+                          toast.error('Este predio ya está bloqueado');
+                          return;
+                        }
+                        setBloqueoPredioSeleccionado(predio);
+                        setBloqueoPredioSearch('');
+                        setBloqueoPredioResults([]);
+                      }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                          <p className="text-xs text-slate-500">{predio.direccion}</p>
+                          <p className="text-xs text-slate-400">
+                            {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'Sin propietario'}
+                          </p>
+                        </div>
+                        {predio.bloqueado && (
+                          <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Predio Seleccionado */}
+          {bloqueoPredioSeleccionado && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-amber-600" />
+                    Predio a Bloquear
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setBloqueoPredioSeleccionado(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">Código Predial:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional || bloqueoPredioSeleccionado.numero_predio}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Dirección:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.direccion || 'Sin dirección'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Propietario:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.propietarios?.[0]?.nombre_propietario || 
+                       bloqueoPredioSeleccionado.nombre_propietario || 'No registrado'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Municipio:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.municipio || bloqueoMunicipio}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Matrícula Inmobiliaria:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.matricula_inmobiliaria || 
+                       bloqueoPredioSeleccionado.r2_registros?.[0]?.matricula_inmobiliaria || 'Sin matrícula'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Avalúo:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.avaluo 
+                        ? `$${bloqueoPredioSeleccionado.avaluo.toLocaleString('es-CO')}`
+                        : 'Sin avalúo'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Área Terreno:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.area_terreno 
+                        ? formatAreaHectareas(bloqueoPredioSeleccionado.area_terreno)
+                        : 'Sin información'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Área Construida:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.area_construida 
+                        ? `${bloqueoPredioSeleccionado.area_construida.toLocaleString('es-CO')} m²`
+                        : 'Sin construcción'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Formulario de Bloqueo */}
+          {bloqueoPredioSeleccionado && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Información del Bloqueo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Motivo del Bloqueo *</Label>
+                  <Textarea
+                    value={bloqueoFormData.motivo}
+                    onChange={(e) => setBloqueoFormData(prev => ({ ...prev, motivo: e.target.value }))}
+                    placeholder="Ej: Proceso legal activo - Embargo ordenado por el Juzgado..."
+                    rows={3}
+                    data-testid="bloqueo-motivo"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">Número de Proceso</Label>
+                    <Input
+                      value={bloqueoFormData.numero_proceso}
+                      onChange={(e) => setBloqueoFormData(prev => ({ ...prev, numero_proceso: e.target.value }))}
+                      placeholder="Ej: 2024-00123"
+                      data-testid="bloqueo-numero-proceso"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Entidad Judicial</Label>
+                    <Input
+                      value={bloqueoFormData.entidad_judicial}
+                      onChange={(e) => setBloqueoFormData(prev => ({ ...prev, entidad_judicial: e.target.value }))}
+                      placeholder="Ej: Juzgado 3ro Civil Municipal"
+                      data-testid="bloqueo-entidad"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm">Observaciones Adicionales</Label>
+                  <Textarea
+                    value={bloqueoFormData.observaciones}
+                    onChange={(e) => setBloqueoFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                    placeholder="Observaciones adicionales..."
+                    rows={2}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bloqueados" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-slate-500">
+              {prediosBloqueados.length} predio(s) bloqueado(s)
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={cargarPrediosBloqueados}
+              disabled={loadingBloqueados}
+            >
+              {loadingBloqueados ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            </Button>
+          </div>
+
+          {loadingBloqueados ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            </div>
+          ) : prediosBloqueados.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Lock className="w-12 h-12 mx-auto mb-4 opacity-30" />
+              <p>No hay predios bloqueados</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {prediosBloqueados.map((predio, idx) => (
+                <Card key={idx} className="border-red-200 bg-red-50">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lock className="w-4 h-4 text-red-600" />
+                          <span className="font-medium text-red-800">
+                            {predio.codigo_predial_nacional || predio.codigo_predial}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600">{predio.direccion}</p>
+                        <p className="text-xs text-slate-500">{predio.municipio}</p>
+                        
+                        {predio.bloqueo_info && (
+                          <div className="mt-2 p-2 bg-white rounded border border-red-100">
+                            <p className="text-sm font-medium text-red-800">
+                              {predio.bloqueo_info.motivo}
+                            </p>
+                            {predio.bloqueo_info.numero_proceso && (
+                              <p className="text-xs text-slate-500">
+                                Proceso: {predio.bloqueo_info.numero_proceso}
+                              </p>
+                            )}
+                            <p className="text-xs text-slate-400 mt-1">
+                              Bloqueado por: {predio.bloqueo_info.bloqueado_por_nombre}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => verHistorialBloqueo(predio)}
+                          className="text-xs"
+                        >
+                          <History className="w-3 h-3 mr-1" />
+                          Historial
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setPredioADesbloquear(predio);
+                            setShowDesbloqueoModal(true);
+                          }}
+                          className="bg-green-600 hover:bg-green-700 text-xs"
+                        >
+                          <Unlock className="w-3 h-3 mr-1" />
+                          Desbloquear
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 
@@ -4839,12 +6793,19 @@ export default function MutacionesResoluciones() {
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.values(TIPOS_MUTACION).map((tipo) => (
+        {Object.values(TIPOS_MUTACION)
+          .filter((tipo) => {
+            // Ocultar BLOQUEO si no es coordinador/admin
+            if (tipo.soloCoordinador && !puedeAprobar) return false;
+            return true;
+          })
+          .map((tipo) => (
           <Card 
             key={tipo.codigo}
             data-testid={`mutacion-card-${tipo.codigo}`}
             className={`cursor-pointer transition-all hover:shadow-lg ${
-              !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-emerald-500'
+              !tipo.enabled ? 'opacity-50 cursor-not-allowed' : 
+              tipo.codigo === 'BLOQUEO' ? 'hover:border-red-500 border-red-200' : 'hover:border-emerald-500'
             }`}
             onClick={() => {
               if (tipo.enabled) {
@@ -4855,12 +6816,19 @@ export default function MutacionesResoluciones() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <Badge className={tipo.color}>{tipo.codigo}</Badge>
+                  <Badge className={tipo.color}>
+                    {tipo.codigo === 'BLOQUEO' && <Lock className="w-3 h-3 mr-1 inline" />}
+                    {tipo.codigoDisplay || tipo.codigo}
+                  </Badge>
                   <h3 className="font-semibold text-lg mt-2">{tipo.nombre}</h3>
                   <p className="text-sm text-slate-600 mt-1">{tipo.descripcion}</p>
                 </div>
                 {tipo.enabled ? (
-                  <ArrowRight className="w-5 h-5 text-emerald-600" />
+                  tipo.codigo === 'BLOQUEO' ? (
+                    <Lock className="w-5 h-5 text-red-600" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5 text-emerald-600" />
+                  )
                 ) : (
                   <Badge variant="outline" className="text-xs">Próximamente</Badge>
                 )}
@@ -5086,7 +7054,7 @@ export default function MutacionesResoluciones() {
                   <p className="font-mono font-medium text-sm">{predio.codigo_predial}</p>
                   <p className="text-xs text-slate-600">{predio.direccion}</p>
                   <p className="text-xs text-slate-500">
-                    Área terreno: {Number(predio.area_terreno).toLocaleString()} m² | 
+                    Área terreno: {formatAreaHectareas(predio.area_terreno)} | 
                     Construida: {Number(predio.area_construida).toLocaleString()} m² | 
                     Avalúo: ${Number(predio.avaluo).toLocaleString()}
                   </p>
@@ -5396,7 +7364,7 @@ export default function MutacionesResoluciones() {
                           </div>
                         </div>
                         <div className="text-right text-xs text-slate-500">
-                          <p>Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                          <p>Área: {formatAreaHectareas(predio.area_terreno)}</p>
                           <p>Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                         </div>
                       </div>
@@ -5414,7 +7382,7 @@ export default function MutacionesResoluciones() {
                   <div className="bg-white p-2 rounded">
                     <p className="text-xs text-slate-500">Área Terreno Total</p>
                     <p className="font-bold text-emerald-700">
-                      {m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0).toLocaleString()} m²
+                      {formatAreaHectareas(m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0))}
                     </p>
                   </div>
                   <div className="bg-white p-2 rounded">
@@ -5518,7 +7486,7 @@ export default function MutacionesResoluciones() {
                           </div>
                           <div>
                             <p className="text-slate-500">Área Terreno:</p>
-                            <p className="font-medium text-emerald-700">{Number(m2Data.predio_resultante.area_terreno).toLocaleString()} m²</p>
+                            <p className="font-medium text-emerald-700">{formatAreaHectareas(m2Data.predio_resultante.area_terreno)}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Área Construida:</p>
@@ -6097,6 +8065,32 @@ export default function MutacionesResoluciones() {
         </CardContent>
       </Card>
       )}
+
+      {/* Campo de Considerando Personalizado M2 */}
+      <Card className="border-purple-200 bg-purple-50/30">
+        <CardHeader className="py-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+            <FileText className="w-4 h-4" />
+            Texto de Considerandos (Resolución)
+          </CardTitle>
+          <p className="text-xs text-purple-600 mt-1">
+            Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+          </p>
+        </CardHeader>
+        <CardContent className="py-2">
+          <Textarea
+            value={m2Data.texto_considerando || ''}
+            onChange={(e) => setM2Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+            placeholder={`Ejemplo: Qué, el(la) ciudadano(a) ${m2Data.solicitante?.nombre || '[NOMBRE]'}, identificado(a) con Cédula de Ciudadanía No. ${m2Data.solicitante?.documento || '[DOCUMENTO]'}, mediante radicado ${m2Data.radicado || '[RADICADO]'}, solicita ${m2Data.subtipo === 'englobe' ? 'englobe' : 'desenglobe'} de predios ubicados en ${m2Data.municipio || '[MUNICIPIO]'}...`}
+            rows={5}
+            className="font-mono text-sm"
+            data-testid="m2-considerando-input"
+          />
+          <div className="mt-2 text-xs text-slate-500">
+            <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (subtipo)
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -6290,7 +8284,7 @@ export default function MutacionesResoluciones() {
                       }}
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                      Variables disponibles: {'{municipio}'}, {'{radicado}'}, {'{solicitante}'}, {'{documento}'}, {'{npn}'}, {'{fecha}'}
+                      Variables disponibles: (municipio), (radicado), (solicitante), (documento), (npn), (fecha)
                     </p>
                   </div>
 
@@ -6460,6 +8454,12 @@ export default function MutacionesResoluciones() {
           {tipoMutacionSeleccionado?.codigo === 'M4' && renderFormularioM4()}
           
           {tipoMutacionSeleccionado?.codigo === 'M5' && renderFormularioM5()}
+          
+          {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && renderFormularioRectificacionArea()}
+          
+          {tipoMutacionSeleccionado?.codigo === 'COMP' && renderFormularioComplementacion()}
+          
+          {tipoMutacionSeleccionado?.codigo === 'BLOQUEO' && renderFormularioBloqueo()}
           
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
@@ -6750,6 +8750,32 @@ export default function MutacionesResoluciones() {
                     </CardContent>
                   </Card>
 
+                  {/* Campo de Considerando Personalizado M1 */}
+                  <Card className="border-purple-200 bg-purple-50/30">
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm flex items-center gap-2 text-purple-800">
+                        <FileText className="w-4 h-4" />
+                        Texto de Considerandos (Resolución)
+                      </CardTitle>
+                      <p className="text-xs text-purple-600 mt-1">
+                        Este texto aparecerá en la sección "CONSIDERANDO" de la resolución. Si se deja vacío, se usará el texto estándar.
+                      </p>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      <Textarea
+                        value={m1Data.texto_considerando || ''}
+                        onChange={(e) => setM1Data(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                        placeholder={`Ejemplo: Qué, el(la) ciudadano(a) [NOMBRE DEL NUEVO PROPIETARIO], identificado(a) con Cédula de Ciudadanía No. [DOCUMENTO], mediante radicado ${m1Data.radicado_peticion || '[RADICADO]'}, solicita el cambio de propietario del predio identificado con código predial ${m1Data.predio?.codigo_predial_nacional || '[CÓDIGO PREDIAL]'}...`}
+                        rows={5}
+                        className="font-mono text-sm"
+                        data-testid="m1-considerando-input"
+                      />
+                      <div className="mt-2 text-xs text-slate-500">
+                        <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula)
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* Preview */}
                   {m1Data.numero_resolucion && (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border">
@@ -6776,43 +8802,450 @@ export default function MutacionesResoluciones() {
               Cancelar
             </Button>
             {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predio && (
-              <Button 
-                onClick={generarResolucionM1} 
-                disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {generando ? 'Generando...' : 'Generar Resolución M1'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m1Data.predio || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0) {
+                        toast.error('Debe completar todos los campos requeridos');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M1',
+                          tipo_mutacion: 'M1',
+                          municipio: m1Data.municipio,
+                          radicado: m1Data.radicado_peticion,
+                          predio: m1Data.predio,
+                          predio_id: m1Data.predio.id,
+                          propietarios_nuevos: m1Data.propietarios_nuevos,
+                          observaciones: m1Data.observaciones,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M1 enviada a aprobación');
+                          resetFormularioM1();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M1 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM1} 
+                    disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {generando ? 'Generando...' : 'Generar Resolución M1'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M3' && m3Data.predio && (
-              <Button 
-                onClick={generarResolucionM3} 
-                disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
-                className="bg-amber-600 hover:bg-amber-700"
-                data-testid="m3-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m3Data.predio || !m3Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M3',
+                          tipo_mutacion: 'M3',
+                          subtipo: m3Data.subtipo,
+                          municipio: m3Data.municipio,
+                          radicado: m3Data.radicado,
+                          predio: m3Data.predio,
+                          predio_id: m3Data.predio.id,
+                          destino_nuevo: m3Data.destino_nuevo,
+                          construcciones_nuevas: m3Data.construcciones_nuevas,
+                          avaluo_nuevo: m3Data.avaluo_nuevo,
+                          observaciones: m3Data.observaciones,
+                          texto_considerando: m3Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M3 enviada a aprobación');
+                          resetFormularioM3();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M3 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m3Data.radicado || !m3Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM3} 
+                    disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    data-testid="m3-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M4' && m4Data.predio && (
-              <Button 
-                onClick={generarResolucionM4} 
-                disabled={generando || !m4Data.subtipo || !m4Data.radicado || !m4Data.avaluo_nuevo}
-                className="bg-green-600 hover:bg-green-700"
-                data-testid="m4-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m4Data.predio || !m4Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M4',
+                          tipo_mutacion: 'M4',
+                          subtipo: m4Data.subtipo,
+                          decision: m4Data.decision,
+                          municipio: m4Data.municipio,
+                          radicado: m4Data.radicado,
+                          predio: m4Data.predio,
+                          predio_id: m4Data.predio.id,
+                          avaluo_nuevo: m4Data.avaluo_nuevo,
+                          observaciones: m4Data.observaciones,
+                          texto_considerando: m4Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M4 enviada a aprobación');
+                          resetFormularioM4();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M4 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m4Data.radicado || !m4Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM4} 
+                    disabled={generando || !m4Data.subtipo || !m4Data.radicado || !m4Data.avaluo_nuevo}
+                    className="bg-green-600 hover:bg-green-700"
+                    data-testid="m4-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M5' && m5Data.subtipo && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m5Data.predio || !m5Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M5',
+                          tipo_mutacion: 'M5',
+                          subtipo: m5Data.subtipo,
+                          municipio: m5Data.municipio,
+                          radicado: m5Data.radicado,
+                          predio: m5Data.predio,
+                          predio_id: m5Data.predio.id,
+                          zonas: m5Data.zonas,
+                          construcciones: m5Data.construcciones,
+                          observaciones: m5Data.observaciones,
+                          texto_considerando: m5Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M5 enviada a aprobación');
+                          resetFormularioM5();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M5 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m5Data.radicado || !m5Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM5} 
+                    disabled={generando || !m5Data.radicado || !m5Data.predio}
+                    className={m5Data.subtipo === 'cancelacion' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                    data-testid="m5-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
+                      m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!rectificacionData.predio || !rectificacionData.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const predio = rectificacionData.predio;
+                        const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                        const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                        const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                        
+                        const payload = {
+                          tipo: 'RECTIFICACION_AREA',
+                          tipo_mutacion: 'RECTIFICACION_AREA',
+                          municipio: rectificacionData.municipio,
+                          radicado: rectificacionData.radicado,
+                          predio: predio,
+                          predio_id: predio.id,
+                          solicitante: {
+                            nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+                            documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+                          },
+                          area_terreno_anterior: areaTerreno,
+                          area_construida_anterior: areaConstruida,
+                          avaluo_anterior: avaluo,
+                          area_terreno_nueva: rectificacionData.area_terreno_nueva,
+                          area_construida_nueva: rectificacionData.area_construida_nueva,
+                          avaluo_nuevo: rectificacionData.avaluo_nuevo,
+                          motivo_solicitud: rectificacionData.motivo_solicitud,
+                          observaciones: rectificacionData.observaciones,
+                          texto_considerando: rectificacionData.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud enviada a aprobación exitosamente');
+                          resetRectificacionForm();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !rectificacionData.radicado || !rectificacionData.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionRectificacion} 
+                    disabled={generando || !rectificacionData.radicado || !rectificacionData.predio || !rectificacionData.area_terreno_nueva}
+                    className="bg-cyan-600 hover:bg-cyan-700"
+                    data-testid="rectificacion-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Rectificación'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'COMP' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!complementacionData.predio) {
+                        toast.error('Debe seleccionar un predio');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const predio = complementacionData.predio;
+                        const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                        const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                        const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                        
+                        const payload = {
+                          tipo: 'COMPLEMENTACION',
+                          tipo_mutacion: 'COMPLEMENTACION',
+                          municipio: complementacionData.municipio,
+                          predio: predio,
+                          predio_id: predio.id,
+                          solicitante: {
+                            nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+                            documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+                          },
+                          area_terreno_anterior: areaTerreno,
+                          area_construida_anterior: areaConstruida,
+                          avaluo_anterior: avaluo,
+                          area_terreno_nueva: complementacionData.area_terreno_nueva,
+                          area_construida_nueva: complementacionData.area_construida_nueva,
+                          avaluo_nuevo: complementacionData.avaluo_nuevo,
+                          documentos_soporte: complementacionData.documentos_soporte,
+                          observaciones: complementacionData.observaciones,
+                          texto_considerando: complementacionData.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud enviada a aprobación exitosamente');
+                          resetComplementacionForm();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !complementacionData.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionComplementacion} 
+                    disabled={generando || !complementacionData.predio}
+                    className="bg-slate-600 hover:bg-slate-700"
+                    data-testid="complementacion-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Complementación'}
+                  </Button>
+                )}
+              </div>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'BLOQUEO' && bloqueoPredioSeleccionado && bloqueoTab === 'bloquear' && (
               <Button 
-                onClick={generarResolucionM5} 
-                disabled={generando || !m5Data.radicado || !m5Data.predio}
-                className={m5Data.subtipo === 'cancelacion' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}
-                data-testid="m5-generar-btn"
+                onClick={bloquearPredio}
+                disabled={procesandoBloqueo || !bloqueoFormData.motivo.trim()}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="bloqueo-confirmar-btn"
               >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
-                  m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
+                {procesandoBloqueo ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                ) : (
+                  <><Lock className="w-4 h-4 mr-2" /> Bloquear Predio</>
+                )}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
@@ -7534,8 +9967,17 @@ export default function MutacionesResoluciones() {
                         }`}>
                           {verificacionCodigoNuevo.estado === 'disponible' && '✓ Código disponible'}
                           {verificacionCodigoNuevo.estado === 'existente' && '✗ Este código ya existe'}
-                          {verificacionCodigoNuevo.estado === 'eliminado' && '⚠ Código de predio eliminado'}
+                          {verificacionCodigoNuevo.estado === 'eliminado' && '⚠ Predio eliminado - Se puede reactivar'}
                         </p>
+                        {verificacionCodigoNuevo.estado === 'eliminado' && verificacionCodigoNuevo.detalles_eliminacion && (
+                          <div className="mt-2 text-xs text-amber-700 space-y-1">
+                            <p><strong>Vigencia eliminación:</strong> {verificacionCodigoNuevo.detalles_eliminacion.vigencia_eliminacion || 'N/A'}</p>
+                            <p><strong>Motivo:</strong> {verificacionCodigoNuevo.detalles_eliminacion.motivo || 'Mutación catastral'}</p>
+                            <p className="text-amber-800 font-medium mt-2">
+                              ℹ️ Para reactivar este predio, complete los datos y continúe con el proceso de mutación.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -7914,6 +10356,239 @@ export default function MutacionesResoluciones() {
           }
         }}
       />
+
+      {/* Modal de Desbloqueo */}
+      <Dialog open={showDesbloqueoModal} onOpenChange={setShowDesbloqueoModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="w-5 h-5 text-green-600" />
+              Desbloquear Predio
+            </DialogTitle>
+          </DialogHeader>
+          
+          {predioADesbloquear && (
+            <div className="space-y-4">
+              <Card className="border-slate-200">
+                <CardContent className="p-3">
+                  <p className="font-medium text-sm">{predioADesbloquear.codigo_predial_nacional}</p>
+                  <p className="text-xs text-slate-500">{predioADesbloquear.direccion}</p>
+                  {predioADesbloquear.bloqueo_info && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Motivo actual: {predioADesbloquear.bloqueo_info.motivo}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <div>
+                <Label className="text-sm font-medium">Motivo del Desbloqueo *</Label>
+                <Textarea
+                  value={desbloqueoMotivo}
+                  onChange={(e) => setDesbloqueoMotivo(e.target.value)}
+                  placeholder="Ej: Proceso legal finalizado, levantamiento de embargo..."
+                  rows={3}
+                  data-testid="desbloqueo-motivo"
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDesbloqueoModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={desbloquearPredio}
+              disabled={procesandoBloqueo || !desbloqueoMotivo.trim()}
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="desbloqueo-confirmar-btn"
+            >
+              {procesandoBloqueo ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+              ) : (
+                <><Unlock className="w-4 h-4 mr-2" /> Confirmar Desbloqueo</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Historial de Bloqueos */}
+      <Dialog open={showHistorialBloqueoModal} onOpenChange={setShowHistorialBloqueoModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Historial de Bloqueos
+            </DialogTitle>
+          </DialogHeader>
+          
+          {predioHistorialBloqueo && (
+            <div className="mb-4 p-2 bg-slate-100 rounded">
+              <p className="font-medium text-sm">{predioHistorialBloqueo.codigo_predial_nacional}</p>
+              <p className="text-xs text-slate-500">{predioHistorialBloqueo.direccion}</p>
+            </div>
+          )}
+          
+          <div className="max-h-80 overflow-y-auto space-y-3">
+            {historialBloqueo.length === 0 ? (
+              <p className="text-center text-slate-500 py-4">Sin historial de bloqueos</p>
+            ) : (
+              historialBloqueo.map((item, idx) => (
+                <Card key={idx} className={item.accion === 'BLOQUEO' ? 'border-red-200' : 'border-green-200'}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      {item.accion === 'BLOQUEO' ? (
+                        <Lock className="w-4 h-4 text-red-600" />
+                      ) : (
+                        <Unlock className="w-4 h-4 text-green-600" />
+                      )}
+                      <span className={`font-medium text-sm ${item.accion === 'BLOQUEO' ? 'text-red-700' : 'text-green-700'}`}>
+                        {item.accion}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-auto">
+                        {new Date(item.fecha).toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700">{item.motivo}</p>
+                    {item.numero_proceso && (
+                      <p className="text-xs text-slate-500">Proceso: {item.numero_proceso}</p>
+                    )}
+                    {item.entidad_judicial && (
+                      <p className="text-xs text-slate-500">Entidad: {item.entidad_judicial}</p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Por: {item.usuario_nombre}</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de Predios Eliminados */}
+      <Dialog open={showEliminadosModal} onOpenChange={(open) => {
+        setShowEliminadosModal(open);
+        if (!open) {
+          setEliminadosSearch('');
+          setEliminadosMunicipio('');
+        }
+      }}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" />
+              Predios Eliminados
+              <Badge variant="destructive" className="ml-2">{prediosEliminados.length} total</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Los siguientes predios han sido eliminados del sistema. Sus números de terreno no pueden ser reutilizados.
+            </p>
+            
+            {/* Filtros y búsqueda */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por código, propietario, municipio o motivo..."
+                  value={eliminadosSearch}
+                  onChange={(e) => setEliminadosSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+                value={eliminadosMunicipio}
+                onChange={(e) => {
+                  setEliminadosMunicipio(e.target.value);
+                  cargarPrediosEliminados(e.target.value);
+                }}
+              >
+                <option value="">Todos los municipios</option>
+                {MUNICIPIOS.map(m => (
+                  <option key={m.codigo} value={m.nombre}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Contador de resultados filtrados */}
+            {eliminadosSearch && (
+              <p className="text-sm text-slate-500">
+                Mostrando {prediosEliminadosFiltrados.length} de {prediosEliminados.length} predios
+              </p>
+            )}
+            
+            {eliminadosLoading ? (
+              <div className="py-8 text-center text-slate-500">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Cargando predios eliminados...
+              </div>
+            ) : prediosEliminadosFiltrados.length === 0 ? (
+              <div className="py-8 text-center text-slate-500">
+                {eliminadosSearch ? 'No se encontraron predios con esos criterios' : 'No hay predios eliminados'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b border-slate-200 bg-red-50">
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Municipio</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Vigencia</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Eliminado Por</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prediosEliminadosFiltrados.map((predio, idx) => {
+                      // Buscar quién generó la resolución de eliminación
+                      const resolucionEliminacion = predio.resolucion_eliminacion || predio.resolucion;
+                      const historialRes = predio.historial_resoluciones || [];
+                      const registroEliminacion = historialRes.find(h => h.numero_resolucion === resolucionEliminacion);
+                      const eliminadoPor = registroEliminacion?.generado_por || predio.eliminado_por || predio.deleted_by_name || 'N/A';
+                      
+                      return (
+                      <tr key={predio.id || idx} className="border-b border-slate-100 hover:bg-red-50/50">
+                        <td className="py-3 px-4">
+                          <p className="font-mono text-xs font-medium text-slate-900">{predio.codigo_predial_nacional}</p>
+                          <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado || 'N/A'}</p>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">
+                          {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia || predio.vigencia_eliminacion || 'N/A'}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={predio.motivo_eliminacion || predio.motivo}>
+                          {predio.motivo_eliminacion || predio.motivo || 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">
+                          {predio.eliminado_en ? new Date(predio.eliminado_en).toLocaleDateString('es-CO') : 
+                           predio.deleted_at ? new Date(predio.deleted_at).toLocaleDateString('es-CO') : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">{eliminadoPor}</td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEliminadosModal(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

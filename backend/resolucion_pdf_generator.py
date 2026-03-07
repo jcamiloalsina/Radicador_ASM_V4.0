@@ -22,13 +22,13 @@ def get_default_plantilla():
     """Retorna la plantilla de textos por defecto - Basada en documento oficial M1"""
     return {
         "preambulo": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – "
-            "Asomunicipios en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
             "en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "
             '"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y '
             'difusión catastral con enfoque multipropósito", y'
         ),
-        "considerando_1": "Qué, ante la oficina de gestión catastral de Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
+        "considerando_1": "Qué, ante la oficina de gestión catastral de la Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios, solicitan un trámite catastral de {tipo_tramite}, radicado bajo el consecutivo {radicado}",
         "considerando_2_intro": "Qué, se aportaron como soportes los siguientes documentos:",
         "considerando_2_docs": [
             "Oficio de solicitud.",
@@ -87,6 +87,8 @@ def generate_resolucion_pdf(
     # Código de verificación para QR idéntico al certificado catastral
     codigo_verificacion: str = None,
     verificacion_base_url: str = None,
+    # Texto personalizado para considerandos
+    texto_considerando: str = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -95,17 +97,24 @@ def generate_resolucion_pdf(
     
     # Helper para formatear área con unidades de medida
     def formatear_area(area_str):
-        """Convierte área en m² a formato 'XX Ha X.XXXX m²' """
+        """Convierte área en m² a formato 'X ha X.XXX m²' """
         try:
             area = float(area_str or 0)
-            if area >= 10000:
-                ha = int(area // 10000)
-                m2 = area % 10000
-                return f"{ha} Ha {m2:.4f} m²"
+            if area == 0:
+                return "0 m²"
+            
+            hectareas = int(area // 10000)
+            metros = area % 10000
+            
+            if hectareas > 0:
+                # Formato: 84 ha 3.750 m²
+                metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                return f"{hectareas} ha {metros_fmt} m²"
             else:
-                return f"{area:.4f} m²"
+                # Solo metros cuadrados con separador de miles
+                return f"{area:,.0f}".replace(",", ".") + " m²"
         except:
-            return str(area_str or "0")
+            return str(area_str or "0") + " m²"
     
     # Usar plantilla por defecto si no se proporciona
     textos = {**get_default_plantilla(), **(plantilla or {})}
@@ -213,7 +222,7 @@ def generate_resolucion_pdf(
             # Encabezado alternativo
             c.setFillColor(verde_institucional)
             c.setFont(font_bold, 14)
-            c.drawCentredString(width/2, height - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(width/2, height - 1.5 * cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         return height - 2.8 * cm
     
     def draw_footer():
@@ -340,34 +349,55 @@ def generate_resolucion_pdf(
     c.drawCentredString(width/2, y, "CONSIDERANDO")
     y -= espaciado_secciones
     
-    # Considerando 1
-    c.setFont(font_normal, fuente_cuerpo)
-    texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
-    y = dibujar_texto_justificado(texto_c1, y)
-    y -= 8
-    
-    # Considerando 2 - Intro
-    y = check_page_break(y, 30)
-    y = dibujar_texto_justificado(textos['considerando_2_intro'], y)
-    
-    # Lista de documentos
-    for doc in textos['considerando_2_docs']:
-        y = check_page_break(y, 15)
-        doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or '---')
-        c.drawString(left_margin + 15, y, f"• {doc_texto}")
-        y -= espaciado_parrafos
-    y -= 8
-    
-    # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
-    y = check_page_break(y, 30)
-    texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
-    y = dibujar_texto_justificado(texto_c3, y)
-    y -= 8
-    
-    # Considerando final
-    y = check_page_break(y, 40)
-    y = dibujar_texto_justificado(textos['considerando_final'], y)
-    y -= espaciado_secciones
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando:
+        c.setFont(font_normal, fuente_cuerpo)
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        texto_procesado = texto_considerando
+        try:
+            texto_procesado = texto_procesado.replace('(tipo_tramite)', tipo_tramite or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula_inmobiliaria)', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('(npn)', npn or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', npn or '')
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(direccion)', direccion or '')
+            texto_procesado = texto_procesado.replace('(avaluo)', avaluo or '')
+        except Exception:
+            pass
+        y = dibujar_texto_justificado(texto_procesado, y)
+        y -= espaciado_secciones
+    else:
+        # Usar la plantilla estándar
+        # Considerando 1
+        c.setFont(font_normal, fuente_cuerpo)
+        texto_c1 = textos['considerando_1'].replace('{tipo_tramite}', tipo_tramite).replace('{radicado}', radicado)
+        y = dibujar_texto_justificado(texto_c1, y)
+        y -= 8
+        
+        # Considerando 2 - Intro
+        y = check_page_break(y, 30)
+        y = dibujar_texto_justificado(textos['considerando_2_intro'], y)
+        
+        # Lista de documentos
+        for doc in textos['considerando_2_docs']:
+            y = check_page_break(y, 15)
+            doc_texto = doc.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or '---')
+            c.drawString(left_margin + 15, y, f"• {doc_texto}")
+            y -= espaciado_parrafos
+        y -= 8
+        
+        # Considerando 3 - Ya no usa codigo_catastral_anterior, solo npn
+        y = check_page_break(y, 30)
+        texto_c3 = textos['considerando_3'].replace('{npn}', npn or '')
+        y = dibujar_texto_justificado(texto_c3, y)
+        y -= 8
+        
+        # Considerando final
+        y = check_page_break(y, 40)
+        y = dibujar_texto_justificado(textos['considerando_final'], y)
+        y -= espaciado_secciones
     
     # === RESUELVE ===
     y = check_page_break(y, 30)

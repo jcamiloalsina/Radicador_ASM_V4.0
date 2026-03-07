@@ -35,6 +35,40 @@ ROJO_CANCELACION = colors.HexColor('#C00000')
 VERDE_INSCRIPCION = colors.HexColor('#008000')
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m5_plantilla_cancelacion():
     """Plantilla para Cancelación de Predio"""
     return {
@@ -42,8 +76,8 @@ def get_m5_plantilla_cancelacion():
         "subtipo": "cancelacion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE CANCELACIÓN DE PREDIO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
             "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
@@ -51,7 +85,8 @@ def get_m5_plantilla_cancelacion():
         ),
         "considerando_solicitud": (
             "Qué, el/la señor(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la CANCELACIÓN del predio identificado con código predial nacional {codigo_predial}, "
             "lo anterior en su calidad de propietario(a) del predio."
         ),
@@ -111,8 +146,8 @@ def get_m5_plantilla_inscripcion():
         "subtipo": "inscripcion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE INSCRIPCIÓN DE PREDIO NUEVO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
             "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
@@ -120,7 +155,8 @@ def get_m5_plantilla_inscripcion():
         ),
         "considerando_solicitud": (
             "Qué, el/la señor(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita la INSCRIPCIÓN de un predio nuevo en el catastro municipal, identificado con la matrícula "
             "inmobiliaria No. {matricula_inmobiliaria}, lo anterior en su calidad de propietario(a) del predio."
         ),
@@ -179,6 +215,7 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # Obtener datos
     subtipo = data.get('subtipo', 'inscripcion')
     plantilla = get_m5_plantilla_cancelacion() if subtipo == 'cancelacion' else get_m5_plantilla_inscripcion()
+    texto_considerando_personalizado = data.get('texto_considerando')  # Texto personalizado de considerandos
     
     municipio = data.get('municipio', '').upper()
     numero_resolucion = data.get('numero_resolucion', '')
@@ -198,15 +235,16 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     predio = data.get('predio_m5', data.get('predio', {}))
     solicitante = data.get('solicitante', {})
     
-    # Datos del predio
+    # Datos del predio - OBTENER DE R1/R2
+    datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
     codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_predial', ''))
-    matricula = predio.get('matricula_inmobiliaria', '')
-    area_terreno = predio.get('area_terreno', 0)
-    area_construida = predio.get('area_construida', 0)
-    destino_economico = predio.get('destino_economico', 'A')
-    avaluo = predio.get('avaluo', predio.get('avaluo_catastral', 0))
-    direccion = predio.get('direccion', '')
-    codigo_homologado = predio.get('codigo_homologado', '')
+    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or "Sin información"
+    area_terreno = datos_r1_r2.get('area_terreno', 0)
+    area_construida = datos_r1_r2.get('area_construida', 0)
+    destino_economico = datos_r1_r2.get('destino_economico', 'A')
+    avaluo = datos_r1_r2.get('avaluo', 0) or predio.get('avaluo', predio.get('avaluo_catastral', 0))
+    direccion = datos_r1_r2.get('direccion', '')
+    codigo_homologado = datos_r1_r2.get('codigo_homologado', '')
     
     # Propietarios
     propietarios = predio.get('propietarios', [])
@@ -282,10 +320,24 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
             return f"${valor}"
     
     def formatear_area(valor):
+        """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
         try:
-            return f"{float(valor):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+            area = float(valor or 0)
+            if area == 0:
+                return "0 m²"
+            
+            hectareas = int(area // 10000)
+            metros = area % 10000
+            
+            if hectareas > 0:
+                # Formato: 84 ha 3.750 m²
+                metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                return f"{hectareas} ha {metros_fmt} m²"
+            else:
+                # Solo metros cuadrados con separador de miles
+                return f"{area:,.0f}".replace(",", ".") + " m²"
         except:
-            return f"{valor} m²"
+            return str(valor or "0") + " m²"
     
     # ==========================================
     # FUNCIONES DE DIBUJO (IDÉNTICAS A M2/M4)
@@ -600,14 +652,15 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     # ==========================================
     y_position = draw_header()
     
-    # Número de resolución y fecha
+    # Número de resolución
     c.setFillColor(NEGRO)
     c.setFont(font_bold, 12)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No. {numero_resolucion}")
     y_position -= 16
     
-    c.setFont(font_normal, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"({fecha_resolucion})")
+    # Fecha de resolución - Igual a M1
+    c.setFont(font_bold, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
     y_position -= 25
     
     # Título
@@ -625,43 +678,62 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     dibujar_seccion_titulo("CONSIDERANDO:")
     y_position -= 5
     
-    # Intro
-    c.setFillColor(NEGRO)
-    dibujar_texto_justificado(plantilla["considerando_intro"])
-    y_position -= 10
-    
-    # Solicitud
-    texto_solicitud = plantilla["considerando_solicitud"].format(
-        solicitante_nombre=solicitante_nombre,
-        solicitante_documento=solicitante_documento,
-        radicado=radicado,
-        codigo_predial=codigo_predial,
-        matricula_inmobiliaria=matricula
-    )
-    dibujar_texto_justificado(texto_solicitud)
-    y_position -= 10
-    
-    # Motivo
-    texto_motivo = plantilla["considerando_motivo"].format(motivo_solicitud=motivo_solicitud)
-    dibujar_texto_justificado(texto_motivo)
-    y_position -= 10
-    
-    # Análisis
-    dibujar_texto_justificado(plantilla["considerando_analisis"])
-    y_position -= 10
-    
-    # Doble inscripción (solo para cancelación)
-    if subtipo == 'cancelacion' and es_doble_inscripcion and codigo_predio_duplicado:
-        texto_doble = plantilla["considerando_doble_inscripcion"].format(
-            codigo_predial=codigo_predial,
-            codigo_predio_duplicado=codigo_predio_duplicado
-        )
-        dibujar_texto_justificado(texto_doble)
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        texto_procesado = texto_considerando_personalizado
+        try:
+            texto_procesado = texto_procesado.replace('(solicitante)', solicitante_nombre or '')
+            texto_procesado = texto_procesado.replace('(documento)', solicitante_documento or '')
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', codigo_predial or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula or '')
+            texto_procesado = texto_procesado.replace('(vigencia)', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
+        except Exception:
+            pass
+        c.setFillColor(NEGRO)
+        dibujar_texto_justificado(texto_procesado)
+        y_position -= 15
+    else:
+        # Usar plantilla estándar
+        # Intro
+        c.setFillColor(NEGRO)
+        dibujar_texto_justificado(plantilla["considerando_intro"])
         y_position -= 10
-    
-    # Legal
-    dibujar_texto_justificado(plantilla["considerando_legal"])
-    y_position -= 15
+        
+        # Solicitud
+        texto_solicitud = plantilla["considerando_solicitud"].format(
+            solicitante_nombre=solicitante_nombre,
+            solicitante_documento=solicitante_documento,
+            radicado=radicado,
+            codigo_predial=codigo_predial,
+            matricula_inmobiliaria=matricula
+        )
+        dibujar_texto_justificado(texto_solicitud)
+        y_position -= 10
+        
+        # Motivo
+        texto_motivo = plantilla["considerando_motivo"].format(motivo_solicitud=motivo_solicitud)
+        dibujar_texto_justificado(texto_motivo)
+        y_position -= 10
+        
+        # Análisis
+        dibujar_texto_justificado(plantilla["considerando_analisis"])
+        y_position -= 10
+        
+        # Doble inscripción (solo para cancelación)
+        if subtipo == 'cancelacion' and es_doble_inscripcion and codigo_predio_duplicado:
+            texto_doble = plantilla["considerando_doble_inscripcion"].format(
+                codigo_predial=codigo_predial,
+                codigo_predio_duplicado=codigo_predio_duplicado
+            )
+            dibujar_texto_justificado(texto_doble)
+            y_position -= 10
+        
+        # Legal
+        dibujar_texto_justificado(plantilla["considerando_legal"])
+        y_position -= 15
     
     # ==========================================
     # RESUELVE

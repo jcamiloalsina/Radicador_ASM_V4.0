@@ -14,7 +14,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
-  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight
+  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -185,6 +185,10 @@ export default function Predios() {
   // Estado para determinar si el predio usa formato automático (R2→R1) o manual
   const [usarFormatoAutomatico, setUsarFormatoAutomatico] = useState(false);
   const [prediosEliminados, setPrediosEliminados] = useState([]);
+  const [prediosEliminadosFiltrados, setPrediosEliminadosFiltrados] = useState([]);
+  const [eliminadosSearch, setEliminadosSearch] = useState('');
+  const [eliminadosMunicipio, setEliminadosMunicipio] = useState('');
+  const [eliminadosLoading, setEliminadosLoading] = useState(false);
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [cambiosHistorial, setCambiosHistorial] = useState([]);
   const [historialTab, setHistorialTab] = useState('pendientes');
@@ -1986,18 +1990,44 @@ export default function Predios() {
     }
   };
 
-  const fetchPrediosEliminados = async () => {
+  const fetchPrediosEliminados = async (municipioFilter = '') => {
+    setEliminadosLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/predios/eliminados`, {
+      const params = new URLSearchParams();
+      if (municipioFilter) params.append('municipio', municipioFilter);
+      params.append('limit', '500');
+      
+      const res = await axios.get(`${API}/predios/eliminados?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPrediosEliminados(res.data.predios);
+      setPrediosEliminados(res.data.predios || []);
+      setPrediosEliminadosFiltrados(res.data.predios || []);
       setShowDeletedDialog(true);
     } catch (error) {
       toast.error('Error al cargar predios eliminados');
+    } finally {
+      setEliminadosLoading(false);
     }
   };
+  
+  // Filtrar predios eliminados por búsqueda local
+  useEffect(() => {
+    if (!eliminadosSearch.trim()) {
+      setPrediosEliminadosFiltrados(prediosEliminados);
+      return;
+    }
+    
+    const searchLower = eliminadosSearch.toLowerCase();
+    const filtered = prediosEliminados.filter(p => 
+      p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+      p.codigo_homologado?.toLowerCase().includes(searchLower) ||
+      p.nombre_propietario?.toLowerCase().includes(searchLower) ||
+      p.municipio?.toLowerCase().includes(searchLower) ||
+      p.motivo?.toLowerCase().includes(searchLower)
+    );
+    setPrediosEliminadosFiltrados(filtered);
+  }, [eliminadosSearch, prediosEliminados]);
 
   const fetchCambiosStats = async () => {
     try {
@@ -2963,6 +2993,18 @@ export default function Predios() {
               Exportar Excel
             </Button>
           )}
+          
+          {/* Botón Predios Eliminados */}
+          {!showDashboard && ['administrador', 'coordinador'].includes(user?.role) && (
+            <Button 
+              variant="outline" 
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={fetchPrediosEliminados}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminados
+            </Button>
+          )}
         </div>
       </div>
 
@@ -3046,15 +3088,10 @@ export default function Predios() {
                         key={item.municipio}
                         municipio={item.municipio}
                         count={item.count}
-                        reaparicionesCount={reaparicionesCount}
-                        showReapariciones={user && ['coordinador', 'administrador'].includes(user.role)}
+                        showReapariciones={false}
                         onSelect={() => {
                           setFilterMunicipio(item.municipio);
                           setFilterVigencia(String(vigenciaReciente || '2025'));
-                        }}
-                        onReaparicionesClick={() => {
-                          setFilterMunicipio(item.municipio);
-                          setShowReaparicionesDialog(true);
                         }}
                       />
                     );
@@ -3314,6 +3351,8 @@ export default function Predios() {
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Matrícula</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario(s)</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Dirección</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Área Terreno</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Área Construida</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Destino</th>
                       <th className="text-right py-3 px-4 font-semibold text-slate-700">Avalúo</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Acciones</th>
@@ -3322,7 +3361,7 @@ export default function Predios() {
                   <tbody>
                     {predios.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="py-8 text-center text-slate-500">
+                        <td colSpan="9" className="py-8 text-center text-slate-500">
                           No hay predios registrados para este municipio y vigencia
                         </td>
                       </tr>
@@ -3334,11 +3373,18 @@ export default function Predios() {
                         const paginatedPredios = predios.slice(startIndex, endIndex);
                         
                         return paginatedPredios.map((predio) => (
-                        <tr key={predio.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        <tr key={predio.id} className={`border-b border-slate-100 hover:bg-slate-50 ${predio.bloqueado ? 'bg-red-50' : ''}`}>
                           <td className="py-3 px-4">
-                            <div>
-                              <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
-                              <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
+                            <div className="flex items-center gap-2">
+                              {predio.bloqueado && (
+                                <span className="flex items-center gap-1 bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full" title={`Bloqueado: ${predio.bloqueo_info?.motivo || 'Proceso legal'}`}>
+                                  <Lock className="w-3 h-3" />
+                                </span>
+                              )}
+                              <div>
+                                <p className="font-mono text-xs font-medium text-emerald-800">{predio.codigo_predial_nacional}</p>
+                                <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado}</p>
+                              </div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
@@ -3365,6 +3411,12 @@ export default function Predios() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-slate-700 max-w-[200px] truncate">{predio.direccion}</td>
+                          <td className="py-3 px-4 text-right text-slate-700 whitespace-nowrap text-xs">
+                            {formatAreaHectareas(predio.area_terreno)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-700 whitespace-nowrap text-xs">
+                            {formatAreaHectareas(predio.area_construida)}
+                          </td>
                           <td className="py-3 px-4 text-center">
                             <Badge className="bg-emerald-100 text-emerald-800">
                               {predio.destino_economico}
@@ -5057,12 +5109,19 @@ export default function Predios() {
       </Dialog>
 
       {/* Deleted Predios Dialog */}
-      <Dialog open={showDeletedDialog} onOpenChange={setShowDeletedDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showDeletedDialog} onOpenChange={(open) => {
+        setShowDeletedDialog(open);
+        if (!open) {
+          setEliminadosSearch('');
+          setEliminadosMunicipio('');
+        }
+      }}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-red-700">
               <AlertTriangle className="w-5 h-5" />
               Predios Eliminados
+              <Badge variant="destructive" className="ml-2">{prediosEliminados.length} total</Badge>
             </DialogTitle>
           </DialogHeader>
           
@@ -5071,18 +5130,67 @@ export default function Predios() {
               Los siguientes predios han sido eliminados del sistema. Sus números de terreno no pueden ser reutilizados.
             </p>
             
-            {prediosEliminados.length === 0 ? (
+            {/* Filtros y búsqueda */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por código, propietario, municipio o motivo..."
+                  value={eliminadosSearch}
+                  onChange={(e) => setEliminadosSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+                value={eliminadosMunicipio}
+                onChange={(e) => {
+                  setEliminadosMunicipio(e.target.value);
+                  fetchPrediosEliminados(e.target.value);
+                }}
+              >
+                <option value="">Todos los municipios</option>
+                <option value="Ábrego">Ábrego</option>
+                <option value="Bucarasica">Bucarasica</option>
+                <option value="Cáchira">Cáchira</option>
+                <option value="Convención">Convención</option>
+                <option value="El Carmen">El Carmen</option>
+                <option value="El Tarra">El Tarra</option>
+                <option value="Hacarí">Hacarí</option>
+                <option value="La Esperanza">La Esperanza</option>
+                <option value="La Playa">La Playa</option>
+                <option value="Río de Oro">Río de Oro</option>
+                <option value="San Calixto">San Calixto</option>
+                <option value="Sardinata">Sardinata</option>
+                <option value="Teorama">Teorama</option>
+              </select>
+            </div>
+            
+            {/* Contador de resultados filtrados */}
+            {eliminadosSearch && (
+              <p className="text-sm text-slate-500">
+                Mostrando {prediosEliminadosFiltrados.length} de {prediosEliminados.length} predios
+              </p>
+            )}
+            
+            {eliminadosLoading ? (
               <div className="py-8 text-center text-slate-500">
-                No hay predios eliminados
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Cargando predios eliminados...
+              </div>
+            ) : prediosEliminadosFiltrados.length === 0 ? (
+              <div className="py-8 text-center text-slate-500">
+                {eliminadosSearch ? 'No se encontraron predios con esos criterios' : 'No hay predios eliminados'}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 bg-white">
                     <tr className="border-b border-slate-200 bg-red-50">
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Municipio</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Vigencia</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
@@ -5090,27 +5198,37 @@ export default function Predios() {
                     </tr>
                   </thead>
                   <tbody>
-                    {prediosEliminados.map((predio) => (
-                      <tr key={predio.id} className="border-b border-slate-100 hover:bg-red-50/50">
+                    {prediosEliminadosFiltrados.map((predio, idx) => {
+                      // Buscar quién generó la resolución de eliminación
+                      const resolucionEliminacion = predio.resolucion_eliminacion || predio.resolucion;
+                      const historialRes = predio.historial_resoluciones || [];
+                      const registroEliminacion = historialRes.find(h => h.numero_resolucion === resolucionEliminacion);
+                      const eliminadoPor = registroEliminacion?.generado_por || predio.eliminado_por || predio.deleted_by_name || 'N/A';
+                      
+                      return (
+                      <tr key={predio.id || idx} className="border-b border-slate-100 hover:bg-red-50/50">
                         <td className="py-3 px-4">
-                          <p className="font-medium text-slate-900">{predio.codigo_homologado || predio.codigo_predial_nacional?.slice(-10)}</p>
-                          <p className="text-xs text-slate-500 font-mono">{predio.codigo_predial_nacional?.slice(0, 20)}...</p>
+                          <p className="font-mono text-xs font-medium text-slate-900">{predio.codigo_predial_nacional}</p>
+                          <p className="text-xs text-slate-500">Homologado: {predio.codigo_homologado || 'N/A'}</p>
                         </td>
-                        <td className="py-3 px-4 text-slate-700">{predio.nombre_propietario || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-700">
+                          {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
+                        </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia || predio.vigencia_eliminacion || 'N/A'}</td>
                         <td className="py-3 px-4">
-                          <span className="font-medium text-red-700">{predio.resolucion || 'N/A'}</span>
+                          <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>
-                        <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={predio.motivo}>
-                          {predio.motivo || 'N/A'}
+                        <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={predio.motivo_eliminacion || predio.motivo}>
+                          {predio.motivo_eliminacion || predio.motivo || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-500">
                           {predio.eliminado_en ? new Date(predio.eliminado_en).toLocaleDateString('es-CO') : 
                            predio.deleted_at ? new Date(predio.deleted_at).toLocaleDateString('es-CO') : 'N/A'}
                         </td>
-                        <td className="py-3 px-4 text-slate-500">{predio.eliminado_por || predio.deleted_by_name || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-500">{eliminadoPor}</td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -5457,6 +5575,48 @@ export default function Predios() {
           
           {selectedPredio && (
             <div className="space-y-6">
+              {/* Indicador de Bloqueo */}
+              {selectedPredio.bloqueado && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="w-5 h-5 text-red-600" />
+                    <h3 className="font-semibold text-red-800">Predio Bloqueado por Proceso Legal</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-red-600">Motivo:</span>
+                      <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info?.motivo || 'Sin información'}</p>
+                    </div>
+                    <div>
+                      <span className="text-red-600">Bloqueado por:</span>
+                      <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info?.bloqueado_por_nombre || 'Sin información'}</p>
+                    </div>
+                    {selectedPredio.bloqueo_info?.numero_proceso && (
+                      <div>
+                        <span className="text-red-600">Número de Proceso:</span>
+                        <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info.numero_proceso}</p>
+                      </div>
+                    )}
+                    {selectedPredio.bloqueo_info?.entidad_judicial && (
+                      <div>
+                        <span className="text-red-600">Entidad Judicial:</span>
+                        <p className="text-red-800 font-medium">{selectedPredio.bloqueo_info.entidad_judicial}</p>
+                      </div>
+                    )}
+                    {selectedPredio.bloqueo_info?.fecha_bloqueo && (
+                      <div className="col-span-2">
+                        <span className="text-red-600">Fecha de Bloqueo:</span>
+                        <p className="text-red-800 font-medium">
+                          {new Date(selectedPredio.bloqueo_info.fecha_bloqueo).toLocaleDateString('es-CO', {
+                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Nota informativa sobre edición - Link clickeable */}
               <div 
                 className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"

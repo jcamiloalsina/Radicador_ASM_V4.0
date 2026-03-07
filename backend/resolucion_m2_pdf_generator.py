@@ -33,6 +33,40 @@ NEGRO = colors.HexColor('#000000')
 BLANCO = colors.HexColor('#FFFFFF')
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m2_plantilla():
     """Retorna la plantilla de textos para M2 - Desengloble/Englobe"""
     return {
@@ -49,7 +83,7 @@ def get_m2_plantilla():
             "Qué, el señor {solicitante_nombre}, identificado con la Cédula de Ciudadanía No. {solicitante_documento}, "
             "en su condición de propietario de un predio que hace parte de uno de mayor "
             "extensión identificado con el código catastral {codigo_origen}, del Municipio de {municipio}, "
-            "radicó con el número {radicado}, ante el Gestor catastral de Asociación de Municipios del Catatumbo, "
+            "radicó con el número {radicado}, ante el Gestor Catastral de la Asociación de Municipios del Catatumbo, "
             "Provincia de Ocaña y Sur del Cesar – Asomunicipios, una solicitud de trámite catastral "
             "con Radicado {radicado} y soportado en los siguientes documentos justificativos:"
         ),
@@ -102,6 +136,7 @@ def generate_resolucion_m2_pdf(
     imagen_firma_b64: str = None,
     elaboro: str = "",
     aprobo: str = "",
+    texto_considerando: str = None,  # Texto personalizado para considerandos
 ) -> bytes:
     """
     Genera un PDF de resolución M2 (Englobe/Desengloble)
@@ -114,22 +149,24 @@ def generate_resolucion_m2_pdf(
     
     # Helper para formatear área con unidades de medida
     def formatear_area(area_valor):
-        """Formatear área con formato colombiano: punto para miles, coma para decimales"""
+        """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
         try:
             area = float(area_valor or 0)
-            # Formato colombiano: 1.044,70 m²
-            parte_entera = int(area)
-            parte_decimal = area - parte_entera
+            if area == 0:
+                return "0 m²"
             
-            # Formatear parte entera con puntos como separador de miles
-            parte_entera_str = f"{parte_entera:,}".replace(",", ".")
+            hectareas = int(area // 10000)
+            metros = area % 10000
             
-            # Formatear parte decimal con coma (2 decimales)
-            parte_decimal_str = f"{parte_decimal:.2f}"[1:].replace(".", ",")
-            
-            return f"{parte_entera_str}{parte_decimal_str} m²"
+            if hectareas > 0:
+                # Formato: 84 ha 3.750 m²
+                metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                return f"{hectareas} ha {metros_fmt} m²"
+            else:
+                # Solo metros cuadrados con separador de miles
+                return f"{area:,.0f}".replace(",", ".") + " m²"
         except:
-            return str(area_valor or "0")
+            return str(area_valor or "0") + " m²"
     
     # Registrar fuentes
     try:
@@ -203,7 +240,7 @@ def generate_resolucion_m2_pdf(
         else:
             c.setFillColor(VERDE_INSTITUCIONAL)
             c.setFont(font_bold, 14)
-            c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, "ASOMUNICIPIOS - Gestor Catastral")
+            c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         
         y_position = PAGE_HEIGHT - 2.8 * cm
         return y_position
@@ -342,49 +379,67 @@ def generate_resolucion_m2_pdf(
     npn_origen = predios_cancelados[0].get("npn", "") if predios_cancelados else ""
     matricula_origen = predios_cancelados[0].get("matricula_inmobiliaria", "") if predios_cancelados else ""
     
-    considerando_intro = plantilla["considerando_intro"].format(
-        solicitante_nombre=solicitante.get("nombre", ""),
-        solicitante_documento=solicitante.get("documento", ""),
-        municipio=municipio,
-        codigo_origen=codigo_origen,
-        radicado=radicado
-    )
-    dibujar_texto_justificado(considerando_intro, font_size=10)
-    y_position -= 10
-    
-    # Documentos soporte (bullets)
-    # Obtener las matrículas de los predios a inscribir (los nuevos)
-    matriculas_inscritos = []
-    for predio in predios_inscritos:
-        mat = predio.get("matricula_inmobiliaria", "")
-        if mat and mat not in matriculas_inscritos:
-            matriculas_inscritos.append(mat)
-    matriculas_texto = ", ".join(matriculas_inscritos) if matriculas_inscritos else matricula_origen
-    
-    c.setFont(font_normal, 10)
-    for doc in plantilla["documentos_soporte"]:
-        verificar_espacio(20)
-        doc_formateado = doc.format(
-            matricula=matriculas_texto
-        )
-        c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
-        y_position -= 14
-    y_position -= 10
-    
-    # Considerando estudio
-    if subtipo == "desengloble":
-        considerando_estudio = plantilla["considerando_estudio_desengloble"].format(
-            codigo_origen=codigo_origen,
-            npn_origen=npn_origen
-        )
+    # Si hay texto personalizado de considerandos, usarlo
+    if texto_considerando:
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        texto_procesado = texto_considerando
+        try:
+            texto_procesado = texto_procesado.replace('(solicitante)', solicitante.get("nombre", ""))
+            texto_procesado = texto_procesado.replace('(documento)', solicitante.get("documento", ""))
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', codigo_origen or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula_origen or '')
+            texto_procesado = texto_procesado.replace('(subtipo)', subtipo or '')
+        except Exception:
+            pass
+        dibujar_texto_justificado(texto_procesado, font_size=10)
+        y_position -= 15
     else:
-        considerando_estudio = plantilla["considerando_estudio_englobe"]
-    dibujar_texto_justificado(considerando_estudio, font_size=10)
-    y_position -= 10
-    
-    # Considerando final
-    dibujar_texto_justificado(plantilla["considerando_final"], font_size=10)
-    y_position -= 15
+        # Usar plantilla estándar
+        considerando_intro = plantilla["considerando_intro"].format(
+            solicitante_nombre=solicitante.get("nombre", ""),
+            solicitante_documento=solicitante.get("documento", ""),
+            municipio=municipio,
+            codigo_origen=codigo_origen,
+            radicado=radicado
+        )
+        dibujar_texto_justificado(considerando_intro, font_size=10)
+        y_position -= 10
+        
+        # Documentos soporte (bullets)
+        # Obtener las matrículas de los predios a inscribir (los nuevos)
+        matriculas_inscritos = []
+        for predio in predios_inscritos:
+            mat = predio.get("matricula_inmobiliaria", "")
+            if mat and mat not in matriculas_inscritos:
+                matriculas_inscritos.append(mat)
+        matriculas_texto = ", ".join(matriculas_inscritos) if matriculas_inscritos else matricula_origen
+        
+        c.setFont(font_normal, 10)
+        for doc in plantilla["documentos_soporte"]:
+            verificar_espacio(20)
+            doc_formateado = doc.format(
+                matricula=matriculas_texto
+            )
+            c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
+            y_position -= 14
+        y_position -= 10
+        
+        # Considerando estudio
+        if subtipo == "desengloble":
+            considerando_estudio = plantilla["considerando_estudio_desengloble"].format(
+                codigo_origen=codigo_origen,
+                npn_origen=npn_origen
+            )
+        else:
+            considerando_estudio = plantilla["considerando_estudio_englobe"]
+        dibujar_texto_justificado(considerando_estudio, font_size=10)
+        y_position -= 10
+        
+        # Considerando final
+        dibujar_texto_justificado(plantilla["considerando_final"], font_size=10)
+        y_position -= 15
     
     # RESUELVE
     dibujar_seccion_titulo("RESUELVE")
@@ -488,13 +543,15 @@ def generate_resolucion_m2_pdf(
             x += col_widths2[i]
         y_position -= 12
         
-        # Valores
+        # Valores - OBTENER DE R1/R2
         c.setFont(font_normal, 7)
-        codigo_hom = predio.get("codigo_homologado", "")
-        direccion = predio.get("direccion", "")[:20]
-        area_terreno = predio.get("area_terreno", 0)
-        area_construida = predio.get("area_construida", 0)
-        avaluo = predio.get("avaluo", 0)
+        datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
+        codigo_hom = datos_r1_r2.get("codigo_homologado", "")
+        direccion = (datos_r1_r2.get("direccion", "") or "")[:20]
+        area_terreno = datos_r1_r2.get("area_terreno", 0)
+        area_construida = datos_r1_r2.get("area_construida", 0)
+        avaluo = datos_r1_r2.get("avaluo", 0)
+        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
         
         # Formatear áreas con unidades
         area_terreno_fmt = formatear_area(area_terreno)
@@ -535,7 +592,7 @@ def generate_resolucion_m2_pdf(
         c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 9, "MATRÍCULA INMOBILIARIA")
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
-        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, predio.get("matricula_inmobiliaria", ""))
+        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
         y_position -= 15
         
         # =====================

@@ -1,0 +1,63 @@
+{
+  "summary": "Completed testing of 'Rectificación de Área' mutation feature. All 11 backend API tests passed. Frontend UI verified: mutation type is enabled, form opens correctly with all fields (municipio, radicado, predio search), predio selection shows current and new area fields. Bug fix applied: POST /api/solicitudes-mutacion now includes RECTIFICACION_AREA in the switch case for direct approval (was missing before).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Rectificación de Área form", "issues": ["First predio in search results shows 'Sin dirección' and 'Sin propietario' - this is a data issue, not UI"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rectificacion_area.py",
+    "/app/test_reports/pytest/pytest_results_rectificacion_area.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BUG FIX APPLIED: Added RECTIFICACION_AREA to switch case in POST /api/solicitudes-mutacion (line ~28920). Previously only M2, M3, M4, M5 were handled - M6/RECTIFICACION_AREA fell through to M1 logic which would fail.",
+    "VERIFIED: _generar_resolucion_m6_interno function exists (lines 15349-15650) and correctly generates PDF",
+    "VERIFIED: resolucion_m6_pdf_generator.py exists with generate_m6_resolution_pdf function",
+    "VERIFIED: SolicitudMutacionCreate model includes predio_rectificacion, area_terreno_anterior/nueva, area_construida_anterior/nueva fields (lines 688-695)",
+    "VERIFIED: Frontend TIPOS_MUTACION config has RECTIFICACION_AREA with enabled: true (line 63-69)",
+    "VERIFIED: renderFormularioRectificacionArea renders complete form with municipio, radicado, predio search, area fields",
+    "VERIFIED: generarResolucionRectificacion sends POST to /api/solicitudes-mutacion with tipo='RECTIFICACION_AREA'"
+  ],
+  "updated_files": [
+    "/app/backend/server.py",
+    "/app/backend/tests/test_rectificacion_area.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": {
+    "email": "catastro@asomunicipios.gov.co",
+    "password": "Asm*123*",
+    "role": "administrador"
+  },
+  "seed_data_creation": "No seed data created - used existing predios from El Carmen",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Rectificación de Área feature is fully implemented and tested. The switch case bug in POST /api/solicitudes-mutacion has been fixed - RECTIFICACION_AREA type now correctly routes to _generar_resolucion_m6_interno. PDF generation uses resolucion_m6_pdf_generator.py module.",
+  "features_verified": [
+    "1. RECTIFICACION_AREA type enabled in TIPOS_MUTACION config with badge visible",
+    "2. Clicking 'Rectificación de Área' opens form dialog with all required fields",
+    "3. Municipio dropdown works and populates with 12 municipios",
+    "4. Radicado input field accepts text input",
+    "5. Predio search works - found 20 results for El Carmen",
+    "6. Selecting predio shows: Código Predial, Matrícula, Dirección, Propietario",
+    "7. Area fields shown: Área Terreno Actual (disabled), Nueva Área Terreno (editable), Área Construcción Actual (disabled), Nueva Área Construcción (editable), Nuevo Avalúo (editable)",
+    "8. POST /api/solicitudes-mutacion accepts tipo='RECTIFICACION_AREA' and generates PDF",
+    "9. _generar_resolucion_m6_interno correctly updates predio with new areas in DB",
+    "10. PDF can be downloaded via /api/resoluciones/descargar/{filename}"
+  ],
+  "bug_fix_applied": {
+    "file": "/app/backend/server.py",
+    "line_range": "~28920-28930",
+    "description": "Added elif clause for RECTIFICACION_AREA type in POST /api/solicitudes-mutacion endpoint switch case. Before fix, RECTIFICACION_AREA fell through to M1 logic which would fail.",
+    "code_change": "Added: elif tipo_mutacion in ['M6', 'RECTIFICACION_AREA']: pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)"
+  }
+}

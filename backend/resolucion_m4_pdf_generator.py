@@ -32,6 +32,40 @@ NEGRO = colors.black
 BLANCO = colors.white
 
 
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de cancelación/inscripción.
+    R1: codigo_homologado, direccion, destino_economico, area_terreno, area_construida, avaluo
+    R2: matricula_inmobiliaria
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': ''
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', ''),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    }
+
+
 def get_m4_plantilla_revision():
     """Plantilla para Revisión de Avalúo"""
     return {
@@ -39,8 +73,8 @@ def get_m4_plantilla_revision():
         "subtipo": "revision_avaluo",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE REVISIÓN DE AVALÚO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
             "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
@@ -48,7 +82,8 @@ def get_m4_plantilla_revision():
         ),
         "considerando_solicitud": (
             "Qué, el señor {solicitante_nombre}, identificado con cédula de ciudadanía No. {solicitante_documento}, "
-            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de Asomunicipios con el No. {radicado}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
             "donde solicita una revisión de avalúo catastral, para el código predial nacional {codigo_predial}, "
             "lo anterior en su calidad de propietario del predio."
         ),
@@ -117,8 +152,8 @@ def get_m4_plantilla_autoestimacion():
         "subtipo": "autoestimacion",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA SOLICITUD DE AUTOESTIMACIÓN DE AVALÚO",
         "considerando_intro": (
-            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar "
-            "\"ASOMUNICIPIOS\" en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
             "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
             "el numeral 07 del artículo 30 del decreto 846 del 29 de julio de 2021, el decreto 148 del 2020 "
             "y la resolución IGAC 1040 del 2023: \"por la cual se actualiza la reglamentación técnica de la "
@@ -251,12 +286,15 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     elaboro = data.get('elaborado_por', '')
     aprobo = data.get('revisado_por', plantilla['firmante_nombre'])
     
-    # Datos del predio
+    # Datos del predio - OBTENER DE R1/R2
+    datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
     codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_catastral', ''))
-    matricula = predio.get('matricula_inmobiliaria', '')
-    area_terreno = predio.get('area_terreno', 0)
-    area_construida = predio.get('area_construida', 0)
-    destino_economico = predio.get('destino_economico', '')
+    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or "Sin información"
+    area_terreno = datos_r1_r2.get('area_terreno', 0)
+    area_construida = datos_r1_r2.get('area_construida', 0)
+    destino_economico = datos_r1_r2.get('destino_economico', '')
+    codigo_homologado_predio = datos_r1_r2.get('codigo_homologado', '')
+    direccion_predio_r1 = datos_r1_r2.get('direccion', '')
     zona = 'rural' if predio.get('zona', '').lower() in ['rural', 'r', '00'] else 'urbana'
     
     # Datos del solicitante
@@ -270,6 +308,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     motivo_solicitud = data.get('motivo_solicitud', '')
     valor_autoestimado = data.get('valor_autoestimado', avaluo_nuevo)
     perito_avaluador = data.get('perito_avaluador', '')
+    texto_considerando_personalizado = data.get('texto_considerando')  # Texto personalizado de considerandos
     
     # Usar código de verificación del servidor o generar uno local
     fecha_hora_gen = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -430,62 +469,83 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     dibujar_texto_justificado(plantilla['considerando_intro'])
     y_position -= 10
     
-    # Considerando solicitud
-    if subtipo == 'revision_avaluo':
-        texto_solicitud = plantilla['considerando_solicitud'].format(
-            solicitante_nombre=solicitante_nombre,
-            solicitante_documento=solicitante_documento,
-            radicado=radicado,
-            codigo_predial=codigo_predial
-        )
+    # Usar texto personalizado si está disponible
+    if texto_considerando_personalizado:
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        try:
+            texto_considerando = texto_considerando_personalizado
+            texto_considerando = texto_considerando.replace('(solicitante)', solicitante_nombre)
+            texto_considerando = texto_considerando.replace('(documento)', solicitante_documento)
+            texto_considerando = texto_considerando.replace('(codigo_predial)', codigo_predial)
+            texto_considerando = texto_considerando.replace('(municipio)', municipio)
+            texto_considerando = texto_considerando.replace('(radicado)', radicado)
+            texto_considerando = texto_considerando.replace('(avaluo_anterior)', formatear_moneda(avaluo_anterior))
+            texto_considerando = texto_considerando.replace('(avaluo_nuevo)', formatear_moneda(avaluo_nuevo))
+            texto_considerando = texto_considerando.replace('(matricula)', matricula)
+            texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
+        except Exception:
+            texto_considerando = texto_considerando_personalizado
+        
+        dibujar_texto_justificado(texto_considerando)
+        y_position -= 10
     else:
-        texto_solicitud = plantilla['considerando_solicitud'].format(
-            solicitante_nombre=solicitante_nombre,
-            solicitante_documento=solicitante_documento,
-            codigo_predial=codigo_predial,
-            matricula_inmobiliaria=matricula,
-            radicado=radicado,
-            municipio=municipio,
-            valor_autoestimado=formatear_moneda(valor_autoestimado)
-        )
-    
-    dibujar_texto_justificado(texto_solicitud)
-    y_position -= 10
-    
-    # Considerando motivo (solo para revisión de avalúo)
-    if subtipo == 'revision_avaluo' and motivo_solicitud:
-        texto_motivo = plantilla['considerando_motivo'].format(motivo_solicitud=motivo_solicitud)
-        dibujar_texto_justificado(texto_motivo)
-        y_position -= 10
-    
-    # Considerando legal autoestimación
-    if subtipo == 'autoestimacion':
-        dibujar_texto_justificado(plantilla['considerando_legal_autoestimacion'])
-        y_position -= 10
-    
-    # Considerando análisis
-    if subtipo == 'revision_avaluo':
-        texto_analisis = plantilla['considerando_analisis'].format(
-            area_terreno=area_terreno,
-            area_construida=area_construida,
-            destino_economico=destino_economico
-        )
-        dibujar_texto_justificado(texto_analisis)
+        # Usar plantilla estándar
+        # Considerando solicitud
+        if subtipo == 'revision_avaluo':
+            texto_solicitud = plantilla['considerando_solicitud'].format(
+                solicitante_nombre=solicitante_nombre,
+                solicitante_documento=solicitante_documento,
+                radicado=radicado,
+                codigo_predial=codigo_predial
+            )
+        else:
+            texto_solicitud = plantilla['considerando_solicitud'].format(
+                solicitante_nombre=solicitante_nombre,
+                solicitante_documento=solicitante_documento,
+                codigo_predial=codigo_predial,
+                matricula_inmobiliaria=matricula,
+                radicado=radicado,
+                municipio=municipio,
+                valor_autoestimado=formatear_moneda(valor_autoestimado)
+            )
+        
+        dibujar_texto_justificado(texto_solicitud)
         y_position -= 10
         
-        texto_mod = plantilla['considerando_modificacion'].format(codigo_predial=codigo_predial)
-        dibujar_texto_justificado(texto_mod)
-        y_position -= 10
+        # Considerando motivo (solo para revisión de avalúo)
+        if subtipo == 'revision_avaluo' and motivo_solicitud:
+            texto_motivo = plantilla['considerando_motivo'].format(motivo_solicitud=motivo_solicitud)
+            dibujar_texto_justificado(texto_motivo)
+            y_position -= 10
         
-        dibujar_texto_justificado(plantilla['considerando_legal'])
-    else:
-        # Para autoestimación, formatear con el nombre del perito avaluador
-        texto_analisis_autoest = plantilla['considerando_analisis'].format(
-            perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
-        )
-        dibujar_texto_justificado(texto_analisis_autoest)
-        y_position -= 10
-        dibujar_texto_justificado(plantilla['considerando_legal_final'])
+        # Considerando legal autoestimación
+        if subtipo == 'autoestimacion':
+            dibujar_texto_justificado(plantilla['considerando_legal_autoestimacion'])
+            y_position -= 10
+        
+        # Considerando análisis
+        if subtipo == 'revision_avaluo':
+            texto_analisis = plantilla['considerando_analisis'].format(
+                area_terreno=area_terreno,
+                area_construida=area_construida,
+                destino_economico=destino_economico
+            )
+            dibujar_texto_justificado(texto_analisis)
+            y_position -= 10
+            
+            texto_mod = plantilla['considerando_modificacion'].format(codigo_predial=codigo_predial)
+            dibujar_texto_justificado(texto_mod)
+            y_position -= 10
+            
+            dibujar_texto_justificado(plantilla['considerando_legal'])
+        else:
+            # Para autoestimación, formatear con el nombre del perito avaluador
+            texto_analisis_autoest = plantilla['considerando_analisis'].format(
+                perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
+            )
+            dibujar_texto_justificado(texto_analisis_autoest)
+            y_position -= 10
+            dibujar_texto_justificado(plantilla['considerando_legal_final'])
     
     y_position -= 15
     
@@ -585,19 +645,34 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             x += col_widths2[i]
         y_position -= 12
         
-        # Valores de la fila 2
+        # Valores de la fila 2 - USAR DATOS DE R1/R2
         c.setFont(font_normal, 7)
-        codigo_hom = predio.get("codigo_homologado", "") if predio else ""
-        direccion_predio = (predio.get("direccion", "") if predio else "")[:20]
-        area_terreno_val = predio.get("area_terreno", 0) if predio else 0
-        area_construida_val = predio.get("area_construida", 0) if predio else 0
+        codigo_hom = codigo_homologado_predio  # Ya viene de R1
+        direccion_predio = (direccion_predio_r1 or "")[:20]  # Ya viene de R1
+        area_terreno_val = area_terreno  # Ya viene de R1
+        area_construida_val = area_construida  # Ya viene de R1
         
         # Valor de avalúo según cancelación o inscripción
         valor_avaluo = avaluo_anterior if es_cancelacion else avaluo_nuevo
         
-        # Formatear áreas
-        area_terreno_fmt = f"{float(area_terreno_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
-        area_construida_fmt = f"{float(area_construida_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+        # Formatear áreas: X ha X.XXX m² para áreas grandes
+        def formatear_area_local(valor):
+            try:
+                area = float(valor or 0)
+                if area == 0:
+                    return "0 m²"
+                hectareas = int(area // 10000)
+                metros = area % 10000
+                if hectareas > 0:
+                    metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                    return f"{hectareas} ha {metros_fmt} m²"
+                else:
+                    return f"{area:,.0f}".replace(",", ".") + " m²"
+            except:
+                return str(valor or "0") + " m²"
+        
+        area_terreno_fmt = formatear_area_local(area_terreno_val)
+        area_construida_fmt = formatear_area_local(area_construida_val)
         
         # Vigencia fiscal
         from datetime import datetime
@@ -655,20 +730,20 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         nonlocal y_position
         verificar_espacio(60)
         c.setFont(font_bold, 10)
-        c.drawString(MARGIN_LEFT, y_position, f"Artículo {num_articulo}.")
+        titulo = f"Artículo {num_articulo}. "
+        titulo_width = c.stringWidth(titulo, font_bold, 10)
+        c.drawString(MARGIN_LEFT, y_position, titulo)
         
-        # Calcular ancho para la primera línea (después de "Artículo X.")
-        indent = 60
         c.setFont(font_normal, 10)
         espacio_normal = c.stringWidth(' ', font_normal, 10)
         max_space = espacio_normal * 3
         
-        # Primera línea con indent
-        first_line_width = CONTENT_WIDTH - indent
+        # Primera línea después del título
+        first_line_width = CONTENT_WIDTH - titulo_width
         first_lines = simpleSplit(texto, font_normal, 10, first_line_width)
         
         if first_lines:
-            c.drawString(MARGIN_LEFT + indent, y_position, first_lines[0])
+            c.drawString(MARGIN_LEFT + titulo_width, y_position, first_lines[0])
             y_position -= 14
             
             # Texto restante después de la primera línea
@@ -676,7 +751,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             remaining_text = texto[first_line_len:].strip()
             
             if remaining_text:
-                # Líneas siguientes usando todo el CONTENT_WIDTH
+                # Líneas siguientes usando todo el CONTENT_WIDTH - JUSTIFICADAS
                 lines = simpleSplit(remaining_text, font_normal, 10, CONTENT_WIDTH)
                 
                 for i, line in enumerate(lines):
@@ -684,7 +759,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                     
                     line_width = c.stringWidth(line, font_normal, 10)
                     # Última línea o línea corta - no justificar
-                    if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.85:
+                    if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
                         c.drawString(MARGIN_LEFT, y_position, line)
                     else:
                         # Justificar
