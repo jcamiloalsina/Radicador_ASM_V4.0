@@ -6509,11 +6509,11 @@ async def recalcular_codigos_municipio(
 async def buscar_predios_por_municipio(
     municipio_codigo: str,
     q: str = "",
-    limit: int = 10,
+    limit: int = 15,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Busca predios en un municipio específico por código predial, dirección o propietario.
+    Busca predios en un municipio específico por código predial, dirección, propietario o matrícula.
     Usado para búsquedas rápidas en formularios de mutaciones y bloqueos.
     """
     if len(q) < 3:
@@ -6538,7 +6538,7 @@ async def buscar_predios_por_municipio(
     
     municipio_nombre = CODIGO_A_NOMBRE.get(municipio_codigo, "")
     
-    # Query de búsqueda - incluye búsqueda en array de propietarios
+    # Query de búsqueda - incluye búsqueda en array de propietarios y matrícula
     filtro = {
         "$and": [
             {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
@@ -6549,6 +6549,7 @@ async def buscar_predios_por_municipio(
             {"$or": [
                 {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
                 {"codigo_predial": {"$regex": q, "$options": "i"}},
+                {"numero_predio": {"$regex": q, "$options": "i"}},
                 {"direccion": {"$regex": q, "$options": "i"}},
                 {"nombre_propietario": {"$regex": q, "$options": "i"}},
                 # Búsqueda dentro del array de propietarios
@@ -6556,7 +6557,11 @@ async def buscar_predios_por_municipio(
                 {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
                 {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
                 {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
-                {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}}
+                {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
+                {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
+                # Búsqueda por matrícula inmobiliaria
+                {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
+                {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
             ]}
         ]
     }
@@ -6578,13 +6583,62 @@ async def buscar_predios_por_municipio(
             "bloqueado": 1,
             "bloqueo_info": 1,
             "propietarios": 1,
-            "r1_registros": 1
+            "matricula_inmobiliaria": 1,
+            "r1_registros": 1,
+            "r2_registros": 1
         }
     ).limit(limit).to_list(length=limit)
     
     return {
         "predios": predios,
         "total": len(predios)
+    }
+
+
+@api_router.get("/predios/lista-bloqueados")
+async def listar_predios_bloqueados_v2(
+    municipio: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista todos los predios bloqueados. Endpoint alternativo para evitar conflicto de rutas.
+    """
+    filtro = {"bloqueado": True}
+    
+    if municipio:
+        filtro["municipio"] = {"$regex": municipio, "$options": "i"}
+    
+    total = await db.predios.count_documents(filtro)
+    
+    predios = await db.predios.find(
+        filtro,
+        {
+            "_id": 0,
+            "id": 1,
+            "codigo_predial_nacional": 1,
+            "codigo_predial": 1,
+            "numero_predio": 1,
+            "direccion": 1,
+            "municipio": 1,
+            "nombre_propietario": 1,
+            "propietarios": 1,
+            "matricula_inmobiliaria": 1,
+            "area_terreno": 1,
+            "area_construida": 1,
+            "avaluo": 1,
+            "bloqueado": 1,
+            "bloqueo_info": 1,
+            "r2_registros": 1
+        }
+    ).sort("bloqueo_info.fecha_bloqueo", -1).skip(skip).limit(limit).to_list(length=limit)
+    
+    return {
+        "predios": predios,
+        "total": total,
+        "pagina_actual": skip // limit + 1,
+        "total_paginas": (total + limit - 1) // limit
     }
 
 

@@ -758,7 +758,7 @@ export default function MutacionesResoluciones() {
     setLoadingBloqueados(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API}/predios/bloqueados`, {
+      const response = await axios.get(`${API}/predios/lista-bloqueados`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPrediosBloqueados(response.data.predios || []);
@@ -6429,7 +6429,7 @@ export default function MutacionesResoluciones() {
                       setBloqueoPredioResults([]);
                     }
                   }}
-                  placeholder="Buscar por código predial, dirección o propietario (mín. 3 caracteres)..."
+                  placeholder="Buscar por código, dirección, propietario o matrícula (mín. 3 caracteres)..."
                   className="pl-10 pr-10"
                   data-testid="bloqueo-buscar-predio"
                 />
@@ -6493,10 +6493,10 @@ export default function MutacionesResoluciones() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-slate-500">Código:</span>
-                    <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional}</p>
+                    <span className="text-slate-500">Código Predial:</span>
+                    <p className="font-medium">{bloqueoPredioSeleccionado.codigo_predial_nacional || bloqueoPredioSeleccionado.numero_predio}</p>
                   </div>
                   <div>
                     <span className="text-slate-500">Dirección:</span>
@@ -6512,6 +6512,37 @@ export default function MutacionesResoluciones() {
                   <div>
                     <span className="text-slate-500">Municipio:</span>
                     <p className="font-medium">{bloqueoPredioSeleccionado.municipio || bloqueoMunicipio}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Matrícula Inmobiliaria:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.matricula_inmobiliaria || 
+                       bloqueoPredioSeleccionado.r2_registros?.[0]?.matricula_inmobiliaria || 'Sin matrícula'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Avalúo:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.avaluo 
+                        ? `$${bloqueoPredioSeleccionado.avaluo.toLocaleString('es-CO')}`
+                        : 'Sin avalúo'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Área Terreno:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.area_terreno 
+                        ? `${bloqueoPredioSeleccionado.area_terreno.toLocaleString('es-CO')} m²`
+                        : 'Sin información'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Área Construida:</span>
+                    <p className="font-medium">
+                      {bloqueoPredioSeleccionado.area_construida 
+                        ? `${bloqueoPredioSeleccionado.area_construida.toLocaleString('es-CO')} m²`
+                        : 'Sin construcción'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
