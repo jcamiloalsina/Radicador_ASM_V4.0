@@ -6538,7 +6538,7 @@ async def buscar_predios_por_municipio(
     
     municipio_nombre = CODIGO_A_NOMBRE.get(municipio_codigo, "")
     
-    # Query de búsqueda
+    # Query de búsqueda - incluye búsqueda en array de propietarios
     filtro = {
         "$and": [
             {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
@@ -6550,7 +6550,13 @@ async def buscar_predios_por_municipio(
                 {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
                 {"codigo_predial": {"$regex": q, "$options": "i"}},
                 {"direccion": {"$regex": q, "$options": "i"}},
-                {"nombre_propietario": {"$regex": q, "$options": "i"}}
+                {"nombre_propietario": {"$regex": q, "$options": "i"}},
+                # Búsqueda dentro del array de propietarios
+                {"propietarios.nombre_propietario": {"$regex": q, "$options": "i"}},
+                {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
+                {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
+                {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
+                {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}}
             ]}
         ]
     }

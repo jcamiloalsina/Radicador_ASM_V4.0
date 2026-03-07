@@ -6458,7 +6458,9 @@ export default function MutacionesResoluciones() {
                           <div>
                             <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
                             <p className="text-xs text-slate-500">{predio.direccion}</p>
-                            <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                            <p className="text-xs text-slate-400">
+                              {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'Sin propietario'}
+                            </p>
                           </div>
                           {predio.bloqueado && (
                             <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
