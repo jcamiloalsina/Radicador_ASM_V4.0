@@ -8237,24 +8237,167 @@ export default function MutacionesResoluciones() {
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && (
-              <Button 
-                onClick={generarResolucionRectificacion} 
-                disabled={generando || !rectificacionData.radicado || !rectificacionData.predio || !rectificacionData.area_terreno_nueva}
-                className="bg-cyan-600 hover:bg-cyan-700"
-                data-testid="rectificacion-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Rectificación'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!rectificacionData.predio || !rectificacionData.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const predio = rectificacionData.predio;
+                        const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                        const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                        const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                        
+                        const payload = {
+                          tipo: 'RECTIFICACION_AREA',
+                          tipo_mutacion: 'RECTIFICACION_AREA',
+                          municipio: rectificacionData.municipio,
+                          radicado: rectificacionData.radicado,
+                          predio: predio,
+                          predio_id: predio.id,
+                          solicitante: {
+                            nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+                            documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+                          },
+                          area_terreno_anterior: areaTerreno,
+                          area_construida_anterior: areaConstruida,
+                          avaluo_anterior: avaluo,
+                          area_terreno_nueva: rectificacionData.area_terreno_nueva,
+                          area_construida_nueva: rectificacionData.area_construida_nueva,
+                          avaluo_nuevo: rectificacionData.avaluo_nuevo,
+                          motivo_solicitud: rectificacionData.motivo_solicitud,
+                          observaciones: rectificacionData.observaciones,
+                          texto_considerando: rectificacionData.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud enviada a aprobación exitosamente');
+                          resetRectificacionForm();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !rectificacionData.radicado || !rectificacionData.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionRectificacion} 
+                    disabled={generando || !rectificacionData.radicado || !rectificacionData.predio || !rectificacionData.area_terreno_nueva}
+                    className="bg-cyan-600 hover:bg-cyan-700"
+                    data-testid="rectificacion-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Rectificación'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'COMP' && (
-              <Button 
-                onClick={generarResolucionComplementacion} 
-                disabled={generando || !complementacionData.predio}
-                className="bg-slate-600 hover:bg-slate-700"
-                data-testid="complementacion-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Complementación'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!complementacionData.predio) {
+                        toast.error('Debe seleccionar un predio');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const predio = complementacionData.predio;
+                        const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                        const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                        const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                        
+                        const payload = {
+                          tipo: 'COMPLEMENTACION',
+                          tipo_mutacion: 'COMPLEMENTACION',
+                          municipio: complementacionData.municipio,
+                          predio: predio,
+                          predio_id: predio.id,
+                          solicitante: {
+                            nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+                            documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+                          },
+                          area_terreno_anterior: areaTerreno,
+                          area_construida_anterior: areaConstruida,
+                          avaluo_anterior: avaluo,
+                          area_terreno_nueva: complementacionData.area_terreno_nueva,
+                          area_construida_nueva: complementacionData.area_construida_nueva,
+                          avaluo_nuevo: complementacionData.avaluo_nuevo,
+                          documentos_soporte: complementacionData.documentos_soporte,
+                          observaciones: complementacionData.observaciones,
+                          texto_considerando: complementacionData.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud enviada a aprobación exitosamente');
+                          resetComplementacionForm();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !complementacionData.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionComplementacion} 
+                    disabled={generando || !complementacionData.predio}
+                    className="bg-slate-600 hover:bg-slate-700"
+                    data-testid="complementacion-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Complementación'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (
               <div className="flex items-center gap-2 flex-wrap">

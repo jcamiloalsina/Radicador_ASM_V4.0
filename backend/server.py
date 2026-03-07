@@ -16076,6 +16076,54 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
             )
             logger.info(f"✅ Predio {predio_id} actualizado con datos complementados")
         
+        # Enviar correo al solicitante y finalizar petición
+        try:
+            radicado = solicitud.get('radicado', '')
+            peticion = None
+            
+            if radicado:
+                peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
+            
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion.get("correo")
+                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                codigo_predial = predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', ''))
+                
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio,
+                    codigo_predio=codigo_predial,
+                    tipo_mutacion="Complementación de Información"
+                )
+                
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución Complementación de Información - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=pdf_path,
+                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                logging.info(f"Correo de resolución Complementación enviado a {email_solicitante}")
+            
+            # Finalizar la petición
+            if peticion:
+                await db.petitions.update_one(
+                    {"radicado": radicado},
+                    {"$set": {
+                        "status": "completado",
+                        "estado_tramite": "Finalizado",
+                        "resolucion_numero": numero_resolucion,
+                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+        except Exception as email_error:
+            logging.error(f"Error enviando correo de resolución Complementación: {str(email_error)}")
+        
         return {
             "success": True,
             "id": resolucion_doc['id'],
