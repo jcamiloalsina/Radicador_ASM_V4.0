@@ -1630,6 +1630,80 @@ async def test_pdf_m6():
         }
 
 
+@api_router.get("/test-pdf-complementacion")
+async def test_pdf_complementacion():
+    """
+    Genera un PDF de prueba para COMPLEMENTACIÓN DE INFORMACIÓN.
+    Este endpoint es temporal y debe ser eliminado después de verificar el estilo.
+    """
+    from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
+    
+    # Datos de prueba para generar PDF
+    test_data = {
+        "numero_resolucion": "RES-54-003-00XX-2026",
+        "municipio": "Ábrego",
+        "radicado": "RAD-COMPL-12345",
+        "codigo_verificacion": "VERIF-COMPL-ABC123",
+        "elaborado_por": "Armando Cárdenas",
+        "revisado_por": "Juan C. Alsina",
+        "documentos_soporte": "Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición con número de matrícula inmobiliaria X",
+        "predio": {
+            "codigo_predial_nacional": "540030101000000280006000000000",
+            "codigo_predial": "540030101000000280006000000000",
+            "codigo_homologado": "T0100028",
+            "direccion": "VEREDA LA ESPERANZA",
+            "destino_economico": "R",
+            "matricula_inmobiliaria": "280-54321",
+            "avaluo": 18000000,
+            "area_terreno": 850.00,
+            "area_construida": 95.50,
+            "propietarios": [
+                {
+                    "nombre_propietario": "MARIA ELENA GOMEZ SILVA",
+                    "tipo_documento": "CC",
+                    "numero_documento": "9876543210",
+                    "estado_civil": "S"
+                }
+            ]
+        },
+        "solicitante": {
+            "nombre": "MARIA ELENA GOMEZ SILVA",
+            "documento": "9876543210"
+        },
+        "area_terreno_nueva": 920.75,
+        "area_construida_nueva": 125.00,
+        "avaluo_nuevo": 22500000,
+        "vigencia_cancelacion": 2025,
+        "vigencia_inscripcion": 2026
+    }
+    
+    try:
+        pdf_bytes = generate_complementacion_resolution_pdf(test_data)
+        
+        # Guardar en disco para poder descargar
+        filename = f"test_complementacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        pdf_dir = "/app/backend/static/resoluciones"
+        pdf_path = f"{pdf_dir}/{filename}"
+        
+        os.makedirs(pdf_dir, exist_ok=True)
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        
+        return {
+            "success": True,
+            "message": "PDF de prueba Complementación generado exitosamente",
+            "download_url": f"/api/resoluciones/descargar/{filename}",
+            "filename": filename
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 @api_router.post("/admin/send-ficha-tecnica")
 async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict = Depends(get_current_user)):
     """Envía la ficha técnica por correo con PDF adjunto (solo admin)"""
