@@ -470,21 +470,19 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     
     # Usar texto personalizado si está disponible
     if texto_considerando_personalizado:
-        # Reemplazar variables en el texto personalizado
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
         try:
-            texto_considerando = texto_considerando_personalizado.format(
-                solicitante=solicitante_nombre,
-                documento=solicitante_documento,
-                codigo_predial=codigo_predial,
-                municipio=municipio,
-                radicado=radicado,
-                avaluo_anterior=formatear_moneda(avaluo_anterior),
-                avaluo_nuevo=formatear_moneda(avaluo_nuevo),
-                matricula=matricula,
-                vigencia=datetime.now().year
-            )
-        except KeyError:
-            # Si hay variables que no existen, usar el texto sin formato
+            texto_considerando = texto_considerando_personalizado
+            texto_considerando = texto_considerando.replace('(solicitante)', solicitante_nombre)
+            texto_considerando = texto_considerando.replace('(documento)', solicitante_documento)
+            texto_considerando = texto_considerando.replace('(codigo_predial)', codigo_predial)
+            texto_considerando = texto_considerando.replace('(municipio)', municipio)
+            texto_considerando = texto_considerando.replace('(radicado)', radicado)
+            texto_considerando = texto_considerando.replace('(avaluo_anterior)', formatear_moneda(avaluo_anterior))
+            texto_considerando = texto_considerando.replace('(avaluo_nuevo)', formatear_moneda(avaluo_nuevo))
+            texto_considerando = texto_considerando.replace('(matricula)', matricula)
+            texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
+        except Exception:
             texto_considerando = texto_considerando_personalizado
         
         dibujar_texto_justificado(texto_considerando)

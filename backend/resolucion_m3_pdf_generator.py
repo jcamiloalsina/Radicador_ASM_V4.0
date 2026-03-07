@@ -599,18 +599,20 @@ def generate_resolucion_m3_pdf(
     
     # Usar texto personalizado si está disponible, sino usar plantilla estándar
     if texto_considerando_personalizado:
-        # Reemplazar variables en el texto personalizado
-        texto_considerando = texto_considerando_personalizado.format(
-            solicitante=solicitante_nombre,
-            documento=solicitante_documento,
-            codigo_predial=codigo_predial,
-            municipio=municipio,
-            radicado=radicado,
-            matricula=predio.get("matricula_inmobiliaria", "Sin información"),
-            destino_anterior=data.get("destino_anterior", ""),
-            destino_nuevo=data.get("destino_nuevo", ""),
-            vigencia=datetime.now().year
-        )
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
+        texto_considerando = texto_considerando_personalizado
+        try:
+            texto_considerando = texto_considerando.replace('(solicitante)', solicitante_nombre)
+            texto_considerando = texto_considerando.replace('(documento)', solicitante_documento)
+            texto_considerando = texto_considerando.replace('(codigo_predial)', codigo_predial)
+            texto_considerando = texto_considerando.replace('(municipio)', municipio)
+            texto_considerando = texto_considerando.replace('(radicado)', radicado)
+            texto_considerando = texto_considerando.replace('(matricula)', predio.get("matricula_inmobiliaria", "Sin información"))
+            texto_considerando = texto_considerando.replace('(destino_anterior)', data.get("destino_anterior", ""))
+            texto_considerando = texto_considerando.replace('(destino_nuevo)', data.get("destino_nuevo", ""))
+            texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))
+        except Exception:
+            pass
     elif subtipo == "cambio_destino":
         texto_considerando = plantilla["considerando_cambio_destino"].format(
             solicitante_nombre=solicitante_nombre,

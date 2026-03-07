@@ -345,18 +345,18 @@ def generate_resolucion_pdf(
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando:
         c.setFont(font_normal, fuente_cuerpo)
-        # Reemplazar variables en el texto personalizado
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
         texto_procesado = texto_considerando
         try:
-            texto_procesado = texto_procesado.replace('{tipo_tramite}', tipo_tramite or '')
-            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
-            texto_procesado = texto_procesado.replace('{matricula_inmobiliaria}', matricula_inmobiliaria or 'Sin información')
-            texto_procesado = texto_procesado.replace('{matricula}', matricula_inmobiliaria or 'Sin información')
-            texto_procesado = texto_procesado.replace('{npn}', npn or '')
-            texto_procesado = texto_procesado.replace('{codigo_predial}', npn or '')
-            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
-            texto_procesado = texto_procesado.replace('{direccion}', direccion or '')
-            texto_procesado = texto_procesado.replace('{avaluo}', avaluo or '')
+            texto_procesado = texto_procesado.replace('(tipo_tramite)', tipo_tramite or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula_inmobiliaria)', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula_inmobiliaria or 'Sin información')
+            texto_procesado = texto_procesado.replace('(npn)', npn or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', npn or '')
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(direccion)', direccion or '')
+            texto_procesado = texto_procesado.replace('(avaluo)', avaluo or '')
         except Exception:
             pass
         y = dibujar_texto_justificado(texto_procesado, y)

@@ -379,16 +379,16 @@ def generate_resolucion_m2_pdf(
     
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando:
-        # Reemplazar variables en el texto personalizado
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
         texto_procesado = texto_considerando
         try:
-            texto_procesado = texto_procesado.replace('{solicitante}', solicitante.get("nombre", ""))
-            texto_procesado = texto_procesado.replace('{documento}', solicitante.get("documento", ""))
-            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
-            texto_procesado = texto_procesado.replace('{codigo_predial}', codigo_origen or '')
-            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
-            texto_procesado = texto_procesado.replace('{matricula}', matricula_origen or '')
-            texto_procesado = texto_procesado.replace('{subtipo}', subtipo or '')
+            texto_procesado = texto_procesado.replace('(solicitante)', solicitante.get("nombre", ""))
+            texto_procesado = texto_procesado.replace('(documento)', solicitante.get("documento", ""))
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', codigo_origen or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula_origen or '')
+            texto_procesado = texto_procesado.replace('(subtipo)', subtipo or '')
         except Exception:
             pass
         dibujar_texto_justificado(texto_procesado, font_size=10)

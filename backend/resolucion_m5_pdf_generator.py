@@ -664,16 +664,16 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
     
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando_personalizado:
-        # Reemplazar variables en el texto personalizado
+        # Reemplazar variables en el texto personalizado (usando paréntesis)
         texto_procesado = texto_considerando_personalizado
         try:
-            texto_procesado = texto_procesado.replace('{solicitante}', solicitante_nombre or '')
-            texto_procesado = texto_procesado.replace('{documento}', solicitante_documento or '')
-            texto_procesado = texto_procesado.replace('{municipio}', municipio or '')
-            texto_procesado = texto_procesado.replace('{codigo_predial}', codigo_predial or '')
-            texto_procesado = texto_procesado.replace('{radicado}', radicado or '')
-            texto_procesado = texto_procesado.replace('{matricula}', matricula or '')
-            texto_procesado = texto_procesado.replace('{vigencia}', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
+            texto_procesado = texto_procesado.replace('(solicitante)', solicitante_nombre or '')
+            texto_procesado = texto_procesado.replace('(documento)', solicitante_documento or '')
+            texto_procesado = texto_procesado.replace('(municipio)', municipio or '')
+            texto_procesado = texto_procesado.replace('(codigo_predial)', codigo_predial or '')
+            texto_procesado = texto_procesado.replace('(radicado)', radicado or '')
+            texto_procesado = texto_procesado.replace('(matricula)', matricula or '')
+            texto_procesado = texto_procesado.replace('(vigencia)', str(vigencia_cancelacion or vigencia_inscripcion or datetime.now().year))
         except Exception:
             pass
         c.setFillColor(NEGRO)

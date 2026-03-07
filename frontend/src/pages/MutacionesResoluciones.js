@@ -3768,7 +3768,7 @@ export default function MutacionesResoluciones() {
                 data-testid="m3-considerando-input"
               />
               <div className="mt-2 text-xs text-slate-500">
-                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{destino_anterior}'}, {'{destino_nuevo}'}
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (destino_anterior), (destino_nuevo)
               </div>
             </CardContent>
           </Card>
@@ -4179,7 +4179,7 @@ export default function MutacionesResoluciones() {
                 data-testid="m4-considerando-input"
               />
               <div className="mt-2 text-xs text-slate-500">
-                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{avaluo_anterior}'}, {'{avaluo_nuevo}'}
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (avaluo_anterior), (avaluo_nuevo)
               </div>
             </CardContent>
           </Card>
@@ -5023,7 +5023,7 @@ export default function MutacionesResoluciones() {
                 data-testid="m5-considerando-input"
               />
               <div className="mt-2 text-xs text-slate-500">
-                <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{vigencia}'}
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (vigencia)
               </div>
             </CardContent>
           </Card>
@@ -6335,7 +6335,7 @@ export default function MutacionesResoluciones() {
             data-testid="m2-considerando-input"
           />
           <div className="mt-2 text-xs text-slate-500">
-            <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}, {'{subtipo}'}
+            <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (subtipo)
           </div>
         </CardContent>
       </Card>
@@ -6532,7 +6532,7 @@ export default function MutacionesResoluciones() {
                       }}
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                      Variables disponibles: {'{municipio}'}, {'{radicado}'}, {'{solicitante}'}, {'{documento}'}, {'{npn}'}, {'{fecha}'}
+                      Variables disponibles: (municipio), (radicado), (solicitante), (documento), (npn), (fecha)
                     </p>
                   </div>
 
@@ -7013,7 +7013,7 @@ export default function MutacionesResoluciones() {
                         data-testid="m1-considerando-input"
                       />
                       <div className="mt-2 text-xs text-slate-500">
-                        <strong>Variables disponibles:</strong> {'{solicitante}'}, {'{documento}'}, {'{codigo_predial}'}, {'{municipio}'}, {'{radicado}'}, {'{matricula}'}
+                        <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula)
                       </div>
                     </CardContent>
                   </Card>
