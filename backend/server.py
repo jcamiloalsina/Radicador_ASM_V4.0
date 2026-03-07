@@ -14843,34 +14843,76 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         # APLICAR CAMBIOS A LOS PREDIOS
         # ========================================
         
-        # 1. Marcar predios cancelados como eliminados
+        # 1. Procesar predios cancelados según tipo_cancelacion
         for predio_cancelado in predios_cancelados:
             predio_id = predio_cancelado.get('id')
-            if predio_id:
-                # Mover a predios_eliminados
-                predio_original = await db.predios.find_one({"id": predio_id}, {"_id": 0})
-                if predio_original:
-                    predio_eliminado = {
-                        **predio_original,
+            npn_cancelado = predio_cancelado.get('npn') or predio_cancelado.get('codigo_predial_nacional') or predio_cancelado.get('codigo_predial')
+            tipo_cancelacion = predio_cancelado.get('tipo_cancelacion', 'total')
+            
+            # Buscar el predio por ID o por NPN
+            query_predio = {"id": predio_id} if predio_id else {"codigo_predial_nacional": npn_cancelado}
+            predio_original = await db.predios.find_one(query_predio, {"_id": 0})
+            
+            if not predio_original:
+                logging.warning(f"No se encontró el predio a cancelar: id={predio_id}, npn={npn_cancelado}")
+                continue
+            
+            predio_id_real = predio_original.get('id')
+            
+            if tipo_cancelacion == 'total':
+                # Cancelación TOTAL: mover a predios_eliminados y marcar como eliminado
+                predio_eliminado = {
+                    **predio_original,
+                    "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
+                    "fecha_eliminacion": datetime.now(timezone.utc).isoformat(),
+                    "eliminado_por": aprobador.get('id'),
+                    "eliminado_por_nombre": aprobador.get('full_name'),
+                    "resolucion_eliminacion": numero_resolucion,
+                    "solicitud_id": solicitud.get('id')
+                }
+                await db.predios_eliminados.insert_one(predio_eliminado)
+                
+                # Marcar como deleted en predios
+                await db.predios.update_one(
+                    {"id": predio_id_real},
+                    {"$set": {
+                        "deleted": True,
+                        "status": "cancelado",
                         "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
-                        "fecha_eliminacion": datetime.now(timezone.utc).isoformat(),
-                        "eliminado_por": aprobador.get('id'),
-                        "eliminado_por_nombre": aprobador.get('full_name'),
-                        "resolucion_eliminacion": numero_resolucion,
-                        "solicitud_id": solicitud.get('id')
-                    }
-                    await db.predios_eliminados.insert_one(predio_eliminado)
-                    
-                    # Marcar como deleted en predios
-                    await db.predios.update_one(
-                        {"id": predio_id},
-                        {"$set": {
-                            "deleted": True,
-                            "status": "cancelado",
-                            "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
-                            "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
-                        }}
-                    )
+                        "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logging.info(f"Predio {npn_cancelado} cancelado TOTALMENTE (moved to predios_eliminados)")
+            
+            elif tipo_cancelacion == 'parcial':
+                # Cancelación PARCIAL: actualizar predio con nuevos datos
+                update_data = {
+                    "area_terreno": predio_cancelado.get('nueva_area_terreno', predio_cancelado.get('area_terreno')),
+                    "area_construida": predio_cancelado.get('nueva_area_construida', predio_cancelado.get('area_construida')),
+                    "avaluo": predio_cancelado.get('nuevo_avaluo', predio_cancelado.get('avaluo')),
+                    "area_editada_en_plataforma": True,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "historial": (predio_original.get("historial") or []) + [{
+                        "accion": "Cancelación parcial por Desenglobe (M2)",
+                        "tipo_cambio": "desenglobe_parcial",
+                        "usuario": aprobador.get('full_name'),
+                        "usuario_id": aprobador.get('id'),
+                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "numero_resolucion": numero_resolucion,
+                        "area_anterior": predio_original.get('area_terreno'),
+                        "area_nueva": predio_cancelado.get('nueva_area_terreno')
+                    }]
+                }
+                
+                # Si hay propietarios editados, actualizarlos
+                if predio_cancelado.get('propietarios'):
+                    update_data["propietarios"] = predio_cancelado['propietarios']
+                
+                await db.predios.update_one(
+                    {"id": predio_id_real},
+                    {"$set": update_data}
+                )
+                logging.info(f"Predio {npn_cancelado} actualizado PARCIALMENTE (área ajustada)")
         
         # 2. Crear predios inscritos
         for predio_nuevo in predios_inscritos:
