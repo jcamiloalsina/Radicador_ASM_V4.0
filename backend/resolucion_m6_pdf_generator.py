@@ -1,669 +1,596 @@
 """
-Generador de PDF para Resolución M6 - Rectificación de Área
+Generador de PDF para Resoluciones de Rectificación de Área
+Estructura IDÉNTICA a M2/M4/M5 para mantener consistencia visual
 """
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import cm
-from reportlab.lib.colors import HexColor
-from reportlab.pdfgen import canvas
-from reportlab.lib.utils import simpleSplit
-from reportlab.platypus import Table, TableStyle
-from io import BytesIO
-from datetime import datetime
-import qrcode
-from PIL import Image
+
+import io
+import os
 import base64
+import qrcode
+import hashlib
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader, simpleSplit
+from reportlab.lib.units import inch, cm
 
-# Colores
-NEGRO = HexColor("#000000")
-GRIS_OSCURO = HexColor("#333333")
-GRIS_CLARO = HexColor("#666666")
-AZUL_ENCABEZADO = HexColor("#1a365d")
+# Importar funciones de imágenes
+from certificado_images import get_encabezado_image, get_pie_pagina_image, get_firma_dalgie_image
 
-# Dimensiones
+# Constantes de diseño - IDÉNTICAS a M2/M4/M5
 PAGE_WIDTH, PAGE_HEIGHT = letter
-MARGIN_LEFT = 2.5 * cm
-MARGIN_RIGHT = 2 * cm
-MARGIN_TOP = 2.5 * cm
-MARGIN_BOTTOM = 2.5 * cm
+MARGIN_LEFT = 50
+MARGIN_RIGHT = 50
+MARGIN_TOP = 50
+MARGIN_BOTTOM = 80
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
+# Colores institucionales
+VERDE_INSTITUCIONAL = colors.HexColor('#009846')
+NEGRO = colors.black
+BLANCO = colors.white
+AZUL_HEADER = colors.HexColor('#1a365d')
+CYAN_RECTIFICACION = colors.HexColor('#0891b2')
 
-def get_m6_plantilla():
+
+def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
+    """
+    Obtiene datos de R1 y R2 del predio para los cuadros de la resolución.
+    """
+    if not predio:
+        return {
+            'codigo_homologado': '',
+            'direccion': '',
+            'destino_economico': '',
+            'area_terreno': 0,
+            'area_construida': 0,
+            'avaluo': 0,
+            'matricula_inmobiliaria': '',
+            'propietarios': []
+        }
+    
+    r1 = predio.get('r1_registros', [])
+    r2 = predio.get('r2_registros', [])
+    
+    r1_data = r1[0] if r1 else {}
+    r2_data = r2[0] if r2 else {}
+    
+    return {
+        'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+        'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+        'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', 'A'),
+        'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+        'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+        'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+        'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', ''),
+        'propietarios': r2_data.get('propietarios') or predio.get('propietarios', [])
+    }
+
+
+def get_rectificacion_area_plantilla():
     """Plantilla para Rectificación de Área"""
     return {
-        "tipo": "M6",
+        "tipo": "RECTIFICACION_AREA",
         "titulo": "POR LA CUAL SE ORDENAN UNOS CAMBIOS EN EL CATASTRO DEL MUNICIPIO DE {municipio} Y SE RESUELVE UNA RECTIFICACIÓN DE ÁREA",
-        "preambulo": (
+        "considerando_intro": (
             "La Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios "
-            "en uso de sus facultades legales otorgadas por la resolución IGAC 1204 del 2021 "
-            "en concordancia con la ley 14 de 1983 y el decreto 148 del 2020, y la resolución IGAC 1040 del 2023: "
-            "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, conservación y "
-            "difusión catastral con enfoque multipropósito\", y"
-        ),
-        "considerando_descubrimiento": (
-            "Qué, en el desarrollo de las actividades catastrales de la Asociación de Municipios del Catatumbo, "
-            "Provincia de Ocaña y Sur del Cesar – Asomunicipios en el municipio de {municipio}, "
-            "se encontró que el predio presenta cambios físicos que deben ser actualizados en la base catastral, "
-            "atendido bajo el radicado N° {radicado}, la resolución 1040 del 2023 define el trámite catastral "
-            "de rectificación de área."
+            "en calidad de Gestor Catastral, en uso de sus facultades legales "
+            "otorgadas por la resolución IGAC 1204 del 2021 en concordancia con la ley 14 de 1983, "
+            "el literal c del artículo 2.2.2.2.2 del decreto 148 del 2020 y la resolución IGAC 1040 del 2023: "
+            "\"por la cual se actualiza la reglamentación técnica de la formación, actualización, "
+            "conservación y difusión catastral con enfoque multipropósito\", y"
         ),
         "considerando_solicitud": (
-            "Qué, el(la) ciudadano(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
-            "en calidad de propietario(a) del predio, solicita la rectificación del área catastral del inmueble."
+            "Qué, el/la señor(a) {solicitante_nombre}, identificado(a) con cédula de ciudadanía No. {solicitante_documento}, "
+            "radicó una solicitud de trámite catastral atendido bajo el consecutivo de la Asociación de Municipios del Catatumbo, "
+            "Provincia de Ocaña y Sur del Cesar – Asomunicipios con el No. {radicado}, "
+            "donde solicita la RECTIFICACIÓN DEL ÁREA del predio identificado con código predial nacional {codigo_predial}, "
+            "lo anterior en su calidad de propietario(a) del predio."
         ),
-        "considerando_predio": (
-            "Qué, el predio se encuentra identificado con el NPN {codigo_predial}, radicado {radicado}, "
-            "en el municipio de {municipio}."
+        "considerando_area_actual": (
+            "Qué, actualmente el predio se encuentra inscrito en el catastro con un área de terreno de {area_terreno_anterior} m² "
+            "y un área construida de {area_construida_anterior} m², con avalúo catastral de ${avaluo_anterior}."
         ),
-        "considerando_documentos": (
-            "Qué, el solicitante solicita la corrección del área del predio según el folio de matrícula inmobiliaria "
-            "No. {matricula_inmobiliaria}, soportado en los siguientes documentos justificativos:"
+        "considerando_area_nueva": (
+            "Qué, según el levantamiento topográfico y/o estudio técnico presentado, el predio tiene un área de terreno de "
+            "{area_terreno_nueva} m² y un área construida de {area_construida_nueva} m², con avalúo catastral de ${avaluo_nuevo}."
         ),
-        "documentos_soporte": [
-            "Oficio de solicitud",
-            "Cédula de ciudadanía",
-            "Escritura pública",
-            "Certificado de Tradición y Libertad (matrícula {matricula})",
-            "Plano en formato DWG o PDF"
-        ],
-        "considerando_inscripcion_actual": (
-            "Qué, actualmente el predio se encuentra inscrito en el catastro con NPN {codigo_predial}, "
-            "con área de terreno de {area_terreno_anterior} m², área de construcción de {area_construida_anterior} m², "
-            "destino {destino_economico}, matrícula inmobiliaria No. {matricula_inmobiliaria}, "
-            "a nombre de {propietario_nombre}."
+        "considerando_analisis": (
+            "Qué, teniendo en cuenta los soportes presentados, el estudio jurídico y técnico realizado, "
+            "así como la verificación de campo efectuada, se encontró que la rectificación del área amerita para dar "
+            "cumplimiento al artículo 4.5.1, 4.5.5 y 4.6.6 de la resolución IGAC 1040 de 2023."
         ),
-        "considerando_visita": (
-            "Qué, en la visita técnica se encontró: área de terreno de {area_terreno_nueva} m², "
-            "área de construcción de {area_construida_nueva} m², destino {destino_economico}, "
-            "matrícula inmobiliaria No. {matricula_inmobiliaria}, a nombre de {propietario_nombre}, "
-            "cédula No. {propietario_documento}. Se aclara que la corrección del área del predio es con fines catastrales."
+        "considerando_legal": (
+            "Qué estas radicaciones implican una rectificación de los datos catastrales y su correspondiente registro "
+            "en el catastro, conforme lo indican los artículos 4.5.1, 4.5.5, 4.6.6, 4.7.13, 4.8.2, 4.8.4 y 4.7.14 "
+            "de la resolución IGAC 1040 de 2023, el artículo 2.2.2.2.2 literal c del decreto 148 de 2020 y lo preceptuado "
+            "en la resolución vigente sobre los requisitos para trámites y otros procedimientos administrativos."
         ),
-        "considerando_final": (
-            "Qué, por lo anteriormente expuesto, es procedente rectificar el área del predio e inscribirlo "
-            "en el catastro, según lo establecido en el literal f del artículo 2.2.2.2.2 del Decreto 148 de 2020 "
-            "y los numerales 4.2.2.5 al 4.2.2.7 del capítulo 2, título IV de la resolución 1040 de 2023."
-        ),
-        "articulo_1": (
-            "Ordenar la inscripción de los cambios en el catastro del Municipio de {municipio}, "
-            "de la siguiente manera, corregir el área del terreno del predio identificado con código predial "
-            "{codigo_predial} perteneciente al(la) ciudadano(a) {propietario_nombre}:"
-        ),
+        "articulo_1_intro": "Ordenar la RECTIFICACIÓN DE ÁREA en el catastro del Municipio de {municipio}, del siguiente predio:",
         "articulo_2": (
-            "El presente acto administrativo se notificará personalmente y subsidiariamente por aviso, "
-            "dando cumplimiento al procedimiento contemplado en los artículos 67 y 69 de la ley 1437 de 2011 (CPA y CCA). "
-            "Igualmente podrá realizarse la notificación por correo electrónico si el interesado así lo acepta."
+            "De conformidad con lo dispuesto en el artículo 4.8.2 de la resolución 1040 de 2023, el presente acto "
+            "administrativo se notificará personal y subsidiariamente por aviso siguiendo el procedimiento previsto "
+            "en los artículos 67, 68 y 69 de la ley 1437 de 2011 (CPA y CCA), procederá la notificación electrónica "
+            "siempre y cuando el interesado acepte ser notificado de esta manera."
         ),
         "articulo_3": (
             "Contra el presente acto administrativo proceden los recursos de reposición y subsidio de apelación, "
-            "los cuales deberán interponerse dentro de los diez (10) días siguientes a su notificación personal o "
-            "a la finalización del término de publicación del aviso o fijación del edicto cuando haya lugar. "
-            "Recursos que se interpondrán ante el director ejecutivo de la Asociación de Municipios del Catatumbo, "
-            "Provincia de Ocaña y Sur del Cesar – Asomunicipios."
+            "ante el funcionario que dictó la decisión, podrán interponerse por escrito en la diligencia de notificación "
+            "personal, o dentro de los diez (10) días hábiles siguientes a su notificación, de conformidad con lo "
+            "preceptuado en el artículo 4.8.4 de la resolución 1040 de 2023 y lo dispuesto en artículo 74 y 76 de la "
+            "ley 1437 de 2011 o la norma que la modifique, adicione o sustituya."
         ),
         "articulo_4": (
-            "Los recursos se concederán en el efecto suspensivo, lo cual indica que la inscripción en los documentos "
-            "de las Tesorerías Municipales solo se realizará hasta que el acto quede en firme."
+            "Los recursos se concederán en el efecto suspensivo y por consiguiente la anotación de la rectificación "
+            "catastral en los documentos de la tesorería municipal u oficina recaudadora solo se efectuarán hasta "
+            "la ejecutoria del acto administrativo."
         ),
         "articulo_5": (
-            "La vigencia fiscal de los avalúos que se practiquen después del primero (1) de enero de cada año, "
-            "tendrán vigencia fiscal para el año siguiente reajustado por el índice que para tal efecto determine "
-            "el gobierno nacional."
+            "Los avalúos inscritos con posterioridad al primero de enero tendrán vigencia fiscal para el año siguiente, "
+            "ajustados con el índice que determine el gobierno nacional, de conformidad a lo expuesto en el artículo "
+            "4.7.14 de la resolución 1040 de 2023."
         ),
+        "cierre": "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE",
         "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
         "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"
     }
 
 
-def obtener_datos_r1_r2_pdf(predio: dict) -> dict:
-    """
-    Obtiene datos de R1/R2 con fallback a campos directos del predio.
-    R1 contiene: codigo_homologado, area_terreno, area_construida, destino_economico, avaluo
-    R2 contiene: matricula_inmobiliaria, propietarios
-    """
-    resultado = {}
+def generar_qr_verificacion(codigo_verificacion: str, base_url: str = None) -> ImageReader:
+    """Genera código QR para verificación"""
+    if not base_url:
+        base_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
     
-    # Obtener datos de R1 (primer registro si existe)
-    r1_registros = predio.get('r1_registros', [])
-    if r1_registros and len(r1_registros) > 0:
-        r1 = r1_registros[0]
-        resultado['codigo_homologado'] = r1.get('codigo_homologado') or r1.get('nupre') or ''
-        resultado['area_terreno'] = r1.get('area_terreno') or r1.get('area_terreno_alfanumerica') or 0
-        resultado['area_construida'] = r1.get('area_construida') or r1.get('area_construida_alfanumerica') or 0
-        resultado['destino_economico'] = r1.get('destino_economico') or r1.get('destino_economico_r1') or 'A'
-        resultado['avaluo'] = r1.get('avaluo') or r1.get('valor_avaluo') or 0
-        resultado['direccion'] = r1.get('direccion') or ''
-    else:
-        # Fallback a campos directos
-        resultado['codigo_homologado'] = predio.get('codigo_homologado') or predio.get('codigo_anterior') or ''
-        resultado['area_terreno'] = predio.get('area_terreno') or predio.get('area_terreno_r1') or 0
-        resultado['area_construida'] = predio.get('area_construida') or predio.get('area_construida_r1') or 0
-        resultado['destino_economico'] = predio.get('destino_economico') or 'A'
-        resultado['avaluo'] = predio.get('avaluo') or 0
-        resultado['direccion'] = predio.get('direccion') or ''
+    url_verificacion = f"{base_url}/verificar/{codigo_verificacion}"
     
-    # Obtener datos de R2 (primer registro si existe)
-    r2_registros = predio.get('r2_registros', [])
-    if r2_registros and len(r2_registros) > 0:
-        r2 = r2_registros[0]
-        resultado['matricula_inmobiliaria'] = r2.get('matricula_inmobiliaria') or ''
-        resultado['propietarios'] = r2.get('propietarios') or predio.get('propietarios', [])
-    else:
-        resultado['matricula_inmobiliaria'] = predio.get('matricula_inmobiliaria') or ''
-        resultado['propietarios'] = predio.get('propietarios', [])
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(url_verificacion)
+    qr.make(fit=True)
     
-    return resultado
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    qr_buffer = io.BytesIO()
+    qr_img.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    
+    return ImageReader(qr_buffer)
 
 
-def generar_resolucion_m6_pdf(data: dict) -> bytes:
+def generate_m6_resolution_pdf(data: dict) -> bytes:
     """
-    Genera PDF de resolución M6 - Rectificación de Área
+    Genera PDF de resolución de Rectificación de Área con el mismo estilo visual
+    que las demás mutaciones (M1-M5).
     """
-    buffer = BytesIO()
+    buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
     # Fuentes
     font_normal = "Helvetica"
     font_bold = "Helvetica-Bold"
     
-    # Obtener datos
+    # Extraer datos
     numero_resolucion = data.get("numero_resolucion", "RES-XX-XXX-0000-2026")
     fecha_resolucion = data.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
     municipio = data.get("municipio", "")
     radicado = data.get("radicado", "")
     predio = data.get("predio", {})
     solicitante = data.get("solicitante", {})
-    plantilla = get_m6_plantilla()
     elaboro = data.get("elaborado_por", "")
     aprobo = data.get("revisado_por", "")
-    texto_considerando_personalizado = data.get("texto_considerando")
     codigo_verificacion = data.get("codigo_verificacion", "")
+    texto_considerando_personalizado = data.get("texto_considerando")
+    
+    # Áreas
+    area_terreno_anterior = data.get("area_terreno_anterior", 0)
+    area_terreno_nueva = data.get("area_terreno_nueva", 0)
+    area_construida_anterior = data.get("area_construida_anterior", 0)
+    area_construida_nueva = data.get("area_construida_nueva", 0)
+    avaluo_anterior = data.get("avaluo_anterior", predio.get("avaluo", 0))
+    avaluo_nuevo = data.get("avaluo_nuevo", avaluo_anterior)
+    
+    # Obtener datos R1/R2
+    datos_predio = obtener_datos_r1_r2_pdf(predio)
+    
+    # Datos del propietario
+    propietarios = datos_predio.get('propietarios', []) or predio.get('propietarios', [])
+    if propietarios and len(propietarios) > 0:
+        propietario_nombre = propietarios[0].get('nombre_propietario', propietarios[0].get('nombre', ''))
+        propietario_documento = propietarios[0].get('numero_documento', '')
+    else:
+        propietario_nombre = solicitante.get('nombre', '')
+        propietario_documento = solicitante.get('documento', '')
     
     # Datos del solicitante
-    solicitante_nombre = solicitante.get("nombre", "NO ESPECIFICADO")
-    solicitante_documento = solicitante.get("documento", "")
+    solicitante_nombre = solicitante.get('nombre', propietario_nombre)
+    solicitante_documento = solicitante.get('documento', propietario_documento)
     
-    # Datos del predio - ANTERIORES (de R1/R2)
-    datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
-    codigo_predial = predio.get("codigo_predial_nacional") or predio.get("NPN") or ""
-    codigo_homologado = datos_r1_r2.get("codigo_homologado", "")
-    matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
-    direccion = datos_r1_r2.get("direccion", "") or predio.get("direccion", "")
-    destino = datos_r1_r2.get("destino_economico", "A")
+    # Código predial
+    codigo_predial = predio.get('codigo_predial_nacional') or predio.get('NPN', '') or predio.get('codigo_predial', '')
+    matricula = datos_predio.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', '')
+    direccion = datos_predio.get('direccion') or predio.get('direccion', '')
+    destino_economico = datos_predio.get('destino_economico') or predio.get('destino_economico', 'A')
+    codigo_homologado = datos_predio.get('codigo_homologado') or predio.get('codigo_homologado', '')
     
-    # Áreas anteriores (de R1/R2)
-    area_terreno_anterior = data.get("area_terreno_anterior") or datos_r1_r2.get("area_terreno", 0)
-    area_construida_anterior = data.get("area_construida_anterior") or datos_r1_r2.get("area_construida", 0)
-    avaluo_anterior = data.get("avaluo_anterior") or datos_r1_r2.get("avaluo", 0)
+    # Plantilla
+    plantilla = get_rectificacion_area_plantilla()
     
-    # Áreas nuevas (del formulario)
-    area_terreno_nueva = data.get("area_terreno_nueva", 0)
-    area_construida_nueva = data.get("area_construida_nueva", 0)
-    avaluo_nuevo = data.get("avaluo_nuevo", 0)
+    # Cargar imágenes
+    try:
+        encabezado_img = ImageReader(get_encabezado_image())
+    except:
+        encabezado_img = None
     
-    # Propietario
-    propietarios = datos_r1_r2.get("propietarios", []) or predio.get("propietarios", [])
-    propietario_nombre = propietarios[0].get("nombre_propietario", solicitante_nombre) if propietarios else solicitante_nombre
-    propietario_documento = propietarios[0].get("numero_documento", solicitante_documento) if propietarios else solicitante_documento
+    try:
+        pie_pagina_img = ImageReader(get_pie_pagina_image())
+    except:
+        pie_pagina_img = None
     
-    # Vigencias
-    año_actual = datetime.now().year
-    vigencia_anterior = data.get("vigencia_anterior", f"01/01/{año_actual - 1}")
-    vigencia_nueva = data.get("vigencia_nueva", f"01/01/{año_actual}")
+    try:
+        firma_img = ImageReader(get_firma_dalgie_image())
+    except:
+        firma_img = None
     
-    # Variables de posición
-    y_position = PAGE_HEIGHT - MARGIN_TOP
-    page_num = 1
+    # Marca de agua
+    logo_watermark = None
+    try:
+        logo_path = "/app/frontend/public/watermark-gray.png"
+        if os.path.exists(logo_path):
+            logo_watermark = ImageReader(logo_path)
+    except:
+        logo_watermark = None
     
-    def verificar_espacio(espacio_necesario):
-        nonlocal y_position, page_num
-        if y_position < MARGIN_BOTTOM + espacio_necesario:
-            c.showPage()
-            page_num += 1
-            y_position = draw_header()
+    # Generar QR
+    qr_img = None
+    if codigo_verificacion:
+        try:
+            qr_img = generar_qr_verificacion(codigo_verificacion)
+        except:
+            qr_img = None
+    
+    current_page = 1
+    
+    def draw_watermark():
+        """Dibuja la marca de agua"""
+        if logo_watermark:
+            c.saveState()
+            watermark_width = 450
+            watermark_height = 180
+            watermark_x = (PAGE_WIDTH - watermark_width) / 2
+            watermark_y = (PAGE_HEIGHT - watermark_height) / 2
+            c.setFillAlpha(0.15)
+            c.drawImage(logo_watermark, watermark_x, watermark_y,
+                       width=watermark_width, height=watermark_height,
+                       preserveAspectRatio=True, mask='auto')
+            c.restoreState()
     
     def draw_header():
-        """Dibuja el encabezado de cada página"""
-        nonlocal page_num
-        c.setFont(font_bold, 8)
-        c.setFillColor(AZUL_ENCABEZADO)
-        c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, 
-            "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
-        c.setFont(font_normal, 7)
-        c.setFillColor(GRIS_CLARO)
-        c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.8 * cm, "Gestor Catastral")
+        """Dibuja el encabezado con logos"""
+        draw_watermark()
         
-        # Línea separadora
-        c.setStrokeColor(AZUL_ENCABEZADO)
-        c.setLineWidth(1)
-        c.line(MARGIN_LEFT, PAGE_HEIGHT - 2 * cm, PAGE_WIDTH - MARGIN_RIGHT, PAGE_HEIGHT - 2 * cm)
+        if encabezado_img:
+            encabezado_width = CONTENT_WIDTH + 1 * cm
+            encabezado_height = 2.0 * cm
+            encabezado_x = MARGIN_LEFT - 0.5 * cm
+            encabezado_y = PAGE_HEIGHT - 2.2 * cm
+            c.drawImage(encabezado_img, encabezado_x, encabezado_y,
+                       width=encabezado_width, height=encabezado_height,
+                       preserveAspectRatio=True, mask='auto')
+        else:
+            c.setFillColor(VERDE_INSTITUCIONAL)
+            c.setFont(font_bold, 12)
+            c.drawCentredString(PAGE_WIDTH/2, PAGE_HEIGHT - 1.5 * cm, 
+                              "Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar – Asomunicipios")
         
-        return PAGE_HEIGHT - 2.5 * cm
+        return PAGE_HEIGHT - 2.8 * cm
     
     def draw_footer():
         """Dibuja el pie de página"""
-        c.setFont(font_normal, 6)
-        c.setFillColor(GRIS_CLARO)
-        c.drawCentredString(PAGE_WIDTH/2, 1.2 * cm, "Calle 11 # 12 - 42 Barrio Centro, Ocaña – Norte de Santander")
-        c.drawCentredString(PAGE_WIDTH/2, 0.9 * cm, "comunicaciones@asomunicipios.gov.co | www.asomunicipios.gov.co")
-        c.setFont(font_normal, 7)
-        c.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 0.9 * cm, f"Página {page_num}")
+        if pie_pagina_img:
+            footer_height = 2.0 * cm
+            c.drawImage(pie_pagina_img, 0, 0,
+                       width=PAGE_WIDTH, height=footer_height,
+                       preserveAspectRatio=False, mask='auto')
+        else:
+            c.setFillColor(VERDE_INSTITUCIONAL)
+            c.rect(0, 0, PAGE_WIDTH, 28, fill=1, stroke=0)
+            c.setFillColor(BLANCO)
+            c.setFont(font_normal, 8)
+            c.drawCentredString(PAGE_WIDTH/2, 10, "comunicaciones@asomunicipios.gov.co")
     
-    def dibujar_seccion_titulo(titulo):
-        nonlocal y_position
-        verificar_espacio(30)
-        c.setFont(font_bold, 11)
-        c.setFillColor(NEGRO)
-        c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
-        y_position -= 20
-    
-    def dibujar_texto_justificado(texto, font_name=None, font_size=10, line_height=14):
-        """Dibuja texto justificado"""
-        nonlocal y_position
-        fname = font_name or font_normal
-        c.setFont(fname, font_size)
-        lines = simpleSplit(texto, fname, font_size, CONTENT_WIDTH)
+    def new_page():
+        """Crea una nueva página"""
+        nonlocal current_page
+        draw_footer()
+        c.showPage()
+        current_page += 1
+        y = draw_header()
         
-        espacio_normal = c.stringWidth(' ', fname, font_size)
-        max_space = espacio_normal * 3
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 10)
+        c.drawCentredString(PAGE_WIDTH/2, y, f"RESOLUCIÓN {numero_resolucion} (Continuación)")
+        y -= 14
+        c.setFont(font_normal, 8)
+        c.drawCentredString(PAGE_WIDTH/2, y, f"Página {current_page}")
+        return y - 20
+    
+    def check_page(y, needed_space=60):
+        """Verifica si hay espacio suficiente"""
+        if y < MARGIN_BOTTOM + needed_space:
+            return new_page()
+        return y
+    
+    def draw_justified_text(text, x, y, width, font_name, font_size, leading=12):
+        """Dibuja texto justificado"""
+        c.setFont(font_name, font_size)
+        lines = simpleSplit(text, font_name, font_size, width)
         
         for i, line in enumerate(lines):
-            verificar_espacio(line_height)
+            y = check_page(y, leading + 10)
             
-            line_width = c.stringWidth(line, fname, font_size)
-            if i == len(lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
-                c.drawString(MARGIN_LEFT, y_position, line)
-            else:
-                words = line.split(' ')
+            if i < len(lines) - 1 and len(line.split()) > 1:
+                words = line.split()
                 if len(words) > 1:
-                    total_words_width = sum(c.stringWidth(word, fname, font_size) for word in words)
-                    total_space = CONTENT_WIDTH - total_words_width
-                    space_between = total_space / (len(words) - 1)
-                    
-                    if space_between > max_space:
-                        c.drawString(MARGIN_LEFT, y_position, line)
-                    else:
-                        x = MARGIN_LEFT
-                        for j, word in enumerate(words):
-                            c.drawString(x, y_position, word)
-                            x += c.stringWidth(word, fname, font_size)
-                            if j < len(words) - 1:
-                                x += space_between
+                    total_word_width = sum(c.stringWidth(word, font_name, font_size) for word in words)
+                    space_width = (width - total_word_width) / (len(words) - 1)
+                    current_x = x
+                    for j, word in enumerate(words):
+                        c.drawString(current_x, y, word)
+                        current_x += c.stringWidth(word, font_name, font_size) + space_width
                 else:
-                    c.drawString(MARGIN_LEFT, y_position, line)
+                    c.drawString(x, y, line)
+            else:
+                c.drawString(x, y, line)
             
-            y_position -= line_height
-    
-    def dibujar_articulo_justificado(numero_articulo, texto, font_size=10, line_height=14):
-        """Dibuja un artículo con título en bold y texto justificado"""
-        nonlocal y_position
-        verificar_espacio(80)
+            y -= leading
         
-        c.setFont(font_bold, font_size)
-        c.setFillColor(NEGRO)
-        titulo = f"Artículo {numero_articulo}. "
-        titulo_width = c.stringWidth(titulo, font_bold, font_size)
-        c.drawString(MARGIN_LEFT, y_position, titulo)
-        
-        c.setFont(font_normal, font_size)
-        lines = simpleSplit(texto, font_normal, font_size, CONTENT_WIDTH - titulo_width)
-        
-        if lines:
-            c.drawString(MARGIN_LEFT + titulo_width, y_position, lines[0])
-            y_position -= line_height
-        
-        if len(lines) > 1:
-            resto_texto = ' '.join(lines[1:])
-            all_lines = simpleSplit(resto_texto, font_normal, font_size, CONTENT_WIDTH)
-            
-            espacio_normal = c.stringWidth(' ', font_normal, font_size)
-            max_space = espacio_normal * 3
-            
-            for i, line in enumerate(all_lines):
-                verificar_espacio(line_height)
-                line_width = c.stringWidth(line, font_normal, font_size)
-                
-                if i == len(all_lines) - 1 or line_width < CONTENT_WIDTH * 0.75:
-                    c.drawString(MARGIN_LEFT, y_position, line)
-                else:
-                    words = line.split(' ')
-                    if len(words) > 1:
-                        total_words_width = sum(c.stringWidth(word, font_normal, font_size) for word in words)
-                        total_space = CONTENT_WIDTH - total_words_width
-                        space_between = total_space / (len(words) - 1)
-                        
-                        if space_between > max_space:
-                            c.drawString(MARGIN_LEFT, y_position, line)
-                        else:
-                            x = MARGIN_LEFT
-                            for j, word in enumerate(words):
-                                c.drawString(x, y_position, word)
-                                x += c.stringWidth(word, font_normal, font_size)
-                                if j < len(words) - 1:
-                                    x += space_between
-                    else:
-                        c.drawString(MARGIN_LEFT, y_position, line)
-                
-                y_position -= line_height
-        
-        y_position -= 10
+        return y
     
-    def formatear_area(valor):
-        """Formatea el área con separador de miles"""
-        try:
-            return f"{float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        except:
-            return str(valor)
-    
-    def formatear_moneda(valor):
-        """Formatea valores monetarios"""
-        try:
-            return f"${float(valor):,.0f}".replace(",", ".")
-        except:
-            return f"${valor}"
-    
-    # ==========================================
-    # PÁGINA 1 - ENCABEZADO
-    # ==========================================
-    y_position = draw_header()
-    
-    # Número de resolución
-    c.setFillColor(NEGRO)
-    c.setFont(font_bold, 12)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No. {numero_resolucion}")
-    y_position -= 16
-    
-    # Fecha de resolución
-    c.setFont(font_bold, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y_position -= 25
+    # ==================== PÁGINA 1 ====================
+    y = draw_header()
     
     # Título de la resolución
-    c.setFont(font_bold, 9)
+    c.setFillColor(NEGRO)
+    c.setFont(font_bold, 11)
+    c.drawCentredString(PAGE_WIDTH/2, y, f"RESOLUCIÓN No. {numero_resolucion}")
+    y -= 16
+    
+    c.setFont(font_normal, 9)
+    c.drawCentredString(PAGE_WIDTH/2, y, f"({fecha_resolucion})")
+    y -= 24
+    
+    # Título descriptivo
     titulo = plantilla["titulo"].format(municipio=municipio.upper())
     lines = simpleSplit(titulo, font_bold, 9, CONTENT_WIDTH)
+    c.setFont(font_bold, 9)
     for line in lines:
-        c.drawCentredString(PAGE_WIDTH/2, y_position, line)
-        y_position -= 12
-    y_position -= 15
-    
-    # ==========================================
-    # CONSIDERANDO
-    # ==========================================
-    dibujar_seccion_titulo("CONSIDERANDO")
-    c.setFillColor(NEGRO)
+        c.drawCentredString(PAGE_WIDTH/2, y, line)
+        y -= 12
+    y -= 10
     
     # Preámbulo
-    dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
-    y_position -= 10
-    
-    # Si hay texto personalizado de considerandos, usarlo
-    if texto_considerando_personalizado:
-        texto_procesado = texto_considerando_personalizado
-        try:
-            texto_procesado = texto_procesado.replace('(solicitante)', solicitante_nombre)
-            texto_procesado = texto_procesado.replace('(documento)', solicitante_documento)
-            texto_procesado = texto_procesado.replace('(codigo_predial)', codigo_predial)
-            texto_procesado = texto_procesado.replace('(municipio)', municipio)
-            texto_procesado = texto_procesado.replace('(radicado)', radicado)
-            texto_procesado = texto_procesado.replace('(matricula)', matricula)
-            texto_procesado = texto_procesado.replace('(area_terreno_anterior)', str(area_terreno_anterior))
-            texto_procesado = texto_procesado.replace('(area_terreno_nueva)', str(area_terreno_nueva))
-            texto_procesado = texto_procesado.replace('(area_construida_anterior)', str(area_construida_anterior))
-            texto_procesado = texto_procesado.replace('(area_construida_nueva)', str(area_construida_nueva))
-        except Exception:
-            pass
-        dibujar_texto_justificado(texto_procesado, font_size=10, line_height=13)
-        y_position -= 10
-    else:
-        # Considerando descubrimiento
-        texto_desc = plantilla["considerando_descubrimiento"].format(
-            municipio=municipio,
-            radicado=radicado
-        )
-        dibujar_texto_justificado(texto_desc, font_size=10, line_height=13)
-        y_position -= 10
-        
-        # Considerando solicitud
-        texto_sol = plantilla["considerando_solicitud"].format(
-            solicitante_nombre=solicitante_nombre,
-            solicitante_documento=solicitante_documento
-        )
-        dibujar_texto_justificado(texto_sol, font_size=10, line_height=13)
-        y_position -= 10
-        
-        # Considerando predio
-        texto_predio = plantilla["considerando_predio"].format(
-            codigo_predial=codigo_predial,
-            radicado=radicado,
-            municipio=municipio
-        )
-        dibujar_texto_justificado(texto_predio, font_size=10, line_height=13)
-        y_position -= 10
-        
-        # Considerando documentos
-        texto_docs = plantilla["considerando_documentos"].format(
-            matricula_inmobiliaria=matricula
-        )
-        dibujar_texto_justificado(texto_docs, font_size=10, line_height=13)
-        y_position -= 5
-        
-        # Lista de documentos
-        c.setFont(font_normal, 10)
-        for doc in plantilla["documentos_soporte"]:
-            verificar_espacio(15)
-            doc_texto = doc.format(matricula=matricula)
-            c.drawString(MARGIN_LEFT + 15, y_position, f"• {doc_texto}")
-            y_position -= 14
-        y_position -= 10
-        
-        # Considerando inscripción actual
-        texto_insc = plantilla["considerando_inscripcion_actual"].format(
-            codigo_predial=codigo_predial,
-            area_terreno_anterior=area_terreno_anterior,
-            area_construida_anterior=area_construida_anterior,
-            destino_economico=destino,
-            matricula_inmobiliaria=matricula,
-            propietario_nombre=propietario_nombre
-        )
-        dibujar_texto_justificado(texto_insc, font_size=10, line_height=13)
-        y_position -= 10
-        
-        # Considerando visita
-        texto_visita = plantilla["considerando_visita"].format(
-            area_terreno_nueva=area_terreno_nueva,
-            area_construida_nueva=area_construida_nueva,
-            destino_economico=destino,
-            matricula_inmobiliaria=matricula,
-            propietario_nombre=propietario_nombre,
-            propietario_documento=propietario_documento
-        )
-        dibujar_texto_justificado(texto_visita, font_size=10, line_height=13)
-        y_position -= 10
-        
-        # Considerando final
-        dibujar_texto_justificado(plantilla["considerando_final"], font_size=10, line_height=13)
-        y_position -= 15
-    
-    # ==========================================
-    # RESUELVE
-    # ==========================================
-    dibujar_seccion_titulo("RESUELVE")
-    
-    # Artículo 1
-    texto_art1 = plantilla["articulo_1"].format(
-        municipio=municipio,
-        codigo_predial=codigo_predial,
-        propietario_nombre=propietario_nombre
+    y = draw_justified_text(
+        plantilla["considerando_intro"],
+        MARGIN_LEFT, y, CONTENT_WIDTH, font_normal, 9, 11
     )
-    dibujar_articulo_justificado(1, texto_art1)
-    y_position -= 5
+    y -= 8
     
-    # ==========================================
-    # TABLA DE CANCELACIÓN E INSCRIPCIÓN
-    # ==========================================
-    verificar_espacio(180)
-    
-    # Encabezados de la tabla
-    col_widths = [65, 55, 45, 50, 40, 45, 50, 50, 55]
-    
-    # Datos para CANCELACIÓN
-    datos_cancelacion = [
-        ["CANCELACIÓN", "", "", "", "", "", "", "", ""],
-        ["N° PREDIAL", "COD. HOM.", "MATRÍCULA", "DIRECCIÓN", "DEST.", "ÁREA TER.", "ÁREA CON.", "AVALÚO", "VIG. FISC."],
-        [
-            codigo_predial[:20] if codigo_predial else "",
-            codigo_homologado[:12] if codigo_homologado else "",
-            matricula[:10] if matricula else "",
-            (direccion or "")[:15],
-            destino,
-            formatear_area(area_terreno_anterior),
-            formatear_area(area_construida_anterior),
-            formatear_moneda(avaluo_anterior),
-            vigencia_anterior
-        ]
-    ]
-    
-    # Datos para INSCRIPCIÓN
-    datos_inscripcion = [
-        ["INSCRIPCIÓN", "", "", "", "", "", "", "", ""],
-        ["N° PREDIAL", "COD. HOM.", "MATRÍCULA", "DIRECCIÓN", "DEST.", "ÁREA TER.", "ÁREA CON.", "AVALÚO", "VIG. FISC."],
-        [
-            codigo_predial[:20] if codigo_predial else "",
-            codigo_homologado[:12] if codigo_homologado else "",
-            matricula[:10] if matricula else "",
-            (direccion or "")[:15],
-            destino,
-            formatear_area(area_terreno_nueva),
-            formatear_area(area_construida_nueva),
-            formatear_moneda(avaluo_nuevo),
-            vigencia_nueva
-        ]
-    ]
-    
-    # Dibujar tabla CANCELACIÓN
-    tabla_cancelacion = Table(datos_cancelacion, colWidths=col_widths)
-    tabla_cancelacion.setStyle(TableStyle([
-        ('SPAN', (0, 0), (-1, 0)),
-        ('BACKGROUND', (0, 0), (-1, 0), HexColor("#FFE4E4")),
-        ('BACKGROUND', (0, 1), (-1, 1), HexColor("#F0F0F0")),
-        ('TEXTCOLOR', (0, 0), (-1, -1), NEGRO),
-        ('FONTNAME', (0, 0), (-1, 0), font_bold),
-        ('FONTNAME', (0, 1), (-1, 1), font_bold),
-        ('FONTSIZE', (0, 0), (-1, -1), 6),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.5, NEGRO),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-    ]))
-    
-    tabla_cancelacion.wrapOn(c, CONTENT_WIDTH, 200)
-    tabla_cancelacion.drawOn(c, MARGIN_LEFT, y_position - 50)
-    y_position -= 60
-    
-    # Dibujar tabla INSCRIPCIÓN
-    tabla_inscripcion = Table(datos_inscripcion, colWidths=col_widths)
-    tabla_inscripcion.setStyle(TableStyle([
-        ('SPAN', (0, 0), (-1, 0)),
-        ('BACKGROUND', (0, 0), (-1, 0), HexColor("#E4FFE4")),
-        ('BACKGROUND', (0, 1), (-1, 1), HexColor("#F0F0F0")),
-        ('TEXTCOLOR', (0, 0), (-1, -1), NEGRO),
-        ('FONTNAME', (0, 0), (-1, 0), font_bold),
-        ('FONTNAME', (0, 1), (-1, 1), font_bold),
-        ('FONTSIZE', (0, 0), (-1, -1), 6),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.5, NEGRO),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-    ]))
-    
-    tabla_inscripcion.wrapOn(c, CONTENT_WIDTH, 200)
-    tabla_inscripcion.drawOn(c, MARGIN_LEFT, y_position - 50)
-    y_position -= 70
-    
-    # Fecha de inscripción catastral
-    c.setFont(font_bold, 8)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, f"INSCRIPCIÓN CATASTRAL {datetime.now().strftime('%d/%m/%Y')}")
-    y_position -= 25
-    
-    # ==========================================
-    # ARTÍCULOS ADICIONALES
-    # ==========================================
-    dibujar_articulo_justificado(2, plantilla["articulo_2"])
-    dibujar_articulo_justificado(3, plantilla["articulo_3"])
-    dibujar_articulo_justificado(4, plantilla["articulo_4"])
-    dibujar_articulo_justificado(5, plantilla["articulo_5"])
-    
-    y_position -= 20
-    
-    # ==========================================
-    # COMUNÍQUESE
-    # ==========================================
-    verificar_espacio(30)
+    # CONSIDERANDO
     c.setFont(font_bold, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, "COMUNÍQUESE, NOTIFÍQUESE Y CÚMPLASE")
-    y_position -= 30
+    c.drawCentredString(PAGE_WIDTH/2, y, "CONSIDERANDO")
+    y -= 16
     
-    # Fecha de expedición
-    c.setFont(font_normal, 10)
-    fecha_texto = f"DADA EN OCAÑA, A LOS {datetime.now().strftime('%d')} DÍAS DE {datetime.now().strftime('%B').upper()} DE {datetime.now().year}."
-    c.drawCentredString(PAGE_WIDTH/2, y_position, fecha_texto)
-    y_position -= 50
+    # Texto personalizado o considerandos predeterminados
+    if texto_considerando_personalizado and texto_considerando_personalizado.strip():
+        # Reemplazar variables
+        texto = texto_considerando_personalizado
+        texto = texto.replace("(solicitante)", solicitante_nombre)
+        texto = texto.replace("(documento)", solicitante_documento)
+        texto = texto.replace("(codigo_predial)", codigo_predial)
+        texto = texto.replace("(municipio)", municipio)
+        texto = texto.replace("(radicado)", radicado)
+        texto = texto.replace("(matricula)", matricula)
+        texto = texto.replace("(area_terreno_anterior)", f"{area_terreno_anterior:,.2f}")
+        texto = texto.replace("(area_terreno_nueva)", f"{area_terreno_nueva:,.2f}")
+        texto = texto.replace("(area_construida_anterior)", f"{area_construida_anterior:,.2f}")
+        texto = texto.replace("(area_construida_nueva)", f"{area_construida_nueva:,.2f}")
+        
+        y = draw_justified_text(texto, MARGIN_LEFT, y, CONTENT_WIDTH, font_normal, 9, 11)
+    else:
+        # Considerandos predeterminados
+        considerandos = [
+            plantilla["considerando_solicitud"].format(
+                solicitante_nombre=solicitante_nombre,
+                solicitante_documento=solicitante_documento,
+                radicado=radicado,
+                codigo_predial=codigo_predial
+            ),
+            plantilla["considerando_area_actual"].format(
+                area_terreno_anterior=f"{area_terreno_anterior:,.2f}",
+                area_construida_anterior=f"{area_construida_anterior:,.2f}",
+                avaluo_anterior=f"{avaluo_anterior:,.0f}"
+            ),
+            plantilla["considerando_area_nueva"].format(
+                area_terreno_nueva=f"{area_terreno_nueva:,.2f}",
+                area_construida_nueva=f"{area_construida_nueva:,.2f}",
+                avaluo_nuevo=f"{avaluo_nuevo:,.0f}"
+            ),
+            plantilla["considerando_analisis"],
+            plantilla["considerando_legal"]
+        ]
+        
+        for cons in considerandos:
+            y = check_page(y, 40)
+            y = draw_justified_text(cons, MARGIN_LEFT, y, CONTENT_WIDTH, font_normal, 9, 11)
+            y -= 8
     
-    # ==========================================
-    # FIRMA Y QR
-    # ==========================================
-    verificar_espacio(120)
+    y -= 10
+    
+    # RESUELVE
+    c.setFont(font_bold, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y, "RESUELVE")
+    y -= 16
+    
+    # ARTÍCULO PRIMERO
+    y = check_page(y, 80)
+    c.setFont(font_bold, 9)
+    c.drawString(MARGIN_LEFT, y, "ARTÍCULO PRIMERO.-")
+    y -= 12
+    
+    articulo_1 = plantilla["articulo_1_intro"].format(municipio=municipio)
+    y = draw_justified_text(articulo_1, MARGIN_LEFT, y, CONTENT_WIDTH, font_normal, 9, 11)
+    y -= 12
+    
+    # Tabla de CANCELACIÓN (Datos anteriores)
+    y = check_page(y, 100)
+    c.setFillColor(colors.HexColor('#C00000'))
+    c.setFont(font_bold, 9)
+    c.drawCentredString(PAGE_WIDTH/2, y, "CANCELACIÓN (Datos Anteriores)")
+    y -= 14
+    
+    # Tabla de datos anteriores
+    c.setFillColor(NEGRO)
+    c.setFont(font_normal, 8)
+    
+    tabla_data = [
+        ("Código Predial:", codigo_predial),
+        ("Código Homologado:", codigo_homologado),
+        ("Matrícula Inmobiliaria:", matricula),
+        ("Dirección:", direccion),
+        ("Destino Económico:", destino_economico),
+        ("Área Terreno:", f"{area_terreno_anterior:,.2f} m²"),
+        ("Área Construida:", f"{area_construida_anterior:,.2f} m²"),
+        ("Avalúo:", f"${avaluo_anterior:,.0f}"),
+        ("Propietario:", propietario_nombre)
+    ]
+    
+    col1_x = MARGIN_LEFT + 10
+    col2_x = MARGIN_LEFT + 130
+    
+    c.setStrokeColor(colors.HexColor('#C00000'))
+    c.setLineWidth(1)
+    c.rect(MARGIN_LEFT, y - (len(tabla_data) * 12) - 5, CONTENT_WIDTH, (len(tabla_data) * 12) + 10, stroke=1, fill=0)
+    
+    for label, valor in tabla_data:
+        c.setFont(font_bold, 8)
+        c.drawString(col1_x, y, label)
+        c.setFont(font_normal, 8)
+        c.drawString(col2_x, y, str(valor)[:60])
+        y -= 12
+    
+    y -= 15
+    
+    # Tabla de INSCRIPCIÓN (Datos nuevos)
+    y = check_page(y, 100)
+    c.setFillColor(colors.HexColor('#008000'))
+    c.setFont(font_bold, 9)
+    c.drawCentredString(PAGE_WIDTH/2, y, "INSCRIPCIÓN (Datos Rectificados)")
+    y -= 14
+    
+    c.setFillColor(NEGRO)
+    c.setFont(font_normal, 8)
+    
+    tabla_nueva = [
+        ("Código Predial:", codigo_predial),
+        ("Código Homologado:", codigo_homologado),
+        ("Matrícula Inmobiliaria:", matricula),
+        ("Dirección:", direccion),
+        ("Destino Económico:", destino_economico),
+        ("Área Terreno:", f"{area_terreno_nueva:,.2f} m²"),
+        ("Área Construida:", f"{area_construida_nueva:,.2f} m²"),
+        ("Avalúo:", f"${avaluo_nuevo:,.0f}"),
+        ("Propietario:", propietario_nombre)
+    ]
+    
+    c.setStrokeColor(colors.HexColor('#008000'))
+    c.rect(MARGIN_LEFT, y - (len(tabla_nueva) * 12) - 5, CONTENT_WIDTH, (len(tabla_nueva) * 12) + 10, stroke=1, fill=0)
+    
+    for label, valor in tabla_nueva:
+        c.setFont(font_bold, 8)
+        c.drawString(col1_x, y, label)
+        c.setFont(font_normal, 8)
+        c.drawString(col2_x, y, str(valor)[:60])
+        y -= 12
+    
+    y -= 15
+    
+    # Diferencia de áreas
+    y = check_page(y, 40)
+    diferencia_terreno = area_terreno_nueva - area_terreno_anterior
+    diferencia_construida = area_construida_nueva - area_construida_anterior
+    
+    c.setFillColor(colors.HexColor('#0891b2'))
+    c.setFont(font_bold, 8)
+    c.drawString(MARGIN_LEFT, y, f"Diferencia Área Terreno: {diferencia_terreno:+,.2f} m² | Diferencia Área Construida: {diferencia_construida:+,.2f} m²")
+    y -= 20
+    
+    # ARTÍCULOS RESTANTES
+    articulos = [
+        ("ARTÍCULO SEGUNDO.-", plantilla["articulo_2"]),
+        ("ARTÍCULO TERCERO.-", plantilla["articulo_3"]),
+        ("ARTÍCULO CUARTO.-", plantilla["articulo_4"]),
+        ("ARTÍCULO QUINTO.-", plantilla["articulo_5"])
+    ]
+    
+    c.setFillColor(NEGRO)
+    for titulo_art, texto_art in articulos:
+        y = check_page(y, 50)
+        c.setFont(font_bold, 9)
+        c.drawString(MARGIN_LEFT, y, titulo_art)
+        y -= 12
+        y = draw_justified_text(texto_art, MARGIN_LEFT, y, CONTENT_WIDTH, font_normal, 9, 11)
+        y -= 10
+    
+    # Cierre
+    y = check_page(y, 120)
+    y -= 15
+    c.setFont(font_bold, 10)
+    c.drawCentredString(PAGE_WIDTH/2, y, plantilla["cierre"])
+    y -= 30
     
     # Firma
-    c.setFont(font_bold, 10)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_nombre"])
-    y_position -= 14
-    c.setFont(font_normal, 9)
-    c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["firmante_cargo"])
-    y_position -= 30
+    if firma_img:
+        firma_width = 120
+        firma_height = 50
+        c.drawImage(firma_img, (PAGE_WIDTH - firma_width) / 2, y - firma_height,
+                   width=firma_width, height=firma_height,
+                   preserveAspectRatio=True, mask='auto')
+        y -= firma_height + 5
+    
+    c.setFont(font_bold, 9)
+    c.drawCentredString(PAGE_WIDTH/2, y, plantilla["firmante_nombre"])
+    y -= 12
+    c.setFont(font_normal, 8)
+    c.drawCentredString(PAGE_WIDTH/2, y, plantilla["firmante_cargo"])
+    y -= 25
     
     # Elaboró / Revisó
-    c.setFont(font_normal, 8)
-    c.drawString(MARGIN_LEFT, y_position, f"Elaboró: {elaboro}")
-    y_position -= 12
-    c.drawString(MARGIN_LEFT, y_position, f"Revisó: {aprobo}")
-    y_position -= 30
+    c.setFont(font_normal, 7)
+    c.drawString(MARGIN_LEFT, y, f"Elaboró: {elaboro}")
+    y -= 10
+    c.drawString(MARGIN_LEFT, y, f"Revisó: {aprobo}")
+    y -= 20
     
-    # QR Code
-    if codigo_verificacion:
-        try:
-            verificacion_url = f"https://m6-area-update.preview.emergentagent.com/verificar/{codigo_verificacion}"
-            qr = qrcode.QRCode(version=1, box_size=3, border=1)
-            qr.add_data(verificacion_url)
-            qr.make(fit=True)
-            qr_img = qr.make_image(fill_color="black", back_color="white")
-            
-            qr_buffer = BytesIO()
-            qr_img.save(qr_buffer, format='PNG')
-            qr_buffer.seek(0)
-            
-            from reportlab.lib.utils import ImageReader
-            qr_image = ImageReader(qr_buffer)
-            qr_size = 60
-            c.drawImage(qr_image, PAGE_WIDTH - MARGIN_RIGHT - qr_size, y_position - qr_size + 30, 
-                       width=qr_size, height=qr_size)
-            
-            c.setFont(font_normal, 6)
-            c.drawString(PAGE_WIDTH - MARGIN_RIGHT - qr_size, y_position - qr_size + 20, "Verificar resolución:")
-            c.setFont(font_normal, 5)
-            c.drawString(PAGE_WIDTH - MARGIN_RIGHT - qr_size, y_position - qr_size + 12, codigo_verificacion[:20])
-        except Exception as e:
-            print(f"Error generando QR: {e}")
+    # QR de verificación
+    if qr_img and codigo_verificacion:
+        y = check_page(y, 80)
+        qr_size = 60
+        qr_x = PAGE_WIDTH - MARGIN_RIGHT - qr_size
+        qr_y = y - qr_size
+        c.drawImage(qr_img, qr_x, qr_y, width=qr_size, height=qr_size)
+        
+        c.setFont(font_normal, 6)
+        c.drawString(qr_x, qr_y - 10, f"Código: {codigo_verificacion}")
+        c.drawString(qr_x, qr_y - 18, "Escanee para verificar")
     
-    # Pie de página
+    # Pie de página final
     draw_footer()
     
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
-
-
-# Alias para compatibilidad
-generate_m6_resolution_pdf = generar_resolucion_m6_pdf
