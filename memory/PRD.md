@@ -9,23 +9,23 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 #### Módulo "Rectificación de Área" (VERIFICADO - 07/03/2026) ✨ NUEVO
 - **Corrección del área de terreno** de un predio cuando existe diferencia entre el área registrada y el área real
-- **Campos soportados**:
-  - Área de Terreno (actual y nueva)
-  - Área de Construcción (actual y nueva)
+- **Zonas de Terreno** (igual que R2):
+  - Múltiples zonas con: Zona Física, Zona Económica, Área de Terreno
+  - Subtotal calculado automáticamente
+  - Diferencia visual (aumenta/disminuye)
+- **Construcciones** (igual que R2):
+  - Múltiples construcciones con ID automático (A, B, C...)
+  - Campos: Piso, Habitaciones, Baños, Locales, Tipificación, Uso, Puntaje, Área
+  - Subtotal calculado automáticamente
+- **Campos adicionales**:
   - Nuevo Avalúo (opcional)
   - Motivo de la rectificación
   - Texto de Considerandos personalizado (opcional)
-- **Frontend**: Formulario completo en MutacionesResoluciones.js con:
-  - Selector de municipio
-  - Campo de radicado con autocompletado
-  - Búsqueda de predio con resultados
-  - Vista de diferencia de áreas (aumenta/disminuye)
-  - Variables disponibles para considerandos
 - **Backend**: 
   - Endpoint unificado acepta `tipo='RECTIFICACION_AREA'`
   - Función `_generar_resolucion_m6_interno` genera PDF y actualiza DB
   - Actualiza `area_terreno`, `area_construida`, `avaluo` del predio
-  - También actualiza `r1_registros[0]` con las nuevas áreas
+  - Guarda zonas y construcciones en `r1_registros[0]` para exportación a R2
 - **PDF Generator**: `resolucion_m6_pdf_generator.py` con formato institucional
 - **Testing**: iteration_65.json - 100% éxito frontend y backend (11/11 tests)
 

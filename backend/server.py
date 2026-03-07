@@ -693,6 +693,11 @@ class SolicitudMutacionCreate(BaseModel):
     area_construida_nueva: Optional[float] = None  # Nueva área construida (opcional)
     avaluo_nuevo: Optional[float] = None  # Nuevo avalúo después de rectificación
     linderos_nuevos: Optional[dict] = None  # Nuevos linderos (norte, sur, este, oeste)
+    # Datos detallados de zonas y construcciones para R2
+    zonas_terreno_anteriores: Optional[list] = None  # Zonas de terreno anteriores
+    zonas_terreno_nuevas: Optional[list] = None  # Zonas de terreno nuevas
+    construcciones_anteriores: Optional[list] = None  # Construcciones anteriores
+    construcciones_nuevas: Optional[list] = None  # Construcciones nuevas rectificadas
     # Campo universal para texto personalizado de considerandos
     texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
 
@@ -15532,6 +15537,10 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         
         # Actualizar predio en la base de datos con las nuevas áreas
         if predio_id:
+            # Obtener datos detallados de zonas y construcciones de la solicitud
+            zonas_terreno_nuevas = solicitud.get('zonas_terreno_nuevas', [])
+            construcciones_nuevas = solicitud.get('construcciones_nuevas', [])
+            
             historial_entry = {
                 "tipo_mutacion": "RECTIFICACION_AREA",
                 "numero_resolucion": numero_resolucion,
@@ -15545,37 +15554,99 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 "area_construida_nueva": area_construida_nueva,
                 "avaluo_anterior": avaluo_anterior,
                 "avaluo_nuevo": avaluo_nuevo,
+                "zonas_terreno_nuevas": zonas_terreno_nuevas,
+                "construcciones_nuevas": construcciones_nuevas,
                 "fecha": datetime.now(timezone.utc).isoformat()
             }
+            
+            # Preparar actualización del predio
+            update_fields = {
+                "area_terreno": area_terreno_nueva,
+                "area_construida": area_construida_nueva,
+                "avaluo": avaluo_nuevo,
+                "ultima_rectificacion_area": fecha_resolucion,
+                "resolucion_rectificacion": numero_resolucion,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Si hay zonas de terreno nuevas, actualizar zonas_homogeneas
+            if zonas_terreno_nuevas:
+                update_fields["zonas_homogeneas"] = [
+                    {
+                        "zona_fisica": z.get("zona_fisica", ""),
+                        "zona_economica": z.get("zona_economica", ""),
+                        "area_terreno": float(z.get("area_terreno", 0))
+                    }
+                    for z in zonas_terreno_nuevas
+                ]
+            
+            # Si hay construcciones nuevas, actualizar construcciones
+            if construcciones_nuevas:
+                update_fields["construcciones"] = [
+                    {
+                        "id": c.get("id", f"C{i+1}"),
+                        "piso": int(c.get("piso", 0)),
+                        "habitaciones": int(c.get("habitaciones", 0)),
+                        "banos": int(c.get("banos", 0)),
+                        "locales": int(c.get("locales", 0)),
+                        "tipificacion": c.get("tipificacion", ""),
+                        "uso": c.get("uso", ""),
+                        "puntaje": float(c.get("puntaje", 0)),
+                        "area_construida": float(c.get("area_construida", 0))
+                    }
+                    for i, c in enumerate(construcciones_nuevas)
+                ]
             
             # Actualizar áreas del predio
             await db.predios.update_one(
                 {"id": predio_id},
                 {
-                    "$set": {
-                        "area_terreno": area_terreno_nueva,
-                        "area_construida": area_construida_nueva,
-                        "avaluo": avaluo_nuevo,
-                        "ultima_rectificacion_area": fecha_resolucion,
-                        "resolucion_rectificacion": numero_resolucion,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    },
+                    "$set": update_fields,
                     "$push": {"historial_resoluciones": historial_entry}
                 }
             )
             logger.info(f"✅ Predio {predio_id} actualizado con nuevas áreas")
             
             # También actualizar R1 si existe
+            r1_update = {
+                "r1_registros.0.area_terreno": area_terreno_nueva,
+                "r1_registros.0.area_construida": area_construida_nueva,
+                "r1_registros.0.avaluo": avaluo_nuevo
+            }
+            
+            # Agregar zonas homogéneas a R1 si existen
+            if zonas_terreno_nuevas:
+                r1_update["r1_registros.0.zonas_homogeneas"] = [
+                    {
+                        "zona_fisica": z.get("zona_fisica", ""),
+                        "zona_economica": z.get("zona_economica", ""),
+                        "area_terreno": float(z.get("area_terreno", 0))
+                    }
+                    for z in zonas_terreno_nuevas
+                ]
+            
+            # Agregar construcciones a R1 si existen
+            if construcciones_nuevas:
+                r1_update["r1_registros.0.construcciones"] = [
+                    {
+                        "id": c.get("id", f"C{i+1}"),
+                        "piso": int(c.get("piso", 0)),
+                        "habitaciones": int(c.get("habitaciones", 0)),
+                        "banos": int(c.get("banos", 0)),
+                        "locales": int(c.get("locales", 0)),
+                        "tipificacion": c.get("tipificacion", ""),
+                        "uso": c.get("uso", ""),
+                        "puntaje": float(c.get("puntaje", 0)),
+                        "area_construida": float(c.get("area_construida", 0))
+                    }
+                    for i, c in enumerate(construcciones_nuevas)
+                ]
+            
             await db.predios.update_one(
                 {"id": predio_id, "r1_registros.0": {"$exists": True}},
-                {
-                    "$set": {
-                        "r1_registros.0.area_terreno": area_terreno_nueva,
-                        "r1_registros.0.area_construida": area_construida_nueva,
-                        "r1_registros.0.avaluo": avaluo_nuevo
-                    }
-                }
+                {"$set": r1_update}
             )
+            logger.info(f"✅ R1 del predio {predio_id} actualizado con zonas y construcciones")
         
         # Registrar actividad
         await db.actividad.insert_one({

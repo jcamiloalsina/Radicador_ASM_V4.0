@@ -304,6 +304,15 @@ export default function MutacionesResoluciones() {
   const [searchingPrediosRectificacion, setSearchingPrediosRectificacion] = useState(false);
   const [showMunicipioDropdownRectificacion, setShowMunicipioDropdownRectificacion] = useState(false);
   const [radicadosDisponiblesRectificacion, setRadicadosDisponiblesRectificacion] = useState([]);
+  
+  // Estados para Zonas de Terreno y Construcciones en Rectificación
+  const [zonasTerreno_Rect_Anterior, setZonasTerreno_Rect_Anterior] = useState([]);
+  const [zonasTerreno_Rect_Nueva, setZonasTerreno_Rect_Nueva] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  const [construcciones_Rect_Anterior, setConstrucciones_Rect_Anterior] = useState([]);
+  const [construcciones_Rect_Nueva, setConstrucciones_Rect_Nueva] = useState([{
+    id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+    tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+  }]);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -2976,6 +2985,59 @@ export default function MutacionesResoluciones() {
     const areaConstruidaActual = r1.area_construida || predio.area_construida || 0;
     const avaluoActual = r1.avaluo || predio.avaluo || 0;
     
+    // Cargar zonas de terreno existentes del predio (si existen)
+    const zonasExistentes = r1.zonas_homogeneas || predio.zonas_homogeneas || predio.zonas_terreno || [];
+    if (zonasExistentes.length > 0) {
+      setZonasTerreno_Rect_Anterior(zonasExistentes.map(z => ({
+        zona_fisica: z.zona_fisica || z.zona || '',
+        zona_economica: z.zona_economica || '',
+        area_terreno: z.area_terreno || z.area || '0'
+      })));
+      // Inicializar las nuevas con los mismos valores
+      setZonasTerreno_Rect_Nueva(zonasExistentes.map(z => ({
+        zona_fisica: z.zona_fisica || z.zona || '',
+        zona_economica: z.zona_economica || '',
+        area_terreno: z.area_terreno || z.area || '0'
+      })));
+    } else {
+      // Si no hay zonas, crear una zona con el área total
+      setZonasTerreno_Rect_Anterior([{ zona_fisica: '', zona_economica: '', area_terreno: String(areaTerrenoActual) }]);
+      setZonasTerreno_Rect_Nueva([{ zona_fisica: '', zona_economica: '', area_terreno: String(areaTerrenoActual) }]);
+    }
+    
+    // Cargar construcciones existentes del predio (si existen)
+    const construccionesExistentes = r1.construcciones || predio.construcciones || [];
+    if (construccionesExistentes.length > 0) {
+      const constFormateadas = construccionesExistentes.map((c, i) => ({
+        id: c.id || String.fromCharCode(65 + i),
+        piso: String(c.piso || c.pisos || '0'),
+        habitaciones: String(c.habitaciones || '0'),
+        banos: String(c.banos || '0'),
+        locales: String(c.locales || '0'),
+        tipificacion: c.tipificacion || '',
+        uso: c.uso || '',
+        puntaje: String(c.puntaje || '0'),
+        area_construida: String(c.area_construida || '0')
+      }));
+      setConstrucciones_Rect_Anterior(constFormateadas);
+      setConstrucciones_Rect_Nueva(constFormateadas.map(c => ({ ...c })));
+    } else if (areaConstruidaActual > 0) {
+      // Si hay área construida pero no detalle de construcciones
+      const constDefault = [{
+        id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: String(areaConstruidaActual)
+      }];
+      setConstrucciones_Rect_Anterior(constDefault);
+      setConstrucciones_Rect_Nueva(constDefault.map(c => ({ ...c })));
+    } else {
+      // Sin construcciones
+      setConstrucciones_Rect_Anterior([]);
+      setConstrucciones_Rect_Nueva([{
+        id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+      }]);
+    }
+    
     setRectificacionData(prev => ({
       ...prev,
       predio: predio,
@@ -2989,8 +3051,65 @@ export default function MutacionesResoluciones() {
     setSearchResultsRectificacion([]);
   };
 
+  // Funciones para zonas de terreno en Rectificación
+  const agregarZonaTerreno_Rect = () => {
+    setZonasTerreno_Rect_Nueva(prev => [...prev, { zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+  };
+
+  const eliminarZonaTerreno_Rect = (index) => {
+    if (zonasTerreno_Rect_Nueva.length > 1) {
+      setZonasTerreno_Rect_Nueva(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarZonaTerreno_Rect = (index, campo, valor) => {
+    setZonasTerreno_Rect_Nueva(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Funciones para construcciones en Rectificación
+  const agregarConstruccion_Rect = () => {
+    setConstrucciones_Rect_Nueva(prev => {
+      const nextId = String.fromCharCode(65 + prev.length);
+      return [...prev, {
+        id: nextId, piso: '0', habitaciones: '0', banos: '0', locales: '0',
+        tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+      }];
+    });
+  };
+
+  const eliminarConstruccion_Rect = (index) => {
+    if (construcciones_Rect_Nueva.length > 1) {
+      setConstrucciones_Rect_Nueva(prev => {
+        const nuevas = prev.filter((_, i) => i !== index);
+        return nuevas.map((c, i) => ({ ...c, id: String.fromCharCode(65 + i) }));
+      });
+    }
+  };
+
+  const actualizarConstruccion_Rect = (index, campo, valor) => {
+    setConstrucciones_Rect_Nueva(prev => {
+      const nuevas = [...prev];
+      nuevas[index] = { ...nuevas[index], [campo]: valor };
+      return nuevas;
+    });
+  };
+
+  // Calcular totales para Rectificación de Área
+  const calcularTotales_Rect = () => {
+    const areaTerrenoNueva = zonasTerreno_Rect_Nueva.reduce((sum, z) => sum + (parseFloat(z.area_terreno) || 0), 0);
+    const areaConstruidaNueva = construcciones_Rect_Nueva.reduce((sum, c) => sum + (parseFloat(c.area_construida) || 0), 0);
+    return { areaTerrenoNueva, areaConstruidaNueva };
+  };
+
   // Generar resolución de Rectificación de Área
   const generarResolucionRectificacion = async () => {
+    // Calcular totales desde las zonas y construcciones
+    const totales = calcularTotales_Rect();
+    
     // Validaciones
     if (!rectificacionData.municipio) {
       toast.error('Debe seleccionar un municipio');
@@ -3004,8 +3123,8 @@ export default function MutacionesResoluciones() {
       toast.error('Debe seleccionar un predio');
       return;
     }
-    if (!rectificacionData.area_terreno_nueva || rectificacionData.area_terreno_nueva <= 0) {
-      toast.error('Debe ingresar el área de terreno nueva');
+    if (totales.areaTerrenoNueva <= 0) {
+      toast.error('Debe ingresar al menos una zona de terreno con área mayor a 0');
       return;
     }
 
@@ -3032,14 +3151,19 @@ export default function MutacionesResoluciones() {
         predio_id: rectificacionData.predio.id,
         predio_rectificacion: rectificacionData.predio,
         area_terreno_anterior: parseFloat(rectificacionData.area_terreno_anterior) || 0,
-        area_terreno_nueva: parseFloat(rectificacionData.area_terreno_nueva) || 0,
+        area_terreno_nueva: totales.areaTerrenoNueva,
         area_construida_anterior: parseFloat(rectificacionData.area_construida_anterior) || 0,
-        area_construida_nueva: parseFloat(rectificacionData.area_construida_nueva) || 0,
+        area_construida_nueva: totales.areaConstruidaNueva,
         avaluo_anterior: rectificacionData.predio.avaluo || 0,
         avaluo_nuevo: parseFloat(rectificacionData.avaluo_nuevo) || rectificacionData.predio.avaluo || 0,
         motivo_solicitud: rectificacionData.motivo_solicitud || 'Rectificación de área catastral',
         observaciones: rectificacionData.observaciones,
-        texto_considerando: rectificacionData.texto_considerando || ''
+        texto_considerando: rectificacionData.texto_considerando || '',
+        // Datos detallados de zonas y construcciones (para R2)
+        zonas_terreno_anteriores: zonasTerreno_Rect_Anterior,
+        zonas_terreno_nuevas: zonasTerreno_Rect_Nueva,
+        construcciones_anteriores: construcciones_Rect_Anterior,
+        construcciones_nuevas: construcciones_Rect_Nueva
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -3094,6 +3218,13 @@ export default function MutacionesResoluciones() {
     setSearchPredioRectificacion('');
     setSearchResultsRectificacion([]);
     setRadicadosDisponiblesRectificacion([]);
+    setZonasTerreno_Rect_Anterior([]);
+    setZonasTerreno_Rect_Nueva([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
+    setConstrucciones_Rect_Anterior([]);
+    setConstrucciones_Rect_Nueva([{
+      id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
+      tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
+    }]);
   };
 
   // Construir código predial de 30 dígitos para M5
@@ -5425,106 +5556,221 @@ export default function MutacionesResoluciones() {
       {/* Sección de Áreas - Solo visible si hay predio seleccionado */}
       {rectificacionData.predio && (
         <>
+          {/* Zonas de Terreno */}
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardHeader className="py-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  Zonas de Terreno - Rectificación
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="py-2 space-y-3">
+              {/* Área anterior (solo lectura) */}
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Área Actual en Catastro</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-700">{Number(rectificacionData.area_terreno_anterior).toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                  <span className="text-xs text-slate-500">({zonasTerreno_Rect_Anterior.length} zona{zonasTerreno_Rect_Anterior.length !== 1 ? 's' : ''})</span>
+                </div>
+              </div>
+              
+              {/* Nueva área editable */}
+              <div className="border-2 border-cyan-300 rounded-lg p-3 bg-white">
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-semibold text-cyan-700">Nueva Área de Terreno (Zonas Rectificadas)</p>
+                  <Button size="sm" onClick={agregarZonaTerreno_Rect} variant="outline" className="text-cyan-700 h-7">
+                    <Plus className="w-3 h-3 mr-1" /> Agregar Zona
+                  </Button>
+                </div>
+                
+                {zonasTerreno_Rect_Nueva.map((zona, index) => (
+                  <div key={index} className="border border-slate-200 rounded-lg p-3 bg-slate-50 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-medium text-slate-600">Zona {index + 1}</span>
+                      {zonasTerreno_Rect_Nueva.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => eliminarZonaTerreno_Rect(index)} className="text-red-600 h-6 w-6 p-0">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <Label className="text-xs">Zona Física</Label>
+                        <Input value={zona.zona_fisica} onChange={(e) => actualizarZonaTerreno_Rect(index, 'zona_fisica', e.target.value)} placeholder="Ej: 03" className="h-7 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Zona Económica</Label>
+                        <Input value={zona.zona_economica} onChange={(e) => actualizarZonaTerreno_Rect(index, 'zona_economica', e.target.value)} placeholder="Ej: 05" className="h-7 text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Área (m²) *</Label>
+                        <Input type="number" step="0.01" value={zona.area_terreno} onChange={(e) => actualizarZonaTerreno_Rect(index, 'area_terreno', e.target.value)} className="h-7 text-xs border-cyan-300" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Subtotal y diferencia */}
+                <div className="mt-3 space-y-2">
+                  <div className="bg-cyan-50 border border-cyan-200 rounded p-2">
+                    <p className="text-sm text-cyan-800">
+                      📊 <strong>Subtotal Nueva Área Terreno:</strong> {calcularTotales_Rect().areaTerrenoNueva.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                    </p>
+                  </div>
+                  {calcularTotales_Rect().areaTerrenoNueva !== rectificacionData.area_terreno_anterior && (
+                    <div className={`p-2 rounded ${
+                      calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <p className="text-sm font-medium">
+                        Diferencia: {' '}
+                        <span className={calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior ? 'text-green-700' : 'text-red-700'}>
+                          {(calcularTotales_Rect().areaTerrenoNueva - rectificacionData.area_terreno_anterior).toFixed(2)} m²
+                          {calcularTotales_Rect().areaTerrenoNueva > rectificacionData.area_terreno_anterior ? ' (aumenta)' : ' (disminuye)'}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Construcciones */}
           <Card className="border-amber-200 bg-amber-50/30">
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm text-amber-800 flex items-center gap-2">
-                <Layers className="w-4 h-4" />
-                Datos de Área
+            <CardHeader className="py-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm text-amber-800 flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Construcciones - Rectificación
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="py-2 space-y-3">
+              {/* Área construida anterior (solo lectura) */}
+              <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Área Construida Actual</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-700">{Number(rectificacionData.area_construida_anterior).toLocaleString('es-CO', {minimumFractionDigits: 2})} m²</span>
+                  <span className="text-xs text-slate-500">({construcciones_Rect_Anterior.length} construcción{construcciones_Rect_Anterior.length !== 1 ? 'es' : ''})</span>
+                </div>
+              </div>
+              
+              {/* Nuevas construcciones editables */}
+              <div className="border-2 border-amber-300 rounded-lg p-3 bg-white">
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-semibold text-amber-700">Nuevas Construcciones (Rectificadas)</p>
+                  <Button size="sm" onClick={agregarConstruccion_Rect} variant="outline" className="text-amber-700 h-7">
+                    <Plus className="w-3 h-3 mr-1" /> Agregar Construcción
+                  </Button>
+                </div>
+                
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {construcciones_Rect_Nueva.map((const_, index) => (
+                    <div key={index} className="border border-amber-200 rounded-lg p-3 bg-amber-50/50">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-semibold text-amber-800">Construcción {const_.id}</span>
+                        {construcciones_Rect_Nueva.length > 1 && (
+                          <Button variant="ghost" size="sm" onClick={() => eliminarConstruccion_Rect(index)} className="text-red-600 h-6 w-6 p-0">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <Label className="text-xs">Piso</Label>
+                          <Input type="number" value={const_.piso} onChange={(e) => actualizarConstruccion_Rect(index, 'piso', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Habitaciones</Label>
+                          <Input type="number" value={const_.habitaciones} onChange={(e) => actualizarConstruccion_Rect(index, 'habitaciones', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Baños</Label>
+                          <Input type="number" value={const_.banos} onChange={(e) => actualizarConstruccion_Rect(index, 'banos', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Locales</Label>
+                          <Input type="number" value={const_.locales} onChange={(e) => actualizarConstruccion_Rect(index, 'locales', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Tipificación</Label>
+                          <Input value={const_.tipificacion} onChange={(e) => actualizarConstruccion_Rect(index, 'tipificacion', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Uso</Label>
+                          <Input value={const_.uso} onChange={(e) => actualizarConstruccion_Rect(index, 'uso', e.target.value.toUpperCase())} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Puntaje</Label>
+                          <Input type="number" value={const_.puntaje} onChange={(e) => actualizarConstruccion_Rect(index, 'puntaje', e.target.value)} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Área (m²) *</Label>
+                          <Input type="number" step="0.01" value={const_.area_construida} onChange={(e) => actualizarConstruccion_Rect(index, 'area_construida', e.target.value)} className="h-7 text-xs border-amber-400" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Subtotal área construida */}
+                <div className="mt-3 space-y-2">
+                  <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                    <p className="text-sm text-amber-800">
+                      📊 <strong>Subtotal Nueva Área Construida:</strong> {calcularTotales_Rect().areaConstruidaNueva.toLocaleString('es-CO', {minimumFractionDigits: 2})} m²
+                    </p>
+                  </div>
+                  {calcularTotales_Rect().areaConstruidaNueva !== rectificacionData.area_construida_anterior && (
+                    <div className={`p-2 rounded ${
+                      calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <p className="text-sm font-medium">
+                        Diferencia: {' '}
+                        <span className={calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior ? 'text-green-700' : 'text-red-700'}>
+                          {(calcularTotales_Rect().areaConstruidaNueva - rectificacionData.area_construida_anterior).toFixed(2)} m²
+                          {calcularTotales_Rect().areaConstruidaNueva > rectificacionData.area_construida_anterior ? ' (aumenta)' : ' (disminuye)'}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Nuevo Avalúo */}
+          <Card className="border-emerald-200 bg-emerald-50/30">
+            <CardHeader className="py-2">
+              <CardTitle className="text-sm text-emerald-800 flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Avalúo
               </CardTitle>
             </CardHeader>
-            <CardContent className="py-2 space-y-4">
-              {/* Área de Terreno */}
+            <CardContent className="py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-slate-600">Área Terreno Actual (m²)</Label>
-                  <Input
-                    type="number"
-                    value={rectificacionData.area_terreno_anterior}
-                    disabled
-                    className="mt-1 bg-slate-100"
-                    data-testid="rectificacion-area-terreno-anterior"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">Valor actual en catastro</p>
+                  <Label className="text-xs text-slate-600">Avalúo Actual ($)</Label>
+                  <div className="mt-1 p-2 bg-slate-100 rounded text-sm font-medium">
+                    ${Number(rectificacionData.predio.avaluo || 0).toLocaleString('es-CO')}
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-cyan-700">Nueva Área Terreno (m²) *</Label>
+                  <Label className="text-xs text-emerald-700 font-medium">Nuevo Avalúo ($)</Label>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={rectificacionData.area_terreno_nueva}
-                    onChange={(e) => setRectificacionData(prev => ({ ...prev, area_terreno_nueva: e.target.value }))}
-                    className="mt-1 border-cyan-300 focus:border-cyan-500"
-                    data-testid="rectificacion-area-terreno-nueva"
-                  />
-                  <p className="text-xs text-cyan-600 mt-1">Área rectificada según medición</p>
-                </div>
-              </div>
-
-              {/* Área de Construcción */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-slate-600">Área Construcción Actual (m²)</Label>
-                  <Input
-                    type="number"
-                    value={rectificacionData.area_construida_anterior}
-                    disabled
-                    className="mt-1 bg-slate-100"
-                    data-testid="rectificacion-area-const-anterior"
+                    step="1000"
+                    value={rectificacionData.avaluo_nuevo}
+                    onChange={(e) => setRectificacionData(prev => ({ ...prev, avaluo_nuevo: e.target.value }))}
+                    className="mt-1 h-9 border-emerald-300 focus:border-emerald-500"
+                    data-testid="rectificacion-avaluo-nuevo"
                   />
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-cyan-700">Nueva Área Construcción (m²)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={rectificacionData.area_construida_nueva}
-                    onChange={(e) => setRectificacionData(prev => ({ ...prev, area_construida_nueva: e.target.value }))}
-                    className="mt-1 border-cyan-300 focus:border-cyan-500"
-                    data-testid="rectificacion-area-const-nueva"
-                  />
-                </div>
-              </div>
-
-              {/* Diferencia de áreas */}
-              {rectificacionData.area_terreno_nueva && rectificacionData.area_terreno_anterior && (
-                <div className={`p-3 rounded-lg ${
-                  parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior)
-                    ? 'bg-green-50 border border-green-200'
-                    : parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior)
-                    ? 'bg-red-50 border border-red-200'
-                    : 'bg-slate-50 border border-slate-200'
-                }`}>
-                  <p className="text-sm font-medium">
-                    Diferencia de Área de Terreno: {' '}
-                    <span className={
-                      parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior)
-                        ? 'text-green-700'
-                        : parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior)
-                        ? 'text-red-700'
-                        : 'text-slate-700'
-                    }>
-                      {(parseFloat(rectificacionData.area_terreno_nueva) - parseFloat(rectificacionData.area_terreno_anterior)).toFixed(2)} m²
-                      {parseFloat(rectificacionData.area_terreno_nueva) > parseFloat(rectificacionData.area_terreno_anterior) && ' (aumenta)'}
-                      {parseFloat(rectificacionData.area_terreno_nueva) < parseFloat(rectificacionData.area_terreno_anterior) && ' (disminuye)'}
-                    </span>
-                  </p>
-                </div>
-              )}
-
-              {/* Nuevo Avalúo */}
-              <div>
-                <Label className="text-sm font-medium text-cyan-700">Nuevo Avalúo ($)</Label>
-                <Input
-                  type="number"
-                  step="1000"
-                  value={rectificacionData.avaluo_nuevo}
-                  onChange={(e) => setRectificacionData(prev => ({ ...prev, avaluo_nuevo: e.target.value }))}
-                  className="mt-1 border-cyan-300 focus:border-cyan-500"
-                  data-testid="rectificacion-avaluo-nuevo"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Avalúo actual: ${Number(rectificacionData.predio.avaluo || 0).toLocaleString('es-CO')}
-                </p>
               </div>
             </CardContent>
           </Card>
