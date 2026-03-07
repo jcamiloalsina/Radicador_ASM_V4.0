@@ -6346,7 +6346,7 @@ export default function MutacionesResoluciones() {
 
   // Renderizar formulario de Bloqueo de Predios
   const renderFormularioBloqueo = () => (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+    <div className="space-y-6 max-h-[70vh] overflow-visible pr-2">
       {/* Encabezado con información */}
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -6377,7 +6377,7 @@ export default function MutacionesResoluciones() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bloquear" className="space-y-4">
+        <TabsContent value="bloquear" className="space-y-4 overflow-visible">
           {/* Municipio */}
           <div className="relative">
             <Label className="text-sm font-medium">Municipio *</Label>
@@ -6417,7 +6417,7 @@ export default function MutacionesResoluciones() {
             <div className="space-y-2">
               <Label className="text-sm font-medium">Buscar Predio *</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
                 <Input
                   value={bloqueoPredioSearch}
                   onChange={(e) => {
@@ -6434,41 +6434,41 @@ export default function MutacionesResoluciones() {
                   data-testid="bloqueo-buscar-predio"
                 />
                 {bloqueoPredioSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400 z-10" />
+                )}
+                
+                {/* Resultados de búsqueda - posicionado absolutamente */}
+                {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {bloqueoPredioResults.map((predio, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
+                        onClick={() => {
+                          if (predio.bloqueado) {
+                            toast.error('Este predio ya está bloqueado');
+                            return;
+                          }
+                          setBloqueoPredioSeleccionado(predio);
+                          setBloqueoPredioSearch('');
+                          setBloqueoPredioResults([]);
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                            <p className="text-xs text-slate-500">{predio.direccion}</p>
+                            <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                          </div>
+                          {predio.bloqueado && (
+                            <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              
-              {/* Resultados de búsqueda */}
-              {bloqueoPredioResults.length > 0 && !bloqueoPredioSeleccionado && (
-                <div className="border rounded-lg max-h-48 overflow-y-auto">
-                  {bloqueoPredioResults.map((predio, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 hover:bg-slate-100 cursor-pointer border-b last:border-b-0 ${predio.bloqueado ? 'bg-red-50' : ''}`}
-                      onClick={() => {
-                        if (predio.bloqueado) {
-                          toast.error('Este predio ya está bloqueado');
-                          return;
-                        }
-                        setBloqueoPredioSeleccionado(predio);
-                        setBloqueoPredioSearch('');
-                        setBloqueoPredioResults([]);
-                      }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
-                          <p className="text-xs text-slate-500">{predio.direccion}</p>
-                          <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
-                        </div>
-                        {predio.bloqueado && (
-                          <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">BLOQUEADO</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
@@ -8327,7 +8327,7 @@ export default function MutacionesResoluciones() {
 
       {/* Dialog para crear mutación */}
       <Dialog open={showMutacionDialog} onOpenChange={setShowMutacionDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
