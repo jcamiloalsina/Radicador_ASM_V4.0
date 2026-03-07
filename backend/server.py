@@ -1606,11 +1606,12 @@ async def test_pdf_m6():
     try:
         pdf_bytes = generate_m6_resolution_pdf(test_data)
         
-        # Guardar en disco para poder descargar
+        # Guardar en disco para poder descargar - usar la ruta correcta
         filename = f"test_m6_rectificacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf_path = f"resoluciones/{filename}"
+        pdf_dir = "/app/backend/static/resoluciones"
+        pdf_path = f"{pdf_dir}/{filename}"
         
-        os.makedirs("resoluciones", exist_ok=True)
+        os.makedirs(pdf_dir, exist_ok=True)
         with open(pdf_path, "wb") as f:
             f.write(pdf_bytes)
         
