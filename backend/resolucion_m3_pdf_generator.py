@@ -400,7 +400,9 @@ def generate_resolucion_m3_pdf(
         
         area_terreno_fmt = formatear_area(area_terreno)
         area_construida_fmt = formatear_area(area_construida)
-        avaluo_fmt = f"${avaluo_val:,.0f}"
+        # Usar avaluo_val del parámetro o de R1/R2 como fallback
+        avaluo_para_tabla = avaluo_val if avaluo_val is not None else datos_r1_r2.get("avaluo", 0)
+        avaluo_fmt = f"${avaluo_para_tabla:,.0f}" if avaluo_para_tabla else "$0"
         vigencia = str(datetime.now().year)
         
         x = MARGIN_LEFT

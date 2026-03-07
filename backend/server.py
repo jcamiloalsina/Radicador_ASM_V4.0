@@ -26539,7 +26539,7 @@ async def generar_resolucion_prueba(
             propietarios_anteriores=propietarios_anteriores,
             propietarios_nuevos=propietarios_nuevos,
             elaboro=current_user.get('full_name', 'Usuario'),
-            reviso="Coordinador",
+            aprobo="Coordinador",
             # Configuración personalizable
             config_visual=config_visual,
             plantilla=plantilla,
