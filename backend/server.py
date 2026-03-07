@@ -11533,36 +11533,30 @@ async def regenerar_certificado_desde_peticion(
             if correo_destino:
                 subject = f"Certificado Catastral Actualizado - {radicado_pet}"
                 
-                html_body = f"""
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #009846; padding: 20px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">Asomunicipios</h1>
-                        <p style="color: #e0e0e0; margin: 5px 0 0 0;">Gestión Catastral</p>
-                    </div>
-                    <div style="padding: 30px; background: #f8fafc;">
-                        <h2 style="color: #009846;">Certificado Catastral Actualizado</h2>
-                        <p style="color: #334155;">Estimado/a <strong>{nombre_peticionario}</strong>,</p>
-                        <p style="color: #334155;">Se ha generado una versión actualizada de su certificado catastral.</p>
-                        
-                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #009846;">
-                            <p style="margin: 5px 0;"><strong>Radicado:</strong> {radicado_pet}</p>
-                            <p style="margin: 5px 0;"><strong>Código Predial:</strong> {codigo_predial}</p>
-                            <p style="margin: 5px 0;"><strong>Nuevo Código de Verificación:</strong> {codigo_verificacion}</p>
-                            <p style="margin: 5px 0;"><strong>Fecha de Regeneración:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-                        </div>
-                        
-                        <p style="color: #334155;"><strong>📎 El certificado actualizado está adjunto a este correo.</strong></p>
-                        
-                        <p style="color: #64748b; font-size: 12px; margin-top: 30px;">
-                            Este certificado tiene vigencia de un (1) mes a partir de su fecha de emisión.
-                        </p>
-                    </div>
-                    <div style="background: #1e293b; color: #94a3b8; padding: 15px; text-align: center; font-size: 12px;">
-                        <p style="margin: 0;">Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</p>
-                        <p style="margin: 5px 0 0 0;">comunicaciones@asomunicipios.gov.co</p>
-                    </div>
+                contenido_cert = f"""
+                <p>Estimado/a <strong>{nombre_peticionario}</strong>,</p>
+                <p>Se ha generado una versión actualizada de su certificado catastral.</p>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #22c55e;">
+                    <p style="margin: 5px 0;"><strong>Radicado:</strong> {radicado_pet}</p>
+                    <p style="margin: 5px 0;"><strong>Código Predial:</strong> {codigo_predial}</p>
+                    <p style="margin: 5px 0;"><strong>Nuevo Código de Verificación:</strong> {codigo_verificacion}</p>
+                    <p style="margin: 5px 0;"><strong>Fecha de Regeneración:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
                 </div>
+                
+                <p><strong>📎 El certificado actualizado está adjunto a este correo.</strong></p>
+                
+                <p style="color: #64748b; font-size: 13px; margin-top: 20px;">
+                    Este certificado tiene vigencia de un (1) mes a partir de su fecha de emisión.
+                </p>
                 """
+                
+                html_body = get_email_template(
+                    titulo="Certificado Catastral Actualizado",
+                    contenido=contenido_cert,
+                    radicado=radicado_pet,
+                    tipo_notificacion="success"
+                )
                 
                 await send_email_with_attachment(
                     to_email=correo_destino,
@@ -28156,41 +28150,14 @@ async def finalizar_tramite_y_enviar_correo(
                 # Obtener número de resolución del nombre del archivo
                 numero_resolucion = pdf_path_relative.split('resolucion_')[-1].split('_')[0] if 'resolucion_' in pdf_path_relative else "N/A"
                 
-                email_body = f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #009846; padding: 20px; text-align: center;">
-                        <h1 style="color: white; margin: 0;">ASOMUNICIPIOS</h1>
-                        <p style="color: white; margin: 5px 0;">Gestor Catastral</p>
-                    </div>
-                    
-                    <div style="padding: 30px; background-color: #f9f9f9;">
-                        <h2 style="color: #333;">Resolución Aprobada</h2>
-                        
-                        <p>Estimado(a) <strong>{nombre_solicitante}</strong>,</p>
-                        
-                        <p>Le informamos que su trámite con radicado <strong>{request.radicado}</strong> ha sido 
-                        procesado exitosamente.</p>
-                        
-                        <p>Adjunto a este correo encontrará la resolución correspondiente en formato PDF.</p>
-                        
-                        <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                            <p style="margin: 0;"><strong>Radicado:</strong> {request.radicado}</p>
-                            <p style="margin: 5px 0 0 0;"><strong>Estado:</strong> Finalizado</p>
-                        </div>
-                        
-                        <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
-                        
-                        <p>Atentamente,<br>
-                        <strong>Asociación de Municipios del Catatumbo, Provincia de Ocaña y Sur del Cesar</strong></p>
-                    </div>
-                    
-                    <div style="background-color: #333; padding: 15px; text-align: center;">
-                        <p style="color: #999; margin: 0; font-size: 12px;">
-                            Este es un correo automático, por favor no responda a esta dirección.
-                        </p>
-                    </div>
-                </div>
-                """
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=request.radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=tramite.get("municipio", ""),
+                    codigo_predio=tramite.get("codigo_predial", ""),
+                    tipo_mutacion="Conservación"
+                )
                 
                 # Enviar correo con adjunto
                 await send_email(
