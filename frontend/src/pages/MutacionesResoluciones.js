@@ -63,6 +63,7 @@ const TIPOS_MUTACION = {
   },
   RECTIFICACION_AREA: { 
     codigo: 'RECTIFICACION_AREA', 
+    codigoDisplay: 'M6',
     nombre: 'Rectificación de Área', 
     descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
@@ -863,13 +864,18 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       const municipioCodigo = MUNICIPIOS.find(m => m.nombre === bloqueoMunicipio)?.codigo;
+      if (!municipioCodigo) {
+        console.error('No se encontró código de municipio para:', bloqueoMunicipio);
+        return;
+      }
       const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
-        params: { q: query, limit: 10 },
+        params: { q: query, limit: 15 },
         headers: { Authorization: `Bearer ${token}` }
       });
       setBloqueoPredioResults(response.data.predios || []);
     } catch (error) {
       console.error('Error buscando predios:', error);
+      toast.error('Error al buscar predios');
     } finally {
       setBloqueoPredioSearching(false);
     }
@@ -6137,7 +6143,7 @@ export default function MutacionesResoluciones() {
                   setSearchingPrediosComplementacion(true);
                   try {
                     const municipioCodigo = MUNICIPIOS.find(m => m.nombre === complementacionData.municipio)?.codigo;
-                    const response = await axios.get(`${API_URL}/api/predios/buscar-municipio/${municipioCodigo}`, {
+                    const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
                       params: { q: valor, limit: 10 },
                       headers: { Authorization: `Bearer ${token}` }
                     });
@@ -6700,7 +6706,7 @@ export default function MutacionesResoluciones() {
                 <div>
                   <Badge className={tipo.color}>
                     {tipo.codigo === 'BLOQUEO' && <Lock className="w-3 h-3 mr-1 inline" />}
-                    {tipo.codigo}
+                    {tipo.codigoDisplay || tipo.codigo}
                   </Badge>
                   <h3 className="font-semibold text-lg mt-2">{tipo.nombre}</h3>
                   <p className="text-sm text-slate-600 mt-1">{tipo.descripcion}</p>

@@ -6504,6 +6504,84 @@ async def recalcular_codigos_municipio(
 
 # ===== FIN SISTEMA DE CÓDIGOS HOMOLOGADOS =====
 
+
+@api_router.get("/predios/buscar-municipio/{municipio_codigo}")
+async def buscar_predios_por_municipio(
+    municipio_codigo: str,
+    q: str = "",
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Busca predios en un municipio específico por código predial, dirección o propietario.
+    Usado para búsquedas rápidas en formularios de mutaciones y bloqueos.
+    """
+    if len(q) < 3:
+        return {"predios": [], "total": 0}
+    
+    # Mapeo de códigos a nombres de municipio
+    CODIGO_A_NOMBRE = {
+        '54003': 'Ábrego',
+        '54109': 'Bucarasica',
+        '54128': 'Cáchira',
+        '54206': 'Convención',
+        '54245': 'El Carmen',
+        '54250': 'El Tarra',
+        '54344': 'Hacarí',
+        '54385': 'La Esperanza',
+        '54398': 'La Playa',
+        '54670': 'San Calixto',
+        '54720': 'Sardinata',
+        '54800': 'Teorama',
+        '20614': 'Río de Oro',
+    }
+    
+    municipio_nombre = CODIGO_A_NOMBRE.get(municipio_codigo, "")
+    
+    # Query de búsqueda
+    filtro = {
+        "$and": [
+            {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"$or": [
+                {"municipio": {"$regex": municipio_nombre, "$options": "i"}} if municipio_nombre else {},
+                {"codigo_predial_nacional": {"$regex": f"^{municipio_codigo}", "$options": "i"}}
+            ]},
+            {"$or": [
+                {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
+                {"codigo_predial": {"$regex": q, "$options": "i"}},
+                {"direccion": {"$regex": q, "$options": "i"}},
+                {"nombre_propietario": {"$regex": q, "$options": "i"}}
+            ]}
+        ]
+    }
+    
+    predios = await db.predios.find(
+        filtro,
+        {
+            "_id": 0,
+            "id": 1,
+            "codigo_predial_nacional": 1,
+            "codigo_predial": 1,
+            "numero_predio": 1,
+            "direccion": 1,
+            "municipio": 1,
+            "nombre_propietario": 1,
+            "area_terreno": 1,
+            "area_construida": 1,
+            "avaluo": 1,
+            "bloqueado": 1,
+            "bloqueo_info": 1,
+            "propietarios": 1,
+            "r1_registros": 1
+        }
+    ).limit(limit).to_list(length=limit)
+    
+    return {
+        "predios": predios,
+        "total": len(predios)
+    }
+
+
 @api_router.get("/predios")
 async def get_predios(
     municipio: Optional[str] = None,
