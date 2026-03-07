@@ -12,7 +12,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://m6-area-update.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com').rstrip('/')
 
 # Credenciales de prueba
 TEST_EMAIL = "catastro@asomunicipios.gov.co"

@@ -1063,7 +1063,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1236,7 +1236,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1302,7 +1302,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1340,7 +1340,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1393,7 +1393,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1432,7 +1432,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1462,7 +1462,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1495,7 +1495,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -1555,6 +1555,78 @@ async def send_test_email(request: TestEmailRequest, current_user: dict = Depend
         return {"message": f"Correo de prueba enviado a {request.to_email}", "success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al enviar correo: {str(e)}")
+
+
+@api_router.get("/test-pdf-m6")
+async def test_pdf_m6():
+    """
+    Genera un PDF de prueba para RECTIFICACIÓN DE ÁREA (M6) - Solo para verificar el estilo visual.
+    Este endpoint es temporal y debe ser eliminado después de verificar el estilo.
+    """
+    from resolucion_m6_pdf_generator import generate_m6_resolution_pdf
+    
+    # Datos de prueba para generar PDF
+    test_data = {
+        "numero_resolucion": "RES-M6-TEST-001-2026",
+        "fecha_resolucion": "07/03/2026",
+        "municipio": "Sardinata",
+        "radicado": "RAD-TEST-12345",
+        "codigo_verificacion": "VERIF-TEST-ABC123",
+        "elaborado_por": "Sistema de Pruebas",
+        "revisado_por": "Administrador",
+        "predio": {
+            "codigo_predial_nacional": "543850100010033000000000000",
+            "codigo_predial": "543850100010033000000000000",
+            "codigo_homologado": "T0100033",
+            "direccion": "VEREDA EL CENTRO",
+            "destino_economico": "R",
+            "matricula_inmobiliaria": "280-12345",
+            "avaluo": 25000000,
+            "propietarios": [
+                {
+                    "nombre_propietario": "JUAN CARLOS PEREZ RODRIGUEZ",
+                    "tipo_documento": "CC",
+                    "numero_documento": "1234567890",
+                    "estado_civil": "C"
+                }
+            ]
+        },
+        "solicitante": {
+            "nombre": "JUAN CARLOS PEREZ RODRIGUEZ",
+            "documento": "1234567890"
+        },
+        "area_terreno_anterior": 1500.50,
+        "area_terreno_nueva": 1650.75,
+        "area_construida_anterior": 120.00,
+        "area_construida_nueva": 185.50,
+        "avaluo_anterior": 25000000,
+        "avaluo_nuevo": 32500000
+    }
+    
+    try:
+        pdf_bytes = generate_m6_resolution_pdf(test_data)
+        
+        # Guardar en disco para poder descargar
+        filename = f"test_m6_rectificacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        pdf_path = f"resoluciones/{filename}"
+        
+        os.makedirs("resoluciones", exist_ok=True)
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        
+        return {
+            "success": True,
+            "message": "PDF de prueba M6 generado exitosamente",
+            "download_url": f"/api/resoluciones/descargar/{filename}",
+            "filename": filename
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
 
 
 @api_router.post("/admin/send-ficha-tecnica")
@@ -11641,7 +11713,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://m6-area-update.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://mutation-m6-styling.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
