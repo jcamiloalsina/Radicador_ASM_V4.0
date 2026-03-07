@@ -8197,44 +8197,274 @@ export default function MutacionesResoluciones() {
               Cancelar
             </Button>
             {tipoMutacionSeleccionado?.codigo === 'M1' && m1Data.predio && (
-              <Button 
-                onClick={generarResolucionM1} 
-                disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {generando ? 'Generando...' : 'Generar Resolución M1'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m1Data.predio || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0) {
+                        toast.error('Debe completar todos los campos requeridos');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M1',
+                          tipo_mutacion: 'M1',
+                          municipio: m1Data.municipio,
+                          radicado: m1Data.radicado_peticion,
+                          predio: m1Data.predio,
+                          predio_id: m1Data.predio.id,
+                          propietarios_nuevos: m1Data.propietarios_nuevos,
+                          observaciones: m1Data.observaciones,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M1 enviada a aprobación');
+                          resetFormularioM1();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M1 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM1} 
+                    disabled={generando || !m1Data.numero_resolucion || !m1Data.radicado_peticion || m1Data.propietarios_nuevos.length === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {generando ? 'Generando...' : 'Generar Resolución M1'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M3' && m3Data.predio && (
-              <Button 
-                onClick={generarResolucionM3} 
-                disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
-                className="bg-amber-600 hover:bg-amber-700"
-                data-testid="m3-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m3Data.predio || !m3Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M3',
+                          tipo_mutacion: 'M3',
+                          subtipo: m3Data.subtipo,
+                          municipio: m3Data.municipio,
+                          radicado: m3Data.radicado,
+                          predio: m3Data.predio,
+                          predio_id: m3Data.predio.id,
+                          destino_nuevo: m3Data.destino_nuevo,
+                          construcciones_nuevas: m3Data.construcciones_nuevas,
+                          avaluo_nuevo: m3Data.avaluo_nuevo,
+                          observaciones: m3Data.observaciones,
+                          texto_considerando: m3Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M3 enviada a aprobación');
+                          resetFormularioM3();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M3 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m3Data.radicado || !m3Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM3} 
+                    disabled={generando || !m3Data.subtipo || !m3Data.radicado || (m3Data.subtipo === 'cambio_destino' && !m3Data.destino_nuevo) || (m3Data.subtipo === 'incorporacion_construccion' && m3Data.construcciones_nuevas.length === 0) || !m3Data.avaluo_nuevo}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    data-testid="m3-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución M3'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M4' && m4Data.predio && (
-              <Button 
-                onClick={generarResolucionM4} 
-                disabled={generando || !m4Data.subtipo || !m4Data.radicado || !m4Data.avaluo_nuevo}
-                className="bg-green-600 hover:bg-green-700"
-                data-testid="m4-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m4Data.predio || !m4Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M4',
+                          tipo_mutacion: 'M4',
+                          subtipo: m4Data.subtipo,
+                          decision: m4Data.decision,
+                          municipio: m4Data.municipio,
+                          radicado: m4Data.radicado,
+                          predio: m4Data.predio,
+                          predio_id: m4Data.predio.id,
+                          avaluo_nuevo: m4Data.avaluo_nuevo,
+                          observaciones: m4Data.observaciones,
+                          texto_considerando: m4Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M4 enviada a aprobación');
+                          resetFormularioM4();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M4 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m4Data.radicado || !m4Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM4} 
+                    disabled={generando || !m4Data.subtipo || !m4Data.radicado || !m4Data.avaluo_nuevo}
+                    className="bg-green-600 hover:bg-green-700"
+                    data-testid="m4-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : `${m4Data.decision === 'aceptar' ? 'Aprobar' : 'Rechazar'} y Generar M4`}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M5' && m5Data.subtipo && (
-              <Button 
-                onClick={generarResolucionM5} 
-                disabled={generando || !m5Data.radicado || !m5Data.predio}
-                className={m5Data.subtipo === 'cancelacion' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}
-                data-testid="m5-generar-btn"
-              >
-                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
-                  m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && (
+                  <Button 
+                    onClick={async () => {
+                      if (!m5Data.predio || !m5Data.radicado) {
+                        toast.error('Debe seleccionar un predio y un radicado');
+                        return;
+                      }
+                      setEnviandoSolicitud(true);
+                      try {
+                        const payload = {
+                          tipo: 'M5',
+                          tipo_mutacion: 'M5',
+                          subtipo: m5Data.subtipo,
+                          municipio: m5Data.municipio,
+                          radicado: m5Data.radicado,
+                          predio: m5Data.predio,
+                          predio_id: m5Data.predio.id,
+                          zonas: m5Data.zonas,
+                          construcciones: m5Data.construcciones,
+                          observaciones: m5Data.observaciones,
+                          texto_considerando: m5Data.texto_considerando,
+                          enviar_a_aprobacion: true
+                        };
+                        
+                        const response = await axios.post(
+                          `${API_URL}/api/solicitudes-mutacion`,
+                          payload,
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        
+                        if (response.data.exito) {
+                          toast.success('Solicitud M5 enviada a aprobación');
+                          resetFormularioM5();
+                          setTipoMutacionSeleccionado(null);
+                          setActiveTab('historial');
+                          cargarSolicitudesPendientes();
+                        } else {
+                          toast.error(response.data.mensaje || 'Error al enviar solicitud');
+                        }
+                      } catch (error) {
+                        console.error('Error enviando M5 a aprobación:', error);
+                        toast.error(error.response?.data?.detail || 'Error al enviar solicitud');
+                      } finally {
+                        setEnviandoSolicitud(false);
+                      }
+                    }}
+                    disabled={enviandoSolicitud || !m5Data.radicado || !m5Data.predio}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {enviandoSolicitud ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</> : 'Enviar a Aprobación'}
+                  </Button>
+                )}
+                {/* Botón Generar PDF (si puede aprobar) */}
+                {puedeAprobar && (
+                  <Button 
+                    onClick={generarResolucionM5} 
+                    disabled={generando || !m5Data.radicado || !m5Data.predio}
+                    className={m5Data.subtipo === 'cancelacion' ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                    data-testid="m5-generar-btn"
+                  >
+                    {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 
+                      m5Data.subtipo === 'cancelacion' ? 'Cancelar Predio y Generar M5' : 'Inscribir Predio y Generar M5'}
+                  </Button>
+                )}
+              </div>
             )}
             {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && (
               <div className="flex items-center gap-2 flex-wrap">

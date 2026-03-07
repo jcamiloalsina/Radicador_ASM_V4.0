@@ -14454,6 +14454,31 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         logging.info(f"Resolución {numero_resolucion} generada y guardada en {filepath}")
         
+        # === AGREGAR HISTORIAL DE RESOLUCIÓN AL PREDIO ===
+        try:
+            predio_id = cambio.get("predio_id")
+            if predio_id:
+                historial_entry = {
+                    "tipo": "M1",
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "resolucion": numero_resolucion,
+                    "descripcion": "Cambio de propietario",
+                    "propietarios_anteriores": propietarios_anteriores,
+                    "propietarios_nuevos": propietarios_nuevos,
+                    "aprobado_por": aprobador.get("full_name", "")
+                }
+                
+                await db.predios.update_one(
+                    {"id": predio_id},
+                    {
+                        "$push": {"historial_resoluciones": historial_entry},
+                        "$set": {"ultima_actualizacion": datetime.now(timezone.utc).isoformat()}
+                    }
+                )
+                logging.info(f"✅ Historial de resolución M1 agregado al predio {predio_id}")
+        except Exception as hist_error:
+            logging.error(f"Error agregando historial M1 al predio: {str(hist_error)}")
+        
         # === ENVIAR CORREO CON LA RESOLUCIÓN AL PROPIETARIO/SOLICITANTE ===
         try:
             # Buscar si hay una petición asociada para obtener el correo del solicitante
@@ -14750,6 +14775,32 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     }}
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M2 {numero_resolucion}")
+                
+                # Enviar correo al solicitante
+                try:
+                    if peticion.get("correo"):
+                        email_solicitante = peticion.get("correo")
+                        nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                        
+                        email_body = get_resolucion_aprobada_email(
+                            numero_resolucion=numero_resolucion,
+                            radicado=radicado,
+                            nombre_solicitante=nombre_solicitante,
+                            municipio=municipio_nombre,
+                            codigo_predio=predios_cancelados[0].get('codigo_predial_nacional', '') if predios_cancelados else '',
+                            tipo_mutacion="Desenglobe (M2)"
+                        )
+                        
+                        await send_email(
+                            to_email=email_solicitante,
+                            subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
+                            body=email_body,
+                            attachment_path=filepath,
+                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                        )
+                        logging.info(f"✅ Correo de resolución M2 enviado a {email_solicitante}")
+                except Exception as email_error:
+                    logging.error(f"Error enviando correo M2: {str(email_error)}")
         
         return {
             "success": True,
@@ -14977,6 +15028,33 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                     }}
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M3 {numero_resolucion}")
+                
+                # Enviar correo al solicitante
+                try:
+                    if peticion.get("correo"):
+                        email_solicitante = peticion.get("correo")
+                        nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                        
+                        tipo_texto = "Englobe" if subtipo == "englobe" else "Agrupación"
+                        email_body = get_resolucion_aprobada_email(
+                            numero_resolucion=numero_resolucion,
+                            radicado=radicado,
+                            nombre_solicitante=nombre_solicitante,
+                            municipio=municipio_nombre,
+                            codigo_predio=predio.get('codigo_predial_nacional', ''),
+                            tipo_mutacion=f"{tipo_texto} (M3)"
+                        )
+                        
+                        await send_email(
+                            to_email=email_solicitante,
+                            subject=f"Resolución de {tipo_texto} Aprobada - {numero_resolucion}",
+                            body=email_body,
+                            attachment_path=filepath,
+                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                        )
+                        logging.info(f"✅ Correo de resolución M3 enviado a {email_solicitante}")
+                except Exception as email_error:
+                    logging.error(f"Error enviando correo M3: {str(email_error)}")
         
         return {
             "success": True,
