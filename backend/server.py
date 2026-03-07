@@ -14865,10 +14865,13 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     **predio_original,
                     "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
                     "fecha_eliminacion": datetime.now(timezone.utc).isoformat(),
+                    "eliminado_en": datetime.now(timezone.utc).isoformat(),
                     "eliminado_por": aprobador.get('id'),
                     "eliminado_por_nombre": aprobador.get('full_name'),
                     "resolucion_eliminacion": numero_resolucion,
-                    "solicitud_id": solicitud.get('id')
+                    "solicitud_id": solicitud.get('id'),
+                    "vigencia_origen": predio_original.get('vigencia', datetime.now().year),
+                    "vigencia_eliminacion": datetime.now().year
                 }
                 await db.predios_eliminados.insert_one(predio_eliminado)
                 

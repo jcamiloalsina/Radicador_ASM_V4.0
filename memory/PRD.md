@@ -3,9 +3,12 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: TABLA DE PREDIOS CON COLUMNAS DE ÁREA COMPLETADO
+## Estado Actual: ISSUES DE BLOQUEO Y COMPLEMENTACIÓN CORREGIDOS
 
 ### Correcciones Recientes (07/03/2026)
+- **Dropdown de Municipios en Bloqueo y Complementación**: Corregido el problema donde la lista de municipios no se desplegaba debido a problemas de `overflow` y `z-index` en el Dialog
+- **Vigencia en Predios Eliminados**: Corregida la prioridad de campos para mostrar `vigencia_eliminacion` > `vigencia_origen` > `vigencia` en lugar de mostrar siempre 2026
+- **Mass Desenglobe - tipo_cancelacion**: Corregido bug donde la función `_generar_resolucion_m2_interno` no respetaba el campo `tipo_cancelacion` (total vs parcial)
 - **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida" a la tabla "Predios Registrados" en Gestión de Predios
   - Formato consistente: `X ha Y m²`
   - Posición: entre "Dirección" y "Destino"

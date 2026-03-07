@@ -6158,7 +6158,7 @@ export default function MutacionesResoluciones() {
 
   // Renderizar formulario de Complementación de Información
   const renderFormularioComplementacion = () => (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+    <div className="space-y-6 max-h-[70vh] overflow-visible pr-2">
       {/* Encabezado con información */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -6185,7 +6185,7 @@ export default function MutacionesResoluciones() {
           <ChevronDown className="w-4 h-4" />
         </div>
         {showMunicipioDropdownComplementacion && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {MUNICIPIOS.map(mun => (
               <div
                 key={mun.codigo}
@@ -6422,7 +6422,7 @@ export default function MutacionesResoluciones() {
 
   // Renderizar formulario de Bloqueo de Predios
   const renderFormularioBloqueo = () => (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+    <div className="space-y-6 max-h-[70vh] overflow-visible pr-2">
       {/* Encabezado con información */}
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -6453,7 +6453,7 @@ export default function MutacionesResoluciones() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bloquear" className="space-y-4">
+        <TabsContent value="bloquear" className="space-y-4" style={{ overflow: 'visible' }}>
           {/* Municipio */}
           <div className="relative">
             <Label className="text-sm font-medium">Municipio *</Label>
@@ -6468,7 +6468,7 @@ export default function MutacionesResoluciones() {
               <ChevronDown className="w-4 h-4" />
             </div>
             {showBloqueoMunicipioDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {MUNICIPIOS.map(mun => (
                   <div
                     key={mun.codigo}
@@ -8439,7 +8439,7 @@ export default function MutacionesResoluciones() {
 
       {/* Dialog para crear mutación */}
       <Dialog open={showMutacionDialog} onOpenChange={setShowMutacionDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -10564,7 +10564,7 @@ export default function MutacionesResoluciones() {
                           {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia || predio.vigencia_eliminacion || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia_eliminacion || predio.vigencia_origen || predio.vigencia || 'N/A'}</td>
                         <td className="py-3 px-4">
                           <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>
