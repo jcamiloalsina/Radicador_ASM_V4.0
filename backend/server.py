@@ -6935,6 +6935,27 @@ async def get_predios_eliminados(
     total = await db.predios_eliminados.count_documents(query)
     predios = await db.predios_eliminados.find(query, {"_id": 0}).sort("eliminado_en", -1).skip(skip).limit(limit).to_list(limit)
     
+    # Enriquecer con el nombre del usuario que generó la resolución de eliminación
+    for predio in predios:
+        res_num = predio.get('resolucion_eliminacion') or predio.get('resolucion')
+        if res_num and not predio.get('eliminado_por'):
+            # Buscar la resolución
+            resolucion = await db.resoluciones.find_one(
+                {'numero_resolucion': res_num}, 
+                {'_id': 0, 'generado_por': 1, 'usuario_nombre': 1}
+            )
+            if resolucion:
+                if resolucion.get('usuario_nombre'):
+                    predio['eliminado_por'] = resolucion['usuario_nombre']
+                elif resolucion.get('generado_por'):
+                    # Buscar el nombre del usuario
+                    user = await db.users.find_one(
+                        {'id': resolucion['generado_por']}, 
+                        {'_id': 0, 'full_name': 1}
+                    )
+                    if user and user.get('full_name'):
+                        predio['eliminado_por'] = user['full_name']
+    
     return {
         "total": total,
         "predios": predios

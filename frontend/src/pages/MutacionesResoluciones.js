@@ -10454,7 +10454,7 @@ export default function MutacionesResoluciones() {
           setEliminadosMunicipio('');
         }
       }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2 text-red-700">
               <Trash2 className="w-5 h-5" />
@@ -10525,7 +10525,14 @@ export default function MutacionesResoluciones() {
                     </tr>
                   </thead>
                   <tbody>
-                    {prediosEliminadosFiltrados.map((predio, idx) => (
+                    {prediosEliminadosFiltrados.map((predio, idx) => {
+                      // Buscar quién generó la resolución de eliminación
+                      const resolucionEliminacion = predio.resolucion_eliminacion || predio.resolucion;
+                      const historialRes = predio.historial_resoluciones || [];
+                      const registroEliminacion = historialRes.find(h => h.numero_resolucion === resolucionEliminacion);
+                      const eliminadoPor = registroEliminacion?.generado_por || predio.eliminado_por || predio.deleted_by_name || 'N/A';
+                      
+                      return (
                       <tr key={predio.id || idx} className="border-b border-slate-100 hover:bg-red-50/50">
                         <td className="py-3 px-4">
                           <p className="font-mono text-xs font-medium text-slate-900">{predio.codigo_predial_nacional}</p>
@@ -10536,7 +10543,7 @@ export default function MutacionesResoluciones() {
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
                         <td className="py-3 px-4">
-                          <span className="font-medium text-red-700">{predio.resolucion_eliminacion || predio.resolucion || 'N/A'}</span>
+                          <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>
                         <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={predio.motivo_eliminacion || predio.motivo}>
                           {predio.motivo_eliminacion || predio.motivo || 'N/A'}
@@ -10545,9 +10552,9 @@ export default function MutacionesResoluciones() {
                           {predio.eliminado_en ? new Date(predio.eliminado_en).toLocaleDateString('es-CO') : 
                            predio.deleted_at ? new Date(predio.deleted_at).toLocaleDateString('es-CO') : 'N/A'}
                         </td>
-                        <td className="py-3 px-4 text-slate-500">{predio.eliminado_por || predio.deleted_by_name || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-500">{eliminadoPor}</td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
