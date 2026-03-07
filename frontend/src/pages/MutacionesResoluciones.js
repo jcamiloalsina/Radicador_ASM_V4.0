@@ -72,7 +72,7 @@ const TIPOS_MUTACION = {
     nombre: 'Complementación', 
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
-    enabled: false
+    enabled: true
   }
 };
 
@@ -313,6 +313,24 @@ export default function MutacionesResoluciones() {
     id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
     tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
   }]);
+
+  // Estado para Complementación de Información
+  const [complementacionData, setComplementacionData] = useState({
+    municipio: '',
+    radicado: '',
+    predio: null,
+    area_terreno_nueva: 0,
+    area_construida_nueva: 0,
+    avaluo_nuevo: 0,
+    documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
+    observaciones: '',
+    texto_considerando: ''
+  });
+  const [searchPredioComplementacion, setSearchPredioComplementacion] = useState('');
+  const [searchResultsComplementacion, setSearchResultsComplementacion] = useState([]);
+  const [searchingPrediosComplementacion, setSearchingPrediosComplementacion] = useState(false);
+  const [showMunicipioDropdownComplementacion, setShowMunicipioDropdownComplementacion] = useState(false);
+  const [radicadosDisponiblesComplementacion, setRadicadosDisponiblesComplementacion] = useState([]);
 
   // Estado para modal de edición de predio (Cancelación Parcial)
   const [editandoPredio, setEditandoPredio] = useState(null); // índice del predio que se está editando
@@ -3227,6 +3245,80 @@ export default function MutacionesResoluciones() {
     }]);
   };
 
+  // Generar resolución de Complementación de Información
+  const generarResolucionComplementacion = async () => {
+    if (!complementacionData.predio) {
+      toast.error('Debe seleccionar un predio');
+      return;
+    }
+
+    setGenerando(true);
+    try {
+      const predio = complementacionData.predio;
+      const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+      const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+      const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+
+      const payload = {
+        tipo_mutacion: 'COMPLEMENTACION',
+        municipio: complementacionData.municipio,
+        predio: predio,
+        solicitante: {
+          nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
+          documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
+        },
+        area_terreno_anterior: areaTerreno,
+        area_construida_anterior: areaConstruida,
+        avaluo_anterior: avaluo,
+        area_terreno_nueva: complementacionData.area_terreno_nueva,
+        area_construida_nueva: complementacionData.area_construida_nueva,
+        avaluo_nuevo: complementacionData.avaluo_nuevo,
+        documentos_soporte: complementacionData.documentos_soporte,
+        observaciones: complementacionData.observaciones,
+        texto_considerando: complementacionData.texto_considerando || ''
+      };
+
+      const response = await axios.post(
+        `${API_URL}/api/solicitudes-mutacion`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.exito) {
+        toast.success(response.data.mensaje || 'Solicitud de Complementación procesada exitosamente');
+        resetComplementacionForm();
+        setTipoMutacionSeleccionado(null);
+        setActiveTab('historial');
+        cargarSolicitudesPendientes();
+      } else {
+        toast.error(response.data.mensaje || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error generando resolución Complementación:', error);
+      toast.error(error.response?.data?.detail || 'Error al generar la resolución');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  // Reset formulario Complementación
+  const resetComplementacionForm = () => {
+    setComplementacionData({
+      municipio: '',
+      radicado: '',
+      predio: null,
+      area_terreno_nueva: 0,
+      area_construida_nueva: 0,
+      avaluo_nuevo: 0,
+      documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
+      observaciones: '',
+      texto_considerando: ''
+    });
+    setSearchPredioComplementacion('');
+    setSearchResultsComplementacion([]);
+    setRadicadosDisponiblesComplementacion([]);
+  };
+
   // Construir código predial de 30 dígitos para M5
   const construirCodigoPredialM5 = () => {
     // Aplicar padding al construir el código completo
@@ -5825,6 +5917,270 @@ export default function MutacionesResoluciones() {
     </div>
   );
 
+  // Renderizar formulario de Complementación de Información
+  const renderFormularioComplementacion = () => (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Encabezado con información */}
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-5 h-5 text-slate-600" />
+          <h3 className="font-semibold text-slate-800">Complementación de Información</h3>
+        </div>
+        <p className="text-sm text-slate-700">
+          Este trámite permite complementar la información catastral de un predio 
+          cuando se requiere agregar o corregir datos faltantes en el registro.
+        </p>
+      </div>
+
+      {/* Municipio */}
+      <div className="relative">
+        <Label className="text-sm font-medium">Municipio *</Label>
+        <div
+          className="w-full p-3 border rounded-lg cursor-pointer flex justify-between items-center bg-white"
+          onClick={() => setShowMunicipioDropdownComplementacion(!showMunicipioDropdownComplementacion)}
+          data-testid="complementacion-municipio-select"
+        >
+          <span className={complementacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
+            {complementacionData.municipio || 'Seleccione municipio'}
+          </span>
+          <ChevronDown className="w-4 h-4" />
+        </div>
+        {showMunicipioDropdownComplementacion && (
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {MUNICIPIOS.map(mun => (
+              <div
+                key={mun.codigo}
+                className="p-2 hover:bg-slate-100 cursor-pointer"
+                onClick={() => {
+                  setComplementacionData(prev => ({ ...prev, municipio: mun.nombre, predio: null }));
+                  setShowMunicipioDropdownComplementacion(false);
+                  setSearchPredioComplementacion('');
+                  setSearchResultsComplementacion([]);
+                }}
+              >
+                {mun.nombre}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Buscar Predio */}
+      {complementacionData.municipio && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Buscar Predio *</Label>
+          <div className="relative">
+            <Input
+              value={searchPredioComplementacion}
+              onChange={async (e) => {
+                const valor = e.target.value;
+                setSearchPredioComplementacion(valor);
+                
+                if (valor.length >= 3) {
+                  setSearchingPrediosComplementacion(true);
+                  try {
+                    const municipioCodigo = MUNICIPIOS.find(m => m.nombre === complementacionData.municipio)?.codigo;
+                    const response = await axios.get(`${API_URL}/api/predios/buscar-municipio/${municipioCodigo}`, {
+                      params: { q: valor, limit: 10 },
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setSearchResultsComplementacion(response.data.predios || []);
+                  } catch (error) {
+                    console.error('Error buscando predios:', error);
+                  } finally {
+                    setSearchingPrediosComplementacion(false);
+                  }
+                } else {
+                  setSearchResultsComplementacion([]);
+                }
+              }}
+              placeholder="Buscar por código predial, dirección o propietario..."
+              className="pr-10"
+              data-testid="complementacion-buscar-predio"
+            />
+            {searchingPrediosComplementacion && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+            )}
+          </div>
+          
+          {/* Resultados de búsqueda */}
+          {searchResultsComplementacion.length > 0 && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {searchResultsComplementacion.map((predio, idx) => (
+                <div
+                  key={idx}
+                  className="p-2 hover:bg-slate-100 cursor-pointer border-b last:border-b-0"
+                  onClick={() => {
+                    const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
+                    const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
+                    const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                    
+                    setComplementacionData(prev => ({
+                      ...prev,
+                      predio: predio,
+                      area_terreno_nueva: areaTerreno,
+                      area_construida_nueva: areaConstruida,
+                      avaluo_nuevo: avaluo
+                    }));
+                    setSearchPredioComplementacion('');
+                    setSearchResultsComplementacion([]);
+                  }}
+                >
+                  <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                  <p className="text-xs text-slate-500">{predio.direccion}</p>
+                  <p className="text-xs text-slate-400">{predio.nombre_propietario || 'Sin propietario'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Predio Seleccionado */}
+      {complementacionData.predio && (
+        <>
+          <Card className="border-slate-200">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm">Predio Seleccionado</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setComplementacionData(prev => ({ ...prev, predio: null }))}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-500">Código:</span>
+                  <p className="font-medium">{complementacionData.predio.codigo_predial_nacional}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Dirección:</span>
+                  <p className="font-medium">{complementacionData.predio.direccion || 'Sin dirección'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Área Terreno:</span>
+                  <p className="font-medium">{complementacionData.predio.area_terreno || complementacionData.predio.r1_registros?.[0]?.area_terreno || 0} m²</p>
+                </div>
+                <div>
+                  <span className="text-slate-500">Área Construida:</span>
+                  <p className="font-medium">{complementacionData.predio.area_construida || complementacionData.predio.r1_registros?.[0]?.area_construida || 0} m²</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Nuevos valores */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Edit className="w-4 h-4 text-slate-600" />
+                Información a Complementar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Nueva Área Terreno (m²)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={complementacionData.area_terreno_nueva}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_terreno_nueva: parseFloat(e.target.value) || 0 }))}
+                    data-testid="complementacion-area-terreno"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Nueva Área Construida (m²)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={complementacionData.area_construida_nueva}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_construida_nueva: parseFloat(e.target.value) || 0 }))}
+                    data-testid="complementacion-area-construida"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Nuevo Avalúo ($)</Label>
+                <Input
+                  type="number"
+                  value={complementacionData.avaluo_nuevo}
+                  onChange={(e) => setComplementacionData(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                  data-testid="complementacion-avaluo"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Documentos de Soporte */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                Documentos de Soporte
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.documentos_soporte}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, documentos_soporte: e.target.value }))}
+                placeholder="Ej: Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición..."
+                rows={3}
+                className="text-sm"
+                data-testid="complementacion-documentos"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Texto de Considerandos */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                Texto de Considerandos (Opcional)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.texto_considerando}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, texto_considerando: e.target.value }))}
+                placeholder="Deje en blanco para usar el texto predeterminado..."
+                rows={4}
+                className="text-sm"
+                data-testid="complementacion-considerandos"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                <strong>Variables disponibles:</strong> (solicitante), (documento), (codigo_predial), (municipio), (radicado), (matricula), (vigencia)
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Observaciones */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Observaciones</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={complementacionData.observaciones}
+                onChange={(e) => setComplementacionData(prev => ({ ...prev, observaciones: e.target.value }))}
+                placeholder="Observaciones adicionales..."
+                rows={2}
+                className="text-sm"
+                data-testid="complementacion-observaciones"
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
   // Renderizar selector de tipo de mutación
   const renderSelectorTipo = () => (
     <div className="space-y-4">
@@ -7498,6 +7854,8 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && renderFormularioRectificacionArea()}
           
+          {tipoMutacionSeleccionado?.codigo === 'COMP' && renderFormularioComplementacion()}
+          
           {tipoMutacionSeleccionado?.codigo === 'M1' && (
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
               {/* Selección de Municipio - Dropdown personalizado */}
@@ -7886,6 +8244,16 @@ export default function MutacionesResoluciones() {
                 data-testid="rectificacion-generar-btn"
               >
                 {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Rectificación'}
+              </Button>
+            )}
+            {tipoMutacionSeleccionado?.codigo === 'COMP' && (
+              <Button 
+                onClick={generarResolucionComplementacion} 
+                disabled={generando || !complementacionData.predio}
+                className="bg-slate-600 hover:bg-slate-700"
+                data-testid="complementacion-generar-btn"
+              >
+                {generando ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando...</> : 'Generar Resolución de Complementación'}
               </Button>
             )}
             {tipoMutacionSeleccionado?.codigo === 'M2' && (

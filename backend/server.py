@@ -15904,6 +15904,193 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         raise
 
 
+async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador: dict) -> dict:
+    """
+    Genera internamente una resolución de Complementación de Información.
+    """
+    try:
+        from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
+        
+        # Obtener datos de la solicitud
+        predio_data = solicitud.get('predio', {})
+        solicitante = solicitud.get('solicitante', {})
+        municipio = solicitud.get('municipio', '')
+        
+        # Obtener predio de la base de datos si existe ID
+        predio_id = predio_data.get('id')
+        predio_db = None
+        if predio_id:
+            predio_db = await db.predios.find_one({"id": predio_id}, {"_id": 0})
+        
+        # Datos R1/R2 del predio
+        def obtener_datos_r1_r2_comp(predio):
+            if not predio:
+                return {}
+            r1 = predio.get('r1_registros', [])
+            r2 = predio.get('r2_registros', [])
+            r1_data = r1[0] if r1 else {}
+            r2_data = r2[0] if r2 else {}
+            return {
+                'codigo_homologado': r1_data.get('codigo_homologado') or predio.get('codigo_homologado', ''),
+                'direccion': r1_data.get('direccion') or predio.get('direccion', ''),
+                'destino_economico': r1_data.get('destino_economico') or predio.get('destino_economico', 'A'),
+                'area_terreno': r1_data.get('area_terreno') or predio.get('area_terreno', 0),
+                'area_construida': r1_data.get('area_construida') or predio.get('area_construida', 0),
+                'avaluo': r1_data.get('avaluo') or predio.get('avaluo', 0),
+                'matricula_inmobiliaria': r2_data.get('matricula_inmobiliaria') or predio.get('matricula_inmobiliaria', ''),
+                'propietarios': r2_data.get('propietarios') or predio.get('propietarios', [])
+            }
+        
+        datos_r1_r2 = obtener_datos_r1_r2_comp(predio_db or predio_data)
+        
+        # Datos actuales del predio
+        area_terreno_anterior = solicitud.get('area_terreno_anterior', datos_r1_r2.get('area_terreno', 0))
+        area_construida_anterior = solicitud.get('area_construida_anterior', datos_r1_r2.get('area_construida', 0))
+        avaluo_anterior = solicitud.get('avaluo_anterior', datos_r1_r2.get('avaluo', 0))
+        
+        # Datos nuevos
+        area_terreno_nueva = solicitud.get('area_terreno_nueva', area_terreno_anterior)
+        area_construida_nueva = solicitud.get('area_construida_nueva', area_construida_anterior)
+        avaluo_nuevo = solicitud.get('avaluo_nuevo', avaluo_anterior)
+        
+        documentos_soporte = solicitud.get('documentos_soporte', 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición')
+        
+        # Generar número de resolución
+        year = datetime.now().year
+        codigo_municipio = MUNICIPIOS_CODIGOS.get(municipio.upper(), "54000")
+        
+        contador = await db.resoluciones.count_documents({
+            "tipo": {"$regex": "COMPLEMENTACION", "$options": "i"},
+            "municipio": municipio,
+            "fecha_creacion": {"$regex": f"^{year}"}
+        })
+        numero_consecutivo = contador + 1
+        numero_resolucion = f"RES-{codigo_municipio}-COMP-{str(numero_consecutivo).zfill(4)}-{year}"
+        
+        # Código de verificación único
+        codigo_verificacion = f"COMP-{str(uuid.uuid4())[:8].upper()}"
+        
+        # Preparar datos para el PDF
+        pdf_data = {
+            "numero_resolucion": numero_resolucion,
+            "municipio": municipio,
+            "radicado": solicitud.get('radicado', ''),
+            "codigo_verificacion": codigo_verificacion,
+            "elaborado_por": solicitud.get('elaborado_por', aprobador['full_name']),
+            "revisado_por": aprobador['full_name'],
+            "documentos_soporte": documentos_soporte,
+            "texto_considerando": solicitud.get('texto_considerando', ''),
+            "predio": predio_db or predio_data,
+            "solicitante": solicitante,
+            "area_terreno_nueva": area_terreno_nueva,
+            "area_construida_nueva": area_construida_nueva,
+            "avaluo_nuevo": avaluo_nuevo,
+            "vigencia_cancelacion": year - 1,
+            "vigencia_inscripcion": year
+        }
+        
+        # Generar PDF
+        pdf_bytes = generate_complementacion_resolution_pdf(pdf_data)
+        
+        # Guardar archivo
+        filename = f"COMP_{municipio}_{numero_resolucion.replace('/', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        pdf_dir = "/app/backend/static/resoluciones"
+        os.makedirs(pdf_dir, exist_ok=True)
+        pdf_path = f"{pdf_dir}/{filename}"
+        
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        
+        # Crear documento de resolución
+        resolucion_doc = {
+            "id": str(uuid.uuid4()),
+            "tipo": "COMPLEMENTACION",
+            "numero_resolucion": numero_resolucion,
+            "codigo_verificacion": codigo_verificacion,
+            "municipio": municipio,
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "archivo_pdf": pdf_path,
+            "filename": filename,
+            "solicitud_id": solicitud.get('id'),
+            "predio_id": predio_id,
+            "datos": {
+                "area_terreno_anterior": area_terreno_anterior,
+                "area_terreno_nueva": area_terreno_nueva,
+                "area_construida_anterior": area_construida_anterior,
+                "area_construida_nueva": area_construida_nueva,
+                "avaluo_anterior": avaluo_anterior,
+                "avaluo_nuevo": avaluo_nuevo,
+                "documentos_soporte": documentos_soporte
+            },
+            "aprobado_por": aprobador['id'],
+            "aprobado_por_nombre": aprobador['full_name']
+        }
+        
+        await db.resoluciones.insert_one(resolucion_doc)
+        
+        # Actualizar solicitud
+        await db.solicitudes_mutacion.update_one(
+            {"id": solicitud['id']},
+            {
+                "$set": {
+                    "estado": "APROBADA",
+                    "resolucion_id": resolucion_doc['id'],
+                    "resolucion_numero": numero_resolucion,
+                    "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                    "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+                    "aprobado_por": aprobador['id'],
+                    "aprobado_por_nombre": aprobador['full_name']
+                }
+            }
+        )
+        
+        # Actualizar predio en la base de datos si existe
+        if predio_id:
+            historial_entry = {
+                "tipo": "COMPLEMENTACION",
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "resolucion": numero_resolucion,
+                "descripcion": f"Complementación de información - Áreas actualizadas",
+                "area_terreno_anterior": area_terreno_anterior,
+                "area_terreno_nueva": area_terreno_nueva,
+                "area_construida_anterior": area_construida_anterior,
+                "area_construida_nueva": area_construida_nueva,
+                "avaluo_anterior": avaluo_anterior,
+                "avaluo_nuevo": avaluo_nuevo
+            }
+            
+            update_fields = {
+                "area_terreno": area_terreno_nueva,
+                "area_construida": area_construida_nueva,
+                "avaluo": avaluo_nuevo,
+                "area_editada_en_plataforma": True,
+                "ultima_actualizacion": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.predios.update_one(
+                {"id": predio_id},
+                {
+                    "$set": update_fields,
+                    "$push": {"historial_resoluciones": historial_entry}
+                }
+            )
+            logger.info(f"✅ Predio {predio_id} actualizado con datos complementados")
+        
+        return {
+            "success": True,
+            "id": resolucion_doc['id'],
+            "numero_resolucion": numero_resolucion,
+            "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_path": f"/api/resoluciones/descargar/{filename}"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error en _generar_resolucion_complementacion_interno: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
 @api_router.post("/predios/cambios/aprobar")
 async def aprobar_rechazar_cambio(
     request: CambioAprobacionRequest,
@@ -29166,6 +29353,8 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
                 elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
                     pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
+                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                    pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
                     if data.predio_id:
@@ -29521,6 +29710,10 @@ async def ejecutar_accion_solicitud(
                 elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
                     # Generar resolución Rectificación de Área
                     pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
+                
+                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                    # Generar resolución Complementación de Información
+                    pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                     
                 else:
                     # M1 - usar lógica existente
