@@ -9990,7 +9990,11 @@ async def export_predios_excel(
     vigencia: Optional[int] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Exporta predios a Excel en formato EXACTO al archivo original R1-R2"""
+    """Exporta predios a Excel en formato EXACTO al archivo original R1-R2
+    
+    IMPORTANTE: Los predios bloqueados por proceso legal SÍ se incluyen en la exportación.
+    El bloqueo solo impide modificaciones, no afecta la exportación de datos.
+    """
     # Usuario externo y Empresa no pueden descargar Excel
     if current_user['role'] in [UserRole.USUARIO, UserRole.EMPRESA]:
         raise HTTPException(status_code=403, detail="No tiene permiso para exportar datos")
@@ -23058,6 +23062,9 @@ async def exportar_actualizacion_excel(
 ):
     """
     Exporta los predios del proyecto de actualización a Excel en formato R1/R2.
+    
+    IMPORTANTE: Los predios bloqueados por proceso legal SÍ se incluyen en la exportación.
+    El bloqueo solo impide modificaciones, no afecta la exportación de datos.
     
     CRITERIOS DE INCLUSIÓN:
     - solo_actualizados=false: Todos los predios del proyecto (R1/R2 cargados + nuevos aprobados)
