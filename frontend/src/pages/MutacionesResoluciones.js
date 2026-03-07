@@ -94,6 +94,18 @@ const TIPOS_MUTACION = {
   }
 };
 
+// Helper para formatear área en hectáreas + m²
+const formatAreaHectareas = (m2) => {
+  if (!m2 || m2 === 0) return '0 m²';
+  const area = Number(m2);
+  const hectareas = Math.floor(area / 10000);
+  const metros = area % 10000;
+  if (hectareas > 0) {
+    return `${hectareas} ha ${metros.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
+  }
+  return `${area.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
+};
+
 // Municipios R1/R2 - Los 12 municipios del sistema
 const MUNICIPIOS = [
   { codigo: '54003', nombre: 'Ábrego' },
@@ -4121,7 +4133,7 @@ export default function MutacionesResoluciones() {
                       <p className="text-sm text-slate-600">{m3Data.predio.direccion}</p>
                       <p className="text-xs text-slate-500 mt-1">
                         Destino: {m3Data.predio.destino_economico} | 
-                        Área T: {(m3Data.predio.area_terreno || 0).toLocaleString()} m² | 
+                        Área T: {formatAreaHectareas(m3Data.predio.area_terreno)} | 
                         Área C: {(m3Data.predio.area_construida || 0).toLocaleString()} m²
                       </p>
                       <p className="text-xs text-slate-500">
@@ -4714,7 +4726,7 @@ export default function MutacionesResoluciones() {
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Área Terreno</span>
-                        <span className="font-medium">{(m4Data.predio.area_terreno || 0).toLocaleString()} m²</span>
+                        <span className="font-medium">{formatAreaHectareas(m4Data.predio.area_terreno)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Área Construida</span>
@@ -5182,7 +5194,7 @@ export default function MutacionesResoluciones() {
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{getMatriculaInmobiliaria(predio)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
-                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{(m5Data.predio.area_terreno || 0).toLocaleString()} m²</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{formatAreaHectareas(m5Data.predio.area_terreno)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
                       </div>
                       {m5Data.predio.propietarios?.[0] && (
@@ -6596,7 +6608,7 @@ export default function MutacionesResoluciones() {
                     <span className="text-slate-500">Área Terreno:</span>
                     <p className="font-medium">
                       {bloqueoPredioSeleccionado.area_terreno 
-                        ? `${bloqueoPredioSeleccionado.area_terreno.toLocaleString('es-CO')} m²`
+                        ? formatAreaHectareas(bloqueoPredioSeleccionado.area_terreno)
                         : 'Sin información'}
                     </p>
                   </div>
@@ -7042,7 +7054,7 @@ export default function MutacionesResoluciones() {
                   <p className="font-mono font-medium text-sm">{predio.codigo_predial}</p>
                   <p className="text-xs text-slate-600">{predio.direccion}</p>
                   <p className="text-xs text-slate-500">
-                    Área terreno: {Number(predio.area_terreno).toLocaleString()} m² | 
+                    Área terreno: {formatAreaHectareas(predio.area_terreno)} | 
                     Construida: {Number(predio.area_construida).toLocaleString()} m² | 
                     Avalúo: ${Number(predio.avaluo).toLocaleString()}
                   </p>
@@ -7352,7 +7364,7 @@ export default function MutacionesResoluciones() {
                           </div>
                         </div>
                         <div className="text-right text-xs text-slate-500">
-                          <p>Área: {Number(predio.area_terreno).toLocaleString()} m²</p>
+                          <p>Área: {formatAreaHectareas(predio.area_terreno)}</p>
                           <p>Matrícula: {getMatriculaInmobiliaria(predio)}</p>
                         </div>
                       </div>
@@ -7370,7 +7382,7 @@ export default function MutacionesResoluciones() {
                   <div className="bg-white p-2 rounded">
                     <p className="text-xs text-slate-500">Área Terreno Total</p>
                     <p className="font-bold text-emerald-700">
-                      {m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0).toLocaleString()} m²
+                      {formatAreaHectareas(m2Data.predios_cancelados.reduce((sum, p) => sum + Number(p.area_terreno || 0), 0))}
                     </p>
                   </div>
                   <div className="bg-white p-2 rounded">
@@ -7474,7 +7486,7 @@ export default function MutacionesResoluciones() {
                           </div>
                           <div>
                             <p className="text-slate-500">Área Terreno:</p>
-                            <p className="font-medium text-emerald-700">{Number(m2Data.predio_resultante.area_terreno).toLocaleString()} m²</p>
+                            <p className="font-medium text-emerald-700">{formatAreaHectareas(m2Data.predio_resultante.area_terreno)}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Área Construida:</p>

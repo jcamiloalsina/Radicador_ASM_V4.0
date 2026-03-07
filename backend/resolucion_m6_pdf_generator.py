@@ -42,11 +42,24 @@ def formatear_moneda(valor):
 
 
 def formatear_area(valor):
-    """Formatea un valor de área"""
+    """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
     try:
-        return f"{float(valor):,.2f}"
+        area = float(valor or 0)
+        if area == 0:
+            return "0 m²"
+        
+        hectareas = int(area // 10000)
+        metros = area % 10000
+        
+        if hectareas > 0:
+            # Formato: 84 ha 3.750 m²
+            metros_fmt = f"{metros:,.0f}".replace(",", ".")
+            return f"{hectareas} ha {metros_fmt} m²"
+        else:
+            # Solo metros cuadrados con separador de miles
+            return f"{area:,.0f}".replace(",", ".") + " m²"
     except:
-        return "0.00"
+        return str(valor or "0") + " m²"
 
 
 def obtener_datos_r1_r2_pdf(predio: dict) -> dict:

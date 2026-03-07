@@ -112,15 +112,24 @@ def get_m3_plantilla():
 
 
 def formatear_area(area):
-    """Formatea el área con unidades"""
+    """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
     try:
-        area = float(area)
-        if area >= 10000:
-            return f"{area/10000:,.2f} ha"
+        area = float(area or 0)
+        if area == 0:
+            return "0 m²"
+        
+        hectareas = int(area // 10000)
+        metros = area % 10000
+        
+        if hectareas > 0:
+            # Formato: 84 ha 3.750 m²
+            metros_fmt = f"{metros:,.0f}".replace(",", ".")
+            return f"{hectareas} ha {metros_fmt} m²"
         else:
-            return f"{area:,.0f} m²"
+            # Solo metros cuadrados con separador de miles
+            return f"{area:,.0f}".replace(",", ".") + " m²"
     except:
-        return "0 m²"
+        return str(area or "0") + " m²"
 
 
 def generate_resolucion_m3_pdf(

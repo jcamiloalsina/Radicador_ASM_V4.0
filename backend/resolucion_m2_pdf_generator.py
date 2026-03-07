@@ -149,22 +149,24 @@ def generate_resolucion_m2_pdf(
     
     # Helper para formatear área con unidades de medida
     def formatear_area(area_valor):
-        """Formatear área con formato colombiano: punto para miles, coma para decimales"""
+        """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
         try:
             area = float(area_valor or 0)
-            # Formato colombiano: 1.044,70 m²
-            parte_entera = int(area)
-            parte_decimal = area - parte_entera
+            if area == 0:
+                return "0 m²"
             
-            # Formatear parte entera con puntos como separador de miles
-            parte_entera_str = f"{parte_entera:,}".replace(",", ".")
+            hectareas = int(area // 10000)
+            metros = area % 10000
             
-            # Formatear parte decimal con coma (2 decimales)
-            parte_decimal_str = f"{parte_decimal:.2f}"[1:].replace(".", ",")
-            
-            return f"{parte_entera_str}{parte_decimal_str} m²"
+            if hectareas > 0:
+                # Formato: 84 ha 3.750 m²
+                metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                return f"{hectareas} ha {metros_fmt} m²"
+            else:
+                # Solo metros cuadrados con separador de miles
+                return f"{area:,.0f}".replace(",", ".") + " m²"
         except:
-            return str(area_valor or "0")
+            return str(area_valor or "0") + " m²"
     
     # Registrar fuentes
     try:

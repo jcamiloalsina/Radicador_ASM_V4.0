@@ -655,9 +655,24 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         # Valor de avalúo según cancelación o inscripción
         valor_avaluo = avaluo_anterior if es_cancelacion else avaluo_nuevo
         
-        # Formatear áreas
-        area_terreno_fmt = f"{float(area_terreno_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
-        area_construida_fmt = f"{float(area_construida_val):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+        # Formatear áreas: X ha X.XXX m² para áreas grandes
+        def formatear_area_local(valor):
+            try:
+                area = float(valor or 0)
+                if area == 0:
+                    return "0 m²"
+                hectareas = int(area // 10000)
+                metros = area % 10000
+                if hectareas > 0:
+                    metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                    return f"{hectareas} ha {metros_fmt} m²"
+                else:
+                    return f"{area:,.0f}".replace(",", ".") + " m²"
+            except:
+                return str(valor or "0") + " m²"
+        
+        area_terreno_fmt = formatear_area_local(area_terreno_val)
+        area_construida_fmt = formatear_area_local(area_construida_val)
         
         # Vigencia fiscal
         from datetime import datetime

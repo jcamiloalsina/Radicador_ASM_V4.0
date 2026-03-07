@@ -320,10 +320,24 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
             return f"${valor}"
     
     def formatear_area(valor):
+        """Formatear área: X ha X.XXX m² para áreas grandes, o solo m² para pequeñas"""
         try:
-            return f"{float(valor):,.2f} m²".replace(",", "X").replace(".", ",").replace("X", ".")
+            area = float(valor or 0)
+            if area == 0:
+                return "0 m²"
+            
+            hectareas = int(area // 10000)
+            metros = area % 10000
+            
+            if hectareas > 0:
+                # Formato: 84 ha 3.750 m²
+                metros_fmt = f"{metros:,.0f}".replace(",", ".")
+                return f"{hectareas} ha {metros_fmt} m²"
+            else:
+                # Solo metros cuadrados con separador de miles
+                return f"{area:,.0f}".replace(",", ".") + " m²"
         except:
-            return f"{valor} m²"
+            return str(valor or "0") + " m²"
     
     # ==========================================
     # FUNCIONES DE DIBUJO (IDÉNTICAS A M2/M4)
