@@ -1807,7 +1807,7 @@ export default function MutacionesResoluciones() {
       } else if (res.data.estado === 'disponible') {
         toast.success('Código disponible');
       } else if (res.data.estado === 'eliminado') {
-        toast.warning('Este código perteneció a un predio eliminado');
+        toast.warning('Este código pertenece a un predio ELIMINADO. Puede reactivarlo completando el proceso de mutación.');
       }
     } catch (error) {
       toast.error('Error verificando código');
@@ -9955,8 +9955,17 @@ export default function MutacionesResoluciones() {
                         }`}>
                           {verificacionCodigoNuevo.estado === 'disponible' && '✓ Código disponible'}
                           {verificacionCodigoNuevo.estado === 'existente' && '✗ Este código ya existe'}
-                          {verificacionCodigoNuevo.estado === 'eliminado' && '⚠ Código de predio eliminado'}
+                          {verificacionCodigoNuevo.estado === 'eliminado' && '⚠ Predio eliminado - Se puede reactivar'}
                         </p>
+                        {verificacionCodigoNuevo.estado === 'eliminado' && verificacionCodigoNuevo.detalles_eliminacion && (
+                          <div className="mt-2 text-xs text-amber-700 space-y-1">
+                            <p><strong>Vigencia eliminación:</strong> {verificacionCodigoNuevo.detalles_eliminacion.vigencia_eliminacion || 'N/A'}</p>
+                            <p><strong>Motivo:</strong> {verificacionCodigoNuevo.detalles_eliminacion.motivo || 'Mutación catastral'}</p>
+                            <p className="text-amber-800 font-medium mt-2">
+                              ℹ️ Para reactivar este predio, complete los datos y continúe con el proceso de mutación.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -10518,6 +10527,7 @@ export default function MutacionesResoluciones() {
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Municipio</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Vigencia</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
@@ -10542,6 +10552,7 @@ export default function MutacionesResoluciones() {
                           {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia || predio.vigencia_eliminacion || 'N/A'}</td>
                         <td className="py-3 px-4">
                           <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>

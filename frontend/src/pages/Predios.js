@@ -5187,6 +5187,7 @@ export default function Predios() {
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Municipio</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Vigencia</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
@@ -5211,6 +5212,7 @@ export default function Predios() {
                           {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia || predio.vigencia_eliminacion || 'N/A'}</td>
                         <td className="py-3 px-4">
                           <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>
