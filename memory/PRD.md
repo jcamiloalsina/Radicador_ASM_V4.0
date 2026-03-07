@@ -3,9 +3,13 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: BLOQUEO DE PREDIOS Y AJUSTE DE ÁREA FUNCIONAL
+## Estado Actual: TABLA DE PREDIOS CON COLUMNAS DE ÁREA COMPLETADO
 
 ### Correcciones Recientes (07/03/2026)
+- **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida" a la tabla "Predios Registrados" en Gestión de Predios
+  - Formato consistente: `X ha Y m²`
+  - Posición: entre "Dirección" y "Destino"
+  - Archivo modificado: `/app/frontend/src/pages/Predios.js`
 - **Etiqueta "Ajuste de Área"**: Cambiada de "Rectificación de Área" / "M6" / "Rect. Área" a "Ajuste de Área" según preferencia del usuario
 - **Buscador de Bloqueo de Predios**: Verificado y funcionando correctamente con lupa visible, búsqueda por código predial, dirección o propietario
 
@@ -158,8 +162,8 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
 
 ## Última Actualización
 - **Fecha**: 07 Marzo 2026
-- **Estado**: RECTIFICACIÓN DE ÁREA COMPLETADO Y VERIFICADO  
-- **Testing**: iteration_65.json - 100% éxito (11/11 tests backend, UI verificada)
+- **Estado**: COLUMNAS DE ÁREA EN TABLA DE PREDIOS COMPLETADO
+- **Testing**: Screenshot verificado - Columnas "Área Terreno" y "Área Construida" visibles en tabla Predios Registrados
 
 ## Issues Resueltos (Sesión Actual)
 - ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
@@ -244,6 +248,11 @@ Sistema integral de gestión catastral para el manejo de mutaciones de propiedad
   - PDF: `resolucion_m6_pdf_generator.py` con formato institucional estándar
   - Soporta: Área terreno, área construcción, nuevo avalúo, texto de considerandos personalizado
   - Testing: iteration_65.json - 100% éxito (11/11 tests)
+
+- ✅ **Columnas de Área en Tabla de Predios** - IMPLEMENTADO (07/03/2026)
+  - Agregadas columnas "Área Terreno" y "Área Construida" a tabla "Predios Registrados" en Gestión de Predios
+  - Formato consistente: `X ha Y m²` usando función `formatAreaHectareas`
+  - Archivo modificado: `/app/frontend/src/pages/Predios.js` (líneas 3348-3359, 3414-3419)
 
 ## Issues Conocidos (Pendientes de Verificación en Producción)
 - Sincronización lenta en conexiones móviles

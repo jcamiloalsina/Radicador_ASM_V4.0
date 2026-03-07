@@ -3351,6 +3351,8 @@ export default function Predios() {
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Matrícula</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario(s)</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Dirección</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Área Terreno</th>
+                      <th className="text-right py-3 px-4 font-semibold text-slate-700">Área Construida</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Destino</th>
                       <th className="text-right py-3 px-4 font-semibold text-slate-700">Avalúo</th>
                       <th className="text-center py-3 px-4 font-semibold text-slate-700">Acciones</th>
@@ -3359,7 +3361,7 @@ export default function Predios() {
                   <tbody>
                     {predios.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="py-8 text-center text-slate-500">
+                        <td colSpan="9" className="py-8 text-center text-slate-500">
                           No hay predios registrados para este municipio y vigencia
                         </td>
                       </tr>
@@ -3409,6 +3411,12 @@ export default function Predios() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-slate-700 max-w-[200px] truncate">{predio.direccion}</td>
+                          <td className="py-3 px-4 text-right text-slate-700 whitespace-nowrap text-xs">
+                            {formatAreaHectareas(predio.area_terreno)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-700 whitespace-nowrap text-xs">
+                            {formatAreaHectareas(predio.area_construida)}
+                          </td>
                           <td className="py-3 px-4 text-center">
                             <Badge className="bg-emerald-100 text-emerald-800">
                               {predio.destino_economico}
