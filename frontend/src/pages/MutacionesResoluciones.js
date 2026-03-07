@@ -83,6 +83,14 @@ const TIPOS_MUTACION = {
     color: 'bg-red-100 text-red-800',
     enabled: true,
     soloCoordinador: true
+  },
+  ELIMINADOS: { 
+    codigo: 'ELIMINADOS', 
+    nombre: 'Predios Eliminados', 
+    descripcion: 'Consultar predios eliminados del sistema',
+    color: 'bg-gray-100 text-gray-800',
+    enabled: true,
+    soloCoordinador: true
   }
 };
 
@@ -397,6 +405,15 @@ export default function MutacionesResoluciones() {
   const [showHistorialBloqueoModal, setShowHistorialBloqueoModal] = useState(false);
   const [historialBloqueo, setHistorialBloqueo] = useState([]);
   const [predioHistorialBloqueo, setPredioHistorialBloqueo] = useState(null);
+  
+  // Estados para Predios Eliminados
+  const [showEliminadosModal, setShowEliminadosModal] = useState(false);
+  const [prediosEliminados, setPrediosEliminados] = useState([]);
+  const [prediosEliminadosFiltrados, setPrediosEliminadosFiltrados] = useState([]);
+  const [eliminadosSearch, setEliminadosSearch] = useState('');
+  const [eliminadosMunicipio, setEliminadosMunicipio] = useState('');
+  const [eliminadosLoading, setEliminadosLoading] = useState(false);
+  
   const [ultimaManzanaEncontrada, setUltimaManzanaEncontrada] = useState(null);
   const [buscandoUltimaManzana, setBuscandoUltimaManzana] = useState(false);
   const [zonasTerreno, setZonasTerreno] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
@@ -770,6 +787,46 @@ export default function MutacionesResoluciones() {
     }
   };
 
+  // Cargar predios eliminados
+  const cargarPrediosEliminados = async (municipioFilter = '') => {
+    setEliminadosLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (municipioFilter) params.append('municipio', municipioFilter);
+      params.append('limit', '500');
+      
+      const response = await axios.get(`${API}/predios/eliminados?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrediosEliminados(response.data.predios || []);
+      setPrediosEliminadosFiltrados(response.data.predios || []);
+    } catch (error) {
+      console.error('Error cargando predios eliminados:', error);
+      toast.error('Error al cargar predios eliminados');
+    } finally {
+      setEliminadosLoading(false);
+    }
+  };
+  
+  // Filtrar predios eliminados por búsqueda local
+  useEffect(() => {
+    if (!eliminadosSearch.trim()) {
+      setPrediosEliminadosFiltrados(prediosEliminados);
+      return;
+    }
+    
+    const searchLower = eliminadosSearch.toLowerCase();
+    const filtered = prediosEliminados.filter(p => 
+      p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+      p.codigo_homologado?.toLowerCase().includes(searchLower) ||
+      p.nombre_propietario?.toLowerCase().includes(searchLower) ||
+      p.municipio?.toLowerCase().includes(searchLower) ||
+      p.motivo?.toLowerCase().includes(searchLower)
+    );
+    setPrediosEliminadosFiltrados(filtered);
+  }, [eliminadosSearch, prediosEliminados]);
+
   const bloquearPredio = async () => {
     if (!bloqueoPredioSeleccionado) {
       toast.error('Debe seleccionar un predio');
@@ -1030,6 +1087,13 @@ export default function MutacionesResoluciones() {
 
   // Manejar apertura de diálogo de mutación
   const handleAbrirMutacion = (tipo) => {
+    // Si es ELIMINADOS, abrir modal específico
+    if (tipo.codigo === 'ELIMINADOS') {
+      setShowEliminadosModal(true);
+      cargarPrediosEliminados();
+      return;
+    }
+    
     setTipoMutacionSeleccionado(tipo);
     setShowMutacionDialog(true);
     
@@ -10379,6 +10443,118 @@ export default function MutacionesResoluciones() {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal de Predios Eliminados */}
+      <Dialog open={showEliminadosModal} onOpenChange={(open) => {
+        setShowEliminadosModal(open);
+        if (!open) {
+          setEliminadosSearch('');
+          setEliminadosMunicipio('');
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-red-700">
+              <Trash2 className="w-5 h-5" />
+              Predios Eliminados
+              <Badge variant="destructive" className="ml-2">{prediosEliminados.length} total</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Los siguientes predios han sido eliminados del sistema. Sus números de terreno no pueden ser reutilizados.
+            </p>
+            
+            {/* Filtros y búsqueda */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por código, propietario, municipio o motivo..."
+                  value={eliminadosSearch}
+                  onChange={(e) => setEliminadosSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+                value={eliminadosMunicipio}
+                onChange={(e) => {
+                  setEliminadosMunicipio(e.target.value);
+                  cargarPrediosEliminados(e.target.value);
+                }}
+              >
+                <option value="">Todos los municipios</option>
+                {MUNICIPIOS.map(m => (
+                  <option key={m.codigo} value={m.nombre}>{m.nombre}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Contador de resultados filtrados */}
+            {eliminadosSearch && (
+              <p className="text-sm text-slate-500">
+                Mostrando {prediosEliminadosFiltrados.length} de {prediosEliminados.length} predios
+              </p>
+            )}
+            
+            {eliminadosLoading ? (
+              <div className="py-8 text-center text-slate-500">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Cargando predios eliminados...
+              </div>
+            ) : prediosEliminadosFiltrados.length === 0 ? (
+              <div className="py-8 text-center text-slate-500">
+                {eliminadosSearch ? 'No se encontraron predios con esos criterios' : 'No hay predios eliminados'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white">
+                    <tr className="border-b border-slate-200 bg-red-50">
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Municipio</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Resolución</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Motivo</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Fecha</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-700">Eliminado Por</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prediosEliminadosFiltrados.map((predio, idx) => (
+                      <tr key={predio.id || idx} className="border-b border-slate-100 hover:bg-red-50/50">
+                        <td className="py-3 px-4">
+                          <p className="font-medium text-slate-900">{predio.codigo_homologado || predio.codigo_predial_nacional?.slice(-10)}</p>
+                          <p className="text-xs text-slate-500 font-mono">{predio.codigo_predial_nacional?.slice(0, 20)}...</p>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">{predio.nombre_propietario || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-red-700">{predio.resolucion || 'N/A'}</span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={predio.motivo}>
+                          {predio.motivo || 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">
+                          {predio.eliminado_en ? new Date(predio.eliminado_en).toLocaleDateString('es-CO') : 
+                           predio.deleted_at ? new Date(predio.deleted_at).toLocaleDateString('es-CO') : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">{predio.eliminado_por || predio.deleted_by_name || 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEliminadosModal(false)}>Cerrar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

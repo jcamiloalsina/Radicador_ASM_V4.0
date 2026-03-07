@@ -185,6 +185,10 @@ export default function Predios() {
   // Estado para determinar si el predio usa formato automático (R2→R1) o manual
   const [usarFormatoAutomatico, setUsarFormatoAutomatico] = useState(false);
   const [prediosEliminados, setPrediosEliminados] = useState([]);
+  const [prediosEliminadosFiltrados, setPrediosEliminadosFiltrados] = useState([]);
+  const [eliminadosSearch, setEliminadosSearch] = useState('');
+  const [eliminadosMunicipio, setEliminadosMunicipio] = useState('');
+  const [eliminadosLoading, setEliminadosLoading] = useState(false);
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [cambiosHistorial, setCambiosHistorial] = useState([]);
   const [historialTab, setHistorialTab] = useState('pendientes');
@@ -1986,18 +1990,44 @@ export default function Predios() {
     }
   };
 
-  const fetchPrediosEliminados = async () => {
+  const fetchPrediosEliminados = async (municipioFilter = '') => {
+    setEliminadosLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/predios/eliminados`, {
+      const params = new URLSearchParams();
+      if (municipioFilter) params.append('municipio', municipioFilter);
+      params.append('limit', '500');
+      
+      const res = await axios.get(`${API}/predios/eliminados?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPrediosEliminados(res.data.predios);
+      setPrediosEliminados(res.data.predios || []);
+      setPrediosEliminadosFiltrados(res.data.predios || []);
       setShowDeletedDialog(true);
     } catch (error) {
       toast.error('Error al cargar predios eliminados');
+    } finally {
+      setEliminadosLoading(false);
     }
   };
+  
+  // Filtrar predios eliminados por búsqueda local
+  useEffect(() => {
+    if (!eliminadosSearch.trim()) {
+      setPrediosEliminadosFiltrados(prediosEliminados);
+      return;
+    }
+    
+    const searchLower = eliminadosSearch.toLowerCase();
+    const filtered = prediosEliminados.filter(p => 
+      p.codigo_predial_nacional?.toLowerCase().includes(searchLower) ||
+      p.codigo_homologado?.toLowerCase().includes(searchLower) ||
+      p.nombre_propietario?.toLowerCase().includes(searchLower) ||
+      p.municipio?.toLowerCase().includes(searchLower) ||
+      p.motivo?.toLowerCase().includes(searchLower)
+    );
+    setPrediosEliminadosFiltrados(filtered);
+  }, [eliminadosSearch, prediosEliminados]);
 
   const fetchCambiosStats = async () => {
     try {
@@ -2961,6 +2991,18 @@ export default function Predios() {
             <Button variant="outline" onClick={handleExportExcel}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Excel
+            </Button>
+          )}
+          
+          {/* Botón Predios Eliminados */}
+          {!showDashboard && ['administrador', 'coordinador'].includes(user?.role) && (
+            <Button 
+              variant="outline" 
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={fetchPrediosEliminados}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminados
             </Button>
           )}
         </div>
@@ -5064,12 +5106,19 @@ export default function Predios() {
       </Dialog>
 
       {/* Deleted Predios Dialog */}
-      <Dialog open={showDeletedDialog} onOpenChange={setShowDeletedDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showDeletedDialog} onOpenChange={(open) => {
+        setShowDeletedDialog(open);
+        if (!open) {
+          setEliminadosSearch('');
+          setEliminadosMunicipio('');
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-outfit flex items-center gap-2 text-red-700">
               <AlertTriangle className="w-5 h-5" />
               Predios Eliminados
+              <Badge variant="destructive" className="ml-2">{prediosEliminados.length} total</Badge>
             </DialogTitle>
           </DialogHeader>
           
@@ -5078,14 +5127,62 @@ export default function Predios() {
               Los siguientes predios han sido eliminados del sistema. Sus números de terreno no pueden ser reutilizados.
             </p>
             
-            {prediosEliminados.length === 0 ? (
+            {/* Filtros y búsqueda */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por código, propietario, municipio o motivo..."
+                  value={eliminadosSearch}
+                  onChange={(e) => setEliminadosSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                className="border rounded-md px-3 py-2 text-sm min-w-[180px]"
+                value={eliminadosMunicipio}
+                onChange={(e) => {
+                  setEliminadosMunicipio(e.target.value);
+                  fetchPrediosEliminados(e.target.value);
+                }}
+              >
+                <option value="">Todos los municipios</option>
+                <option value="Ábrego">Ábrego</option>
+                <option value="Bucarasica">Bucarasica</option>
+                <option value="Cáchira">Cáchira</option>
+                <option value="Convención">Convención</option>
+                <option value="El Carmen">El Carmen</option>
+                <option value="El Tarra">El Tarra</option>
+                <option value="Hacarí">Hacarí</option>
+                <option value="La Esperanza">La Esperanza</option>
+                <option value="La Playa">La Playa</option>
+                <option value="Río de Oro">Río de Oro</option>
+                <option value="San Calixto">San Calixto</option>
+                <option value="Sardinata">Sardinata</option>
+                <option value="Teorama">Teorama</option>
+              </select>
+            </div>
+            
+            {/* Contador de resultados filtrados */}
+            {eliminadosSearch && (
+              <p className="text-sm text-slate-500">
+                Mostrando {prediosEliminadosFiltrados.length} de {prediosEliminados.length} predios
+              </p>
+            )}
+            
+            {eliminadosLoading ? (
               <div className="py-8 text-center text-slate-500">
-                No hay predios eliminados
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Cargando predios eliminados...
+              </div>
+            ) : prediosEliminadosFiltrados.length === 0 ? (
+              <div className="py-8 text-center text-slate-500">
+                {eliminadosSearch ? 'No se encontraron predios con esos criterios' : 'No hay predios eliminados'}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 bg-white">
                     <tr className="border-b border-slate-200 bg-red-50">
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Código</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-700">Propietario</th>
@@ -5097,8 +5194,8 @@ export default function Predios() {
                     </tr>
                   </thead>
                   <tbody>
-                    {prediosEliminados.map((predio) => (
-                      <tr key={predio.id} className="border-b border-slate-100 hover:bg-red-50/50">
+                    {prediosEliminadosFiltrados.map((predio, idx) => (
+                      <tr key={predio.id || idx} className="border-b border-slate-100 hover:bg-red-50/50">
                         <td className="py-3 px-4">
                           <p className="font-medium text-slate-900">{predio.codigo_homologado || predio.codigo_predial_nacional?.slice(-10)}</p>
                           <p className="text-xs text-slate-500 font-mono">{predio.codigo_predial_nacional?.slice(0, 20)}...</p>
