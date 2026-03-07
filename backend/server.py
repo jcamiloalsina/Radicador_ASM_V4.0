@@ -6603,37 +6603,53 @@ async def listar_predios_bloqueados_v2(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Lista todos los predios bloqueados. Endpoint alternativo para evitar conflicto de rutas.
+    Lista predios bloqueados, agrupados por código predial (muestra solo la vigencia más reciente de cada uno).
     """
-    filtro = {"bloqueado": True}
+    match_stage = {"bloqueado": True}
     
     if municipio:
-        filtro["municipio"] = {"$regex": municipio, "$options": "i"}
+        match_stage["municipio"] = {"$regex": municipio, "$options": "i"}
     
-    total = await db.predios.count_documents(filtro)
+    # Usar agregación para agrupar por código predial y tomar la vigencia más reciente
+    pipeline = [
+        {"$match": match_stage},
+        {"$sort": {"vigencia": -1}},  # Ordenar por vigencia descendente
+        {"$group": {
+            "_id": "$codigo_predial_nacional",
+            "id": {"$first": "$id"},
+            "codigo_predial_nacional": {"$first": "$codigo_predial_nacional"},
+            "codigo_predial": {"$first": "$codigo_predial"},
+            "numero_predio": {"$first": "$numero_predio"},
+            "direccion": {"$first": "$direccion"},
+            "municipio": {"$first": "$municipio"},
+            "nombre_propietario": {"$first": "$nombre_propietario"},
+            "propietarios": {"$first": "$propietarios"},
+            "matricula_inmobiliaria": {"$first": "$matricula_inmobiliaria"},
+            "area_terreno": {"$first": "$area_terreno"},
+            "area_construida": {"$first": "$area_construida"},
+            "avaluo": {"$first": "$avaluo"},
+            "vigencia": {"$first": "$vigencia"},
+            "bloqueado": {"$first": "$bloqueado"},
+            "bloqueo_info": {"$first": "$bloqueo_info"},
+            "historial_bloqueos": {"$first": "$historial_bloqueos"},
+            "r2_registros": {"$first": "$r2_registros"}
+        }},
+        {"$sort": {"bloqueo_info.fecha_bloqueo": -1}},
+        {"$skip": skip},
+        {"$limit": limit},
+        {"$project": {"_id": 0}}
+    ]
     
-    predios = await db.predios.find(
-        filtro,
-        {
-            "_id": 0,
-            "id": 1,
-            "codigo_predial_nacional": 1,
-            "codigo_predial": 1,
-            "numero_predio": 1,
-            "direccion": 1,
-            "municipio": 1,
-            "nombre_propietario": 1,
-            "propietarios": 1,
-            "matricula_inmobiliaria": 1,
-            "area_terreno": 1,
-            "area_construida": 1,
-            "avaluo": 1,
-            "bloqueado": 1,
-            "bloqueo_info": 1,
-            "historial_bloqueos": 1,
-            "r2_registros": 1
-        }
-    ).sort("bloqueo_info.fecha_bloqueo", -1).skip(skip).limit(limit).to_list(length=limit)
+    predios = await db.predios.aggregate(pipeline).to_list(length=limit)
+    
+    # Contar total de códigos únicos bloqueados
+    count_pipeline = [
+        {"$match": match_stage},
+        {"$group": {"_id": "$codigo_predial_nacional"}},
+        {"$count": "total"}
+    ]
+    count_result = await db.predios.aggregate(count_pipeline).to_list(length=1)
+    total = count_result[0]["total"] if count_result else 0
     
     return {
         "predios": predios,
