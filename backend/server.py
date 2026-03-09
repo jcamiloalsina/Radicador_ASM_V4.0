@@ -12425,6 +12425,150 @@ async def descargar_certificado_peticion(
     )
 
 
+# === MUTACIONES MÚLTIPLES POR PETICIÓN ===
+
+@api_router.get("/petitions/{petition_id}/mutaciones")
+async def obtener_mutaciones_peticion(
+    petition_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene las mutaciones asociadas a una petición
+    """
+    try:
+        petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+        if not petition:
+            raise HTTPException(status_code=404, detail="Petición no encontrada")
+        
+        # Obtener mutaciones asociadas a esta petición
+        mutaciones = await db.peticion_mutaciones.find(
+            {"petition_id": petition_id},
+            {"_id": 0}
+        ).sort("orden", 1).to_list(100)
+        
+        return {
+            "success": True,
+            "mutaciones": mutaciones,
+            "total": len(mutaciones)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error obteniendo mutaciones: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/petitions/{petition_id}/mutaciones")
+async def agregar_mutacion_peticion(
+    petition_id: str,
+    data: RadicadoMultipleMutacion,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Agrega una mutación a una petición existente
+    """
+    try:
+        petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+        if not petition:
+            raise HTTPException(status_code=404, detail="Petición no encontrada")
+        
+        # Contar mutaciones existentes para determinar el orden
+        count = await db.peticion_mutaciones.count_documents({"petition_id": petition_id})
+        
+        mutacion_id = str(uuid.uuid4())
+        nueva_mutacion = {
+            "id": mutacion_id,
+            "petition_id": petition_id,
+            "radicado": petition.get('radicado'),
+            "tipo": data.tipo,
+            "subtipo": data.subtipo,
+            "estado": "BORRADOR",
+            "datos": data.datos or {},
+            "resolucion_id": None,
+            "orden": count + 1,
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "creado_por_id": current_user['id'],
+            "creado_por_nombre": current_user['full_name']
+        }
+        
+        await db.peticion_mutaciones.insert_one(nueva_mutacion)
+        nueva_mutacion.pop('_id', None)
+        
+        # Agregar al historial de la petición
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$push": {"historial": {
+                    "accion": f"Mutación {data.tipo} agregada",
+                    "usuario": current_user['full_name'],
+                    "usuario_rol": current_user['role'],
+                    "fecha": datetime.now(timezone.utc).isoformat()
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "mutacion": nueva_mutacion,
+            "message": f"Mutación {data.tipo} agregada a la petición"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error agregando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.delete("/petitions/{petition_id}/mutaciones/{mutacion_id}")
+async def eliminar_mutacion_peticion(
+    petition_id: str,
+    mutacion_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Elimina una mutación de una petición (solo si está en estado BORRADOR)
+    """
+    try:
+        mutacion = await db.peticion_mutaciones.find_one({
+            "id": mutacion_id,
+            "petition_id": petition_id
+        })
+        
+        if not mutacion:
+            raise HTTPException(status_code=404, detail="Mutación no encontrada")
+        
+        if mutacion.get('estado') != 'BORRADOR':
+            raise HTTPException(status_code=400, detail="Solo se pueden eliminar mutaciones en estado borrador")
+        
+        await db.peticion_mutaciones.delete_one({"id": mutacion_id})
+        
+        # Agregar al historial de la petición
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$push": {"historial": {
+                    "accion": f"Mutación {mutacion.get('tipo')} eliminada",
+                    "usuario": current_user['full_name'],
+                    "usuario_rol": current_user['role'],
+                    "fecha": datetime.now(timezone.utc).isoformat()
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Mutación eliminada"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error eliminando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 # === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
 
 @api_router.get("/verificar/{codigo_verificacion}", response_class=HTMLResponse)
