@@ -9787,6 +9787,9 @@ async def import_predios_excel(
                     col_map['nombre'] = i
                 elif 'ESTADO' in h_upper and 'CIVIL' in h_upper:
                     col_map['estado_civil'] = i
+                elif h_upper == 'ESTADO' and 'CIVIL' not in h_upper:
+                    # También detectar si solo dice "ESTADO" (sin CIVIL)
+                    col_map['estado_civil'] = i
                 elif 'TIPO' in h_upper and 'DOCUMENTO' in h_upper:
                     col_map['tipo_documento'] = i
                 elif 'NUMERO' in h_upper and 'DOCUMENTO' in h_upper:
@@ -29793,6 +29796,13 @@ async def procesar_excel_desenglobe_masivo(
             'NUMERO_DOCUMENTO': 'propietario_documento',
             'NUMERO DOCUMENTO': 'propietario_documento',
             'DOCUMENTO': 'propietario_documento',
+            # Campos adicionales para estado civil y nombre separado
+            'ESTADO': 'propietario_estado_civil',
+            'ESTADO_CIVIL': 'propietario_estado_civil',
+            'PRIMER_APELLIDO': 'propietario_primer_apellido',
+            'SEGUNDO_APELLIDO': 'propietario_segundo_apellido',
+            'PRIMER_NOMBRE': 'propietario_primer_nombre',
+            'SEGUNDO_NOMBRE': 'propietario_segundo_nombre',
         }
         
         # Extraer base del NPN del predio matriz (primeros 25 dígitos = hasta terreno)
@@ -29880,6 +29890,16 @@ async def procesar_excel_desenglobe_masivo(
                                 propietario['tipo_documento'] = str(val).strip()
                             elif field == 'propietario_documento':
                                 propietario['numero_documento'] = str(val).strip()
+                            elif field == 'propietario_estado_civil':
+                                propietario['estado_civil'] = str(val).strip()
+                            elif field == 'propietario_primer_apellido':
+                                propietario['primer_apellido'] = str(val).strip()
+                            elif field == 'propietario_segundo_apellido':
+                                propietario['segundo_apellido'] = str(val).strip()
+                            elif field == 'propietario_primer_nombre':
+                                propietario['primer_nombre'] = str(val).strip()
+                            elif field == 'propietario_segundo_nombre':
+                                propietario['segundo_nombre'] = str(val).strip()
                         else:
                             predio[field] = str(val).strip()
             
