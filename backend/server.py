@@ -6515,6 +6515,7 @@ async def buscar_predios_por_municipio(
     """
     Busca predios en un municipio específico por código predial, dirección, propietario o matrícula.
     Usado para búsquedas rápidas en formularios de mutaciones y bloqueos.
+    Detecta automáticamente búsquedas de matrícula (formato XXX-XXXXX) para búsqueda exacta.
     """
     if len(q) < 3:
         return {"predios": [], "total": 0}
@@ -6538,17 +6539,45 @@ async def buscar_predios_por_municipio(
     
     municipio_nombre = CODIGO_A_NOMBRE.get(municipio_codigo, "")
     
-    # Query de búsqueda - incluye búsqueda en array de propietarios y matrícula
-    filtro = {
+    # Obtener vigencia actual del sistema
+    vigencia_actual = await db.predios.find_one(
+        {"deleted": {"$ne": True}}, 
+        {"vigencia": 1, "_id": 0},
+        sort=[("vigencia", -1)]
+    )
+    vigencia = vigencia_actual.get("vigencia") if vigencia_actual else datetime.now().year
+    
+    # Detectar si es una búsqueda de matrícula (formato XXX-XXXXX)
+    is_matricula_search = bool(re.match(r'^\d{3}-\d+$', q.strip()))
+    
+    # Filtro base: no eliminados y del municipio
+    base_filter = {
         "$and": [
             {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"vigencia": vigencia},
             {"$or": [
                 {"municipio": {"$regex": municipio_nombre, "$options": "i"}} if municipio_nombre else {},
                 {"codigo_predial_nacional": {"$regex": f"^{municipio_codigo}", "$options": "i"}}
-            ]},
-            {"$or": [
+            ]}
+        ]
+    }
+    
+    # Filtro de búsqueda según tipo
+    if is_matricula_search:
+        # Búsqueda EXACTA para matrículas
+        search_filter = {
+            "$or": [
+                {"matricula_inmobiliaria": q.strip()},
+                {"r2_registros.matricula_inmobiliaria": q.strip()}
+            ]
+        }
+    else:
+        # Búsqueda parcial para otros campos
+        search_filter = {
+            "$or": [
                 {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
                 {"codigo_predial": {"$regex": q, "$options": "i"}},
+                {"codigo_homologado": {"$regex": q, "$options": "i"}},
                 {"numero_predio": {"$regex": q, "$options": "i"}},
                 {"direccion": {"$regex": q, "$options": "i"}},
                 {"nombre_propietario": {"$regex": q, "$options": "i"}},
@@ -6559,12 +6588,14 @@ async def buscar_predios_por_municipio(
                 {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
                 {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
                 {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
-                # Búsqueda por matrícula inmobiliaria
+                # Búsqueda por matrícula inmobiliaria (parcial)
                 {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
                 {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
-            ]}
-        ]
-    }
+            ]
+        }
+    
+    # Combinar filtros
+    filtro = {**base_filter, **search_filter}
     
     predios = await db.predios.find(
         filtro,
@@ -6573,6 +6604,7 @@ async def buscar_predios_por_municipio(
             "id": 1,
             "codigo_predial_nacional": 1,
             "codigo_predial": 1,
+            "codigo_homologado": 1,
             "numero_predio": 1,
             "direccion": 1,
             "municipio": 1,
@@ -6585,13 +6617,15 @@ async def buscar_predios_por_municipio(
             "propietarios": 1,
             "matricula_inmobiliaria": 1,
             "r1_registros": 1,
-            "r2_registros": 1
+            "r2_registros": 1,
+            "vigencia": 1
         }
     ).limit(limit).to_list(length=limit)
     
     return {
         "predios": predios,
-        "total": len(predios)
+        "total": len(predios),
+        "vigencia_buscada": vigencia
     }
 
 
