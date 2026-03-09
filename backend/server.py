@@ -463,10 +463,9 @@ TIPO_DOCUMENTO_PREDIO = {
 # Catálogo de estado civil
 ESTADO_CIVIL_PREDIO = {
     "S": "Soltero/a",
-    "E": "Casado/a con sociedad conyugal",
-    "D": "Casado/a sin sociedad conyugal",
-    "V": "Separación de bienes",
-    "U": "Unión marital de hecho"
+    "C": "Casado/a",
+    "V": "Viudo/a",
+    "U": "Unión libre"
 }
 
 class PredioR1Create(BaseModel):
@@ -7361,12 +7360,12 @@ async def migrar_estado_civil_propietarios(
         raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
     
     # Estados civiles válidos (en mayúsculas para comparación)
-    # Incluye abreviaciones usadas en Colombia
+    # Códigos estándar: S=Soltero, C=Casado, V=Viudo, U=Unión libre
     ESTADOS_CIVILES_VALIDOS = {
         'CASADO', 'CASADA', 'SOLTERO', 'SOLTERA', 'VIUDO', 'VIUDA',
         'DIVORCIADO', 'DIVORCIADA', 'SEPARADO', 'SEPARADA',
         'UNION LIBRE', 'UNIÓN LIBRE', 'UNION_LIBRE',
-        'C', 'S', 'V', 'D', 'U', 'E',  # Abreviaciones comunes (E puede ser "En unión")
+        'C', 'S', 'V', 'U',  # Códigos estándar
         'N/A', 'NA', 'NO APLICA',
         '', ' '  # Vacío es válido
     }

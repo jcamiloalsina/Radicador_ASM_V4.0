@@ -301,7 +301,7 @@ export default function MutacionesResoluciones() {
   
   // Estados para datos R1/R2 del nuevo predio M5
   const [propietariosM5, setPropietariosM5] = useState([{
-    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: 'sin_especificar'
+    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
   }]);
   const [zonasTermenoM5, setZonasTermenoM5] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
   const [construccionesM5, setConstruccionesM5] = useState([{
@@ -5444,11 +5444,12 @@ export default function MutacionesResoluciones() {
                             </div>
                             <div className="col-span-2">
                               <Label className="text-xs">Estado Civil</Label>
-                              <RadioGroup value={prop.estado_civil || 'sin_especificar'} onValueChange={(v) => actualizarPropietarioM5(index, 'estado_civil', v)} className="flex flex-wrap gap-2 mt-1">
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="sin_especificar" id={`m5_estado_${index}_sin`} /><Label htmlFor={`m5_estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="soltero" id={`m5_estado_${index}_sol`} /><Label htmlFor={`m5_estado_${index}_sol`} className="text-xs cursor-pointer">Soltero/a</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="casado_con" id={`m5_estado_${index}_cas`} /><Label htmlFor={`m5_estado_${index}_cas`} className="text-xs cursor-pointer">Casado/a con sociedad</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="union_marital" id={`m5_estado_${index}_um`} /><Label htmlFor={`m5_estado_${index}_um`} className="text-xs cursor-pointer">Unión marital</Label></div>
+                              <RadioGroup value={prop.estado_civil || ''} onValueChange={(v) => actualizarPropietarioM5(index, 'estado_civil', v)} className="flex flex-wrap gap-2 mt-1">
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m5_estado_${index}_sin`} /><Label htmlFor={`m5_estado_${index}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m5_estado_${index}_sol`} /><Label htmlFor={`m5_estado_${index}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m5_estado_${index}_cas`} /><Label htmlFor={`m5_estado_${index}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m5_estado_${index}_viu`} /><Label htmlFor={`m5_estado_${index}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m5_estado_${index}_uni`} /><Label htmlFor={`m5_estado_${index}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
                               </RadioGroup>
                             </div>
                             <div>
@@ -8740,6 +8741,20 @@ export default function MutacionesResoluciones() {
                                 />
                               </div>
                             </div>
+                            <div className="mt-2">
+                              <Label className="text-xs">Estado Civil</Label>
+                              <RadioGroup 
+                                value={prop.estado_civil || ''} 
+                                onValueChange={(v) => actualizarPropietarioNuevo(idx, 'estado_civil', v)} 
+                                className="flex flex-wrap gap-3 mt-1"
+                              >
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m1_estado_${idx}_sin`} /><Label htmlFor={`m1_estado_${idx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m1_estado_${idx}_sol`} /><Label htmlFor={`m1_estado_${idx}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m1_estado_${idx}_cas`} /><Label htmlFor={`m1_estado_${idx}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m1_estado_${idx}_viu`} /><Label htmlFor={`m1_estado_${idx}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m1_estado_${idx}_uni`} /><Label htmlFor={`m1_estado_${idx}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
+                              </RadioGroup>
+                            </div>
                           </div>
                         ))
                       )}
@@ -10050,6 +10065,20 @@ export default function MutacionesResoluciones() {
                               className="h-8"
                             />
                           </div>
+                        </div>
+                        <div className="mt-2">
+                          <Label className="text-xs">Estado Civil</Label>
+                          <RadioGroup 
+                            value={prop.estado_civil || ''} 
+                            onValueChange={(v) => actualizarPropietarioNuevoPredio(index, 'estado_civil', v)} 
+                            className="flex flex-wrap gap-2 mt-1"
+                          >
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m2_estado_${index}_sin`} /><Label htmlFor={`m2_estado_${index}_sin`} className="text-[10px] cursor-pointer text-slate-500">Sin especificar</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m2_estado_${index}_sol`} /><Label htmlFor={`m2_estado_${index}_sol`} className="text-[10px] cursor-pointer">S: Soltero/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m2_estado_${index}_cas`} /><Label htmlFor={`m2_estado_${index}_cas`} className="text-[10px] cursor-pointer">C: Casado/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m2_estado_${index}_viu`} /><Label htmlFor={`m2_estado_${index}_viu`} className="text-[10px] cursor-pointer">V: Viudo/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m2_estado_${index}_uni`} /><Label htmlFor={`m2_estado_${index}_uni`} className="text-[10px] cursor-pointer">U: Unión libre</Label></div>
+                          </RadioGroup>
                         </div>
                       </div>
                     ))}

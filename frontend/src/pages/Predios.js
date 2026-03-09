@@ -275,7 +275,7 @@ export default function Predios() {
   // Estado para múltiples propietarios (formato simplificado)
   const [propietarios, setPropietarios] = useState([{
     nombre_propietario: '',
-    estado_civil: 'sin_especificar',
+    estado_civil: '',
     tipo_documento: 'C',
     numero_documento: ''
   }]);
@@ -404,7 +404,7 @@ export default function Predios() {
   const agregarPropietario = () => {
     setPropietarios([...propietarios, {
       nombre_propietario: '',
-      estado_civil: 'sin_especificar',
+      estado_civil: '',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -2876,7 +2876,7 @@ export default function Predios() {
     });
     setPropietarios([{
       nombre_propietario: '',
-      estado_civil: 'sin_especificar',
+      estado_civil: '',
       tipo_documento: 'C',
       numero_documento: ''
     }]);
@@ -3847,37 +3847,33 @@ export default function Predios() {
                       <GuiaNombre nombre={prop.nombre_propietario} />
                     </div>
                     
-                    {/* Estado (campo libre) */}
+                    {/* Estado Civil */}
                     <div className="col-span-2">
                       <Label className="text-xs">Estado Civil</Label>
                       <RadioGroup 
-                        value={prop.estado_civil || 'sin_especificar'} 
+                        value={prop.estado_civil || ''} 
                         onValueChange={(v) => actualizarPropietario(index, 'estado_civil', v)}
                         className="flex flex-wrap gap-2 mt-1"
                       >
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="sin_especificar" id={`estado_${index}_sin`} />
-                          <Label htmlFor={`estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label>
+                          <RadioGroupItem value="" id={`estado_${index}_sin`} />
+                          <Label htmlFor={`estado_${index}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="soltero" id={`estado_${index}_soltero`} />
-                          <Label htmlFor={`estado_${index}_soltero`} className="text-xs cursor-pointer">Soltero/a</Label>
+                          <RadioGroupItem value="S" id={`estado_${index}_soltero`} />
+                          <Label htmlFor={`estado_${index}_soltero`} className="text-xs cursor-pointer">S: Soltero/a</Label>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="casado_con" id={`estado_${index}_casado_con`} />
-                          <Label htmlFor={`estado_${index}_casado_con`} className="text-xs cursor-pointer">Casado/a con sociedad conyugal</Label>
+                          <RadioGroupItem value="C" id={`estado_${index}_casado`} />
+                          <Label htmlFor={`estado_${index}_casado`} className="text-xs cursor-pointer">C: Casado/a</Label>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="casado_sin" id={`estado_${index}_casado_sin`} />
-                          <Label htmlFor={`estado_${index}_casado_sin`} className="text-xs cursor-pointer">Casado/a sin sociedad conyugal</Label>
+                          <RadioGroupItem value="V" id={`estado_${index}_viudo`} />
+                          <Label htmlFor={`estado_${index}_viudo`} className="text-xs cursor-pointer">V: Viudo/a</Label>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="separacion" id={`estado_${index}_sep`} />
-                          <Label htmlFor={`estado_${index}_sep`} className="text-xs cursor-pointer">Separación de bienes</Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="union_marital" id={`estado_${index}_union`} />
-                          <Label htmlFor={`estado_${index}_union`} className="text-xs cursor-pointer">Unión marital de hecho</Label>
+                          <RadioGroupItem value="U" id={`estado_${index}_union`} />
+                          <Label htmlFor={`estado_${index}_union`} className="text-xs cursor-pointer">U: Unión libre</Label>
                         </div>
                       </RadioGroup>
                     </div>
