@@ -1,265 +1,99 @@
-# PRD - Sistema de Gestión Catastral "Mutaciones y Resoluciones"
+# PRD - Sistema de Gestión Catastral ASOMUNICIPIOS
 
 ## Problema Original
-Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
+Sistema de gestión catastral para ASOMUNICIPIOS que permite el registro, mutación y seguimiento de predios inmobiliarios. Incluye 7 tipos de mutaciones (M1-M7), bloqueo de predios, formularios de visita, y generación de documentos PDF/Excel.
 
-## Estado Actual: MIGRACIÓN DE VIGENCIAS EN PREDIOS ELIMINADOS COMPLETADA
+## Usuarios del Sistema
+- **Administrador/Aprobador**: Acceso completo, aprobación de resoluciones
+- **Gestor**: Registro y gestión sin derechos de aprobación
+- **Atención Usuario**: Gestión con derechos de aprobación
 
-### Correcciones Recientes (07/03/2026)
-- **Migración de Vigencias en Predios Eliminados**: 
-  - Creado endpoint `/api/predios/eliminados/migrar-vigencias` para corregir vigencias
-  - Migrados 428 predios con vigencias correctas basadas en datos históricos
-  - El sistema ahora busca la vigencia más reciente donde existía cada predio
-  - Frontend actualizado para mostrar `vigencia_origen` (última vigencia donde existía) en lugar de `vigencia_eliminacion`
-- **Búsqueda de Predios Unificada**: Todas las mutaciones ahora usan la misma lógica de búsqueda con detección automática de matrícula inmobiliaria (formato XXX-XXXXX)
-  - M1, M2, M3, M4: Usan `/api/predios` con parámetro `search`
-  - M5, M6, Complementación, Bloqueo: Usan `/api/predios/buscar-municipio` con parámetro `q`
-  - Backend actualizado para búsqueda exacta cuando detecta formato de matrícula
-- **Dropdown de Municipios en Bloqueo y Complementación**: Corregido el problema donde la lista de municipios no se desplegaba
-- **Mass Desenglobe - tipo_cancelacion**: Corregido bug donde la función `_generar_resolucion_m2_interno` no respetaba el campo `tipo_cancelacion`
-- **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida"
+## Credenciales de Prueba
+- Admin: `catastro@asomunicipios.gov.co` / `Asm*123*`
+- Gestor: `gestor@emergent.co` / `Asm*123*`
+- Atención: `atencion@emergent.co` / `Asm*123*`
 
-### Funcionalidades Completadas (Marzo 2026)
+## Funcionalidades Core Implementadas
+- Dashboard de predios registrados con columnas de área
+- 7 tipos de mutaciones (M1-M7)
+- Bloqueo y desbloqueo de predios
+- Predios eliminados con vigencia histórica
+- Generación de PDFs con QR de verificación
+- Importación de Excel con validación de municipio
+- Búsqueda unificada por nombre, CPN y matrícula
+- Campo Estado Civil estandarizado en formularios
 
-#### Módulo "Rectificación de Área" (VERIFICADO - 07/03/2026) ✨ NUEVO
-- **Corrección del área de terreno** de un predio cuando existe diferencia entre el área registrada y el área real
-- **Zonas de Terreno** (igual que R2):
-  - Múltiples zonas con: Zona Física, Zona Económica, Área de Terreno
-  - Subtotal calculado automáticamente
-  - Diferencia visual (aumenta/disminuye)
-- **Construcciones** (igual que R2):
-  - Múltiples construcciones con ID automático (A, B, C...)
-  - Campos: Piso, Habitaciones, Baños, Locales, Tipificación, Uso, Puntaje, Área
-  - Subtotal calculado automáticamente
-- **Campos adicionales**:
-  - Nuevo Avalúo (opcional)
-  - Motivo de la rectificación
-  - Texto de Considerandos personalizado (opcional)
-- **Backend**: 
-  - Endpoint unificado acepta `tipo='RECTIFICACION_AREA'`
-  - Función `_generar_resolucion_m6_interno` genera PDF y actualiza DB
-  - Actualiza `area_terreno`, `area_construida`, `avaluo` del predio
-  - Guarda zonas y construcciones en `r1_registros[0]` para exportación a R2
-- **PDF Generator**: `resolucion_m6_pdf_generator.py` con formato institucional
-- **Testing**: iteration_65.json - 100% éxito frontend y backend (11/11 tests)
+---
 
-#### Módulo M5 - Cancelación / Inscripción de Predio (VERIFICADO - 06/03/2026)
-- **Cancelación de Predio**: Eliminar un predio del catastro desde una vigencia específica
-  - Búsqueda de predio existente a cancelar
-  - Vigencia de cancelación configurable
-  - Opción de cancelación por doble inscripción (con código del predio duplicado)
-- **Inscripción de Predio Nuevo**: Registrar un predio que no existe en el catastro
-  - **MODAL COMPLETO EMBEBIDO dentro de M5** (IGUAL a Predios.js) ✅
-  - **3 Tabs**: Código Nacional (30 dígitos) | Propietario (R1) | Físico (R2)
-  - **Código Homologado Automático**: Muestra el siguiente disponible o indica que se generará
-  - **Últimos 5 predios en manzana**: Con siguiente terreno sugerido automáticamente
-  - **Verificación de código**: Botón para validar disponibilidad
-  - **Múltiples propietarios**: Con estado civil, tipo documento, número
-  - **Destinos económicos completos**: A-J disponibles
-  - **Zonas de Terreno**: Con subtotal automático → R1
-  - **Construcciones**: Con ID automático (A, B, C...) y subtotal → R1
-  - **Áreas calculadas del R2**: Automáticamente enviadas al R1
-  - Al crear predio, se auto-selecciona en el formulario M5
-- **Backend**: Endpoint simplificado `POST /api/predios/m5/crear`
-- **PDF Generator**: `resolucion_m5_pdf_generator.py` con plantillas completas
-- **Frontend**: Formulario con selector de subtipo, búsqueda/entrada de predio, vigencia
-- **Vista de aprobación**: Sección M5 en Pendientes.js con todos los detalles
-- **Testing**: iteration_63.json - 100% éxito frontend y backend
+## Estado Actual del Proyecto
 
-#### Módulo M4 - Revisión de Avalúo y Autoestimación (VERIFICADO - 06/03/2026)
-- **Revisión de Avalúo**: Solicitud cuando el propietario considera que el avalúo es excesivo. El avalúo revisado se aplica en la **presente vigencia**.
-- **Autoestimación**: El propietario propone un valor autoestimado. Se aplica en la **vigencia venidera**.
-- **Decisión Aceptar/Rechazar**: Ambos subtipos permiten aceptar o rechazar la solicitud.
-- **Artículos diferenciados**: 6 artículos para Revisión de Avalúo, 7 artículos para Autoestimación.
-- **PDF Generator**: `resolucion_m4_pdf_generator.py` con plantillas completas.
-- **Frontend**: Formulario con selector de subtipo, decisión, búsqueda de predio, y campos específicos.
-- **Testing**: Verificado 100% funcional por testing_agent en iteración #62
+### Completado en Sesión Anterior
+- [x] Columnas "Área Terreno" y "Área Construida" en tabla de predios
+- [x] Corrección de dropdowns en modales de Bloqueo/Complementación
+- [x] Vigencia correcta en Predios Eliminados (migración ejecutada)
+- [x] Búsqueda unificada en todos los módulos
+- [x] Corrección de errores JS en M3/M4
+- [x] Etiqueta "Rectificación de Área" restaurada
+- [x] Campo ESTADO en PDFs/Excel corregido
+- [x] Campo Estado Civil estandarizado en formularios
+- [x] PDF M1 con matrícula y padding de 12 dígitos
+- [x] Creación automática de directorio `/app/uploads`
+- [x] Importación Excel con validación de municipio único
 
-#### Workflow Unificado de Mutaciones
-- **Endpoint centralizado**: `/api/solicitudes-mutacion` maneja M1, M2, M3 y M4
-- **Aprobación automática**: Usuarios con rol coordinador/administrador generan PDFs directamente
-- **Solicitudes pendientes**: Usuarios con rol gestor crean solicitudes que requieren aprobación
-- **Generación de PDFs verificada**: Los cuatro tipos de mutación generan PDFs correctamente
-- **Endpoint de descarga público**: `/api/resoluciones/descargar/{filename}` funcional
+### Issues Pendientes
+| Prioridad | Issue | Estado |
+|-----------|-------|--------|
+| P1 | Mass Desenglobe - predio original no se cancela | Verificación pendiente |
+| P2 | PDFs históricos usando datos en vivo | No iniciado |
+| P2 | Formulario Visita lento en móvil | No iniciado |
+| P2 | Contador resoluciones no atómico | No iniciado |
 
-#### Módulo M1 - Mutación Primera
-- Cambio de propietario o poseedor
-- Generación de PDF con header institucional, watermark y QR
-- PDFs almacenados en `/app/frontend/public/resoluciones/`
+### Tareas Pendientes
+| Prioridad | Tarea | Estado |
+|-----------|-------|--------|
+| P0 | Importación multi-archivo Excel | No iniciado |
+| P1 | Refactorización server.py a routers | No iniciado |
+| P1 | Refactorización MutacionesResoluciones.js | No iniciado |
+| P1 | Test regresión completo 7 mutaciones | No iniciado |
+| P2 | Refactorización PDF generators | No iniciado |
+| P2 | Eliminar endpoints temporales migración | No iniciado |
 
-#### Módulo M2 - Mutación Segunda
-- Desenglobe de terrenos
-- Englobe de predios
-- Generación de PDF con header institucional, watermark y QR
-- PDFs almacenados en `/app/backend/static/resoluciones/`
+### Tareas Futuras (Backlog)
+- Mutaciones encadenadas (Rectificación -> Desenglobe)
+- Exportación Excel de datos de Formulario Visita
+- Exportación XTF
+- App de Gestión de Correspondencia
+- UI para reportes GDB
+- Gráficos en dashboards
 
-#### Módulo M3 - Mutación Tercera
-- Cambio de destino económico (A-T)
-- Incorporación de construcción (registros R2)
-- Campo radicado obligatorio
-- Vigencias fiscales de inscripción
+---
 
-#### Visor PDF en Popup
-- Modal con PDF embebido (iframe)
-- Botones: Descargar, Imprimir, Abrir en pestaña, Enviar por correo
+## Arquitectura Actual
 
-## Arquitectura
 ```
 /app/
 ├── backend/
-│   ├── server.py                          # Endpoint unificado /api/solicitudes-mutacion
-│   ├── resolucion_pdf_generator.py        # Generador PDF M1
-│   ├── resolucion_m2_pdf_generator.py     # Generador PDF M2
-│   ├── resolucion_m3_pdf_generator.py     # Generador PDF M3
-│   ├── resolucion_m4_pdf_generator.py     # Generador PDF M4
-│   ├── resolucion_m5_pdf_generator.py     # Generador PDF M5
-│   ├── resolucion_m6_pdf_generator.py     # Generador PDF Rectificación de Área
-│   └── static/resoluciones/               # PDFs M2/M3/M4/M5/Rectificación
-├── frontend/
-│   ├── public/resoluciones/               # PDFs M1
-│   └── src/
-│       └── pages/
-│           └── MutacionesResoluciones.js  # UI M1, M2, M3, M4, M5, Rectificación de Área
-└── memory/
-    └── PRD.md
+│   └── server.py          # MONOLITO - Requiere refactorización urgente
+│   └── resolucion_pdf_generator_*.py (7 archivos)
+└── frontend/
+    └── src/
+        ├── components/
+        │   └── ImportR1R2Form.js
+        └── pages/
+            ├── Predios.js
+            └── MutacionesResoluciones.js  # Archivo grande, requiere refactorización
 ```
 
-## Endpoints Clave
-| Endpoint | Método | Descripción |
-|----------|--------|-------------|
-| /api/predios/m5/crear | POST | Crear predio simplificado para M5 (nuevo) |
-| /api/solicitudes-mutacion | POST | Crear solicitud M1/M2/M3/M4/M5/Rectificación (unificado) |
-| /api/solicitudes-mutacion | GET | Listar solicitudes |
-| /api/solicitudes-mutacion/{id}/accion | POST | Aprobar/rechazar solicitud |
-| /api/resoluciones/descargar/{filename} | GET | Descargar PDF (público) |
-| /api/resoluciones/historial | GET | Historial de resoluciones |
+## Integraciones 3rd Party
+- ReportLab (PDFs)
+- openpyxl (Excel)
+- motor/pymongo (MongoDB)
+- qrcode (QR en PDFs)
 
-## Backlog Priorizado
+## Colecciones MongoDB Principales
+- `predios`: Propiedades activas
+- `predios_eliminados`: Propiedades eliminadas con `vigencia_origen` y `vigencia_eliminacion`
+- `resoluciones`: Resoluciones de mutaciones
 
-### P0 (Crítico) - COMPLETADO
-- [x] Generación de PDFs M1, M2, M3, M4 verificada
-- [x] Endpoint de descarga funcional
-- [x] Fix compatibilidad codigo_predial
-- [x] M4 formulario frontend funcional
-- [x] Testing de regresión M1/M2/M3 completado
-- [x] **M5 Modal Embebido para crear predios COMPLETADO** (06/03/2026)
-- [x] **Rectificación de Área COMPLETADO** (07/03/2026)
-
-### P1 (Alta)
-1. **Eliminar endpoints deprecados**: `/resoluciones/generar-m2`, `/resoluciones/generar-m3` (código legacy no usado)
-2. **Refactorización backend**: Migrar lógica de server.py a módulos en `/app/backend/app/api/routes/`
-3. **Contador de resoluciones atómico** (prevenir duplicados en concurrencia)
-
-### P2 (Media)
-1. Refactorizar MutacionesResoluciones.js (componentes más pequeños)
-2. Consolidar ubicación de PDFs (todo a una sola carpeta)
-3. Desenglobe masivo - verificar marcado correcto de predios matriz
-
-### P3 (Baja/Futuro)
-- Otros módulos de mutación
-- Exportación Excel/XTF
-- Gráficos en dashboards
-- Mutaciones encadenadas
-
-## Credenciales de Prueba
-- **Admin:** catastro@asomunicipios.gov.co / Asm*123*
-- **Gestor:** gestor@emergent.co / Asm*123*
-- **Atención Usuario:** atencion@emergent.co / Asm*123*
-
-## Última Actualización
-- **Fecha**: 07 Marzo 2026
-- **Estado**: COLUMNAS DE ÁREA EN TABLA DE PREDIOS COMPLETADO
-- **Testing**: Screenshot verificado - Columnas "Área Terreno" y "Área Construida" visibles en tabla Predios Registrados
-
-## Issues Resueltos (Sesión Actual)
-- ✅ Bug "Objects are not valid as a React child" - CORREGIDO en dropdown de radicados M4 (línea 3247)
-- ✅ Historial de resoluciones M4 no aparecía en gestión de predios - CORREGIDO
-- ✅ Fecha de resolución con día de mañana - CORREGIDO (ZoneInfo America/Bogota)
-- ✅ Correo con resolución M4 no se enviaba - CORREGIDO
-- ✅ Vista de aprobación de coordinador para M4 vacía - CORREGIDO
-- ✅ Información de predio mejorada en formulario M4 (estilo R1)
-- ✅ **Vista de predios cancelados/inscritos en Pendientes.js** - MEJORADA
-  - Ahora muestra: código, matrícula, destino, áreas, avalúo, dirección, propietarios, vigencias
-  - Aplica para M1, M2, M3, M4
-- ✅ **PDF no se descargaba al aprobar solicitud** - CORREGIDO
-  - Backend ahora devuelve `pdf_url` y `numero_resolucion` en la respuesta
-  - Frontend abre el PDF en nueva pestaña automáticamente al aprobar
-- ✅ **Historial de solicitudes** - VERIFICADO FUNCIONANDO (31 aprobados, 5 rechazados)
-- ✅ **M5 Modal Embebido para Crear Predios** - COMPLETADO Y VERIFICADO
-  - Modal COMPLETO igual a Predios.js con 3 Tabs (Código | R1 | R2)
-  - Código homologado automático de lista general
-  - Últimos 5 predios en manzana con siguiente terreno sugerido
-  - Múltiples propietarios, zonas de terreno, construcciones
-  - Áreas calculadas automáticamente R2 → R1
-  - Verificación de código disponible
-  - Al crear predio, se cierra modal y auto-selecciona el predio creado
-  - Endpoint POST /api/predios/m5/crear funcionando
-- ✅ **M5 Flujo de Aprobación** - VERIFICADO
-  - Usuarios con rol COORDINADOR/ADMINISTRADOR o permiso APPROVE_CHANGES: generan PDF directo
-  - Usuarios GESTOR sin permisos: crean solicitud pendiente de aprobación
-  - Vista en Pendientes.js muestra datos completos de M5 (subtipo, predio, vigencia, propietarios, doble inscripción)
-- ✅ **Página de Verificación QR** - CORREGIDO (06/03/2026)
-  - Bug: Los campos mostraban "N/A" porque las resoluciones M2-M5 usaban claves de DB diferentes
-  - Fix: Endpoint `/api/verificar/{codigo}` ahora detecta tipo de documento y usa campos correctos
-  - Resoluciones muestran: No. Resolución, Tipo, Subtipo, Radicado, Código Predial, Municipio, Dirección, Solicitante
-  - M2 (Desenglobe/Englobe) también muestra: Predios Cancelados, Predios Inscritos
-  - Certificados siguen mostrando: Propietarios, Área Terreno, Avalúo
-  - Corrección gramatical: "RESOLUCIÓN VÁLIDA" (femenino), "CERTIFICADO VÁLIDO" (masculino)
-- ✅ **M5 Inputs Numéricos No Funcionaban** - CORREGIDO (06/03/2026)
-  - Bug: Los campos del código predial (zona, sector, terreno, etc.) no permitían escribir números
-  - Causa: `padStart` se aplicaba en cada onChange, rellenando inmediatamente con ceros
-  - Fix: `handleCodigoChangeM5` ahora solo limita dígitos, padding se aplica en `construirCodigoPredialM5`
-- ✅ **M4 Autoestimación - Campo Perito Avaluador** - IMPLEMENTADO (06/03/2026)
-  - Nuevo campo "Nombre del Perito Avaluador" visible solo para autoestimación
-  - Campo obligatorio con validación
-  - Nombre aparece en el PDF: "Qué, el perito avaluador {nombre}, profesional especializado..."
-  - Archivos modificados: MutacionesResoluciones.js, server.py, resolucion_m4_pdf_generator.py
-- ✅ **M4 Tablas Completas Estilo M2** - IMPLEMENTADO (06/03/2026)
-  - Tablas de CANCELACIÓN e INSCRIPCIÓN ahora muestran todas las columnas igual que M2
-  - Fila 1: N° PREDIAL, APELLIDOS Y NOMBRES, TIPO DOC., NRO. DOC., DESTINO
-  - Fila 2: CÓD. HOMOLOGADO, DIRECCIÓN, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL
-  - Fila 3: MATRÍCULA INMOBILIARIA
-- ✅ **PDF No Se Puede Descargar Desde Historial** - CORREGIDO (06/03/2026)
-  - Problema: `pdf_path` guardado como `/resoluciones/{filename}` pero endpoint es `/api/resoluciones/descargar/{filename}`
-  - Fix Backend: Todos los `pdf_path` ahora usan la ruta correcta del API
-  - Fix Frontend: Predios.js, ConfiguracionResoluciones.js, MutacionesResoluciones.js y PetitionDetail.js normalizan URLs antiguas automáticamente
-  - Las resoluciones antiguas con rutas incorrectas ahora funcionan gracias a la normalización en el frontend
-- ✅ **Página de Verificación QR Mejorada** - CORREGIDO (06/03/2026)
-  - "RESOLUCIÓN VÁLIDO" → "RESOLUCIÓN VÁLIDA" (género femenino correcto)
-  - "Datos del Resolución" → "Datos de la Resolución" (preposición correcta)
-  - Hora de generación ahora se muestra en hora Colombia (UTC-5) en lugar de UTC
-  - Se muestran todos los campos: Propietarios, Área Terreno, Avalúo, Matrícula (para todas las resoluciones)
-  - Campos vacíos muestran texto descriptivo: "Sin dirección registrada", "No registrados"
-  - M1 ahora guarda: tipo RESOLUCION_M1, direccion, matricula_inmobiliaria, propietarios con hora Colombia
-- ✅ **Matrícula desde R2** - IMPLEMENTADO (06/03/2026)
-  - Nueva función `getMatriculaInmobiliaria(predio)` busca matrícula en campo directo y en r2_registros
-  - Si no existe matrícula, muestra "Sin información" en lugar de "N/A"
-  - Aplica a M1, M2, M4, M5
-- ✅ **Petición No Se Finaliza al Generar Resolución** - CORREGIDO (06/03/2026)
-  - Ahora M1, M2, M3, M4 y M5 actualizan la petición a "completado" al generar resolución
-  - Se guarda: status="completado", estado_tramite="Finalizado", resolucion_numero, resolucion_pdf, fecha_finalizacion
-
-- ✅ **Datos R1/R2 para PDFs de Mutaciones** - CORREGIDO (07/03/2026)
-  - Todos los generadores de PDF (M1-M5) ahora obtienen datos de r1_registros y r2_registros
-  - `codigo_homologado` viene de R1 (r1_registros[0].codigo_homologado)
-  - `matricula_inmobiliaria` viene de R2 (r2_registros[0].matricula_inmobiliaria)
-  - Nueva función `obtener_datos_r1_r2()` en server.py centraliza la lógica
-  - Cada generador (M2-M5) tiene `obtener_datos_r1_r2_pdf()` para consistencia
-  - Testing: iteration_64.json - 100% éxito backend (13/13 tests)
-
-- ✅ **Rectificación de Área** - IMPLEMENTADO (07/03/2026)
-  - Nuevo tipo de mutación para corregir el área de terreno de un predio
-  - Frontend: Formulario completo con búsqueda de predio, campos de área actual/nueva, diferencia visual
-  - Backend: Función `_generar_resolucion_m6_interno` genera PDF y actualiza predio en DB
-  - PDF: `resolucion_m6_pdf_generator.py` con formato institucional estándar
-  - Soporta: Área terreno, área construcción, nuevo avalúo, texto de considerandos personalizado
-  - Testing: iteration_65.json - 100% éxito (11/11 tests)
-
-- ✅ **Columnas de Área en Tabla de Predios** - IMPLEMENTADO (07/03/2026)
-  - Agregadas columnas "Área Terreno" y "Área Construida" a tabla "Predios Registrados" en Gestión de Predios
-  - Formato consistente: `X ha Y m²` usando función `formatAreaHectareas`
-  - Archivo modificado: `/app/frontend/src/pages/Predios.js` (líneas 3348-3359, 3414-3419)
-
-## Issues Conocidos (Pendientes de Verificación en Producción)
-- Sincronización lenta en conexiones móviles
-- Usuario debe desplegar cambios a su servidor de producción para resolver bugs de permisos
+---
+*Última actualización: Diciembre 2025*

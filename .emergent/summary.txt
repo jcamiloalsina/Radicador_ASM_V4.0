@@ -1,90 +1,116 @@
 <analysis>**original_problem_statement:**
 The user's initial goal was to fix several UI and functionality issues, primarily related to the Bloqueo de Predios (Property Locking) and Predios Eliminados (Deleted Properties) modules.
 
-Key requests during this session were:
-1.  **Fix Rectificación de Área Label:** Change the UI label from M6 or RECTIFICACION_AREA to a user-approved name.
-2.  **Fix Bloqueo de Predios Search:** The search was non-functional and had UI/UX issues. The user wanted it to search by all relevant fields (name, CPN, matrícula), fix the overflowing results dropdown, and correct layout issues.
-3.  **Enhance Bloqueo de Predios UI:** Add more information (matrícula, áreas, avalúo) to the selected property card and ensure the list of blocked properties is accurate and doesn't show duplicates.
-4.  **Implement Bloqueado Status Display:** Show a visual indicator (lock icon and banner) for blocked properties in the main Gestión de Predios module.
-5.  **Restore Predios Eliminados Module:** A previously existing module for viewing deleted properties was missing. The user wanted it restored and made accessible from two different pages.
-6.  **Enhance Predios Eliminados UI:** Improve the restored module to show complete CPN, owner name, who performed the deletion, and the vigencia (version year) of deletion.
-7.  **Standardize Area Formatting:** Ensure the area unit display () is consistent across the entire application, including all generated PDFs.
-8.  **Remove Confusing UI Element:** Remove a reapariciones (reappearances) badge from the dashboard that was causing confusion.
-9.  **Add Area Columns to Dashboard:** Add Área Terreno and Área Construida to the main dashboard's Predios Registrados table.
+During this session, the user expanded the scope to include:
+1.  **Add Area Columns to Dashboard:** Add Área Terreno and Área Construida to the Predios Registrados table.
+2.  **Fix Mass Desenglobe:** Ensure the mass desenglobe feature correctly marks the original property as cancelled.
+3.  **Fix Dropdowns:** The municipality selection dropdowns were not working in the Complementación and Bloqueo modals.
+4.  **Fix Predios Eliminados Vigencia:** Correct the Vigencia (version year) display for deleted properties, as they all incorrectly showed 2026.
+5.  **Unify Search Functionality:** Standardize the property search across all mutation modules (M1-M6, Bloqueo, Complementación) to be as effective as the search in M1, especially for  (registry number).
+6.  **Fix JS Errors:** Resolve User is not defined errors in M3 and M4 mutation forms.
+7.  **Fix Labels and Fields:**
+    *   Change the Ajuste de Área card label back to Rectificación de Área.
+    *   Fix the ESTADO (marital status) field in PDFs and Excel exports, which was incorrectly showing a person's last name.
+    *   Add a standardized Estado Civil (Marital Status) field to all owner creation/edit forms.
+8.  **Fix PDF Generation:** In the M1 (Change of Owner) PDF, the new owner's  was missing, and the document number padding was incorrect (should be 12 digits).
+9.  **Fix Excel Import:**
+    *   Resolve an error where the server couldn't find the  directory.
+    *   Enforce that an Excel file can only be imported for a single, pre-selected municipality.
+10. **Enhance Excel Import:** The user's latest request is to allow uploading multiple Excel files at once, with an interface to assign each file to its corresponding municipality.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-- The Bloqueo de Predios feature is now fully functional. The search works by name, CPN, and matrícula. UI bugs related to layout and dropdown visibility have been fixed. The list of blocked properties is correctly de-duplicated, and blocked status is now visually indicated in the Gestión de Predios module.
-- The Predios Eliminados module has been successfully restored and enhanced. It is accessible from both Mutaciones y Resoluciones and Gestión de Predios. The view now includes complete property information, including who performed the deletion and in which vigencia.
-- The area display format () has been standardized across all relevant frontend components and all seven backend PDF generators.
-- The confusing reapariciones badge has been removed from the dashboard.
-- The label for Rectificación de Área has been fixed to Ajuste de Área.
+The application is mostly functional, with many bugs and inconsistencies having been resolved in this session.
+- The main property table now shows area columns.
+- Property search has been standardized across all modules to correctly find properties by name, CPN, and matrícula.
+- The Predios Eliminados view now shows the correct historical . Data has been migrated to reflect this.
+- The Estado Civil field has been standardized in UI forms and the database, and a data migration was run to clean up bad data.
+- PDF and Excel generation logic has been improved to fix data inconsistencies (marital status, document number padding).
+- The Excel import process is now more robust, creating its own upload directory and enforcing that all properties in an uploaded file belong to a single, pre-selected municipality.
 
 **Last working item**:
--   **Last item agent was working:** The user requested to add Área Terreno and Área Construida columns to the Predios Registrados table on the main dashboard page (). The agent had started investigating the file structure to implement this.
--   **Status:** IN PROGRESS
+-   **Last item agent was working:** The user proposed a new feature to allow uploading multiple Excel files simultaneously and assigning a municipality to each file before processing. The agent agreed to this plan and was about to begin implementation.
+-   **Status:** NOT STARTED
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** screenshot tool
+-   **Which testing method agent to use?** both
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: The main dashboard's Predios Registrados table is missing Área Terreno and Área Construida columns. (Priority: P0)
+  - Issue 1: The Mass desenglobe feature does not correctly mark the original property as cancelled. (Priority: P1)
+  - Issue 2: Incorrect Historical PDFs being served (might be serving live data instead of the historical snapshot). (Priority: P2)
+  - Issue 3: The Visit Form is reportedly slow on mobile devices. (Priority: P2)
+  - Issue 4: The resolution counter is not atomic, which could lead to race conditions. (Priority: P2)
 
   Issues Detail:
   - Issue 1:
-     - **Description:** The user pointed out via a screenshot that the main property list on the dashboard should display the land area and constructed area for each property.
-     - **Attempted fixes:** The agent has viewed  to locate the table definition. No code changes have been made yet.
+     - **Description:** The user is concerned that when a property is split into multiple new ones via the Mass desenglobe Excel feature, the original (parent) property is not being correctly marked as cancelled or deleted in the database.
+     - **Attempted fixes:** The agent investigated and applied a fix to the  function in  to correctly handle  ( vs. ).
      - **Next debug checklist:**
-        1.  Edit .
-        2.  Locate the  definition for the Predios Registrados .
-        3.  Add two new column definitions for Área Terreno and Área Construida.
-        4.  Use the  function (already present in other files, needs to be available here) to format the  and  fields from the data.
-        5.  Take a screenshot of the dashboard to verify the new columns are present and correctly formatted.
-     - **Why fix this issue and what will be achieved with the fix?** To add critical information to the main dashboard view, improving its utility for the user.
-     - **Status:**  IN PROGRESS
-     - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** Frontend
+        1. Perform an end-to-end test of the Mass Desenglobe M2 mutation.
+        2. Upload an Excel file to split one parent property into multiple child properties.
+        3. Approve the resolution.
+        4. Verify in the database that the original parent property has been moved to the  collection or its status is correctly updated to reflect the cancellation.
+        5. Check that the new child properties are created correctly in the  collection.
+     - **Why fix this issue and what will be achieved with the fix?** To prevent data inconsistency where a divided property still appears as active, ensuring the integrity of the property registry.
+     - **Status:** USER VERIFICATION PENDING
+     - **Is recurring issue?** Y
+     - **Should Test frontend/backend/both after fix?** Both
      - **Blocked on other issue:** None
+  - Issue 2:
+     - **Description:** There is a possibility that when generating PDFs for historical records, the system is using live data instead of a snapshot of the data as it was at that time.
+     - **Status:** NOT STARTED
+  - Issue 3:
+     - **Description:** User has reported that the Visit Form is slow on mobile devices.
+     - **Status:** NOT STARTED
+  - Issue 4:
+     - **Description:** The counter for generating resolution numbers is not atomic, which could create duplicate resolution numbers if multiple users perform actions at the same time.
+     - **Status:** NOT STARTED
 
 **In progress Task List**:
-- No other tasks are in progress.
+-   **Task 1: Implement Multi-File Excel Import (P0)**
+    -   **Where to resume:** Start by modifying the UI in  to allow selecting multiple files. Then, create a UI to list the selected files and add a dropdown next to each to assign a municipality. The backend endpoint  will need to be updated to accept an array of files and their corresponding municipalities.
+    -   **What will be achieved with this?** A significant improvement in user workflow, allowing for the batch import of data for multiple municipalities at once.
+    -   **Status:** NOT STARTED
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
--   **(P1) Backend Refactoring:** Migrate all mutation and blocking logic from the monolithic  into the modular structure at . This is a **critical** priority for maintainability.
--   **(P1) Frontend Refactoring:** Break down the massive  and  files into smaller, more manageable child components.
--   **(P1) Full Regression Test:** After the current tasks are done, a full regression test of all 7 mutation types and the Block/Eliminated features is required.
--   **(P2) PDF Generator Refactoring:** Abstract the duplicated code from the seven PDF generator files into a common PDF utility module.
--   **(P2) Deprecate Temporary Code:** Remove the temporary  and other test endpoints from .
--   **(P2) Improve Reactivation Flow:** The backend logic for reactivating eliminated properties exists, but the frontend only shows a basic toast message. The UI should be improved to present the user with clear information and a Reactivar button, as the agent previously identified.
+*   **(P1) Backend Refactoring:** Migrate all mutation and blocking logic from the monolithic  into the modular structure at .
+*   **(P1) Frontend Refactoring:** Break down the massive  and  files into smaller, more manageable child components.
+*   **(P1) Full Regression Test:** After the current tasks are done, a full regression test of all 7 mutation types and the Block/Eliminated features is required.
+*   **(P2) PDF Generator Refactoring:** Abstract the duplicated code from the seven PDF generator files into a common PDF utility module.
+*   **(P2) Deprecate Temporary Code:** Remove the temporary migration and test endpoints from .
+*   **(P2) Improve Reactivation Flow:** The backend logic for reactivating eliminated properties exists, but the frontend only shows a basic toast message. Improve the UI for this flow.
 
 **Future Tasks:**
--   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
--   Develop an Excel Export feature for Visit Form data.
--   Implement XTF Export functionality.
--   Develop a Correspondence Management App.
--   Implement a UI for GDB Reports.
--   Add graphs/charts to dashboards.
+*   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
+*   Develop an Excel Export feature for Visit Form data.
+*   Implement XTF Export functionality.
+*   Develop a Correspondence Management App.
+*   Implement a UI for GDB Reports.
+*   Add graphs/charts to dashboards.
 
 **Completed work in this session**
-- **Fixed:** The display label for the Rectificación de Área mutation was changed to Ajuste de Área.
-- **Fixed:** The search functionality in the Bloqueo de Predios module is now fully working. It correctly searches by owner name (in the  array), CPN, and .
-- **Fixed:** All UI issues with the Bloqueo de Predios module, including the overflowing search results dropdown and a broken form layout.
-- **Enhanced:** The Bloqueo de Predios UI now displays , , and formatted areas on the selected property card.
-- **Fixed:** The backend logic for blocking/unblocking now correctly propagates the status to all vigencias (versions) of a property, preventing inconsistencies.
-- **Fixed:** The list of blocked properties now correctly groups by property code, showing only one entry per property.
-- **Implemented:** Visual indicators for blocked properties (a lock icon and a banner) are now displayed in the Gestión de Predios module.
-- **Restored:** The Predios Eliminados module is now accessible via a button in Gestión de Predios and a card in Mutaciones y Resoluciones.
-- **Enhanced:** The Predios Eliminados modal was improved to show the full CPN, owner name, the user who performed the deletion (via a backend ), and the Vigencia of deletion.
-- **Standardized:** The area format () is now used consistently across the frontend (, ) and all 7 backend PDF generators.
-- **Removed:** The confusing reapariciones pendientes badge was removed from the main dashboard to avoid user confusion.
+- **Added:** Área Terreno and Área Construida columns to the Predios Registrados table in .
+- **Fixed:** The Mass Desenglobe logic in  was updated to respect the  field. (Needs user verification).
+- **Fixed:** Non-functional municipality dropdowns in Bloqueo and Complementación modals by correcting z-index and overflow styles.
+- **Fixed:** The Vigencia (version year) for deleted properties is now correctly displayed. A data migration script was created and executed to fix historical data.
+- **Unified:** Property search functionality is now consistent across all modules (M1-M6, Bloqueo, Complementación).
+- **Fixed:** Resolved a User is not defined JavaScript error affecting M3 and M4 mutation forms.
+- **Fixed:** The Ajuste de Área card label was changed back to Rectificación de Área.
+- **Fixed:** The ESTADO (marital status) field in PDFs/Excel exports now shows the correct data. An import logic fix and a data migration were performed.
+- **Added:** A standardized Estado Civil dropdown was added to all owner creation/edit forms.
+- **Fixed:** M1 PDF generation now includes the correct  for new owners and pads document numbers to 12 digits.
+- **Fixed:** The backend now automatically creates the  directory on startup, preventing Excel import errors.
+- **Enhanced:** The single Excel import feature now requires the user to select a municipality and validates that all properties in the file belong to it.
 
 **Earlier issues found/mentioned but not fixed**
 -   Incorrect Historical PDFs being served (might be serving live data instead of the historical snapshot).
 -   The Visit Form is reportedly slow on mobile devices.
 -   The resolution counter is not atomic, which could lead to race conditions under high load.
--   The mass desenglobe feature does not correctly mark the original property as cancelled.
+-   The mass desenglobe feature does not correctly mark the original property as cancelled. (Fix attempted, but user verification is pending).
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Intermittent Save/Sync Failures on Slow Connections.
@@ -95,60 +121,57 @@ Key requests during this session were:
 
 
 **Key Technical Concepts**
-- **Monolithic Application Debugging:** Extensive work was done within the large , , and  files to fix bugs and add features.
-- **MongoDB Aggregation:** Used advanced aggregation pipelines with , , , and  to fix data presentation issues, such as de-duplicating the blocked properties list and fetching user names for the Eliminado Por column.
-- **State Propagation in DB:** Implemented logic to update multiple MongoDB documents () to ensure the bloqueado status was consistent across all vigencias of a single property.
-- **Complex Frontend Debugging:** Resolved CSS issues involving , , and  to fix a broken search dropdown. Managed complex state within large React components.
-- **Code Standardization:** Implemented a consistent  function in both Python (backend) and JavaScript (frontend) to standardize data presentation.
+- **Monolithic Application Debugging:** Extensive work was done within the large  and  files to fix bugs and add features.
+- **Data Migration Scripts:** Created several ad-hoc API endpoints in  to perform one-time data migrations for  vigencias and cleaning  data.
+- **Complex Frontend Debugging:** Resolved CSS issues involving  and  to fix broken dropdowns. Managed complex state within large React components.
+- **Dynamic Directory Creation:** Added logic to  to automatically create the  directory on application startup.
+- **Backend-driven UI Validation:** Implemented logic where the backend () validates that all records in an uploaded Excel file match a user-selected parameter ().
 
 **key DB schema**
--   ****: No schema change, but heavy use of , , and  fields. Logic was added to ensure these fields are consistent across all  documents for a given .
--   ****: Used as the source for the restored Predios Eliminados module.
--   ****: Used in a  to join with  to find the name of the user who generated the deletion resolution.
+-   ****: Heavy use and standardization of the  field. A migration was run to clean this field.
+-   ****: Added  and  fields. A migration was run to populate these fields for all existing documents.
 
 **All files of reference**
--   : **Heavily modified.** Updated endpoints for blocking, search, and deleted properties. Added state propagation logic.
--   : **Heavily modified.** Added the Predios Eliminados card and modal, fixed numerous bugs in the blocking flow, and standardized area formatting.
--   : **Heavily modified.** Added UI indicators for blocked properties, restored the Predios Eliminados button/modal, and fixed display bugs.
--   : **Modified.** Removed the reapariciones badge logic.
--    (and M2, M3, M4, M5, M6, complementacion): **Updated.** All seven PDF generators were updated to use the new standardized area formatting function.
+-   : **Heavily modified.** Added new migration endpoints, fixed mass desenglobe logic, unified search endpoint, added validation to Excel import, and fixed data preparation for PDF generation.
+-   : **Heavily modified.** Fixed dropdowns, unified search calls, fixed JS errors, added/updated owner forms, and updated the Excel import UI.
+-   : **Modified.** Added area columns to the main property table and updated owner forms.
+-   : **Modified.** Added a mandatory municipality selector for the Excel import.
+-    (all 7 files): **Updated.** All PDF generators were updated to use  for document numbers.
 
 **Areas that need refactoring**:
--   : **CRITICAL.** This file is now dangerously large and complex. It urgently needs to be broken into a router-based structure to improve maintainability and prevent further bugs.
--    & : **CRITICAL.** These files handle too much state and logic. They must be broken down into smaller, reusable components to reduce complexity.
--   **PDF Generators**: The seven PDF generators still contain duplicated code for headers, footers, and table drawing that should be abstracted into a shared utility.
+-   : **CRITICAL.** This file is dangerously large and complex. It urgently needs to be broken into a router-based structure. The one-off migration endpoints should be moved to separate, executable scripts.
+-    & : **CRITICAL.** These files handle too much state and logic and must be broken down into smaller components.
 
 **key api endpoints**
--   : **Modified** to propagate the lock to all .
--   : **Modified** to propagate the unlock to all .
--   : **Modified** (was ) to fix a routing conflict and now uses an aggregation pipeline to return only the latest  per property.
--   : **Modified** to search by owner name in the  array and by .
--   : **Modified** to use a  to fetch the  user's name from the  collection.
+-   : **Modified.** Now requires a  parameter and validates that all properties in the Excel belong to that municipality.
+-   : **Modified.** The search logic was enhanced to correctly handle searches by , unifying its behavior with other search endpoints.
+-   : **New.** A temporary endpoint created to perform a one-off data migration to fix  and  in the  collection.
+-   : **New.** A temporary endpoint created to clean invalid data from the  field in the  collection.
 
 **Critical Info for New Agent**
--   Your immediate task is to add the Área Terreno and Área Construida columns to the Predios Registrados table in .
--   The user is highly attentive to detail. Ensure all visual and data representations are consistent and accurate before finishing a task.
--   The monolithic nature of the codebase is the biggest technical risk. After completing the current request, you **must** propose and prioritize the refactoring of , , and . Further feature development without refactoring will be slow and error-prone.
--   Be mindful of the vigencia concept. Many user-facing issues in this session stemmed from logic not correctly handling multiple versions of the same property.
+-   Your immediate task is to implement the **multi-file Excel import feature**. The user wants to upload multiple Excel files at once and assign a municipality to each before processing.
+-   The user is highly attentive to detail. The Mass Desenglobe fix needs to be thoroughly tested and verified, as the user has expressed ongoing concern.
+-   The codebase, particularly  and , is a high-risk area for regressions due to its monolithic nature. Prioritize refactoring after completing the current high-priority feature.
+-   The temporary migration endpoints in  are a sign of technical debt and should be removed or moved to dedicated scripts after their purpose is served.
 
 **documents and test reports created in this job**
 None.
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User:** Asks to add Área Terreno and Área Construida to the dashboard's property list. (Status: IN PROGRESS)
-9.  **User:** Asks about the 2 badge on the dashboard, noting it's confusing. (Status: RESOLVED)
-8.  **User:** Confirms the  and  area formatting should be applied everywhere, including PDFs. (Status: RESOLVED)
-7.  **User:** Asks how the system handles suggesting CPNs that have already been eliminated during new property creation. (Status: RESOLVED - Agent confirmed validation exists).
-6.  **User:** Requests adding the vigencia (version year) of deletion to the Predios Eliminados list. (Status: RESOLVED)
-5.  **User:** Points out that the Eliminado Por (Deleted By) column is missing information. (Status: RESOLVED)
-4.  **User:** States that the full CPN and owner names are a priority for the Predios Eliminados list. (Status: RESOLVED)
-3.  **User:** Asks to restore the Predios Eliminados module in both the Gestión de Predios and Mutaciones pages. (Status: RESOLVED)
-2.  **User:** Asks why the blocked properties list shows 4 duplicates for the same property. (Status: RESOLVED)
-1.  **User:** Reports that a newly blocked property does not show a blocked indicator in Gestión de Predios and the block history is missing. (Status: RESOLVED)
+10. **User:** Asks to modify the Excel import process to allow uploading 12 Excel files at once, with a way to assign each file to its respective municipality. (Status: **PENDING - Current Task**)
+9.  **User:** Requests that the server code be updated to automatically create the  directory so it works in their Docker environment after a . (Status: RESOLVED)
+8.  **User:** Reports an error when importing an Excel file in their local development environment ( directory not found). (Status: RESOLVED)
+7.  **User:** Asks why a specific property () appears in the Emergent preview environment but not in their local development server. (Status: RESOLVED - Agent explained they are separate databases).
+6.  **User:** Reports multiple issues in the generated M1 PDF: missing matrícula, ESTADO field showing an apellido, and document number needing 12-digit padding. (Status: RESOLVED)
+5.  **User:** Asks to add a standardized Estado (marital status) dropdown to all owner creation/edit forms with specific values. (Status: RESOLVED)
+4.  **User:** Agrees to run the data migration to clean up the  field. (Status: RESOLVED)
+3.  **User:** Reports that the ESTADO column in PDFs/Excel is incorrectly showing the second last name. (Status: RESOLVED)
+2.  **User:** Asks to change the Ajuste de Área card label back to Rectificación de Área. (Status: RESOLVED)
+1.  **User:** Reports User is not defined errors in M3 and M4 mutation forms. (Status: RESOLVED)
 
 **Project Health Check:**
 -   **Broken:**
-    -   The main dashboard table in  is missing the Área Terreno and Área Construida columns as requested by the user.
+    -   The Excel import feature does not yet support multi-file uploads with municipality assignment as requested by the user.
 -   **Mocked:**
     -   None.
 
@@ -162,7 +185,7 @@ None.
 -   **Testing agent used after significant changes:** NO
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** None identified, but risk is high due to lack of automated testing.
+-   **Known regressions:** The fix for Mass desenglobe has not been fully verified and could be a regression risk.
 
 **Credentials to test flow:**
 -   **Administrator / Aprobador:**  / 
@@ -170,6 +193,5 @@ None.
 -   **Atención Usuario (with approval rights):**  / 
 
 **What agent forgot to execute**
--   The agent initially overlooked the vigencia concept when fixing the blocked properties list, leading to duplicates.
--   The agent did not initially fetch the user's name for the Eliminado Por column, showing a UUID instead.
--   These issues were identified by the user and subsequently fixed by the agent during the session.</analysis>
+-   The agent did not perform a full end-to-end test of the Mass Desenglobe fix after implementing it, leaving its status as unverified.
+-   Several issues from the initial handoff summary (incorrect historical PDFs, slow visit form, non-atomic counter) were not addressed during this session.</analysis>
