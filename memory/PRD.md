@@ -5,20 +5,28 @@ Sistema integral de gestión catastral para administrar predios, mutaciones, res
 
 ## Estado Actual: Funcional con Issues Pendientes
 
-### ✅ Completado en esta sesión (10-03-2026):
-- **Fix firma de Dalgie en resoluciones PDF:**
-  - Eliminado código duplicado innecesario
-  - Mejorada lógica de carga con prioridades claras
-  - Agregados logs de debug
-  - Tests: 7/7 pasados
+### ✅ Completado en esta sesión (09-03-2026):
+- **Fix modales de mutación no scrolleables:**
+  - Cambiado `overflow-visible` a `overflow-y-auto` en DialogContent principal
+  - Los usuarios ahora pueden ver y acceder a todos los campos del formulario
+  - Tests: 11/11 pasados
+
+- **Fix formulario Complementación - campos de área:**
+  - Campos de área terreno y área construida ahora están DESHABILITADOS
+  - Agregado mensaje de advertencia indicando usar Rectificación de Área
+  - Agregados campos editables: matrícula, dirección, destino, número de documento
+  - Regla de negocio: Complementación NO permite modificar áreas
 
 ### 🔴 Issues P0 Resueltos:
+- ~~Modales de mutación no scrolleables~~ ✅ RESUELTO
+- ~~Complementación permite editar áreas~~ ✅ RESUELTO
 - ~~Firma de Dalgie faltante en resoluciones~~ ✅ RESUELTO
 
 ### 🟡 Issues Pendientes:
 
 #### P1 - Verificación Pendiente:
 - **Desenglobe masivo:** No marca correctamente el predio original como cancelado
+- **Flujo de aprobación de Múltiples Mutaciones:** Pendiente definir flujo del coordinador
 
 #### P2 - Por Resolver:
 - PDFs históricos incorrectos (posiblemente sirviendo datos en vivo)

@@ -400,28 +400,56 @@ export default function FileManager() {
                 <div className="flex items-center gap-2">
                   <HardDrive className="h-5 w-5 text-emerald-600" />
                   <div>
-                    <p className="text-sm font-medium text-slate-700">Almacenamiento</p>
+                    <p className="text-sm font-medium text-slate-700">Disco del Servidor</p>
                     <p className="text-xs text-slate-500">
-                      {formatFileSize(storageInfo.used)} de {formatFileSize(storageInfo.total)} usado
+                      {formatFileSize(storageInfo.disk_used)} de {formatFileSize(storageInfo.disk_total)} usado
                     </p>
                   </div>
                 </div>
                 <div className="h-8 w-px bg-slate-200" />
                 <div>
-                  <p className="text-sm font-medium text-slate-700">{storageInfo.files_count}</p>
-                  <p className="text-xs text-slate-500">Archivos totales</p>
+                  <p className="text-sm font-medium text-emerald-700">{formatFileSize(storageInfo.disk_free)}</p>
+                  <p className="text-xs text-slate-500">Disponible</p>
+                </div>
+                <div className="h-8 w-px bg-slate-200" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{storageInfo.uploads_count || 0}</p>
+                  <p className="text-xs text-slate-500">Archivos subidos</p>
+                </div>
+                <div className="h-8 w-px bg-slate-200" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{storageInfo.resoluciones_count || 0}</p>
+                  <p className="text-xs text-slate-500">Resoluciones PDF</p>
                 </div>
               </div>
               <div className="w-48">
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-emerald-500 transition-all"
-                    style={{ width: `${(storageInfo.used / storageInfo.total) * 100}%` }}
+                    className={`h-full transition-all ${
+                      storageInfo.disk_percent > 90 ? 'bg-red-500' : 
+                      storageInfo.disk_percent > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${storageInfo.disk_percent || 0}%` }}
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-1 text-right">
-                  {((storageInfo.used / storageInfo.total) * 100).toFixed(1)}% usado
+                  {storageInfo.disk_percent || 0}% usado
                 </p>
+              </div>
+            </div>
+            {/* Desglose de uso */}
+            <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-slate-500">Uploads: </span>
+                <span className="font-medium">{formatFileSize(storageInfo.uploads_used || 0)}</span>
+              </div>
+              <div>
+                <span className="text-slate-500">Resoluciones: </span>
+                <span className="font-medium">{formatFileSize(storageInfo.resoluciones_used || 0)}</span>
+              </div>
+              <div>
+                <span className="text-slate-500">App Files: </span>
+                <span className="font-medium">{formatFileSize(storageInfo.app_files_used || 0)}</span>
               </div>
             </div>
           </CardContent>

@@ -360,6 +360,11 @@ export default function MutacionesResoluciones() {
     area_terreno_nueva: 0,
     area_construida_nueva: 0,
     avaluo_nuevo: 0,
+    // Campos editables en Complementación
+    matricula_nueva: '',
+    direccion_nueva: '',
+    destino_nuevo: '',
+    numero_documento_nuevo: '',
     documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
     observaciones: '',
     texto_considerando: ''
@@ -5377,7 +5382,7 @@ export default function MutacionesResoluciones() {
               
               {/* Modal COMPLETO de Creación de Predio - Igual a Predios.js */}
               <Dialog open={showCrearPredioM5} onOpenChange={(open) => { setShowCrearPredioM5(open); if (!open) resetCrearPredioM5(); }}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                   <div className="max-h-[80vh] overflow-y-auto pr-2">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-outfit">Nuevo Predio - {m5Data.municipio}</DialogTitle>
@@ -6326,7 +6331,7 @@ export default function MutacionesResoluciones() {
 
   // Renderizar formulario de Complementación de Información
   const renderFormularioComplementacion = () => (
-    <div className="space-y-6 max-h-[70vh] overflow-visible pr-2">
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
       {/* Encabezado con información */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -6353,7 +6358,7 @@ export default function MutacionesResoluciones() {
           <ChevronDown className={`w-4 h-4 transition-transform ${showMunicipioDropdownComplementacion ? 'rotate-180' : ''}`} />
         </div>
         {showMunicipioDropdownComplementacion && (
-          <div className="absolute z-[99999] w-full bottom-full mb-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-50 w-full top-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {MUNICIPIOS.map(mun => (
               <div
                 key={mun.codigo}
@@ -6422,13 +6427,21 @@ export default function MutacionesResoluciones() {
                     const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                     const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
                     const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
+                    const matricula = predio.matricula_inmobiliaria || predio.r1_registros?.[0]?.matricula_inmobiliaria || '';
+                    const direccion = predio.direccion || predio.r1_registros?.[0]?.direccion || '';
+                    const destino = predio.destino_economico || predio.r1_registros?.[0]?.destino_economico || '';
+                    const numeroDoc = predio.propietarios?.[0]?.numero_documento || predio.numero_documento || '';
                     
                     setComplementacionData(prev => ({
                       ...prev,
                       predio: predio,
                       area_terreno_nueva: areaTerreno,
                       area_construida_nueva: areaConstruida,
-                      avaluo_nuevo: avaluo
+                      avaluo_nuevo: avaluo,
+                      matricula_nueva: matricula,
+                      direccion_nueva: direccion,
+                      destino_nuevo: destino,
+                      numero_documento_nuevo: numeroDoc
                     }));
                     setSearchPredioComplementacion('');
                     setSearchResultsComplementacion([]);
@@ -6491,34 +6504,85 @@ export default function MutacionesResoluciones() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Campos Editables */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs">Nueva Área Terreno (m²)</Label>
+                  <Label className="text-xs">Matrícula Inmobiliaria</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={complementacionData.area_terreno_nueva}
-                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_terreno_nueva: parseFloat(e.target.value) || 0 }))}
-                    data-testid="complementacion-area-terreno"
+                    value={complementacionData.matricula_nueva}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, matricula_nueva: e.target.value }))}
+                    placeholder="Ej: 270-12345"
+                    data-testid="complementacion-matricula"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Nueva Área Construida (m²)</Label>
+                  <Label className="text-xs">Número de Documento del Propietario</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    value={complementacionData.area_construida_nueva}
-                    onChange={(e) => setComplementacionData(prev => ({ ...prev, area_construida_nueva: parseFloat(e.target.value) || 0 }))}
-                    data-testid="complementacion-area-construida"
+                    value={complementacionData.numero_documento_nuevo}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, numero_documento_nuevo: e.target.value }))}
+                    placeholder="Número de documento"
+                    data-testid="complementacion-numero-documento"
                   />
                 </div>
               </div>
               <div>
-                <Label className="text-xs">Nuevo Avalúo ($)</Label>
+                <Label className="text-xs">Dirección</Label>
+                <Input
+                  value={complementacionData.direccion_nueva}
+                  onChange={(e) => setComplementacionData(prev => ({ ...prev, direccion_nueva: e.target.value }))}
+                  placeholder="Dirección del predio"
+                  data-testid="complementacion-direccion"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Destino Económico</Label>
+                <Input
+                  value={complementacionData.destino_nuevo}
+                  onChange={(e) => setComplementacionData(prev => ({ ...prev, destino_nuevo: e.target.value }))}
+                  placeholder="Ej: A (Agropecuario), H (Habitacional), C (Comercial)"
+                  data-testid="complementacion-destino"
+                />
+              </div>
+              
+              {/* Campos NO Editables - Áreas y Avalúo */}
+              <div className="border-t pt-4 mt-4">
+                <p className="text-xs text-amber-600 mb-3 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Las áreas y el avalúo no son editables en Complementación. Para modificar áreas use Rectificación de Área.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-400">Área Terreno (m²) - No editable</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={complementacionData.area_terreno_nueva}
+                      disabled
+                      className="bg-slate-100 cursor-not-allowed"
+                      data-testid="complementacion-area-terreno"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400">Área Construida (m²) - No editable</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={complementacionData.area_construida_nueva}
+                      disabled
+                      className="bg-slate-100 cursor-not-allowed"
+                      data-testid="complementacion-area-construida"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-xs text-slate-400">Avalúo ($) - No editable</Label>
                 <Input
                   type="number"
                   value={complementacionData.avaluo_nuevo}
-                  onChange={(e) => setComplementacionData(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                  disabled
+                  className="bg-slate-100 cursor-not-allowed"
                   data-testid="complementacion-avaluo"
                 />
               </div>
@@ -6591,7 +6655,7 @@ export default function MutacionesResoluciones() {
 
   // Renderizar formulario de Bloqueo de Predios
   const renderFormularioBloqueo = () => (
-    <div className="space-y-6 max-h-[70vh] overflow-visible pr-2">
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
       {/* Encabezado con información */}
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
@@ -8608,7 +8672,7 @@ export default function MutacionesResoluciones() {
 
       {/* Dialog para crear mutación */}
       <Dialog open={showMutacionDialog} onOpenChange={setShowMutacionDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-visible">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />

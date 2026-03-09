@@ -1,88 +1,89 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to fix several UI and functionality issues, primarily related to the Bloqueo de Predios (Property Locking) and Predios Eliminados (Deleted Properties) modules.
-
-During this session, the user expanded the scope to include:
-1.  **Add Area Columns to Dashboard:** Add Área Terreno and Área Construida to the Predios Registrados table.
-2.  **Fix Mass Desenglobe:** Ensure the mass desenglobe feature correctly marks the original property as cancelled.
-3.  **Fix Dropdowns:** The municipality selection dropdowns were not working in the Complementación and Bloqueo modals.
-4.  **Fix Predios Eliminados Vigencia:** Correct the Vigencia (version year) display for deleted properties, as they all incorrectly showed 2026.
-5.  **Unify Search Functionality:** Standardize the property search across all mutation modules (M1-M6, Bloqueo, Complementación) to be as effective as the search in M1, especially for  (registry number).
-6.  **Fix JS Errors:** Resolve User is not defined errors in M3 and M4 mutation forms.
-7.  **Fix Labels and Fields:**
-    *   Change the Ajuste de Área card label back to Rectificación de Área.
-    *   Fix the ESTADO (marital status) field in PDFs and Excel exports, which was incorrectly showing a person's last name.
-    *   Add a standardized Estado Civil (Marital Status) field to all owner creation/edit forms.
-8.  **Fix PDF Generation:** In the M1 (Change of Owner) PDF, the new owner's  was missing, and the document number padding was incorrect (should be 12 digits).
-9.  **Fix Excel Import:**
-    *   Resolve an error where the server couldn't find the  directory.
-    *   Enforce that an Excel file can only be imported for a single, pre-selected municipality.
-10. **Enhance Excel Import:** The user's latest request is to allow uploading multiple Excel files at once, with an interface to assign each file to its corresponding municipality.
+During this session, the user reported a series of issues and requested new features. The key requests were:
+1.  **Fix Missing PDF Signature:** A required signature was not appearing on generated PDF resolutions.
+2.  **Fix PDF Filename Format:** Change the generated PDF filenames from  to .
+3.  **Fix PDF Download Errors:** Users were experiencing 404 errors when trying to download generated PDFs.
+4.  **Fix Property Search:** The search functionality in property management was failing when searching by .
+5.  **Implement Multiple Mutations:** Create a feature to associate multiple different mutations with a single existing application ().
+6.  **Fix R1/R2 Import Errors:** An import process was failing due to a missing directory, and the UI was showing misleading success/error messages.
+7.  **Fix Admin Views:** The admin log viewer was not showing all user activities, and the file manager was displaying incorrect, hardcoded storage statistics.
+8.  **Address Regressions:** Several previously fixed issues, like the PDF filename and Sin información for , reappeared in production.
+9.  **Standardize PDF Logic:** Review and ensure all PDF generation types correctly handle cancellation (old data) and inscription (new data).
+10. **Fix UI Bugs:** Resolve an issue where mutation modals are not scrollable, and review the Complementación mutation form to prevent editing of area fields.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is mostly functional, with many bugs and inconsistencies having been resolved in this session.
-- The main property table now shows area columns.
-- Property search has been standardized across all modules to correctly find properties by name, CPN, and matrícula.
-- The Predios Eliminados view now shows the correct historical . Data has been migrated to reflect this.
-- The Estado Civil field has been standardized in UI forms and the database, and a data migration was run to clean up bad data.
-- PDF and Excel generation logic has been improved to fix data inconsistencies (marital status, document number padding).
-- The Excel import process is now more robust, creating its own upload directory and enforcing that all properties in an uploaded file belong to a single, pre-selected municipality.
+The application is a full-stack land management system. The agent has implemented several fixes and a new feature in this session.
+- The PDF signature, filename format, and download errors were addressed by modifying the backend PDF generators and download endpoints in .
+- A new Multiple Mutations feature has been implemented. It adds a card to the UI that opens a modal, allowing a user to select an existing  and associate multiple mutation types with it.
+- The property search by  has been fixed.
+- The R1/R2 import file upload error and the misleading UI message have been corrected.
+- The admin log viewer and the File Manager's storage statistics now show correct, comprehensive data.
+- A significant effort was made to standardize the logic for displaying old vs. new data across all PDF mutation types, particularly for the  field, to prevent it from showing Sin información.
+- The implementation of the Multiple Mutations feature is functionally complete on the front end and back end, but the final approval workflow from the coordinator's perspective is not yet defined.
 
 **Last working item**:
--   **Last item agent was working:** The user proposed a new feature to allow uploading multiple Excel files simultaneously and assigning a municipality to each file before processing. The agent agreed to this plan and was about to begin implementation.
+-   **Last item agent was working:** The user reported two final UI/UX issues:
+    1.  The modals for all mutation types are not scrollable, which prevents users from seeing and interacting with all form fields.
+    2.  The Complementación mutation should allow editing of all data and , but specifically *prevent* the editing of area fields. The agent was asked to review and enforce this rule.
 -   **Status:** NOT STARTED
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** both
+-   **Which testing method agent to use?** frontend testing agent. The agent should first inspect the CSS for the mutation modals (likely in ) to fix the scrolling issue (). Then, it should inspect the JSX for the Complementación form within the same file to add the  or  attribute to the area-related input fields. Screenshots should be used to verify the fixes.
 -   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: The Mass desenglobe feature does not correctly mark the original property as cancelled. (Priority: P1)
-  - Issue 2: Incorrect Historical PDFs being served (might be serving live data instead of the historical snapshot). (Priority: P2)
-  - Issue 3: The Visit Form is reportedly slow on mobile devices. (Priority: P2)
-  - Issue 4: The resolution counter is not atomic, which could lead to race conditions. (Priority: P2)
+-   **Issue 1 (P0):** Mutation modals are not scrollable.
+-   **Issue 2 (P0):** The Complementación mutation form allows editing of , which should be disabled.
+-   **Issue 3 (P2):** The Mass desenglobe feature may not correctly mark the original property as cancelled. (Recurring from a previous fork, requires user verification).
+-   **Issue 4 (P2):** Incorrect Historical PDFs may be served (serving live data instead of historical snapshots). (From a previous fork, not started).
+-   **Issue 5 (P2):** The Visit Form is reportedly slow on mobile devices. (From a previous fork, not started).
+-   **Issue 6 (P2):** The resolution counter is not atomic, which could lead to race conditions. (From a previous fork, not started).
 
-  Issues Detail:
-  - Issue 1:
-     - **Description:** The user is concerned that when a property is split into multiple new ones via the Mass desenglobe Excel feature, the original (parent) property is not being correctly marked as cancelled or deleted in the database.
-     - **Attempted fixes:** The agent investigated and applied a fix to the  function in  to correctly handle  ( vs. ).
-     - **Next debug checklist:**
-        1. Perform an end-to-end test of the Mass Desenglobe M2 mutation.
-        2. Upload an Excel file to split one parent property into multiple child properties.
-        3. Approve the resolution.
-        4. Verify in the database that the original parent property has been moved to the  collection or its status is correctly updated to reflect the cancellation.
-        5. Check that the new child properties are created correctly in the  collection.
-     - **Why fix this issue and what will be achieved with the fix?** To prevent data inconsistency where a divided property still appears as active, ensuring the integrity of the property registry.
-     - **Status:** USER VERIFICATION PENDING
-     - **Is recurring issue?** Y
-     - **Should Test frontend/backend/both after fix?** Both
-     - **Blocked on other issue:** None
-  - Issue 2:
-     - **Description:** There is a possibility that when generating PDFs for historical records, the system is using live data instead of a snapshot of the data as it was at that time.
-     - **Status:** NOT STARTED
-  - Issue 3:
-     - **Description:** User has reported that the Visit Form is slow on mobile devices.
-     - **Status:** NOT STARTED
-  - Issue 4:
-     - **Description:** The counter for generating resolution numbers is not atomic, which could create duplicate resolution numbers if multiple users perform actions at the same time.
-     - **Status:** NOT STARTED
+**Issues Detail:**
+-   **Issue 1: Mutation modals are not scrollable.**
+    -   **Attempted fixes:** None.
+    -   **Next debug checklist:**
+        1.  Inspect .
+        2.  Locate the  component for the mutation modals.
+        3.  Identify the CSS causing the scroll issue. It is likely a  class or a fixed height preventing overflow.
+        4.  Replace or add CSS classes to enable vertical scrolling, such as  and .
+    -   **Why fix this issue and what will be achieved with the fix?** Users are blocked from completing mutation forms because they cannot access fields that are off-screen. This fix will restore core functionality.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue:** None
+
+-   **Issue 2: Complementación mutation form allows editing of .**
+    -   **Attempted fixes:** None.
+    -   **Next debug checklist:**
+        1.  In , find the conditional rendering logic for the COMP () mutation type.
+        2.  Locate the input fields for property areas (, , etc.).
+        3.  Add the  or  prop to these specific input fields when the mutation type is COMP.
+        4.  Ensure other fields, like , remain editable.
+    -   **Why fix this issue and what will be achieved with the fix?** To enforce a key business rule for the Complementación process, preventing accidental or unauthorized changes to property areas.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1: Implement Multi-File Excel Import (P0)**
-    -   **Where to resume:** Start by modifying the UI in  to allow selecting multiple files. Then, create a UI to list the selected files and add a dropdown next to each to assign a municipality. The backend endpoint  will need to be updated to accept an array of files and their corresponding municipalities.
-    -   **What will be achieved with this?** A significant improvement in user workflow, allowing for the batch import of data for multiple municipalities at once.
-    -   **Status:** NOT STARTED
+-   **Task 1: Finalize Multiple Mutations Approval Workflow**
+    -   **Where to resume:** The user confirmed that the manager sends the entire package of mutations to the coordinator. The next step is to ask the user to clarify the coordinator's workflow:
+        1.  Can the coordinator approve/reject mutations selectively within the package?
+        2.  Or is it an all or nothing approval?
+        3.  How should this be presented in the coordinator's UI?
+    -   **What will be achieved with this?** A complete, user-validated workflow for the new Multiple Mutations feature.
+    -   **Status:** BLOCKED (pending user input)
     -   **Should Test frontend/backend/both after fix?** Both
-    -   **Blocked on something:** None
+    -   **Blocked on something:** Awaiting clarification from the user on the approval process.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
 *   **(P1) Backend Refactoring:** Migrate all mutation and blocking logic from the monolithic  into the modular structure at .
-*   **(P1) Frontend Refactoring:** Break down the massive  and  files into smaller, more manageable child components.
-*   **(P1) Full Regression Test:** After the current tasks are done, a full regression test of all 7 mutation types and the Block/Eliminated features is required.
+*   **(P1) Frontend Refactoring:** Break down the massive  file into smaller, manageable components.
+*   **(P1) Full Regression Test:** After current fixes are done, a full regression test of all mutation types is required to prevent further regressions.
 *   **(P2) PDF Generator Refactoring:** Abstract the duplicated code from the seven PDF generator files into a common PDF utility module.
-*   **(P2) Deprecate Temporary Code:** Remove the temporary migration and test endpoints from .
-*   **(P2) Improve Reactivation Flow:** The backend logic for reactivating eliminated properties exists, but the frontend only shows a basic toast message. Improve the UI for this flow.
 
 **Future Tasks:**
 *   Implement Chained Mutations (e.g., Rectification -> Desenglobe).
@@ -93,24 +94,15 @@ The application is mostly functional, with many bugs and inconsistencies having 
 *   Add graphs/charts to dashboards.
 
 **Completed work in this session**
-- **Added:** Área Terreno and Área Construida columns to the Predios Registrados table in .
-- **Fixed:** The Mass Desenglobe logic in  was updated to respect the  field. (Needs user verification).
-- **Fixed:** Non-functional municipality dropdowns in Bloqueo and Complementación modals by correcting z-index and overflow styles.
-- **Fixed:** The Vigencia (version year) for deleted properties is now correctly displayed. A data migration script was created and executed to fix historical data.
-- **Unified:** Property search functionality is now consistent across all modules (M1-M6, Bloqueo, Complementación).
-- **Fixed:** Resolved a User is not defined JavaScript error affecting M3 and M4 mutation forms.
-- **Fixed:** The Ajuste de Área card label was changed back to Rectificación de Área.
-- **Fixed:** The ESTADO (marital status) field in PDFs/Excel exports now shows the correct data. An import logic fix and a data migration were performed.
-- **Added:** A standardized Estado Civil dropdown was added to all owner creation/edit forms.
-- **Fixed:** M1 PDF generation now includes the correct  for new owners and pads document numbers to 12 digits.
-- **Fixed:** The backend now automatically creates the  directory on startup, preventing Excel import errors.
-- **Enhanced:** The single Excel import feature now requires the user to select a municipality and validates that all properties in the file belong to it.
+-   **Fixed PDF Signature & Filename:** Corrected the signature loading logic in  and standardized the PDF filename format to  across all generation points in .
+-   **Made PDF Downloads Robust:** Heavily modified the  endpoint to flexibly search for PDF files using multiple name formats (with/without timestamps, with/without prefixes) and across multiple directories.
+-   **Implemented Multiple Mutations Feature:** Created a full UI/backend flow allowing users to associate multiple mutations with an existing . This involved major changes to  and adding new endpoints to .
+-   **Fixed R1/R2 Import:** Resolved a  by ensuring the  directory exists and fixed a misleading UI success/error message in .
+-   **Standardized Matrícula Logic:** Systematically removed  fallbacks for  across all PDF generator files and , ensuring the value is sourced from multiple data points.
+-   **Corrected Admin/Resource Views:** Fixed the File Manager ( and ) to show real server disk usage and confirmed the admin log viewer fetches all logs.
 
 **Earlier issues found/mentioned but not fixed**
--   Incorrect Historical PDFs being served (might be serving live data instead of the historical snapshot).
--   The Visit Form is reportedly slow on mobile devices.
--   The resolution counter is not atomic, which could lead to race conditions under high load.
--   The mass desenglobe feature does not correctly mark the original property as cancelled. (Fix attempted, but user verification is pending).
+-   The issues listed in All Pending/In progress Issue list from previous forks remain open (Mass desenglobe, Historical PDFs, slow Visit Form, non-atomic counter).
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork:** Intermittent Save/Sync Failures on Slow Connections.
@@ -121,57 +113,63 @@ The application is mostly functional, with many bugs and inconsistencies having 
 
 
 **Key Technical Concepts**
-- **Monolithic Application Debugging:** Extensive work was done within the large  and  files to fix bugs and add features.
-- **Data Migration Scripts:** Created several ad-hoc API endpoints in  to perform one-time data migrations for  vigencias and cleaning  data.
-- **Complex Frontend Debugging:** Resolved CSS issues involving  and  to fix broken dropdowns. Managed complex state within large React components.
-- **Dynamic Directory Creation:** Added logic to  to automatically create the  directory on application startup.
-- **Backend-driven UI Validation:** Implemented logic where the backend () validates that all records in an uploaded Excel file match a user-selected parameter ().
+-   **Monolithic Modification:** The  file continued to grow in complexity with the addition of multiple new features (multi-mutations), robust error handling (PDF downloads), and numerous bug fixes.
+-   **React Asynchronous State:** Identified and fixed a bug in  caused by relying on state immediately after a  call. The fix involved using a local variable for synchronous counting.
+-   **Fault-Tolerant Endpoint:** The PDF download endpoint was re-engineered to be highly resilient, using  to search for file patterns and falling back to different directories to locate files despite naming inconsistencies.
+-   **Regression Management:** The agent had to re-address issues (PDF filename, matrícula display) that were fixed previously but reappeared, highlighting the fragility of the codebase and the need for regression testing.
+-   **Systematic Refactoring:** The agent systematically audited and refactored the matrícula-fetching logic across seven different PDF generator files and the main  to enforce a consistent business rule.
 
 **key DB schema**
--   ****: Heavy use and standardization of the  field. A migration was run to clean this field.
--   ****: Added  and  fields. A migration was run to populate these fields for all existing documents.
+No database schema changes were made. Pydantic models  and  were added in  to support the new Multiple Mutations feature.
 
 **All files of reference**
--   : **Heavily modified.** Added new migration endpoints, fixed mass desenglobe logic, unified search endpoint, added validation to Excel import, and fixed data preparation for PDF generation.
--   : **Heavily modified.** Fixed dropdowns, unified search calls, fixed JS errors, added/updated owner forms, and updated the Excel import UI.
--   : **Modified.** Added area columns to the main property table and updated owner forms.
--   : **Modified.** Added a mandatory municipality selector for the Excel import.
--    (all 7 files): **Updated.** All PDF generators were updated to use  for document numbers.
+-   : Modified for PDF generation logic, robust PDF downloads, multiple mutation endpoints, file manager statistics, property search, and fixing numerous matrícula-related bugs.
+-   : Heavily modified to implement the entire Multiple Mutations UI flow, including new state management, modals, and API calls.
+-   : Modified to fix a misleading UI notification during file import.
+-   : Modified to fetch and display real server storage statistics.
+-   All PDF generator files in  (e.g., , , etc.): Modified to standardize the logic for fetching .
 
 **Areas that need refactoring**:
--   : **CRITICAL.** This file is dangerously large and complex. It urgently needs to be broken into a router-based structure. The one-off migration endpoints should be moved to separate, executable scripts.
--    & : **CRITICAL.** These files handle too much state and logic and must be broken down into smaller components.
+-   : This file is now critically oversized and complex. It is the top priority for refactoring into a proper FastAPI router structure.
+-   : This component has become a god component managing logic for all mutation types plus the new multi-mutation flow. It urgently needs to be broken down into smaller, specialized components.
+-   The suite of  files contains significant duplicated code for styling and layout, which should be abstracted into a common PDF utility module.
 
 **key api endpoints**
--   : **Modified.** Now requires a  parameter and validates that all properties in the Excel belong to that municipality.
--   : **Modified.** The search logic was enhanced to correctly handle searches by , unifying its behavior with other search endpoints.
--   : **New.** A temporary endpoint created to perform a one-off data migration to fix  and  in the  collection.
--   : **New.** A temporary endpoint created to clean invalid data from the  field in the  collection.
+-   **New:**
+    -   : Fetches existing  to be used in the multi-mutation flow.
+    -   : Associates a new mutation with a .
+    -   : Lists all mutations associated with a .
+    -   : Removes a mutation's association with a .
+-   **Modified:**
+    -   : Logic was heavily enhanced to find files with varying name formats.
+    -   : Response was changed to provide real-time server disk usage data.
+    -   : Search query was updated to correctly filter by .
 
 **Critical Info for New Agent**
--   Your immediate task is to implement the **multi-file Excel import feature**. The user wants to upload multiple Excel files at once and assign a municipality to each before processing.
--   The user is highly attentive to detail. The Mass Desenglobe fix needs to be thoroughly tested and verified, as the user has expressed ongoing concern.
--   The codebase, particularly  and , is a high-risk area for regressions due to its monolithic nature. Prioritize refactoring after completing the current high-priority feature.
--   The temporary migration endpoints in  are a sign of technical debt and should be removed or moved to dedicated scripts after their purpose is served.
+-   **Your immediate tasks are UI-focused:** Fix the non-scrolling modals in  and then, in the same file, disable the 'area' fields for the Complementación mutation. These are direct requests from the user.
+-   **Production vs. Preview Mismatch:** The user is experiencing issues in their production environment that have already been fixed in this preview environment. Be prepared to explain that the changes need to be deployed and avoid re-doing work. The recurring PDF filename and matrícula issues are examples of this.
+-   **Clarify Multiple Mutations Workflow:** The feature is built, but the final approval step is undefined. You need to get a decision from the user on how the coordinator should approve packages of mutations before you can complete the task.
 
 **documents and test reports created in this job**
-None.
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User:** Asks to modify the Excel import process to allow uploading 12 Excel files at once, with a way to assign each file to its respective municipality. (Status: **PENDING - Current Task**)
-9.  **User:** Requests that the server code be updated to automatically create the  directory so it works in their Docker environment after a . (Status: RESOLVED)
-8.  **User:** Reports an error when importing an Excel file in their local development environment ( directory not found). (Status: RESOLVED)
-7.  **User:** Asks why a specific property () appears in the Emergent preview environment but not in their local development server. (Status: RESOLVED - Agent explained they are separate databases).
-6.  **User:** Reports multiple issues in the generated M1 PDF: missing matrícula, ESTADO field showing an apellido, and document number needing 12-digit padding. (Status: RESOLVED)
-5.  **User:** Asks to add a standardized Estado (marital status) dropdown to all owner creation/edit forms with specific values. (Status: RESOLVED)
-4.  **User:** Agrees to run the data migration to clean up the  field. (Status: RESOLVED)
-3.  **User:** Reports that the ESTADO column in PDFs/Excel is incorrectly showing the second last name. (Status: RESOLVED)
-2.  **User:** Asks to change the Ajuste de Área card label back to Rectificación de Área. (Status: RESOLVED)
-1.  **User:** Reports User is not defined errors in M3 and M4 mutation forms. (Status: RESOLVED)
+10. **User:** The Complementación mutation should allow editing all data and matrícula but NOT areas. Also, all mutation modals are not scrollable. (Status: **NOT STARTED**)
+9.  **User:** Asks if the data for cancellation (old data) and inscription (new data) is correctly separated in all PDF mutation types. (Status: **RESOLVED**, agent reviewed and fixed logic across all generators).
+8.  **User:** The  issue (Sin información) is happening in the M1 mutation. (Status: **RESOLVED**, agent applied a specific fix for M1).
+7.  **User:** Reports that regressions are happening: the PDF filename is wrong again in emails, and the  is still showing Sin información. (Status: **RESOLVED**, agent re-fixed and explained this is due to changes not being in production).
+6.  **User:** Clarified the Multiple Mutations approval flow: the manager sends the whole package to the coordinator. (Status: **PARTIALLY ADDRESSED**, but coordinator's side of the workflow is still pending).
+5.  **User:** The admin/coordinator log view is only showing their own logs, not all users'. The Resource Manager should show real server stats. (Status: **RESOLVED**).
+4.  **User:** The PDF download issue is still happening. Provided console logs showing a 404. (Status: **RESOLVED**, agent made the download endpoint more robust, but reminded the user the fix is not yet in production).
+3.  **User:** The R1/R2 import UI message is wrong; it says no files were imported when the process was successful. (Status: **RESOLVED**).
+2.  **User:** Reports an error when importing R1/R2 for Cáchira: . (Status: **RESOLVED**).
+1.  **User:** Clarified that for Multiple Mutations, the  should come from an existing , not be newly created. (Status: **RESOLVED**, agent refactored the feature accordingly).
 
 **Project Health Check:**
 -   **Broken:**
-    -   The Excel import feature does not yet support multi-file uploads with municipality assignment as requested by the user.
+    -   UI for all mutation forms is broken due to a lack of scrolling.
+    -   Business rules for the Complementación mutation form are not enforced.
 -   **Mocked:**
     -   None.
 
@@ -182,10 +180,10 @@ None.
 -   qrcode (for PDF verification QR codes)
 
 **Testing status**
--   **Testing agent used after significant changes:** NO
+-   **Testing agent used after significant changes:** YES, for the initial signature fix.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None
--   **Known regressions:** The fix for Mass desenglobe has not been fully verified and could be a regression risk.
+-   **Test files created:** None.
+-   **Known regressions:** The PDF filename format and the Sin información  display were regressions that have been re-fixed in this session. This indicates a fragile codebase.
 
 **Credentials to test flow:**
 -   **Administrator / Aprobador:**  / 
@@ -193,5 +191,5 @@ None.
 -   **Atención Usuario (with approval rights):**  / 
 
 **What agent forgot to execute**
--   The agent did not perform a full end-to-end test of the Mass Desenglobe fix after implementing it, leaving its status as unverified.
--   Several issues from the initial handoff summary (incorrect historical PDFs, slow visit form, non-atomic counter) were not addressed during this session.</analysis>
+-   The agent did not begin work on the two most recent user requests: fixing the scrolling in mutation modals and restricting the editable fields in the Complementación form.
+-   The agent did not follow up to get the final details on the coordinator's approval workflow for the Multiple Mutations feature.</analysis>

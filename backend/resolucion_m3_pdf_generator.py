@@ -464,7 +464,7 @@ def generate_resolucion_m3_pdf(
         direccion = (datos_r1_r2.get("direccion", "") or "")[:20]
         area_terreno = datos_r1_r2.get("area_terreno", 0)
         area_construida = datos_r1_r2.get("area_construida", 0)
-        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
+        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or predio.get("matricula_inmobiliaria", "") or ""
         
         area_terreno_fmt = formatear_area(area_terreno)
         area_construida_fmt = formatear_area(area_construida)
@@ -616,7 +616,7 @@ def generate_resolucion_m3_pdf(
             texto_considerando = texto_considerando.replace('(codigo_predial)', codigo_predial)
             texto_considerando = texto_considerando.replace('(municipio)', municipio)
             texto_considerando = texto_considerando.replace('(radicado)', radicado)
-            texto_considerando = texto_considerando.replace('(matricula)', predio.get("matricula_inmobiliaria", "Sin información"))
+            texto_considerando = texto_considerando.replace('(matricula)', predio.get("matricula_inmobiliaria", "") or datos_r1_r2.get("matricula_inmobiliaria", "") or "")
             texto_considerando = texto_considerando.replace('(destino_anterior)', data.get("destino_anterior", ""))
             texto_considerando = texto_considerando.replace('(destino_nuevo)', data.get("destino_nuevo", ""))
             texto_considerando = texto_considerando.replace('(vigencia)', str(datetime.now().year))

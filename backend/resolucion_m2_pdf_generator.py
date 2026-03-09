@@ -551,7 +551,7 @@ def generate_resolucion_m2_pdf(
         area_terreno = datos_r1_r2.get("area_terreno", 0)
         area_construida = datos_r1_r2.get("area_construida", 0)
         avaluo = datos_r1_r2.get("avaluo", 0)
-        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or "Sin información"
+        matricula = datos_r1_r2.get("matricula_inmobiliaria", "") or predio.get("matricula_inmobiliaria", "") or ""
         
         # Formatear áreas con unidades
         area_terreno_fmt = formatear_area(area_terreno)

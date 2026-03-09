@@ -17,7 +17,7 @@ import sys
 # Agregar backend al path para importar módulos
 sys.path.insert(0, '/app/backend')
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://firma-resolucion.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com').rstrip('/')
 
 # Credenciales de prueba
 TEST_USER = "catastro@asomunicipios.gov.co"

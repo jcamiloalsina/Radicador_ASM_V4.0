@@ -1080,7 +1080,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1253,7 +1253,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1319,7 +1319,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1357,7 +1357,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1410,7 +1410,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1449,7 +1449,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1479,7 +1479,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1512,7 +1512,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -12597,7 +12597,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://catastro-ui-patch.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -15087,6 +15087,16 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         if predio_original:
             # Obtener datos de R1/R2 para la sección CANCELACIÓN
             datos_r1_r2_anterior = obtener_datos_r1_r2(predio_original)
+            
+            # Buscar matrícula en múltiples fuentes
+            matricula_cancelacion = datos_r1_r2_anterior.get("matricula_inmobiliaria") or ""
+            if not matricula_cancelacion:
+                matricula_cancelacion = predio_original.get("matricula_inmobiliaria") or ""
+            if not matricula_cancelacion:
+                r2_regs = predio_original.get("r2_registros", [])
+                if r2_regs and len(r2_regs) > 0:
+                    matricula_cancelacion = r2_regs[0].get("matricula_inmobiliaria") or ""
+            
             datos_anteriores = {
                 "area_terreno": str(datos_r1_r2_anterior.get("area_terreno") or 0),
                 "area_construida": str(datos_r1_r2_anterior.get("area_construida") or 0),
@@ -15094,7 +15104,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                 "direccion": datos_r1_r2_anterior.get("direccion") or "",
                 "destino_economico": datos_r1_r2_anterior.get("destino_economico") or "A",
                 "codigo_homologado": datos_r1_r2_anterior.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": datos_r1_r2_anterior.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": matricula_cancelacion,
             }
             if predio_original.get("propietarios"):
                 for p in predio_original["propietarios"]:
@@ -15148,9 +15158,9 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Los datos nuevos NO están en R1/R2 porque aún no se han inscrito
         # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
         # IMPORTANTE: La matrícula inmobiliaria debe venir del predio original si no cambió
-        matricula_original = datos_anteriores.get("matricula_inmobiliaria") or ""
-        if matricula_original == "Sin información":
-            matricula_original = ""
+        
+        # Usar la matrícula de cancelación si no hay una nueva en el formulario
+        matricula_inscripcion = datos_propuestos.get("matricula_inmobiliaria") or datos_anteriores.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or ""
         
         datos_inscripcion = {
             "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
@@ -15159,8 +15169,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
             "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
             "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-            # Matrícula: usar del propuesto SI cambió, si no usar la del predio original
-            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+            "matricula_inmobiliaria": matricula_inscripcion,
         }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -15172,7 +15181,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo,
             # Datos de INSCRIPCIÓN (nuevos) - vienen del formulario, no de R1/R2
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=matricula_inscripcion,
             direccion=datos_inscripcion.get("direccion") or "",
             avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
@@ -28708,7 +28717,7 @@ async def generar_resolucion_prueba(
             radicado=request.radicado or f"RASMGC-XXXX-{datetime.now().strftime('%d-%m-%Y')}",
             codigo_catastral_anterior=predio.get("codigo_predial_nacional", "")[:15] if predio.get("codigo_predial_nacional") else "000000000000000",
             npn=predio.get("codigo_predial_nacional", ""),
-            matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or predio.get("matricula_inmobiliaria") or "",
             direccion=datos_r1_r2.get("direccion") or "",
             avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{anio}",
@@ -29171,10 +29180,16 @@ async def descargar_resolucion_pdf(filename: str):
     try:
         import glob
         
+        # Limpiar el filename (remover parámetros de URL como #toolbar=1)
+        filename = filename.split('#')[0].split('?')[0]
+        
         # Directorios donde buscar PDFs
         search_dirs = [
             "/app/backend/static/resoluciones",
-            "/app/frontend/public/resoluciones"
+            "/app/frontend/public/resoluciones",
+            "/app/frontend/build/resoluciones",
+            "/app/uploads/resoluciones",
+            "/app/uploads"
         ]
         
         # Extraer el número de resolución del filename para búsqueda flexible
@@ -29201,6 +29216,7 @@ async def descargar_resolucion_pdf(filename: str):
             exact_path = f"{search_dir}/{filename}"
             if os.path.exists(exact_path):
                 filepath = exact_path
+                logging.info(f"PDF encontrado (exacto): {filepath}")
                 break
         
         # 2. Si no se encuentra, buscar con el número de resolución simplificado
@@ -29210,21 +29226,55 @@ async def descargar_resolucion_pdf(filename: str):
                 simple_path = f"{search_dir}/{simple_filename}"
                 if os.path.exists(simple_path):
                     filepath = simple_path
-                    filename = simple_filename  # Actualizar para la respuesta
+                    filename = simple_filename
+                    logging.info(f"PDF encontrado (simplificado): {filepath}")
                     break
         
-        # 3. Si aún no se encuentra, buscar por patrón glob
+        # 3. Si aún no se encuentra, buscar con prefijo "resolucion_"
         if not filepath and numero_resolucion:
             for search_dir in search_dirs:
-                # Buscar cualquier archivo que contenga el número de resolución
-                pattern = f"{search_dir}/*{numero_resolucion.replace('-', '*')}*.pdf"
+                # Buscar con prefijo resolucion_
+                pattern = f"{search_dir}/resolucion_{numero_resolucion}*.pdf"
                 matches = glob.glob(pattern)
                 if matches:
                     filepath = matches[0]
                     filename = os.path.basename(filepath)
+                    logging.info(f"PDF encontrado (con prefijo): {filepath}")
                     break
         
+        # 4. Búsqueda más amplia por patrón glob
+        if not filepath and numero_resolucion:
+            for search_dir in search_dirs:
+                # Buscar cualquier archivo que contenga el número de resolución
+                pattern = f"{search_dir}/*{numero_resolucion}*.pdf"
+                matches = glob.glob(pattern)
+                if matches:
+                    filepath = matches[0]
+                    filename = os.path.basename(filepath)
+                    logging.info(f"PDF encontrado (glob): {filepath}")
+                    break
+        
+        # 5. Último intento: buscar en base de datos por número de resolución
+        if not filepath and numero_resolucion:
+            resolucion_db = await db.resoluciones.find_one(
+                {"numero_resolucion": numero_resolucion},
+                {"pdf_path": 1, "pdf_url": 1}
+            )
+            if resolucion_db:
+                pdf_path = resolucion_db.get('pdf_path') or resolucion_db.get('pdf_url', '')
+                if pdf_path:
+                    # Extraer solo el nombre del archivo
+                    pdf_filename = pdf_path.split('/')[-1]
+                    for search_dir in search_dirs:
+                        check_path = f"{search_dir}/{pdf_filename}"
+                        if os.path.exists(check_path):
+                            filepath = check_path
+                            filename = pdf_filename
+                            logging.info(f"PDF encontrado (desde DB): {filepath}")
+                            break
+        
         if not filepath:
+            logging.error(f"PDF no encontrado: {filename}, número resolución: {numero_resolucion}")
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
         
         return FileResponse(
@@ -29974,7 +30024,7 @@ async def finalizar_tramite_y_enviar_correo(
                     subject=f"Resolución Aprobada - Radicado {request.radicado}",
                     body=email_body,
                     attachment_path=pdf_path_full if os.path.exists(pdf_path_full) else None,
-                    attachment_name=f"Resolucion_{request.radicado.replace('/', '-')}.pdf"
+                    attachment_name=f"{request.radicado.replace('/', '-')}.pdf"
                 )
                 
                 email_enviado = True
@@ -31653,7 +31703,7 @@ async def generar_resolucion_manual(
             "direccion": datos_r1_r2_anteriores.get("direccion") or "",
             "destino_economico": datos_r1_r2_anteriores.get("destino_economico") or "A",
             "codigo_homologado": datos_r1_r2_anteriores.get("codigo_homologado") or "",
-            "matricula_inmobiliaria": datos_r1_r2_anteriores.get("matricula_inmobiliaria") or "Sin información",
+            "matricula_inmobiliaria": datos_r1_r2_anteriores.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "",
         }
         
         # Propietarios: Intentar obtenerlos del cambio/petición asociado al radicado
@@ -31824,11 +31874,13 @@ async def generar_resolucion_manual(
                 "direccion": request.datos_predio.get("direccion") or datos_predio.get("direccion") or "",
                 "destino_economico": request.datos_predio.get("destino_economico") or datos_predio.get("destino_economico") or "A",
                 "codigo_homologado": request.datos_predio.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "",
             }
         else:
             # No hay datos nuevos del formulario, obtener de R1/R2 del predio actual
             datos_r1_r2_predio = obtener_datos_r1_r2(datos_predio)
+            # También buscar matrícula directamente en el predio si no está en R2
+            matricula_predio = datos_r1_r2_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or ""
             datos_inscripcion = {
                 "area_terreno": datos_r1_r2_predio.get("area_terreno") or 0,
                 "area_construida": datos_r1_r2_predio.get("area_construida") or 0,
@@ -31836,7 +31888,7 @@ async def generar_resolucion_manual(
                 "direccion": datos_r1_r2_predio.get("direccion") or "",
                 "destino_economico": datos_r1_r2_predio.get("destino_economico") or "A",
                 "codigo_homologado": datos_r1_r2_predio.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": datos_r1_r2_predio.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": matricula_predio,
             }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -31848,7 +31900,7 @@ async def generar_resolucion_manual(
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo or "",
             # Datos de INSCRIPCIÓN
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "",
             direccion=datos_inscripcion.get("direccion") or "",
             avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
@@ -32043,7 +32095,7 @@ async def generar_resolucion_manual(
                             subject=f"Resolución Aprobada - {request.numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{request.numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{request.numero_resolucion.replace('/', '-')}.pdf"
                         )
                         email_enviado = True
                         logging.info(f"Correo de resolución enviado a {peticion.get('correo')}")
@@ -32231,7 +32283,7 @@ async def generar_preview_resolucion(
                 radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
                 codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
                 npn=codigo,
-                matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+                matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or predio.get("matricula_inmobiliaria") or "",
                 direccion=datos_r1_r2.get("direccion") or "",
                 avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
                 vigencia_fiscal=f"01/01/{anio}",
@@ -32571,22 +32623,76 @@ def get_directory_info(path: Path):
     return items, total_size
 
 def get_storage_info():
-    """Obtener información de almacenamiento"""
-    total_size = 0
+    """Obtener información de almacenamiento REAL del servidor"""
+    import shutil
+    
+    # Obtener información real del disco
+    try:
+        disk_usage = shutil.disk_usage("/app")
+        disk_total = disk_usage.total
+        disk_used = disk_usage.used
+        disk_free = disk_usage.free
+    except Exception:
+        # Fallback si no puede obtener info del disco
+        disk_total = 0
+        disk_used = 0
+        disk_free = 0
+    
+    # Calcular uso de archivos en el directorio base
+    app_files_size = 0
     files_count = 0
     
     for root, dirs, files in os.walk(FILES_BASE_DIR):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
         for file in files:
             if not file.startswith('.'):
-                file_path = Path(root) / file
-                total_size += file_path.stat().st_size
-                files_count += 1
+                try:
+                    file_path = Path(root) / file
+                    app_files_size += file_path.stat().st_size
+                    files_count += 1
+                except Exception:
+                    pass
+    
+    # Calcular tamaño de uploads
+    uploads_size = 0
+    uploads_count = 0
+    uploads_dir = Path("/app/uploads")
+    if uploads_dir.exists():
+        for root, dirs, files in os.walk(uploads_dir):
+            for file in files:
+                try:
+                    file_path = Path(root) / file
+                    uploads_size += file_path.stat().st_size
+                    uploads_count += 1
+                except Exception:
+                    pass
+    
+    # Calcular tamaño de resoluciones
+    resoluciones_size = 0
+    resoluciones_count = 0
+    for res_dir in [Path("/app/frontend/public/resoluciones"), Path("/app/frontend/build/resoluciones"), Path("/app/backend/static/resoluciones")]:
+        if res_dir.exists():
+            for root, dirs, files in os.walk(res_dir):
+                for file in files:
+                    try:
+                        file_path = Path(root) / file
+                        resoluciones_size += file_path.stat().st_size
+                        resoluciones_count += 1
+                    except Exception:
+                        pass
     
     return {
-        "used": total_size,
-        "total": 1073741824,  # 1GB límite
-        "files_count": files_count
+        "disk_total": disk_total,
+        "disk_used": disk_used,
+        "disk_free": disk_free,
+        "disk_percent": round((disk_used / disk_total * 100), 1) if disk_total > 0 else 0,
+        "app_files_used": app_files_size,
+        "app_files_count": files_count,
+        "uploads_used": uploads_size,
+        "uploads_count": uploads_count,
+        "resoluciones_used": resoluciones_size,
+        "resoluciones_count": resoluciones_count,
+        "total_app_storage": app_files_size + uploads_size + resoluciones_size
     }
 
 @api_router.get("/files/list")
