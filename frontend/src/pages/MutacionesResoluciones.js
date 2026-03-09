@@ -64,7 +64,7 @@ const TIPOS_MUTACION = {
   RECTIFICACION_AREA: { 
     codigo: 'RECTIFICACION_AREA', 
     codigoDisplay: 'Ajuste Área',
-    nombre: 'Ajuste de Área', 
+    nombre: 'Rectificación de Área', 
     descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
     enabled: true
