@@ -15141,9 +15141,17 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Los datos nuevos NO están en R1/R2 porque aún no se han inscrito
         # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
         # IMPORTANTE: La matrícula inmobiliaria debe venir del predio original si no cambió
+        
+        # Obtener matrícula de varias fuentes posibles
         matricula_original = datos_anteriores.get("matricula_inmobiliaria") or ""
-        if matricula_original == "Sin información":
-            matricula_original = ""
+        if matricula_original == "Sin información" or not matricula_original:
+            # Buscar en el predio original directamente
+            matricula_original = predio_original.get("matricula_inmobiliaria") or ""
+            # Si aún no hay, buscar en r2_registros
+            if not matricula_original and predio_original:
+                r2_regs = predio_original.get("r2_registros", [])
+                if r2_regs and len(r2_regs) > 0:
+                    matricula_original = r2_regs[0].get("matricula_inmobiliaria") or ""
         
         datos_inscripcion = {
             "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
@@ -15152,8 +15160,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
             "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
             "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-            # Matrícula: usar del propuesto SI cambió, si no usar la del predio original
-            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+            # Matrícula: usar del propuesto SI hay, si no usar la del predio original
+            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "",
         }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -15165,7 +15173,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo,
             # Datos de INSCRIPCIÓN (nuevos) - vienen del formulario, no de R1/R2
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or matricula_original or "",
             direccion=datos_inscripcion.get("direccion") or "",
             avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
@@ -29964,7 +29972,7 @@ async def finalizar_tramite_y_enviar_correo(
                     subject=f"Resolución Aprobada - Radicado {request.radicado}",
                     body=email_body,
                     attachment_path=pdf_path_full if os.path.exists(pdf_path_full) else None,
-                    attachment_name=f"Resolucion_{request.radicado.replace('/', '-')}.pdf"
+                    attachment_name=f"{request.radicado.replace('/', '-')}.pdf"
                 )
                 
                 email_enviado = True
@@ -31814,11 +31822,13 @@ async def generar_resolucion_manual(
                 "direccion": request.datos_predio.get("direccion") or datos_predio.get("direccion") or "",
                 "destino_economico": request.datos_predio.get("destino_economico") or datos_predio.get("destino_economico") or "A",
                 "codigo_homologado": request.datos_predio.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "",
             }
         else:
             # No hay datos nuevos del formulario, obtener de R1/R2 del predio actual
             datos_r1_r2_predio = obtener_datos_r1_r2(datos_predio)
+            # También buscar matrícula directamente en el predio si no está en R2
+            matricula_predio = datos_r1_r2_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or ""
             datos_inscripcion = {
                 "area_terreno": datos_r1_r2_predio.get("area_terreno") or 0,
                 "area_construida": datos_r1_r2_predio.get("area_construida") or 0,
@@ -31826,7 +31836,7 @@ async def generar_resolucion_manual(
                 "direccion": datos_r1_r2_predio.get("direccion") or "",
                 "destino_economico": datos_r1_r2_predio.get("destino_economico") or "A",
                 "codigo_homologado": datos_r1_r2_predio.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": datos_r1_r2_predio.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": matricula_predio,
             }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -31838,7 +31848,7 @@ async def generar_resolucion_manual(
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo or "",
             # Datos de INSCRIPCIÓN
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "",
             direccion=datos_inscripcion.get("direccion") or "",
             avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
@@ -32033,7 +32043,7 @@ async def generar_resolucion_manual(
                             subject=f"Resolución Aprobada - {request.numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{request.numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{request.numero_resolucion.replace('/', '-')}.pdf"
                         )
                         email_enviado = True
                         logging.info(f"Correo de resolución enviado a {peticion.get('correo')}")
