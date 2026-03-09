@@ -28674,7 +28674,7 @@ async def generar_resolucion_prueba(
             radicado=request.radicado or f"RASMGC-XXXX-{datetime.now().strftime('%d-%m-%Y')}",
             codigo_catastral_anterior=predio.get("codigo_predial_nacional", "")[:15] if predio.get("codigo_predial_nacional") else "000000000000000",
             npn=predio.get("codigo_predial_nacional", ""),
-            matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+            matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or predio.get("matricula_inmobiliaria") or "",
             direccion=datos_r1_r2.get("direccion") or "",
             avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{anio}",
@@ -31652,7 +31652,7 @@ async def generar_resolucion_manual(
             "direccion": datos_r1_r2_anteriores.get("direccion") or "",
             "destino_economico": datos_r1_r2_anteriores.get("destino_economico") or "A",
             "codigo_homologado": datos_r1_r2_anteriores.get("codigo_homologado") or "",
-            "matricula_inmobiliaria": datos_r1_r2_anteriores.get("matricula_inmobiliaria") or "Sin información",
+            "matricula_inmobiliaria": datos_r1_r2_anteriores.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "",
         }
         
         # Propietarios: Intentar obtenerlos del cambio/petición asociado al radicado
@@ -32228,7 +32228,7 @@ async def generar_preview_resolucion(
                 radicado=f"PREVIEW-{datetime.now().strftime('%Y%m%d')}",
                 codigo_catastral_anterior=codigo[:15] if codigo else "000000000000000",
                 npn=codigo,
-                matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or "Sin información",
+                matricula_inmobiliaria=datos_r1_r2.get("matricula_inmobiliaria") or predio.get("matricula_inmobiliaria") or "",
                 direccion=datos_r1_r2.get("direccion") or "",
                 avaluo=f"${datos_r1_r2.get('avaluo', 0):,.0f}".replace(",", ".") if datos_r1_r2.get('avaluo') else "$0",
                 vigencia_fiscal=f"01/01/{anio}",

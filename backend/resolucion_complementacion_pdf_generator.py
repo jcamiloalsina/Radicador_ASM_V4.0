@@ -152,7 +152,7 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
     # Datos del predio - OBTENER DE R1/R2
     datos_r1_r2 = obtener_datos_r1_r2_pdf(predio)
     codigo_predial = predio.get('codigo_predial_nacional', predio.get('codigo_predial', ''))
-    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or predio.get('matricula_inmobiliaria', '') or "Sin información"
+    matricula = datos_r1_r2.get('matricula_inmobiliaria', '') or predio.get('matricula_inmobiliaria', '') or ""
     area_terreno = datos_r1_r2.get('area_terreno', 0)
     area_construida = datos_r1_r2.get('area_construida', 0)
     destino_economico = datos_r1_r2.get('destino_economico', 'A')
