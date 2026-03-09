@@ -6568,38 +6568,45 @@ async def buscar_predios_por_municipio(
     
     # Filtro de búsqueda según tipo
     if is_matricula_search:
-        # Búsqueda EXACTA para matrículas
-        search_filter = {
-            "$or": [
-                {"matricula_inmobiliaria": q.strip()},
-                {"r2_registros.matricula_inmobiliaria": q.strip()}
-            ]
-        }
+        # Búsqueda EXACTA para matrículas - buscar en ambos campos
+        matricula_limpia = q.strip()
+        search_conditions = [
+            {"matricula_inmobiliaria": matricula_limpia},
+            {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+        ]
     else:
         # Búsqueda parcial para otros campos
-        search_filter = {
-            "$or": [
-                {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
-                {"codigo_predial": {"$regex": q, "$options": "i"}},
-                {"codigo_homologado": {"$regex": q, "$options": "i"}},
-                {"numero_predio": {"$regex": q, "$options": "i"}},
-                {"direccion": {"$regex": q, "$options": "i"}},
-                {"nombre_propietario": {"$regex": q, "$options": "i"}},
-                # Búsqueda dentro del array de propietarios
-                {"propietarios.nombre_propietario": {"$regex": q, "$options": "i"}},
-                {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
-                {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
-                {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
-                {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
-                {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
-                # Búsqueda por matrícula inmobiliaria (parcial)
-                {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
-                {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
-            ]
-        }
+        search_conditions = [
+            {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
+            {"codigo_predial": {"$regex": q, "$options": "i"}},
+            {"codigo_homologado": {"$regex": q, "$options": "i"}},
+            {"numero_predio": {"$regex": q, "$options": "i"}},
+            {"direccion": {"$regex": q, "$options": "i"}},
+            {"nombre_propietario": {"$regex": q, "$options": "i"}},
+            # Búsqueda dentro del array de propietarios
+            {"propietarios.nombre_propietario": {"$regex": q, "$options": "i"}},
+            {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
+            {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
+            {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
+            {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
+            {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
+            # Búsqueda por matrícula inmobiliaria (parcial)
+            {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
+            {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
+        ]
     
-    # Combinar filtros
-    filtro = {**base_filter, **search_filter}
+    # Combinar filtros correctamente usando $and
+    filtro = {
+        "$and": [
+            {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"vigencia": vigencia},
+            {"$or": [
+                {"municipio": {"$regex": municipio_nombre, "$options": "i"}} if municipio_nombre else {},
+                {"codigo_predial_nacional": {"$regex": f"^{municipio_codigo}", "$options": "i"}}
+            ]},
+            {"$or": search_conditions}
+        ]
+    }
     
     predios = await db.predios.find(
         filtro,
@@ -6735,7 +6742,12 @@ async def get_predios(
             is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
             
             if is_matricula_search:
-                search_query_general["r2_registros.matricula_inmobiliaria"] = search.strip()
+                # Buscar por matrícula exacta en ambos campos
+                matricula_limpia = search.strip()
+                search_query_general["$or"] = [
+                    {"matricula_inmobiliaria": matricula_limpia},
+                    {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+                ]
             else:
                 search_query_general["$or"] = [
                     {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
@@ -6743,6 +6755,7 @@ async def get_predios(
                     {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
                     {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
                     {"direccion": {"$regex": search, "$options": "i"}},
+                    {"matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
                     {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
                 ]
             
@@ -6804,9 +6817,13 @@ async def get_predios(
         is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
         
         if is_matricula_search:
-            # Búsqueda EXACTA para matrículas
+            # Búsqueda EXACTA para matrículas - buscar en ambos campos
+            matricula_limpia = search.strip()
             search_filter = {
-                "r2_registros.matricula_inmobiliaria": search.strip()
+                "$or": [
+                    {"matricula_inmobiliaria": matricula_limpia},
+                    {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+                ]
             }
         else:
             # Búsqueda parcial para otros campos
@@ -6817,6 +6834,7 @@ async def get_predios(
                     {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
                     {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
                     {"direccion": {"$regex": search, "$options": "i"}},
+                    {"matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
                     {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
                 ]
             }
