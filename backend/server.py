@@ -28941,17 +28941,60 @@ async def actualizar_configuracion_municipios(
 async def descargar_resolucion_pdf(filename: str):
     """Descargar un PDF de resolución por su nombre de archivo (público)"""
     try:
-        # Buscar en las dos ubicaciones posibles de PDFs
-        possible_paths = [
-            f"/app/backend/static/resoluciones/{filename}",
-            f"/app/frontend/public/resoluciones/{filename}"
+        import glob
+        
+        # Directorios donde buscar PDFs
+        search_dirs = [
+            "/app/backend/static/resoluciones",
+            "/app/frontend/public/resoluciones"
         ]
         
+        # Extraer el número de resolución del filename para búsqueda flexible
+        # Formato esperado: resolucion_RES-XX-XXX-XXXX-XXXX_TIMESTAMP.pdf o RES-XX-XXX-XXXX-XXXX.pdf
+        numero_resolucion = None
+        if filename.startswith("resolucion_"):
+            # Extraer RES-XX-XXX-XXXX-XXXX de resolucion_RES-XX-XXX-XXXX-XXXX_timestamp.pdf
+            parts = filename.replace("resolucion_", "").split("_")
+            if parts:
+                # Reconstruir el número de resolución (puede tener guiones)
+                numero_parts = []
+                for p in parts:
+                    if p.startswith("20") and len(p) == 8:  # Es timestamp YYYYMMDD
+                        break
+                    numero_parts.append(p)
+                numero_resolucion = "-".join(numero_parts) if numero_parts else None
+        elif filename.startswith("RES-") or filename.startswith("RES_"):
+            numero_resolucion = filename.replace(".pdf", "").replace("_", "-")
+        
         filepath = None
-        for path in possible_paths:
-            if os.path.exists(path):
-                filepath = path
+        
+        # 1. Primero buscar exactamente el archivo solicitado
+        for search_dir in search_dirs:
+            exact_path = f"{search_dir}/{filename}"
+            if os.path.exists(exact_path):
+                filepath = exact_path
                 break
+        
+        # 2. Si no se encuentra, buscar con el número de resolución simplificado
+        if not filepath and numero_resolucion:
+            simple_filename = f"{numero_resolucion}.pdf"
+            for search_dir in search_dirs:
+                simple_path = f"{search_dir}/{simple_filename}"
+                if os.path.exists(simple_path):
+                    filepath = simple_path
+                    filename = simple_filename  # Actualizar para la respuesta
+                    break
+        
+        # 3. Si aún no se encuentra, buscar por patrón glob
+        if not filepath and numero_resolucion:
+            for search_dir in search_dirs:
+                # Buscar cualquier archivo que contenga el número de resolución
+                pattern = f"{search_dir}/*{numero_resolucion.replace('-', '*')}*.pdf"
+                matches = glob.glob(pattern)
+                if matches:
+                    filepath = matches[0]
+                    filename = os.path.basename(filepath)
+                    break
         
         if not filepath:
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
