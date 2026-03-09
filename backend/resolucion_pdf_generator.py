@@ -163,13 +163,8 @@ def generate_resolucion_pdf(
     except:
         pie_pagina_img = None
     
-    try:
-        if imagen_firma_b64:
-            firma_img = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
-        else:
-            firma_img = ImageReader(get_firma_dalgie_image())
-    except:
-        firma_img = None
+    # Nota: La firma de Dalgie se carga más adelante en la sección de FIRMA (línea ~751)
+    # usando firma_dalgie, no firma_img, para evitar duplicación de código
     
     # Cargar logo para marca de agua
     logo_watermark = None
@@ -568,13 +563,13 @@ def generate_resolucion_pdf(
             x += cancel_cols[2]
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+            nro_doc_padded = str(nro_doc).zfill(12) if nro_doc else ''
             c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:
@@ -650,13 +645,13 @@ def generate_resolucion_pdf(
             x += cancel_cols[2]
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+            nro_doc_padded = str(nro_doc).zfill(12) if nro_doc else ''
             c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:
@@ -748,12 +743,26 @@ def generate_resolucion_pdf(
     y = check_page_break(y, 120)
     
     # Cargar imagen de firma de Dalgie
+    # Prioridad: 1) imagen_firma_b64 si se pasa, 2) archivo local, 3) base64 embebida
     firma_dalgie = None
     try:
-        firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
-        if os.path.exists(firma_path):
-            firma_dalgie = ImageReader(firma_path)
-    except:
+        if imagen_firma_b64:
+            # Si se pasa una firma base64 como parámetro, usarla
+            firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
+            print("Firma cargada desde parámetro imagen_firma_b64")
+        else:
+            # Intentar cargar desde archivo local primero
+            firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
+            if os.path.exists(firma_path):
+                firma_dalgie = ImageReader(firma_path)
+                print(f"Firma cargada desde archivo: {firma_path}")
+            else:
+                # Fallback a imagen en base64 embebida
+                firma_data = get_firma_dalgie_image()
+                firma_dalgie = ImageReader(firma_data)
+                print("Firma cargada desde base64 embebida (fallback)")
+    except Exception as e:
+        print(f"Error cargando firma de Dalgie: {e}")
         firma_dalgie = None
     
     # === SECCIÓN DE FIRMA Y QR - LADO A LADO (IGUAL QUE CERTIFICADO) ===

@@ -110,7 +110,12 @@ SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER)
 
 # File upload configuration
 UPLOAD_DIR = Path('/app/uploads')
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+# Asegurar permisos de escritura
+try:
+    UPLOAD_DIR.chmod(0o777)
+except Exception:
+    pass  # En algunos sistemas no se puede cambiar permisos
 
 security = HTTPBearer()
 
@@ -463,10 +468,9 @@ TIPO_DOCUMENTO_PREDIO = {
 # Catálogo de estado civil
 ESTADO_CIVIL_PREDIO = {
     "S": "Soltero/a",
-    "E": "Casado/a con sociedad conyugal",
-    "D": "Casado/a sin sociedad conyugal",
-    "V": "Separación de bienes",
-    "U": "Unión marital de hecho"
+    "C": "Casado/a",
+    "V": "Viudo/a",
+    "U": "Unión libre"
 }
 
 class PredioR1Create(BaseModel):
@@ -1063,7 +1067,7 @@ def get_email_template(titulo: str, contenido: str, radicado: str = None, tipo_n
         boton_texto: Texto del botón CTA (opcional)
         boton_url: URL del botón (opcional)
     """
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Colores según tipo de notificación
@@ -1236,7 +1240,7 @@ def get_finalizacion_email(radicado: str, tipo_tramite: str, nombre_solicitante:
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="¡Su trámite ha sido finalizado!",
@@ -1302,7 +1306,7 @@ def get_actualizacion_email(radicado: str, estado_nuevo: str, nombre_solicitante
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     tipo_noti = "error" if estado_nuevo == "rechazado" else ("warning" if estado_nuevo == "devuelto" else "info")
     
     return get_email_template(
@@ -1340,7 +1344,7 @@ def get_nueva_peticion_email(radicado: str, solicitante: str, tipo_tramite: str,
     <p>Por favor, revise y gestione esta solicitud a la brevedad posible.</p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nueva Petición Registrada",
@@ -1393,7 +1397,7 @@ def get_resolucion_aprobada_email(numero_resolucion: str, radicado: str, nombre_
     <span style="color: #64748b;">Asomunicipios</span></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Su Resolucion ha sido Aprobada",
@@ -1432,7 +1436,7 @@ def get_confirmacion_peticion_email(radicado: str, nombre_solicitante: str, tipo
     </p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Confirmacion de Radicacion",
@@ -1462,7 +1466,7 @@ def get_asignacion_email(radicado: str, tipo_tramite: str, gestor_nombre: str) -
     <strong>Sistema de Gestión Catastral</strong></p>
     '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevo Trámite Asignado",
@@ -1495,7 +1499,7 @@ def get_nuevos_archivos_email(radicado: str, es_staff: bool = False) -> str:
         </div>
         '''
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     
     return get_email_template(
         titulo="Nuevos Documentos en su Trámite",
@@ -6522,6 +6526,7 @@ async def buscar_predios_por_municipio(
     """
     Busca predios en un municipio específico por código predial, dirección, propietario o matrícula.
     Usado para búsquedas rápidas en formularios de mutaciones y bloqueos.
+    Detecta automáticamente búsquedas de matrícula (formato XXX-XXXXX) para búsqueda exacta.
     """
     if len(q) < 3:
         return {"predios": [], "total": 0}
@@ -6545,31 +6550,68 @@ async def buscar_predios_por_municipio(
     
     municipio_nombre = CODIGO_A_NOMBRE.get(municipio_codigo, "")
     
-    # Query de búsqueda - incluye búsqueda en array de propietarios y matrícula
+    # Obtener vigencia actual del sistema
+    vigencia_actual = await db.predios.find_one(
+        {"deleted": {"$ne": True}}, 
+        {"vigencia": 1, "_id": 0},
+        sort=[("vigencia", -1)]
+    )
+    vigencia = vigencia_actual.get("vigencia") if vigencia_actual else datetime.now().year
+    
+    # Detectar si es una búsqueda de matrícula (formato XXX-XXXXX)
+    is_matricula_search = bool(re.match(r'^\d{3}-\d+$', q.strip()))
+    
+    # Filtro base: no eliminados y del municipio
+    base_filter = {
+        "$and": [
+            {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"vigencia": vigencia},
+            {"$or": [
+                {"municipio": {"$regex": municipio_nombre, "$options": "i"}} if municipio_nombre else {},
+                {"codigo_predial_nacional": {"$regex": f"^{municipio_codigo}", "$options": "i"}}
+            ]}
+        ]
+    }
+    
+    # Filtro de búsqueda según tipo
+    if is_matricula_search:
+        # Búsqueda EXACTA para matrículas - buscar en ambos campos
+        matricula_limpia = q.strip()
+        search_conditions = [
+            {"matricula_inmobiliaria": matricula_limpia},
+            {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+        ]
+    else:
+        # Búsqueda parcial para otros campos
+        search_conditions = [
+            {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
+            {"codigo_predial": {"$regex": q, "$options": "i"}},
+            {"codigo_homologado": {"$regex": q, "$options": "i"}},
+            {"numero_predio": {"$regex": q, "$options": "i"}},
+            {"direccion": {"$regex": q, "$options": "i"}},
+            {"nombre_propietario": {"$regex": q, "$options": "i"}},
+            # Búsqueda dentro del array de propietarios
+            {"propietarios.nombre_propietario": {"$regex": q, "$options": "i"}},
+            {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
+            {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
+            {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
+            {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
+            {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
+            # Búsqueda por matrícula inmobiliaria (parcial)
+            {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
+            {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
+        ]
+    
+    # Combinar filtros correctamente usando $and
     filtro = {
         "$and": [
             {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"vigencia": vigencia},
             {"$or": [
                 {"municipio": {"$regex": municipio_nombre, "$options": "i"}} if municipio_nombre else {},
                 {"codigo_predial_nacional": {"$regex": f"^{municipio_codigo}", "$options": "i"}}
             ]},
-            {"$or": [
-                {"codigo_predial_nacional": {"$regex": q, "$options": "i"}},
-                {"codigo_predial": {"$regex": q, "$options": "i"}},
-                {"numero_predio": {"$regex": q, "$options": "i"}},
-                {"direccion": {"$regex": q, "$options": "i"}},
-                {"nombre_propietario": {"$regex": q, "$options": "i"}},
-                # Búsqueda dentro del array de propietarios
-                {"propietarios.nombre_propietario": {"$regex": q, "$options": "i"}},
-                {"propietarios.primer_nombre": {"$regex": q, "$options": "i"}},
-                {"propietarios.primer_apellido": {"$regex": q, "$options": "i"}},
-                {"propietarios.segundo_nombre": {"$regex": q, "$options": "i"}},
-                {"propietarios.segundo_apellido": {"$regex": q, "$options": "i"}},
-                {"propietarios.numero_documento": {"$regex": q, "$options": "i"}},
-                # Búsqueda por matrícula inmobiliaria
-                {"matricula_inmobiliaria": {"$regex": q, "$options": "i"}},
-                {"r2_registros.matricula_inmobiliaria": {"$regex": q, "$options": "i"}}
-            ]}
+            {"$or": search_conditions}
         ]
     }
     
@@ -6580,6 +6622,7 @@ async def buscar_predios_por_municipio(
             "id": 1,
             "codigo_predial_nacional": 1,
             "codigo_predial": 1,
+            "codigo_homologado": 1,
             "numero_predio": 1,
             "direccion": 1,
             "municipio": 1,
@@ -6592,13 +6635,15 @@ async def buscar_predios_por_municipio(
             "propietarios": 1,
             "matricula_inmobiliaria": 1,
             "r1_registros": 1,
-            "r2_registros": 1
+            "r2_registros": 1,
+            "vigencia": 1
         }
     ).limit(limit).to_list(length=limit)
     
     return {
         "predios": predios,
-        "total": len(predios)
+        "total": len(predios),
+        "vigencia_buscada": vigencia
     }
 
 
@@ -6704,7 +6749,12 @@ async def get_predios(
             is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
             
             if is_matricula_search:
-                search_query_general["r2_registros.matricula_inmobiliaria"] = search.strip()
+                # Buscar por matrícula exacta en ambos campos
+                matricula_limpia = search.strip()
+                search_query_general["$or"] = [
+                    {"matricula_inmobiliaria": matricula_limpia},
+                    {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+                ]
             else:
                 search_query_general["$or"] = [
                     {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
@@ -6712,6 +6762,7 @@ async def get_predios(
                     {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
                     {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
                     {"direccion": {"$regex": search, "$options": "i"}},
+                    {"matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
                     {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
                 ]
             
@@ -6773,9 +6824,13 @@ async def get_predios(
         is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
         
         if is_matricula_search:
-            # Búsqueda EXACTA para matrículas
+            # Búsqueda EXACTA para matrículas - buscar en ambos campos
+            matricula_limpia = search.strip()
             search_filter = {
-                "r2_registros.matricula_inmobiliaria": search.strip()
+                "$or": [
+                    {"matricula_inmobiliaria": matricula_limpia},
+                    {"r2_registros.matricula_inmobiliaria": matricula_limpia}
+                ]
             }
         else:
             # Búsqueda parcial para otros campos
@@ -6786,6 +6841,7 @@ async def get_predios(
                     {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
                     {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
                     {"direccion": {"$regex": search, "$options": "i"}},
+                    {"matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
                     {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
                 ]
             }
@@ -7054,7 +7110,7 @@ async def get_predios_eliminados_stats(current_user: dict = Depends(get_current_
     
     return {
         "by_municipio": [
-            {"municipio": r["_id"]["municipio"], "vigencia": r["_id"]["vigencia"], "count": r["count"]}
+            {"municipio": r["_id"].get("municipio"), "vigencia": r["_id"].get("vigencia"), "count": r["count"]}
             for r in result
         ],
         "total": sum(r["count"] for r in result)
@@ -7132,6 +7188,335 @@ async def migrar_predios_eliminados(current_user: dict = Depends(get_current_use
         "migrados": migrados,
         "ya_existentes": ya_existentes,
         "errores": errores
+    }
+
+
+class MigrarVigenciasRequest(BaseModel):
+    vigencia_origen_default: Optional[int] = None  # Si no se puede determinar, usar esta
+    vigencia_eliminacion_default: Optional[int] = None  # Si no se puede determinar, usar esta
+    solo_sin_vigencia: bool = True  # Solo migrar predios sin vigencia_eliminacion
+    dry_run: bool = False  # Si True, solo muestra lo que haría sin ejecutar
+
+
+@api_router.post("/predios/eliminados/migrar-vigencias")
+async def migrar_vigencias_eliminados(
+    request: MigrarVigenciasRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migra y corrige las vigencias de los predios eliminados.
+    
+    Estrategia de determinación de vigencias:
+    1. Si tiene `vigencia_eliminacion` y `vigencia_origen`, no se modifica
+    2. Si tiene `eliminado_en` (fecha), se extrae el año como vigencia_eliminacion
+    3. Si tiene `fecha_eliminacion`, se extrae el año
+    4. Si tiene `vigencia` pero no `vigencia_origen`, se copia a vigencia_origen
+    5. Como último recurso, se usan los valores default proporcionados
+    
+    Para determinar vigencia_origen (la última vigencia donde existió el predio):
+    - Si el motivo indica "Mutación M2" o similar, usar vigencia actual - 1
+    - Si hay un registro histórico en predios con el mismo código, usar esa vigencia
+    - De lo contrario, usar el campo `vigencia` existente
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
+    
+    # Construir query
+    query = {}
+    if request.solo_sin_vigencia:
+        query["$or"] = [
+            {"vigencia_eliminacion": {"$exists": False}},
+            {"vigencia_eliminacion": None},
+            {"vigencia_origen": {"$exists": False}},
+            {"vigencia_origen": None}
+        ]
+    
+    # Obtener predios a migrar
+    predios = await db.predios_eliminados.find(query, {"_id": 0}).to_list(50000)
+    
+    if not predios:
+        return {
+            "mensaje": "No hay predios que necesiten migración de vigencias",
+            "total": 0
+        }
+    
+    # Obtener vigencias disponibles en el sistema
+    vigencias_disponibles = await db.predios.distinct("vigencia")
+    vigencias_disponibles = sorted([v for v in vigencias_disponibles if v and v >= 2020])
+    vigencia_mas_reciente = max(vigencias_disponibles) if vigencias_disponibles else datetime.now().year
+    vigencia_anterior = vigencia_mas_reciente - 1 if vigencia_mas_reciente else datetime.now().year - 1
+    
+    resultados = {
+        "total_analizados": len(predios),
+        "actualizados": 0,
+        "sin_cambios": 0,
+        "errores": 0,
+        "dry_run": request.dry_run,
+        "detalles": []
+    }
+    
+    for predio in predios:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        
+        # Determinar vigencia_eliminacion
+        vigencia_eliminacion = predio.get("vigencia_eliminacion")
+        if not vigencia_eliminacion:
+            # Estrategia 1: Extraer del campo eliminado_en
+            eliminado_en = predio.get("eliminado_en")
+            if eliminado_en:
+                try:
+                    if isinstance(eliminado_en, str):
+                        fecha = datetime.fromisoformat(eliminado_en.replace('Z', '+00:00'))
+                    else:
+                        fecha = eliminado_en
+                    vigencia_eliminacion = fecha.year
+                except:
+                    pass
+            
+            # Estrategia 2: Extraer de fecha_eliminacion
+            if not vigencia_eliminacion:
+                fecha_elim = predio.get("fecha_eliminacion")
+                if fecha_elim:
+                    try:
+                        if isinstance(fecha_elim, str):
+                            fecha = datetime.fromisoformat(fecha_elim.replace('Z', '+00:00'))
+                        else:
+                            fecha = fecha_elim
+                        vigencia_eliminacion = fecha.year
+                    except:
+                        pass
+            
+            # Estrategia 3: Usar default o la vigencia más reciente
+            if not vigencia_eliminacion:
+                vigencia_eliminacion = request.vigencia_eliminacion_default or vigencia_mas_reciente
+        
+        # Determinar vigencia_origen
+        vigencia_origen = predio.get("vigencia_origen")
+        if not vigencia_origen:
+            # Estrategia 1: Buscar en predios históricos (todas las vigencias)
+            # Buscar la vigencia más alta donde existe un predio con este código
+            predio_historico = await db.predios.find_one(
+                {"codigo_predial_nacional": codigo, "deleted": {"$ne": True}},
+                {"_id": 0, "vigencia": 1},
+                sort=[("vigencia", -1)]
+            )
+            if predio_historico and predio_historico.get("vigencia"):
+                vigencia_origen = predio_historico["vigencia"]
+            else:
+                # Estrategia 2: Buscar incluso en predios marcados como deleted
+                predio_deleted = await db.predios.find_one(
+                    {"codigo_predial_nacional": codigo},
+                    {"_id": 0, "vigencia": 1},
+                    sort=[("vigencia", -1)]
+                )
+                if predio_deleted and predio_deleted.get("vigencia"):
+                    vigencia_origen = predio_deleted["vigencia"]
+                else:
+                    # Estrategia 3: Si tiene campo vigencia en el doc eliminado, usarlo
+                    vigencia_existente = predio.get("vigencia")
+                    if vigencia_existente:
+                        vigencia_origen = vigencia_existente
+                    else:
+                        # Estrategia 4: Usar default o vigencia anterior a eliminación
+                        vigencia_origen = request.vigencia_origen_default or (vigencia_eliminacion - 1 if vigencia_eliminacion else vigencia_anterior)
+        
+        # Verificar si hay cambios
+        cambios = {}
+        if vigencia_eliminacion and vigencia_eliminacion != predio.get("vigencia_eliminacion"):
+            cambios["vigencia_eliminacion"] = vigencia_eliminacion
+        if vigencia_origen and vigencia_origen != predio.get("vigencia_origen"):
+            cambios["vigencia_origen"] = vigencia_origen
+        
+        if not cambios:
+            resultados["sin_cambios"] += 1
+            continue
+        
+        # Aplicar cambios
+        if not request.dry_run:
+            try:
+                await db.predios_eliminados.update_one(
+                    {"id": predio_id},
+                    {"$set": cambios}
+                )
+                resultados["actualizados"] += 1
+            except Exception as e:
+                resultados["errores"] += 1
+                resultados["detalles"].append({
+                    "codigo": codigo,
+                    "error": str(e)
+                })
+        else:
+            resultados["actualizados"] += 1
+            if len(resultados["detalles"]) < 20:  # Limitar detalles en dry run
+                resultados["detalles"].append({
+                    "codigo": codigo[:30],
+                    "cambios": cambios,
+                    "valores_anteriores": {
+                        "vigencia_eliminacion": predio.get("vigencia_eliminacion"),
+                        "vigencia_origen": predio.get("vigencia_origen")
+                    }
+                })
+    
+    return {
+        "mensaje": f"Migración {'simulada (dry run)' if request.dry_run else 'completada'}",
+        **resultados
+    }
+
+
+class MigrarEstadoCivilRequest(BaseModel):
+    dry_run: bool = True  # Si True, solo muestra lo que haría sin ejecutar
+    limpiar_invalidos: bool = True  # Si True, limpia valores inválidos del campo estado_civil
+
+
+@api_router.post("/predios/migrar-estado-civil")
+async def migrar_estado_civil_propietarios(
+    request: MigrarEstadoCivilRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migra y corrige el campo estado_civil de los propietarios.
+    
+    El problema: Algunos predios tienen el apellido del propietario en el campo estado_civil
+    debido a un desplazamiento de columnas al importar Excel.
+    
+    Esta migración:
+    1. Identifica propietarios donde estado_civil contiene un valor que NO es un estado civil válido
+    2. Limpia esos valores incorrectos (los deja vacíos)
+    
+    Estados civiles válidos: CASADO, SOLTERO, VIUDO, DIVORCIADO, UNION LIBRE, SEPARADO, etc.
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
+    
+    # Estados civiles válidos (en mayúsculas para comparación)
+    # Códigos estándar: S=Soltero, C=Casado, V=Viudo, U=Unión libre
+    ESTADOS_CIVILES_VALIDOS = {
+        'CASADO', 'CASADA', 'SOLTERO', 'SOLTERA', 'VIUDO', 'VIUDA',
+        'DIVORCIADO', 'DIVORCIADA', 'SEPARADO', 'SEPARADA',
+        'UNION LIBRE', 'UNIÓN LIBRE', 'UNION_LIBRE',
+        'C', 'S', 'V', 'U',  # Códigos estándar
+        'N/A', 'NA', 'NO APLICA',
+        '', ' '  # Vacío es válido
+    }
+    
+    resultados = {
+        "total_predios_analizados": 0,
+        "predios_con_errores": 0,
+        "propietarios_corregidos": 0,
+        "dry_run": request.dry_run,
+        "ejemplos_corregidos": [],
+        "errores": []
+    }
+    
+    # Buscar todos los predios con propietarios
+    predios = await db.predios.find(
+        {"propietarios": {"$exists": True, "$ne": []}},
+        {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "propietarios": 1}
+    ).to_list(100000)
+    
+    resultados["total_predios_analizados"] = len(predios)
+    
+    for predio in predios:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        propietarios = predio.get("propietarios", [])
+        
+        propietarios_modificados = False
+        propietarios_actualizados = []
+        
+        for prop in propietarios:
+            estado_civil = str(prop.get("estado_civil", "") or "").strip().upper()
+            
+            # Verificar si el valor es un estado civil válido
+            es_valido = estado_civil in ESTADOS_CIVILES_VALIDOS
+            
+            # Si no es válido, es probablemente un apellido u otro dato incorrecto
+            if not es_valido and estado_civil:
+                propietarios_modificados = True
+                resultados["propietarios_corregidos"] += 1
+                
+                # Guardar ejemplo para el reporte
+                if len(resultados["ejemplos_corregidos"]) < 30:
+                    resultados["ejemplos_corregidos"].append({
+                        "codigo": codigo[:25] + "...",
+                        "propietario": prop.get("nombre_propietario", "")[:30],
+                        "estado_civil_incorrecto": estado_civil[:20],
+                        "accion": "Limpiado a vacío"
+                    })
+                
+                if request.limpiar_invalidos:
+                    prop_actualizado = {**prop, "estado_civil": ""}
+                else:
+                    prop_actualizado = prop
+                    
+                propietarios_actualizados.append(prop_actualizado)
+            else:
+                propietarios_actualizados.append(prop)
+        
+        if propietarios_modificados:
+            resultados["predios_con_errores"] += 1
+            
+            if not request.dry_run and request.limpiar_invalidos:
+                try:
+                    await db.predios.update_one(
+                        {"id": predio_id},
+                        {"$set": {"propietarios": propietarios_actualizados}}
+                    )
+                except Exception as e:
+                    resultados["errores"].append({
+                        "codigo": codigo,
+                        "error": str(e)
+                    })
+    
+    # También revisar predios_eliminados
+    predios_eliminados = await db.predios_eliminados.find(
+        {"propietarios": {"$exists": True, "$ne": []}},
+        {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "propietarios": 1}
+    ).to_list(100000)
+    
+    for predio in predios_eliminados:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        propietarios = predio.get("propietarios", [])
+        
+        propietarios_modificados = False
+        propietarios_actualizados = []
+        
+        for prop in propietarios:
+            estado_civil = str(prop.get("estado_civil", "") or "").strip().upper()
+            es_valido = estado_civil in ESTADOS_CIVILES_VALIDOS
+            
+            if not es_valido and estado_civil:
+                propietarios_modificados = True
+                resultados["propietarios_corregidos"] += 1
+                
+                if request.limpiar_invalidos:
+                    prop_actualizado = {**prop, "estado_civil": ""}
+                else:
+                    prop_actualizado = prop
+                propietarios_actualizados.append(prop_actualizado)
+            else:
+                propietarios_actualizados.append(prop)
+        
+        if propietarios_modificados:
+            resultados["predios_con_errores"] += 1
+            
+            if not request.dry_run and request.limpiar_invalidos:
+                try:
+                    await db.predios_eliminados.update_one(
+                        {"id": predio_id},
+                        {"$set": {"propietarios": propietarios_actualizados}}
+                    )
+                except Exception as e:
+                    resultados["errores"].append({
+                        "codigo": codigo,
+                        "error": str(e)
+                    })
+    
+    return {
+        "mensaje": f"Migración de estado_civil {'simulada (dry run)' if request.dry_run else 'completada'}",
+        **resultados
     }
 
 
@@ -9452,11 +9837,39 @@ async def actualizar_radicado_eliminado(
 async def import_predios_excel(
     file: UploadFile = File(...),
     vigencia: Optional[str] = Query(None),
+    codigo_municipio: str = Query(..., description="Código del municipio (5 dígitos) al que pertenecen los predios"),
     force: bool = Query(False, description="Forzar importación aunque haya diferencia significativa de predios"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Importa predios desde archivo Excel R1-R2 con soporte de vigencia"""
+    """Importa predios desde archivo Excel R1-R2 con validación de municipio"""
     import openpyxl
+    
+    # Validar código de municipio
+    if not codigo_municipio or len(codigo_municipio) != 5 or not codigo_municipio.isdigit():
+        raise HTTPException(status_code=400, detail="Debe proporcionar un código de municipio válido (5 dígitos)")
+    
+    # Mapeo de códigos a nombres de municipio para validación
+    MUNICIPIOS_VALIDOS = {
+        '54003': 'Ábrego',
+        '54109': 'Bucarasica', 
+        '54128': 'Cáchira',
+        '54206': 'Convención',
+        '54245': 'El Carmen',
+        '54250': 'El Tarra',
+        '54344': 'Hacarí',
+        '54385': 'La Esperanza',
+        '54398': 'La Playa',
+        '54670': 'San Calixto',
+        '54720': 'Sardinata',
+        '54800': 'Teorama',
+        '20614': 'Río de Oro',
+    }
+    
+    if codigo_municipio not in MUNICIPIOS_VALIDOS:
+        raise HTTPException(status_code=400, detail=f"Código de municipio '{codigo_municipio}' no reconocido. Municipios válidos: {list(MUNICIPIOS_VALIDOS.keys())}")
+    
+    nombre_municipio = MUNICIPIOS_VALIDOS[codigo_municipio]
+    logger.info(f"Importando Excel para municipio: {nombre_municipio} ({codigo_municipio})")
     
     # Procesar vigencia - puede venir como "2023", "2025", "01012023", "1012023", etc.
     vigencia_int = 2025  # valor por defecto
@@ -9590,6 +10003,9 @@ async def import_predios_excel(
                     col_map['nombre'] = i
                 elif 'ESTADO' in h_upper and 'CIVIL' in h_upper:
                     col_map['estado_civil'] = i
+                elif h_upper == 'ESTADO' and 'CIVIL' not in h_upper:
+                    # También detectar si solo dice "ESTADO" (sin CIVIL)
+                    col_map['estado_civil'] = i
                 elif 'TIPO' in h_upper and 'DOCUMENTO' in h_upper:
                     col_map['tipo_documento'] = i
                 elif 'NUMERO' in h_upper and 'DOCUMENTO' in h_upper:
@@ -9673,6 +10089,46 @@ async def import_predios_excel(
                     'tipo_documento': str(get_col(row, 'tipo_documento') or '').strip(),
                     'numero_documento': str(get_col(row, 'numero_documento') or '').strip()
                 })
+        
+        # ============================================
+        # VALIDACIÓN DE MUNICIPIO
+        # ============================================
+        # Verificar que TODOS los predios del Excel pertenezcan al municipio seleccionado
+        predios_incorrectos = []
+        municipios_encontrados = set()
+        
+        for codigo, predio in r1_data.items():
+            # Los primeros 5 dígitos del código predial nacional son el código del municipio
+            if len(codigo) >= 5:
+                codigo_mun_excel = codigo[:5]
+                municipios_encontrados.add(codigo_mun_excel)
+                
+                if codigo_mun_excel != codigo_municipio:
+                    predios_incorrectos.append({
+                        "codigo": codigo[:30] + "...",
+                        "municipio_excel": codigo_mun_excel,
+                        "municipio_esperado": codigo_municipio
+                    })
+        
+        if predios_incorrectos:
+            wb.close()
+            temp_path.unlink()
+            
+            # Mensaje de error detallado
+            municipios_str = ", ".join(municipios_encontrados)
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": f"El archivo Excel contiene predios de otros municipios",
+                    "municipio_seleccionado": f"{nombre_municipio} ({codigo_municipio})",
+                    "municipios_en_excel": municipios_str,
+                    "total_predios_incorrectos": len(predios_incorrectos),
+                    "ejemplos": predios_incorrectos[:10],
+                    "sugerencia": f"Asegúrese de seleccionar el municipio correcto o use un archivo Excel que solo contenga predios del municipio {nombre_municipio}"
+                }
+            )
+        
+        logger.info(f"✅ Validación de municipio exitosa: {len(r1_data)} predios pertenecen a {nombre_municipio} ({codigo_municipio})")
         
         # Buscar hoja R2 con nombres alternativos (normalizando espacios)
         r2_sheet_names = ['REGISTRO_R2', 'REGISTRO R2', 'R2', 'Registro_R2', 'Registro R2', 'registro_r2', 'Hoja2', 'Sheet2']
@@ -11975,7 +12431,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     import logging
     logging.info(f"🔍 Verificando código: {codigo_verificacion}")
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://area-dashboard.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://firma-resolucion.preview.emergentagent.com')
     logo_url = f"{frontend_url}/logo-asomunicipios.png"
     
     # Determinar tipo de documento por el código
@@ -14525,6 +14981,11 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Para la sección INSCRIPCIÓN, usar datos_propuestos (datos nuevos del formulario)
         # Los datos nuevos NO están en R1/R2 porque aún no se han inscrito
         # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
+        # IMPORTANTE: La matrícula inmobiliaria debe venir del predio original si no cambió
+        matricula_original = datos_anteriores.get("matricula_inmobiliaria") or ""
+        if matricula_original == "Sin información":
+            matricula_original = ""
+        
         datos_inscripcion = {
             "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
             "area_construida": datos_propuestos.get("area_construida") or datos_predio.get("area_construida") or 0,
@@ -14532,7 +14993,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
             "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
             "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+            # Matrícula: usar del propuesto SI cambió, si no usar la del predio original
+            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "Sin información",
         }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -14575,8 +15037,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         import os
         os.makedirs(resoluciones_dir, exist_ok=True)
 
-        # Guardar el PDF
-        filename = f"resolucion_{numero_resolucion.replace('/', '-')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar el PDF - Nombre simplificado: RES-XX-XXX-XXXX-XXXX.pdf
+        filename = f"{numero_resolucion.replace('/', '-')}.pdf"
         filepath = f"{resoluciones_dir}/{filename}"
         with open(filepath, "wb") as f:
             f.write(pdf_bytes)
@@ -14707,7 +15169,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     subject=f"Resolución Aprobada - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución enviado a {email_solicitante}")
@@ -14829,8 +15291,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M2_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado: RES-XX-XXX-XXXX-XXXX.pdf
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF - llamar con parámetros individuales
@@ -15057,7 +15519,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                             subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                         )
                         logging.info(f"✅ Correo de resolución M2 enviado a {email_solicitante}")
                 except Exception as email_error:
@@ -15151,8 +15613,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M3_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF
@@ -15322,7 +15784,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                             subject=f"Resolución de {tipo_texto} Aprobada - {numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                         )
                         logging.info(f"✅ Correo de resolución M3 enviado a {email_solicitante}")
                 except Exception as email_error:
@@ -15410,8 +15872,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M4_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF
@@ -15563,7 +16025,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución {decision_texto} - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
@@ -15704,8 +16166,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         # Generar PDF
         pdf_bytes = generate_m5_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"M5_{subtipo}_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"/app/backend/static/resoluciones/{filename}"
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -15851,7 +16313,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución {subtipo_texto} - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución M5 enviado a {email_solicitante}")
@@ -16035,8 +16497,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         # Generar PDF
         pdf_bytes = generate_m6_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"Rectificacion_Area_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"/app/backend/static/resoluciones/{filename}"
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -16253,7 +16715,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución Rectificación de Área - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Rectificación de Área enviado a {email_solicitante}")
             
@@ -16388,8 +16850,8 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         # Generar PDF
         pdf_bytes = generate_complementacion_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"COMP_{municipio}_{numero_resolucion.replace('/', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_dir = "/app/backend/static/resoluciones"
         os.makedirs(pdf_dir, exist_ok=True)
         pdf_path = f"{pdf_dir}/{filename}"
@@ -16499,7 +16961,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     subject=f"Resolución Complementación de Información - {numero_resolucion}",
                     body=email_body,
                     attachment_path=pdf_path,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Complementación enviado a {email_solicitante}")
             
@@ -28541,17 +29003,60 @@ async def actualizar_configuracion_municipios(
 async def descargar_resolucion_pdf(filename: str):
     """Descargar un PDF de resolución por su nombre de archivo (público)"""
     try:
-        # Buscar en las dos ubicaciones posibles de PDFs
-        possible_paths = [
-            f"/app/backend/static/resoluciones/{filename}",
-            f"/app/frontend/public/resoluciones/{filename}"
+        import glob
+        
+        # Directorios donde buscar PDFs
+        search_dirs = [
+            "/app/backend/static/resoluciones",
+            "/app/frontend/public/resoluciones"
         ]
         
+        # Extraer el número de resolución del filename para búsqueda flexible
+        # Formato esperado: resolucion_RES-XX-XXX-XXXX-XXXX_TIMESTAMP.pdf o RES-XX-XXX-XXXX-XXXX.pdf
+        numero_resolucion = None
+        if filename.startswith("resolucion_"):
+            # Extraer RES-XX-XXX-XXXX-XXXX de resolucion_RES-XX-XXX-XXXX-XXXX_timestamp.pdf
+            parts = filename.replace("resolucion_", "").split("_")
+            if parts:
+                # Reconstruir el número de resolución (puede tener guiones)
+                numero_parts = []
+                for p in parts:
+                    if p.startswith("20") and len(p) == 8:  # Es timestamp YYYYMMDD
+                        break
+                    numero_parts.append(p)
+                numero_resolucion = "-".join(numero_parts) if numero_parts else None
+        elif filename.startswith("RES-") or filename.startswith("RES_"):
+            numero_resolucion = filename.replace(".pdf", "").replace("_", "-")
+        
         filepath = None
-        for path in possible_paths:
-            if os.path.exists(path):
-                filepath = path
+        
+        # 1. Primero buscar exactamente el archivo solicitado
+        for search_dir in search_dirs:
+            exact_path = f"{search_dir}/{filename}"
+            if os.path.exists(exact_path):
+                filepath = exact_path
                 break
+        
+        # 2. Si no se encuentra, buscar con el número de resolución simplificado
+        if not filepath and numero_resolucion:
+            simple_filename = f"{numero_resolucion}.pdf"
+            for search_dir in search_dirs:
+                simple_path = f"{search_dir}/{simple_filename}"
+                if os.path.exists(simple_path):
+                    filepath = simple_path
+                    filename = simple_filename  # Actualizar para la respuesta
+                    break
+        
+        # 3. Si aún no se encuentra, buscar por patrón glob
+        if not filepath and numero_resolucion:
+            for search_dir in search_dirs:
+                # Buscar cualquier archivo que contenga el número de resolución
+                pattern = f"{search_dir}/*{numero_resolucion.replace('-', '*')}*.pdf"
+                matches = glob.glob(pattern)
+                if matches:
+                    filepath = matches[0]
+                    filename = os.path.basename(filepath)
+                    break
         
         if not filepath:
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
@@ -28898,7 +29403,7 @@ async def generar_resolucion_m2(
         os.makedirs(resoluciones_dir, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"resolucion_{numero_resolucion.replace('-', '_')}_{timestamp}.pdf"
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path_full = os.path.join(resoluciones_dir, filename)
         pdf_path_relative = f"/resoluciones/{filename}"
 
@@ -29430,7 +29935,7 @@ async def generar_resolucion_m3(
         os.makedirs(resoluciones_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"resolucion_{numero_resolucion.replace('-', '_').replace('/', '_')}_{timestamp}.pdf"
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path = os.path.join(resoluciones_dir, filename)
         
         with open(pdf_path, "wb") as f:
@@ -29640,6 +30145,13 @@ async def procesar_excel_desenglobe_masivo(
             'NUMERO_DOCUMENTO': 'propietario_documento',
             'NUMERO DOCUMENTO': 'propietario_documento',
             'DOCUMENTO': 'propietario_documento',
+            # Campos adicionales para estado civil y nombre separado
+            'ESTADO': 'propietario_estado_civil',
+            'ESTADO_CIVIL': 'propietario_estado_civil',
+            'PRIMER_APELLIDO': 'propietario_primer_apellido',
+            'SEGUNDO_APELLIDO': 'propietario_segundo_apellido',
+            'PRIMER_NOMBRE': 'propietario_primer_nombre',
+            'SEGUNDO_NOMBRE': 'propietario_segundo_nombre',
         }
         
         # Extraer base del NPN del predio matriz (primeros 25 dígitos = hasta terreno)
@@ -29727,6 +30239,16 @@ async def procesar_excel_desenglobe_masivo(
                                 propietario['tipo_documento'] = str(val).strip()
                             elif field == 'propietario_documento':
                                 propietario['numero_documento'] = str(val).strip()
+                            elif field == 'propietario_estado_civil':
+                                propietario['estado_civil'] = str(val).strip()
+                            elif field == 'propietario_primer_apellido':
+                                propietario['primer_apellido'] = str(val).strip()
+                            elif field == 'propietario_segundo_apellido':
+                                propietario['segundo_apellido'] = str(val).strip()
+                            elif field == 'propietario_primer_nombre':
+                                propietario['primer_nombre'] = str(val).strip()
+                            elif field == 'propietario_segundo_nombre':
+                                propietario['segundo_nombre'] = str(val).strip()
                         else:
                             predio[field] = str(val).strip()
             
@@ -30956,7 +31478,7 @@ async def generar_resolucion_manual(
         resoluciones_dir = "/app/uploads/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        filename = f"resolucion_{request.numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"{request.numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"{resoluciones_dir}/{filename}"
         with open(filepath, "wb") as f:
             f.write(pdf_bytes)
@@ -31603,6 +32125,218 @@ async def actualizar_configuracion_anios(
     )
     
     return {"message": "Configuración actualizada", "año_inicial": anio_inicial, "años_futuro": anios_futuro}
+
+
+# ===== FILE MANAGER ENDPOINTS =====
+# Directorio base para archivos del sistema
+FILES_BASE_DIR = Path("/app/uploads/system_files")
+os.makedirs(FILES_BASE_DIR, exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "backups", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "imports", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "exports", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "resoluciones", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "gdb_uploads", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "temp", exist_ok=True)
+
+def get_directory_info(path: Path):
+    """Obtener información de un directorio"""
+    items = []
+    total_size = 0
+    
+    if path.exists() and path.is_dir():
+        for item in sorted(path.iterdir()):
+            if item.name.startswith('.'):
+                continue
+                
+            if item.is_dir():
+                dir_items = len([f for f in item.iterdir() if not f.name.startswith('.')])
+                items.append({
+                    "name": item.name,
+                    "type": "folder",
+                    "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat(),
+                    "items_count": dir_items
+                })
+            else:
+                file_size = item.stat().st_size
+                total_size += file_size
+                items.append({
+                    "name": item.name,
+                    "type": "file",
+                    "size": file_size,
+                    "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                })
+    
+    return items, total_size
+
+def get_storage_info():
+    """Obtener información de almacenamiento"""
+    total_size = 0
+    files_count = 0
+    
+    for root, dirs, files in os.walk(FILES_BASE_DIR):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for file in files:
+            if not file.startswith('.'):
+                file_path = Path(root) / file
+                total_size += file_path.stat().st_size
+                files_count += 1
+    
+    return {
+        "used": total_size,
+        "total": 1073741824,  # 1GB límite
+        "files_count": files_count
+    }
+
+@api_router.get("/files/list")
+async def list_files(
+    path: str = "/",
+    current_user: dict = Depends(get_current_user)
+):
+    """Listar archivos y carpetas en un directorio"""
+    # Solo admin y coordinadores pueden acceder
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para acceder a esta funcionalidad")
+    
+    # Validar path para prevenir path traversal
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path if clean_path else FILES_BASE_DIR
+    
+    if not full_path.exists():
+        full_path.mkdir(parents=True, exist_ok=True)
+    
+    items, _ = get_directory_info(full_path)
+    storage_info = get_storage_info()
+    
+    return {
+        "path": "/" + clean_path if clean_path else "/",
+        "items": items,
+        "storage_info": storage_info
+    }
+
+@api_router.post("/files/upload")
+async def upload_file(
+    path: str = Form("/"),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Subir un archivo al directorio especificado"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para subir archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path if clean_path else FILES_BASE_DIR
+    
+    if not full_path.exists():
+        full_path.mkdir(parents=True, exist_ok=True)
+    
+    file_path = full_path / file.filename
+    
+    # Guardar archivo
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="upload",
+        categoria="archivos",
+        descripcion=f"Archivo subido: {file.filename}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path, "filename": file.filename}
+    )
+    
+    return {"message": "Archivo subido correctamente", "filename": file.filename}
+
+@api_router.get("/files/download")
+async def download_file(
+    path: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Descargar un archivo"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para descargar archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if not full_path.exists() or full_path.is_dir():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    
+    return FileResponse(
+        path=str(full_path),
+        filename=full_path.name,
+        media_type="application/octet-stream"
+    )
+
+@api_router.delete("/files/delete")
+async def delete_file(
+    path: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Eliminar un archivo o carpeta"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para eliminar archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo o carpeta no encontrado")
+    
+    # No permitir eliminar directorios principales
+    protected_dirs = ["backups", "imports", "exports", "resoluciones", "gdb_uploads", "temp"]
+    if clean_path in protected_dirs:
+        raise HTTPException(status_code=403, detail="No se puede eliminar este directorio")
+    
+    if full_path.is_dir():
+        shutil.rmtree(full_path)
+    else:
+        full_path.unlink()
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="delete",
+        categoria="archivos",
+        descripcion=f"Archivo/carpeta eliminado: {clean_path}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path}
+    )
+    
+    return {"message": "Eliminado correctamente"}
+
+@api_router.post("/files/create-folder")
+async def create_folder(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crear una nueva carpeta"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para crear carpetas")
+    
+    path = data.get("path", "")
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if full_path.exists():
+        raise HTTPException(status_code=400, detail="La carpeta ya existe")
+    
+    full_path.mkdir(parents=True, exist_ok=True)
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="create",
+        categoria="archivos",
+        descripcion=f"Carpeta creada: {clean_path}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path}
+    )
+    
+    return {"message": "Carpeta creada correctamente"}
 
 
 # Include the router in the main app

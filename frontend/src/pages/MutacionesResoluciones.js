@@ -12,7 +12,7 @@ import axios from 'axios';
 import { 
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
-  Users, MapPin, DollarSign, Calendar, Filter,
+  Users, User, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
   Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
   Unlock, AlertTriangle
@@ -64,7 +64,7 @@ const TIPOS_MUTACION = {
   RECTIFICACION_AREA: { 
     codigo: 'RECTIFICACION_AREA', 
     codigoDisplay: 'Ajuste Área',
-    nombre: 'Ajuste de Área', 
+    nombre: 'Rectificación de Área', 
     descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
     enabled: true
@@ -301,7 +301,7 @@ export default function MutacionesResoluciones() {
   
   // Estados para datos R1/R2 del nuevo predio M5
   const [propietariosM5, setPropietariosM5] = useState([{
-    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: 'sin_especificar'
+    nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
   }]);
   const [zonasTermenoM5, setZonasTermenoM5] = useState([{ zona_fisica: '', zona_economica: '', area_terreno: '0' }]);
   const [construccionesM5, setConstruccionesM5] = useState([{
@@ -3040,10 +3040,10 @@ export default function MutacionesResoluciones() {
       const token = localStorage.getItem('token');
       const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === m5Data.municipio)?.codigo;
       
-      const response = await axios.get(`${API}/predios/buscar`, {
+      // Usar el endpoint buscar-municipio que tiene la lógica correcta de búsqueda
+      const response = await axios.get(`${API}/predios/buscar-municipio/${codigoMunicipio}`, {
         params: { 
           q: searchPredioM5,
-          municipio: codigoMunicipio,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
@@ -3208,16 +3208,11 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === rectificacionData.municipio)?.codigo;
-      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const vigenciaActual = statsResponse.data.vigencia_actual;
       
-      const response = await axios.get(`${API}/predios`, {
+      // Usar el endpoint buscar-municipio que tiene la lógica correcta de búsqueda por matrícula
+      const response = await axios.get(`${API}/predios/buscar-municipio/${codigoMunicipio}`, {
         params: { 
           q: searchPredioRectificacion,
-          codigo_municipio: codigoMunicipio,
-          vigencia: vigenciaActual,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
@@ -5449,11 +5444,12 @@ export default function MutacionesResoluciones() {
                             </div>
                             <div className="col-span-2">
                               <Label className="text-xs">Estado Civil</Label>
-                              <RadioGroup value={prop.estado_civil || 'sin_especificar'} onValueChange={(v) => actualizarPropietarioM5(index, 'estado_civil', v)} className="flex flex-wrap gap-2 mt-1">
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="sin_especificar" id={`m5_estado_${index}_sin`} /><Label htmlFor={`m5_estado_${index}_sin`} className="text-xs cursor-pointer text-emerald-600">Sin especificar</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="soltero" id={`m5_estado_${index}_sol`} /><Label htmlFor={`m5_estado_${index}_sol`} className="text-xs cursor-pointer">Soltero/a</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="casado_con" id={`m5_estado_${index}_cas`} /><Label htmlFor={`m5_estado_${index}_cas`} className="text-xs cursor-pointer">Casado/a con sociedad</Label></div>
-                                <div className="flex items-center space-x-1"><RadioGroupItem value="union_marital" id={`m5_estado_${index}_um`} /><Label htmlFor={`m5_estado_${index}_um`} className="text-xs cursor-pointer">Unión marital</Label></div>
+                              <RadioGroup value={prop.estado_civil || ''} onValueChange={(v) => actualizarPropietarioM5(index, 'estado_civil', v)} className="flex flex-wrap gap-2 mt-1">
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m5_estado_${index}_sin`} /><Label htmlFor={`m5_estado_${index}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m5_estado_${index}_sol`} /><Label htmlFor={`m5_estado_${index}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m5_estado_${index}_cas`} /><Label htmlFor={`m5_estado_${index}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m5_estado_${index}_viu`} /><Label htmlFor={`m5_estado_${index}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m5_estado_${index}_uni`} /><Label htmlFor={`m5_estado_${index}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
                               </RadioGroup>
                             </div>
                             <div>
@@ -6182,10 +6178,10 @@ export default function MutacionesResoluciones() {
           <span className={complementacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
             {complementacionData.municipio || 'Seleccione municipio'}
           </span>
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className={`w-4 h-4 transition-transform ${showMunicipioDropdownComplementacion ? 'rotate-180' : ''}`} />
         </div>
         {showMunicipioDropdownComplementacion && (
-          <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="absolute z-[99999] w-full bottom-full mb-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {MUNICIPIOS.map(mun => (
               <div
                 key={mun.codigo}
@@ -6218,10 +6214,11 @@ export default function MutacionesResoluciones() {
                 if (valor.length >= 3) {
                   setSearchingPrediosComplementacion(true);
                   try {
+                    const tokenLocal = localStorage.getItem('token');
                     const municipioCodigo = MUNICIPIOS.find(m => m.nombre === complementacionData.municipio)?.codigo;
                     const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
                       params: { q: valor, limit: 10 },
-                      headers: { Authorization: `Bearer ${token}` }
+                      headers: { Authorization: `Bearer ${tokenLocal}` }
                     });
                     setSearchResultsComplementacion(response.data.predios || []);
                   } catch (error) {
@@ -6465,10 +6462,10 @@ export default function MutacionesResoluciones() {
               <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
                 {bloqueoMunicipio || 'Seleccione municipio'}
               </span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className={`w-4 h-4 transition-transform ${showBloqueoMunicipioDropdown ? 'rotate-180' : ''}`} />
             </div>
             {showBloqueoMunicipioDropdown && (
-              <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-[99999] w-full bottom-full mb-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {MUNICIPIOS.map(mun => (
                   <div
                     key={mun.codigo}
@@ -8744,6 +8741,20 @@ export default function MutacionesResoluciones() {
                                 />
                               </div>
                             </div>
+                            <div className="mt-2">
+                              <Label className="text-xs">Estado Civil</Label>
+                              <RadioGroup 
+                                value={prop.estado_civil || ''} 
+                                onValueChange={(v) => actualizarPropietarioNuevo(idx, 'estado_civil', v)} 
+                                className="flex flex-wrap gap-3 mt-1"
+                              >
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m1_estado_${idx}_sin`} /><Label htmlFor={`m1_estado_${idx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m1_estado_${idx}_sol`} /><Label htmlFor={`m1_estado_${idx}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m1_estado_${idx}_cas`} /><Label htmlFor={`m1_estado_${idx}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m1_estado_${idx}_viu`} /><Label htmlFor={`m1_estado_${idx}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
+                                <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m1_estado_${idx}_uni`} /><Label htmlFor={`m1_estado_${idx}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
+                              </RadioGroup>
+                            </div>
                           </div>
                         ))
                       )}
@@ -10055,6 +10066,20 @@ export default function MutacionesResoluciones() {
                             />
                           </div>
                         </div>
+                        <div className="mt-2">
+                          <Label className="text-xs">Estado Civil</Label>
+                          <RadioGroup 
+                            value={prop.estado_civil || ''} 
+                            onValueChange={(v) => actualizarPropietarioNuevoPredio(index, 'estado_civil', v)} 
+                            className="flex flex-wrap gap-2 mt-1"
+                          >
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`m2_estado_${index}_sin`} /><Label htmlFor={`m2_estado_${index}_sin`} className="text-[10px] cursor-pointer text-slate-500">Sin especificar</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`m2_estado_${index}_sol`} /><Label htmlFor={`m2_estado_${index}_sol`} className="text-[10px] cursor-pointer">S: Soltero/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`m2_estado_${index}_cas`} /><Label htmlFor={`m2_estado_${index}_cas`} className="text-[10px] cursor-pointer">C: Casado/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`m2_estado_${index}_viu`} /><Label htmlFor={`m2_estado_${index}_viu`} className="text-[10px] cursor-pointer">V: Viudo/a</Label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`m2_estado_${index}_uni`} /><Label htmlFor={`m2_estado_${index}_uni`} className="text-[10px] cursor-pointer">U: Unión libre</Label></div>
+                          </RadioGroup>
+                        </div>
                       </div>
                     ))}
                   </CardContent>
@@ -10564,7 +10589,7 @@ export default function MutacionesResoluciones() {
                           {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia_eliminacion || predio.vigencia_origen || predio.vigencia || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia_origen || predio.vigencia_eliminacion || predio.vigencia || 'N/A'}</td>
                         <td className="py-3 px-4">
                           <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>

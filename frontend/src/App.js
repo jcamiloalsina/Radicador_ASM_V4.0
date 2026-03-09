@@ -19,7 +19,7 @@ import EstadisticasUnificadas from "./pages/EstadisticasUnificadas";
 import Predios from "./pages/Predios";
 import VisorPredios from "./pages/VisorPredios";
 import Pendientes from "./pages/Pendientes";
-import PermissionsManagement from "./pages/PermissionsManagement";
+import FileManager from "./pages/FileManager";
 import ProyectosActualizacion from "./pages/ProyectosActualizacion";
 import VisorActualizacion from "./pages/VisorActualizacion";
 import GestionPropuestas from "./pages/GestionPropuestas";
@@ -109,7 +109,7 @@ function App() {
             <Route path="predios" element={<Predios />} />
             <Route path="visor-predios" element={<VisorPredios />} />
             <Route path="pendientes" element={<Pendientes />} />
-            <Route path="permisos" element={<PermissionsManagement />} />
+            <Route path="gestor-recursos" element={<FileManager />} />
             <Route path="proyectos-actualizacion" element={<ProyectosActualizacion />} />
             <Route path="gestion-predios-actualizacion/:proyectoId" element={<GestionPrediosActualizacion />} />
             <Route path="visor-actualizacion/:proyectoId" element={<VisorActualizacion />} />
