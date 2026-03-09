@@ -3,18 +3,17 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: ISSUES DE BLOQUEO Y COMPLEMENTACIÓN CORREGIDOS
+## Estado Actual: BÚSQUEDAS DE PREDIOS UNIFICADAS Y CORREGIDAS
 
 ### Correcciones Recientes (07/03/2026)
+- **Búsqueda de Predios Unificada**: Todas las mutaciones ahora usan la misma lógica de búsqueda con detección automática de matrícula inmobiliaria (formato XXX-XXXXX)
+  - M1, M2, M3, M4: Usan `/api/predios` con parámetro `search`
+  - M5, M6, Complementación, Bloqueo: Usan `/api/predios/buscar-municipio` con parámetro `q`
+  - Backend actualizado para búsqueda exacta cuando detecta formato de matrícula
 - **Dropdown de Municipios en Bloqueo y Complementación**: Corregido el problema donde la lista de municipios no se desplegaba debido a problemas de `overflow` y `z-index` en el Dialog
 - **Vigencia en Predios Eliminados**: Corregida la prioridad de campos para mostrar `vigencia_eliminacion` > `vigencia_origen` > `vigencia` en lugar de mostrar siempre 2026
 - **Mass Desenglobe - tipo_cancelacion**: Corregido bug donde la función `_generar_resolucion_m2_interno` no respetaba el campo `tipo_cancelacion` (total vs parcial)
 - **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida" a la tabla "Predios Registrados" en Gestión de Predios
-  - Formato consistente: `X ha Y m²`
-  - Posición: entre "Dirección" y "Destino"
-  - Archivo modificado: `/app/frontend/src/pages/Predios.js`
-- **Etiqueta "Ajuste de Área"**: Cambiada de "Rectificación de Área" / "M6" / "Rect. Área" a "Ajuste de Área" según preferencia del usuario
-- **Buscador de Bloqueo de Predios**: Verificado y funcionando correctamente con lupa visible, búsqueda por código predial, dirección o propietario
 
 ### Funcionalidades Completadas (Marzo 2026)
 

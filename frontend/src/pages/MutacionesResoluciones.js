@@ -3040,10 +3040,10 @@ export default function MutacionesResoluciones() {
       const token = localStorage.getItem('token');
       const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === m5Data.municipio)?.codigo;
       
-      const response = await axios.get(`${API}/predios/buscar`, {
+      // Usar el endpoint buscar-municipio que tiene la lógica correcta de búsqueda
+      const response = await axios.get(`${API}/predios/buscar-municipio/${codigoMunicipio}`, {
         params: { 
           q: searchPredioM5,
-          municipio: codigoMunicipio,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
@@ -3208,16 +3208,11 @@ export default function MutacionesResoluciones() {
     try {
       const token = localStorage.getItem('token');
       const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === rectificacionData.municipio)?.codigo;
-      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const vigenciaActual = statsResponse.data.vigencia_actual;
       
-      const response = await axios.get(`${API}/predios`, {
+      // Usar el endpoint buscar-municipio que tiene la lógica correcta de búsqueda por matrícula
+      const response = await axios.get(`${API}/predios/buscar-municipio/${codigoMunicipio}`, {
         params: { 
           q: searchPredioRectificacion,
-          codigo_municipio: codigoMunicipio,
-          vigencia: vigenciaActual,
           limit: 20
         },
         headers: { Authorization: `Bearer ${token}` }
@@ -6218,10 +6213,11 @@ export default function MutacionesResoluciones() {
                 if (valor.length >= 3) {
                   setSearchingPrediosComplementacion(true);
                   try {
+                    const tokenLocal = localStorage.getItem('token');
                     const municipioCodigo = MUNICIPIOS.find(m => m.nombre === complementacionData.municipio)?.codigo;
                     const response = await axios.get(`${API}/predios/buscar-municipio/${municipioCodigo}`, {
                       params: { q: valor, limit: 10 },
-                      headers: { Authorization: `Bearer ${token}` }
+                      headers: { Authorization: `Bearer ${tokenLocal}` }
                     });
                     setSearchResultsComplementacion(response.data.predios || []);
                   } catch (error) {
