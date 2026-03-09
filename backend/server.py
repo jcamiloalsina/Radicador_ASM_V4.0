@@ -7333,6 +7333,165 @@ async def migrar_vigencias_eliminados(
         "mensaje": f"Migración {'simulada (dry run)' if request.dry_run else 'completada'}",
         **resultados
     }
+
+
+class MigrarEstadoCivilRequest(BaseModel):
+    dry_run: bool = True  # Si True, solo muestra lo que haría sin ejecutar
+    limpiar_invalidos: bool = True  # Si True, limpia valores inválidos del campo estado_civil
+
+
+@api_router.post("/predios/migrar-estado-civil")
+async def migrar_estado_civil_propietarios(
+    request: MigrarEstadoCivilRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migra y corrige el campo estado_civil de los propietarios.
+    
+    El problema: Algunos predios tienen el apellido del propietario en el campo estado_civil
+    debido a un desplazamiento de columnas al importar Excel.
+    
+    Esta migración:
+    1. Identifica propietarios donde estado_civil contiene un valor que NO es un estado civil válido
+    2. Limpia esos valores incorrectos (los deja vacíos)
+    
+    Estados civiles válidos: CASADO, SOLTERO, VIUDO, DIVORCIADO, UNION LIBRE, SEPARADO, etc.
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
+    
+    # Estados civiles válidos (en mayúsculas para comparación)
+    # Incluye abreviaciones usadas en Colombia
+    ESTADOS_CIVILES_VALIDOS = {
+        'CASADO', 'CASADA', 'SOLTERO', 'SOLTERA', 'VIUDO', 'VIUDA',
+        'DIVORCIADO', 'DIVORCIADA', 'SEPARADO', 'SEPARADA',
+        'UNION LIBRE', 'UNIÓN LIBRE', 'UNION_LIBRE',
+        'C', 'S', 'V', 'D', 'U', 'E',  # Abreviaciones comunes (E puede ser "En unión")
+        'N/A', 'NA', 'NO APLICA',
+        '', ' '  # Vacío es válido
+    }
+    
+    resultados = {
+        "total_predios_analizados": 0,
+        "predios_con_errores": 0,
+        "propietarios_corregidos": 0,
+        "dry_run": request.dry_run,
+        "ejemplos_corregidos": [],
+        "errores": []
+    }
+    
+    # Buscar todos los predios con propietarios
+    predios = await db.predios.find(
+        {"propietarios": {"$exists": True, "$ne": []}},
+        {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "propietarios": 1}
+    ).to_list(100000)
+    
+    resultados["total_predios_analizados"] = len(predios)
+    
+    for predio in predios:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        propietarios = predio.get("propietarios", [])
+        
+        propietarios_modificados = False
+        propietarios_actualizados = []
+        
+        for prop in propietarios:
+            estado_civil = str(prop.get("estado_civil", "") or "").strip().upper()
+            
+            # Verificar si el valor es un estado civil válido
+            es_valido = estado_civil in ESTADOS_CIVILES_VALIDOS
+            
+            # Si no es válido, es probablemente un apellido u otro dato incorrecto
+            if not es_valido and estado_civil:
+                propietarios_modificados = True
+                resultados["propietarios_corregidos"] += 1
+                
+                # Guardar ejemplo para el reporte
+                if len(resultados["ejemplos_corregidos"]) < 30:
+                    resultados["ejemplos_corregidos"].append({
+                        "codigo": codigo[:25] + "...",
+                        "propietario": prop.get("nombre_propietario", "")[:30],
+                        "estado_civil_incorrecto": estado_civil[:20],
+                        "accion": "Limpiado a vacío"
+                    })
+                
+                if request.limpiar_invalidos:
+                    prop_actualizado = {**prop, "estado_civil": ""}
+                else:
+                    prop_actualizado = prop
+                    
+                propietarios_actualizados.append(prop_actualizado)
+            else:
+                propietarios_actualizados.append(prop)
+        
+        if propietarios_modificados:
+            resultados["predios_con_errores"] += 1
+            
+            if not request.dry_run and request.limpiar_invalidos:
+                try:
+                    await db.predios.update_one(
+                        {"id": predio_id},
+                        {"$set": {"propietarios": propietarios_actualizados}}
+                    )
+                except Exception as e:
+                    resultados["errores"].append({
+                        "codigo": codigo,
+                        "error": str(e)
+                    })
+    
+    # También revisar predios_eliminados
+    predios_eliminados = await db.predios_eliminados.find(
+        {"propietarios": {"$exists": True, "$ne": []}},
+        {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "propietarios": 1}
+    ).to_list(100000)
+    
+    for predio in predios_eliminados:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        propietarios = predio.get("propietarios", [])
+        
+        propietarios_modificados = False
+        propietarios_actualizados = []
+        
+        for prop in propietarios:
+            estado_civil = str(prop.get("estado_civil", "") or "").strip().upper()
+            es_valido = estado_civil in ESTADOS_CIVILES_VALIDOS
+            
+            if not es_valido and estado_civil:
+                propietarios_modificados = True
+                resultados["propietarios_corregidos"] += 1
+                
+                if request.limpiar_invalidos:
+                    prop_actualizado = {**prop, "estado_civil": ""}
+                else:
+                    prop_actualizado = prop
+                propietarios_actualizados.append(prop_actualizado)
+            else:
+                propietarios_actualizados.append(prop)
+        
+        if propietarios_modificados:
+            resultados["predios_con_errores"] += 1
+            
+            if not request.dry_run and request.limpiar_invalidos:
+                try:
+                    await db.predios_eliminados.update_one(
+                        {"id": predio_id},
+                        {"$set": {"propietarios": propietarios_actualizados}}
+                    )
+                except Exception as e:
+                    resultados["errores"].append({
+                        "codigo": codigo,
+                        "error": str(e)
+                    })
+    
+    return {
+        "mensaje": f"Migración de estado_civil {'simulada (dry run)' if request.dry_run else 'completada'}",
+        **resultados
+    }
+
+
+@api_router.post("/predios/analisis-historico")
 async def analisis_historico_predios(
     current_user: dict = Depends(get_current_user)
 ):
