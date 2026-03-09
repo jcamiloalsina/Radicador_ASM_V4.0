@@ -9916,11 +9916,20 @@ async def import_predios_excel(
         raise HTTPException(status_code=400, detail="El archivo debe ser .xlsx")
     
     try:
+        # Asegurar que el directorio de uploads existe
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        
         # Guardar archivo temporalmente
         temp_path = UPLOAD_DIR / f"temp_import_{uuid.uuid4()}.xlsx"
+        logging.info(f"Guardando archivo temporal en: {temp_path}")
+        
         content = await file.read()
+        logging.info(f"Contenido leído: {len(content)} bytes")
+        
         with open(temp_path, 'wb') as f:
             f.write(content)
+        
+        logging.info(f"Archivo guardado exitosamente: {temp_path.exists()}")
         
         wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
         
