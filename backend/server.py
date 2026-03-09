@@ -110,7 +110,12 @@ SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER)
 
 # File upload configuration
 UPLOAD_DIR = Path('/app/uploads')
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+# Asegurar permisos de escritura
+try:
+    UPLOAD_DIR.chmod(0o777)
+except Exception:
+    pass  # En algunos sistemas no se puede cambiar permisos
 
 security = HTTPBearer()
 
