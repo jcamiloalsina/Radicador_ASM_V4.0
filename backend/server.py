@@ -14883,6 +14883,11 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Para la sección INSCRIPCIÓN, usar datos_propuestos (datos nuevos del formulario)
         # Los datos nuevos NO están en R1/R2 porque aún no se han inscrito
         # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
+        # IMPORTANTE: La matrícula inmobiliaria debe venir del predio original si no cambió
+        matricula_original = datos_anteriores.get("matricula_inmobiliaria") or ""
+        if matricula_original == "Sin información":
+            matricula_original = ""
+        
         datos_inscripcion = {
             "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
             "area_construida": datos_propuestos.get("area_construida") or datos_predio.get("area_construida") or 0,
@@ -14890,7 +14895,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
             "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
             "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "Sin información",
+            # Matrícula: usar del propuesto SI cambió, si no usar la del predio original
+            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "Sin información",
         }
         
         pdf_bytes = generate_resolucion_pdf(

@@ -601,7 +601,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         # Datos del propietario (extraer de solicitante)
         c.setFont(font_normal, 7)
         tipo_doc = solicitante.get("tipo_documento", "CC") if isinstance(solicitante, dict) else "CC"
-        nro_doc = str(solicitante.get("numero_documento", solicitante.get("documento", "")) if isinstance(solicitante, dict) else "").zfill(10)
+        nro_doc = str(solicitante.get("numero_documento", solicitante.get("documento", "")) if isinstance(solicitante, dict) else "").zfill(12)
         destino = predio.get("destino_economico", "R") if predio else "R"
         
         # Fila de datos

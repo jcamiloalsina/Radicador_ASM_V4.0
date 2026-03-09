@@ -568,13 +568,13 @@ def generate_resolucion_pdf(
             x += cancel_cols[2]
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+            nro_doc_padded = str(nro_doc).zfill(12) if nro_doc else ''
             c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:
@@ -650,13 +650,13 @@ def generate_resolucion_pdf(
             x += cancel_cols[2]
             # NRO. DOC. - centrado
             c.rect(x, y - 12, cancel_cols[3], 12, fill=0, stroke=1)
-            nro_doc = prop.get('documento', prop.get('nro_documento', ''))
-            nro_doc_padded = str(nro_doc).zfill(10) if nro_doc else ''
+            nro_doc = prop.get('documento', prop.get('nro_documento', prop.get('numero_documento', '')))
+            nro_doc_padded = str(nro_doc).zfill(12) if nro_doc else ''
             c.drawCentredString(x + cancel_cols[3]/2, y - 9, nro_doc_padded[:15])
             x += cancel_cols[3]
             # ESTADO (estado civil: CASADO, SOLTERO, VIUDO, etc.) - centrado
             c.rect(x, y - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            estado_civil = prop.get('estado_civil', prop.get('estado', ''))
+            estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
             c.drawCentredString(x + cancel_cols[4]/2, y - 9, estado_civil[:10])
             y -= 12
     else:

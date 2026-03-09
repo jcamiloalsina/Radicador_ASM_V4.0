@@ -500,7 +500,7 @@ def generate_resolucion_m2_pdf(
         propietario = predio.get("propietarios", [{}])[0]
         nombre_prop = propietario.get("nombre_propietario", propietario.get("nombre", ""))[:40]
         tipo_doc = propietario.get("tipo_documento", "CC")
-        nro_doc = str(propietario.get("numero_documento", propietario.get("documento", ""))).zfill(10)
+        nro_doc = str(propietario.get("numero_documento", propietario.get("documento", ""))).zfill(12)
         destino = predio.get("destino_economico", "R")
         codigo_predial = (predio.get("codigo_predial") or predio.get("codigo_predial_nacional") or predio.get("npn", ""))[:30]
         
