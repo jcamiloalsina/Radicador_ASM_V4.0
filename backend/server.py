@@ -712,6 +712,19 @@ class SolicitudMutacionAccion(BaseModel):
     gestor_apoyo_id: Optional[str] = None
 
 
+class RadicadoMultipleCreate(BaseModel):
+    """Modelo para crear un radicado con múltiples mutaciones"""
+    municipio: str
+    solicitante: dict  # {nombre, documento, telefono, email}
+
+
+class RadicadoMultipleMutacion(BaseModel):
+    """Modelo para agregar una mutación a un radicado múltiple"""
+    tipo: str  # M1, M2, M3, M4, M5, RECTIFICACION_AREA, COMP
+    subtipo: Optional[str] = None
+    datos: Optional[dict] = None
+
+
 class ProyectoActualizacionCreate(BaseModel):
     """Modelo para crear un proyecto de actualización"""
     nombre: str
@@ -9910,11 +9923,20 @@ async def import_predios_excel(
         raise HTTPException(status_code=400, detail="El archivo debe ser .xlsx")
     
     try:
+        # Asegurar que el directorio de uploads existe
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        
         # Guardar archivo temporalmente
         temp_path = UPLOAD_DIR / f"temp_import_{uuid.uuid4()}.xlsx"
+        logging.info(f"Guardando archivo temporal en: {temp_path}")
+        
         content = await file.read()
+        logging.info(f"Contenido leído: {len(content)} bytes")
+        
         with open(temp_path, 'wb') as f:
             f.write(content)
+        
+        logging.info(f"Archivo guardado exitosamente: {temp_path.exists()}")
         
         wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
         
@@ -12417,6 +12439,150 @@ async def descargar_certificado_peticion(
         filename=filename,
         media_type='application/pdf'
     )
+
+
+# === MUTACIONES MÚLTIPLES POR PETICIÓN ===
+
+@api_router.get("/petitions/{petition_id}/mutaciones")
+async def obtener_mutaciones_peticion(
+    petition_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene las mutaciones asociadas a una petición
+    """
+    try:
+        petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+        if not petition:
+            raise HTTPException(status_code=404, detail="Petición no encontrada")
+        
+        # Obtener mutaciones asociadas a esta petición
+        mutaciones = await db.peticion_mutaciones.find(
+            {"petition_id": petition_id},
+            {"_id": 0}
+        ).sort("orden", 1).to_list(100)
+        
+        return {
+            "success": True,
+            "mutaciones": mutaciones,
+            "total": len(mutaciones)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error obteniendo mutaciones: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/petitions/{petition_id}/mutaciones")
+async def agregar_mutacion_peticion(
+    petition_id: str,
+    data: RadicadoMultipleMutacion,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Agrega una mutación a una petición existente
+    """
+    try:
+        petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
+        if not petition:
+            raise HTTPException(status_code=404, detail="Petición no encontrada")
+        
+        # Contar mutaciones existentes para determinar el orden
+        count = await db.peticion_mutaciones.count_documents({"petition_id": petition_id})
+        
+        mutacion_id = str(uuid.uuid4())
+        nueva_mutacion = {
+            "id": mutacion_id,
+            "petition_id": petition_id,
+            "radicado": petition.get('radicado'),
+            "tipo": data.tipo,
+            "subtipo": data.subtipo,
+            "estado": "BORRADOR",
+            "datos": data.datos or {},
+            "resolucion_id": None,
+            "orden": count + 1,
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "creado_por_id": current_user['id'],
+            "creado_por_nombre": current_user['full_name']
+        }
+        
+        await db.peticion_mutaciones.insert_one(nueva_mutacion)
+        nueva_mutacion.pop('_id', None)
+        
+        # Agregar al historial de la petición
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$push": {"historial": {
+                    "accion": f"Mutación {data.tipo} agregada",
+                    "usuario": current_user['full_name'],
+                    "usuario_rol": current_user['role'],
+                    "fecha": datetime.now(timezone.utc).isoformat()
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "mutacion": nueva_mutacion,
+            "message": f"Mutación {data.tipo} agregada a la petición"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error agregando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.delete("/petitions/{petition_id}/mutaciones/{mutacion_id}")
+async def eliminar_mutacion_peticion(
+    petition_id: str,
+    mutacion_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Elimina una mutación de una petición (solo si está en estado BORRADOR)
+    """
+    try:
+        mutacion = await db.peticion_mutaciones.find_one({
+            "id": mutacion_id,
+            "petition_id": petition_id
+        })
+        
+        if not mutacion:
+            raise HTTPException(status_code=404, detail="Mutación no encontrada")
+        
+        if mutacion.get('estado') != 'BORRADOR':
+            raise HTTPException(status_code=400, detail="Solo se pueden eliminar mutaciones en estado borrador")
+        
+        await db.peticion_mutaciones.delete_one({"id": mutacion_id})
+        
+        # Agregar al historial de la petición
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$push": {"historial": {
+                    "accion": f"Mutación {mutacion.get('tipo')} eliminada",
+                    "usuario": current_user['full_name'],
+                    "usuario_rol": current_user['role'],
+                    "fecha": datetime.now(timezone.utc).isoformat()
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Mutación eliminada"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error eliminando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 # === VERIFICACIÓN PÚBLICA DE CERTIFICADOS ===
@@ -31159,6 +31325,242 @@ async def ejecutar_accion_solicitud(
         logging.error(f"Error ejecutando acción: {str(e)}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+# ============================================================
+# RADICADOS MÚLTIPLES - Agrupar varias mutaciones en un radicado
+# ============================================================
+
+@api_router.get("/radicados-multiples")
+async def listar_radicados_multiples(
+    municipio: Optional[str] = None,
+    estado: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Lista radicados con múltiples mutaciones
+    """
+    try:
+        query = {}
+        
+        if municipio:
+            query["municipio"] = municipio
+        if estado:
+            query["estado"] = estado
+            
+        # Si es usuario empresa, filtrar por municipios asignados
+        if current_user['role'] == UserRole.EMPRESA:
+            municipios_asignados = current_user.get('municipios_asignados', [])
+            if municipios_asignados:
+                query["municipio"] = {"$in": municipios_asignados}
+        
+        radicados = await db.radicados_multiples.find(
+            query,
+            {"_id": 0}
+        ).sort("fecha_creacion", -1).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.radicados_multiples.count_documents(query)
+        
+        return {
+            "success": True,
+            "radicados": radicados,
+            "total": total
+        }
+        
+    except Exception as e:
+        logging.error(f"Error listando radicados múltiples: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/radicados-multiples")
+async def crear_radicado_multiple(
+    data: RadicadoMultipleCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un nuevo radicado para agrupar múltiples mutaciones
+    """
+    try:
+        # Generar número de radicado
+        anio = datetime.now().year
+        count = await db.radicados_multiples.count_documents({}) + 1
+        numero_radicado = f"MULT-{data.municipio}-{count:05d}-{anio}"
+        
+        radicado_id = str(uuid.uuid4())
+        
+        radicado = {
+            "id": radicado_id,
+            "numero": numero_radicado,
+            "municipio": data.municipio,
+            "solicitante": data.solicitante,
+            "estado": "EN_PROCESO",
+            "mutaciones": [],
+            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "creado_por_id": current_user['id'],
+            "creado_por_nombre": current_user['full_name'],
+            "historial": [{
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "accion": "creado",
+                "usuario_id": current_user['id'],
+                "usuario_nombre": current_user['full_name']
+            }]
+        }
+        
+        await db.radicados_multiples.insert_one(radicado)
+        
+        # Quitar _id antes de retornar
+        radicado.pop('_id', None)
+        
+        return {
+            "success": True,
+            "radicado": radicado,
+            "message": f"Radicado {numero_radicado} creado exitosamente"
+        }
+        
+    except Exception as e:
+        logging.error(f"Error creando radicado múltiple: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.get("/radicados-multiples/{radicado_id}")
+async def obtener_radicado_multiple(
+    radicado_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene un radicado múltiple por su ID
+    """
+    try:
+        radicado = await db.radicados_multiples.find_one(
+            {"id": radicado_id},
+            {"_id": 0}
+        )
+        
+        if not radicado:
+            raise HTTPException(status_code=404, detail="Radicado no encontrado")
+        
+        return {
+            "success": True,
+            "radicado": radicado
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error obteniendo radicado: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/radicados-multiples/{radicado_id}/mutaciones")
+async def agregar_mutacion_a_radicado(
+    radicado_id: str,
+    data: RadicadoMultipleMutacion,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Agrega una mutación a un radicado múltiple
+    """
+    try:
+        radicado = await db.radicados_multiples.find_one({"id": radicado_id})
+        
+        if not radicado:
+            raise HTTPException(status_code=404, detail="Radicado no encontrado")
+        
+        if radicado['estado'] == 'COMPLETADO':
+            raise HTTPException(status_code=400, detail="El radicado ya está completado")
+        
+        # Crear la mutación
+        mutacion_id = str(uuid.uuid4())
+        nueva_mutacion = {
+            "id": mutacion_id,
+            "tipo": data.tipo,
+            "subtipo": data.subtipo,
+            "estado": "BORRADOR",
+            "datos": data.datos or {},
+            "resolucion_id": None,
+            "orden": len(radicado.get('mutaciones', [])) + 1,
+            "fecha_agregada": datetime.now(timezone.utc).isoformat(),
+            "agregada_por_id": current_user['id'],
+            "agregada_por_nombre": current_user['full_name']
+        }
+        
+        # Agregar al radicado
+        await db.radicados_multiples.update_one(
+            {"id": radicado_id},
+            {
+                "$push": {"mutaciones": nueva_mutacion},
+                "$push": {"historial": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "accion": f"mutacion_agregada_{data.tipo}",
+                    "usuario_id": current_user['id'],
+                    "usuario_nombre": current_user['full_name']
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "mutacion": nueva_mutacion,
+            "message": f"Mutación {data.tipo} agregada al radicado"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error agregando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.delete("/radicados-multiples/{radicado_id}/mutaciones/{mutacion_id}")
+async def eliminar_mutacion_de_radicado(
+    radicado_id: str,
+    mutacion_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Elimina una mutación de un radicado múltiple (solo si está en estado BORRADOR)
+    """
+    try:
+        radicado = await db.radicados_multiples.find_one({"id": radicado_id})
+        
+        if not radicado:
+            raise HTTPException(status_code=404, detail="Radicado no encontrado")
+        
+        # Buscar la mutación
+        mutacion = next((m for m in radicado.get('mutaciones', []) if m['id'] == mutacion_id), None)
+        
+        if not mutacion:
+            raise HTTPException(status_code=404, detail="Mutación no encontrada")
+        
+        if mutacion['estado'] != 'BORRADOR':
+            raise HTTPException(status_code=400, detail="Solo se pueden eliminar mutaciones en estado borrador")
+        
+        # Eliminar la mutación
+        await db.radicados_multiples.update_one(
+            {"id": radicado_id},
+            {
+                "$pull": {"mutaciones": {"id": mutacion_id}},
+                "$push": {"historial": {
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "accion": f"mutacion_eliminada_{mutacion['tipo']}",
+                    "usuario_id": current_user['id'],
+                    "usuario_nombre": current_user['full_name']
+                }}
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Mutación eliminada del radicado"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error eliminando mutación: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 

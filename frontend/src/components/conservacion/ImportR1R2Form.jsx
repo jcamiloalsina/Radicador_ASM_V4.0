@@ -135,6 +135,9 @@ function ImportR1R2Form({ onSuccess }) {
 
     const token = localStorage.getItem('token');
     const vigenciaFormato = `0101${vigencia}`;
+    
+    // Array para rastrear resultados exitosos (evita problemas con estado asíncrono)
+    const successResults = [];
 
     for (let i = 0; i < fileConfigs.length; i++) {
       const config = fileConfigs[i];
@@ -158,14 +161,19 @@ function ImportR1R2Form({ onSuccess }) {
           }
         );
 
-        updateFileStatus(config.id, FILE_STATUS.SUCCESS, {
+        const resultData = {
           municipioAsignado: municipioNombre,
           message: response.data.message,
           predios: response.data.predios_importados,
           prediosEliminados: response.data.predios_eliminados,
           prediosNuevos: response.data.predios_nuevos,
           municipio: response.data.municipio
-        });
+        };
+        
+        updateFileStatus(config.id, FILE_STATUS.SUCCESS, resultData);
+        
+        // Guardar en array local para conteo correcto
+        successResults.push(resultData);
       } catch (error) {
         const errorDetail = error.response?.data?.detail;
         let errorMsg = 'Error al importar';
@@ -189,9 +197,10 @@ function ImportR1R2Form({ onSuccess }) {
 
     setUploading(false);
     
-    const successCount = fileConfigs.filter(fc => fc.status === FILE_STATUS.SUCCESS).length;
-    if (successCount > 0) {
-      toast.success(`${successCount} de ${fileConfigs.length} archivos importados exitosamente`);
+    // Mostrar resultado basado en los éxitos contados durante el procesamiento
+    if (successResults.length > 0) {
+      const totalPredios = successResults.reduce((sum, r) => sum + (r.predios || 0), 0);
+      toast.success(`${successResults.length} archivo(s) importados: ${totalPredios} predios procesados`);
       if (onSuccess) onSuccess();
     } else {
       toast.error('Ningún archivo fue importado exitosamente');

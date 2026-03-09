@@ -91,6 +91,14 @@ const TIPOS_MUTACION = {
     color: 'bg-gray-100 text-gray-800',
     enabled: true,
     soloCoordinador: true
+  },
+  MULTIPLES: { 
+    codigo: 'MULTIPLES', 
+    nombre: 'Múltiples Mutaciones', 
+    descripcion: 'Agrupar varias mutaciones en un mismo radicado',
+    color: 'bg-indigo-100 text-indigo-800',
+    enabled: true,
+    soloCoordinador: false
   }
 };
 
@@ -484,6 +492,23 @@ export default function MutacionesResoluciones() {
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
   
+  // Estado para Múltiples Mutaciones
+  const [showMultiplesModal, setShowMultiplesModal] = useState(false);
+  const [multiplesData, setMultiplesData] = useState({
+    peticion_id: '',
+    radicado: '',
+    municipio: '',
+    solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+    tipo_tramite: '',
+    mutaciones: [] // Array de { id, tipo, subtipo, estado, datos, resolucion_id }
+  });
+  const [mutacionEnEdicion, setMutacionEnEdicion] = useState(null);
+  const [mostrarSelectorTipoMultiple, setMostrarSelectorTipoMultiple] = useState(false);
+  const [peticionesDisponibles, setPeticionesDisponibles] = useState([]); // Peticiones para múltiples mutaciones
+  const [buscandoPeticiones, setBuscandoPeticiones] = useState(false);
+  const [searchPeticionMultiple, setSearchPeticionMultiple] = useState('');
+  const [municipioFiltroMultiple, setMunicipioFiltroMultiple] = useState('');
+  
   // Estado para visor de PDF
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [pdfViewerData, setPdfViewerData] = useState({
@@ -820,6 +845,146 @@ export default function MutacionesResoluciones() {
       setEliminadosLoading(false);
     }
   };
+
+  // Cargar radicados con múltiples mutaciones
+  const cargarRadicadosMultiples = async () => {
+    // Esta función ahora busca peticiones disponibles
+    setBuscandoPeticiones(true);
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (municipioFiltroMultiple) params.append('municipio', municipioFiltroMultiple);
+      if (searchPeticionMultiple) params.append('search', searchPeticionMultiple);
+      params.append('limit', '50');
+      
+      const response = await axios.get(`${API}/petitions?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPeticionesDisponibles(response.data || []);
+    } catch (error) {
+      console.error('Error cargando peticiones:', error);
+      setPeticionesDisponibles([]);
+    } finally {
+      setBuscandoPeticiones(false);
+    }
+  };
+
+  // Seleccionar petición para múltiples mutaciones
+  const seleccionarPeticionMultiple = async (peticion) => {
+    // Cargar las mutaciones existentes de esta petición
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/petitions/${peticion.id}/mutaciones`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMultiplesData({
+        peticion_id: peticion.id,
+        radicado: peticion.radicado,
+        municipio: peticion.municipio,
+        solicitante: { 
+          nombre: peticion.nombre_completo, 
+          documento: '', 
+          telefono: peticion.telefono, 
+          email: peticion.correo 
+        },
+        tipo_tramite: peticion.tipo_tramite,
+        mutaciones: response.data?.mutaciones || []
+      });
+    } catch (error) {
+      // Si no hay endpoint de mutaciones, iniciar vacío
+      setMultiplesData({
+        peticion_id: peticion.id,
+        radicado: peticion.radicado,
+        municipio: peticion.municipio,
+        solicitante: { 
+          nombre: peticion.nombre_completo, 
+          documento: '', 
+          telefono: peticion.telefono, 
+          email: peticion.correo 
+        },
+        tipo_tramite: peticion.tipo_tramite,
+        mutaciones: []
+      });
+    }
+  };
+
+  // Agregar mutación al radicado múltiple
+  const agregarMutacionAlRadicado = async (tipoMutacion) => {
+    if (!multiplesData.peticion_id) {
+      toast.error('Primero seleccione una petición');
+      return;
+    }
+    
+    const nuevaMutacion = {
+      id: `temp_${Date.now()}`,
+      tipo: tipoMutacion.codigo,
+      nombre: tipoMutacion.nombre,
+      subtipo: null,
+      estado: 'BORRADOR',
+      datos: {},
+      resolucion_id: null,
+      orden: multiplesData.mutaciones.length + 1
+    };
+    
+    // Guardar en backend
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/petitions/${multiplesData.peticion_id}/mutaciones`,
+        {
+          tipo: tipoMutacion.codigo,
+          subtipo: null,
+          datos: {}
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data?.mutacion) {
+        nuevaMutacion.id = response.data.mutacion.id;
+      }
+    } catch (error) {
+      console.error('Error guardando mutación:', error);
+      // Continuar con ID temporal
+    }
+    
+    setMultiplesData(prev => ({
+      ...prev,
+      mutaciones: [...prev.mutaciones, nuevaMutacion]
+    }));
+    setMostrarSelectorTipoMultiple(false);
+    setMutacionEnEdicion(multiplesData.mutaciones.length);
+    
+    toast.success(`${tipoMutacion.nombre} agregada al radicado`);
+  };
+
+  // Eliminar mutación del radicado
+  const eliminarMutacionDelRadicado = async (index) => {
+    const mutacion = multiplesData.mutaciones[index];
+    if (mutacion?.estado !== 'BORRADOR') {
+      toast.error('Solo se pueden eliminar mutaciones en estado borrador');
+      return;
+    }
+    
+    // Eliminar en backend si tiene ID real
+    if (mutacion.id && !mutacion.id.startsWith('temp_')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(
+          `${API}/petitions/${multiplesData.peticion_id}/mutaciones/${mutacion.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (error) {
+        console.error('Error eliminando mutación:', error);
+      }
+    }
+    
+    setMultiplesData(prev => ({
+      ...prev,
+      mutaciones: prev.mutaciones.filter((_, i) => i !== index)
+    }));
+    setMutacionEnEdicion(null);
+  };
   
   // Filtrar predios eliminados por búsqueda local
   useEffect(() => {
@@ -1103,6 +1268,13 @@ export default function MutacionesResoluciones() {
     if (tipo.codigo === 'ELIMINADOS') {
       setShowEliminadosModal(true);
       cargarPrediosEliminados();
+      return;
+    }
+    
+    // Si es MULTIPLES, abrir modal de múltiples mutaciones
+    if (tipo.codigo === 'MULTIPLES') {
+      setShowMultiplesModal(true);
+      cargarRadicadosMultiples();
       return;
     }
     
@@ -10611,6 +10783,359 @@ export default function MutacionesResoluciones() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEliminadosModal(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Múltiples Mutaciones */}
+      <Dialog open={showMultiplesModal} onOpenChange={(open) => {
+        setShowMultiplesModal(open);
+        if (!open) {
+          if (!multiplesData.peticion_id) {
+            setMultiplesData({
+              peticion_id: '',
+              radicado: '',
+              municipio: '',
+              solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+              tipo_tramite: '',
+              mutaciones: []
+            });
+          }
+          setMutacionEnEdicion(null);
+          setMostrarSelectorTipoMultiple(false);
+          setSearchPeticionMultiple('');
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-indigo-700">
+              <Layers className="w-5 h-5" />
+              Múltiples Mutaciones
+              {multiplesData.radicado && (
+                <Badge className="bg-indigo-100 text-indigo-800 ml-2">
+                  {multiplesData.radicado}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Paso 1: Seleccionar petición existente */}
+            {!multiplesData.peticion_id ? (
+              <div className="space-y-4">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-indigo-800 mb-2">Paso 1: Seleccionar Petición</h3>
+                  <p className="text-sm text-indigo-600 mb-4">
+                    Busque y seleccione una petición existente para agregar múltiples mutaciones.
+                  </p>
+                  
+                  {/* Filtros de búsqueda */}
+                  <div className="flex flex-col md:flex-row gap-3 mb-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        placeholder="Buscar por radicado, nombre o descripción..."
+                        value={searchPeticionMultiple}
+                        onChange={(e) => setSearchPeticionMultiple(e.target.value)}
+                        className="pl-10"
+                        onKeyDown={(e) => e.key === 'Enter' && cargarRadicadosMultiples()}
+                      />
+                    </div>
+                    <Select 
+                      value={municipioFiltroMultiple} 
+                      onValueChange={(v) => {
+                        setMunicipioFiltroMultiple(v === 'todos' ? '' : v);
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Todos los municipios" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        {MUNICIPIOS.map(m => (
+                          <SelectItem key={m.codigo} value={m.nombre}>{m.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={cargarRadicadosMultiples} disabled={buscandoPeticiones}>
+                      {buscandoPeticiones ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      <span className="ml-2">Buscar</span>
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Lista de peticiones */}
+                {buscandoPeticiones ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    Buscando peticiones...
+                  </div>
+                ) : peticionesDisponibles.length > 0 ? (
+                  <div className="border rounded-lg">
+                    <div className="p-3 border-b bg-slate-50">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Peticiones Disponibles
+                        <Badge variant="outline">{peticionesDisponibles.length}</Badge>
+                      </h4>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {peticionesDisponibles.map(pet => (
+                        <div 
+                          key={pet.id}
+                          className="flex items-center justify-between p-4 border-b hover:bg-indigo-50 cursor-pointer transition-colors"
+                          onClick={() => seleccionarPeticionMultiple(pet)}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-indigo-700">{pet.radicado}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {pet.tipo_tramite}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-slate-700">{pet.nombre_completo}</p>
+                            <p className="text-xs text-slate-500">
+                              {pet.municipio} | {pet.descripcion?.substring(0, 60) || 'Sin descripción'}...
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={
+                              pet.estado === 'completado' ? 'bg-green-100 text-green-800' :
+                              pet.estado === 'en_proceso' ? 'bg-amber-100 text-amber-800' :
+                              pet.estado === 'radicado' ? 'bg-blue-100 text-blue-800' :
+                              'bg-slate-100 text-slate-800'
+                            }>
+                              {pet.estado}
+                            </Badge>
+                            <ArrowRight className="w-5 h-5 text-indigo-600" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : searchPeticionMultiple || municipioFiltroMultiple ? (
+                  <div className="text-center py-8 text-slate-500 border rounded-lg">
+                    <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p>No se encontraron peticiones con esos criterios</p>
+                    <p className="text-sm">Intente con otros filtros o haga clic en "Buscar"</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500 border rounded-lg bg-slate-50">
+                    <Search className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p>Use los filtros y haga clic en "Buscar"</p>
+                    <p className="text-sm">para encontrar peticiones disponibles</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Paso 2: Gestionar mutaciones de la petición */
+              <div className="space-y-4">
+                {/* Info de la petición seleccionada */}
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-indigo-800">
+                        Radicado: {multiplesData.radicado}
+                      </h3>
+                      <p className="text-sm text-indigo-600">
+                        {multiplesData.municipio} | {multiplesData.tipo_tramite}
+                      </p>
+                      <p className="text-sm text-indigo-600">
+                        Solicitante: {multiplesData.solicitante.nombre}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setMultiplesData({
+                        peticion_id: '',
+                        radicado: '',
+                        municipio: '',
+                        solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+                        tipo_tramite: '',
+                        mutaciones: []
+                      })}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Cambiar Petición
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Lista de mutaciones */}
+                <div className="border rounded-lg">
+                  <div className="p-4 border-b bg-slate-50">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Mutaciones de esta Petición
+                      <Badge className="bg-indigo-100 text-indigo-800">
+                        {multiplesData.mutaciones.length}
+                      </Badge>
+                    </h4>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Cada mutación generará su propia resolución al ser aprobada
+                    </p>
+                  </div>
+                  
+                  <div className="p-4 space-y-3">
+                    {multiplesData.mutaciones.length === 0 ? (
+                      <p className="text-center text-slate-500 py-4">
+                        No hay mutaciones agregadas. Use el botón de abajo para agregar.
+                      </p>
+                    ) : (
+                      multiplesData.mutaciones.map((mut, index) => (
+                        <div 
+                          key={mut.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                            mutacionEnEdicion === index 
+                              ? 'border-indigo-500 bg-indigo-50' 
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              mut.estado === 'APROBADA' ? 'bg-green-500 text-white' :
+                              mut.estado === 'PENDIENTE' ? 'bg-amber-500 text-white' :
+                              'bg-slate-300 text-slate-700'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={TIPOS_MUTACION[mut.tipo]?.color || 'bg-slate-100'}>
+                                  {mut.tipo}
+                                </Badge>
+                                <span className="font-medium">{mut.nombre || TIPOS_MUTACION[mut.tipo]?.nombre}</span>
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {mut.estado === 'APROBADA' && mut.resolucion_id 
+                                  ? `Resolución: ${mut.resolucion_id}` 
+                                  : `Estado: ${mut.estado}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {mut.estado === 'BORRADOR' && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setMutacionEnEdicion(index);
+                                    const tipoMut = TIPOS_MUTACION[mut.tipo];
+                                    if (tipoMut) {
+                                      // Precargar datos del radicado en el formulario
+                                      if (mut.tipo === 'M1') {
+                                        setM1Data(prev => ({
+                                          ...prev,
+                                          municipio: MUNICIPIOS.find(m => m.nombre === multiplesData.municipio)?.codigo || '',
+                                          radicado_peticion: multiplesData.radicado
+                                        }));
+                                      }
+                                      setTipoMutacionSeleccionado(tipoMut);
+                                      setShowMutacionDialog(true);
+                                    }
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => eliminarMutacionDelRadicado(index)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            {mut.estado === 'APROBADA' && mut.resolucion_id && (
+                              <Button variant="ghost" size="sm">
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    
+                    {/* Botón agregar mutación */}
+                    {!mostrarSelectorTipoMultiple ? (
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-dashed border-2 text-indigo-600 hover:bg-indigo-50"
+                        onClick={() => setMostrarSelectorTipoMultiple(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Agregar Mutación
+                      </Button>
+                    ) : (
+                      <div className="border-2 border-dashed border-indigo-300 rounded-lg p-4 bg-indigo-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="font-medium text-indigo-800">Seleccionar tipo de mutación:</h5>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setMostrarSelectorTipoMultiple(false)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {Object.values(TIPOS_MUTACION)
+                            .filter(t => !['ELIMINADOS', 'MULTIPLES', 'BLOQUEO'].includes(t.codigo) && t.enabled)
+                            .map(tipo => (
+                              <Button
+                                key={tipo.codigo}
+                                variant="outline"
+                                size="sm"
+                                className={`${tipo.color} border-0 hover:opacity-80`}
+                                onClick={() => agregarMutacionAlRadicado(tipo)}
+                              >
+                                {tipo.codigoDisplay || tipo.codigo}
+                              </Button>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Resumen */}
+                {multiplesData.mutaciones.length > 0 && (
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <h4 className="font-medium mb-2">Resumen</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-slate-700">{multiplesData.mutaciones.length}</p>
+                        <p className="text-slate-500">Total</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-amber-600">
+                          {multiplesData.mutaciones.filter(m => m.estado !== 'APROBADA').length}
+                        </p>
+                        <p className="text-slate-500">Pendientes</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-green-600">
+                          {multiplesData.mutaciones.filter(m => m.estado === 'APROBADA').length}
+                        </p>
+                        <p className="text-slate-500">Aprobadas</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMultiplesModal(false)}>
+              Cerrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
