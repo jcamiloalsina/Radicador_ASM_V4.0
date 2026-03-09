@@ -15012,8 +15012,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         import os
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Guardar el PDF
-        filename = f"resolucion_{numero_resolucion.replace('/', '-')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar el PDF - Nombre simplificado: RES-XX-XXX-XXXX-XXXX.pdf
+        filename = f"{numero_resolucion.replace('/', '-')}.pdf"
         filepath = f"{resoluciones_dir}/{filename}"
         with open(filepath, "wb") as f:
             f.write(pdf_bytes)
@@ -15144,7 +15144,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     subject=f"Resolución Aprobada - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución enviado a {email_solicitante}")
@@ -15262,8 +15262,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M2_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado: RES-XX-XXX-XXXX-XXXX.pdf
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF - llamar con parámetros individuales
@@ -15490,7 +15490,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                             subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                         )
                         logging.info(f"✅ Correo de resolución M2 enviado a {email_solicitante}")
                 except Exception as email_error:
@@ -15584,8 +15584,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M3_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF
@@ -15755,7 +15755,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                             subject=f"Resolución de {tipo_texto} Aprobada - {numero_resolucion}",
                             body=email_body,
                             attachment_path=filepath,
-                            attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                         )
                         logging.info(f"✅ Correo de resolución M3 enviado a {email_solicitante}")
                 except Exception as email_error:
@@ -15843,8 +15843,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         resoluciones_dir = "/app/backend/static/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        # Generar nombre del archivo
-        filename = f"resolucion_M4_{numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+        # Generar nombre del archivo - Simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = os.path.join(resoluciones_dir, filename)
         
         # Generar PDF
@@ -15996,7 +15996,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución {decision_texto} - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
@@ -16137,8 +16137,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         # Generar PDF
         pdf_bytes = generate_m5_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"M5_{subtipo}_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"/app/backend/static/resoluciones/{filename}"
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -16284,7 +16284,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución {subtipo_texto} - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 
                 logging.info(f"Correo de resolución M5 enviado a {email_solicitante}")
@@ -16468,8 +16468,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         # Generar PDF
         pdf_bytes = generate_m6_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"Rectificacion_Area_{numero_resolucion.replace('-', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"/app/backend/static/resoluciones/{filename}"
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -16686,7 +16686,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     subject=f"Resolución Rectificación de Área - {numero_resolucion}",
                     body=email_body,
                     attachment_path=filepath,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Rectificación de Área enviado a {email_solicitante}")
             
@@ -16821,8 +16821,8 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         # Generar PDF
         pdf_bytes = generate_complementacion_resolution_pdf(pdf_data)
         
-        # Guardar archivo
-        filename = f"COMP_{municipio}_{numero_resolucion.replace('/', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Guardar archivo - Nombre simplificado
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_dir = "/app/backend/static/resoluciones"
         os.makedirs(pdf_dir, exist_ok=True)
         pdf_path = f"{pdf_dir}/{filename}"
@@ -16932,7 +16932,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     subject=f"Resolución Complementación de Información - {numero_resolucion}",
                     body=email_body,
                     attachment_path=pdf_path,
-                    attachment_name=f"Resolucion_{numero_resolucion.replace('/', '-')}.pdf"
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Complementación enviado a {email_solicitante}")
             
@@ -29298,7 +29298,7 @@ async def generar_resolucion_m2(
         os.makedirs(resoluciones_dir, exist_ok=True)
         
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"resolucion_{numero_resolucion.replace('-', '_')}_{timestamp}.pdf"
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path_full = os.path.join(resoluciones_dir, filename)
         pdf_path_relative = f"/resoluciones/{filename}"
         
@@ -29823,7 +29823,7 @@ async def generar_resolucion_m3(
         os.makedirs(resoluciones_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"resolucion_{numero_resolucion.replace('-', '_').replace('/', '_')}_{timestamp}.pdf"
+        filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path = os.path.join(resoluciones_dir, filename)
         
         with open(pdf_path, "wb") as f:
@@ -31366,7 +31366,7 @@ async def generar_resolucion_manual(
         resoluciones_dir = "/app/frontend/public/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
-        filename = f"resolucion_{request.numero_resolucion.replace('/', '-').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"{request.numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         filepath = f"{resoluciones_dir}/{filename}"
         with open(filepath, "wb") as f:
             f.write(pdf_bytes)
