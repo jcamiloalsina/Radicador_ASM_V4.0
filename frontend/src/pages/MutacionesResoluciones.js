@@ -91,6 +91,14 @@ const TIPOS_MUTACION = {
     color: 'bg-gray-100 text-gray-800',
     enabled: true,
     soloCoordinador: true
+  },
+  MULTIPLES: { 
+    codigo: 'MULTIPLES', 
+    nombre: 'Múltiples Mutaciones', 
+    descripcion: 'Agrupar varias mutaciones en un mismo radicado',
+    color: 'bg-indigo-100 text-indigo-800',
+    enabled: true,
+    soloCoordinador: false
   }
 };
 
@@ -484,6 +492,19 @@ export default function MutacionesResoluciones() {
   const [gestorApoyoSeleccionado, setGestorApoyoSeleccionado] = useState('');
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
   
+  // Estado para Múltiples Mutaciones
+  const [showMultiplesModal, setShowMultiplesModal] = useState(false);
+  const [multiplesData, setMultiplesData] = useState({
+    radicado: '',
+    municipio: '',
+    solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+    mutaciones: [] // Array de { id, tipo, subtipo, estado, datos, resolucion_id }
+  });
+  const [mutacionEnEdicion, setMutacionEnEdicion] = useState(null); // Índice de mutación siendo editada
+  const [mostrarSelectorTipoMultiple, setMostrarSelectorTipoMultiple] = useState(false);
+  const [radicadosMultiples, setRadicadosMultiples] = useState([]); // Radicados con múltiples mutaciones
+  const [cargandoRadicadosMultiples, setCargandoRadicadosMultiples] = useState(false);
+  
   // Estado para visor de PDF
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [pdfViewerData, setPdfViewerData] = useState({
@@ -820,6 +841,96 @@ export default function MutacionesResoluciones() {
       setEliminadosLoading(false);
     }
   };
+
+  // Cargar radicados con múltiples mutaciones
+  const cargarRadicadosMultiples = async () => {
+    setCargandoRadicadosMultiples(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/radicados-multiples`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRadicadosMultiples(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error cargando radicados múltiples:', error);
+      // Si el endpoint no existe aún, no mostrar error
+      setRadicadosMultiples([]);
+    } finally {
+      setCargandoRadicadosMultiples(false);
+    }
+  };
+
+  // Crear nuevo radicado múltiple
+  const crearRadicadoMultiple = async () => {
+    if (!multiplesData.municipio) {
+      toast.error('Seleccione un municipio');
+      return;
+    }
+    if (!multiplesData.solicitante.nombre) {
+      toast.error('Ingrese el nombre del solicitante');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/radicados-multiples`, {
+        municipio: multiplesData.municipio,
+        solicitante: multiplesData.solicitante
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setMultiplesData(prev => ({
+          ...prev,
+          radicado: response.data.radicado.numero,
+          id: response.data.radicado.id
+        }));
+        toast.success(`Radicado ${response.data.radicado.numero} creado`);
+        cargarRadicadosMultiples();
+      }
+    } catch (error) {
+      console.error('Error creando radicado:', error);
+      toast.error('Error al crear radicado');
+    }
+  };
+
+  // Agregar mutación al radicado múltiple
+  const agregarMutacionAlRadicado = (tipoMutacion) => {
+    const nuevaMutacion = {
+      id: `temp_${Date.now()}`,
+      tipo: tipoMutacion.codigo,
+      nombre: tipoMutacion.nombre,
+      subtipo: null,
+      estado: 'BORRADOR',
+      datos: {},
+      resolucion_id: null,
+      orden: multiplesData.mutaciones.length + 1
+    };
+    
+    setMultiplesData(prev => ({
+      ...prev,
+      mutaciones: [...prev.mutaciones, nuevaMutacion]
+    }));
+    setMostrarSelectorTipoMultiple(false);
+    setMutacionEnEdicion(multiplesData.mutaciones.length); // Índice de la nueva
+    
+    toast.success(`${tipoMutacion.nombre} agregada al radicado`);
+  };
+
+  // Eliminar mutación del radicado
+  const eliminarMutacionDelRadicado = (index) => {
+    if (multiplesData.mutaciones[index]?.estado !== 'BORRADOR') {
+      toast.error('Solo se pueden eliminar mutaciones en estado borrador');
+      return;
+    }
+    
+    setMultiplesData(prev => ({
+      ...prev,
+      mutaciones: prev.mutaciones.filter((_, i) => i !== index)
+    }));
+    setMutacionEnEdicion(null);
+  };
   
   // Filtrar predios eliminados por búsqueda local
   useEffect(() => {
@@ -1103,6 +1214,13 @@ export default function MutacionesResoluciones() {
     if (tipo.codigo === 'ELIMINADOS') {
       setShowEliminadosModal(true);
       cargarPrediosEliminados();
+      return;
+    }
+    
+    // Si es MULTIPLES, abrir modal de múltiples mutaciones
+    if (tipo.codigo === 'MULTIPLES') {
+      setShowMultiplesModal(true);
+      cargarRadicadosMultiples();
       return;
     }
     
@@ -10611,6 +10729,362 @@ export default function MutacionesResoluciones() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEliminadosModal(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Múltiples Mutaciones */}
+      <Dialog open={showMultiplesModal} onOpenChange={(open) => {
+        setShowMultiplesModal(open);
+        if (!open) {
+          // Limpiar estado si no hay mutaciones guardadas
+          if (multiplesData.mutaciones.length === 0 || !multiplesData.radicado) {
+            setMultiplesData({
+              radicado: '',
+              municipio: '',
+              solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+              mutaciones: []
+            });
+          }
+          setMutacionEnEdicion(null);
+          setMostrarSelectorTipoMultiple(false);
+        }
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2 text-indigo-700">
+              <Layers className="w-5 h-5" />
+              Múltiples Mutaciones
+              {multiplesData.radicado && (
+                <Badge className="bg-indigo-100 text-indigo-800 ml-2">
+                  {multiplesData.radicado}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Paso 1: Crear radicado o seleccionar existente */}
+            {!multiplesData.radicado ? (
+              <div className="space-y-4">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-indigo-800 mb-2">Paso 1: Crear Radicado</h3>
+                  <p className="text-sm text-indigo-600 mb-4">
+                    Primero cree un radicado para agrupar las mutaciones relacionadas.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Municipio *</Label>
+                      <Select 
+                        value={multiplesData.municipio} 
+                        onValueChange={(v) => setMultiplesData(prev => ({...prev, municipio: v}))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar municipio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MUNICIPIOS.map(m => (
+                            <SelectItem key={m.codigo} value={m.codigo}>{m.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Nombre del Solicitante *</Label>
+                      <Input 
+                        placeholder="Nombre completo"
+                        value={multiplesData.solicitante.nombre}
+                        onChange={(e) => setMultiplesData(prev => ({
+                          ...prev, 
+                          solicitante: {...prev.solicitante, nombre: e.target.value}
+                        }))}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Documento</Label>
+                      <Input 
+                        placeholder="Número de documento"
+                        value={multiplesData.solicitante.documento}
+                        onChange={(e) => setMultiplesData(prev => ({
+                          ...prev, 
+                          solicitante: {...prev.solicitante, documento: e.target.value}
+                        }))}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Teléfono</Label>
+                      <Input 
+                        placeholder="Teléfono de contacto"
+                        value={multiplesData.solicitante.telefono}
+                        onChange={(e) => setMultiplesData(prev => ({
+                          ...prev, 
+                          solicitante: {...prev.solicitante, telefono: e.target.value}
+                        }))}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+                    onClick={crearRadicadoMultiple}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear Radicado
+                  </Button>
+                </div>
+                
+                {/* Lista de radicados existentes */}
+                {radicadosMultiples.length > 0 && (
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Radicados Existentes
+                    </h4>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {radicadosMultiples.map(rad => (
+                        <div 
+                          key={rad.id}
+                          className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer"
+                          onClick={() => {
+                            setMultiplesData({
+                              radicado: rad.numero,
+                              id: rad.id,
+                              municipio: rad.municipio,
+                              solicitante: rad.solicitante,
+                              mutaciones: rad.mutaciones || []
+                            });
+                          }}
+                        >
+                          <div>
+                            <p className="font-medium">{rad.numero}</p>
+                            <p className="text-sm text-slate-500">
+                              {MUNICIPIOS.find(m => m.codigo === rad.municipio)?.nombre || rad.municipio} | 
+                              {rad.mutaciones?.length || 0} mutaciones
+                            </p>
+                          </div>
+                          <Badge className={
+                            rad.estado === 'COMPLETADO' ? 'bg-green-100 text-green-800' :
+                            rad.estado === 'EN_PROCESO' ? 'bg-amber-100 text-amber-800' :
+                            'bg-slate-100 text-slate-800'
+                          }>
+                            {rad.estado || 'EN_PROCESO'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {cargandoRadicadosMultiples && (
+                  <div className="text-center py-4 text-slate-500">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                    Cargando radicados...
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Paso 2: Gestionar mutaciones del radicado */
+              <div className="space-y-4">
+                {/* Info del radicado */}
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-indigo-800">
+                        Radicado: {multiplesData.radicado}
+                      </h3>
+                      <p className="text-sm text-indigo-600">
+                        {MUNICIPIOS.find(m => m.codigo === multiplesData.municipio)?.nombre} | 
+                        Solicitante: {multiplesData.solicitante.nombre}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setMultiplesData({
+                        radicado: '',
+                        municipio: '',
+                        solicitante: { nombre: '', documento: '', telefono: '', email: '' },
+                        mutaciones: []
+                      })}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Cambiar
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Lista de mutaciones del radicado */}
+                <div className="border rounded-lg">
+                  <div className="p-4 border-b bg-slate-50">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Mutaciones en este Radicado
+                      <Badge className="bg-indigo-100 text-indigo-800">
+                        {multiplesData.mutaciones.length}
+                      </Badge>
+                    </h4>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Cada mutación generará su propia resolución al ser aprobada
+                    </p>
+                  </div>
+                  
+                  <div className="p-4 space-y-3">
+                    {multiplesData.mutaciones.length === 0 ? (
+                      <p className="text-center text-slate-500 py-4">
+                        No hay mutaciones agregadas. Use el botón de abajo para agregar.
+                      </p>
+                    ) : (
+                      multiplesData.mutaciones.map((mut, index) => (
+                        <div 
+                          key={mut.id}
+                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                            mutacionEnEdicion === index 
+                              ? 'border-indigo-500 bg-indigo-50' 
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              mut.estado === 'APROBADA' ? 'bg-green-500 text-white' :
+                              mut.estado === 'PENDIENTE' ? 'bg-amber-500 text-white' :
+                              'bg-slate-300 text-slate-700'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={TIPOS_MUTACION[mut.tipo]?.color || 'bg-slate-100'}>
+                                  {mut.tipo}
+                                </Badge>
+                                <span className="font-medium">{mut.nombre || TIPOS_MUTACION[mut.tipo]?.nombre}</span>
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {mut.estado === 'APROBADA' && mut.resolucion_id 
+                                  ? `Resolución: ${mut.resolucion_id}` 
+                                  : `Estado: ${mut.estado}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {mut.estado === 'BORRADOR' && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    // Abrir el formulario de esta mutación
+                                    setMutacionEnEdicion(index);
+                                    const tipoMut = TIPOS_MUTACION[mut.tipo];
+                                    if (tipoMut) {
+                                      setTipoMutacionSeleccionado(tipoMut);
+                                      setShowMutacionDialog(true);
+                                      // Aquí se precargaría la data del radicado
+                                    }
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => eliminarMutacionDelRadicado(index)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            {mut.estado === 'APROBADA' && mut.resolucion_id && (
+                              <Button variant="ghost" size="sm">
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    
+                    {/* Botón agregar mutación */}
+                    {!mostrarSelectorTipoMultiple ? (
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-dashed border-2 text-indigo-600 hover:bg-indigo-50"
+                        onClick={() => setMostrarSelectorTipoMultiple(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Agregar Mutación
+                      </Button>
+                    ) : (
+                      <div className="border-2 border-dashed border-indigo-300 rounded-lg p-4 bg-indigo-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="font-medium text-indigo-800">Seleccionar tipo de mutación:</h5>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setMostrarSelectorTipoMultiple(false)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {Object.values(TIPOS_MUTACION)
+                            .filter(t => !['ELIMINADOS', 'MULTIPLES', 'BLOQUEO'].includes(t.codigo) && t.enabled)
+                            .map(tipo => (
+                              <Button
+                                key={tipo.codigo}
+                                variant="outline"
+                                size="sm"
+                                className={`${tipo.color} border-0 hover:opacity-80`}
+                                onClick={() => agregarMutacionAlRadicado(tipo)}
+                              >
+                                {tipo.codigoDisplay || tipo.codigo}
+                              </Button>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Resumen y acciones */}
+                {multiplesData.mutaciones.length > 0 && (
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <h4 className="font-medium mb-2">Resumen del Radicado</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-slate-700">{multiplesData.mutaciones.length}</p>
+                        <p className="text-slate-500">Total</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-amber-600">
+                          {multiplesData.mutaciones.filter(m => m.estado !== 'APROBADA').length}
+                        </p>
+                        <p className="text-slate-500">Pendientes</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded">
+                        <p className="text-2xl font-bold text-green-600">
+                          {multiplesData.mutaciones.filter(m => m.estado === 'APROBADA').length}
+                        </p>
+                        <p className="text-slate-500">Aprobadas</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMultiplesModal(false)}>
+              Cerrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
