@@ -29127,10 +29127,16 @@ async def descargar_resolucion_pdf(filename: str):
     try:
         import glob
         
+        # Limpiar el filename (remover parámetros de URL como #toolbar=1)
+        filename = filename.split('#')[0].split('?')[0]
+        
         # Directorios donde buscar PDFs
         search_dirs = [
             "/app/backend/static/resoluciones",
-            "/app/frontend/public/resoluciones"
+            "/app/frontend/public/resoluciones",
+            "/app/frontend/build/resoluciones",
+            "/app/uploads/resoluciones",
+            "/app/uploads"
         ]
         
         # Extraer el número de resolución del filename para búsqueda flexible
@@ -29157,6 +29163,7 @@ async def descargar_resolucion_pdf(filename: str):
             exact_path = f"{search_dir}/{filename}"
             if os.path.exists(exact_path):
                 filepath = exact_path
+                logging.info(f"PDF encontrado (exacto): {filepath}")
                 break
         
         # 2. Si no se encuentra, buscar con el número de resolución simplificado
@@ -29166,21 +29173,55 @@ async def descargar_resolucion_pdf(filename: str):
                 simple_path = f"{search_dir}/{simple_filename}"
                 if os.path.exists(simple_path):
                     filepath = simple_path
-                    filename = simple_filename  # Actualizar para la respuesta
+                    filename = simple_filename
+                    logging.info(f"PDF encontrado (simplificado): {filepath}")
                     break
         
-        # 3. Si aún no se encuentra, buscar por patrón glob
+        # 3. Si aún no se encuentra, buscar con prefijo "resolucion_"
         if not filepath and numero_resolucion:
             for search_dir in search_dirs:
-                # Buscar cualquier archivo que contenga el número de resolución
-                pattern = f"{search_dir}/*{numero_resolucion.replace('-', '*')}*.pdf"
+                # Buscar con prefijo resolucion_
+                pattern = f"{search_dir}/resolucion_{numero_resolucion}*.pdf"
                 matches = glob.glob(pattern)
                 if matches:
                     filepath = matches[0]
                     filename = os.path.basename(filepath)
+                    logging.info(f"PDF encontrado (con prefijo): {filepath}")
                     break
         
+        # 4. Búsqueda más amplia por patrón glob
+        if not filepath and numero_resolucion:
+            for search_dir in search_dirs:
+                # Buscar cualquier archivo que contenga el número de resolución
+                pattern = f"{search_dir}/*{numero_resolucion}*.pdf"
+                matches = glob.glob(pattern)
+                if matches:
+                    filepath = matches[0]
+                    filename = os.path.basename(filepath)
+                    logging.info(f"PDF encontrado (glob): {filepath}")
+                    break
+        
+        # 5. Último intento: buscar en base de datos por número de resolución
+        if not filepath and numero_resolucion:
+            resolucion_db = await db.resoluciones.find_one(
+                {"numero_resolucion": numero_resolucion},
+                {"pdf_path": 1, "pdf_url": 1}
+            )
+            if resolucion_db:
+                pdf_path = resolucion_db.get('pdf_path') or resolucion_db.get('pdf_url', '')
+                if pdf_path:
+                    # Extraer solo el nombre del archivo
+                    pdf_filename = pdf_path.split('/')[-1]
+                    for search_dir in search_dirs:
+                        check_path = f"{search_dir}/{pdf_filename}"
+                        if os.path.exists(check_path):
+                            filepath = check_path
+                            filename = pdf_filename
+                            logging.info(f"PDF encontrado (desde DB): {filepath}")
+                            break
+        
         if not filepath:
+            logging.error(f"PDF no encontrado: {filename}, número resolución: {numero_resolucion}")
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
         
         return FileResponse(
