@@ -15080,6 +15080,16 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         if predio_original:
             # Obtener datos de R1/R2 para la sección CANCELACIÓN
             datos_r1_r2_anterior = obtener_datos_r1_r2(predio_original)
+            
+            # Buscar matrícula en múltiples fuentes
+            matricula_cancelacion = datos_r1_r2_anterior.get("matricula_inmobiliaria") or ""
+            if not matricula_cancelacion:
+                matricula_cancelacion = predio_original.get("matricula_inmobiliaria") or ""
+            if not matricula_cancelacion:
+                r2_regs = predio_original.get("r2_registros", [])
+                if r2_regs and len(r2_regs) > 0:
+                    matricula_cancelacion = r2_regs[0].get("matricula_inmobiliaria") or ""
+            
             datos_anteriores = {
                 "area_terreno": str(datos_r1_r2_anterior.get("area_terreno") or 0),
                 "area_construida": str(datos_r1_r2_anterior.get("area_construida") or 0),
@@ -15087,7 +15097,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                 "direccion": datos_r1_r2_anterior.get("direccion") or "",
                 "destino_economico": datos_r1_r2_anterior.get("destino_economico") or "A",
                 "codigo_homologado": datos_r1_r2_anterior.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": datos_r1_r2_anterior.get("matricula_inmobiliaria") or "Sin información",
+                "matricula_inmobiliaria": matricula_cancelacion,
             }
             if predio_original.get("propietarios"):
                 for p in predio_original["propietarios"]:
@@ -15142,16 +15152,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         # Si hay datos_propuestos, usarlos; si no, usar los datos actuales del predio combinado
         # IMPORTANTE: La matrícula inmobiliaria debe venir del predio original si no cambió
         
-        # Obtener matrícula de varias fuentes posibles
-        matricula_original = datos_anteriores.get("matricula_inmobiliaria") or ""
-        if matricula_original == "Sin información" or not matricula_original:
-            # Buscar en el predio original directamente
-            matricula_original = predio_original.get("matricula_inmobiliaria") or ""
-            # Si aún no hay, buscar en r2_registros
-            if not matricula_original and predio_original:
-                r2_regs = predio_original.get("r2_registros", [])
-                if r2_regs and len(r2_regs) > 0:
-                    matricula_original = r2_regs[0].get("matricula_inmobiliaria") or ""
+        # Usar la matrícula de cancelación si no hay una nueva en el formulario
+        matricula_inscripcion = datos_propuestos.get("matricula_inmobiliaria") or datos_anteriores.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or ""
         
         datos_inscripcion = {
             "area_terreno": datos_propuestos.get("area_terreno") or datos_predio.get("area_terreno") or 0,
@@ -15160,8 +15162,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "direccion": datos_propuestos.get("direccion") or datos_predio.get("direccion") or "",
             "destino_economico": datos_propuestos.get("destino_economico") or datos_predio.get("destino_economico") or "A",
             "codigo_homologado": datos_propuestos.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-            # Matrícula: usar del propuesto SI hay, si no usar la del predio original
-            "matricula_inmobiliaria": datos_propuestos.get("matricula_inmobiliaria") or matricula_original or datos_predio.get("matricula_inmobiliaria") or "",
+            "matricula_inmobiliaria": matricula_inscripcion,
         }
         
         pdf_bytes = generate_resolucion_pdf(
@@ -15173,7 +15174,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
             npn=codigo,
             # Datos de INSCRIPCIÓN (nuevos) - vienen del formulario, no de R1/R2
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or matricula_original or "",
+            matricula_inmobiliaria=matricula_inscripcion,
             direccion=datos_inscripcion.get("direccion") or "",
             avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
             vigencia_fiscal=f"01/01/{año_actual}",
