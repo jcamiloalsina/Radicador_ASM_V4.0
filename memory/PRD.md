@@ -25,11 +25,24 @@ Sistema de gestión catastral para ASOMUNICIPIOS que permite el registro, mutaci
 
 ---
 
-## Estado Actual del Proyecto
+## Estado Actual del Proyecto (Actualizado: Diciembre 2025)
+
+### Completado en Esta Sesión
+- [x] **Panel de Progreso Visual para Importación Excel**
+  - Lista de archivos con indicadores de estado (pendiente/procesando/exitoso/error)
+  - Barra de progreso global animada
+  - Estadísticas en tiempo real durante importación
+  - Resumen final post-importación con contadores
+  - Auto-detección de municipio desde nombre de archivo
+- [x] **Corrección de Dropdowns "Cuadros por Fuera"**
+  - Dropdowns de municipio en Bloqueo ahora se abren hacia arriba
+  - Dropdowns de municipio en Complementación ahora se abren hacia arriba
+  - Agregada rotación de flecha cuando dropdown está abierto
+  - Aumentada altura máxima de dropdowns a 60 unidades
 
 ### Completado en Sesión Anterior
 - [x] Columnas "Área Terreno" y "Área Construida" en tabla de predios
-- [x] Corrección de dropdowns en modales de Bloqueo/Complementación
+- [x] Corrección de dropdowns en modales de Bloqueo/Complementación (z-index)
 - [x] Vigencia correcta en Predios Eliminados (migración ejecutada)
 - [x] Búsqueda unificada en todos los módulos
 - [x] Corrección de errores JS en M3/M4
@@ -51,7 +64,6 @@ Sistema de gestión catastral para ASOMUNICIPIOS que permite el registro, mutaci
 ### Tareas Pendientes
 | Prioridad | Tarea | Estado |
 |-----------|-------|--------|
-| P0 | Importación multi-archivo Excel | No iniciado |
 | P1 | Refactorización server.py a routers | No iniciado |
 | P1 | Refactorización MutacionesResoluciones.js | No iniciado |
 | P1 | Test regresión completo 7 mutaciones | No iniciado |
@@ -78,10 +90,13 @@ Sistema de gestión catastral para ASOMUNICIPIOS que permite el registro, mutaci
 └── frontend/
     └── src/
         ├── components/
-        │   └── ImportR1R2Form.js
+        │   ├── conservacion/
+        │   │   └── ImportR1R2Form.jsx  # MEJORADO - Panel de progreso visual
+        │   └── ui/
+        │       └── dialog.jsx          # MODIFICADO - overflow-visible por defecto
         └── pages/
             ├── Predios.js
-            └── MutacionesResoluciones.js  # Archivo grande, requiere refactorización
+            └── MutacionesResoluciones.js  # MODIFICADO - Dropdowns hacia arriba
 ```
 
 ## Integraciones 3rd Party

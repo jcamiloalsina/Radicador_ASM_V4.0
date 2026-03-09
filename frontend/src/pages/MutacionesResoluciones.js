@@ -6178,10 +6178,10 @@ export default function MutacionesResoluciones() {
           <span className={complementacionData.municipio ? 'text-slate-900' : 'text-slate-400'}>
             {complementacionData.municipio || 'Seleccione municipio'}
           </span>
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className={`w-4 h-4 transition-transform ${showMunicipioDropdownComplementacion ? 'rotate-180' : ''}`} />
         </div>
         {showMunicipioDropdownComplementacion && (
-          <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="absolute z-[99999] w-full bottom-full mb-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {MUNICIPIOS.map(mun => (
               <div
                 key={mun.codigo}
@@ -6462,10 +6462,10 @@ export default function MutacionesResoluciones() {
               <span className={bloqueoMunicipio ? 'text-slate-900' : 'text-slate-400'}>
                 {bloqueoMunicipio || 'Seleccione municipio'}
               </span>
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className={`w-4 h-4 transition-transform ${showBloqueoMunicipioDropdown ? 'rotate-180' : ''}`} />
             </div>
             {showBloqueoMunicipioDropdown && (
-              <div className="absolute z-[99999] w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-[99999] w-full bottom-full mb-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {MUNICIPIOS.map(mun => (
                   <div
                     key={mun.codigo}
