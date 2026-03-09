@@ -163,13 +163,8 @@ def generate_resolucion_pdf(
     except:
         pie_pagina_img = None
     
-    try:
-        if imagen_firma_b64:
-            firma_img = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
-        else:
-            firma_img = ImageReader(get_firma_dalgie_image())
-    except:
-        firma_img = None
+    # Nota: La firma de Dalgie se carga más adelante en la sección de FIRMA (línea ~751)
+    # usando firma_dalgie, no firma_img, para evitar duplicación de código
     
     # Cargar logo para marca de agua
     logo_watermark = None
@@ -748,12 +743,26 @@ def generate_resolucion_pdf(
     y = check_page_break(y, 120)
     
     # Cargar imagen de firma de Dalgie
+    # Prioridad: 1) imagen_firma_b64 si se pasa, 2) archivo local, 3) base64 embebida
     firma_dalgie = None
     try:
-        firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
-        if os.path.exists(firma_path):
-            firma_dalgie = ImageReader(firma_path)
-    except:
+        if imagen_firma_b64:
+            # Si se pasa una firma base64 como parámetro, usarla
+            firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
+            print("Firma cargada desde parámetro imagen_firma_b64")
+        else:
+            # Intentar cargar desde archivo local primero
+            firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
+            if os.path.exists(firma_path):
+                firma_dalgie = ImageReader(firma_path)
+                print(f"Firma cargada desde archivo: {firma_path}")
+            else:
+                # Fallback a imagen en base64 embebida
+                firma_data = get_firma_dalgie_image()
+                firma_dalgie = ImageReader(firma_data)
+                print("Firma cargada desde base64 embebida (fallback)")
+    except Exception as e:
+        print(f"Error cargando firma de Dalgie: {e}")
         firma_dalgie = None
     
     # === SECCIÓN DE FIRMA Y QR - LADO A LADO (IGUAL QUE CERTIFICADO) ===
