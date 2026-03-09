@@ -9812,11 +9812,39 @@ async def actualizar_radicado_eliminado(
 async def import_predios_excel(
     file: UploadFile = File(...),
     vigencia: Optional[str] = Query(None),
+    codigo_municipio: str = Query(..., description="Código del municipio (5 dígitos) al que pertenecen los predios"),
     force: bool = Query(False, description="Forzar importación aunque haya diferencia significativa de predios"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Importa predios desde archivo Excel R1-R2 con soporte de vigencia"""
+    """Importa predios desde archivo Excel R1-R2 con validación de municipio"""
     import openpyxl
+    
+    # Validar código de municipio
+    if not codigo_municipio or len(codigo_municipio) != 5 or not codigo_municipio.isdigit():
+        raise HTTPException(status_code=400, detail="Debe proporcionar un código de municipio válido (5 dígitos)")
+    
+    # Mapeo de códigos a nombres de municipio para validación
+    MUNICIPIOS_VALIDOS = {
+        '54003': 'Ábrego',
+        '54109': 'Bucarasica', 
+        '54128': 'Cáchira',
+        '54206': 'Convención',
+        '54245': 'El Carmen',
+        '54250': 'El Tarra',
+        '54344': 'Hacarí',
+        '54385': 'La Esperanza',
+        '54398': 'La Playa',
+        '54670': 'San Calixto',
+        '54720': 'Sardinata',
+        '54800': 'Teorama',
+        '20614': 'Río de Oro',
+    }
+    
+    if codigo_municipio not in MUNICIPIOS_VALIDOS:
+        raise HTTPException(status_code=400, detail=f"Código de municipio '{codigo_municipio}' no reconocido. Municipios válidos: {list(MUNICIPIOS_VALIDOS.keys())}")
+    
+    nombre_municipio = MUNICIPIOS_VALIDOS[codigo_municipio]
+    logger.info(f"Importando Excel para municipio: {nombre_municipio} ({codigo_municipio})")
     
     # Procesar vigencia - puede venir como "2023", "2025", "01012023", "1012023", etc.
     vigencia_int = 2025  # valor por defecto
@@ -10036,6 +10064,46 @@ async def import_predios_excel(
                     'tipo_documento': str(get_col(row, 'tipo_documento') or '').strip(),
                     'numero_documento': str(get_col(row, 'numero_documento') or '').strip()
                 })
+        
+        # ============================================
+        # VALIDACIÓN DE MUNICIPIO
+        # ============================================
+        # Verificar que TODOS los predios del Excel pertenezcan al municipio seleccionado
+        predios_incorrectos = []
+        municipios_encontrados = set()
+        
+        for codigo, predio in r1_data.items():
+            # Los primeros 5 dígitos del código predial nacional son el código del municipio
+            if len(codigo) >= 5:
+                codigo_mun_excel = codigo[:5]
+                municipios_encontrados.add(codigo_mun_excel)
+                
+                if codigo_mun_excel != codigo_municipio:
+                    predios_incorrectos.append({
+                        "codigo": codigo[:30] + "...",
+                        "municipio_excel": codigo_mun_excel,
+                        "municipio_esperado": codigo_municipio
+                    })
+        
+        if predios_incorrectos:
+            wb.close()
+            temp_path.unlink()
+            
+            # Mensaje de error detallado
+            municipios_str = ", ".join(municipios_encontrados)
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": f"El archivo Excel contiene predios de otros municipios",
+                    "municipio_seleccionado": f"{nombre_municipio} ({codigo_municipio})",
+                    "municipios_en_excel": municipios_str,
+                    "total_predios_incorrectos": len(predios_incorrectos),
+                    "ejemplos": predios_incorrectos[:10],
+                    "sugerencia": f"Asegúrese de seleccionar el municipio correcto o use un archivo Excel que solo contenga predios del municipio {nombre_municipio}"
+                }
+            )
+        
+        logger.info(f"✅ Validación de municipio exitosa: {len(r1_data)} predios pertenecen a {nombre_municipio} ({codigo_municipio})")
         
         # Buscar hoja R2 con nombres alternativos (normalizando espacios)
         r2_sheet_names = ['REGISTRO_R2', 'REGISTRO R2', 'R2', 'Registro_R2', 'Registro R2', 'registro_r2', 'Hoja2', 'Sheet2']
