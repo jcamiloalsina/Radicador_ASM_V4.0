@@ -32564,22 +32564,76 @@ def get_directory_info(path: Path):
     return items, total_size
 
 def get_storage_info():
-    """Obtener información de almacenamiento"""
-    total_size = 0
+    """Obtener información de almacenamiento REAL del servidor"""
+    import shutil
+    
+    # Obtener información real del disco
+    try:
+        disk_usage = shutil.disk_usage("/app")
+        disk_total = disk_usage.total
+        disk_used = disk_usage.used
+        disk_free = disk_usage.free
+    except Exception:
+        # Fallback si no puede obtener info del disco
+        disk_total = 0
+        disk_used = 0
+        disk_free = 0
+    
+    # Calcular uso de archivos en el directorio base
+    app_files_size = 0
     files_count = 0
     
     for root, dirs, files in os.walk(FILES_BASE_DIR):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
         for file in files:
             if not file.startswith('.'):
-                file_path = Path(root) / file
-                total_size += file_path.stat().st_size
-                files_count += 1
+                try:
+                    file_path = Path(root) / file
+                    app_files_size += file_path.stat().st_size
+                    files_count += 1
+                except Exception:
+                    pass
+    
+    # Calcular tamaño de uploads
+    uploads_size = 0
+    uploads_count = 0
+    uploads_dir = Path("/app/uploads")
+    if uploads_dir.exists():
+        for root, dirs, files in os.walk(uploads_dir):
+            for file in files:
+                try:
+                    file_path = Path(root) / file
+                    uploads_size += file_path.stat().st_size
+                    uploads_count += 1
+                except Exception:
+                    pass
+    
+    # Calcular tamaño de resoluciones
+    resoluciones_size = 0
+    resoluciones_count = 0
+    for res_dir in [Path("/app/frontend/public/resoluciones"), Path("/app/frontend/build/resoluciones"), Path("/app/backend/static/resoluciones")]:
+        if res_dir.exists():
+            for root, dirs, files in os.walk(res_dir):
+                for file in files:
+                    try:
+                        file_path = Path(root) / file
+                        resoluciones_size += file_path.stat().st_size
+                        resoluciones_count += 1
+                    except Exception:
+                        pass
     
     return {
-        "used": total_size,
-        "total": 1073741824,  # 1GB límite
-        "files_count": files_count
+        "disk_total": disk_total,
+        "disk_used": disk_used,
+        "disk_free": disk_free,
+        "disk_percent": round((disk_used / disk_total * 100), 1) if disk_total > 0 else 0,
+        "app_files_used": app_files_size,
+        "app_files_count": files_count,
+        "uploads_used": uploads_size,
+        "uploads_count": uploads_count,
+        "resoluciones_used": resoluciones_size,
+        "resoluciones_count": resoluciones_count,
+        "total_app_storage": app_files_size + uploads_size + resoluciones_size
     }
 
 @api_router.get("/files/list")
