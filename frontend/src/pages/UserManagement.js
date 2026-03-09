@@ -10,7 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { UserCog, Search, Database, Download, Upload, Trash2, RefreshCw, HardDrive, FolderArchive, Clock, User, Eye, AlertTriangle, Loader2, CheckCircle, Settings, Play, Calendar, Timer, MapPin, Building2 } from 'lucide-react';
+import { UserCog, Search, Database, Download, Upload, Trash2, RefreshCw, HardDrive, FolderArchive, Clock, User, Eye, AlertTriangle, Loader2, CheckCircle, Settings, Play, Calendar, Timer, MapPin, Building2, Shield, Save, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   Dialog,
@@ -113,6 +113,14 @@ export default function UserManagement() {
   const [municipiosAsignados, setMunicipiosAsignados] = useState([]);
   const [savingMunicipios, setSavingMunicipios] = useState(false);
 
+  // Estados para gestión de permisos
+  const [permUsersData, setPermUsersData] = useState([]);
+  const [availablePermissions, setAvailablePermissions] = useState([]);
+  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [savingPerms, setSavingPerms] = useState({});
+  const [permSearchTerm, setPermSearchTerm] = useState('');
+  const [pendingPermChanges, setPendingPermChanges] = useState({});
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -122,6 +130,9 @@ export default function UserManagement() {
       fetchDbStatus();
       fetchBackups();
       fetchBackupConfig();
+    }
+    if (activeTab === 'permisos') {
+      fetchPermissionsData();
     }
   }, [activeTab]);
 
@@ -149,6 +160,125 @@ export default function UserManagement() {
       setLoading(false);
     }
   };
+
+  // Funciones para gestión de permisos
+  const fetchPermissionsData = async () => {
+    try {
+      setLoadingPerms(true);
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [permissionsRes, usersRes] = await Promise.all([
+        axios.get(`${API}/permissions/available`, { headers }),
+        axios.get(`${API}/permissions/users`, { headers })
+      ]);
+
+      setAvailablePermissions(permissionsRes.data.permissions || []);
+      setPermUsersData(usersRes.data.users || []);
+    } catch (error) {
+      console.error('Error fetching permissions data:', error);
+      toast.error('Error al cargar datos de permisos');
+    } finally {
+      setLoadingPerms(false);
+    }
+  };
+
+  const handlePermissionToggle = (userId, permissionKey) => {
+    const userPermissions = pendingPermChanges[userId] || 
+      permUsersData.find(u => u.id === userId)?.permissions || [];
+    
+    let newPermissions;
+    if (userPermissions.includes(permissionKey)) {
+      newPermissions = userPermissions.filter(p => p !== permissionKey);
+    } else {
+      newPermissions = [...userPermissions, permissionKey];
+    }
+
+    setPendingPermChanges({
+      ...pendingPermChanges,
+      [userId]: newPermissions
+    });
+  };
+
+  const hasPermChanges = (userId) => {
+    const original = permUsersData.find(u => u.id === userId)?.permissions || [];
+    const pending = pendingPermChanges[userId];
+    if (!pending) return false;
+    
+    if (original.length !== pending.length) return true;
+    return !original.every(p => pending.includes(p));
+  };
+
+  const getCurrentPermissions = (userId) => {
+    return pendingPermChanges[userId] || permUsersData.find(u => u.id === userId)?.permissions || [];
+  };
+
+  const saveUserPermissions = async (userId) => {
+    if (!hasPermChanges(userId)) return;
+
+    try {
+      setSavingPerms({ ...savingPerms, [userId]: true });
+      const token = localStorage.getItem('token');
+      
+      await axios.patch(`${API}/permissions/user`, {
+        user_id: userId,
+        permissions: pendingPermChanges[userId]
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success('Permisos actualizados correctamente');
+      
+      // Actualizar estado local
+      setPermUsersData(permUsersData.map(u => 
+        u.id === userId 
+          ? { ...u, permissions: pendingPermChanges[userId] }
+          : u
+      ));
+      
+      // Limpiar cambios pendientes para este usuario
+      const newPendingChanges = { ...pendingPermChanges };
+      delete newPendingChanges[userId];
+      setPendingPermChanges(newPendingChanges);
+
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      toast.error(error.response?.data?.detail || 'Error al guardar permisos');
+    } finally {
+      setSavingPerms({ ...savingPerms, [userId]: false });
+    }
+  };
+
+  const getPermRoleBadgeColor = (role) => {
+    const colors = {
+      gestor: 'bg-blue-100 text-blue-800',
+      coordinador: 'bg-purple-100 text-purple-800',
+      atencion_usuario: 'bg-amber-100 text-amber-800',
+      comunicaciones: 'bg-cyan-100 text-cyan-800',
+      empresa: 'bg-emerald-100 text-emerald-800',
+      administrador: 'bg-red-100 text-red-800'
+    };
+    return colors[role] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getPermRoleName = (role) => {
+    const roles = {
+      gestor: 'Gestor',
+      coordinador: 'Coordinador',
+      atencion_usuario: 'Atención al Usuario',
+      comunicaciones: 'Comunicaciones',
+      empresa: 'Empresa',
+      administrador: 'Administrador',
+      usuario: 'Usuario'
+    };
+    return roles[role] || role;
+  };
+
+  const filteredPermUsers = permUsersData.filter(u => 
+    u.full_name?.toLowerCase().includes(permSearchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(permSearchTerm.toLowerCase()) ||
+    getPermRoleName(u.role).toLowerCase().includes(permSearchTerm.toLowerCase())
+  );
 
   // Funciones para gestión de municipios de usuarios empresa
   const fetchMunicipiosDisponibles = async () => {
@@ -590,10 +720,14 @@ export default function UserManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="usuarios" className="flex items-center gap-2">
             <UserCog className="w-4 h-4" />
             Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="permisos" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Permisos
           </TabsTrigger>
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
@@ -742,6 +876,188 @@ export default function UserManagement() {
                 );
               })}
             </div>
+          )}
+        </TabsContent>
+
+        {/* Tab Permisos */}
+        <TabsContent value="permisos" className="mt-6 space-y-4">
+          {/* Leyenda de permisos */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="w-5 h-5 text-emerald-600" />
+                Permisos Disponibles
+              </CardTitle>
+              <p className="text-sm text-slate-500">
+                Los administradores y coordinadores tienen todos los permisos por defecto
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    <p className="font-semibold text-sm text-blue-800">GDB (Base Gráfica)</p>
+                  </div>
+                  <p className="text-xs text-blue-600">
+                    Permite subir archivos .gdb con las geometrías de los predios al Visor de Predios
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <p className="font-semibold text-sm text-green-800">R1/R2 (Excel Catastral)</p>
+                  </div>
+                  <p className="text-xs text-green-600">
+                    Permite importar archivos Excel con datos catastrales R1 y R2 por vigencia
+                  </p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                    <p className="font-semibold text-sm text-purple-800">Aprobar Cambios Predios</p>
+                  </div>
+                  <p className="text-xs text-purple-600">
+                    Permite aprobar o rechazar solicitudes de creación, modificación o eliminación de predios
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Búsqueda de permisos */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+            <Input
+              placeholder="Buscar por nombre, correo o rol..."
+              value={permSearchTerm}
+              onChange={(e) => setPermSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="search-permissions"
+            />
+          </div>
+
+          {/* Lista de usuarios con permisos */}
+          {loadingPerms ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPermUsers.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-slate-500">
+                    No se encontraron usuarios con los criterios de búsqueda
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredPermUsers.map(userData => (
+                  <Card key={userData.id} className={hasPermChanges(userData.id) ? 'ring-2 ring-amber-400' : ''}>
+                    <CardContent className="py-4">
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                        {/* Info del usuario */}
+                        <div className="flex items-center gap-3 min-w-[250px]">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{userData.full_name}</p>
+                            <p className="text-sm text-slate-500">{userData.email}</p>
+                            <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${getPermRoleBadgeColor(userData.role)}`}>
+                              {getPermRoleName(userData.role)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Permisos */}
+                        <div className="flex-1 flex flex-wrap gap-4">
+                          {availablePermissions.map(perm => {
+                            const isChecked = getCurrentPermissions(userData.id).includes(perm.key);
+                            const isCoordinador = userData.role === 'coordinador';
+                            
+                            const getShortLabel = (key) => {
+                              const labels = {
+                                'upload_gdb': 'GDB (Base Gráfica)',
+                                'import_r1r2': 'R1/R2 (Excel Catastral)',
+                                'approve_changes': 'Aprobar Cambios Predios',
+                                'acceso_actualizacion': 'Acceso a Actualización'
+                              };
+                              return labels[key] || perm.description;
+                            };
+                            
+                            return (
+                              <div key={perm.key} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`${userData.id}-${perm.key}`}
+                                  checked={isChecked || isCoordinador}
+                                  disabled={isCoordinador}
+                                  onCheckedChange={() => handlePermissionToggle(userData.id, perm.key)}
+                                  data-testid={`perm-${userData.id}-${perm.key}`}
+                                />
+                                <label 
+                                  htmlFor={`${userData.id}-${perm.key}`}
+                                  className={`text-sm cursor-pointer ${isCoordinador ? 'text-slate-400' : 'text-slate-700'}`}
+                                >
+                                  {getShortLabel(perm.key)}
+                                  {isCoordinador && (
+                                    <span className="ml-1 text-xs text-emerald-600">(por rol)</span>
+                                  )}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Botón guardar */}
+                        <div className="flex items-center gap-2">
+                          {hasPermChanges(userData.id) && (
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                              Cambios pendientes
+                            </span>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => saveUserPermissions(userData.id)}
+                            disabled={!hasPermChanges(userData.id) || savingPerms[userData.id]}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            data-testid={`save-perm-${userData.id}`}
+                          >
+                            {savingPerms[userData.id] ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4" />
+                            )}
+                            <span className="ml-1">Guardar</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Resumen de permisos */}
+          {permUsersData.length > 0 && (
+            <Card className="bg-slate-50">
+              <CardContent className="py-4">
+                <div className="flex flex-wrap gap-6 justify-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span className="text-slate-600">
+                      <strong>{permUsersData.filter(u => (u.permissions || []).length > 0).length}</strong> usuarios con permisos especiales
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-slate-400" />
+                    <span className="text-slate-600">
+                      <strong>{permUsersData.filter(u => (u.permissions || []).length === 0 && u.role !== 'coordinador').length}</strong> sin permisos especiales
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 

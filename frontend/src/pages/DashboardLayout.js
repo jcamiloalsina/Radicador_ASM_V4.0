@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell, Code, ScrollText } from 'lucide-react';
+import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, WifiOff, UserCheck, Bell, Code, ScrollText, FolderOpen } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
@@ -310,7 +310,7 @@ export default function DashboardLayout() {
       adminItems.push({ path: '/dashboard/log-actividades', label: 'Log de Actividades', icon: ScrollText });
     }
     if (isCoordAdmin) {
-      adminItems.push({ path: '/dashboard/permisos', label: 'Gestión de Permisos', icon: Shield });
+      adminItems.push({ path: '/dashboard/gestor-recursos', label: 'Gestor de Recursos', icon: FolderOpen });
     }
 
     return { baseMenuItems, conservacionItems, actualizacionItems, adminItems };

@@ -32018,6 +32018,218 @@ async def actualizar_configuracion_anios(
     return {"message": "Configuración actualizada", "año_inicial": anio_inicial, "años_futuro": anios_futuro}
 
 
+# ===== FILE MANAGER ENDPOINTS =====
+# Directorio base para archivos del sistema
+FILES_BASE_DIR = Path("/app/uploads/system_files")
+os.makedirs(FILES_BASE_DIR, exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "backups", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "imports", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "exports", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "resoluciones", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "gdb_uploads", exist_ok=True)
+os.makedirs(FILES_BASE_DIR / "temp", exist_ok=True)
+
+def get_directory_info(path: Path):
+    """Obtener información de un directorio"""
+    items = []
+    total_size = 0
+    
+    if path.exists() and path.is_dir():
+        for item in sorted(path.iterdir()):
+            if item.name.startswith('.'):
+                continue
+                
+            if item.is_dir():
+                dir_items = len([f for f in item.iterdir() if not f.name.startswith('.')])
+                items.append({
+                    "name": item.name,
+                    "type": "folder",
+                    "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat(),
+                    "items_count": dir_items
+                })
+            else:
+                file_size = item.stat().st_size
+                total_size += file_size
+                items.append({
+                    "name": item.name,
+                    "type": "file",
+                    "size": file_size,
+                    "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                })
+    
+    return items, total_size
+
+def get_storage_info():
+    """Obtener información de almacenamiento"""
+    total_size = 0
+    files_count = 0
+    
+    for root, dirs, files in os.walk(FILES_BASE_DIR):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for file in files:
+            if not file.startswith('.'):
+                file_path = Path(root) / file
+                total_size += file_path.stat().st_size
+                files_count += 1
+    
+    return {
+        "used": total_size,
+        "total": 1073741824,  # 1GB límite
+        "files_count": files_count
+    }
+
+@api_router.get("/files/list")
+async def list_files(
+    path: str = "/",
+    current_user: dict = Depends(get_current_user)
+):
+    """Listar archivos y carpetas en un directorio"""
+    # Solo admin y coordinadores pueden acceder
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para acceder a esta funcionalidad")
+    
+    # Validar path para prevenir path traversal
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path if clean_path else FILES_BASE_DIR
+    
+    if not full_path.exists():
+        full_path.mkdir(parents=True, exist_ok=True)
+    
+    items, _ = get_directory_info(full_path)
+    storage_info = get_storage_info()
+    
+    return {
+        "path": "/" + clean_path if clean_path else "/",
+        "items": items,
+        "storage_info": storage_info
+    }
+
+@api_router.post("/files/upload")
+async def upload_file(
+    path: str = Form("/"),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Subir un archivo al directorio especificado"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para subir archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path if clean_path else FILES_BASE_DIR
+    
+    if not full_path.exists():
+        full_path.mkdir(parents=True, exist_ok=True)
+    
+    file_path = full_path / file.filename
+    
+    # Guardar archivo
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="upload",
+        categoria="archivos",
+        descripcion=f"Archivo subido: {file.filename}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path, "filename": file.filename}
+    )
+    
+    return {"message": "Archivo subido correctamente", "filename": file.filename}
+
+@api_router.get("/files/download")
+async def download_file(
+    path: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Descargar un archivo"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para descargar archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if not full_path.exists() or full_path.is_dir():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    
+    return FileResponse(
+        path=str(full_path),
+        filename=full_path.name,
+        media_type="application/octet-stream"
+    )
+
+@api_router.delete("/files/delete")
+async def delete_file(
+    path: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Eliminar un archivo o carpeta"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para eliminar archivos")
+    
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="Archivo o carpeta no encontrado")
+    
+    # No permitir eliminar directorios principales
+    protected_dirs = ["backups", "imports", "exports", "resoluciones", "gdb_uploads", "temp"]
+    if clean_path in protected_dirs:
+        raise HTTPException(status_code=403, detail="No se puede eliminar este directorio")
+    
+    if full_path.is_dir():
+        shutil.rmtree(full_path)
+    else:
+        full_path.unlink()
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="delete",
+        categoria="archivos",
+        descripcion=f"Archivo/carpeta eliminado: {clean_path}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path}
+    )
+    
+    return {"message": "Eliminado correctamente"}
+
+@api_router.post("/files/create-folder")
+async def create_folder(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Crear una nueva carpeta"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permisos para crear carpetas")
+    
+    path = data.get("path", "")
+    clean_path = path.replace("..", "").strip("/")
+    full_path = FILES_BASE_DIR / clean_path
+    
+    if full_path.exists():
+        raise HTTPException(status_code=400, detail="La carpeta ya existe")
+    
+    full_path.mkdir(parents=True, exist_ok=True)
+    
+    # Registrar en logs
+    await registrar_log_actividad(
+        accion="create",
+        categoria="archivos",
+        descripcion=f"Carpeta creada: {clean_path}",
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["full_name"],
+        usuario_rol=current_user["role"],
+        detalles={"path": path}
+    )
+    
+    return {"message": "Carpeta creada correctamente"}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
