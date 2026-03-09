@@ -6544,11 +6544,11 @@ export default function MutacionesResoluciones() {
                 />
               </div>
               
-              {/* Campos NO Editables - Áreas */}
+              {/* Campos NO Editables - Áreas y Avalúo */}
               <div className="border-t pt-4 mt-4">
                 <p className="text-xs text-amber-600 mb-3 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Las áreas de terreno y construcción no son editables en Complementación. Para modificar áreas use Rectificación de Área.
+                  Las áreas y el avalúo no son editables en Complementación. Para modificar áreas use Rectificación de Área.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -6577,11 +6577,12 @@ export default function MutacionesResoluciones() {
               </div>
               
               <div>
-                <Label className="text-xs">Nuevo Avalúo ($)</Label>
+                <Label className="text-xs text-slate-400">Avalúo ($) - No editable</Label>
                 <Input
                   type="number"
                   value={complementacionData.avaluo_nuevo}
-                  onChange={(e) => setComplementacionData(prev => ({ ...prev, avaluo_nuevo: parseFloat(e.target.value) || 0 }))}
+                  disabled
+                  className="bg-slate-100 cursor-not-allowed"
                   data-testid="complementacion-avaluo"
                 />
               </div>
