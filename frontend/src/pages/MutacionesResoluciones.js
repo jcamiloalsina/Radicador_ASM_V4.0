@@ -12,7 +12,7 @@ import axios from 'axios';
 import { 
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
-  Users, MapPin, DollarSign, Calendar, Filter,
+  Users, User, MapPin, DollarSign, Calendar, Filter,
   ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
   Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
   Unlock, AlertTriangle
