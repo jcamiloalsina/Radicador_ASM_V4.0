@@ -7081,7 +7081,7 @@ async def get_predios_eliminados_stats(current_user: dict = Depends(get_current_
     
     return {
         "by_municipio": [
-            {"municipio": r["_id"]["municipio"], "vigencia": r["_id"]["vigencia"], "count": r["count"]}
+            {"municipio": r["_id"].get("municipio"), "vigencia": r["_id"].get("vigencia"), "count": r["count"]}
             for r in result
         ],
         "total": sum(r["count"] for r in result)
@@ -7162,7 +7162,177 @@ async def migrar_predios_eliminados(current_user: dict = Depends(get_current_use
     }
 
 
-@api_router.post("/predios/analisis-historico")
+class MigrarVigenciasRequest(BaseModel):
+    vigencia_origen_default: Optional[int] = None  # Si no se puede determinar, usar esta
+    vigencia_eliminacion_default: Optional[int] = None  # Si no se puede determinar, usar esta
+    solo_sin_vigencia: bool = True  # Solo migrar predios sin vigencia_eliminacion
+    dry_run: bool = False  # Si True, solo muestra lo que haría sin ejecutar
+
+
+@api_router.post("/predios/eliminados/migrar-vigencias")
+async def migrar_vigencias_eliminados(
+    request: MigrarVigenciasRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migra y corrige las vigencias de los predios eliminados.
+    
+    Estrategia de determinación de vigencias:
+    1. Si tiene `vigencia_eliminacion` y `vigencia_origen`, no se modifica
+    2. Si tiene `eliminado_en` (fecha), se extrae el año como vigencia_eliminacion
+    3. Si tiene `fecha_eliminacion`, se extrae el año
+    4. Si tiene `vigencia` pero no `vigencia_origen`, se copia a vigencia_origen
+    5. Como último recurso, se usan los valores default proporcionados
+    
+    Para determinar vigencia_origen (la última vigencia donde existió el predio):
+    - Si el motivo indica "Mutación M2" o similar, usar vigencia actual - 1
+    - Si hay un registro histórico en predios con el mismo código, usar esa vigencia
+    - De lo contrario, usar el campo `vigencia` existente
+    """
+    if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ejecutar esta migración")
+    
+    # Construir query
+    query = {}
+    if request.solo_sin_vigencia:
+        query["$or"] = [
+            {"vigencia_eliminacion": {"$exists": False}},
+            {"vigencia_eliminacion": None},
+            {"vigencia_origen": {"$exists": False}},
+            {"vigencia_origen": None}
+        ]
+    
+    # Obtener predios a migrar
+    predios = await db.predios_eliminados.find(query, {"_id": 0}).to_list(50000)
+    
+    if not predios:
+        return {
+            "mensaje": "No hay predios que necesiten migración de vigencias",
+            "total": 0
+        }
+    
+    # Obtener vigencias disponibles en el sistema
+    vigencias_disponibles = await db.predios.distinct("vigencia")
+    vigencias_disponibles = sorted([v for v in vigencias_disponibles if v and v >= 2020])
+    vigencia_mas_reciente = max(vigencias_disponibles) if vigencias_disponibles else datetime.now().year
+    vigencia_anterior = vigencia_mas_reciente - 1 if vigencia_mas_reciente else datetime.now().year - 1
+    
+    resultados = {
+        "total_analizados": len(predios),
+        "actualizados": 0,
+        "sin_cambios": 0,
+        "errores": 0,
+        "dry_run": request.dry_run,
+        "detalles": []
+    }
+    
+    for predio in predios:
+        predio_id = predio.get("id")
+        codigo = predio.get("codigo_predial_nacional", "")
+        
+        # Determinar vigencia_eliminacion
+        vigencia_eliminacion = predio.get("vigencia_eliminacion")
+        if not vigencia_eliminacion:
+            # Estrategia 1: Extraer del campo eliminado_en
+            eliminado_en = predio.get("eliminado_en")
+            if eliminado_en:
+                try:
+                    if isinstance(eliminado_en, str):
+                        fecha = datetime.fromisoformat(eliminado_en.replace('Z', '+00:00'))
+                    else:
+                        fecha = eliminado_en
+                    vigencia_eliminacion = fecha.year
+                except:
+                    pass
+            
+            # Estrategia 2: Extraer de fecha_eliminacion
+            if not vigencia_eliminacion:
+                fecha_elim = predio.get("fecha_eliminacion")
+                if fecha_elim:
+                    try:
+                        if isinstance(fecha_elim, str):
+                            fecha = datetime.fromisoformat(fecha_elim.replace('Z', '+00:00'))
+                        else:
+                            fecha = fecha_elim
+                        vigencia_eliminacion = fecha.year
+                    except:
+                        pass
+            
+            # Estrategia 3: Usar default o la vigencia más reciente
+            if not vigencia_eliminacion:
+                vigencia_eliminacion = request.vigencia_eliminacion_default or vigencia_mas_reciente
+        
+        # Determinar vigencia_origen
+        vigencia_origen = predio.get("vigencia_origen")
+        if not vigencia_origen:
+            # Estrategia 1: Buscar en predios históricos (todas las vigencias)
+            # Buscar la vigencia más alta donde existe un predio con este código
+            predio_historico = await db.predios.find_one(
+                {"codigo_predial_nacional": codigo, "deleted": {"$ne": True}},
+                {"_id": 0, "vigencia": 1},
+                sort=[("vigencia", -1)]
+            )
+            if predio_historico and predio_historico.get("vigencia"):
+                vigencia_origen = predio_historico["vigencia"]
+            else:
+                # Estrategia 2: Buscar incluso en predios marcados como deleted
+                predio_deleted = await db.predios.find_one(
+                    {"codigo_predial_nacional": codigo},
+                    {"_id": 0, "vigencia": 1},
+                    sort=[("vigencia", -1)]
+                )
+                if predio_deleted and predio_deleted.get("vigencia"):
+                    vigencia_origen = predio_deleted["vigencia"]
+                else:
+                    # Estrategia 3: Si tiene campo vigencia en el doc eliminado, usarlo
+                    vigencia_existente = predio.get("vigencia")
+                    if vigencia_existente:
+                        vigencia_origen = vigencia_existente
+                    else:
+                        # Estrategia 4: Usar default o vigencia anterior a eliminación
+                        vigencia_origen = request.vigencia_origen_default or (vigencia_eliminacion - 1 if vigencia_eliminacion else vigencia_anterior)
+        
+        # Verificar si hay cambios
+        cambios = {}
+        if vigencia_eliminacion and vigencia_eliminacion != predio.get("vigencia_eliminacion"):
+            cambios["vigencia_eliminacion"] = vigencia_eliminacion
+        if vigencia_origen and vigencia_origen != predio.get("vigencia_origen"):
+            cambios["vigencia_origen"] = vigencia_origen
+        
+        if not cambios:
+            resultados["sin_cambios"] += 1
+            continue
+        
+        # Aplicar cambios
+        if not request.dry_run:
+            try:
+                await db.predios_eliminados.update_one(
+                    {"id": predio_id},
+                    {"$set": cambios}
+                )
+                resultados["actualizados"] += 1
+            except Exception as e:
+                resultados["errores"] += 1
+                resultados["detalles"].append({
+                    "codigo": codigo,
+                    "error": str(e)
+                })
+        else:
+            resultados["actualizados"] += 1
+            if len(resultados["detalles"]) < 20:  # Limitar detalles en dry run
+                resultados["detalles"].append({
+                    "codigo": codigo[:30],
+                    "cambios": cambios,
+                    "valores_anteriores": {
+                        "vigencia_eliminacion": predio.get("vigencia_eliminacion"),
+                        "vigencia_origen": predio.get("vigencia_origen")
+                    }
+                })
+    
+    return {
+        "mensaje": f"Migración {'simulada (dry run)' if request.dry_run else 'completada'}",
+        **resultados
+    }
 async def analisis_historico_predios(
     current_user: dict = Depends(get_current_user)
 ):

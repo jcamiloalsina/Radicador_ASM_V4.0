@@ -5215,7 +5215,7 @@ export default function Predios() {
                           {predio.propietarios?.[0]?.nombre_propietario || predio.nombre_propietario || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-slate-700">{predio.municipio}</td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia_eliminacion || predio.vigencia_origen || predio.vigencia || 'N/A'}</td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{predio.vigencia_origen || predio.vigencia_eliminacion || predio.vigencia || 'N/A'}</td>
                         <td className="py-3 px-4">
                           <span className="font-medium text-red-700">{resolucionEliminacion || 'N/A'}</span>
                         </td>

@@ -3,17 +3,21 @@
 ## Problema Original
 Sistema integral de gestión catastral para el manejo de mutaciones de propiedades, resoluciones, y procesos de actualización catastral en Colombia.
 
-## Estado Actual: BÚSQUEDAS DE PREDIOS UNIFICADAS Y CORREGIDAS
+## Estado Actual: MIGRACIÓN DE VIGENCIAS EN PREDIOS ELIMINADOS COMPLETADA
 
 ### Correcciones Recientes (07/03/2026)
+- **Migración de Vigencias en Predios Eliminados**: 
+  - Creado endpoint `/api/predios/eliminados/migrar-vigencias` para corregir vigencias
+  - Migrados 428 predios con vigencias correctas basadas en datos históricos
+  - El sistema ahora busca la vigencia más reciente donde existía cada predio
+  - Frontend actualizado para mostrar `vigencia_origen` (última vigencia donde existía) en lugar de `vigencia_eliminacion`
 - **Búsqueda de Predios Unificada**: Todas las mutaciones ahora usan la misma lógica de búsqueda con detección automática de matrícula inmobiliaria (formato XXX-XXXXX)
   - M1, M2, M3, M4: Usan `/api/predios` con parámetro `search`
   - M5, M6, Complementación, Bloqueo: Usan `/api/predios/buscar-municipio` con parámetro `q`
   - Backend actualizado para búsqueda exacta cuando detecta formato de matrícula
-- **Dropdown de Municipios en Bloqueo y Complementación**: Corregido el problema donde la lista de municipios no se desplegaba debido a problemas de `overflow` y `z-index` en el Dialog
-- **Vigencia en Predios Eliminados**: Corregida la prioridad de campos para mostrar `vigencia_eliminacion` > `vigencia_origen` > `vigencia` en lugar de mostrar siempre 2026
-- **Mass Desenglobe - tipo_cancelacion**: Corregido bug donde la función `_generar_resolucion_m2_interno` no respetaba el campo `tipo_cancelacion` (total vs parcial)
-- **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida" a la tabla "Predios Registrados" en Gestión de Predios
+- **Dropdown de Municipios en Bloqueo y Complementación**: Corregido el problema donde la lista de municipios no se desplegaba
+- **Mass Desenglobe - tipo_cancelacion**: Corregido bug donde la función `_generar_resolucion_m2_interno` no respetaba el campo `tipo_cancelacion`
+- **Columnas de Área en Tabla de Predios**: Agregadas columnas "Área Terreno" y "Área Construida"
 
 ### Funcionalidades Completadas (Marzo 2026)
 
