@@ -30917,13 +30917,50 @@ async def crear_solicitud_mutacion(
         
         await db.solicitudes_mutacion.insert_one(solicitud)
         
+        # Si NO puede aprobar directamente, notificar a los aprobadores
+        if not puede_aprobar_directo:
+            try:
+                # Buscar coordinadores y usuarios con permiso de aprobar
+                aprobadores = await db.users.find({
+                    "$or": [
+                        {"role": {"$in": [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]}},
+                        {"permissions": Permission.APPROVE_CHANGES}
+                    ],
+                    "activo": {"$ne": False}
+                }).to_list(100)
+                
+                notificacion_base = {
+                    "id": str(uuid.uuid4()),
+                    "titulo": f"📋 Nueva solicitud {data.tipo} pendiente de aprobación",
+                    "mensaje": f"El gestor {current_user['full_name']} ha enviado una solicitud {data.tipo} ({radicado}) para su revisión y aprobación.",
+                    "tipo": "warning",
+                    "enlace": "/dashboard/pendientes?tab=mutaciones",
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "leida": False,
+                    "creado_por_id": current_user['id'],
+                    "creado_por_nombre": current_user['full_name']
+                }
+                
+                for aprobador in aprobadores:
+                    # No notificar al mismo usuario que creó la solicitud
+                    if aprobador['id'] != current_user['id']:
+                        notificacion = {**notificacion_base, "usuario_id": aprobador['id']}
+                        await db.notificaciones.insert_one(notificacion)
+                        logging.info(f"Notificación enviada a aprobador: {aprobador['full_name']} ({aprobador['id']})")
+                
+                logging.info(f"Solicitud {radicado} enviada a {len(aprobadores)} aprobadores para revisión")
+                
+            except Exception as notif_error:
+                logging.error(f"Error enviando notificaciones a aprobadores: {str(notif_error)}")
+        
         # Preparar respuesta
         response = {
             "success": True,
+            "exito": True,  # Alias para compatibilidad con frontend
             "solicitud_id": solicitud_id,
             "radicado": radicado,
             "aprobacion_directa": puede_aprobar_directo,
-            "mensaje": "Solicitud creada y aprobada exitosamente" if puede_aprobar_directo else "Solicitud creada exitosamente (pendiente de aprobación)"
+            "mensaje": "Solicitud creada y aprobada exitosamente" if puede_aprobar_directo else "Solicitud enviada a aprobación exitosamente"
         }
         
         if pdf_result:
