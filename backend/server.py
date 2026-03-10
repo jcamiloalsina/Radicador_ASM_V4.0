@@ -9931,14 +9931,50 @@ async def import_predios_excel(
         logging.info(f"Guardando archivo temporal en: {temp_path}")
         
         content = await file.read()
-        logging.info(f"Contenido leído: {len(content)} bytes")
+        logging.info(f"Contenido leído: {len(content)} bytes, archivo original: {file.filename}")
         
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="El archivo está vacío")
+        
+        # Escribir archivo con sync explícito
         with open(temp_path, 'wb') as f:
             f.write(content)
+            f.flush()
+            import os
+            os.fsync(f.fileno())
         
-        logging.info(f"Archivo guardado exitosamente: {temp_path.exists()}")
+        # Verificar que el archivo se escribió correctamente
+        import time
+        max_retries = 3
+        for attempt in range(max_retries):
+            if temp_path.exists():
+                break
+            logging.warning(f"Archivo no encontrado en intento {attempt + 1}, esperando...")
+            time.sleep(0.5)
         
-        wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
+        if not temp_path.exists():
+            raise HTTPException(status_code=500, detail="Error interno: No se pudo guardar el archivo temporal después de múltiples intentos")
+        
+        file_size = temp_path.stat().st_size
+        logging.info(f"Archivo guardado exitosamente: {temp_path}, tamaño: {file_size} bytes")
+        
+        if file_size == 0:
+            temp_path.unlink()
+            raise HTTPException(status_code=400, detail="El archivo se guardó vacío. Por favor intente de nuevo.")
+        
+        if file_size != len(content):
+            logging.warning(f"Tamaño difiere: esperado {len(content)}, guardado {file_size}")
+        
+        try:
+            wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
+        except FileNotFoundError as fnf_error:
+            logging.error(f"FileNotFoundError al abrir Excel: {fnf_error}. Path: {temp_path}, exists: {temp_path.exists()}")
+            raise HTTPException(status_code=500, detail=f"Error: El archivo temporal desapareció. Por favor intente de nuevo.")
+        except Exception as excel_error:
+            logging.error(f"Error al abrir Excel: {excel_error}")
+            if temp_path.exists():
+                temp_path.unlink()
+            raise HTTPException(status_code=400, detail=f"Error al leer el archivo Excel: {str(excel_error)}")
         
         # Buscar hoja R1 con nombres alternativos (normalizando espacios)
         r1_sheet_names = ['REGISTRO_R1', 'REGISTRO R1', 'R1', 'Registro_R1', 'Registro R1', 'registro_r1', 'Hoja1', 'Sheet1']
@@ -10576,8 +10612,17 @@ async def import_predios_excel(
             "municipio": municipio
         }
         
+    except HTTPException:
+        # Re-lanzar HTTPExceptions sin modificar
+        raise
     except Exception as e:
-        logger.error(f"Error importing Excel: {e}")
+        logger.error(f"Error importing Excel: {e}", exc_info=True)
+        # Limpiar archivo temporal si existe
+        try:
+            if 'temp_path' in locals() and temp_path.exists():
+                temp_path.unlink()
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Error al importar: {str(e)}")
 
 
@@ -30923,13 +30968,50 @@ async def crear_solicitud_mutacion(
         
         await db.solicitudes_mutacion.insert_one(solicitud)
         
+        # Si NO puede aprobar directamente, notificar a los aprobadores
+        if not puede_aprobar_directo:
+            try:
+                # Buscar coordinadores y usuarios con permiso de aprobar
+                aprobadores = await db.users.find({
+                    "$or": [
+                        {"role": {"$in": [UserRole.COORDINADOR, UserRole.ADMINISTRADOR]}},
+                        {"permissions": Permission.APPROVE_CHANGES}
+                    ],
+                    "activo": {"$ne": False}
+                }).to_list(100)
+                
+                notificacion_base = {
+                    "id": str(uuid.uuid4()),
+                    "titulo": f"📋 Nueva solicitud {data.tipo} pendiente de aprobación",
+                    "mensaje": f"El gestor {current_user['full_name']} ha enviado una solicitud {data.tipo} ({radicado}) para su revisión y aprobación.",
+                    "tipo": "warning",
+                    "enlace": "/dashboard/pendientes?tab=mutaciones",
+                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "leida": False,
+                    "creado_por_id": current_user['id'],
+                    "creado_por_nombre": current_user['full_name']
+                }
+                
+                for aprobador in aprobadores:
+                    # No notificar al mismo usuario que creó la solicitud
+                    if aprobador['id'] != current_user['id']:
+                        notificacion = {**notificacion_base, "usuario_id": aprobador['id']}
+                        await db.notificaciones.insert_one(notificacion)
+                        logging.info(f"Notificación enviada a aprobador: {aprobador['full_name']} ({aprobador['id']})")
+                
+                logging.info(f"Solicitud {radicado} enviada a {len(aprobadores)} aprobadores para revisión")
+                
+            except Exception as notif_error:
+                logging.error(f"Error enviando notificaciones a aprobadores: {str(notif_error)}")
+        
         # Preparar respuesta
         response = {
             "success": True,
+            "exito": True,  # Alias para compatibilidad con frontend
             "solicitud_id": solicitud_id,
             "radicado": radicado,
             "aprobacion_directa": puede_aprobar_directo,
-            "mensaje": "Solicitud creada y aprobada exitosamente" if puede_aprobar_directo else "Solicitud creada exitosamente (pendiente de aprobación)"
+            "mensaje": "Solicitud creada y aprobada exitosamente" if puede_aprobar_directo else "Solicitud enviada a aprobación exitosamente"
         }
         
         if pdf_result:

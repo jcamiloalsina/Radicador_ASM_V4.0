@@ -229,9 +229,18 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
               );
               break;
             
+            case 'predio_nuevo':
+              // Crear predio nuevo - usa endpoint que respeta flujo de aprobación
+              await axios.post(
+                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios-nuevos`,
+                cambio.datos,
+                config
+              );
+              break;
+            
             case 'actualizacion_predio':
               await axios.patch(
-                `${API}/api/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
+                `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(cambio.datos.codigo_predial)}`,
                 cambio.datos,
                 config
               );
@@ -341,9 +350,18 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
                 );
                 break;
               
+              case 'predio_nuevo':
+                // Crear predio nuevo - usa endpoint que respeta flujo de aprobación
+                await axios.post(
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios-nuevos`,
+                  datosAEnviar,
+                  config
+                );
+                break;
+              
               case 'actualizacion_predio':
                 await axios.patch(
-                  `${API}/api/predios/${encodeURIComponent(datosAEnviar.codigo_predial)}`,
+                  `${API}/api/actualizacion/proyectos/${cambio.proyecto_id}/predios/${encodeURIComponent(datosAEnviar.codigo_predial)}`,
                   datosAEnviar,
                   config
                 );
