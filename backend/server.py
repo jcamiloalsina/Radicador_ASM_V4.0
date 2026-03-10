@@ -9924,14 +9924,50 @@ async def import_predios_excel(
         logging.info(f"Guardando archivo temporal en: {temp_path}")
         
         content = await file.read()
-        logging.info(f"Contenido leído: {len(content)} bytes")
+        logging.info(f"Contenido leído: {len(content)} bytes, archivo original: {file.filename}")
         
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="El archivo está vacío")
+        
+        # Escribir archivo con sync explícito
         with open(temp_path, 'wb') as f:
             f.write(content)
+            f.flush()
+            import os
+            os.fsync(f.fileno())
         
-        logging.info(f"Archivo guardado exitosamente: {temp_path.exists()}")
+        # Verificar que el archivo se escribió correctamente
+        import time
+        max_retries = 3
+        for attempt in range(max_retries):
+            if temp_path.exists():
+                break
+            logging.warning(f"Archivo no encontrado en intento {attempt + 1}, esperando...")
+            time.sleep(0.5)
         
-        wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
+        if not temp_path.exists():
+            raise HTTPException(status_code=500, detail="Error interno: No se pudo guardar el archivo temporal después de múltiples intentos")
+        
+        file_size = temp_path.stat().st_size
+        logging.info(f"Archivo guardado exitosamente: {temp_path}, tamaño: {file_size} bytes")
+        
+        if file_size == 0:
+            temp_path.unlink()
+            raise HTTPException(status_code=400, detail="El archivo se guardó vacío. Por favor intente de nuevo.")
+        
+        if file_size != len(content):
+            logging.warning(f"Tamaño difiere: esperado {len(content)}, guardado {file_size}")
+        
+        try:
+            wb = openpyxl.load_workbook(temp_path, read_only=True, data_only=True)
+        except FileNotFoundError as fnf_error:
+            logging.error(f"FileNotFoundError al abrir Excel: {fnf_error}. Path: {temp_path}, exists: {temp_path.exists()}")
+            raise HTTPException(status_code=500, detail=f"Error: El archivo temporal desapareció. Por favor intente de nuevo.")
+        except Exception as excel_error:
+            logging.error(f"Error al abrir Excel: {excel_error}")
+            if temp_path.exists():
+                temp_path.unlink()
+            raise HTTPException(status_code=400, detail=f"Error al leer el archivo Excel: {str(excel_error)}")
         
         # Buscar hoja R1 con nombres alternativos (normalizando espacios)
         r1_sheet_names = ['REGISTRO_R1', 'REGISTRO R1', 'R1', 'Registro_R1', 'Registro R1', 'registro_r1', 'Hoja1', 'Sheet1']
@@ -10569,8 +10605,17 @@ async def import_predios_excel(
             "municipio": municipio
         }
         
+    except HTTPException:
+        # Re-lanzar HTTPExceptions sin modificar
+        raise
     except Exception as e:
-        logger.error(f"Error importing Excel: {e}")
+        logger.error(f"Error importing Excel: {e}", exc_info=True)
+        # Limpiar archivo temporal si existe
+        try:
+            if 'temp_path' in locals() and temp_path.exists():
+                temp_path.unlink()
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Error al importar: {str(e)}")
 
 
