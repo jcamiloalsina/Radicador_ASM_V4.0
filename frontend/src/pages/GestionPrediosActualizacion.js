@@ -944,15 +944,26 @@ export default function GestionPrediosActualizacion() {
       };
       
       // Usar la ruta correcta que incluye el código del predio
-      await axios.post(
-        `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigoPredio)}/propuesta`,
-        propuesta,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      toast.success('Propuesta de cambios enviada correctamente. El coordinador la revisará.');
-      setShowProponerCambiosModal(false);
-      fetchPredios();
+      try {
+        await axios.post(
+          `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigoPredio)}/propuesta`,
+          propuesta,
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 }
+        );
+        
+        toast.success('Propuesta de cambios enviada correctamente. El coordinador la revisará.');
+        setShowProponerCambiosModal(false);
+        fetchPredios();
+      } catch (error) {
+        // Si falla por red, guardar en caché para sincronizar después
+        if (!isOnline || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+          await saveChangeOffline('propuesta', { ...propuesta, codigo_predial: codigoPredio });
+          toast.info('Propuesta guardada localmente. Se enviará cuando haya conexión.');
+          setShowProponerCambiosModal(false);
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       console.error('Error enviando propuesta:', error);
       toast.error(error.response?.data?.detail || 'Error al enviar propuesta de cambios');
@@ -1139,22 +1150,53 @@ export default function GestionPrediosActualizacion() {
       };
       
       if (esNuevo) {
-        await axios.post(
-          `${API}/actualizacion/proyectos/${proyectoId}/predios`,
-          datosCompletos,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success('Predio creado correctamente');
-        setShowCrearModal(false);
+        // CORREGIDO: Usar endpoint /predios-nuevos que respeta flujo de aprobación
+        // - Gestores: crea propuesta pendiente de aprobación
+        // - Coordinadores/Admin: crea predio directamente
+        try {
+          const response = await axios.post(
+            `${API}/actualizacion/proyectos/${proyectoId}/predios-nuevos`,
+            datosCompletos,
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 }
+          );
+          
+          // Mostrar mensaje según respuesta del servidor
+          if (response.data.estado === 'pendiente') {
+            toast.success('Propuesta de predio nuevo enviada para aprobación del coordinador');
+          } else {
+            toast.success('Predio creado correctamente');
+          }
+          setShowCrearModal(false);
+        } catch (error) {
+          // Si falla por red, guardar en caché para sincronizar después
+          if (!isOnline || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+            await saveChangeOffline('predio_nuevo', datosCompletos);
+            toast.info('Predio guardado localmente. Se sincronizará cuando haya conexión.');
+            setShowCrearModal(false);
+          } else {
+            throw error;
+          }
+        }
       } else {
         const codigo = predioSeleccionado.codigo_predial || predioSeleccionado.numero_predial;
-        await axios.patch(
-          `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}`,
-          datosCompletos,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success('Predio actualizado correctamente');
-        setShowEditarModal(false);
+        try {
+          await axios.patch(
+            `${API}/actualizacion/proyectos/${proyectoId}/predios/${encodeURIComponent(codigo)}`,
+            datosCompletos,
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 }
+          );
+          toast.success('Predio actualizado correctamente');
+          setShowEditarModal(false);
+        } catch (error) {
+          // Si falla por red, guardar en caché
+          if (!isOnline || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+            await saveChangeOffline('actualizacion_predio', { ...datosCompletos, codigo_predial: codigo });
+            toast.info('Cambios guardados localmente. Se sincronizarán cuando haya conexión.');
+            setShowEditarModal(false);
+          } else {
+            throw error;
+          }
+        }
       }
       
       fetchPredios();

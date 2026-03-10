@@ -5,31 +5,46 @@ Sistema integral de gestión catastral para administrar predios, mutaciones, res
 
 ## Estado Actual: Funcional con Issues Pendientes
 
-### ✅ Completado en esta sesión (09-03-2026):
+### ✅ Completado en esta sesión (10-03-2026):
+
+- **Fix predios nuevos sin aprobación:**
+  - BUG: Endpoint `/predios` creaba predios directamente sin flujo de aprobación
+  - CORREGIDO: Ahora usa `/predios-nuevos` que respeta el rol del usuario
+  - Gestores → Crea propuesta pendiente de aprobación
+  - Coordinadores/Admin → Crea predio directamente
+
+- **Fix sincronización offline:**
+  - Las funciones de guardado ahora tienen fallback a caché local
+  - Si falla la conexión, guarda en IndexedDB y sincroniza después
+  - Agregado soporte para tipo `predio_nuevo` en hook de sincronización
+
+- **Fix flujo de aprobación gestores:**
+  - Agregado campo `exito: true` en respuestas del backend
+  - Las notificaciones ahora se envían a coordinadores cuando gestor crea solicitud
+
 - **Fix modales de mutación no scrolleables:**
   - Cambiado `overflow-visible` a `overflow-y-auto` en DialogContent principal
-  - Los usuarios ahora pueden ver y acceder a todos los campos del formulario
-  - Tests: 11/11 pasados
 
-- **Fix formulario Complementación - campos de área:**
-  - Campos de área terreno y área construida ahora están DESHABILITADOS
-  - Agregado mensaje de advertencia indicando usar Rectificación de Área
-  - Agregados campos editables: matrícula, dirección, destino, número de documento
-  - Regla de negocio: Complementación NO permite modificar áreas
+- **Fix formulario Complementación:**
+  - Campos de área y avalúo DESHABILITADOS
+  - Campos editables: matrícula, dirección, destino, número de documento
 
 ### 🔴 Issues P0 Resueltos:
-- ~~Modales de mutación no scrolleables~~ ✅ RESUELTO
-- ~~Complementación permite editar áreas~~ ✅ RESUELTO
-- ~~Firma de Dalgie faltante en resoluciones~~ ✅ RESUELTO
+- ~~Modales de mutación no scrolleables~~ ✅
+- ~~Complementación permite editar áreas/avalúo~~ ✅
+- ~~Predios nuevos sin ir a aprobación~~ ✅
+- ~~Error "Error al enviar solicitud" gestores~~ ✅
+- ~~Usuarios con internet no pueden guardar~~ ✅
 
 ### 🟡 Issues Pendientes:
 
 #### P1 - Verificación Pendiente:
-- **Desenglobe masivo:** No marca correctamente el predio original como cancelado
-- **Flujo de aprobación de Múltiples Mutaciones:** Pendiente definir flujo del coordinador
+- **Importación R1/R2 Cáchira:** Mejorado manejo de errores, pendiente verificar
+- **Desenglobe masivo:** Verificar que marca predio original como cancelado
+- **Flujo Múltiples Mutaciones:** Definir flujo del coordinador
 
 #### P2 - Por Resolver:
-- PDFs históricos incorrectos (posiblemente sirviendo datos en vivo)
+- PDFs históricos incorrectos
 - Formulario de Visita lento en móviles
 - Contador de resoluciones no atómico
 
@@ -38,30 +53,25 @@ Sistema integral de gestión catastral para administrar predios, mutaciones, res
 - Refactorización de componentes frontend grandes
 - Prueba de regresión completa de mutaciones
 - Abstracción de generadores PDF duplicados
-- Eliminación de endpoints temporales de migración
 
 ## Credenciales de Test:
 - **Admin/Aprobador:** `catastro@asomunicipios.gov.co` / `Asm*123*`
-- **Gestor:** `gestor@emergent.co` / `Asm*123*`
-- **Atención Usuario:** `atencion@emergent.co` / `Asm*123*`
+- **Gestores reales:** `ninoatuesta@hotmail.com`, `yacid_1@hotmail.com`, etc.
 
 ## Arquitectura:
 ```
 /app/
 ├── backend/
-│   ├── server.py              # Backend monolítico (necesita refactorización)
-│   ├── resolucion_pdf_generator.py  # Generador de PDFs de resolución
-│   ├── certificado_images.py  # Imágenes embebidas en base64
+│   ├── server.py              # Backend monolítico
+│   ├── resolucion_*.py        # Generadores de PDFs
 │   └── logos/
-│       └── firma_dalgie_blanco.png  # Firma para resoluciones
 └── frontend/
     └── src/
         ├── pages/
-        │   ├── MutacionesResoluciones.js
-        │   ├── UserManagement.js
-        │   └── FileManager.js
-        └── layout/
-            └── DashboardLayout.js
+        │   ├── GestionPrediosActualizacion.js  # MODIFICADO
+        │   └── MutacionesResoluciones.js
+        └── hooks/
+            └── useOfflineSync.js  # MODIFICADO
 ```
 
 ## Integraciones:
