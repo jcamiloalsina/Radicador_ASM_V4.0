@@ -3690,7 +3690,7 @@ export default function MutacionesResoluciones() {
       };
 
       const response = await axios.post(
-        `${API_URL}/api/solicitudes-mutacion`,
+        `${API}/solicitudes-mutacion`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -9073,7 +9073,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
@@ -9141,7 +9141,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
@@ -9209,7 +9209,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
@@ -9277,7 +9277,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
@@ -9359,7 +9359,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
@@ -9440,7 +9440,7 @@ export default function MutacionesResoluciones() {
                         };
                         
                         const response = await axios.post(
-                          `${API_URL}/api/solicitudes-mutacion`,
+                          `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
