@@ -853,26 +853,24 @@ export default function MutacionesResoluciones() {
 
   // Cargar radicados con múltiples mutaciones
   const cargarRadicadosMultiples = async (searchQuery = null) => {
-    // Esta función ahora busca peticiones disponibles
+    // Usar el mismo endpoint que M1 para buscar radicados
     const query = searchQuery !== null ? searchQuery : searchPeticionMultiple;
     
-    // Solo buscar si hay al menos 3 caracteres o si se fuerza con Enter/botón
-    if (searchQuery === null && query.length < 3 && query.length > 0) {
+    // Solo buscar si hay al menos 3 caracteres
+    if (query.length < 3) {
+      setPeticionesDisponibles([]);
       return;
     }
     
     setBuscandoPeticiones(true);
     try {
       const token = localStorage.getItem('token');
-      const params = new URLSearchParams();
-      if (municipioFiltroMultiple) params.append('municipio', municipioFiltroMultiple);
-      if (query) params.append('search', query);
-      params.append('limit', '50');
-      
-      const response = await axios.get(`${API}/petitions?${params.toString()}`, {
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
         headers: { Authorization: `Bearer ${token}` }
       });
-      setPeticionesDisponibles(response.data || []);
+      
+      setPeticionesDisponibles(response.data.radicados || []);
     } catch (error) {
       console.error('Error cargando peticiones:', error);
       setPeticionesDisponibles([]);
@@ -10895,122 +10893,61 @@ export default function MutacionesResoluciones() {
             {!multiplesData.peticion_id ? (
               <div className="space-y-4">
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-indigo-800 mb-2">Paso 1: Seleccionar Petición</h3>
+                  <h3 className="font-semibold text-indigo-800 mb-2">Buscar Radicado</h3>
                   <p className="text-sm text-indigo-600 mb-4">
-                    Busque y seleccione una petición existente para agregar múltiples mutaciones.
+                    Escriba el número de radicado para agregar múltiples mutaciones.
                   </p>
                   
-                  {/* Filtros de búsqueda */}
-                  <div className="flex flex-col md:flex-row gap-3 mb-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        placeholder="Buscar por radicado, nombre o descripción..."
-                        value={searchPeticionMultiple}
-                        onChange={(e) => {
-                          const valor = e.target.value;
-                          setSearchPeticionMultiple(valor);
-                          // Búsqueda automática al escribir (mínimo 3 caracteres)
-                          if (valor.length >= 3) {
-                            cargarRadicadosMultiples(valor);
-                          } else if (valor.length === 0) {
-                            setPeticionesDisponibles([]);
-                          }
-                        }}
-                        className="pl-10"
-                        onKeyDown={(e) => e.key === 'Enter' && cargarRadicadosMultiples()}
-                        data-testid="search-peticion-multiple"
-                      />
-                    </div>
-                    <Select 
-                      value={municipioFiltroMultiple} 
-                      onValueChange={(v) => {
-                        setMunicipioFiltroMultiple(v === 'todos' ? '' : v);
-                        // Buscar automáticamente al cambiar municipio si hay búsqueda activa
-                        if (searchPeticionMultiple.length >= 3) {
-                          setTimeout(() => cargarRadicadosMultiples(), 100);
+                  {/* Input de búsqueda estilo M1 */}
+                  <div className="relative">
+                    <Input
+                      placeholder="Escribir número de radicado..."
+                      value={searchPeticionMultiple}
+                      onChange={(e) => {
+                        const valor = e.target.value.toUpperCase();
+                        setSearchPeticionMultiple(valor);
+                        // Búsqueda automática al escribir (mínimo 3 caracteres)
+                        if (valor.length >= 3) {
+                          cargarRadicadosMultiples(valor);
+                        } else if (valor.length === 0) {
+                          setPeticionesDisponibles([]);
                         }
                       }}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Todos los municipios" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        {MUNICIPIOS.map(m => (
-                          <SelectItem key={m.codigo} value={m.nombre}>{m.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={() => cargarRadicadosMultiples()} disabled={buscandoPeticiones}>
-                      {buscandoPeticiones ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                      <span className="ml-2">Buscar</span>
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Lista de peticiones */}
-                {buscandoPeticiones ? (
-                  <div className="text-center py-8 text-slate-500">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                    Buscando peticiones...
-                  </div>
-                ) : peticionesDisponibles.length > 0 ? (
-                  <div className="border rounded-lg">
-                    <div className="p-3 border-b bg-slate-50">
-                      <h4 className="font-medium flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Peticiones Disponibles
-                        <Badge variant="outline">{peticionesDisponibles.length}</Badge>
-                      </h4>
-                    </div>
-                    <div className="max-h-[400px] overflow-y-auto">
-                      {peticionesDisponibles.map(pet => (
-                        <div 
-                          key={pet.id}
-                          className="flex items-center justify-between p-4 border-b hover:bg-indigo-50 cursor-pointer transition-colors"
-                          onClick={() => seleccionarPeticionMultiple(pet)}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-indigo-700">{pet.radicado}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {pet.tipo_tramite}
-                              </Badge>
+                      className="text-lg"
+                      data-testid="search-peticion-multiple"
+                    />
+                    {buscandoPeticiones && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-indigo-500" />
+                    )}
+                    
+                    {/* Dropdown de resultados estilo M1 */}
+                    {peticionesDisponibles.length > 0 && (
+                      <div className="absolute z-[99999] w-full mt-1 bg-white border border-indigo-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {peticionesDisponibles.map(pet => (
+                          <button
+                            key={pet.id}
+                            type="button"
+                            onClick={() => seleccionarPeticionMultiple(pet)}
+                            className="w-full px-4 py-3 text-left hover:bg-indigo-50 border-b last:border-0"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-semibold text-indigo-700">{pet.radicado}</span>
+                              <Badge variant="outline" className="text-xs">{pet.tipo_tramite}</Badge>
                             </div>
-                            <p className="text-sm text-slate-700">{pet.nombre_completo}</p>
-                            <p className="text-xs text-slate-500">
-                              {pet.municipio} | {pet.descripcion?.substring(0, 60) || 'Sin descripción'}...
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={
-                              pet.estado === 'completado' ? 'bg-green-100 text-green-800' :
-                              pet.estado === 'en_proceso' ? 'bg-amber-100 text-amber-800' :
-                              pet.estado === 'radicado' ? 'bg-blue-100 text-blue-800' :
-                              'bg-slate-100 text-slate-800'
-                            }>
-                              {pet.estado}
-                            </Badge>
-                            <ArrowRight className="w-5 h-5 text-indigo-600" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            <p className="text-sm text-slate-600 mt-1">{pet.nombre_completo}</p>
+                            <p className="text-xs text-slate-400">{pet.municipio}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : searchPeticionMultiple || municipioFiltroMultiple ? (
-                  <div className="text-center py-8 text-slate-500 border rounded-lg">
-                    <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p>No se encontraron peticiones con esos criterios</p>
-                    <p className="text-sm">Intente con otros filtros o haga clic en "Buscar"</p>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-slate-500 border rounded-lg bg-slate-50">
-                    <Search className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p>Use los filtros y haga clic en "Buscar"</p>
-                    <p className="text-sm">para encontrar peticiones disponibles</p>
-                  </div>
-                )}
+                  
+                  {searchPeticionMultiple.length >= 3 && peticionesDisponibles.length === 0 && !buscandoPeticiones && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      No se encontraron peticiones con "{searchPeticionMultiple}"
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
               /* Paso 2: Gestionar mutaciones de la petición */
