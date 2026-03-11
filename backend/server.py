@@ -29100,8 +29100,9 @@ async def actualizar_configuracion_resoluciones(
     current_user: dict = Depends(get_current_user)
 ):
     """Actualizar configuración de numeración de resoluciones"""
-    if current_user['role'] != UserRole.ADMINISTRADOR:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar")
+    # Permitir a administradores y coordinadores
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden modificar")
     
     try:
         await db.resolucion_configuracion.update_one(
@@ -29190,8 +29191,9 @@ async def actualizar_configuracion_municipios(
     current_user: dict = Depends(get_current_user)
 ):
     """Actualizar configuración de numeración de resoluciones por municipio"""
-    if current_user['role'] != UserRole.ADMINISTRADOR:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden modificar")
+    # Permitir a administradores y coordinadores
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden modificar")
     
     try:
         update_data = {
