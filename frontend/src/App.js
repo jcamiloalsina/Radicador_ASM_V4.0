@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
@@ -26,27 +26,72 @@ import GestionPropuestas from "./pages/GestionPropuestas";
 import CertificadosGestion from "./pages/CertificadosGestion";
 import PrediosEnProceso from "./pages/PrediosEnProceso";
 import GestionPrediosActualizacion from "./pages/GestionPrediosActualizacion";
+import MaintenancePage from "./pages/MaintenancePage";
 import ConfiguracionResoluciones from "./pages/ConfiguracionResoluciones";
 import MutacionesResoluciones from "./pages/MutacionesResoluciones";
 import LogActividades from "./pages/LogActividades";
 import { OfflineIndicator, OnlineIndicator, PWAInstallPrompt } from "./components/OfflineComponents";
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
 function App() {
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Check maintenance status
+    fetch(`${BACKEND_URL}/api/maintenance/status`)
+      .then(res => res.json())
+      .then(data => {
+        setMaintenanceMode(data.enabled);
+      })
+      .catch(() => {
+        setMaintenanceMode(false);
+      })
+      .finally(() => {
+        setMaintenanceLoading(false);
+      });
+
+    // Check if current user is admin from stored token
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.role === 'administrador' || payload.role === 'coordinador') {
+          setIsAdmin(true);
+        }
+      }
+    } catch {
+      // Invalid token or not logged in
+    }
+  }, []);
+
+  // Show maintenance page for non-admin users when maintenance is active
+  if (!maintenanceLoading && maintenanceMode && !isAdmin) {
+    return <MaintenancePage />;
+  }
+
   return (
     <AuthProvider>
-      <Toaster 
-        position="top-center" 
-        richColors 
+      <Toaster
+        position="top-center"
+        richColors
         expand={true}
         visibleToasts={5}
-        toastOptions={{ 
+        toastOptions={{
           style: { zIndex: 2147483647 },
           className: 'toast-above-all'
-        }} 
+        }}
         containerStyle={{ zIndex: 2147483647 }}
       />
       <WebSocketProvider>
         <BrowserRouter>
+          {maintenanceMode && isAdmin && (
+            <div className="bg-amber-500 text-white text-center text-sm py-1 px-4 font-medium">
+              Modo mantenimiento activo — Solo visible para administradores
+            </div>
+          )}
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -77,7 +122,7 @@ function App() {
           </Route>
         </Routes>
         </BrowserRouter>
-        
+
         {/* PWA Components */}
         <OfflineIndicator />
         <OnlineIndicator />

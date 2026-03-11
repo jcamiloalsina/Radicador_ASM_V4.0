@@ -7,15 +7,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gdal-bin \
     libgdal-dev \
-    build-essential \
-    make \
-    gcc \
     libgeos-dev \
     libproj-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
+
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    make \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

@@ -12,6 +12,10 @@ services:
       - MONGO_INITDB_DATABASE=catastro_asomunicipios
     networks:
       - asomunicipios-network
+    # Uncomment for authentication (recommended in production)
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=admin
+    #   - MONGO_INITDB_ROOT_PASSWORD=your_secure_password
 
   # Backend API (FastAPI)
   backend:
@@ -23,7 +27,7 @@ services:
     depends_on:
       - mongodb
     environment:
-      - MONGO_URL=mongodb://mongodb:27017/catastro_asomunicipios
+      - MONGO_URL=mongodb://mongodb:27017
       - DB_NAME=catastro_asomunicipios
       - JWT_SECRET=${JWT_SECRET}
       - SMTP_HOST=${SMTP_HOST}

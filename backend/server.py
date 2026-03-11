@@ -2277,7 +2277,14 @@ async def login(credentials: UserLogin):
     if not verify_password(credentials.password, user['password']):
         logger.warning(f"Login fallido: contraseña incorrecta para {credentials.email}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
-    
+
+    # Block non-admin logins during maintenance mode
+    if user.get('role') not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        maintenance_config = await db.system_config.find_one({"type": "maintenance_mode"})
+        if maintenance_config and maintenance_config.get("enabled", False):
+            logger.warning(f"Login bloqueado por mantenimiento: {credentials.email}")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="maintenance_mode")
+
     logger.info(f"Login exitoso: {credentials.email}")
     
     # Verificar si el email está verificado (excepto admin protegido y usuarios internos)
@@ -4991,7 +4998,7 @@ async def export_listado_tramites_pdf(
     story.append(Spacer(1, 0.15*inch))
     
     # Logo and title row
-    logo_path = Path("/app/frontend/public/logo-asomunicipios.png")
+    logo_path = Path("/app/logos/logo-asomunicipios.png")
     header_content = []
     
     if logo_path.exists():
@@ -15246,10 +15253,10 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         )
         
         # Crear directorio si no existe
-        resoluciones_dir = "/app/frontend/public/resoluciones"
+        resoluciones_dir = "/app/uploads/resoluciones"
         import os
         os.makedirs(resoluciones_dir, exist_ok=True)
-        
+
         # Guardar el PDF - Nombre simplificado: RES-XX-XXX-XXXX-XXXX.pdf
         filename = f"{numero_resolucion.replace('/', '-')}.pdf"
         filepath = f"{resoluciones_dir}/{filename}"
@@ -15422,15 +15429,19 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             logging.error(f"Error enviando correo de resolución: {str(email_error)}")
             # No interrumpir el flujo si falla el envío de correo
         
+        import base64 as b64mod
+        pdf_base64 = b64mod.b64encode(pdf_bytes).decode('utf-8')
+
         return {
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "pdf_base64": pdf_base64,
             "consecutivo": siguiente_numero,
             "tipo_mutacion": "M1",
             "fecha_generacion": datetime.now(timezone.utc).isoformat()
         }
-        
+
     except Exception as e:
         logging.error(f"Error en generar_resolucion_final: {str(e)}")
         import traceback
@@ -28020,6 +28031,38 @@ async def descargar_archivo_servidor(filename: str):
     )
 
 
+# ===== MAINTENANCE MODE ENDPOINTS =====
+@api_router.get("/maintenance/status")
+async def get_maintenance_status():
+    """Get maintenance mode status (public, no auth required)"""
+    config = await db.system_config.find_one({"type": "maintenance_mode"}, {"_id": 0})
+    if not config:
+        return {"enabled": False}
+    return {
+        "enabled": config.get("enabled", False),
+        "toggled_by": config.get("toggled_by"),
+        "toggled_at": config.get("toggled_at")
+    }
+
+@api_router.put("/maintenance/toggle")
+async def toggle_maintenance(current_user: dict = Depends(get_current_user)):
+    """Toggle maintenance mode (admin/coordinador only)"""
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="No tiene permiso para cambiar el modo de mantenimiento")
+
+    config = await db.system_config.find_one({"type": "maintenance_mode"})
+    new_state = not (config.get("enabled", False) if config else False)
+    await db.system_config.update_one(
+        {"type": "maintenance_mode"},
+        {"$set": {
+            "enabled": new_state,
+            "toggled_by": current_user["full_name"],
+            "toggled_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    return {"enabled": new_state, "toggled_by": current_user["full_name"], "toggled_at": datetime.now(timezone.utc).isoformat()}
+
 # ===== SANDBOX MODULE - Entorno de Pruebas Aislado =====
 
 class SandboxConsultaRequest(BaseModel):
@@ -28748,7 +28791,8 @@ async def generar_resolucion_prueba(
         
         # También guardar en archivo para descarga
         filename = f"resolucion_prueba_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = f"/app/frontend/public/{filename}"
+        filepath = f"/app/uploads/{filename}"
+        os.makedirs("/app/uploads", exist_ok=True)
         with open(filepath, "wb") as f:
             f.write(pdf_bytes)
         
@@ -29615,15 +29659,15 @@ async def generar_resolucion_m2(
             aprobo=current_user.get("full_name", "")
         )
         
-        # Guardar el PDF
-        resoluciones_dir = "/app/frontend/public/resoluciones"
+        # Guardar el PDF en directorio de uploads (accesible en backend container)
+        resoluciones_dir = "/app/uploads/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
-        
+
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path_full = os.path.join(resoluciones_dir, filename)
         pdf_path_relative = f"/resoluciones/{filename}"
-        
+
         with open(pdf_path_full, 'wb') as f:
             f.write(pdf_content)
         
@@ -29692,10 +29736,13 @@ async def generar_resolucion_m2(
             npn_cancelado = predio_cancelado.get('npn') or predio_cancelado.get('codigo_predial_nacional') or predio_cancelado.get('codigo_predial')
             tipo_cancelacion = predio_cancelado.get('tipo_cancelacion', 'total')
             
-            # Buscar el predio por ID o por NPN
-            query_predio = {"id": predio_id} if predio_id else {"codigo_predial_nacional": npn_cancelado}
-            predio_existente = await db.predios.find_one(query_predio, {"_id": 0})
-            
+            # Buscar el predio por ID primero, luego por NPN como fallback
+            predio_existente = None
+            if predio_id:
+                predio_existente = await db.predios.find_one({"id": predio_id}, {"_id": 0, "id": 1})
+            if not predio_existente and npn_cancelado:
+                predio_existente = await db.predios.find_one({"codigo_predial_nacional": npn_cancelado}, {"_id": 0, "id": 1})
+
             if not predio_existente:
                 logging.warning(f"No se encontró el predio a cancelar: id={predio_id}, npn={npn_cancelado}")
                 continue
@@ -29895,10 +29942,14 @@ async def generar_resolucion_m2(
         
         logging.info(f"Resolución M2 {numero_resolucion} generada por {current_user.get('email')}")
         
+        import base64 as b64mod
+        pdf_base64 = b64mod.b64encode(pdf_content).decode('utf-8')
+
         return {
             "success": True,
             "numero_resolucion": numero_resolucion,
             "pdf_url": pdf_path_relative,
+            "pdf_base64": pdf_base64,
             "codigo_verificacion": codigo_verificacion,
             "mensaje": f"Resolución {numero_resolucion} generada exitosamente"
         }
@@ -31960,7 +32011,7 @@ async def generar_resolucion_manual(
         )
         
         # 7. Guardar el PDF
-        resoluciones_dir = "/app/frontend/public/resoluciones"
+        resoluciones_dir = "/app/uploads/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
         
         filename = f"{request.numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
@@ -32135,15 +32186,19 @@ async def generar_resolucion_manual(
         
         logging.info(f"Resolución manual {request.numero_resolucion} generada para predio {request.predio_id}")
         
+        import base64 as b64mod
+        pdf_base64 = b64mod.b64encode(pdf_bytes).decode('utf-8')
+
         return {
             "success": True,
             "numero_resolucion": request.numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
+            "pdf_base64": pdf_base64,
             "peticion_finalizada": peticion is not None,
             "email_enviado": email_enviado,
             "mensaje": f"Resolución {request.numero_resolucion} generada exitosamente"
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -32329,17 +32384,10 @@ async def generar_preview_resolucion(
         
         import base64
         pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
-        
-        # Guardar archivo temporal
-        filename = f"resolucion_preview_{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = f"/app/frontend/public/{filename}"
-        with open(filepath, "wb") as f:
-            f.write(pdf_bytes)
-        
+
         return {
             "success": True,
             "pdf_base64": pdf_base64,
-            "pdf_url": f"/{filename}",
             "tipo_plantilla": tipo,
             "predio_usado": predio.get("codigo_predial_nacional", "Preview")
         }
