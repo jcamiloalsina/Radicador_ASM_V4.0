@@ -852,14 +852,21 @@ export default function MutacionesResoluciones() {
   };
 
   // Cargar radicados con múltiples mutaciones
-  const cargarRadicadosMultiples = async () => {
+  const cargarRadicadosMultiples = async (searchQuery = null) => {
     // Esta función ahora busca peticiones disponibles
+    const query = searchQuery !== null ? searchQuery : searchPeticionMultiple;
+    
+    // Solo buscar si hay al menos 3 caracteres o si se fuerza con Enter/botón
+    if (searchQuery === null && query.length < 3 && query.length > 0) {
+      return;
+    }
+    
     setBuscandoPeticiones(true);
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (municipioFiltroMultiple) params.append('municipio', municipioFiltroMultiple);
-      if (searchPeticionMultiple) params.append('search', searchPeticionMultiple);
+      if (query) params.append('search', query);
       params.append('limit', '50');
       
       const response = await axios.get(`${API}/petitions?${params.toString()}`, {
@@ -10900,15 +10907,29 @@ export default function MutacionesResoluciones() {
                       <Input
                         placeholder="Buscar por radicado, nombre o descripción..."
                         value={searchPeticionMultiple}
-                        onChange={(e) => setSearchPeticionMultiple(e.target.value)}
+                        onChange={(e) => {
+                          const valor = e.target.value;
+                          setSearchPeticionMultiple(valor);
+                          // Búsqueda automática al escribir (mínimo 3 caracteres)
+                          if (valor.length >= 3) {
+                            cargarRadicadosMultiples(valor);
+                          } else if (valor.length === 0) {
+                            setPeticionesDisponibles([]);
+                          }
+                        }}
                         className="pl-10"
                         onKeyDown={(e) => e.key === 'Enter' && cargarRadicadosMultiples()}
+                        data-testid="search-peticion-multiple"
                       />
                     </div>
                     <Select 
                       value={municipioFiltroMultiple} 
                       onValueChange={(v) => {
                         setMunicipioFiltroMultiple(v === 'todos' ? '' : v);
+                        // Buscar automáticamente al cambiar municipio si hay búsqueda activa
+                        if (searchPeticionMultiple.length >= 3) {
+                          setTimeout(() => cargarRadicadosMultiples(), 100);
+                        }
                       }}
                     >
                       <SelectTrigger className="w-[180px]">
@@ -10921,7 +10942,7 @@ export default function MutacionesResoluciones() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={cargarRadicadosMultiples} disabled={buscandoPeticiones}>
+                    <Button onClick={() => cargarRadicadosMultiples()} disabled={buscandoPeticiones}>
                       {buscandoPeticiones ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       <span className="ml-2">Buscar</span>
                     </Button>
