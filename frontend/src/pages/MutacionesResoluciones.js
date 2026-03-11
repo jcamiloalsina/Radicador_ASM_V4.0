@@ -9065,6 +9065,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const payload = {
                           tipo: 'M1',
                           tipo_mutacion: 'M1',
@@ -9129,6 +9130,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const payload = {
                           tipo: 'M3',
                           tipo_mutacion: 'M3',
@@ -9198,6 +9200,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const payload = {
                           tipo: 'M4',
                           tipo_mutacion: 'M4',
@@ -9266,6 +9269,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const payload = {
                           tipo: 'M5',
                           tipo_mutacion: 'M5',
@@ -9335,6 +9339,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const predio = rectificacionData.predio;
                         const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                         const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
@@ -9417,6 +9422,7 @@ export default function MutacionesResoluciones() {
                       }
                       setEnviandoSolicitud(true);
                       try {
+                        const token = localStorage.getItem('token');
                         const predio = complementacionData.predio;
                         const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                         const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
