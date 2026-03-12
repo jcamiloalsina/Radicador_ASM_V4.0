@@ -15263,15 +15263,33 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             if peticion:
                 await db.petitions.update_one(
                     {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado": "finalizado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
+                    {
+                        "$set": {
+                            "status": "completado",
+                            "estado": "finalizado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        },
+                        "$push": {
+                            "archivos_staff": {
+                                "id": f"res-{str(uuid.uuid4())[:8]}",
+                                "filename": filename,
+                                "original_name": f"Resolución {numero_resolucion}.pdf",
+                                "path": filepath,
+                                "uploaded_by": "sistema",
+                                "uploaded_by_name": "Sistema - Resolución aprobada",
+                                "uploaded_by_role": "sistema",
+                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "es_documento_final": True,
+                                "es_resolucion": True,
+                                "numero_resolucion": numero_resolucion,
+                                "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                            }
+                        }
+                    }
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
 
@@ -15558,15 +15576,33 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             if peticion:
                 await db.petitions.update_one(
                     {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado": "finalizado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
+                    {
+                        "$set": {
+                            "status": "completado",
+                            "estado": "finalizado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        },
+                        "$push": {
+                            "archivos_staff": {
+                                "id": f"res-{str(uuid.uuid4())[:8]}",
+                                "filename": filename,
+                                "original_name": f"Resolución {numero_resolucion}.pdf",
+                                "path": filepath,
+                                "uploaded_by": "sistema",
+                                "uploaded_by_name": "Sistema - Resolución aprobada",
+                                "uploaded_by_role": "sistema",
+                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "es_documento_final": True,
+                                "es_resolucion": True,
+                                "numero_resolucion": numero_resolucion,
+                                "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                            }
+                        }
+                    }
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M2 {numero_resolucion}")
 
@@ -15838,15 +15874,33 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             if peticion:
                 await db.petitions.update_one(
                     {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado": "finalizado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
+                    {
+                        "$set": {
+                            "status": "completado",
+                            "estado": "finalizado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        },
+                        "$push": {
+                            "archivos_staff": {
+                                "id": f"res-{str(uuid.uuid4())[:8]}",
+                                "filename": filename,
+                                "original_name": f"Resolución {numero_resolucion}.pdf",
+                                "path": filepath,
+                                "uploaded_by": "sistema",
+                                "uploaded_by_name": "Sistema - Resolución aprobada",
+                                "uploaded_by_role": "sistema",
+                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "es_documento_final": True,
+                                "es_resolucion": True,
+                                "numero_resolucion": numero_resolucion,
+                                "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                            }
+                        }
+                    }
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M3 {numero_resolucion}")
 
@@ -16105,15 +16159,33 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                 if peticion:
                     await db.petitions.update_one(
                         {"radicado": radicado},
-                        {"$set": {
-                            "status": "completado",
-                            "estado": "finalizado",
-                            "estado_tramite": "Finalizado",
-                            "resolucion_numero": numero_resolucion,
-                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }}
+                        {
+                            "$set": {
+                                "status": "completado",
+                                "estado": "finalizado",
+                                "estado_tramite": "Finalizado",
+                                "resolucion_numero": numero_resolucion,
+                                "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            },
+                            "$push": {
+                                "archivos_staff": {
+                                    "id": f"res-{str(uuid.uuid4())[:8]}",
+                                    "filename": filename,
+                                    "original_name": f"Resolución {numero_resolucion}.pdf",
+                                    "path": filepath,
+                                    "uploaded_by": "sistema",
+                                    "uploaded_by_name": "Sistema - Resolución aprobada",
+                                    "uploaded_by_role": "sistema",
+                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "es_documento_final": True,
+                                    "es_resolucion": True,
+                                    "numero_resolucion": numero_resolucion,
+                                    "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                                }
+                            }
+                        }
                     )
                     logging.info(f"Petición {radicado} finalizada con resolución M4 {numero_resolucion}")
 
@@ -16388,15 +16460,33 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                 if peticion:
                     await db.petitions.update_one(
                         {"radicado": radicado},
-                        {"$set": {
-                            "status": "completado",
-                            "estado": "finalizado",
-                            "estado_tramite": "Finalizado",
-                            "resolucion_numero": numero_resolucion,
-                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }}
+                        {
+                            "$set": {
+                                "status": "completado",
+                                "estado": "finalizado",
+                                "estado_tramite": "Finalizado",
+                                "resolucion_numero": numero_resolucion,
+                                "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            },
+                            "$push": {
+                                "archivos_staff": {
+                                    "id": f"res-{str(uuid.uuid4())[:8]}",
+                                    "filename": filename,
+                                    "original_name": f"Resolución {numero_resolucion}.pdf",
+                                    "path": filepath,
+                                    "uploaded_by": "sistema",
+                                    "uploaded_by_name": "Sistema - Resolución aprobada",
+                                    "uploaded_by_role": "sistema",
+                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "es_documento_final": True,
+                                    "es_resolucion": True,
+                                    "numero_resolucion": numero_resolucion,
+                                    "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                                }
+                            }
+                        }
                     )
                     logging.info(f"Petición {radicado} finalizada con resolución M5 {numero_resolucion}")
 
@@ -16789,15 +16879,33 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 if peticion:
                     await db.petitions.update_one(
                         {"radicado": radicado},
-                        {"$set": {
-                            "status": "completado",
-                            "estado": "finalizado",
-                            "estado_tramite": "Finalizado",
-                            "resolucion_numero": numero_resolucion,
-                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }}
+                        {
+                            "$set": {
+                                "status": "completado",
+                                "estado": "finalizado",
+                                "estado_tramite": "Finalizado",
+                                "resolucion_numero": numero_resolucion,
+                                "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            },
+                            "$push": {
+                                "archivos_staff": {
+                                    "id": f"res-{str(uuid.uuid4())[:8]}",
+                                    "filename": filename,
+                                    "original_name": f"Resolución {numero_resolucion}.pdf",
+                                    "path": filepath,
+                                    "uploaded_by": "sistema",
+                                    "uploaded_by_name": "Sistema - Resolución aprobada",
+                                    "uploaded_by_role": "sistema",
+                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "es_documento_final": True,
+                                    "es_resolucion": True,
+                                    "numero_resolucion": numero_resolucion,
+                                    "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                                }
+                            }
+                        }
                     )
                     logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
 
@@ -17046,15 +17154,33 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                 if peticion:
                     await db.petitions.update_one(
                         {"radicado": radicado},
-                        {"$set": {
-                            "status": "completado",
-                            "estado": "finalizado",
-                            "estado_tramite": "Finalizado",
-                            "resolucion_numero": numero_resolucion,
-                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }}
+                        {
+                            "$set": {
+                                "status": "completado",
+                                "estado": "finalizado",
+                                "estado_tramite": "Finalizado",
+                                "resolucion_numero": numero_resolucion,
+                                "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            },
+                            "$push": {
+                                "archivos_staff": {
+                                    "id": f"res-{str(uuid.uuid4())[:8]}",
+                                    "filename": filename,
+                                    "original_name": f"Resolución {numero_resolucion}.pdf",
+                                    "path": pdf_path,
+                                    "uploaded_by": "sistema",
+                                    "uploaded_by_name": "Sistema - Resolución aprobada",
+                                    "uploaded_by_role": "sistema",
+                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "es_documento_final": True,
+                                    "es_resolucion": True,
+                                    "numero_resolucion": numero_resolucion,
+                                    "pdf_url": f"/api/resoluciones/descargar/{filename}"
+                                }
+                            }
+                        }
                     )
                     logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
 
