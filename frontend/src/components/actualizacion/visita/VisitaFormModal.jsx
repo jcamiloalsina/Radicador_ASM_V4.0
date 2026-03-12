@@ -24,6 +24,25 @@ import { Badge } from '../../ui/badge';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
 
+// Comprimir imagen usando canvas (max 1280px, calidad 0.7)
+const comprimirImagen = (base64, maxWidth = 1280, quality = 0.7) => {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+};
+
 // Estado inicial del formulario
 const getInitialVisitaData = () => ({
   // Datos de visita
@@ -372,7 +391,7 @@ const Page2 = memo(({ data, setField, propietarios, setPropietarios }) => {
                       </label>
                     ))}</div>
                   </div>
-                  <div><Label className="text-xs">Número</Label><FastInput value={p.numero_documento} onChange={v => actualizarProp(i, 'numero_documento', v)} className="h-7 text-sm" /></div>
+                  <div><Label className="text-xs">Número</Label><Input value={p.numero_documento} onChange={(e) => actualizarProp(i, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} onBlur={(e) => { if (e.target.value) actualizarProp(i, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }} className="h-7 text-sm" /></div>
                   <div><Label className="text-xs">Nombre</Label><FastInput value={p.nombre} onChange={v => actualizarProp(i, 'nombre', v)} uppercase className="h-7 text-sm" /></div>
                   <div><Label className="text-xs">Apellido</Label><FastInput value={p.primer_apellido} onChange={v => actualizarProp(i, 'primer_apellido', v)} uppercase className="h-7 text-sm" /></div>
                 </div>
@@ -566,20 +585,21 @@ const Page4 = memo(({ data, setField }) => {
   const handleCroquisPhotoInternal = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    
+
     const newPhotos = [];
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} supera 5MB`);
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} supera 10MB`);
         continue;
       }
       try {
-        const base64 = await new Promise((resolve, reject) => {
+        const base64Raw = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+        const base64 = await comprimirImagen(base64Raw);
         newPhotos.push({
           id: Date.now() + Math.random(),
           data: base64,
@@ -591,7 +611,7 @@ const Page4 = memo(({ data, setField }) => {
         toast.error('Error al procesar la foto');
       }
     }
-    
+
     if (newPhotos.length > 0) {
       setField('fotos_croquis', [...(data.fotos_croquis || []), ...newPhotos]);
       toast.success(`${newPhotos.length} foto(s) de croquis agregada(s)`);
@@ -757,22 +777,23 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
     }
   };
 
-  // Manejar fotos - FUNCIONA OFFLINE (base64)
+  // Manejar fotos - FUNCIONA OFFLINE (base64) - CON COMPRESIÓN
   const handleFotoChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} supera 5MB`);
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} supera 10MB`);
         continue;
       }
       try {
-        const base64 = await new Promise((resolve, reject) => {
+        const base64Raw = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+        const base64 = await comprimirImagen(base64Raw);
         setFotos(prev => [...prev, {
           id: Date.now() + Math.random(),
           data: base64,
@@ -1252,7 +1273,7 @@ const VisitaFormModal = ({
       toast.error('Ingrese el nombre de la persona que atiende');
       return;
     }
-    
+
     // Validar firmas obligatorias
     if (!data.firma_visitado_base64) {
       toast.error('La firma del visitado es obligatoria');
@@ -1262,7 +1283,7 @@ const VisitaFormModal = ({
       toast.error('La firma del reconocedor es obligatoria');
       return;
     }
-    
+
     onSave({
       visitaData: data,
       construcciones,

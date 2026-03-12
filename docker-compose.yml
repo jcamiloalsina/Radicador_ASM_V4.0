@@ -10,6 +10,7 @@ services:
       - ./backups:/backups
     environment:
       - MONGO_INITDB_DATABASE=catastro_asomunicipios
+      - TZ=America/Bogota
     networks:
       - asomunicipios-network
 
@@ -33,6 +34,7 @@ services:
       - SMTP_FROM=${SMTP_FROM}
       - FRONTEND_URL=${FRONTEND_URL}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - TZ=America/Bogota
     volumes:
       - uploads_data:/app/uploads
     networks:
@@ -51,6 +53,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      - TZ=America/Bogota
     networks:
       - asomunicipios-network
     ports:

@@ -414,155 +414,179 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
         y_position -= 20
     
+    # Helper: dibujar texto adaptativo en celda alta (2 líneas si es necesario)
+    def draw_cell_text(c, text, x, col_w, y_top, row_h, default_fs=5):
+        fs = default_fs
+        text_w = c.stringWidth(text, font_normal, fs)
+        if text_w > col_w - 4:
+            mid = len(text) // 2
+            sp_before = text.rfind(' ', 0, mid + 8)
+            sp_after = text.find(' ', max(0, mid - 8))
+            split_at = sp_before if sp_before > 0 else (sp_after if sp_after > 0 else -1)
+            if split_at > 0:
+                line1, line2 = text[:split_at], text[split_at+1:]
+                fs2 = default_fs
+                while (c.stringWidth(line1, font_normal, fs2) > col_w - 4 or c.stringWidth(line2, font_normal, fs2) > col_w - 4) and fs2 > 4:
+                    fs2 -= 0.5
+                c.setFont(font_normal, fs2)
+                c.drawCentredString(x + col_w/2, y_top - row_h/2 + 2, line1)
+                c.drawCentredString(x + col_w/2, y_top - row_h/2 - fs2 - 1, line2)
+            else:
+                while c.stringWidth(text, font_normal, fs) > col_w - 4 and fs > 4:
+                    fs -= 0.5
+                c.setFont(font_normal, fs)
+                c.drawCentredString(x + col_w/2, y_top - row_h/2 - 2, text)
+        else:
+            c.setFont(font_normal, fs)
+            c.drawCentredString(x + col_w/2, y_top - row_h/2 - 2, text)
+        c.setFont(font_normal, default_fs)
+
     def dibujar_tabla_predio(predio_data, es_cancelacion=False, vigencia=None, area_terreno_val=None, area_construida_val=None, avaluo_val=None):
         """
-        Dibuja tabla de predio IDÉNTICA a M1/M5
-        Formato:
-        1. Banner CANCELACIÓN o INSCRIPCIÓN (verde institucional)
-        2. Tabla propietarios: N° PREDIAL | APELLIDOS Y NOMBRES | TIPO DOC. | NRO. DOC. | ESTADO
-        3. Tabla datos predio: CÓD. HOMOLOGADO | DIRECCIÓN | DES | A-TERRENO | A-CONS | AVALÚO | VIG. FISCAL
-        4. Fila MATRÍCULA INMOBILIARIA
+        Dibuja tabla de predio IDÉNTICA a M1
         """
         nonlocal y_position
-        
-        verificar_espacio(120)
-        
+
+        verificar_espacio(140)
+
         fuente_tabla = 8
-        
+
         # ============================================================
         # BANNER CANCELACIÓN o INSCRIPCIÓN (verde institucional, igual a M1)
         # ============================================================
         banner_text = "CANCELACIÓN" if es_cancelacion else "INSCRIPCIÓN"
-        
+
         c.setFillColor(VERDE_INSTITUCIONAL)
         c.rect(MARGIN_LEFT, y_position - 15, CONTENT_WIDTH, 15, fill=1, stroke=0)
         c.setFillColor(BLANCO)
         c.setFont(font_bold, fuente_tabla + 1)
         c.drawCentredString(PAGE_WIDTH/2, y_position - 12, banner_text)
         y_position -= 18
-        
+
         c.setStrokeColor(NEGRO)
         c.setLineWidth(0.5)
-        
+
         # ============================================================
-        # TABLA DE PROPIETARIOS - IGUAL A M1
-        # N° PREDIAL | APELLIDOS Y NOMBRES | TIPO DOC. | NRO. DOC. | ESTADO
+        # TABLA DE PROPIETARIOS - row height 20
+        # N° PREDIAL | APELLIDOS Y NOMBRES | T.D. | NRO. DOC. | E. CIVIL
         # ============================================================
-        cancel_cols = [CONTENT_WIDTH * 0.32, CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.10]
-        cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "TIPO DOC.", "NRO. DOC.", "ESTADO"]
-        
+        cancel_row_h = 20
+        # Columnas redistribuidas: NPN 42%, Nombre 27%, T.D. 6%, Nro Doc 17%, E. Civil 8%
+        cancel_cols = [CONTENT_WIDTH * 0.42, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.08]
+        cancel_headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "T.D.", "NRO. DOC.", "E. CIVIL"]
+
         # Headers
         c.setFillColor(colors.HexColor('#e8e8e8'))
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.rect(MARGIN_LEFT, y_position - cancel_row_h, CONTENT_WIDTH, cancel_row_h, fill=1, stroke=1)
         c.setFillColor(NEGRO)
         c.setFont(font_bold, fuente_tabla - 1)
-        
+
         x = MARGIN_LEFT
         for i, header in enumerate(cancel_headers):
-            c.drawCentredString(x + cancel_cols[i]/2, y_position - 9, header)
-            c.rect(x, y_position - 12, cancel_cols[i], 12, fill=0, stroke=1)
+            c.drawCentredString(x + cancel_cols[i]/2, y_position - cancel_row_h/2 - 3, header)
+            c.rect(x, y_position - cancel_row_h, cancel_cols[i], cancel_row_h, fill=0, stroke=1)
             x += cancel_cols[i]
-        y_position -= 12
-        
+        y_position -= cancel_row_h
+
         # Datos de propietarios
         codigo_pred = predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', codigo_predial))
         props = predio_data.get('propietarios', propietarios)
-        
+
         c.setFont(font_normal, fuente_tabla - 1)
         if props and len(props) > 0:
             for prop in props:
-                verificar_espacio(15)
+                verificar_espacio(cancel_row_h + 5)
                 x = MARGIN_LEFT
-                
-                # N° PREDIAL (30 dígitos)
-                c.rect(x, y_position - 12, cancel_cols[0], 12, fill=0, stroke=1)
-                c.setFont(font_normal, fuente_tabla - 2)
-                c.drawCentredString(x + cancel_cols[0]/2, y_position - 9, str(codigo_pred)[:30])
-                c.setFont(font_normal, fuente_tabla - 1)
+
+                # N° PREDIAL
+                c.rect(x, y_position - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
+                draw_cell_text(c, str(codigo_pred)[:30], x, cancel_cols[0], y_position, cancel_row_h, default_fs=7)
                 x += cancel_cols[0]
-                
+
                 # APELLIDOS Y NOMBRES
-                c.rect(x, y_position - 12, cancel_cols[1], 12, fill=0, stroke=1)
+                c.rect(x, y_position - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
                 nombre = prop.get('nombre_propietario', prop.get('nombre', ''))[:40]
-                if len(nombre) > 28:
-                    c.setFont(font_normal, fuente_tabla - 2)
-                c.drawCentredString(x + cancel_cols[1]/2, y_position - 9, nombre)
-                c.setFont(font_normal, fuente_tabla - 1)
+                draw_cell_text(c, nombre, x, cancel_cols[1], y_position, cancel_row_h, default_fs=7)
                 x += cancel_cols[1]
-                
+
                 # TIPO DOC.
-                c.rect(x, y_position - 12, cancel_cols[2], 12, fill=0, stroke=1)
+                c.rect(x, y_position - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
                 tipo_doc = prop.get('tipo_documento', 'CC')
-                c.drawCentredString(x + cancel_cols[2]/2, y_position - 9, tipo_doc)
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[2]/2, y_position - cancel_row_h/2 - 2, tipo_doc)
                 x += cancel_cols[2]
-                
+
                 # NRO. DOC.
-                c.rect(x, y_position - 12, cancel_cols[3], 12, fill=0, stroke=1)
+                c.rect(x, y_position - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
                 nro_doc = prop.get('numero_documento', '')
-                nro_doc_padded = str(nro_doc).zfill(12) if nro_doc else ''
-                c.drawCentredString(x + cancel_cols[3]/2, y_position - 9, nro_doc_padded[:15])
+                nro_doc_padded = str(nro_doc).replace('.', '').replace(',', '').zfill(12) if nro_doc else ''
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[3]/2, y_position - cancel_row_h/2 - 2, nro_doc_padded[:15])
                 x += cancel_cols[3]
-                
-                # ESTADO (estado civil)
-                c.rect(x, y_position - 12, cancel_cols[4], 12, fill=0, stroke=1)
+
+                # ESTADO CIVIL
+                c.rect(x, y_position - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
                 estado_civil = prop.get('estado_civil', '')
-                c.drawCentredString(x + cancel_cols[4]/2, y_position - 9, estado_civil[:10])
-                y_position -= 12
+                c.setFont(font_normal, fuente_tabla - 1)
+                c.drawCentredString(x + cancel_cols[4]/2, y_position - cancel_row_h/2 - 2, estado_civil[:10])
+                y_position -= cancel_row_h
         else:
             # Sin propietario - usar datos del solicitante
-            verificar_espacio(15)
+            verificar_espacio(cancel_row_h + 5)
             x = MARGIN_LEFT
-            
-            c.rect(x, y_position - 12, cancel_cols[0], 12, fill=0, stroke=1)
-            c.setFont(font_normal, fuente_tabla - 2)
-            c.drawCentredString(x + cancel_cols[0]/2, y_position - 9, str(codigo_pred)[:30])
+
+            c.rect(x, y_position - cancel_row_h, cancel_cols[0], cancel_row_h, fill=0, stroke=1)
+            draw_cell_text(c, str(codigo_pred)[:30], x, cancel_cols[0], y_position, cancel_row_h, default_fs=7)
             x += cancel_cols[0]
-            
-            c.rect(x, y_position - 12, cancel_cols[1], 12, fill=0, stroke=1)
-            c.setFont(font_normal, fuente_tabla - 1)
-            c.drawCentredString(x + cancel_cols[1]/2, y_position - 9, solicitante_nombre[:40])
+
+            c.rect(x, y_position - cancel_row_h, cancel_cols[1], cancel_row_h, fill=0, stroke=1)
+            draw_cell_text(c, solicitante_nombre[:40], x, cancel_cols[1], y_position, cancel_row_h, default_fs=7)
             x += cancel_cols[1]
-            
-            c.rect(x, y_position - 12, cancel_cols[2], 12, fill=0, stroke=1)
-            c.drawCentredString(x + cancel_cols[2]/2, y_position - 9, "CC")
+
+            c.rect(x, y_position - cancel_row_h, cancel_cols[2], cancel_row_h, fill=0, stroke=1)
+            c.setFont(font_normal, fuente_tabla - 1)
+            c.drawCentredString(x + cancel_cols[2]/2, y_position - cancel_row_h/2 - 2, "CC")
             x += cancel_cols[2]
-            
-            c.rect(x, y_position - 12, cancel_cols[3], 12, fill=0, stroke=1)
-            c.drawCentredString(x + cancel_cols[3]/2, y_position - 9, str(solicitante_documento)[:15])
+
+            c.rect(x, y_position - cancel_row_h, cancel_cols[3], cancel_row_h, fill=0, stroke=1)
+            c.setFont(font_normal, fuente_tabla - 1)
+            c.drawCentredString(x + cancel_cols[3]/2, y_position - cancel_row_h/2 - 2, str(solicitante_documento)[:15])
             x += cancel_cols[3]
-            
-            c.rect(x, y_position - 12, cancel_cols[4], 12, fill=0, stroke=1)
-            c.drawCentredString(x + cancel_cols[4]/2, y_position - 9, "")
-            y_position -= 12
-        
+
+            c.rect(x, y_position - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
+            c.setFont(font_normal, fuente_tabla - 1)
+            c.drawCentredString(x + cancel_cols[4]/2, y_position - cancel_row_h/2 - 2, "")
+            y_position -= cancel_row_h
+
         y_position -= 5
-        
+
         # ============================================================
-        # TABLA DATOS DEL PREDIO - IGUAL A M1
-        # CÓD. HOMOLOGADO | DIRECCIÓN | DES | A-TERRENO | A-CONS | AVALÚO | VIG. FISCAL
+        # TABLA DATOS DEL PREDIO - row height 20
+        # CÓD. HOMOLOGADO | DIRECCIÓN | D | A-TERRENO | A-CONS | AVALÚO | VIG. FISCAL
         # ============================================================
-        verificar_espacio(30)
-        
-        predio_cols = [CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.14, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15]
-        predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "DES", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
-        
+        verificar_espacio(45)
+
+        predio_row_h = 20
+        predio_cols = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
+        predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "D", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
+
         # Headers
         c.setFillColor(colors.HexColor('#e8e8e8'))
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, fill=1, stroke=1)
+        c.rect(MARGIN_LEFT, y_position - predio_row_h, CONTENT_WIDTH, predio_row_h, fill=1, stroke=1)
         c.setFillColor(NEGRO)
         c.setFont(font_bold, fuente_tabla - 1)
-        
+
         x = MARGIN_LEFT
         for i, header in enumerate(predio_headers):
-            c.drawCentredString(x + predio_cols[i]/2, y_position - 9, header)
-            c.rect(x, y_position - 12, predio_cols[i], 12, fill=0, stroke=1)
+            c.drawCentredString(x + predio_cols[i]/2, y_position - predio_row_h/2 - 3, header)
+            c.rect(x, y_position - predio_row_h, predio_cols[i], predio_row_h, fill=0, stroke=1)
             x += predio_cols[i]
-        y_position -= 12
-        
+        y_position -= predio_row_h
+
         # Datos del predio
-        verificar_espacio(15)
+        verificar_espacio(predio_row_h + 5)
         c.setFont(font_normal, fuente_tabla - 2)
-        
+
         p_codigo_hom = predio_data.get('codigo_homologado', codigo_homologado)
         p_direccion = predio_data.get('direccion', direccion)
         p_destino = predio_data.get('destino_economico', destino_economico)
@@ -570,61 +594,63 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         p_area_construida = area_construida_val if area_construida_val is not None else predio_data.get('area_construida', 0)
         p_avaluo = avaluo_val if avaluo_val is not None else predio_data.get('avaluo', 0)
         vigencia_fiscal = f"01/01/{vigencia or fecha_actual.year}"
-        
+
         x = MARGIN_LEFT
-        
+
         # CÓD. HOMOLOGADO
-        c.rect(x, y_position - 12, predio_cols[0], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[0]/2, y_position - 9, str(p_codigo_hom)[:12] if p_codigo_hom else "")
+        c.rect(x, y_position - predio_row_h, predio_cols[0], predio_row_h, fill=0, stroke=1)
+        draw_cell_text(c, str(p_codigo_hom)[:12] if p_codigo_hom else "", x, predio_cols[0], y_position, predio_row_h)
         x += predio_cols[0]
-        
+
         # DIRECCIÓN
-        c.rect(x, y_position - 12, predio_cols[1], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[1]/2, y_position - 9, str(p_direccion)[:15] if p_direccion else "")
+        c.rect(x, y_position - predio_row_h, predio_cols[1], predio_row_h, fill=0, stroke=1)
+        draw_cell_text(c, str(p_direccion) if p_direccion else "", x, predio_cols[1], y_position, predio_row_h)
         x += predio_cols[1]
-        
-        # DES (Destino Económico - solo letra)
-        c.rect(x, y_position - 12, predio_cols[2], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[2]/2, y_position - 9, str(p_destino)[:1] if p_destino else "A")
+
+        # D (Destino Económico - solo letra)
+        c.rect(x, y_position - predio_row_h, predio_cols[2], predio_row_h, fill=0, stroke=1)
+        c.setFont(font_normal, 5)
+        c.drawCentredString(x + predio_cols[2]/2, y_position - predio_row_h/2 - 2, str(p_destino)[:1] if p_destino else "A")
         x += predio_cols[2]
-        
+
         # A-TERRENO
-        c.rect(x, y_position - 12, predio_cols[3], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[3]/2, y_position - 9, formatear_area(p_area_terreno))
+        c.rect(x, y_position - predio_row_h, predio_cols[3], predio_row_h, fill=0, stroke=1)
+        draw_cell_text(c, formatear_area(p_area_terreno), x, predio_cols[3], y_position, predio_row_h)
         x += predio_cols[3]
-        
+
         # A-CONS
-        c.rect(x, y_position - 12, predio_cols[4], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[4]/2, y_position - 9, formatear_area(p_area_construida))
+        c.rect(x, y_position - predio_row_h, predio_cols[4], predio_row_h, fill=0, stroke=1)
+        draw_cell_text(c, formatear_area(p_area_construida), x, predio_cols[4], y_position, predio_row_h)
         x += predio_cols[4]
-        
+
         # AVALÚO
-        c.rect(x, y_position - 12, predio_cols[5], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[5]/2, y_position - 9, formatear_moneda(p_avaluo)[:12])
+        c.rect(x, y_position - predio_row_h, predio_cols[5], predio_row_h, fill=0, stroke=1)
+        draw_cell_text(c, formatear_moneda(p_avaluo)[:12], x, predio_cols[5], y_position, predio_row_h)
         x += predio_cols[5]
-        
+
         # VIG. FISCAL
-        c.rect(x, y_position - 12, predio_cols[6], 12, fill=0, stroke=1)
-        c.drawCentredString(x + predio_cols[6]/2, y_position - 9, vigencia_fiscal)
-        y_position -= 12
-        
+        c.rect(x, y_position - predio_row_h, predio_cols[6], predio_row_h, fill=0, stroke=1)
+        c.setFont(font_normal, 5)
+        c.drawCentredString(x + predio_cols[6]/2, y_position - predio_row_h/2 - 2, vigencia_fiscal)
+        y_position -= predio_row_h
+
         # ============================================================
-        # FILA MATRÍCULA INMOBILIARIA - IGUAL A M1
+        # FILA MATRÍCULA INMOBILIARIA
         # ============================================================
         verificar_espacio(15)
         p_matricula = predio_data.get('matricula_inmobiliaria', matricula)
-        
+
         c.setFillColor(colors.HexColor('#e8e8e8'))
         c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH * 0.3, 12, fill=1, stroke=1)
         c.setFillColor(NEGRO)
         c.setFont(font_bold, fuente_tabla - 1)
         c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 9, "MATRÍCULA INMOBILIARIA")
-        
+
         c.setFont(font_normal, fuente_tabla)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, str(p_matricula))
         y_position -= 15
-        
+
         return y_position
     
     # ==========================================

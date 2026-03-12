@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, UserCheck, ScrollText, FolderOpen } from 'lucide-react';
 import axios from 'axios';
@@ -89,7 +89,6 @@ export default function DashboardLayout() {
   const { user, logout, loading, showTimeoutWarning, extendSession } = useAuth();
   const { isOnline, offlineData } = useOffline();
   const location = useLocation();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cambiosPendientesCount, setCambiosPendientesCount] = useState(0);
   const [showOfflinePanel, setShowOfflinePanel] = useState(false);
@@ -138,29 +137,6 @@ export default function DashboardLayout() {
       console.error('Error fetching pending changes:', error);
     }
   }, []);
-
-  const handleNotificationClick = (notif) => {
-    // Marcar como leída
-    marcarLeida(notif.id);
-    setShowNotifications(false);
-    
-    // Navegar según el tipo de notificación
-    const tipo = notif.tipo || '';
-    if (tipo.includes('cambio') || tipo.includes('modificacion')) {
-      navigate('/dashboard/pendientes?tab=modificaciones');
-    } else if (tipo.includes('predio_nuevo') || tipo.includes('nuevo')) {
-      navigate('/dashboard/pendientes?tab=predios-nuevos');
-    } else if (tipo.includes('reaparicion')) {
-      navigate('/dashboard/pendientes?tab=reapariciones');
-    } else if (tipo.includes('peticion') && notif.referencia_id) {
-      navigate(`/dashboard/peticiones/${notif.referencia_id}`);
-    } else if (tipo.includes('certificado')) {
-      navigate('/dashboard/certificados');
-    } else {
-      // Por defecto, ir a pendientes
-      navigate('/dashboard/pendientes');
-    }
-  };
 
   const checkGdbAlert = useCallback(async () => {
     try {

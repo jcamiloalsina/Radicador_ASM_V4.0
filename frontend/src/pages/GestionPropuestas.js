@@ -1181,13 +1181,20 @@ export default function GestionPropuestas() {
                             </div>
                             <div>
                               <Label className="text-[10px]">Número</Label>
-                              <Input 
+                              <Input
                                 className="h-8 text-xs"
-                                value={prop.numero_documento || ''} 
+                                value={prop.numero_documento || ''}
                                 onChange={(e) => {
                                   const newProps = [...datosEditados.propietarios];
-                                  newProps[idx] = {...newProps[idx], numero_documento: e.target.value};
+                                  newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
                                   setDatosEditados({...datosEditados, propietarios: newProps});
+                                }}
+                                onBlur={(e) => {
+                                  if (e.target.value) {
+                                    const newProps = [...datosEditados.propietarios];
+                                    newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0')};
+                                    setDatosEditados({...datosEditados, propietarios: newProps});
+                                  }
                                 }}
                               />
                             </div>

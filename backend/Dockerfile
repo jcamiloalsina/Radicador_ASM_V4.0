@@ -1,6 +1,10 @@
 # Dockerfile para Backend (FastAPI)
 FROM python:3.11-slim
 
+# Configurar timezone Colombia
+ENV TZ=America/Bogota
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /app
 
 # Install system dependencies for geopandas and other geo libraries

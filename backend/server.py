@@ -14,7 +14,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import bcrypt
 import jwt
@@ -54,6 +54,17 @@ from app.core.config import settings
 JWT_SECRET = settings.JWT_SECRET
 JWT_ALGORITHM = settings.JWT_ALGORITHM
 JWT_EXPIRATION_HOURS = settings.JWT_EXPIRATION_HOURS
+
+# Zona horaria Colombia para toda la plataforma
+COLOMBIA_TZ = ZoneInfo('America/Bogota')
+
+# ==================== UTILIDADES GLOBALES ====================
+def formatear_documento(numero):
+    """Formatea número de documento: solo dígitos, rellenado con ceros a 12 dígitos"""
+    if not numero:
+        return ''
+    solo_numeros = ''.join(filter(str.isdigit, str(numero)))
+    return solo_numeros.zfill(12) if solo_numeros else ''
 
 # ==================== FUNCIONES DE SEGURIDAD (importadas de app/utils/helpers) ====================
 import re
@@ -217,7 +228,7 @@ class User(BaseModel):
     email_verified: bool = False
     verification_code: Optional[str] = None
     verification_code_expires: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(COLOMBIA_TZ))
 
 class UserRoleUpdate(BaseModel):
     user_id: str
@@ -283,8 +294,8 @@ class Petition(BaseModel):
     comentario_aprobacion: Optional[str] = None  # Comentario del coordinador al aprobar
     # Origen de la petición (empresa, ciudadano, interno)
     tipo_solicitante: str = "ciudadano"  # empresa, ciudadano, interno
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(COLOMBIA_TZ))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(COLOMBIA_TZ))
 
 
 # ===== PREDIO MODELS (Codigo Nacional Catastral) =====
@@ -581,6 +592,13 @@ class SolicitudMutacionCreate(BaseModel):
     zonas_terreno_nuevas: Optional[list] = None  # Zonas de terreno nuevas
     construcciones_anteriores: Optional[list] = None  # Construcciones anteriores
     construcciones_nuevas: Optional[list] = None  # Construcciones nuevas rectificadas
+    # Para Complementación
+    matricula_nueva: Optional[str] = None
+    direccion_nueva: Optional[str] = None
+    destino_nuevo: Optional[str] = None
+    predio: Optional[dict] = None  # Datos del predio seleccionado
+    tipo_mutacion: Optional[str] = None  # Alias de tipo para complementación
+    documentos_soporte: Optional[str] = None
     # Campo universal para texto personalizado de considerandos
     texto_considerando: Optional[str] = None  # Texto personalizado para la sección "CONSIDERANDO" de la resolución
 
@@ -641,8 +659,8 @@ class ProyectoActualizacion(BaseModel):
     # Metadatos
     creado_por: str
     creado_por_nombre: str
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(COLOMBIA_TZ))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(COLOMBIA_TZ))
 
 
 # ===== MODELOS PARA CRONOGRAMA DE ACTUALIZACIÓN =====
@@ -761,7 +779,7 @@ async def push_historial_con_limite(
     
     # Agregar timestamp si no tiene
     if 'fecha' not in historial_entry and 'timestamp' not in historial_entry:
-        historial_entry['fecha'] = datetime.now(timezone.utc).isoformat()
+        historial_entry['fecha'] = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Push la nueva entrada
     await collection.update_one(
@@ -788,7 +806,7 @@ async def push_historial_con_limite(
                 "collection_origen": collection_name,
                 "historial_field": historial_field,
                 "entry": entry,
-                "moved_at": datetime.now(timezone.utc).isoformat()
+                "moved_at": datetime.now(COLOMBIA_TZ).isoformat()
             })
         
         # Mantener solo las últimas MAX_HISTORIAL_ENTRIES
@@ -1897,7 +1915,7 @@ async def register(user_data: UserRegister):
         if not existing_user.get('email_verified', False):
             # Generar nuevo código
             verification_code = str(random.randint(100000, 999999))
-            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+            expires_at = (datetime.now(COLOMBIA_TZ) + timedelta(minutes=30)).isoformat()
             
             await db.users.update_one(
                 {"id": existing_user['id']},
@@ -1932,7 +1950,7 @@ async def register(user_data: UserRegister):
     
     # Generar código de verificación (6 dígitos)
     verification_code = str(random.randint(100000, 999999))
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    expires_at = (datetime.now(COLOMBIA_TZ) + timedelta(minutes=30)).isoformat()
     
     # Always assign usuario role on self-registration
     user = User(
@@ -2014,7 +2032,7 @@ async def verify_email(data: VerifyEmailCode):
     expires_str = user.get('verification_code_expires')
     if expires_str:
         expires_at = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
-        if datetime.now(timezone.utc) > expires_at:
+        if datetime.now(COLOMBIA_TZ) > expires_at:
             raise HTTPException(status_code=400, detail="El código de verificación ha expirado. Solicita uno nuevo.")
     
     # Marcar como verificado
@@ -2059,7 +2077,7 @@ async def resend_verification_code(data: ResendVerificationCode):
     
     # Generar nuevo código
     verification_code = str(random.randint(100000, 999999))
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    expires_at = (datetime.now(COLOMBIA_TZ) + timedelta(minutes=30)).isoformat()
     
     await db.users.update_one(
         {"id": user['id']},
@@ -2112,7 +2130,7 @@ async def login(credentials: UserLogin):
     if not user.get('email_verified', True) and not is_protected_admin and not is_internal_user:
         # Reenviar código automáticamente
         verification_code = str(random.randint(100000, 999999))
-        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+        expires_at = (datetime.now(COLOMBIA_TZ) + timedelta(minutes=30)).isoformat()
         
         await db.users.update_one(
             {"id": user['id']},
@@ -2195,7 +2213,7 @@ async def forgot_password(request: ForgotPasswordRequest):
     
     # Generate reset token (valid for 1 hour)
     reset_token = str(uuid.uuid4())
-    expiration = datetime.now(timezone.utc) + timedelta(hours=1)
+    expiration = datetime.now(COLOMBIA_TZ) + timedelta(hours=1)
     
     # Store reset token in database
     await db.password_resets.delete_many({"email": request.email})  # Remove old tokens
@@ -2203,7 +2221,7 @@ async def forgot_password(request: ForgotPasswordRequest):
         "email": request.email,
         "token": reset_token,
         "expires_at": expiration.isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat()
     })
     
     # Get frontend URL from environment or use default
@@ -2246,7 +2264,7 @@ async def validate_reset_token(token: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token inválido")
     
     expires_at = datetime.fromisoformat(reset_record['expires_at'])
-    if datetime.now(timezone.utc) > expires_at:
+    if datetime.now(COLOMBIA_TZ) > expires_at:
         await db.password_resets.delete_one({"token": token})
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El token ha expirado")
     
@@ -2261,7 +2279,7 @@ async def reset_password(request: ResetPasswordRequest):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token inválido")
     
     expires_at = datetime.fromisoformat(reset_record['expires_at'])
-    if datetime.now(timezone.utc) > expires_at:
+    if datetime.now(COLOMBIA_TZ) > expires_at:
         await db.password_resets.delete_one({"token": request.token})
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El token ha expirado")
     
@@ -2610,7 +2628,7 @@ async def update_user_permissions(
         "changed_by_name": current_user['full_name'],
         "old_permissions": user.get('permissions', []),
         "new_permissions": update.permissions,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     })
     
     # Crear notificación para el usuario si se agregaron nuevos permisos
@@ -2793,7 +2811,7 @@ async def create_petition(
         "estado_anterior": None,
         "estado_nuevo": PetitionStatus.RADICADO,
         "notas": "Petición radicada en el sistema",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }]
     
     # Determinar tipo de solicitante basado en el rol del usuario
@@ -3049,7 +3067,7 @@ async def upload_petition_files(
                 "uploaded_by": current_user['id'],
                 "uploaded_by_name": current_user['full_name'],
                 "uploaded_by_role": current_user['role'],
-                "upload_date": datetime.now(timezone.utc).isoformat()
+                "upload_date": datetime.now(COLOMBIA_TZ).isoformat()
             })
     
     current_files = petition.get('archivos', [])
@@ -3064,7 +3082,7 @@ async def upload_petition_files(
         "estado_anterior": petition['estado'],
         "estado_nuevo": petition['estado'],
         "notas": f"Se cargaron {len(saved_files)} archivo(s) adicional(es)",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3075,7 +3093,7 @@ async def upload_petition_files(
         {"$set": {
             "archivos": updated_files,
             "historial": current_historial,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -3157,7 +3175,7 @@ async def upload_documento_final(
                 "uploaded_by": current_user['id'],
                 "uploaded_by_name": current_user['full_name'],
                 "uploaded_by_role": current_user['role'],
-                "upload_date": datetime.now(timezone.utc).isoformat(),
+                "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                 "es_documento_final": True
             })
     
@@ -3176,7 +3194,7 @@ async def upload_documento_final(
         "estado_anterior": petition['estado'],
         "estado_nuevo": PetitionStatus.FINALIZADO,
         "notas": f"Se subió documento final y se finalizó el trámite. Archivo(s): {', '.join([f['original_name'] for f in saved_files])}",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     historial = petition.get('historial', [])
@@ -3189,10 +3207,10 @@ async def upload_documento_final(
             "archivos_staff": archivos_staff,
             "estado": PetitionStatus.FINALIZADO,
             "historial": historial,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "finalizado_por": current_user['id'],
             "finalizado_por_nombre": current_user['full_name'],
-            "fecha_finalizacion": datetime.now(timezone.utc).isoformat()
+            "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -3381,7 +3399,7 @@ async def assign_gestor(
     
     update_data = {
         "gestores_asignados": gestores_asignados,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # If first assignment, change status to ASIGNADO
@@ -3411,7 +3429,7 @@ async def assign_gestor(
         "estado_anterior": petition['estado'],
         "estado_nuevo": update_data.get('estado', petition['estado']),
         "notas": notas_historial,
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3465,7 +3483,7 @@ async def desasignar_staff(petition_id: str, user_id: str, current_user: dict = 
         "usuario": current_user['full_name'],
         "usuario_rol": current_user['role'],
         "notas": f"Se quitó a {user_name} del trámite",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3476,7 +3494,7 @@ async def desasignar_staff(petition_id: str, user_id: str, current_user: dict = 
         {"$set": {
             "gestores_asignados": gestores_asignados,
             "historial": current_historial,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -3503,7 +3521,7 @@ async def auto_asignar_tramite(petition_id: str, current_user: dict = Depends(ge
     
     update_data = {
         "gestores_asignados": gestores_asignados,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Si es el primer asignado, cambiar estado
@@ -3522,7 +3540,7 @@ async def auto_asignar_tramite(petition_id: str, current_user: dict = Depends(ge
         "usuario": current_user['full_name'],
         "usuario_rol": current_user['role'],
         "notas": "Auto-asignación de trámite",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3563,7 +3581,7 @@ async def asignar_gestor_a_tramite(petition_id: str, gestor_id: str, current_use
     
     update_data = {
         "gestores_asignados": gestores_asignados,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Si es el primer asignado, cambiar estado
@@ -3576,7 +3594,7 @@ async def asignar_gestor_a_tramite(petition_id: str, gestor_id: str, current_use
         "usuario": current_user['full_name'],
         "usuario_rol": current_user['role'],
         "notas": f"Gestor {gestor['full_name']} asignado al trámite",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3594,7 +3612,7 @@ async def asignar_gestor_a_tramite(petition_id: str, gestor_id: str, current_use
             "mensaje": f"Se te ha asignado el trámite {petition['radicado']} - {petition['tipo_tramite']}",
             "link": f"/dashboard/peticiones/{petition_id}",
             "leido": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         })
     except:
         pass
@@ -3629,7 +3647,7 @@ async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depen
         "usuario": current_user['full_name'],
         "usuario_rol": current_user['role'],
         "notas": "El gestor marcó su trabajo como finalizado",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3638,7 +3656,7 @@ async def marcar_trabajo_completado(petition_id: str, current_user: dict = Depen
     update_data = {
         "gestores_finalizados": gestores_finalizados,
         "historial": current_historial,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Si todos los gestores han completado su trabajo, notificar
@@ -3678,7 +3696,7 @@ async def desmarcar_trabajo_completado(petition_id: str, current_user: dict = De
         "usuario": current_user['full_name'],
         "usuario_rol": current_user['role'],
         "notas": "El gestor desmarcó su trabajo como finalizado para continuar",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -3687,7 +3705,7 @@ async def desmarcar_trabajo_completado(petition_id: str, current_user: dict = De
     await db.petitions.update_one({"id": petition_id}, {"$set": {
         "gestores_finalizados": gestores_finalizados,
         "historial": current_historial,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }})
     
     return {"message": "Trabajo desmarcado como completado"}
@@ -3735,7 +3753,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
             update_dict['estado'] = update_data.estado
     
     if update_dict:
-        update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+        update_dict['updated_at'] = datetime.now(COLOMBIA_TZ).isoformat()
         
         # Create historial entry if status changed
         if 'estado' in update_dict:
@@ -3764,7 +3782,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
             if estado_nuevo == PetitionStatus.APROBADO:
                 update_dict['aprobado_por_id'] = current_user['id']
                 update_dict['aprobado_por_nombre'] = current_user['full_name']
-                update_dict['fecha_aprobacion'] = datetime.now(timezone.utc).isoformat()
+                update_dict['fecha_aprobacion'] = datetime.now(COLOMBIA_TZ).isoformat()
                 if hasattr(update_data, 'comentario_aprobacion') and update_data.comentario_aprobacion:
                     update_dict['comentario_aprobacion'] = update_data.comentario_aprobacion
             
@@ -3776,7 +3794,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                 "estado_nuevo": estado_nuevo,
                 "notas": update_dict.get('notas', ''),
                 "observaciones_devolucion": update_data.observaciones_devolucion if estado_nuevo == PetitionStatus.DEVUELTO else None,
-                "fecha": datetime.now(timezone.utc).isoformat()
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             # Add to historial
@@ -3814,7 +3832,7 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                         "usuario": "Sistema",
                         "usuario_rol": "sistema",
                         "notas": "Asignación automática al pasar a revisión",
-                        "fecha": datetime.now(timezone.utc).isoformat()
+                        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
                     }
                     update_dict['historial'].append(auto_historial)
                     
@@ -4013,8 +4031,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         })
         
         # Estadísticas del mes actual
-        from datetime import datetime, timezone
-        inicio_mes = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        inicio_mes = datetime.now(COLOMBIA_TZ).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         aprobados_mes = await db.predios_nuevos.count_documents({
             "estado_flujo": "aprobado",
@@ -4153,7 +4170,7 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
         "estado_anterior": PetitionStatus.DEVUELTO,
         "estado_nuevo": PetitionStatus.REVISION,
         "notas": "El usuario ha realizado las correcciones solicitadas y reenvía el trámite para revisión.",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     current_historial = petition.get('historial', [])
@@ -4164,7 +4181,7 @@ async def reenviar_petition(petition_id: str, current_user: dict = Depends(get_c
         {"$set": {
             "estado": PetitionStatus.REVISION,
             "historial": current_historial,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -4340,7 +4357,7 @@ def generate_petition_pdf(petition_data: dict, user_data: dict, signed_by: str =
         story.append(Paragraph("___________________________", normal_style))
         story.append(Paragraph("<b>Firmado digitalmente por:</b>", normal_style))
         story.append(Paragraph(f"{signed_by}", normal_style))
-        story.append(Paragraph(f"Fecha: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')}", normal_style))
+        story.append(Paragraph(f"Fecha: {datetime.now(COLOMBIA_TZ).strftime('%d/%m/%Y %H:%M')}", normal_style))
     
     # Footer
     story.append(Spacer(1, 0.5*inch))
@@ -5414,7 +5431,7 @@ async def get_stats_summary(current_user: dict = Depends(get_current_user)):
     completion_rate = round((status_counts["finalizado"] / total_petitions * 100), 1) if total_petitions > 0 else 0
     
     # Recent petitions (last 30 days)
-    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    thirty_days_ago = (datetime.now(COLOMBIA_TZ) - timedelta(days=30)).isoformat()
     recent_petitions = await db.petitions.count_documents({
         "created_at": {"$gte": thirty_days_ago}
     })
@@ -5669,7 +5686,7 @@ async def cargar_codigos_homologados(
         codigos_usados = 0
         codigos_disponibles = 0
         codigos_por_municipio = {}
-        fecha_carga = datetime.utcnow().isoformat()
+        fecha_carga = datetime.now(COLOMBIA_TZ).isoformat()
         
         for _, row in df.iterrows():
             muni = municipio_fijo if municipio_fijo else str(row[municipio_col]).strip()
@@ -5893,7 +5910,7 @@ async def get_siguiente_codigo_homologado(
         )
     
     # Liberar reservas expiradas (más de 2 horas sin confirmar)
-    tiempo_expiracion = (datetime.utcnow() - timedelta(hours=2)).isoformat()
+    tiempo_expiracion = (datetime.now(COLOMBIA_TZ) - timedelta(hours=2)).isoformat()
     await db.codigos_homologados.update_many(
         {
             "municipio": municipio,
@@ -5915,7 +5932,7 @@ async def get_siguiente_codigo_homologado(
                     'usado': True,  # Marcado como usado para que no aparezca en otras consultas
                     'estado': 'reservado',  # Pero el estado indica que es temporal
                     'reservado_por': current_user.get('id'),
-                    'fecha_reserva': datetime.utcnow().isoformat(),
+                    'fecha_reserva': datetime.now(COLOMBIA_TZ).isoformat(),
                     'session_id': session_id or str(uuid.uuid4())
                 }
             },
@@ -5960,7 +5977,7 @@ async def asignar_codigo_homologado(municipio: str, predio_id: str) -> str:
             '$set': {
                 'usado': True,
                 'predio_id': predio_id,
-                'fecha_asignacion': datetime.utcnow().isoformat()
+                'fecha_asignacion': datetime.now(COLOMBIA_TZ).isoformat()
             }
         },
         sort=[('codigo', 1)],
@@ -6011,7 +6028,7 @@ async def reservar_multiples_codigos_homologados(
                     'usado': True,
                     'reservado': True,
                     'session_id': session_id,
-                    'fecha_reserva': datetime.utcnow().isoformat(),
+                    'fecha_reserva': datetime.now(COLOMBIA_TZ).isoformat(),
                     'reservado_por': current_user.get('id')
                 }
             },
@@ -6117,7 +6134,7 @@ async def confirmar_uso_codigos(
         {
             "$set": {
                 "estado": "usado",
-                "fecha_confirmacion": datetime.utcnow().isoformat(),
+                "fecha_confirmacion": datetime.now(COLOMBIA_TZ).isoformat(),
                 "confirmado_por": current_user.get('id')
             },
             "$unset": {"session_id": ""}
@@ -6294,7 +6311,7 @@ async def recalcular_codigos_municipio(
     
     # 4. Preparar operaciones bulk
     operaciones = []
-    fecha_ahora = datetime.utcnow().isoformat()
+    fecha_ahora = datetime.now(COLOMBIA_TZ).isoformat()
     
     for codigo_doc in codigos_docs:
         codigo = codigo_doc['codigo']
@@ -6909,11 +6926,11 @@ async def registrar_eliminacion_manual(
         "resolucion": eliminacion.resolucion,
         "fecha_resolucion": eliminacion.fecha_resolucion,
         "motivo": eliminacion.motivo,
-        "eliminado_en": datetime.now(timezone.utc).isoformat(),
+        "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "eliminado_por": current_user['full_name'],
         "eliminado_por_id": current_user['id'],
         "registro_manual": True,
-        "fecha_registro": datetime.now(timezone.utc).isoformat()
+        "fecha_registro": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios_eliminados.insert_one(eliminado_doc)
@@ -6998,12 +7015,12 @@ async def migrar_predios_eliminados(current_user: dict = Depends(get_current_use
                 "fecha_resolucion": predio.get("fecha_resolucion", ""),
                 "motivo": predio.get("motivo_eliminacion", "Eliminación de predio (migrado)"),
                 # Metadatos
-                "eliminado_en": predio.get("deleted_at", datetime.now(timezone.utc).isoformat()),
+                "eliminado_en": predio.get("deleted_at", datetime.now(COLOMBIA_TZ).isoformat()),
                 "eliminado_por": predio.get("deleted_by_name", "Sistema (migración)"),
                 "eliminado_por_id": predio.get("deleted_by"),
                 "predio_id_original": predio.get("id"),
                 "migrado": True,
-                "fecha_migracion": datetime.now(timezone.utc).isoformat()
+                "fecha_migracion": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             await db.predios_eliminados.insert_one(eliminado_doc)
@@ -7417,7 +7434,7 @@ async def analisis_historico_predios(
                         await db.predios_eliminados.insert_one({
                             **predio,
                             "id": str(uuid.uuid4()),
-                            "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                            "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                             "vigencia_eliminacion": vig_siguiente,
                             "vigencia_origen": vig_anterior,
                             "motivo": f"No incluido en vigencia {vig_siguiente}",
@@ -7537,7 +7554,7 @@ async def solicitar_reaparicion(
         "justificacion_gestor": justificacion,
         "solicitado_por": current_user['id'],
         "solicitado_por_nombre": current_user['full_name'],
-        "fecha_solicitud": datetime.now(timezone.utc).isoformat(),
+        "fecha_solicitud": datetime.now(COLOMBIA_TZ).isoformat(),
         "datos_predio_eliminado": {
             "propietarios": eliminado.get("propietarios", []),
             "direccion": eliminado.get("direccion"),
@@ -8247,13 +8264,13 @@ async def crear_predio_con_workflow(
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
             "rol": current_user["role"],
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "notas": justificacion
         }],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
         # Campos adicionales para compatibilidad con predios_cambios
-        "fecha_propuesta": datetime.now(timezone.utc).isoformat(),
+        "fecha_propuesta": datetime.now(COLOMBIA_TZ).isoformat(),
         "propuesto_por": current_user["id"],
         "propuesto_por_nombre": current_user["full_name"],
         "propuesto_por_rol": current_user["role"],
@@ -8279,7 +8296,7 @@ async def crear_predio_con_workflow(
                 "usuario": current_user["full_name"],
                 "usuario_id": current_user["id"],
                 "rol": current_user["role"],
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "notas": f"Asignado a {gestor_info['full_name']} para continuar el diligenciamiento"
             })
     
@@ -8297,7 +8314,7 @@ async def crear_predio_con_workflow(
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
             "rol": current_user["role"],
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "notas": "Creado por usuario con permiso de aprobación"
         })
         
@@ -8311,7 +8328,7 @@ async def crear_predio_con_workflow(
                     '$set': {
                         'usado': True,
                         'predio_id': cambio_id,
-                        'fecha_asignacion': datetime.now(timezone.utc).isoformat()
+                        'fecha_asignacion': datetime.now(COLOMBIA_TZ).isoformat()
                     }
                 },
                 return_document=True
@@ -8343,8 +8360,8 @@ async def crear_predio_con_workflow(
             **propuesta["datos_propuestos"],
             "codigo_homologado": codigo_homologado_final,
             "estado": "activo",
-            "vigencia": datetime.now(timezone.utc).year,  # Vigencia del año actual
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "vigencia": datetime.now(COLOMBIA_TZ).year,  # Vigencia del año actual
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "creado_por": current_user["id"],
             "creado_por_nombre": current_user["full_name"]
         }
@@ -8352,7 +8369,7 @@ async def crear_predio_con_workflow(
         # Si es reactivación y existe, actualizar; si no, insertar
         if es_reactivacion and existente:
             # Reactivación: actualizar el predio existente
-            nuevo_predio["reactivado_en"] = datetime.now(timezone.utc).isoformat()
+            nuevo_predio["reactivado_en"] = datetime.now(COLOMBIA_TZ).isoformat()
             nuevo_predio["reactivado_por"] = current_user["full_name"]
             nuevo_predio["reactivado_por_id"] = current_user["id"]
             nuevo_predio["id"] = existente.get("id", str(uuid.uuid4()))  # Mantener ID existente
@@ -8365,7 +8382,7 @@ async def crear_predio_con_workflow(
                 "usuario": current_user["full_name"],
                 "usuario_id": current_user["id"],
                 "usuario_rol": current_user["role"],
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "numero_resolucion": acto_admin,
                 "tipo_mutacion": datos_propuestos.get("tipo_mutacion", "Mutación Quinta"),
                 "fecha_resolucion": datos_propuestos.get("fecha_resolucion", datetime.now().strftime("%Y-%m-%d")),
@@ -8391,7 +8408,7 @@ async def crear_predio_con_workflow(
         else:
             # Creación normal: insertar nuevo
             nuevo_predio["id"] = str(uuid.uuid4())
-            nuevo_predio["created_at"] = datetime.now(timezone.utc).isoformat()
+            nuevo_predio["created_at"] = datetime.now(COLOMBIA_TZ).isoformat()
             
             # Agregar historial de creación
             datos_propuestos = propuesta.get("datos_propuestos", {})
@@ -8401,7 +8418,7 @@ async def crear_predio_con_workflow(
                 "usuario": current_user["full_name"],
                 "usuario_id": current_user["id"],
                 "usuario_rol": current_user["role"],
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "numero_resolucion": acto_admin,
                 "tipo_mutacion": datos_propuestos.get("tipo_mutacion", "Mutación Quinta"),
                 "fecha_resolucion": datos_propuestos.get("fecha_resolucion", datetime.now().strftime("%Y-%m-%d")),
@@ -8428,7 +8445,7 @@ async def crear_predio_con_workflow(
             "numero_predial": codigo_predial,
             "codigo_homologado": codigo_homologado_final,
             "municipio": municipio,
-            "vigencia": datetime.now(timezone.utc).year,
+            "vigencia": datetime.now(COLOMBIA_TZ).year,
             "direccion": propuesta["datos_propuestos"].get("direccion", ""),
             "destino_economico": propuesta["datos_propuestos"].get("destino_economico", ""),
             "area_terreno": propuesta["datos_propuestos"].get("area_terreno", 0),
@@ -8438,8 +8455,8 @@ async def crear_predio_con_workflow(
             "propietarios": propuesta["datos_propuestos"].get("propietarios", []),
             "matricula_inmobiliaria": propuesta["datos_propuestos"].get("matricula_inmobiliaria", ""),
             "estado_visita": "pendiente",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "creado_por": current_user["id"],
             "creado_por_nombre": current_user["full_name"],
             "es_predio_nuevo": not es_reactivacion,  # Marcar si es nuevo o reactivación
@@ -8462,7 +8479,7 @@ async def crear_predio_con_workflow(
         accion_historial = "Reactivación de predio eliminado" if es_reactivacion else "Creación de predio"
         nuevo_predio["historial_cambios"] = [{
             "accion": accion_historial,
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
             "acto_administrativo": acto_admin
@@ -8530,7 +8547,7 @@ async def asignar_gestor_a_cambio(
         "usuario": current_user["full_name"],
         "usuario_id": current_user["id"],
         "rol": current_user["role"],
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "notas": f"Gestor asignado: {gestor['full_name']}"
     }
     
@@ -8541,7 +8558,7 @@ async def asignar_gestor_a_cambio(
                 "gestor_asignado": gestor_id,
                 "gestor_asignado_nombre": gestor["full_name"],
                 "estado": "en_revision_gestor",
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             },
             "$push": {"historial": historial_entry}
         }
@@ -8580,15 +8597,15 @@ async def revision_gestor_cambio(
         "usuario": current_user["full_name"],
         "usuario_id": current_user["id"],
         "rol": current_user["role"],
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "notas": observaciones
     }
     
     update_data = {
         "estado": "pendiente_revision_final",
         "observaciones_gestor": observaciones,
-        "fecha_revision_gestor": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "fecha_revision_gestor": datetime.now(COLOMBIA_TZ).isoformat(),
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     if datos_revisados:
@@ -8768,7 +8785,7 @@ async def aprobar_reaparicion(
         "justificacion": justificacion,
         "aprobado_por": current_user['id'],
         "aprobado_por_nombre": current_user['full_name'],
-        "fecha_aprobacion": datetime.now(timezone.utc).isoformat()
+        "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios_reapariciones_aprobadas.insert_one(aprobacion)
@@ -8845,13 +8862,13 @@ async def rechazar_reaparicion(
         "motivo_rechazo": justificacion,
         "rechazado_por": current_user['id'],
         "rechazado_por_nombre": current_user['full_name'],
-        "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+        "fecha_rechazo": datetime.now(COLOMBIA_TZ).isoformat(),
         "gestor_asignado": gestor_id,
         "gestor_nombre": gestor_nombre,
         "intentos": 1,
         "historial": [{
             "accion": "rechazado",
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user['full_name'],
             "motivo": justificacion
         }],
@@ -8877,7 +8894,7 @@ async def rechazar_reaparicion(
         "justificacion": justificacion,
         "rechazado_por": current_user['id'],
         "rechazado_por_nombre": current_user['full_name'],
-        "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+        "fecha_rechazo": datetime.now(COLOMBIA_TZ).isoformat(),
         "subsanacion_id": subsanacion_id
     }
     await db.predios_reapariciones_aprobadas.insert_one(decision)
@@ -8998,7 +9015,7 @@ async def subsanar_reaparicion(
     # Agregar al historial
     historial_entry = {
         "accion": "subsanado_reenviado",
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "usuario": current_user['full_name'],
         "justificacion": justificacion_subsanacion,
         "cambios_realizados": update_predio if update_predio else "Sin cambios en datos"
@@ -9010,7 +9027,7 @@ async def subsanar_reaparicion(
         {
             "$set": {
                 "estado": "reenviado",
-                "fecha_subsanacion": datetime.now(timezone.utc).isoformat(),
+                "fecha_subsanacion": datetime.now(COLOMBIA_TZ).isoformat(),
                 "subsanado_por": current_user['id'],
                 "subsanado_por_nombre": current_user['full_name'],
                 "justificacion_subsanacion": justificacion_subsanacion
@@ -9098,7 +9115,7 @@ async def aprobar_subsanacion(
     # Actualizar subsanación a aprobada
     historial_entry = {
         "accion": "aprobado_final",
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "usuario": current_user['full_name'],
         "justificacion": justificacion
     }
@@ -9108,7 +9125,7 @@ async def aprobar_subsanacion(
         {
             "$set": {
                 "estado": "aprobado",
-                "fecha_aprobacion_final": datetime.now(timezone.utc).isoformat(),
+                "fecha_aprobacion_final": datetime.now(COLOMBIA_TZ).isoformat(),
                 "aprobado_por": current_user['id'],
                 "aprobado_por_nombre": current_user['full_name'],
                 "justificacion_aprobacion": justificacion
@@ -9128,7 +9145,7 @@ async def aprobar_subsanacion(
         "justificacion": justificacion,
         "aprobado_por": current_user['id'],
         "aprobado_por_nombre": current_user['full_name'],
-        "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+        "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
         "subsanacion_id": subsanacion_id,
         "intentos_totales": subsanacion.get("intentos", 1) + 1
     }
@@ -9195,7 +9212,7 @@ async def rechazar_subsanacion_nuevamente(
         # Rechazo definitivo - eliminar el predio
         historial_entry = {
             "accion": "rechazado_definitivo",
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user['full_name'],
             "justificacion": justificacion
         }
@@ -9205,7 +9222,7 @@ async def rechazar_subsanacion_nuevamente(
             {
                 "$set": {
                     "estado": "rechazado_definitivo",
-                    "fecha_rechazo_final": datetime.now(timezone.utc).isoformat(),
+                    "fecha_rechazo_final": datetime.now(COLOMBIA_TZ).isoformat(),
                     "rechazado_final_por": current_user['id'],
                     "rechazado_final_por_nombre": current_user['full_name'],
                     "justificacion_rechazo_final": justificacion
@@ -9223,7 +9240,7 @@ async def rechazar_subsanacion_nuevamente(
             "justificacion": justificacion,
             "rechazado_por": current_user['id'],
             "rechazado_por_nombre": current_user['full_name'],
-            "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+            "fecha_rechazo": datetime.now(COLOMBIA_TZ).isoformat(),
             "intentos_totales": intentos + 1
         }
         await db.predios_reapariciones_aprobadas.insert_one(rechazo)
@@ -9245,7 +9262,7 @@ async def rechazar_subsanacion_nuevamente(
         # Permitir otro intento de subsanación
         historial_entry = {
             "accion": "rechazado_nueva_subsanacion",
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user['full_name'],
             "justificacion": justificacion
         }
@@ -9256,7 +9273,7 @@ async def rechazar_subsanacion_nuevamente(
                 "$set": {
                     "estado": "pendiente_subsanacion",
                     "motivo_rechazo": justificacion,
-                    "fecha_rechazo": datetime.now(timezone.utc).isoformat(),
+                    "fecha_rechazo": datetime.now(COLOMBIA_TZ).isoformat(),
                     "rechazado_por": current_user['id'],
                     "rechazado_por_nombre": current_user['full_name']
                 },
@@ -9335,7 +9352,7 @@ async def responder_solicitud_reaparicion(
             "respondido_por": current_user['id'],
             "respondido_por_nombre": current_user['full_name'],
             "comentario_respuesta": request.comentario,
-            "fecha_respuesta": datetime.now(timezone.utc).isoformat()
+            "fecha_respuesta": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -9351,7 +9368,7 @@ async def responder_solicitud_reaparicion(
             "justificacion_gestor": solicitud.get("justificacion_gestor"),
             "aprobado_por": current_user['id'],
             "aprobado_por_nombre": current_user['full_name'],
-            "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
             "origen": "solicitud_gestor"
         }
         await db.predios_reapariciones_aprobadas.insert_one(aprobacion)
@@ -9496,7 +9513,7 @@ async def comparar_vigencias_predios(
     for p in predios_eliminados:
         eliminados_docs.append({
             **p,
-            "eliminado_en": datetime.now(timezone.utc).isoformat(),
+            "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
             "vigencia_eliminacion": vigencia_nueva,
             "vigencia_origen": vigencia_anterior,
             "radicado_eliminacion": radicado,
@@ -9654,7 +9671,7 @@ async def actualizar_radicado_eliminado(
         {"$set": {
             "radicado_eliminacion": radicado,
             "radicado_actualizado_por": current_user['full_name'],
-            "radicado_actualizado_en": datetime.now(timezone.utc).isoformat()
+            "radicado_actualizado_en": datetime.now(COLOMBIA_TZ).isoformat()
         }}
     )
     
@@ -9952,7 +9969,7 @@ async def import_predios_excel(
                     'propietarios': [],
                     'r2_registros': [],
                     'id': str(uuid.uuid4()),
-                    'created_at': datetime.now(timezone.utc).isoformat(),
+                    'created_at': datetime.now(COLOMBIA_TZ).isoformat(),
                     'status': 'aprobado'
                 }
             
@@ -10157,27 +10174,29 @@ async def import_predios_excel(
         # Actualizar el municipio en todos los predios
         for predio in r1_data.values():
             predio['municipio'] = municipio
-        
+
         # Obtener los códigos prediales de los nuevos predios (CNP)
         new_codigos = set(r1_data.keys())
-        
-        # === LÓGICA CORREGIDA: Comparar con TODAS las vigencias anteriores ===
-        
+
+        # === LÓGICA CORREGIDA: Buscar por código de municipio Y nombre ===
+        # Usar código de municipio (primeros 5 dígitos del CNP) para evitar
+        # que predios mal etiquetados con otro nombre de municipio sobrevivan
+        query_municipio = {
+            "$or": [
+                {"municipio": {"$regex": f"^{municipio}$", "$options": "i"}},
+                {"codigo_predial_nacional": {"$regex": f"^{codigo_municipio}"}}
+            ]
+        }
+
         # 1. Obtener predios de la vigencia actual (para historial)
         existing_predios_vigencia_actual = await db.predios.find(
-            {
-                "municipio": {"$regex": f"^{municipio}$", "$options": "i"}, 
-                "vigencia": vigencia_int
-            }, 
+            {**query_municipio, "vigencia": vigencia_int},
             {"_id": 0}
         ).to_list(50000)
-        
+
         # 2. Obtener TODOS los CNP de TODAS las vigencias anteriores
         all_previous_predios = await db.predios.find(
-            {
-                "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
-                "vigencia": {"$lt": vigencia_int}
-            },
+            {**query_municipio, "vigencia": {"$lt": vigencia_int}},
             {"_id": 0, "codigo_predial_nacional": 1, "vigencia": 1}
         ).to_list(100000)
         
@@ -10214,26 +10233,48 @@ async def import_predios_excel(
             
             # Si el Excel tiene menos del 70% de los predios existentes, es sospechoso
             if porcentaje < 70 and not force:
-                wb.close()
-                temp_path.unlink()
-                
-                logger.warning("[SEGURIDAD] Importación BLOQUEADA - Diferencia significativa detectada")
-                logger.warning(f"  - Predios existentes: {predios_existentes_count}")
-                logger.warning(f"  - Predios en Excel: {predios_nuevos_count}")
-                logger.warning(f"  - Porcentaje: {porcentaje:.1f}%")
-                
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "error": "ADVERTENCIA DE SEGURIDAD",
-                        "mensaje": f"El archivo Excel contiene {predios_nuevos_count:,} predios, pero actualmente existen {predios_existentes_count:,} predios en la vigencia {vigencia_int}.",
-                        "diferencia": f"Esto eliminaría aproximadamente {diferencia:,} predios ({100-porcentaje:.1f}% menos).",
-                        "accion_requerida": "Si está seguro de que el archivo es correcto, agregue el parámetro 'force=true' a la solicitud.",
-                        "predios_existentes": predios_existentes_count,
-                        "predios_en_excel": predios_nuevos_count,
-                        "porcentaje": round(porcentaje, 1)
-                    }
-                )
+                # Verificar si la diferencia se debe a duplicados (mismo CNP aparece más de una vez)
+                cnp_unicos = await db.predios.aggregate([
+                    {"$match": {
+                        "$or": [
+                            {"municipio": {"$regex": f"^{municipio}$", "$options": "i"}},
+                            {"codigo_predial_nacional": {"$regex": f"^{codigo_municipio}"}}
+                        ],
+                        "vigencia": vigencia_int
+                    }},
+                    {"$group": {"_id": "$codigo_predial_nacional"}},
+                    {"$count": "total"}
+                ]).to_list(1)
+                total_unicos = cnp_unicos[0]["total"] if cnp_unicos else 0
+                hay_duplicados = predios_existentes_count > total_unicos
+
+                if hay_duplicados:
+                    # Hay predios duplicados, permitir la importación para limpiar
+                    logger.warning(f"[SEGURIDAD] Duplicados detectados: {predios_existentes_count} registros, {total_unicos} CNP únicos. Permitiendo importación para limpiar.")
+                else:
+                    wb.close()
+                    try:
+                        temp_path.unlink()
+                    except FileNotFoundError:
+                        pass
+
+                    logger.warning("[SEGURIDAD] Importación BLOQUEADA - Diferencia significativa detectada")
+                    logger.warning(f"  - Predios existentes: {predios_existentes_count}")
+                    logger.warning(f"  - Predios en Excel: {predios_nuevos_count}")
+                    logger.warning(f"  - Porcentaje: {porcentaje:.1f}%")
+
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "error": "ADVERTENCIA DE SEGURIDAD",
+                            "mensaje": f"El archivo Excel contiene {predios_nuevos_count:,} predios, pero actualmente existen {predios_existentes_count:,} predios en la vigencia {vigencia_int}.",
+                            "diferencia": f"Esto eliminaría aproximadamente {diferencia:,} predios ({100-porcentaje:.1f}% menos).",
+                            "accion_requerida": "Si está seguro de que el archivo es correcto, agregue el parámetro 'force=true' a la solicitud.",
+                            "predios_existentes": predios_existentes_count,
+                            "predios_en_excel": predios_nuevos_count,
+                            "porcentaje": round(porcentaje, 1)
+                        }
+                    )
             
             # Si se forzó pero hay diferencia muy grande (menos del 30%), registrar advertencia crítica
             if porcentaje < 30 and force:
@@ -10249,7 +10290,7 @@ async def import_predios_excel(
             "predios_existentes": predios_existentes_count,
             "predios_en_excel": predios_nuevos_count,
             "predios_a_eliminar_estimados": len(cnp_eliminados),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user.get('email'),
             "force": force
         }
@@ -10269,8 +10310,11 @@ async def import_predios_excel(
                 # Obtener datos del predio de la última vigencia donde existió
                 predio_original = await db.predios.find_one(
                     {
-                        "codigo_predial_nacional": cnp, 
-                        "municipio": {"$regex": f"^{municipio}$", "$options": "i"}
+                        "codigo_predial_nacional": cnp,
+                        "$or": [
+                            {"municipio": {"$regex": f"^{municipio}$", "$options": "i"}},
+                            {"codigo_predial_nacional": {"$regex": f"^{codigo_municipio}"}}
+                        ]
                     },
                     {"_id": 0},
                     sort=[("vigencia", -1)]
@@ -10278,7 +10322,7 @@ async def import_predios_excel(
                 if predio_original:
                     predios_eliminados_nuevos.append({
                         **predio_original,
-                        "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                        "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                         "vigencia_eliminacion": vigencia_int,
                         "motivo": f"No incluido en importación R1-R2 vigencia {vigencia_int}"
                     })
@@ -10292,7 +10336,7 @@ async def import_predios_excel(
         # Guardar historial de predios existentes de esta vigencia
         if existing_predios_vigencia_actual:
             await db.predios_historico.insert_many([
-                {**p, "archivado_en": datetime.now(timezone.utc).isoformat(), "vigencia_archivo": vigencia_int}
+                {**p, "archivado_en": datetime.now(COLOMBIA_TZ).isoformat(), "vigencia_archivo": vigencia_int}
                 for p in existing_predios_vigencia_actual
             ])
         
@@ -10315,7 +10359,7 @@ async def import_predios_excel(
                 if p.get('area_editada_en_plataforma') or p.get('creado_en_plataforma'):
                     predios_areas_modificadas.append({
                         **p,
-                        "respaldado_en": datetime.now(timezone.utc).isoformat(),
+                        "respaldado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                         "motivo": "Reemplazado por importación R1-R2"
                     })
         
@@ -10327,11 +10371,14 @@ async def import_predios_excel(
             logger.info(f"[Import] Respaldados {len(predios_areas_modificadas)} predios con áreas modificadas manualmente")
         
         # 2. ELIMINAR TODOS los predios de esta vigencia y municipio
+        # Usar $or con código de municipio para eliminar también predios mal etiquetados
         delete_result = await db.predios.delete_many({
-            "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
-            "vigencia": vigencia_int
+            "$or": [
+                {"municipio": {"$regex": f"^{municipio}$", "$options": "i"}, "vigencia": vigencia_int},
+                {"codigo_predial_nacional": {"$regex": f"^{codigo_municipio}"}, "vigencia": vigencia_int}
+            ]
         })
-        logger.info(f"[Import] Eliminados {delete_result.deleted_count} predios existentes")
+        logger.info(f"[Import] Eliminados {delete_result.deleted_count} predios existentes (municipio: {municipio}, código: {codigo_municipio})")
         
         # 3. INSERTAR TODOS los predios del Excel
         predios_list = list(r1_data.values())
@@ -10358,7 +10405,10 @@ async def import_predios_excel(
         # ========== VERIFICACIÓN POST-IMPORTACIÓN ==========
         # Verificar que los predios se insertaron correctamente
         predios_despues = await db.predios.count_documents({
-            "municipio": {"$regex": f"^{municipio}$", "$options": "i"},
+            "$or": [
+                {"municipio": {"$regex": f"^{municipio}$", "$options": "i"}},
+                {"codigo_predial_nacional": {"$regex": f"^{codigo_municipio}"}}
+            ],
             "vigencia": vigencia_int,
             "deleted": {"$ne": True}
         })
@@ -10376,7 +10426,7 @@ async def import_predios_excel(
                     "verificacion_fallida": True,
                     "predios_esperados": predios_esperados,
                     "predios_reales": predios_despues,
-                    "timestamp_verificacion": datetime.now(timezone.utc).isoformat()
+                    "timestamp_verificacion": datetime.now(COLOMBIA_TZ).isoformat()
                 }},
                 upsert=True
             )
@@ -10403,7 +10453,7 @@ async def import_predios_excel(
             "archivo": file.filename,
             "importado_por": current_user['id'],
             "importado_por_nombre": current_user['full_name'],
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         })
         
         # Broadcast WebSocket para sincronización en tiempo real
@@ -10415,7 +10465,7 @@ async def import_predios_excel(
             "predios_importados": len(predios_list),
             "predios_nuevos": predios_nuevos_count,
             "imported_by": current_user['full_name'],
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
         }, exclude_user=current_user['id'])
         
         return {
@@ -10789,7 +10839,11 @@ async def export_predios_excel(
             ws_r1.cell(row=row, column=11, value=campos_nombre.get('primer_nombre', ''))
             ws_r1.cell(row=row, column=12, value=campos_nombre.get('segundo_nombre', ''))
             ws_r1.cell(row=row, column=13, value=generar_nombre_completo(prop))  # Nombre completo
-            ws_r1.cell(row=row, column=14, value=prop.get('estado', prop.get('estado_civil', '')))  # Estado
+            # Estado civil: priorizar 'estado_civil' sobre 'estado', validar valor real
+            _ec = (prop.get('estado_civil') or prop.get('estado') or '').strip().upper()
+            if _ec not in ('S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', 'SOLTERO/A', 'CASADO/A', 'VIUDO/A', 'UNION LIBRE'):
+                _ec = ''
+            ws_r1.cell(row=row, column=14, value=_ec)  # Estado
             ws_r1.cell(row=row, column=15, value=prop.get('tipo_documento', ''))
             ws_r1.cell(row=row, column=16, value=formatear_documento(prop.get('numero_documento', '')))  # Documento con padding
             ws_r1.cell(row=row, column=17, value=predio.get('direccion', ''))
@@ -11632,7 +11686,7 @@ async def generar_certificado_catastral_endpoint(
     
     # Registrar certificado en la base de datos
     # Calcular fecha de vencimiento (1 mes = 30 días)
-    fecha_generacion = datetime.now(timezone.utc)
+    fecha_generacion = datetime.now(COLOMBIA_TZ)
     fecha_vencimiento = fecha_generacion + timedelta(days=30)
     
     certificado_record = {
@@ -11815,7 +11869,7 @@ async def generar_certificado_desde_peticion(
         "municipio": predio.get('municipio'),
         "direccion": predio.get('direccion'),
         "propietarios": propietarios_nombres,
-        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+        "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "estado": "activo",
@@ -11830,7 +11884,7 @@ async def generar_certificado_desde_peticion(
     }
     
     # Calcular hash después de generar el PDF
-    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(timezone.utc).isoformat()}")
+    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}")
     certificado_record["hash_documento"] = hash_doc
     
     await db.certificados_verificables.insert_one(certificado_record)
@@ -11881,10 +11935,10 @@ async def generar_certificado_desde_peticion(
     update_data = {
         "certificado_generado": True,
         "certificado_codigo": codigo_verificacion,
-        "certificado_fecha": datetime.now(timezone.utc).isoformat(),
+        "certificado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "certificado_archivo": str(cert_path),
         "predio_relacionado": predio_relacionado_info,  # Guardar la info del predio
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Si enviar_correo es True, también finalizar el trámite
@@ -11899,7 +11953,7 @@ async def generar_certificado_desde_peticion(
             "estado_anterior": petition.get('estado'),
             "estado_nuevo": PetitionStatus.FINALIZADO,
             "notas": f"Certificado catastral generado con código {codigo_verificacion}. Enviado al correo del peticionario.",
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.petitions.update_one(
@@ -12089,7 +12143,7 @@ async def regenerar_certificado_desde_peticion(
             {"codigo_verificacion": codigo_anterior},
             {"$set": {
                 "estado": "reemplazado",
-                "reemplazado_fecha": datetime.now(timezone.utc).isoformat(),
+                "reemplazado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "reemplazado_por": current_user['id']
             }}
         )
@@ -12125,7 +12179,7 @@ async def regenerar_certificado_desde_peticion(
         "municipio": predio.get('municipio'),
         "direccion": predio.get('direccion'),
         "propietarios": propietarios_nombres,
-        "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+        "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
         "generado_por": current_user['id'],
         "generado_por_nombre": current_user['full_name'],
         "estado": "activo",
@@ -12141,7 +12195,7 @@ async def regenerar_certificado_desde_peticion(
         "numero_regeneracion": petition.get('regeneraciones_count', 0) + 1
     }
     
-    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(timezone.utc).isoformat()}")
+    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}")
     certificado_record["hash_documento"] = hash_doc
     
     await db.certificados_verificables.insert_one(certificado_record)
@@ -12172,9 +12226,9 @@ async def regenerar_certificado_desde_peticion(
     # Actualizar la petición con el nuevo certificado
     update_data = {
         "certificado_codigo": codigo_verificacion,
-        "certificado_fecha": datetime.now(timezone.utc).isoformat(),
+        "certificado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "certificado_archivo": str(cert_path),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Historial de regeneración
@@ -12185,7 +12239,7 @@ async def regenerar_certificado_desde_peticion(
         "estado_anterior": petition.get('estado'),
         "estado_nuevo": petition.get('estado'),
         "notas": f"Certificado regenerado con nuevo código {codigo_verificacion}. Código anterior: {codigo_anterior}.",
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.petitions.update_one(
@@ -12249,7 +12303,7 @@ async def regenerar_certificado_desde_peticion(
                         "usuario": current_user['full_name'],
                         "usuario_rol": current_user['role'],
                         "notas": f"Certificado actualizado enviado a {correo_destino}",
-                        "fecha": datetime.now(timezone.utc).isoformat()
+                        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
                     }}}
                 )
         except Exception as e:
@@ -12366,7 +12420,7 @@ async def agregar_mutacion_peticion(
             "datos": data.datos or {},
             "resolucion_id": None,
             "orden": count + 1,
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
             "creado_por_id": current_user['id'],
             "creado_por_nombre": current_user['full_name']
         }
@@ -12382,7 +12436,7 @@ async def agregar_mutacion_peticion(
                     "accion": f"Mutación {data.tipo} agregada",
                     "usuario": current_user['full_name'],
                     "usuario_rol": current_user['role'],
-                    "fecha": datetime.now(timezone.utc).isoformat()
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat()
                 }}
             }
         )
@@ -12431,7 +12485,7 @@ async def eliminar_mutacion_peticion(
                     "accion": f"Mutación {mutacion.get('tipo')} eliminada",
                     "usuario": current_user['full_name'],
                     "usuario_rol": current_user['role'],
-                    "fecha": datetime.now(timezone.utc).isoformat()
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat()
                 }}
             }
         )
@@ -12445,6 +12499,77 @@ async def eliminar_mutacion_peticion(
         raise
     except Exception as e:
         logging.error(f"Error eliminando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+class ActualizarMutacionRequest(BaseModel):
+    estado: Optional[str] = None
+    resolucion_id: Optional[str] = None
+    pdf_url: Optional[str] = None
+    numero_resolucion: Optional[str] = None
+
+@api_router.patch("/petitions/{petition_id}/mutaciones/{mutacion_id}")
+async def actualizar_estado_mutacion_peticion(
+    petition_id: str,
+    mutacion_id: str,
+    data: ActualizarMutacionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Actualiza el estado y datos de una mutación dentro de una petición.
+    Usado cuando se genera una resolución individual desde múltiples mutaciones.
+    """
+    try:
+        mutacion = await db.peticion_mutaciones.find_one({
+            "id": mutacion_id,
+            "petition_id": petition_id
+        })
+
+        if not mutacion:
+            raise HTTPException(status_code=404, detail="Mutación no encontrada")
+
+        update_fields = {}
+        if data.estado:
+            update_fields["estado"] = data.estado
+        if data.resolucion_id:
+            update_fields["resolucion_id"] = data.resolucion_id
+        if data.pdf_url:
+            update_fields["pdf_url"] = data.pdf_url
+        if data.numero_resolucion:
+            update_fields["numero_resolucion"] = data.numero_resolucion
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No hay campos para actualizar")
+
+        update_fields["updated_at"] = datetime.now(COLOMBIA_TZ).isoformat()
+
+        await db.peticion_mutaciones.update_one(
+            {"id": mutacion_id, "petition_id": petition_id},
+            {"$set": update_fields}
+        )
+
+        # Agregar al historial de la petición
+        await db.petitions.update_one(
+            {"id": petition_id},
+            {
+                "$push": {"historial": {
+                    "accion": f"Mutación {mutacion.get('tipo')} actualizada a {data.estado or ''}",
+                    "usuario": current_user['full_name'],
+                    "usuario_rol": current_user['role'],
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat()
+                }}
+            }
+        )
+
+        return {
+            "success": True,
+            "message": f"Mutación actualizada a {data.estado or ''}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error actualizando mutación: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
@@ -12536,7 +12661,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     if fecha_vencimiento:
         try:
             dt_venc = datetime.fromisoformat(fecha_vencimiento.replace('Z', '+00:00'))
-            ahora = datetime.now(timezone.utc)
+            ahora = datetime.now(COLOMBIA_TZ)
             if ahora > dt_venc:
                 esta_vencido = True
                 estado = "vencido"
@@ -12551,7 +12676,7 @@ async def verificar_certificado_publico(codigo_verificacion: str):
             try:
                 dt_gen = datetime.fromisoformat(fecha_gen_str.replace('Z', '+00:00'))
                 dt_venc = dt_gen + timedelta(days=30)
-                ahora = datetime.now(timezone.utc)
+                ahora = datetime.now(COLOMBIA_TZ)
                 if ahora > dt_venc:
                     esta_vencido = True
                     estado = "vencido"
@@ -12566,13 +12691,12 @@ async def verificar_certificado_publico(codigo_verificacion: str):
     fecha_gen = certificado.get('fecha_generacion', '')
     if fecha_gen:
         try:
-            from zoneinfo import ZoneInfo
             dt = datetime.fromisoformat(fecha_gen.replace('Z', '+00:00'))
             # Si la fecha no tiene zona horaria o es UTC, convertir a Colombia
             if dt.tzinfo is None or str(dt.tzinfo) == 'UTC':
-                dt = dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(ZoneInfo('America/Bogota'))
+                dt = dt.replace(tzinfo=ZoneInfo('UTC')).astimezone(COLOMBIA_TZ)
             elif str(dt.tzinfo) != 'America/Bogota':
-                dt = dt.astimezone(ZoneInfo('America/Bogota'))
+                dt = dt.astimezone(COLOMBIA_TZ)
             fecha_formateada = dt.strftime("%d/%m/%Y a las %H:%M")
         except:
             fecha_formateada = fecha_gen
@@ -13018,7 +13142,7 @@ async def anular_certificado(
             "$set": {
                 "estado": "anulado",
                 "motivo_anulacion": motivo,
-                "fecha_anulacion": datetime.now(timezone.utc).isoformat(),
+                "fecha_anulacion": datetime.now(COLOMBIA_TZ).isoformat(),
                 "anulado_por": current_user['id'],
                 "anulado_por_nombre": current_user['full_name']
             }
@@ -13130,7 +13254,7 @@ async def listar_certificados_verificables(
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(COLOMBIA_TZ)
     fecha_limite_por_vencer = ahora + timedelta(days=7)  # Próximos 7 días
     
     query = {}
@@ -13207,7 +13331,7 @@ async def estadisticas_certificados(
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(COLOMBIA_TZ)
     fecha_limite_por_vencer = ahora + timedelta(days=7)
     
     # Total de certificados
@@ -13505,8 +13629,8 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
         "vigencia": datetime.now().strftime("%m%d%Y"),
         "created_by": current_user['id'],
         "created_by_name": current_user['full_name'],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
         "deleted": False,
         
         # Historial
@@ -13514,7 +13638,7 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
             "accion": "Predio creado",
             "usuario": current_user['full_name'],
             "usuario_id": current_user['id'],
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }]
     }
     
@@ -13538,7 +13662,7 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
         "municipio": predio.get('municipio', ''),
         "codigo_predial": predio.get('codigo_predial_nacional', ''),
         "created_by": current_user['full_name'],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     }, exclude_user=current_user['id'])
     
     return predio
@@ -13566,7 +13690,7 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
         update_dict["area_editada_en_plataforma"] = True
     
     # Agregar metadata de actualización
-    update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_dict["updated_at"] = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Agregar al historial
     historial_entry = {
@@ -13574,7 +13698,7 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
         "usuario": current_user['full_name'],
         "usuario_id": current_user['id'],
         "campos_modificados": list(update_dict.keys()),
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios.update_one(
@@ -13597,7 +13721,7 @@ async def update_predio(predio_id: str, update_data: PredioUpdate, current_user:
         "codigo_predial": updated_predio.get('codigo_predial_nacional', ''),
         "campos_modificados": list(update_dict.keys()),
         "updated_by": current_user['full_name'],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     }, exclude_user=current_user['id'])
     
     return updated_predio
@@ -13617,7 +13741,7 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
         "accion": "Predio eliminado",
         "usuario": current_user['full_name'],
         "usuario_id": current_user['id'],
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios.update_one(
@@ -13625,7 +13749,7 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
         {
             "$set": {
                 "deleted": True,
-                "deleted_at": datetime.now(timezone.utc).isoformat(),
+                "deleted_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "deleted_by": current_user['id'],
                 "deleted_by_name": current_user['full_name']
             },
@@ -13641,7 +13765,7 @@ async def delete_predio(predio_id: str, current_user: dict = Depends(get_current
         "municipio": predio.get('municipio', ''),
         "codigo_predial": predio.get('codigo_predial_nacional', ''),
         "deleted_by": current_user['full_name'],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     }, exclude_user=current_user['id'])
     
     return {"message": "Predio eliminado exitosamente"}
@@ -13772,7 +13896,7 @@ async def crear_predio_m5(
         "vigencia": datetime.now().year,
         "es_predio_nuevo": True,
         "origen": predio_data.origen or "M5_inscripcion",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
         "created_by": current_user["id"],
         "created_by_name": current_user["full_name"],
         "deleted": False,
@@ -13780,7 +13904,7 @@ async def crear_predio_m5(
             "accion": "Predio creado desde M5 - Inscripción",
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }]
     }
     
@@ -13972,13 +14096,13 @@ async def crear_predio_nuevo(
         
         # Metadata
         "vigencia": datetime.now().year,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
         "deleted": False,
         
         # Historial de trazabilidad
         "historial_flujo": [{
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "accion": "Predio creado",
             "estado_anterior": None,
             "estado_nuevo": PredioNuevoEstado.CREADO,
@@ -14001,7 +14125,7 @@ async def crear_predio_nuevo(
         "predio_id": predio_nuevo['id'],
         "codigo_predial": codigo_predial,
         "leida": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     await db.notifications.insert_one(notificacion)
     
@@ -14200,7 +14324,7 @@ async def ejecutar_accion_predio_nuevo(
     
     # Crear entrada de historial
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": accion,
         "estado_anterior": estado_actual,
         "estado_nuevo": nuevo_estado,
@@ -14212,14 +14336,14 @@ async def ejecutar_accion_predio_nuevo(
     # Actualizar predio
     update_data = {
         "estado_flujo": nuevo_estado,
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     # Si se aprueba, agregar datos de aprobación
     if accion == "aprobar":
         update_data["aprobado_por_id"] = user_id
         update_data["aprobado_por_nombre"] = current_user['full_name']
-        update_data["fecha_aprobacion"] = datetime.now(timezone.utc).isoformat()
+        update_data["fecha_aprobacion"] = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Si se rechaza la asignación, quitar el gestor de apoyo asignado
     if accion == "rechazar_asignacion":
@@ -14246,11 +14370,11 @@ async def ejecutar_accion_predio_nuevo(
             "accion": "Predio aprobado e integrado",
             "usuario": current_user['full_name'],
             "usuario_id": user_id,
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         })
         
         # Normalizar vigencia al año actual (formato consistente con colección principal)
-        vigencia_actual = datetime.now(timezone.utc).year
+        vigencia_actual = datetime.now(COLOMBIA_TZ).year
         predio_aprobado["vigencia"] = vigencia_actual
         
         # Asegurar que tenga los campos necesarios para R1/R2
@@ -14352,7 +14476,7 @@ async def ejecutar_accion_predio_nuevo(
             "numero_predial": predio_aprobado.get("codigo_predial_nacional"),
             "codigo_homologado": predio_aprobado.get("codigo_homologado", ""),
             "municipio": predio_aprobado.get("municipio"),
-            "vigencia": predio_aprobado.get("vigencia", datetime.now(timezone.utc).year),
+            "vigencia": predio_aprobado.get("vigencia", datetime.now(COLOMBIA_TZ).year),
             "direccion": predio_aprobado.get("direccion", ""),
             "destino_economico": predio_aprobado.get("destino_economico", ""),
             "area_terreno": predio_aprobado.get("area_terreno", 0),
@@ -14363,8 +14487,8 @@ async def ejecutar_accion_predio_nuevo(
             "matricula_inmobiliaria": predio_aprobado.get("matricula_inmobiliaria", ""),
             "estado_visita": "pendiente",
             "es_predio_nuevo": True,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "creado_por": predio_aprobado.get("gestor_creador_id"),
             "creado_por_nombre": predio_aprobado.get("gestor_creador_nombre"),
             "aprobado_por": current_user["id"],
@@ -14427,7 +14551,7 @@ async def ejecutar_accion_predio_nuevo(
                 "predio_id": predio_id,
                 "codigo_predial": predio['codigo_predial_nacional'],
                 "leida": False,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.notifications.insert_one(notif)
     
@@ -14508,11 +14632,11 @@ async def actualizar_predio_nuevo(
     for campo in campos_protegidos:
         update_data.pop(campo, None)
     
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_at"] = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Agregar entrada al historial
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": "Predio actualizado",
         "estado_anterior": predio['estado_flujo'],
         "estado_nuevo": predio['estado_flujo'],
@@ -14579,7 +14703,7 @@ async def eliminar_predio_nuevo(
         "eliminado_por_nombre": current_user['full_name'],
         "motivo": motivo,
         "datos_predio": predio,
-        "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
+        "fecha_eliminacion": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios_nuevos_eliminados.insert_one(registro_eliminacion)
@@ -14698,10 +14822,10 @@ async def proponer_cambio_predio(
         "propuesto_por": current_user['id'],
         "propuesto_por_nombre": current_user['full_name'],
         "propuesto_por_rol": current_user['role'],
-        "fecha_propuesta": datetime.now(timezone.utc).isoformat(),
+        "fecha_propuesta": datetime.now(COLOMBIA_TZ).isoformat(),
         "aprobado_por": current_user['id'] if aprueba_directo else None,
         "aprobado_por_nombre": current_user['full_name'] if aprueba_directo else None,
-        "fecha_aprobacion": datetime.now(timezone.utc).isoformat() if aprueba_directo else None,
+        "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat() if aprueba_directo else None,
         "comentario_aprobacion": "Aprobación directa por coordinador/administrador" if aprueba_directo else None
     }
     
@@ -14710,7 +14834,7 @@ async def proponer_cambio_predio(
         cambio_doc["gestor_apoyo_id"] = cambio.gestor_apoyo_id
         cambio_doc["gestor_apoyo_nombre"] = gestor_apoyo.get('full_name')
         cambio_doc["observaciones_apoyo"] = cambio.observaciones_apoyo
-        cambio_doc["fecha_asignacion_apoyo"] = datetime.now(timezone.utc).isoformat()
+        cambio_doc["fecha_asignacion_apoyo"] = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Si aprueba directo, guardar también los datos_anteriores
     if aprueba_directo and predio_actual_data:
@@ -14976,17 +15100,17 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     propietarios_anteriores.append({
                         "nombre": p.get("nombre_propietario", ""),
                         "tipo_documento": p.get("tipo_documento", "CC"),
-                        "documento": p.get("numero_documento", ""),
+                        "documento": formatear_documento(p.get("numero_documento", "")),
                         "estado_civil": p.get("estado_civil", ""),
                     })
             elif predio_original.get("nombre_propietario"):
                 propietarios_anteriores.append({
                     "nombre": predio_original["nombre_propietario"],
                     "tipo_documento": predio_original.get("tipo_documento", "CC"),
-                    "documento": predio_original.get("numero_documento", ""),
+                    "documento": formatear_documento(predio_original.get("numero_documento", "")),
                     "estado_civil": predio_original.get("estado_civil", ""),
                 })
-        
+
         # Extraer propietarios nuevos de datos propuestos
         propietarios_nuevos = []
         if datos_propuestos.get("propietarios"):
@@ -14994,14 +15118,14 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                 propietarios_nuevos.append({
                     "nombre": p.get("nombre_propietario", ""),
                     "tipo_documento": p.get("tipo_documento", "CC"),
-                    "documento": p.get("numero_documento", ""),
+                    "documento": formatear_documento(p.get("numero_documento", "")),
                     "estado_civil": p.get("estado_civil", ""),
                 })
         elif datos_propuestos.get("nombre_propietario"):
             propietarios_nuevos.append({
                 "nombre": datos_propuestos["nombre_propietario"],
                 "tipo_documento": datos_propuestos.get("tipo_documento", "CC"),
-                "documento": datos_propuestos.get("numero_documento", ""),
+                "documento": formatear_documento(datos_propuestos.get("numero_documento", "")),
                 "estado_civil": datos_propuestos.get("estado_civil", ""),
             })
         
@@ -15088,6 +15212,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
             "tipo": "M1",
+            "tipo_mutacion": "M1",
             "año": año_actual,
             "consecutivo": siguiente_numero,
             "codigo_municipio": codigo_municipio,  # Para filtrar por municipio
@@ -15101,8 +15226,10 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "aprobado_por_nombre": aprobador.get("full_name", ""),
             "elaborado_por": cambio.get("propuesto_por"),
             "elaborado_por_nombre": elaboro,
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "creado_por_id": cambio.get("propuesto_por"),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
@@ -15125,9 +15252,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         )
         
         # === GUARDAR EN CERTIFICADOS_VERIFICABLES PARA QUE EL QR FUNCIONE ===
-        # Convertir a hora Colombia (UTC-5)
-        from zoneinfo import ZoneInfo
-        hora_colombia = datetime.now(ZoneInfo('America/Bogota'))
+        hora_colombia = datetime.now(COLOMBIA_TZ)
         
         verificacion_doc = {
             "id": str(uuid.uuid4()),
@@ -15162,10 +15287,10 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                 historial_entry = {
                     "tipo": "M1",
                     "tipo_mutacion": "M1",
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "resolucion": numero_resolucion,
                     "numero_resolucion": numero_resolucion,
-                    "fecha_resolucion": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
                     "radicado": cambio.get("radicado", cambio.get("radicado_numero", "")),
                     "pdf_path": f"/api/resoluciones/descargar/{filename}",
                     "generado_por": aprobador.get("full_name", ""),
@@ -15181,7 +15306,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     propietarios_para_predio.append({
                         "nombre_propietario": p.get("nombre", p.get("nombre_propietario", "")),
                         "tipo_documento": p.get("tipo_documento", "CC"),
-                        "numero_documento": p.get("documento", p.get("numero_documento", "")),
+                        "numero_documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
                         "estado_civil": p.get("estado_civil", ""),
                         "derecho": p.get("derecho", ""),
                     })
@@ -15191,8 +15316,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     propietarios_para_predio = datos_propuestos["propietarios"]
 
                 update_set = {
-                    "ultima_actualizacion": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "ultima_actualizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 }
 
                 # Aplicar propietarios nuevos al predio
@@ -15270,8 +15395,8 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
+                            "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                         },
                         "$push": {
                             "archivos_staff": {
@@ -15282,7 +15407,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                                 "uploaded_by": "sistema",
                                 "uploaded_by_name": "Sistema - Resolución aprobada",
                                 "uploaded_by_role": "sistema",
-                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "es_documento_final": True,
                                 "es_resolucion": True,
                                 "numero_resolucion": numero_resolucion,
@@ -15301,13 +15426,14 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         pdf_base64 = b64mod.b64encode(pdf_bytes).decode('utf-8')
 
         return {
+            "id": resolucion_doc['id'],
             "numero_resolucion": numero_resolucion,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "pdf_base64": pdf_base64,
             "consecutivo": siguiente_numero,
             "tipo_mutacion": "M1",
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
 
     except Exception as e:
@@ -15425,12 +15551,13 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 predio_eliminado = {
                     **predio_original,
                     "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
-                    "fecha_eliminacion": datetime.now(timezone.utc).isoformat(),
-                    "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                    "fecha_eliminacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                     "eliminado_por": aprobador.get('id'),
                     "eliminado_por_nombre": aprobador.get('full_name'),
                     "resolucion_eliminacion": numero_resolucion,
                     "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
                     "vigencia_origen": predio_original.get('vigencia', datetime.now().year),
                     "vigencia_eliminacion": datetime.now().year
                 }
@@ -15443,7 +15570,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                         "deleted": True,
                         "status": "cancelado",
                         "motivo_eliminacion": f"Desenglobe - Resolución {numero_resolucion}",
-                        "fecha_eliminacion": datetime.now(timezone.utc).isoformat()
+                        "fecha_eliminacion": datetime.now(COLOMBIA_TZ).isoformat()
                     }}
                 )
                 logging.info(f"Predio {npn_cancelado} cancelado TOTALMENTE (moved to predios_eliminados)")
@@ -15455,13 +15582,13 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     "area_construida": predio_cancelado.get('nueva_area_construida', predio_cancelado.get('area_construida')),
                     "avaluo": predio_cancelado.get('nuevo_avaluo', predio_cancelado.get('avaluo')),
                     "area_editada_en_plataforma": True,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                     "historial": (predio_original.get("historial") or []) + [{
                         "accion": "Cancelación parcial por Desenglobe (M2)",
                         "tipo_cambio": "desenglobe_parcial",
                         "usuario": aprobador.get('full_name'),
                         "usuario_id": aprobador.get('id'),
-                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                         "numero_resolucion": numero_resolucion,
                         "area_anterior": predio_original.get('area_terreno'),
                         "area_nueva": predio_cancelado.get('nueva_area_terreno')
@@ -15486,18 +15613,19 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 "status": "aprobado",
                 "estado_aprobacion": PredioEstadoAprobacion.APROBADO,
                 "deleted": False,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "tipo_mutacion": "Mutación Segunda (Desenglobe)",
                 "numero_resolucion": numero_resolucion,
                 "fecha_resolucion": fecha_resolucion,
                 "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
                 "historial": [{
                     "accion": "Predio creado por Desenglobe (M2)",
                     "tipo_cambio": "desenglobe",
                     "usuario": aprobador.get('full_name'),
                     "usuario_id": aprobador.get('id'),
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "numero_resolucion": numero_resolucion
                 }]
             }
@@ -15518,17 +15646,20 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "numero_resolucion": numero_resolucion,
             "fecha_resolucion": fecha_resolucion,
             "tipo": "M2",
+            "tipo_mutacion": "M2",
             "subtipo": solicitud.get('subtipo', 'desenglobe'),
             "municipio": municipio_nombre,
             "codigo_municipio": municipio,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
             "predios_cancelados": [p.get('codigo_predial_nacional') for p in predios_cancelados],
             "predios_inscritos": [p.get('codigo_predial_nacional') for p in predios_inscritos],
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "año": datetime.now().year,
             "codigo_verificacion": codigo_verificacion_m2
         }
@@ -15548,7 +15679,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "predios_inscritos": len(predios_inscritos),
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_m2)
         
@@ -15583,8 +15714,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
+                            "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                         },
                         "$push": {
                             "archivos_staff": {
@@ -15595,7 +15726,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                                 "uploaded_by": "sistema",
                                 "uploaded_by_name": "Sistema - Resolución aprobada",
                                 "uploaded_by_role": "sistema",
-                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "es_documento_final": True,
                                 "es_resolucion": True,
                                 "numero_resolucion": numero_resolucion,
@@ -15749,7 +15880,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         # ========================================
         
         update_predio = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "avaluo": solicitud.get('avaluo_nuevo', predio.get('avaluo', 0)),
         }
         
@@ -15758,7 +15889,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "tipo_cambio": f"m3_{subtipo}",
             "usuario": aprobador.get('full_name'),
             "usuario_id": aprobador.get('id'),
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "numero_resolucion": numero_resolucion,
             "cambio_id": solicitud.get('id')
         }
@@ -15785,7 +15916,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             for const in construcciones_nuevas:
                 r2_actuales.append({
                     **const,
-                    "fecha_incorporacion": datetime.now(timezone.utc).isoformat(),
+                    "fecha_incorporacion": datetime.now(COLOMBIA_TZ).isoformat(),
                     "resolucion": numero_resolucion
                 })
             
@@ -15817,17 +15948,20 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "numero_resolucion": numero_resolucion,
             "fecha_resolucion": fecha_resolucion,
             "tipo": "M3",
+            "tipo_mutacion": "M3",
             "subtipo": subtipo,
             "municipio": municipio_nombre,
             "codigo_municipio": municipio,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
             "predio_id": predio_id,
             "codigo_predial": predio.get('codigo_predial_nacional'),
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "año": datetime.now().year,
             "codigo_verificacion": codigo_verificacion_m3
         }
@@ -15846,7 +15980,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "predio_direccion": predio.get('direccion', ''),
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_m3)
         
@@ -15881,8 +16015,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
+                            "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                         },
                         "$push": {
                             "archivos_staff": {
@@ -15893,7 +16027,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                                 "uploaded_by": "sistema",
                                 "uploaded_by_name": "Sistema - Resolución aprobada",
                                 "uploaded_by_role": "sistema",
-                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "es_documento_final": True,
                                 "es_resolucion": True,
                                 "numero_resolucion": numero_resolucion,
@@ -16045,7 +16179,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             avaluo_nuevo = solicitud.get('avaluo_nuevo') or solicitud.get('valor_autoestimado', 0)
             
             update_predio = {
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "avaluo": avaluo_nuevo,
             }
             
@@ -16098,18 +16232,21 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "numero_resolucion": numero_resolucion,
             "fecha_resolucion": fecha_resolucion,
             "tipo": "M4",
+            "tipo_mutacion": "M4",
             "subtipo": subtipo,
             "decision": decision,
             "municipio": municipio_nombre,
             "codigo_municipio": municipio,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
             "predio_id": predio_id,
             "codigo_predial": predio.get('codigo_predial_nacional'),
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('id'),
             "generado_por_nombre": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "año": datetime.now().year,
             "codigo_verificacion": codigo_verificacion_m4
         }
@@ -16128,7 +16265,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "predio_direccion": predio.get('direccion', ''),
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_m4)
         
@@ -16166,8 +16303,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                                 "estado_tramite": "Finalizado",
                                 "resolucion_numero": numero_resolucion,
                                 "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                                "updated_at": datetime.now(timezone.utc).isoformat()
+                                "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                             },
                             "$push": {
                                 "archivos_staff": {
@@ -16178,7 +16315,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                                     "uploaded_by": "sistema",
                                     "uploaded_by_name": "Sistema - Resolución aprobada",
                                     "uploaded_by_role": "sistema",
-                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                     "es_documento_final": True,
                                     "es_resolucion": True,
                                     "numero_resolucion": numero_resolucion,
@@ -16250,7 +16387,6 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
     Usado internamente cuando se aprueba una solicitud de mutación M5.
     """
     try:
-        from zoneinfo import ZoneInfo
         from resolucion_m5_pdf_generator import generate_m5_resolution_pdf
         
         subtipo = solicitud.get('subtipo', 'cancelacion')
@@ -16343,6 +16479,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
             "tipo": "M5",
+            "tipo_mutacion": "M5",
             "subtipo": subtipo,
             "municipio": municipio_nombre,
             "codigo_municipio": codigo_municipio,
@@ -16359,7 +16496,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "año": numero_info['año'],
             "creado_por_id": aprobador.get('id'),
             "creado_por_nombre": aprobador.get('full_name'),
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "codigo_verificacion": codigo_verificacion
         }
         
@@ -16388,7 +16526,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             "predio_direccion": predio_m5.get('direccion', ''),
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_record)
         logger.info("✅ M5: Certificado verificable guardado")
@@ -16444,7 +16582,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                 "tipo": f"resolucion_m5_{subtipo}",
                 "usuario_id": aprobador.get('id'),
                 "usuario_nombre": aprobador.get('full_name'),
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "descripcion": f"Resolución M5 ({subtipo}) {numero_resolucion} generada",
                 "predio_id": predio_id,
                 "codigo_predial": predio_m5.get('codigo_predial_nacional') or predio_m5.get('codigo_predial'),
@@ -16467,8 +16605,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                                 "estado_tramite": "Finalizado",
                                 "resolucion_numero": numero_resolucion,
                                 "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                                "updated_at": datetime.now(timezone.utc).isoformat()
+                                "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                             },
                             "$push": {
                                 "archivos_staff": {
@@ -16479,7 +16617,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                                     "uploaded_by": "sistema",
                                     "uploaded_by_name": "Sistema - Resolución aprobada",
                                     "uploaded_by_role": "sistema",
-                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                     "es_documento_final": True,
                                     "es_resolucion": True,
                                     "numero_resolucion": numero_resolucion,
@@ -16549,7 +16687,6 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
     Actualiza el área del predio en la base de datos.
     """
     try:
-        from zoneinfo import ZoneInfo
         from resolucion_m6_pdf_generator import generate_m6_resolution_pdf
         
         municipio = solicitud.get('municipio', '')
@@ -16692,6 +16829,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
             "tipo": "RECTIFICACION_AREA",
+            "tipo_mutacion": "RECTIFICACION_AREA",
             "subtipo": "rectificacion_area",
             "municipio": municipio_nombre,
             "codigo_municipio": codigo_municipio,
@@ -16711,7 +16849,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "año": numero_info['año'],
             "creado_por_id": aprobador.get('id'),
             "creado_por_nombre": aprobador.get('full_name'),
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "codigo_verificacion": codigo_verificacion
         }
         
@@ -16734,7 +16873,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "area_terreno_nueva": area_terreno_nueva,
             "pdf_url": f"/api/resoluciones/descargar/{filename}",
             "generado_por": aprobador.get('full_name'),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificable_record)
         logger.info("✅ Rectificación Área: Certificado verificable guardado")
@@ -16760,7 +16899,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 "avaluo_nuevo": avaluo_nuevo,
                 "zonas_terreno_nuevas": zonas_terreno_nuevas,
                 "construcciones_nuevas": construcciones_nuevas,
-                "fecha": datetime.now(timezone.utc).isoformat()
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             # Preparar actualización del predio
@@ -16771,7 +16910,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                 "ultima_rectificacion_area": fecha_resolucion,
                 "resolucion_rectificacion": numero_resolucion,
                 "area_editada_en_plataforma": True,  # Marcar como editado en plataforma (área automática)
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             # Si hay zonas de terreno nuevas, actualizar zonas_homogeneas y zonas (para R2)
@@ -16864,7 +17003,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "tipo": "resolucion_rectificacion_area",
             "usuario_id": aprobador.get('id'),
             "usuario_nombre": aprobador.get('full_name'),
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "descripcion": f"Resolución Rectificación de Área {numero_resolucion} generada",
             "predio_id": predio_id,
             "codigo_predial": codigo_predial,
@@ -16886,8 +17025,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                                 "estado_tramite": "Finalizado",
                                 "resolucion_numero": numero_resolucion,
                                 "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                                "updated_at": datetime.now(timezone.utc).isoformat()
+                                "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                             },
                             "$push": {
                                 "archivos_staff": {
@@ -16898,7 +17037,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                                     "uploaded_by": "sistema",
                                     "uploaded_by_name": "Sistema - Resolución aprobada",
                                     "uploaded_by_role": "sistema",
-                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                     "es_documento_final": True,
                                     "es_resolucion": True,
                                     "numero_resolucion": numero_resolucion,
@@ -17023,21 +17162,75 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         
         documentos_soporte = solicitud.get('documentos_soporte', 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición')
         
-        # Generar número de resolución
+        # Generar número de resolución - MISMO consecutivo global que las demás mutaciones
         year = datetime.now().year
-        codigo_municipio = MUNICIPIOS_CODIGOS.get(municipio.upper(), "54000")
-        
-        contador = await db.resoluciones.count_documents({
-            "tipo": {"$regex": "COMPLEMENTACION", "$options": "i"},
-            "municipio": municipio,
-            "fecha_creacion": {"$regex": f"^{year}"}
+        predio_ref = predio_db or predio_data
+        codigo_predial_full = predio_ref.get('codigo_predial_nacional', predio_ref.get('codigo_predial', ''))
+        codigo_municipio = codigo_predial_full[0:5] if len(codigo_predial_full) >= 5 else None
+
+        # Fallback: buscar código de municipio por nombre
+        if not codigo_municipio:
+            for codigo, nombre in MUNICIPIOS_R1R2.items():
+                if nombre.lower() == municipio.lower() or municipio.lower() in nombre.lower():
+                    codigo_municipio = codigo
+                    break
+        if not codigo_municipio:
+            codigo_municipio = "54003"
+
+        depto = codigo_municipio[0:2] if len(codigo_municipio) >= 2 else "54"
+        mpio = codigo_municipio[2:5] if len(codigo_municipio) >= 5 else "003"
+
+        # Consecutivo global: contar TODAS las resoluciones del municipio este año
+        config_municipios = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
+        numero_inicial = config_municipios.get(codigo_municipio, 0) if config_municipios else 0
+
+        count_resoluciones = await db.resoluciones.count_documents({
+            "año": year,
+            "codigo_municipio": codigo_municipio
         })
-        numero_consecutivo = contador + 1
-        numero_resolucion = f"RES-{codigo_municipio}-COMP-{str(numero_consecutivo).zfill(4)}-{year}"
+        siguiente_numero = numero_inicial + count_resoluciones + 1
+        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente_numero).zfill(4)}-{year}"
         
         # Código de verificación único
         codigo_verificacion = f"COMP-{str(uuid.uuid4())[:8].upper()}"
         
+        # Obtener propietarios del payload o del predio
+        propietarios_anteriores_raw = solicitud.get('propietarios_anteriores', [])
+        propietarios_nuevos_raw = solicitud.get('propietarios_nuevos', [])
+
+        # Fallback: si no se enviaron propietarios, usar los del predio
+        if not propietarios_anteriores_raw:
+            props_predio = (predio_db or predio_data).get('propietarios', [])
+            propietarios_anteriores_raw = [{
+                "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+                "tipo_documento": p.get("tipo_documento", "CC"),
+                "documento": formatear_documento(p.get("numero_documento", "")),
+                "estado_civil": p.get("estado_civil", ""),
+            } for p in props_predio]
+
+        if not propietarios_nuevos_raw:
+            propietarios_nuevos_raw = propietarios_anteriores_raw
+
+        # Formatear propietarios para el PDF
+        propietarios_anteriores = [{
+            "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+            "tipo_documento": p.get("tipo_documento", "CC"),
+            "documento": formatear_documento(p.get("numero_documento", p.get("documento", ""))),
+            "estado_civil": p.get("estado_civil", ""),
+        } for p in propietarios_anteriores_raw]
+
+        propietarios_nuevos = [{
+            "nombre": p.get("nombre_propietario", p.get("nombre", "")),
+            "tipo_documento": p.get("tipo_documento", "CC"),
+            "documento": formatear_documento(p.get("numero_documento", p.get("documento", ""))),
+            "estado_civil": p.get("estado_civil", ""),
+        } for p in propietarios_nuevos_raw]
+
+        # Obtener matrícula: del payload o del predio R2
+        matricula_nueva = solicitud.get('matricula_nueva') or datos_r1_r2.get('matricula_inmobiliaria', '')
+        direccion_nueva = solicitud.get('direccion_nueva') or datos_r1_r2.get('direccion', '')
+        destino_nuevo = solicitud.get('destino_nuevo') or datos_r1_r2.get('destino_economico', 'A')
+
         # Preparar datos para el PDF
         pdf_data = {
             "numero_resolucion": numero_resolucion,
@@ -17050,6 +17243,11 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
             "texto_considerando": solicitud.get('texto_considerando', ''),
             "predio": predio_db or predio_data,
             "solicitante": solicitante,
+            "propietarios_anteriores": propietarios_anteriores,
+            "propietarios_nuevos": propietarios_nuevos,
+            "matricula_nueva": matricula_nueva,
+            "direccion_nueva": direccion_nueva,
+            "destino_nuevo": destino_nuevo,
             "area_terreno_nueva": area_terreno_nueva,
             "area_construida_nueva": area_construida_nueva,
             "avaluo_nuevo": avaluo_nuevo,
@@ -17060,9 +17258,9 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         # Generar PDF
         pdf_bytes = generate_complementacion_resolution_pdf(pdf_data)
         
-        # Guardar archivo - Nombre simplificado
+        # Guardar archivo - misma ubicación que las demás resoluciones
         filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
-        pdf_dir = "/app/backend/static/resoluciones"
+        pdf_dir = "/app/uploads/resoluciones"
         os.makedirs(pdf_dir, exist_ok=True)
         pdf_path = f"{pdf_dir}/{filename}"
         
@@ -17073,13 +17271,22 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         resolucion_doc = {
             "id": str(uuid.uuid4()),
             "tipo": "COMPLEMENTACION",
+            "tipo_mutacion": "COMPLEMENTACION",
             "numero_resolucion": numero_resolucion,
+            "año": year,
+            "consecutivo": siguiente_numero,
+            "codigo_municipio": codigo_municipio,
             "codigo_verificacion": codigo_verificacion,
             "municipio": municipio,
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "archivo_pdf": pdf_path,
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "filename": filename,
             "solicitud_id": solicitud.get('id'),
+            "creado_por_id": solicitud.get('creado_por_id'),
             "predio_id": predio_id,
             "datos": {
                 "area_terreno_anterior": area_terreno_anterior,
@@ -17105,7 +17312,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     "resolucion_id": resolucion_doc['id'],
                     "resolucion_numero": numero_resolucion,
                     "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                    "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+                    "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
                     "aprobado_por": aprobador['id'],
                     "aprobado_por_nombre": aprobador['full_name']
                 }
@@ -17116,9 +17323,16 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         if predio_id:
             historial_entry = {
                 "tipo": "COMPLEMENTACION",
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "tipo_mutacion": "COMPLEMENTACION",
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "resolucion": numero_resolucion,
-                "descripcion": f"Complementación de información - Áreas actualizadas",
+                "numero_resolucion": numero_resolucion,
+                "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+                "radicado": solicitud.get('radicado', ''),
+                "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                "generado_por": aprobador.get("full_name", ""),
+                "aprobado_por": aprobador.get("full_name", ""),
+                "descripcion": "Complementación de información",
                 "area_terreno_anterior": area_terreno_anterior,
                 "area_terreno_nueva": area_terreno_nueva,
                 "area_construida_anterior": area_construida_anterior,
@@ -17132,8 +17346,22 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                 "area_construida": area_construida_nueva,
                 "avaluo": avaluo_nuevo,
                 "area_editada_en_plataforma": True,
-                "ultima_actualizacion": datetime.now(timezone.utc).isoformat()
+                "ultima_actualizacion": datetime.now(COLOMBIA_TZ).isoformat()
             }
+            # Actualizar campos complementados si se enviaron
+            if matricula_nueva:
+                update_fields["matricula_inmobiliaria"] = matricula_nueva
+            if direccion_nueva:
+                update_fields["direccion"] = direccion_nueva
+            if destino_nuevo:
+                update_fields["destino_economico"] = destino_nuevo
+            if propietarios_nuevos_raw:
+                update_fields["propietarios"] = [{
+                    "nombre_propietario": p.get("nombre_propietario", p.get("nombre", "")),
+                    "tipo_documento": p.get("tipo_documento", "C"),
+                    "numero_documento": p.get("numero_documento", p.get("documento", "")),
+                    "estado_civil": p.get("estado_civil", ""),
+                } for p in propietarios_nuevos_raw]
             
             await db.predios.update_one(
                 {"id": predio_id},
@@ -17161,8 +17389,8 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                                 "estado_tramite": "Finalizado",
                                 "resolucion_numero": numero_resolucion,
                                 "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                                "updated_at": datetime.now(timezone.utc).isoformat()
+                                "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                             },
                             "$push": {
                                 "archivos_staff": {
@@ -17173,7 +17401,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                                     "uploaded_by": "sistema",
                                     "uploaded_by_name": "Sistema - Resolución aprobada",
                                     "uploaded_by_role": "sistema",
-                                    "upload_date": datetime.now(timezone.utc).isoformat(),
+                                    "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                     "es_documento_final": True,
                                     "es_resolucion": True,
                                     "numero_resolucion": numero_resolucion,
@@ -17266,7 +17494,7 @@ async def aprobar_rechazar_cambio(
         "estado": nuevo_estado,
         "aprobado_por": current_user['id'],
         "aprobado_por_nombre": current_user['full_name'],
-        "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+        "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
         "comentario_aprobacion": request.comentario
     }
     
@@ -17361,7 +17589,7 @@ async def aprobar_rechazar_cambio(
         "municipio": cambio.get("datos_propuestos", {}).get("municipio", ""),
         "decidido_por": current_user['full_name'],
         "propuesto_por": cambio.get("propuesto_por"),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     }
     await ws_manager.broadcast(ws_notification, exclude_user=current_user['id'])
     
@@ -17477,7 +17705,7 @@ async def completar_asignacion_apoyo(
         "datos_propuestos": datos_finales,
         "completado_por_apoyo": current_user['id'],
         "completado_por_apoyo_nombre": current_user['full_name'],
-        "fecha_completado_apoyo": datetime.now(timezone.utc).isoformat(),
+        "fecha_completado_apoyo": datetime.now(COLOMBIA_TZ).isoformat(),
         "observaciones_completado": request.observaciones
     }
     
@@ -17578,7 +17806,7 @@ async def bloquear_predio(
         )
     
     # Crear información de bloqueo
-    fecha_actual = datetime.now(timezone.utc).isoformat()
+    fecha_actual = datetime.now(COLOMBIA_TZ).isoformat()
     bloqueo_info = {
         "motivo": request.motivo,
         "numero_proceso": request.numero_proceso or "",
@@ -17692,7 +17920,7 @@ async def desbloquear_predio(
             detail="El predio no está bloqueado"
         )
     
-    fecha_actual = datetime.now(timezone.utc).isoformat()
+    fecha_actual = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Entrada para historial
     historial_entry = {
@@ -17876,7 +18104,7 @@ async def vincular_radicado_a_cambio(
         "radicado_numero": request.radicado_numero,
         "vinculado_por": current_user['id'],
         "vinculado_por_nombre": current_user['full_name'],
-        "fecha_vinculacion": datetime.now(timezone.utc).isoformat()
+        "fecha_vinculacion": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios_cambios.update_one(
@@ -17913,7 +18141,7 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         "usuario_rol": aprobador['role'],
         "propuesto_por": cambio.get("propuesto_por_nombre"),
         "propuesto_por_id": cambio.get("propuesto_por"),
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "comentario": cambio.get("comentario_aprobacion") or cambio.get("justificacion"),
         "numero_resolucion": numero_resolucion,
         "radicado_numero": cambio.get("radicado_numero"),
@@ -17938,8 +18166,8 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         predio_doc["id"] = str(uuid.uuid4())
         predio_doc["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
         predio_doc["deleted"] = False
-        predio_doc["created_at"] = datetime.now(timezone.utc).isoformat()
-        predio_doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+        predio_doc["created_at"] = datetime.now(COLOMBIA_TZ).isoformat()
+        predio_doc["updated_at"] = datetime.now(COLOMBIA_TZ).isoformat()
         # Guardar tipo_mutacion y resolución en el predio
         predio_doc["tipo_mutacion"] = datos.get("tipo_mutacion") or "Mutación Quinta"
         predio_doc["numero_resolucion"] = numero_resolucion
@@ -18041,7 +18269,7 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
         }
         
         # Actualizar predio
-        datos["updated_at"] = datetime.now(timezone.utc).isoformat()
+        datos["updated_at"] = datetime.now(COLOMBIA_TZ).isoformat()
         datos["estado_aprobacion"] = PredioEstadoAprobacion.APROBADO
         
         # CONCATENAR tipo_mutacion, numero_resolucion y fecha_resolucion (no reemplazar)
@@ -18133,7 +18361,7 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
                 "fecha_resolucion": datos.get("fecha_resolucion"),
                 "motivo": datos.get("motivo") or cambio.get("justificacion", "Eliminación de predio"),
                 # Metadatos
-                "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                 "eliminado_por": aprobador['full_name'],
                 "eliminado_por_id": aprobador['id'],
                 "predio_id_original": predio_id,
@@ -18149,7 +18377,7 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
             {
                 "$set": {
                     "deleted": True,
-                    "deleted_at": datetime.now(timezone.utc).isoformat(),
+                    "deleted_at": datetime.now(COLOMBIA_TZ).isoformat(),
                     "deleted_by": aprobador['id'],
                     "deleted_by_name": aprobador['full_name'],
                     "estado_aprobacion": PredioEstadoAprobacion.APROBADO,
@@ -18568,15 +18796,15 @@ async def get_geometrias_filtradas(
         # Buscar en la colección gdb_geometrias
         geometrias = await db.gdb_geometrias.find(
             query,
-            {"_id": 0, "codigo": 1, "tipo": 1, "geometry": 1}
+            {"_id": 0, "codigo": 1, "tipo": 1, "geometry": 1, "area_m2": 1}
         ).limit(limit).to_list(limit)
-        
+
         if not geometrias:
             # Verificar si hay datos para este municipio
             total_municipio = await db.gdb_geometrias.count_documents({"municipio": municipio})
             if total_municipio == 0:
                 raise HTTPException(status_code=404, detail=f"No hay datos geográficos para {municipio}. Cargue un archivo GDB primero.")
-        
+
         # Convertir a GeoJSON FeatureCollection
         features = []
         for geom in geometrias:
@@ -18585,7 +18813,8 @@ async def get_geometrias_filtradas(
                 "geometry": geom.get("geometry"),
                 "properties": {
                     "codigo": geom.get("codigo"),
-                    "tipo": geom.get("tipo", "").capitalize()
+                    "tipo": geom.get("tipo", "").capitalize(),
+                    "shape_Area": geom.get("area_m2", 0)
                 }
             }
             features.append(feature)
@@ -19073,7 +19302,7 @@ async def marcar_notificacion_leida(
     """Marca una notificación como leída"""
     result = await db.notificaciones.update_one(
         {"id": notificacion_id, "usuario_id": current_user['id']},
-        {"$set": {"leida": True, "fecha_lectura": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"leida": True, "fecha_lectura": datetime.now(COLOMBIA_TZ).isoformat()}}
     )
     
     if result.modified_count == 0:
@@ -19086,7 +19315,7 @@ async def marcar_todas_leidas(current_user: dict = Depends(get_current_user)):
     """Marca todas las notificaciones del usuario como leídas"""
     result = await db.notificaciones.update_many(
         {"usuario_id": current_user['id'], "leida": False},
-        {"$set": {"leida": True, "fecha_lectura": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"leida": True, "fecha_lectura": datetime.now(COLOMBIA_TZ).isoformat()}}
     )
     return {"message": f"{result.modified_count} notificaciones marcadas como leídas"}
 
@@ -19100,7 +19329,7 @@ async def crear_notificacion(usuario_id: str, titulo: str, mensaje: str, tipo: s
         "tipo": tipo,  # info, warning, success, error
         "enlace": enlace,
         "leida": False,
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     await db.notificaciones.insert_one(notificacion)
     
@@ -19694,7 +19923,7 @@ async def process_gdb_upload_background(
                                             "codigo": gdb_name,
                                             "geometry": limite_municipal,
                                             "fuente": "gdb",
-                                            "updated_at": datetime.now(timezone.utc).isoformat()
+                                            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                                         }},
                                         upsert=True
                                     )
@@ -20353,7 +20582,7 @@ async def process_gdb_upload_background(
                 # En lugar de iterar sobre cada predio, usamos updateMany para marcar todos los predios
                 # que tienen código coincidente de una sola vez
                 
-                timestamp_now = datetime.now(timezone.utc).isoformat()
+                timestamp_now = datetime.now(COLOMBIA_TZ).isoformat()
                 
                 # Contar cuántos predios se van a vincular (rápido con índices)
                 count_query = {
@@ -20464,7 +20693,7 @@ async def process_gdb_upload_background(
                 "gdb_file": gdb_name,
                 "uploaded_by": current_user['id'],
                 "uploaded_by_name": current_user['full_name'],
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "predios_rurales": stats["rurales"],
                 "predios_urbanos": stats["urbanos"],
                 "predios_relacionados": stats["relacionados"]
@@ -21055,7 +21284,7 @@ async def revincular_predios_gdb(
                             "tiene_geometria": True,
                             "codigo_gdb": codigo_cpn,
                             "area_gdb": area_gdb,
-                            "gdb_updated": datetime.now(timezone.utc).isoformat(),
+                            "gdb_updated": datetime.now(COLOMBIA_TZ).isoformat(),
                             "match_method": "exacto"
                         }}
                     )
@@ -21470,7 +21699,7 @@ async def subir_ortoimagen(
         "zoom_min": 14,
         "zoom_max": 20,
         "bounds": None,  # Se llena después del procesamiento
-        "fecha_subida": datetime.now(timezone.utc).isoformat(),
+        "fecha_subida": datetime.now(COLOMBIA_TZ).isoformat(),
         "subido_por": current_user['id'],
         "subido_por_nombre": current_user['full_name']
     }
@@ -21598,7 +21827,7 @@ async def procesar_ortoimagen_background(orto_id: str, tiff_path: str, nombre: s
                 "zoom_min": zoom_min,
                 "zoom_max": zoom_max,
                 "total_tiles": len(tile_files),
-                "fecha_procesado": datetime.now(timezone.utc).isoformat()
+                "fecha_procesado": datetime.now(COLOMBIA_TZ).isoformat()
             }}
         )
         
@@ -21986,7 +22215,7 @@ async def crear_proyecto_actualizacion(
         )
     
     proyecto_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(COLOMBIA_TZ)
     
     proyecto = {
         "id": proyecto_id,
@@ -22140,7 +22369,7 @@ async def actualizar_proyecto_actualizacion(
     if proyecto["estado"] == ProyectoActualizacionEstado.ARCHIVADO:
         raise HTTPException(status_code=400, detail="No se puede modificar un proyecto archivado")
     
-    updates = {"updated_at": datetime.now(timezone.utc)}
+    updates = {"updated_at": datetime.now(COLOMBIA_TZ)}
     
     if update_data.nombre is not None:
         updates["nombre"] = update_data.nombre.strip()
@@ -22220,7 +22449,7 @@ async def archivar_proyecto_actualizacion(
         {"id": proyecto_id},
         {"$set": {
             "estado": ProyectoActualizacionEstado.ARCHIVADO,
-            "updated_at": datetime.now(timezone.utc)
+            "updated_at": datetime.now(COLOMBIA_TZ)
         }}
     )
     
@@ -22246,7 +22475,7 @@ async def restaurar_proyecto_actualizacion(
         {"id": proyecto_id},
         {"$set": {
             "estado": ProyectoActualizacionEstado.PAUSADO,
-            "updated_at": datetime.now(timezone.utc)
+            "updated_at": datetime.now(COLOMBIA_TZ)
         }}
     )
     
@@ -22288,7 +22517,7 @@ async def upload_base_grafica_proyecto(
     
     # Guardar archivo con nombre que indique si es carga específica
     suffix = f"_{capa_especifica}" if capa_especifica else ""
-    gdb_path = proyecto_dir / f"base_grafica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{suffix}.zip"
+    gdb_path = proyecto_dir / f"base_grafica_{datetime.now(COLOMBIA_TZ).strftime('%Y%m%d_%H%M%S')}{suffix}.zip"
     
     try:
         with open(gdb_path, "wb") as buffer:
@@ -22298,8 +22527,8 @@ async def upload_base_grafica_proyecto(
         # Actualizar campo base_grafica_archivo ANTES de procesar
         update_data = {
             "base_grafica_archivo": str(gdb_path),
-            "base_grafica_cargado_en": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc)
+            "base_grafica_cargado_en": datetime.now(COLOMBIA_TZ),
+            "updated_at": datetime.now(COLOMBIA_TZ)
         }
         
         # Solo marcar como no procesado si es reemplazo total
@@ -22422,7 +22651,7 @@ async def upload_ortofoto(
                     "ortofoto_archivo": str(ortofoto_path),
                     "ortofoto_nombre": ortofoto.filename,
                     "ortofoto_bounds": bounds,
-                    "ortofoto_fecha": datetime.now(timezone.utc).isoformat()
+                    "ortofoto_fecha": datetime.now(COLOMBIA_TZ).isoformat()
                 }
             }
         )
@@ -22669,7 +22898,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
                             "geometry": geom,
                             "properties": props,
-                            "created_at": datetime.now(timezone.utc)
+                            "created_at": datetime.now(COLOMBIA_TZ)
                         })
                         geometrias_guardadas += 1
                     
@@ -22688,7 +22917,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                     "gdb_procesado": True,
                     "gdb_total_geometrias": geometrias_guardadas,
                     f"capa_{capa_especifica.lower()}_cargada": True,
-                    "updated_at": datetime.now(timezone.utc)
+                    "updated_at": datetime.now(COLOMBIA_TZ)
                 }}
             )
             logger.info(f"[GDB/SHP Actualizacion] Carga de capa '{capa_especifica}' completada: {geometrias_guardadas} geometrías")
@@ -22738,7 +22967,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
                             "geometry": geom,
                             "properties": props,
-                            "created_at": datetime.now(timezone.utc)
+                            "created_at": datetime.now(COLOMBIA_TZ)
                         })
                         geometrias_guardadas += 1
             except Exception as e:
@@ -22769,7 +22998,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "numero_predial": props.get('NUMERO_PREDIAL', props.get('numero_predial', '')),
                             "geometry": geom,
                             "properties": props,
-                            "created_at": datetime.now(timezone.utc)
+                            "created_at": datetime.now(COLOMBIA_TZ)
                         })
                         geometrias_guardadas += 1
             except Exception as e:
@@ -22799,7 +23028,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "numero_predial": "",
                             "geometry": geom,
                             "properties": props,
-                            "created_at": datetime.now(timezone.utc)
+                            "created_at": datetime.now(COLOMBIA_TZ)
                         })
                         geometrias_guardadas += 1
             except Exception as e:
@@ -22826,7 +23055,7 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                             "codigo_predial": props.get('CODIGO', props.get('codigo', '')),
                             "geometry": geom,
                             "properties": props,
-                            "created_at": datetime.now(timezone.utc)
+                            "created_at": datetime.now(COLOMBIA_TZ)
                         })
                         construcciones_guardadas += 1
             except Exception as e:
@@ -22851,11 +23080,11 @@ async def procesar_gdb_actualizacion(proyecto_id: str, zip_path: str, municipio:
                 "gdb_procesado": True,
                 "base_grafica_total_predios": geometrias_guardadas,
                 "total_construcciones": construcciones_guardadas,
-                "gdb_procesado_en": datetime.now(timezone.utc),
+                "gdb_procesado_en": datetime.now(COLOMBIA_TZ),
                 "capas_procesadas": capas_info,
                 "tiene_zona_rural": len(capas_info["rural_encontradas"]) > 0,
                 "tiene_zona_urbana": len(capas_info["urbano_encontradas"]) > 0,
-                "updated_at": datetime.now(timezone.utc)
+                "updated_at": datetime.now(COLOMBIA_TZ)
             }}
         )
         
@@ -22989,7 +23218,7 @@ async def resync_gdb_geometrias(
                         "geometry": dict(geom),
                         "properties": {k: str(v) if v else None for k, v in props.items()},
                         "municipio": municipio,
-                        "created_at": datetime.now(timezone.utc)
+                        "created_at": datetime.now(COLOMBIA_TZ)
                     })
                     
                     if len(geometrias_batch) >= 1000:
@@ -23005,7 +23234,7 @@ async def resync_gdb_geometrias(
                 {"id": proyecto_id},
                 {"$set": {
                     "base_grafica_archivo": str(gdb_file),
-                    "base_grafica_cargado_en": datetime.now(timezone.utc),
+                    "base_grafica_cargado_en": datetime.now(COLOMBIA_TZ),
                     "total_geometrias": total
                 }}
             )
@@ -23346,7 +23575,7 @@ async def crear_predio_actualizacion(
     
     # Crear el predio
     predio_id = str(uuid.uuid4())
-    ahora = datetime.now(timezone.utc).isoformat()
+    ahora = datetime.now(COLOMBIA_TZ).isoformat()
     
     predio_nuevo = {
         "id": predio_id,
@@ -23493,7 +23722,7 @@ async def actualizar_predio_proyecto(
         if data.get('estado_visita') == 'visitado':
             update_data['visitado_por'] = current_user.get('email')
             update_data['visitado_por_nombre'] = current_user.get('full_name')
-            update_data['visitado_en'] = datetime.now(timezone.utc).isoformat()
+            update_data['visitado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
     else:
         # Coordinadores pueden modificar todo
         campos_permitidos = campos_visita + campos_prediales
@@ -23504,16 +23733,16 @@ async def actualizar_predio_proyecto(
         if data.get('estado_visita') == 'actualizado':
             update_data['actualizado_por'] = current_user.get('email')
             update_data['actualizado_por_nombre'] = current_user.get('full_name')
-            update_data['actualizado_en'] = datetime.now(timezone.utc).isoformat()
+            update_data['actualizado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
     
-    update_data['updated_at'] = datetime.now(timezone.utc)
+    update_data['updated_at'] = datetime.now(COLOMBIA_TZ)
     
     # Agregar al historial de cambios con detalle completo
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "usuario": current_user.get('email'),
         "usuario_nombre": current_user.get('full_name'),
         "rol": current_user['role'],
@@ -23596,7 +23825,7 @@ async def aprobar_predio_sin_cambios(
     
     # Agregar al historial
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "usuario": current_user.get('email'),
         "rol": current_user['role'],
         "accion": "aprobado_sin_cambios",
@@ -23611,8 +23840,8 @@ async def aprobar_predio_sin_cambios(
                 "estado_visita": "actualizado",
                 "aprobado_sin_cambios": True,
                 "aprobado_por": current_user.get('email'),
-                "aprobado_en": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc)
+                "aprobado_en": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ)
             },
             "$push": {"historial_cambios": historial_entry}
         }
@@ -23656,7 +23885,7 @@ async def aprobar_masivo_sin_cambios(
         
         if predio:
             historial_entry = {
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "usuario": current_user.get('email'),
                 "rol": current_user['role'],
                 "accion": "aprobado_sin_cambios_masivo",
@@ -23670,8 +23899,8 @@ async def aprobar_masivo_sin_cambios(
                         "estado_visita": "actualizado",
                         "aprobado_sin_cambios": True,
                         "aprobado_por": current_user.get('email'),
-                        "aprobado_en": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc)
+                        "aprobado_en": datetime.now(COLOMBIA_TZ).isoformat(),
+                        "updated_at": datetime.now(COLOMBIA_TZ)
                     },
                     "$push": {"historial_cambios": historial_entry}
                 }
@@ -23743,12 +23972,6 @@ async def guardar_visita_predio(
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR, UserRole.GESTOR_AUXILIAR]:
         raise HTTPException(status_code=403, detail="No tiene permisos para registrar visitas")
     
-    # VALIDACIÓN OBLIGATORIA: Firmas requeridas
-    if not visita_data.get('firma_visitado_base64'):
-        raise HTTPException(status_code=400, detail="La firma del visitado es obligatoria")
-    if not visita_data.get('firma_reconocedor_base64'):
-        raise HTTPException(status_code=400, detail="La firma del reconocedor es obligatoria")
-    
     predio = await db.predios_actualizacion.find_one({
         "proyecto_id": proyecto_id,
         "$or": [
@@ -23757,19 +23980,28 @@ async def guardar_visita_predio(
             {"codigo_predial_nacional": codigo_predial}
         ]
     })
-    
+
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
+
+    # Si el predio ya tiene visita firmada, preservar las firmas existentes si no se envían nuevas
+    formato_existente = predio.get('formato_visita', {}) or {}
+    if not visita_data.get('firma_visitado_base64') and formato_existente.get('firma_visitado_base64'):
+        visita_data['firma_visitado_base64'] = formato_existente['firma_visitado_base64']
+    if not visita_data.get('firma_reconocedor_base64') and formato_existente.get('firma_reconocedor_base64'):
+        visita_data['firma_reconocedor_base64'] = formato_existente['firma_reconocedor_base64']
+    if not visita_data.get('nombre_visitado') and formato_existente.get('nombre_visitado'):
+        visita_data['nombre_visitado'] = formato_existente['nombre_visitado']
+    if not visita_data.get('nombre_reconocedor') and formato_existente.get('nombre_reconocedor'):
+        visita_data['nombre_reconocedor'] = formato_existente['nombre_reconocedor']
+
+    # VALIDACIÓN OBLIGATORIA: Firmas requeridas (ya sea nuevas o preservadas)
+    if not visita_data.get('firma_visitado_base64'):
+        raise HTTPException(status_code=400, detail="La firma del visitado es obligatoria")
+    if not visita_data.get('firma_reconocedor_base64'):
+        raise HTTPException(status_code=400, detail="La firma del reconocedor es obligatoria")
     
-    # SEGURIDAD: Verificar si el predio ya está firmado (solo admin puede modificar)
-    if predio.get('estado_visita') == 'visitado_firmado':
-        if current_user['role'] not in [UserRole.ADMINISTRADOR]:
-            raise HTTPException(
-                status_code=403, 
-                detail="Este predio ya tiene una visita firmada y no puede ser modificado. El coordinador puede solicitar una revisita."
-            )
-    
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(COLOMBIA_TZ)
     
     # Determinar estado basado en si tiene ambas firmas
     tiene_firma_visitado = bool(visita_data.get('firma_visitado_base64'))
@@ -23873,7 +24105,7 @@ async def revertir_visita_firmada(
         )
     
     motivo = data.get('motivo', 'Sin motivo especificado') if data else 'Sin motivo especificado'
-    ahora = datetime.now(timezone.utc).isoformat()
+    ahora = datetime.now(COLOMBIA_TZ).isoformat()
     
     # Guardar copia de la visita anterior en historial antes de eliminarla
     visita_anterior = predio.get('formato_visita', {})
@@ -23960,7 +24192,7 @@ async def actualizar_estado_predio(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(COLOMBIA_TZ)
     estado_anterior = predio.get('estado_visita', 'pendiente')
     
     # Preparar datos de actualización
@@ -24402,7 +24634,11 @@ async def exportar_actualizacion_excel(
             ws_r1.cell(row=row, column=11, value=campos_nombre.get('primer_nombre', ''))
             ws_r1.cell(row=row, column=12, value=campos_nombre.get('segundo_nombre', ''))
             ws_r1.cell(row=row, column=13, value=generar_nombre_completo(prop))
-            ws_r1.cell(row=row, column=14, value=prop.get('estado', prop.get('estado_civil', '')))
+            # Estado civil: priorizar 'estado_civil' sobre 'estado', validar valor real
+            _ec2 = (prop.get('estado_civil') or prop.get('estado') or '').strip().upper()
+            if _ec2 not in ('S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', 'SOLTERO/A', 'CASADO/A', 'VIUDO/A', 'UNION LIBRE'):
+                _ec2 = ''
+            ws_r1.cell(row=row, column=14, value=_ec2)
             ws_r1.cell(row=row, column=15, value=prop.get('tipo_documento', ''))
             ws_r1.cell(row=row, column=16, value=formatear_documento(prop.get('numero_documento', '')))
             ws_r1.cell(row=row, column=17, value=direccion)
@@ -24819,7 +25055,7 @@ async def crear_propuesta_cambio(
         "estado": "pendiente",  # pendiente, aprobada, rechazada, subsanacion, reenviada, rechazada_definitiva
         "creado_por": current_user.get('email'),
         "creado_por_nombre": current_user.get('full_name', current_user.get('email')),
-        "creado_en": datetime.now(timezone.utc).isoformat(),
+        "creado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "revisado_por": None,
         "revisado_en": None,
         "comentario_revision": None,
@@ -24835,7 +25071,7 @@ async def crear_propuesta_cambio(
         {
             "$push": {
                 "historial_cambios": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "usuario": current_user.get('email'),
                     "usuario_nombre": current_user.get('full_name', current_user.get('email')),
                     "tipo_revision": tipo_revision,
@@ -24965,7 +25201,7 @@ async def proponer_cancelacion_predio(
             "motivo": motivo,
             "usuario": current_user['full_name'],
             "usuario_id": current_user['id'],
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.predios_actualizacion.update_one(
@@ -24974,7 +25210,7 @@ async def proponer_cancelacion_predio(
                 "$set": {
                     "cancelado": True,
                     "deleted": True,
-                    "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                    "cancelado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                     "cancelado_por": current_user['id'],
                     "cancelado_por_nombre": current_user['full_name'],
                     "motivo_cancelacion": motivo,
@@ -25032,7 +25268,7 @@ async def proponer_cancelacion_predio(
         "estado": "pendiente",
         "propuesto_por": current_user['id'],
         "propuesto_por_nombre": current_user['full_name'],
-        "creado_en": datetime.now(timezone.utc).isoformat(),
+        "creado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "datos_predio": {
             "direccion": predio.get('direccion', ''),
             "propietarios": predio.get('propietarios', []),
@@ -25052,7 +25288,7 @@ async def proponer_cancelacion_predio(
                 "accion": "Cancelación propuesta",
                 "motivo": motivo,
                 "usuario": current_user['full_name'],
-                "fecha": datetime.now(timezone.utc).isoformat()
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat()
             }}
         }
     )
@@ -25095,7 +25331,7 @@ async def cancelar_predio_actualizacion(
         "accion": "Predio cancelado",
         "usuario": current_user['full_name'],
         "usuario_id": current_user['id'],
-        "fecha": datetime.now(timezone.utc).isoformat()
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.predios_actualizacion.update_one(
@@ -25104,7 +25340,7 @@ async def cancelar_predio_actualizacion(
             "$set": {
                 "cancelado": True,
                 "deleted": True,
-                "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                "cancelado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                 "cancelado_por": current_user['id'],
                 "cancelado_por_nombre": current_user['full_name'],
                 "estado_visita": "cancelado"
@@ -25140,7 +25376,7 @@ async def aprobar_propuesta(
             "$set": {
                 "estado": "aprobada",
                 "revisado_por": current_user.get('email'),
-                "revisado_en": datetime.now(timezone.utc).isoformat(),
+                "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                 "comentario_revision": data.get('comentario', '')
             }
         }
@@ -25153,7 +25389,7 @@ async def aprobar_propuesta(
             "motivo": propuesta.get('motivo', ''),
             "propuesto_por": propuesta.get('propuesto_por_nombre'),
             "aprobado_por": current_user['full_name'],
-            "fecha": datetime.now(timezone.utc).isoformat()
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.predios_actualizacion.update_one(
@@ -25169,7 +25405,7 @@ async def aprobar_propuesta(
                     "cancelado": True,
                     "deleted": True,
                     "cancelacion_pendiente": False,
-                    "cancelado_en": datetime.now(timezone.utc).isoformat(),
+                    "cancelado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                     "cancelado_por": current_user['id'],
                     "cancelado_por_nombre": current_user['full_name'],
                     "motivo_cancelacion": propuesta.get('motivo', ''),
@@ -25202,7 +25438,7 @@ async def aprobar_propuesta(
         
         # Crear el predio nuevo
         predio_id = str(uuid.uuid4())
-        ahora = datetime.now(timezone.utc).isoformat()
+        ahora = datetime.now(COLOMBIA_TZ).isoformat()
         
         predio_nuevo = {
             "id": predio_id,
@@ -25325,8 +25561,8 @@ async def aprobar_propuesta(
         **datos_propuestos,
         "estado_visita": "actualizado",  # Cambiar estado a actualizado
         "actualizado_por": current_user.get('email'),
-        "actualizado_en": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc)
+        "actualizado_en": datetime.now(COLOMBIA_TZ).isoformat(),
+        "updated_at": datetime.now(COLOMBIA_TZ)
     }
     
     await db.predios_actualizacion.update_one(
@@ -25341,7 +25577,7 @@ async def aprobar_propuesta(
             "$set": update_data,
             "$push": {
                 "historial_cambios": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "usuario": current_user.get('email'),
                     "accion": "propuesta_aprobada_actualizado",
                     "propuesta_id": propuesta_id,
@@ -25378,14 +25614,14 @@ async def rechazar_propuesta(
     update_data = {
         "estado": "rechazada_definitiva" if es_rechazo_definitivo else "subsanacion",
         "revisado_por": current_user.get('email'),
-        "revisado_en": datetime.now(timezone.utc).isoformat(),
+        "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "comentario_revision": data.get('comentario', ''),
         "intentos_subsanacion": intentos
     }
     
     # Agregar al historial de la propuesta
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": "rechazado_definitivo" if es_rechazo_definitivo else "rechazado_subsanacion",
         "usuario": current_user.get('email'),
         "comentario": data.get('comentario', ''),
@@ -25412,7 +25648,7 @@ async def rechazar_propuesta(
         {
             "$push": {
                 "historial_cambios": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "usuario": current_user.get('email'),
                     "accion": "propuesta_rechazada_definitiva" if es_rechazo_definitivo else "propuesta_enviada_subsanacion",
                     "propuesta_id": propuesta_id,
@@ -25487,7 +25723,7 @@ async def subsanar_propuesta(
     justificacion = data.get('justificacion_subsanacion', '')
     
     historial_entry = {
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": "subsanado_reenviado",
         "usuario": current_user.get('email'),
         "justificacion": justificacion,
@@ -25501,7 +25737,7 @@ async def subsanar_propuesta(
                 "estado": "reenviada",
                 "datos_propuestos": nuevos_datos,
                 "justificacion_subsanacion": justificacion,
-                "fecha_subsanacion": datetime.now(timezone.utc).isoformat(),
+                "fecha_subsanacion": datetime.now(COLOMBIA_TZ).isoformat(),
                 "subsanado_por": current_user.get('email')
             },
             "$push": {"historial_revision": historial_entry}
@@ -25586,7 +25822,7 @@ async def aprobar_propuestas_masivo(
                     "$set": {
                         "estado": "aprobada",
                         "revisado_por": current_user.get('email'),
-                        "revisado_en": datetime.now(timezone.utc).isoformat(),
+                        "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                         "comentario_revision": data.get('comentario', 'Aprobación masiva')
                     }
                 }
@@ -25598,8 +25834,8 @@ async def aprobar_propuestas_masivo(
                 **datos_propuestos,
                 "estado_visita": "actualizado",
                 "actualizado_por": current_user.get('email'),
-                "actualizado_en": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc)
+                "actualizado_en": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ)
             }
             
             await db.predios_actualizacion.update_one(
@@ -25614,7 +25850,7 @@ async def aprobar_propuestas_masivo(
                     "$set": update_data,
                     "$push": {
                         "historial_cambios": {
-                            "fecha": datetime.now(timezone.utc).isoformat(),
+                            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                             "usuario": current_user.get('email'),
                             "accion": "propuesta_aprobada_masivo_actualizado",
                             "propuesta_id": propuesta_id
@@ -25808,7 +26044,7 @@ async def generar_pdf_informe_visita(
     pdf_dir.mkdir(parents=True, exist_ok=True)
     # Sanitizar código predial para nombre de archivo
     codigo_safe = codigo_predial_decoded.replace('/', '_').replace('\\', '_')
-    pdf_filename = f"informe_visita_{codigo_safe}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf_filename = f"informe_visita_{codigo_safe}_{datetime.now(COLOMBIA_TZ).strftime('%Y%m%d_%H%M%S')}.pdf"
     pdf_path = pdf_dir / pdf_filename
     
     with open(pdf_path, 'wb') as f:
@@ -25849,7 +26085,7 @@ async def upload_info_alfanumerica_proyecto(
     
     # Guardar archivo
     ext = Path(file.filename).suffix
-    file_path = proyecto_dir / f"info_alfanumerica_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}{ext}"
+    file_path = proyecto_dir / f"info_alfanumerica_{datetime.now(COLOMBIA_TZ).strftime('%Y%m%d_%H%M%S')}{ext}"
     
     try:
         with open(file_path, "wb") as buffer:
@@ -25956,7 +26192,7 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
         predio_data = {
             "proyecto_id": proyecto_id,
             "municipio": municipio,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": datetime.now(COLOMBIA_TZ),
             "propietarios": []
         }
         
@@ -26007,9 +26243,9 @@ async def procesar_r1r2_actualizacion(proyecto_id: str, file_path: str, municipi
         {"id": proyecto_id},
         {"$set": {
             "info_alfanumerica_archivo": file_path,
-            "info_alfanumerica_cargado_en": datetime.now(timezone.utc),
+            "info_alfanumerica_cargado_en": datetime.now(COLOMBIA_TZ),
             "info_alfanumerica_total_registros": registros,
-            "updated_at": datetime.now(timezone.utc)
+            "updated_at": datetime.now(COLOMBIA_TZ)
         }}
     )
     
@@ -26158,7 +26394,7 @@ async def actualizar_etapa(
     if not etapa:
         raise HTTPException(status_code=404, detail="Etapa no encontrada")
     
-    updates = {"updated_at": datetime.now(timezone.utc)}
+    updates = {"updated_at": datetime.now(COLOMBIA_TZ)}
     
     if update_data.nombre is not None:
         updates["nombre"] = update_data.nombre.strip()
@@ -26201,7 +26437,7 @@ async def crear_actividad(
     )
     nuevo_orden = (ultima_actividad.get("orden", 0) if ultima_actividad else 0) + 1
     
-    now = datetime.now(timezone.utc)
+    now = datetime.now(COLOMBIA_TZ)
     actividad_id = str(uuid.uuid4())
     
     actividad = {
@@ -26245,7 +26481,7 @@ async def actualizar_actividad(
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
     
-    updates = {"updated_at": datetime.now(timezone.utc)}
+    updates = {"updated_at": datetime.now(COLOMBIA_TZ)}
     
     if update_data.nombre is not None:
         updates["nombre"] = update_data.nombre.strip()
@@ -26315,7 +26551,7 @@ async def asignar_responsable(
         responsables.append(user_id)
         await db.actividades_proyecto.update_one(
             {"id": actividad_id},
-            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(timezone.utc)}}
+            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(COLOMBIA_TZ)}}
         )
     
     return {"message": f"Usuario {usuario['full_name']} asignado a la actividad"}
@@ -26339,7 +26575,7 @@ async def desasignar_responsable(
         responsables.remove(user_id)
         await db.actividades_proyecto.update_one(
             {"id": actividad_id},
-            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(timezone.utc)}}
+            {"$set": {"responsables_ids": responsables, "updated_at": datetime.now(COLOMBIA_TZ)}}
         )
     
     return {"message": "Responsable removido de la actividad"}
@@ -26353,7 +26589,7 @@ async def obtener_alertas_proximas(current_user: dict = Depends(get_current_user
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver alertas")
     
-    hoy = datetime.now(timezone.utc).date()
+    hoy = datetime.now(COLOMBIA_TZ).date()
     alertas = []
     
     # Obtener actividades pendientes o en progreso con fecha límite
@@ -26589,7 +26825,7 @@ async def crear_predio_nuevo_actualizacion(
     if existing_propuesta:
         raise HTTPException(status_code=400, detail="Ya existe una propuesta pendiente para este código")
     
-    ahora = datetime.now(timezone.utc).isoformat()
+    ahora = datetime.now(COLOMBIA_TZ).isoformat()
     
     # ============ VALIDACIÓN DEL FORMATO DE VISITA ============
     # Para gestores, el formato de visita es OBLIGATORIO antes de enviar a aprobación
@@ -26825,10 +27061,10 @@ async def finalizar_proyecto_actualizacion(
         raise HTTPException(status_code=400, detail="El proyecto está archivado")
     
     municipio = proyecto.get('municipio')
-    ahora = datetime.now(timezone.utc).isoformat()
+    ahora = datetime.now(COLOMBIA_TZ).isoformat()
     # Permitir seleccionar vigencia, por defecto año actual
     vigencia_seleccionada = data.get('vigencia')
-    vigencia_actual = int(vigencia_seleccionada) if vigencia_seleccionada else datetime.now(timezone.utc).year
+    vigencia_actual = int(vigencia_seleccionada) if vigencia_seleccionada else datetime.now(COLOMBIA_TZ).year
     
     # Obtener resumen para validaciones
     predios = await db.predios_actualizacion.find({"proyecto_id": proyecto_id}, {"_id": 0}).to_list(50000)
@@ -27080,7 +27316,7 @@ async def run_backup_task(backup_id: str, backup_path: str, backup_info: dict, c
             metadata = {
                 "backup_id": backup_id,
                 "db_name": db.name,
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "colecciones": collections_to_backup,
                 "version": "1.0"
             }
@@ -27132,7 +27368,7 @@ async def create_backup(
         raise HTTPException(status_code=403, detail="No tiene permiso para crear backups")
     
     backup_id = str(uuid.uuid4())
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(COLOMBIA_TZ).strftime("%Y%m%d_%H%M%S")
     backup_filename = f"backup_{db.name}_{timestamp}.zip"
     backup_path = f"/app/backend/static/backups/{backup_filename}"
     
@@ -27153,7 +27389,7 @@ async def create_backup(
     backup_info = {
         "id": backup_id,
         "filename": backup_filename,
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "tipo": tipo,
         "colecciones": collections_to_backup,
         "colecciones_count": len(collections_to_backup),
@@ -27295,7 +27531,7 @@ async def restore_backup(
             {"id": backup_id},
             {"$push": {
                 "restauraciones": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "usuario": current_user['full_name'],
                     "colecciones": [c['name'] for c in restored_collections]
                 }
@@ -27445,7 +27681,7 @@ async def update_backup_config(
         "activo": modo == "automatico",
         "proximo_backup": proximo_backup,
         "modificado_por": current_user['full_name'],
-        "fecha_modificacion": datetime.now(timezone.utc).isoformat()
+        "fecha_modificacion": datetime.now(COLOMBIA_TZ).isoformat()
     }
     
     await db.system_config.update_one(
@@ -27461,9 +27697,7 @@ async def update_backup_config(
 
 def calcular_proximo_backup(frecuencia: str, hora: str, dia_semana: int, dia_mes: int) -> str:
     """Calcula la fecha/hora del próximo backup"""
-    from datetime import datetime, timezone, timedelta
-    
-    now = datetime.now(timezone.utc)
+    now = datetime.now(COLOMBIA_TZ)
     hora_parts = hora.split(":")
     hora_backup = int(hora_parts[0])
     minuto_backup = int(hora_parts[1]) if len(hora_parts) > 1 else 0
@@ -27518,7 +27752,7 @@ async def ejecutar_backup_automatico():
         
         # Crear backup
         backup_id = str(uuid.uuid4())
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(COLOMBIA_TZ).strftime("%Y%m%d_%H%M%S")
         backup_filename = f"backup_auto_{db.name}_{timestamp}.zip"
         backup_path = f"/app/backend/static/backups/{backup_filename}"
         
@@ -27538,7 +27772,7 @@ async def ejecutar_backup_automatico():
         backup_info = {
             "id": backup_id,
             "filename": backup_filename,
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "tipo": config.get("tipo_backup", "completo"),
             "colecciones": collections_to_backup,
             "colecciones_count": len(collections_to_backup),
@@ -27564,7 +27798,7 @@ async def ejecutar_backup_automatico():
         await db.system_config.update_one(
             {"type": "backup_config"},
             {"$set": {
-                "ultimo_backup_auto": datetime.now(timezone.utc).isoformat(),
+                "ultimo_backup_auto": datetime.now(COLOMBIA_TZ).isoformat(),
                 "proximo_backup": proximo
             }}
         )
@@ -27675,7 +27909,7 @@ async def ejecutar_backup_programado(
     
     # Crear backup según la configuración
     backup_id = str(uuid.uuid4())
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(COLOMBIA_TZ).strftime("%Y%m%d_%H%M%S")
     backup_filename = f"backup_auto_{db.name}_{timestamp}.zip"
     backup_path = f"/app/backend/static/backups/{backup_filename}"
     
@@ -27694,7 +27928,7 @@ async def ejecutar_backup_programado(
     backup_info = {
         "id": backup_id,
         "filename": backup_filename,
-        "fecha": datetime.now(timezone.utc).isoformat(),
+        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "tipo": config.get("tipo_backup", "completo"),
         "colecciones": collections_to_backup,
         "colecciones_count": len(collections_to_backup),
@@ -27719,7 +27953,7 @@ async def ejecutar_backup_programado(
     await db.system_config.update_one(
         {"type": "backup_config"},
         {"$set": {
-            "ultimo_backup_auto": datetime.now(timezone.utc).isoformat(),
+            "ultimo_backup_auto": datetime.now(COLOMBIA_TZ).isoformat(),
             "proximo_backup": proximo
         }}
     )
@@ -27920,7 +28154,7 @@ async def restaurar_backup_archivo(
         await db.backup_history.insert_one({
             "id": str(uuid.uuid4()),
             "filename": f"restaurado_{file.filename}",
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "tipo": "restauracion_archivo",
             "colecciones_count": colecciones_restauradas,
             "registros_total": registros_restaurados,
@@ -27977,7 +28211,7 @@ async def empty_collection(
         "deleted_count": result.deleted_count,
         "user_id": current_user['id'],
         "user_name": current_user['full_name'],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     })
     
     return {
@@ -28019,7 +28253,7 @@ async def drop_collection(
         "documents_lost": count_before,
         "user_id": current_user['id'],
         "user_name": current_user['full_name'],
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
     })
     
     return {
@@ -28082,11 +28316,11 @@ async def toggle_maintenance(current_user: dict = Depends(get_current_user)):
         {"$set": {
             "enabled": new_state,
             "toggled_by": current_user["full_name"],
-            "toggled_at": datetime.now(timezone.utc).isoformat()
+            "toggled_at": datetime.now(COLOMBIA_TZ).isoformat()
         }},
         upsert=True
     )
-    return {"enabled": new_state, "toggled_by": current_user["full_name"], "toggled_at": datetime.now(timezone.utc).isoformat()}
+    return {"enabled": new_state, "toggled_by": current_user["full_name"], "toggled_at": datetime.now(COLOMBIA_TZ).isoformat()}
 
 # ===== SANDBOX MODULE - Entorno de Pruebas Aislado =====
 
@@ -28201,7 +28435,7 @@ async def sandbox_crear_predio(predio: SandboxPredioCreate, current_user: dict =
             "es_sandbox": True,
             "creado_por": current_user['id'],
             "creado_por_nombre": current_user.get('full_name', ''),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.predios_sandbox.insert_one(nuevo_predio)
@@ -28460,7 +28694,7 @@ async def guardar_plantilla_resolucion(
         datos = {
             "tipo": "plantilla_resolucion",
             "datos": plantilla.dict(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "updated_by": current_user['id'],
             "updated_by_nombre": current_user.get('full_name', '')
         }
@@ -28514,7 +28748,7 @@ async def subir_imagen_plantilla(
                 "imagen_base64": content_b64,
                 "mime_type": mime_type,
                 "filename": file.filename,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "updated_by": current_user['id']
             }},
             upsert=True
@@ -28633,7 +28867,7 @@ async def guardar_config_visual(
             {"$set": {
                 "tipo": "config_visual_resolucion",
                 "datos": config.dict(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "updated_by": current_user['id']
             }},
             upsert=True
@@ -28936,8 +29170,8 @@ async def listar_plantillas_resolucion(current_user: dict = Depends(get_current_
                 "texto": PLANTILLA_M1_DEFAULT,
                 "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
                 "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             plantilla_m2 = {
                 "id": "M2",
@@ -28947,8 +29181,8 @@ async def listar_plantillas_resolucion(current_user: dict = Depends(get_current_
                 "texto": PLANTILLA_M2_DEFAULT,
                 "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
                 "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.resolucion_plantillas.insert_one(plantilla_m1.copy())
             await db.resolucion_plantillas.insert_one(plantilla_m2.copy())
@@ -28969,8 +29203,8 @@ async def listar_plantillas_resolucion(current_user: dict = Depends(get_current_
                 "texto": PLANTILLA_M2_DEFAULT,
                 "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
                 "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.resolucion_plantillas.insert_one(plantilla_m2.copy())
             plantillas.append({k: v for k, v in plantilla_m2.items() if k != '_id'})
@@ -29009,8 +29243,8 @@ async def obtener_plantilla_resolucion(
                 "texto": PLANTILLA_M1_DEFAULT,
                 "firmante_nombre": "DALGIE ESPERANZA TORRADO RIZO",
                 "firmante_cargo": "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.resolucion_plantillas.insert_one(plantilla_data.copy())
             plantilla = {k: v for k, v in plantilla_data.items() if k != '_id'}
@@ -29047,7 +29281,7 @@ async def actualizar_plantilla_resolucion(
         
         update_data = {
             "texto": request.texto,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "updated_by": current_user.get("full_name", "")
         }
         
@@ -29071,7 +29305,7 @@ async def actualizar_plantilla_resolucion(
             update_data["tipo"] = tipo_upper
             update_data["nombre"] = request.nombre or f"Plantilla {tipo_upper}"
             update_data["descripcion"] = request.descripcion or ""
-            update_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["created_at"] = datetime.now(COLOMBIA_TZ).isoformat()
             await db.resolucion_plantillas.insert_one(update_data)
         
         return {
@@ -29106,7 +29340,7 @@ async def obtener_configuracion_resoluciones(current_user: dict = Depends(get_cu
                 "id": "config_general",
                 "año_actual": datetime.now().year,
                 "ultimo_numero_2026": 0,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.resolucion_configuracion.insert_one(config.copy())
         
@@ -29135,7 +29369,7 @@ async def actualizar_configuracion_resoluciones(
             {
                 "$set": {
                     "ultimo_numero_2026": request.ultimo_numero_2026,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                     "updated_by": current_user.get("full_name", "")
                 }
             },
@@ -29190,7 +29424,7 @@ async def obtener_configuracion_municipios(current_user: dict = Depends(get_curr
             config = {
                 "id": "config_municipios",
                 "año": datetime.now().year,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             for codigo in MUNICIPIOS_R1R2.keys():
                 config[codigo] = 0
@@ -29222,7 +29456,7 @@ async def actualizar_configuracion_municipios(
     
     try:
         update_data = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "updated_by": current_user.get("full_name", "")
         }
         
@@ -29375,30 +29609,53 @@ async def obtener_historial_resoluciones(
     current_user: dict = Depends(get_current_user)
 ):
     """Obtener historial de resoluciones generadas, con filtros opcionales por municipio y año"""
-    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden ver el historial")
-    
     try:
         año_actual = año or datetime.now().year
-        
-        # Query que incluye resoluciones con el campo año O sin él (para compatibilidad con datos antiguos)
-        query = {
+
+        es_admin_coord = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]
+
+        # Query base por año
+        query_año = {
             "$or": [
                 {"año": año_actual},
-                {"año": {"$exists": False}}  # Incluir resoluciones sin campo año
+                {"año": {"$exists": False}}
             ]
         }
-        
+
+        if es_admin_coord:
+            # Admin/Coordinador ven todas las resoluciones
+            query = query_año
+        else:
+            # Gestores ven solo las resoluciones que ellos elaboraron/solicitaron
+            # Buscar solicitudes del usuario para obtener sus cambio_ids
+            mis_solicitudes = await db.solicitudes_mutacion.find(
+                {"creado_por_id": current_user['id']},
+                {"_id": 0, "id": 1}
+            ).to_list(10000)
+            mis_ids = [s['id'] for s in mis_solicitudes]
+
+            query = {
+                "$and": [
+                    {"$or": [{"año": año_actual}, {"año": {"$exists": False}}]},
+                    {"$or": [
+                        {"elaborado_por": current_user['id']},
+                        {"creado_por_id": current_user['id']},
+                        {"cambio_id": {"$in": mis_ids}},
+                        {"solicitud_id": {"$in": mis_ids}},
+                        {"generado_por": current_user['id']}
+                    ]}
+                ]
+            }
+
         # Filtrar por código de municipio o nombre
         if codigo_municipio:
             query["codigo_municipio"] = codigo_municipio
         elif municipio:
-            # Buscar por nombre de municipio
             query["municipio"] = {"$regex": municipio, "$options": "i"}
-        
+
         total = await db.resoluciones.count_documents(query)
         resoluciones = await db.resoluciones.find(
-            query, 
+            query,
             {"_id": 0}
         ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
         
@@ -29690,7 +29947,7 @@ async def generar_resolucion_m2(
         resoluciones_dir = "/app/uploads/resoluciones"
         os.makedirs(resoluciones_dir, exist_ok=True)
 
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(COLOMBIA_TZ).strftime("%Y%m%d_%H%M%S")
         filename = f"{numero_resolucion.replace('/', '-').replace(' ', '_')}.pdf"
         pdf_path_full = os.path.join(resoluciones_dir, filename)
         pdf_path_relative = f"/resoluciones/{filename}"
@@ -29703,7 +29960,7 @@ async def generar_resolucion_m2(
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
             "fecha_resolucion": fecha_resolucion,
-            "año": datetime.now(timezone.utc).year,
+            "año": datetime.now(COLOMBIA_TZ).year,
             "tipo_mutacion": "M2",
             "subtipo": request.subtipo,
             "municipio": municipio_nombre,
@@ -29716,7 +29973,7 @@ async def generar_resolucion_m2(
             "codigo_verificacion": codigo_verificacion,
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name"),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.resoluciones.insert_one(resolucion_doc)
@@ -29751,7 +30008,7 @@ async def generar_resolucion_m2(
             "numero_resolucion": numero_resolucion,
             "tipo_mutacion": "M2",
             "municipio": municipio_nombre,
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
             "estado": "activo",
             "pdf_path": pdf_path_relative
         }
@@ -29782,7 +30039,7 @@ async def generar_resolucion_m2(
                 # Crear registro en predios_eliminados con toda la información
                 predio_eliminado = {
                     **predio_existente,
-                    "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                    "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                     "motivo_eliminacion": f"Mutación M2 - {request.subtipo}",
                     "resolucion_eliminacion": numero_resolucion,
                     "fecha_resolucion_eliminacion": fecha_resolucion,
@@ -29806,7 +30063,7 @@ async def generar_resolucion_m2(
                     {
                         "$set": {
                             "deleted": True,
-                            "eliminado_en": datetime.now(timezone.utc).isoformat(),
+                            "eliminado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                             "resolucion_eliminacion": numero_resolucion,
                             "fecha_resolucion_eliminacion": fecha_resolucion
                         }
@@ -29820,7 +30077,7 @@ async def generar_resolucion_m2(
                     "area_construida": predio_cancelado.get('nueva_area_construida', predio_cancelado.get('area_construida')),
                     "avaluo": predio_cancelado.get('nuevo_avaluo', predio_cancelado.get('avaluo')),
                     "area_editada_en_plataforma": True,  # Marcar como editado en plataforma
-                    "updated_at": datetime.now(timezone.utc).isoformat()
+                    "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                 }
                 
                 # Si hay propietarios editados, actualizarlos
@@ -29962,7 +30219,7 @@ async def generar_resolucion_m2(
                     "fecha_resolucion": fecha_resolucion,
                     "accion": "inscripcion"
                 }],
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat()
             }
             await db.predios.insert_one(nuevo_predio)
             logging.info(f"Predio inscrito creado: {npn} con {len(r2_registros)} registros R2")
@@ -30033,7 +30290,7 @@ async def finalizar_tramite_y_enviar_correo(
         historial_entry = {
             "estado_anterior": petition.get("status"),
             "estado_nuevo": "finalizado",
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "usuario": current_user.get("full_name"),
             "usuario_id": current_user.get("id"),
             "accion": "Trámite finalizado con resolución generada",
@@ -30045,7 +30302,7 @@ async def finalizar_tramite_y_enviar_correo(
             {
                 "$set": {
                     "status": "finalizado",
-                    "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                    "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
                     "finalizado_por": current_user.get("id"),
                     "finalizado_por_nombre": current_user.get("full_name"),
                     "pdf_resolucion": pdf_path_relative
@@ -30234,7 +30491,7 @@ async def generar_resolucion_m3(
         # Actualizar el predio en la base de datos
         update_data = {
             "avaluo": request.avaluo_nuevo,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
             "ultima_mutacion": numero_resolucion
         }
         
@@ -30278,7 +30535,7 @@ async def generar_resolucion_m3(
             "avaluo_anterior": request.avaluo_anterior,
             "avaluo_nuevo": request.avaluo_nuevo,
             "ejecutado_por": current_user.get("full_name"),
-            "fecha_ejecucion": datetime.now(timezone.utc).isoformat()
+            "fecha_ejecucion": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         if request.subtipo == 'cambio_destino':
@@ -30316,7 +30573,7 @@ async def generar_resolucion_m3(
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name"),
             "año": datetime.now().year,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.resoluciones.insert_one(resolucion_doc)
@@ -30920,7 +31177,7 @@ async def crear_solicitud_mutacion(
             # Para M1
             "predio_id": data.predio_id,
             "propietarios_anteriores": propietarios_anteriores,
-            "propietarios_nuevos": data.propietarios_nuevos,
+            "propietarios_nuevos": [{**p, "numero_documento": formatear_documento(p.get("numero_documento", "")), "documento": formatear_documento(p.get("documento", p.get("numero_documento", "")))} for p in data.propietarios_nuevos] if data.propietarios_nuevos else data.propietarios_nuevos,
             # Para M3
             "destino_anterior": destino_anterior,
             "destino_nuevo": data.destino_nuevo,
@@ -30953,6 +31210,11 @@ async def crear_solicitud_mutacion(
             "construcciones_nuevas": data.construcciones_nuevas,
             # Texto personalizado para considerandos
             "texto_considerando": data.texto_considerando,
+            # Para Complementación
+            "predio": data.predio,
+            "matricula_nueva": data.matricula_nueva,
+            "direccion_nueva": data.direccion_nueva,
+            "documentos_soporte": data.documentos_soporte,
             # Gestor de apoyo
             "gestor_apoyo_id": data.gestor_apoyo_id,
             "gestor_apoyo_nombre": None,
@@ -30961,16 +31223,16 @@ async def crear_solicitud_mutacion(
             # Creación
             "creado_por_id": current_user['id'],
             "creado_por_nombre": current_user['full_name'],
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
             # Aprobación (se llena si aprueba directo)
             "aprobado_por_id": current_user['id'] if puede_aprobar_directo else None,
             "aprobado_por_nombre": current_user['full_name'] if puede_aprobar_directo else None,
-            "fecha_aprobacion": datetime.now(timezone.utc).isoformat() if puede_aprobar_directo else None,
+            "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat() if puede_aprobar_directo else None,
             "resolucion_id": None,
             "pdf_url": None,
             # Historial
             "historial": [{
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "accion": "creado" if not puede_aprobar_directo else "creado_y_aprobado",
                 "usuario_id": current_user['id'],
                 "usuario_nombre": current_user['full_name'],
@@ -31040,7 +31302,7 @@ async def crear_solicitud_mutacion(
                     "mensaje": f"El gestor {current_user['full_name']} ha enviado una solicitud {data.tipo} ({radicado}) para su revisión y aprobación.",
                     "tipo": "warning",
                     "enlace": "/dashboard/pendientes?tab=mutaciones",
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "leida": False,
                     "creado_por_id": current_user['id'],
                     "creado_por_nombre": current_user['full_name']
@@ -31223,9 +31485,9 @@ async def actualizar_solicitud_mutacion(
             "predios_inscritos": data.predios_inscritos,
             "observaciones": data.observaciones,
             "predio_id": data.predio_id,
-            "propietarios_anteriores": data.propietarios_anteriores,
-            "propietarios_nuevos": data.propietarios_nuevos,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "propietarios_anteriores": [{**p, "numero_documento": formatear_documento(p.get("numero_documento", "")), "documento": formatear_documento(p.get("documento", p.get("numero_documento", "")))} for p in data.propietarios_anteriores] if data.propietarios_anteriores else data.propietarios_anteriores,
+            "propietarios_nuevos": [{**p, "numero_documento": formatear_documento(p.get("numero_documento", "")), "documento": formatear_documento(p.get("documento", p.get("numero_documento", "")))} for p in data.propietarios_nuevos] if data.propietarios_nuevos else data.propietarios_nuevos,
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.solicitudes_mutacion.update_one(
@@ -31264,7 +31526,7 @@ async def ejecutar_accion_solicitud(
         accion = data.accion
         nuevo_estado = solicitud['estado']
         historial_entry = {
-            "fecha": datetime.now(timezone.utc).isoformat(),
+            "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
             "accion": accion,
             "usuario_id": current_user['id'],
             "usuario_nombre": current_user['full_name'],
@@ -31309,7 +31571,7 @@ async def ejecutar_accion_solicitud(
             nuevo_estado = MutacionEstado.PENDIENTE_APROBACION
             update_data = {
                 "gestor_apoyo_completado": True,
-                "gestor_apoyo_fecha_completado": datetime.now(timezone.utc).isoformat()
+                "gestor_apoyo_fecha_completado": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             # Notificar a aprobadores
@@ -31373,7 +31635,7 @@ async def ejecutar_accion_solicitud(
             update_data = {
                 "aprobado_por_id": current_user['id'],
                 "aprobado_por_nombre": current_user['full_name'],
-                "fecha_aprobacion": datetime.now(timezone.utc).isoformat()
+                "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat()
             }
             
             # ========================================
@@ -31433,7 +31695,7 @@ async def ejecutar_accion_solicitud(
                     update_data["numero_resolucion"] = pdf_result.get("numero_resolucion")
                     # Trámite completado exitosamente → FINALIZADO
                     nuevo_estado = MutacionEstado.FINALIZADO
-                    update_data["fecha_finalizacion"] = datetime.now(timezone.utc).isoformat()
+                    update_data["fecha_finalizacion"] = datetime.now(COLOMBIA_TZ).isoformat()
 
             except Exception as pdf_error:
                 logging.error(f"Error generando PDF para {tipo_mutacion}: {str(pdf_error)}")
@@ -31606,11 +31868,11 @@ async def crear_radicado_multiple(
             "solicitante": data.solicitante,
             "estado": "EN_PROCESO",
             "mutaciones": [],
-            "fecha_creacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_creacion": datetime.now(COLOMBIA_TZ).isoformat(),
             "creado_por_id": current_user['id'],
             "creado_por_nombre": current_user['full_name'],
             "historial": [{
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "accion": "creado",
                 "usuario_id": current_user['id'],
                 "usuario_nombre": current_user['full_name']
@@ -31690,7 +31952,7 @@ async def agregar_mutacion_a_radicado(
             "datos": data.datos or {},
             "resolucion_id": None,
             "orden": len(radicado.get('mutaciones', [])) + 1,
-            "fecha_agregada": datetime.now(timezone.utc).isoformat(),
+            "fecha_agregada": datetime.now(COLOMBIA_TZ).isoformat(),
             "agregada_por_id": current_user['id'],
             "agregada_por_nombre": current_user['full_name']
         }
@@ -31702,7 +31964,7 @@ async def agregar_mutacion_a_radicado(
                 "$push": {
                     "mutaciones": nueva_mutacion,
                     "historial": {
-                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                         "accion": f"mutacion_agregada_{data.tipo}",
                         "usuario_id": current_user['id'],
                         "usuario_nombre": current_user['full_name']
@@ -31754,7 +32016,7 @@ async def eliminar_mutacion_de_radicado(
             {
                 "$pull": {"mutaciones": {"id": mutacion_id}},
                 "$push": {"historial": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
+                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "accion": f"mutacion_eliminada_{mutacion['tipo']}",
                     "usuario_id": current_user['id'],
                     "usuario_nombre": current_user['full_name']
@@ -31887,15 +32149,15 @@ async def aprobar_radicado_multiple(
                                 "estado": MutacionEstado.FINALIZADO,
                                 "aprobado_por_id": current_user['id'],
                                 "aprobado_por_nombre": current_user['full_name'],
-                                "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
-                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "fecha_aprobacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                                "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "resolucion_id": pdf_result.get("id"),
                                 "pdf_url": pdf_result.get("pdf_url") or pdf_result.get("pdf_path"),
                                 "numero_resolucion": pdf_result.get("numero_resolucion")
                             },
                             "$push": {
                                 "historial": {
-                                    "fecha": datetime.now(timezone.utc).isoformat(),
+                                    "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                                     "accion": "aprobar",
                                     "usuario_id": current_user['id'],
                                     "usuario_nombre": current_user['full_name'],
@@ -31949,11 +32211,11 @@ async def aprobar_radicado_multiple(
             {
                 "$set": {
                     "estado": nuevo_estado_radicado,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
+                    "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                 },
                 "$push": {
                     "historial": {
-                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                         "accion": "aprobacion_masiva",
                         "usuario_id": current_user['id'],
                         "usuario_nombre": current_user['full_name'],
@@ -32102,16 +32364,16 @@ async def generar_resolucion_manual(
                 propietarios_anteriores.append({
                     "nombre": p.get("nombre", p.get("nombre_propietario", "")),
                     "tipo_documento": p.get("tipo_documento", "CC"),
-                    "documento": p.get("documento", p.get("numero_documento", "")),
+                    "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
                     "estado_civil": p.get("estado_civil", ""),
                 })
-        
+
         if request.propietarios_nuevos:
             for p in request.propietarios_nuevos:
                 propietarios_nuevos.append({
                     "nombre": p.get("nombre", p.get("nombre_propietario", "")),
                     "tipo_documento": p.get("tipo_documento", "CC"),
-                    "documento": p.get("documento", p.get("numero_documento", "")),
+                    "documento": formatear_documento(p.get("documento", p.get("numero_documento", ""))),
                     "estado_civil": p.get("estado_civil", ""),
                 })
         
@@ -32252,15 +32514,16 @@ async def generar_resolucion_manual(
         # - Si hay datos_predio del request (datos nuevos), usarlos directamente
         # - Si no, usar datos de R1/R2 del predio actual
         if request.datos_predio:
-            # Datos nuevos del formulario - no están en R1/R2 aún
+            # Datos nuevos del formulario - también consultar R1/R2 como fallback
+            datos_r1_r2_fallback = obtener_datos_r1_r2(predio)
             datos_inscripcion = {
-                "area_terreno": request.datos_predio.get("area_terreno") or datos_predio.get("area_terreno") or 0,
-                "area_construida": request.datos_predio.get("area_construida") or datos_predio.get("area_construida") or 0,
-                "avaluo": request.datos_predio.get("avaluo") or datos_predio.get("avaluo") or 0,
-                "direccion": request.datos_predio.get("direccion") or datos_predio.get("direccion") or "",
-                "destino_economico": request.datos_predio.get("destino_economico") or datos_predio.get("destino_economico") or "A",
-                "codigo_homologado": request.datos_predio.get("codigo_homologado") or datos_predio.get("codigo_homologado") or "",
-                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or "",
+                "area_terreno": request.datos_predio.get("area_terreno") or datos_predio.get("area_terreno") or datos_r1_r2_fallback.get("area_terreno") or 0,
+                "area_construida": request.datos_predio.get("area_construida") or datos_predio.get("area_construida") or datos_r1_r2_fallback.get("area_construida") or 0,
+                "avaluo": request.datos_predio.get("avaluo") or datos_predio.get("avaluo") or datos_r1_r2_fallback.get("avaluo") or 0,
+                "direccion": request.datos_predio.get("direccion") or datos_predio.get("direccion") or datos_r1_r2_fallback.get("direccion") or "",
+                "destino_economico": request.datos_predio.get("destino_economico") or datos_predio.get("destino_economico") or datos_r1_r2_fallback.get("destino_economico") or "A",
+                "codigo_homologado": request.datos_predio.get("codigo_homologado") or datos_predio.get("codigo_homologado") or datos_r1_r2_fallback.get("codigo_homologado") or "",
+                "matricula_inmobiliaria": request.datos_predio.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria") or datos_r1_r2_fallback.get("matricula_inmobiliaria") or "",
             }
         else:
             # No hay datos nuevos del formulario, obtener de R1/R2 del predio actual
@@ -32328,6 +32591,7 @@ async def generar_resolucion_manual(
             "id": str(uuid.uuid4()),
             "numero_resolucion": request.numero_resolucion,
             "tipo": request.tipo_mutacion.upper(),
+            "tipo_mutacion": request.tipo_mutacion.upper(),
             "año": año_actual,
             "consecutivo": consecutivo,
             "codigo_municipio": codigo_municipio,
@@ -32340,8 +32604,9 @@ async def generar_resolucion_manual(
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name", ""),
             "generacion_manual": True,  # Marcar como generación manual
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_resolucion": datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d"),
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         await db.resoluciones.insert_one(resolucion_doc.copy())
@@ -32358,13 +32623,13 @@ async def generar_resolucion_manual(
             "propietarios": [datos_predio.get("nombre_propietario", "")],
             "area_terreno": str(datos_predio.get("area_terreno") or datos_predio.get("area_terreno_r1") or 0),
             "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
-            "fecha_vencimiento": (datetime.now(timezone.utc) + timedelta(days=365)).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "fecha_vencimiento": (datetime.now(COLOMBIA_TZ) + timedelta(days=365)).isoformat(),
             "estado": "activo",
             "generado_por": current_user.get("id"),
             "generado_por_nombre": current_user.get("full_name", ""),
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         await db.certificados_verificables.insert_one(verificacion_doc.copy())
         
@@ -32388,7 +32653,7 @@ async def generar_resolucion_manual(
             "radicado": request.radicado_peticion,
             "pdf_path": f"/api/resoluciones/descargar/{filename}",
             "generado_por": current_user.get("full_name", ""),
-            "fecha_generacion": datetime.now(timezone.utc).isoformat(),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
             # Detalles de los cambios
             "propietarios_anteriores": propietarios_anteriores,
             "propietarios_nuevos": propietarios_nuevos,
@@ -32400,7 +32665,7 @@ async def generar_resolucion_manual(
             "tipo_mutacion": request.tipo_mutacion,
             "numero_resolucion": request.numero_resolucion,
             "fecha_resolucion": request.fecha_resolucion,
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
         # Si se enviaron datos del predio, actualizarlos también
@@ -32447,10 +32712,10 @@ async def generar_resolucion_manual(
                             "estado_tramite": "Finalizado",
                             "finalizado_por": current_user.get("id"),
                             "finalizado_por_nombre": current_user.get("full_name", ""),
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "fecha_finalizacion": datetime.now(COLOMBIA_TZ).isoformat(),
                             "resolucion_numero": request.numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "updated_at": datetime.now(timezone.utc).isoformat()
+                            "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
                         },
                         "$push": {
                             "historial": {
@@ -32459,7 +32724,7 @@ async def generar_resolucion_manual(
                                 "estado_nuevo": "finalizado",
                                 "usuario_id": current_user.get("id"),
                                 "usuario_nombre": current_user.get("full_name", ""),
-                                "fecha": datetime.now(timezone.utc).isoformat(),
+                                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "observaciones": f"Resolución {request.numero_resolucion} generada"
                             },
                             "archivos_staff": {
@@ -32470,7 +32735,7 @@ async def generar_resolucion_manual(
                                 "uploaded_by": "sistema",
                                 "uploaded_by_name": "Sistema - Resolución manual",
                                 "uploaded_by_role": "sistema",
-                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "upload_date": datetime.now(COLOMBIA_TZ).isoformat(),
                                 "es_documento_final": True,
                                 "es_resolucion": True,
                                 "numero_resolucion": request.numero_resolucion,
@@ -32788,8 +33053,8 @@ async def obtener_logs_actividad(
     logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     
     # Obtener estadísticas
-    hoy = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    inicio_semana = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    hoy = datetime.now(COLOMBIA_TZ).strftime("%Y-%m-%d")
+    inicio_semana = (datetime.now(COLOMBIA_TZ) - timedelta(days=7)).strftime("%Y-%m-%d")
     
     stats = {
         "total_registros": total,
@@ -32799,7 +33064,7 @@ async def obtener_logs_actividad(
             "accion": {"$in": ["rechazar", "error", "eliminar"]}
         }),
         "usuarios_activos_24h": len(await db.activity_logs.distinct("usuario_id", {
-            "timestamp": {"$gte": (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()}
+            "timestamp": {"$gte": (datetime.now(COLOMBIA_TZ) - timedelta(hours=24)).isoformat()}
         })),
         "cambios_criticos": await db.activity_logs.count_documents({
             "timestamp": {"$gte": inicio_semana},
@@ -32832,7 +33097,7 @@ async def registrar_log_actividad(
     try:
         log_entry = {
             "id": str(uuid.uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(COLOMBIA_TZ).isoformat(),
             "accion": accion,
             "categoria": categoria,
             "descripcion": descripcion,
@@ -32964,7 +33229,7 @@ async def actualizar_configuracion_anios(
             "año_inicial": anio_inicial,
             "años_futuro": anios_futuro,
             "actualizado_por": current_user["id"],
-            "actualizado_en": datetime.now(timezone.utc).isoformat()
+            "actualizado_en": datetime.now(COLOMBIA_TZ).isoformat()
         }},
         upsert=True
     )
@@ -33359,8 +33624,8 @@ async def create_default_admin():
                 "is_active": True,
                 "verification_code": None,
                 "verification_code_expires": None,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
+                "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "permissions": [
                     Permission.UPLOAD_GDB,
                     Permission.IMPORT_R1R2,
@@ -33666,7 +33931,7 @@ async def sincronizar_geometrias_gdb_automaticamente():
                                 "properties": props,
                                 "municipio": municipio,
                                 "capa_origen": capa_nombre,
-                                "created_at": datetime.now(timezone.utc)
+                                "created_at": datetime.now(COLOMBIA_TZ)
                             }
                             
                             geometrias_batch.append(geometria_doc)
@@ -33691,7 +33956,7 @@ async def sincronizar_geometrias_gdb_automaticamente():
                     {"id": proyecto_id},
                     {"$set": {
                         "base_grafica_archivo": str(gdb_file),
-                        "base_grafica_cargado_en": datetime.now(timezone.utc),
+                        "base_grafica_cargado_en": datetime.now(COLOMBIA_TZ),
                         "total_geometrias": total_geometrias
                     }}
                 )

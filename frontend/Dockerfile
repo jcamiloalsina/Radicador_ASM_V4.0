@@ -22,6 +22,12 @@ RUN npm run build
 # Production stage with nginx
 FROM nginx:alpine
 
+# Configurar timezone Colombia
+ENV TZ=America/Bogota
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/America/Bogota /etc/localtime && \
+    echo "America/Bogota" > /etc/timezone
+
 # Copy built files
 COPY --from=build /app/build /usr/share/nginx/html
 

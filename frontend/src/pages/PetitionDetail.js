@@ -33,6 +33,7 @@ export default function PetitionDetail() {
   const [showFinalizarDialog, setShowFinalizarDialog] = useState(false);
   const [enviarArchivosFinalizacion, setEnviarArchivosFinalizacion] = useState(false);
   const [uploadingFinal, setUploadingFinal] = useState(false);
+  const [isDraggingFinal, setIsDraggingFinal] = useState(false);
   const [resoluciones, setResoluciones] = useState([]);
 
   useEffect(() => {
@@ -1370,18 +1371,55 @@ export default function PetitionDetail() {
                           <li>El documento se adjuntará al correo de finalización</li>
                         </ul>
                       </div>
-                      <Input
-                        type="file"
-                        multiple
-                        onChange={(e) => setFiles(Array.from(e.target.files))}
-                        data-testid="staff-upload-input"
-                      />
+                      <div
+                        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingFinal(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); if (e.currentTarget.contains(e.relatedTarget)) return; setIsDraggingFinal(false); }}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault(); e.stopPropagation(); setIsDraggingFinal(false);
+                          const droppedFiles = Array.from(e.dataTransfer.files);
+                          if (droppedFiles.length > 0) {
+                            setFiles(prev => [...prev, ...droppedFiles]);
+                            toast.success(`${droppedFiles.length} archivo(s) agregado(s)`);
+                          }
+                        }}
+                        onClick={() => document.getElementById('input-doc-final').click()}
+                        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                          isDraggingFinal ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm text-slate-600">
+                          {isDraggingFinal ? 'Suelta los archivos aquí' : 'Arrastra archivos aquí o haz clic para seleccionar'}
+                        </p>
+                        <input
+                          id="input-doc-final"
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.files);
+                            setFiles(prev => [...prev, ...selected]);
+                            e.target.value = '';
+                          }}
+                          data-testid="staff-upload-input"
+                        />
+                      </div>
                       {files.length > 0 && (
                         <div className="space-y-2">
                           {files.map((file, idx) => (
-                            <div key={idx} className="text-sm text-slate-700 flex items-center gap-2">
-                              <FileText className="w-4 h-4" />
-                              {file.name}
+                            <div key={idx} className="text-sm text-slate-700 flex items-center justify-between p-2 bg-slate-50 rounded">
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                {file.name}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, i) => i !== idx)); }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
                           ))}
                         </div>

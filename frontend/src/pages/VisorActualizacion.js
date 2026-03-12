@@ -120,15 +120,15 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Helper para formatear áreas: "X ha X.XXX m²"
+// Helper para formatear áreas: "X ha X.XXX m²" - Sin redondear, mostrar tal cual viene del GDB
 const formatearArea = (m2) => {
   if (!m2 || isNaN(parseFloat(m2))) return '-';
   const metros = parseFloat(m2);
   const hectareas = metros / 10000;
   if (hectareas >= 1) {
-    return `${hectareas.toFixed(2)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 2 })} m²`;
+    return `${hectareas.toFixed(4)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 4 })} m²`;
   } else {
-    return `${hectareas.toFixed(4)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 2 })} m²`;
+    return `${hectareas.toFixed(6)} ha ${metros.toLocaleString('es-CO', { maximumFractionDigits: 4 })} m²`;
   }
 };
 
@@ -2805,8 +2805,8 @@ export default function VisorActualizacion() {
       area_base_catastral_m2: selectedPredio?.area_terreno?.toString() || '', // del R1
       area_base_catastral_desc: 'Área del R1 (Excel cargado)',
       // Área GDB se obtiene de selectedGeometry.properties.shape_Area
-      area_geografica_ha: selectedGeometry?.properties?.shape_Area ? (parseFloat(selectedGeometry.properties.shape_Area) / 10000).toFixed(4) : '',
-      area_geografica_m2: selectedGeometry?.properties?.shape_Area ? parseFloat(selectedGeometry.properties.shape_Area).toFixed(2) : '', // del GDB
+      area_geografica_ha: selectedGeometry?.properties?.shape_Area ? (parseFloat(selectedGeometry.properties.shape_Area) / 10000).toFixed(6) : '',
+      area_geografica_m2: selectedGeometry?.properties?.shape_Area ? String(selectedGeometry.properties.shape_Area) : '', // del GDB - sin redondear
       area_geografica_desc: selectedGeometry?.properties?.shape_Area ? 'Área del GDB (geometría)' : 'Sin geometría GDB',
       area_levantamiento_ha: '',
       area_levantamiento_m2: '',
@@ -3556,7 +3556,7 @@ export default function VisorActualizacion() {
         const estaFirmado = response.data?.firmado || nuevoEstado === 'visitado_firmado';
         
         if (estaFirmado) {
-          toast.success('✅ Visita firmada y guardada - Este predio ya no puede ser modificado', { duration: 5000 });
+          toast.success('✅ Visita firmada y guardada correctamente', { duration: 5000 });
         } else {
           toast.success(visitaData.sin_cambios && !hayCambiosSugeridos
             ? 'Visita guardada - Predio marcado como visitado sin cambios' 
@@ -5704,9 +5704,10 @@ export default function VisorActualizacion() {
                           </div>
                           <div>
                             <Label className="text-xs">Número Documento</Label>
-                            <Input 
-                              value={prop.documento} 
-                              onChange={(e) => actualizarPropietario(index, 'documento', e.target.value)}
+                            <Input
+                              value={prop.documento}
+                              onChange={(e) => actualizarPropietario(index, 'documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                              onBlur={(e) => { if (e.target.value) actualizarPropietario(index, 'documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                             />
                           </div>
                           <div>
@@ -6160,21 +6161,21 @@ export default function VisorActualizacion() {
                       </Button>
                     )}
                     
-                    {/* Botón Formato de Visita - Visible si NO está actualizado ni firmado (ambos bloqueados) */}
-                    {selectedPredio.estado_visita !== 'actualizado' && selectedPredio.estado_visita !== 'visitado_firmado' && (
-                      <Button 
-                        variant="outline" 
+                    {/* Botón Formato de Visita - Visible si NO está actualizado */}
+                    {selectedPredio.estado_visita !== 'actualizado' && (
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setShowPredioDetail(false);
                           setShowFormularioVisita(true);
                         }}
                         disabled={saving}
-                        className={`flex-1 ${selectedPredio.estado_visita === 'visitado' 
-                          ? 'border-blue-500 text-blue-700 hover:bg-blue-50' 
+                        className={`flex-1 ${(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado')
+                          ? 'border-blue-500 text-blue-700 hover:bg-blue-50'
                           : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'}`}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {selectedPredio.estado_visita === 'visitado' ? 'Editar Visita' : 'Registrar Visita'}
+                        {(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') ? 'Editar Visita' : 'Registrar Visita'}
                       </Button>
                     )}
                     

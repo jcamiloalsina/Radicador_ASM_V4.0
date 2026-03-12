@@ -3169,9 +3169,10 @@ export default function Pendientes() {
                         </div>
                         <div>
                           <Label className="text-xs">Número Documento *</Label>
-                          <Input 
-                            value={prop.numero_documento || ''} 
-                            onChange={(e) => updatePropietario(index, 'numero_documento', e.target.value)}
+                          <Input
+                            value={prop.numero_documento || ''}
+                            onChange={(e) => updatePropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                            onBlur={(e) => { if (e.target.value) updatePropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                           />
                         </div>
                         <div className="col-span-2">

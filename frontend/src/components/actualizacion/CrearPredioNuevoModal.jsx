@@ -23,6 +23,25 @@ import VisitaPagina5 from './visita/VisitaPagina5';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Comprimir imagen usando canvas (max 1280px, calidad 0.7)
+const comprimirImagen = (base64, maxWidth = 1280, quality = 0.7) => {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64); // fallback: devolver original si falla
+    img.src = base64;
+  });
+};
+
 // Catálogos
 const TIPOS_DOCUMENTO = {
   'C': 'Cédula de Ciudadanía',
@@ -588,17 +607,18 @@ const CrearPredioNuevoModal = ({
   const handleFotoChange = async (e) => {
     const files = Array.from(e.target.files || []);
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} supera 5MB`);
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} supera 10MB`);
         continue;
       }
       try {
-        const base64 = await new Promise((resolve, reject) => {
+        const base64Raw = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+        const base64 = await comprimirImagen(base64Raw);
         setFotos(prev => [...prev, {
           id: Date.now() + Math.random(), data: base64, preview: base64,
           nombre: file.name, fecha: new Date().toISOString(), offline: !navigator.onLine
@@ -614,14 +634,15 @@ const CrearPredioNuevoModal = ({
   const handleFotoCroquisChange = async (e) => {
     const files = Array.from(e.target.files || []);
     for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) continue;
+      if (file.size > 10 * 1024 * 1024) continue;
       try {
-        const base64 = await new Promise((resolve, reject) => {
+        const base64Raw = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+        const base64 = await comprimirImagen(base64Raw);
         setVisitaData(prev => ({
           ...prev,
           fotos_croquis: [...prev.fotos_croquis, { data: base64, preview: base64, nombre: file.name }]
@@ -742,9 +763,9 @@ const CrearPredioNuevoModal = ({
         return;
       }
       
-      // Crear AbortController con timeout de 60 segundos
+      // Crear AbortController con timeout de 120 segundos (fotos comprimidas pueden ser pesadas)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       
       const response = await fetch(
         `${API_URL}/api/actualizacion/proyectos/${proyectoId}/predios-nuevos`,
@@ -1011,7 +1032,7 @@ const CrearPredioNuevoModal = ({
                   </div>
                   <div>
                     <Label className="text-xs">Número Documento</Label>
-                    <Input value={prop.numero_documento} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} />
+                    <Input value={prop.numero_documento} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} onBlur={(e) => { if (e.target.value) actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }} />
                   </div>
                 </div>
               </div>

@@ -69,9 +69,16 @@ const TIPOS_MUTACION = {
     color: 'bg-cyan-100 text-cyan-800',
     enabled: true
   },
-  COMP: { 
-    codigo: 'COMP', 
-    nombre: 'Complementación', 
+  COMP: {
+    codigo: 'COMP',
+    nombre: 'Complementación',
+    descripcion: 'Complementación de información catastral',
+    color: 'bg-slate-100 text-slate-800',
+    enabled: true
+  },
+  COMPLEMENTACION: {
+    codigo: 'COMPLEMENTACION',
+    nombre: 'Complementación',
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
     enabled: true
@@ -102,16 +109,16 @@ const TIPOS_MUTACION = {
   }
 };
 
-// Helper para formatear área en hectáreas + m²
+// Helper para formatear área en hectáreas + m² - Sin redondear, mostrar tal cual
 const formatAreaHectareas = (m2) => {
   if (!m2 || m2 === 0) return '0 m²';
   const area = Number(m2);
   const hectareas = Math.floor(area / 10000);
   const metros = area % 10000;
   if (hectareas > 0) {
-    return `${hectareas} ha ${metros.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
+    return `${hectareas} ha ${metros.toLocaleString('es-CO', {maximumFractionDigits: 4})} m²`;
   }
-  return `${area.toLocaleString('es-CO', {maximumFractionDigits: 0})} m²`;
+  return `${area.toLocaleString('es-CO', {maximumFractionDigits: 4})} m²`;
 };
 
 // Municipios R1/R2 - Los 12 municipios del sistema
@@ -365,6 +372,9 @@ export default function MutacionesResoluciones() {
     direccion_nueva: '',
     destino_nuevo: '',
     numero_documento_nuevo: '',
+    // Propietarios (como M1)
+    propietarios_anteriores: [],
+    propietarios_nuevos: [],
     documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
     observaciones: '',
     texto_considerando: ''
@@ -604,9 +614,10 @@ export default function MutacionesResoluciones() {
   }, [sessionIdReserva, codigosReservados]);
 
   useEffect(() => {
-    if (tipoMutacionSeleccionado?.codigo === 'M2') {
+    if (['M2', 'M3', 'M4', 'M5', 'RECTIFICACION_AREA'].includes(tipoMutacionSeleccionado?.codigo)) {
       cargarGestoresDisponibles();
     }
+    setGestorApoyoSeleccionado('');
   }, [tipoMutacionSeleccionado, cargarGestoresDisponibles]);
 
   // Cargar configuración de años disponibles para inscripción
@@ -1477,6 +1488,35 @@ export default function MutacionesResoluciones() {
     }));
   };
 
+  // Helper: actualizar estado de mutación en múltiples después de generar resolución
+  const actualizarMutacionEnMultiples = async (token, responseData) => {
+    if (!multiplesData.peticion_id || mutacionEnEdicion === null) return;
+    const mut = multiplesData.mutaciones[mutacionEnEdicion];
+    if (!mut || !mut.id) return;
+    try {
+      await axios.patch(
+        `${API}/petitions/${multiplesData.peticion_id}/mutaciones/${mut.id}`,
+        {
+          estado: 'FINALIZADO',
+          numero_resolucion: responseData.numero_resolucion,
+          pdf_url: responseData.pdf_url
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMultiplesData(prev => ({
+        ...prev,
+        mutaciones: prev.mutaciones.map((m, i) =>
+          i === mutacionEnEdicion
+            ? { ...m, estado: 'FINALIZADO', resolucion_id: responseData.numero_resolucion }
+            : m
+        )
+      }));
+    } catch (err) {
+      console.error('Error actualizando estado de mutación en múltiples:', err);
+    }
+    setMutacionEnEdicion(null);
+  };
+
   // Generar resolución M1
   const generarResolucionM1 = async () => {
     // Validaciones
@@ -1535,6 +1575,9 @@ export default function MutacionesResoluciones() {
           setShowPDFViewer(true);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        await actualizarMutacionEnMultiples(token, response.data);
+
         // Limpiar formulario
         resetFormularioM1();
         setShowMutacionDialog(false);
@@ -2517,6 +2560,48 @@ export default function MutacionesResoluciones() {
     }
   };
 
+  // Función genérica para asignar a gestor de apoyo (M3, M4, M5, RECTIFICACION)
+  const asignarApoyoGenerico = async (tipo, payload, resetFn) => {
+    if (!gestorApoyoSeleccionado) {
+      toast.error('Seleccione un gestor de apoyo');
+      return;
+    }
+    setEnviandoSolicitud(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API}/solicitudes-mutacion`, {
+        ...payload,
+        gestor_apoyo_id: gestorApoyoSeleccionado
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success || response.data.exito) {
+        const solicitudId = response.data.solicitud_id || response.data.id;
+        await axios.post(`${API}/solicitudes-mutacion/${solicitudId}/accion`, {
+          accion: 'asignar_apoyo',
+          gestor_apoyo_id: gestorApoyoSeleccionado
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        toast.success(`Solicitud ${tipo} creada y asignada al gestor de apoyo`);
+        if (resetFn) resetFn();
+        setGestorApoyoSeleccionado('');
+        setTipoMutacionSeleccionado(null);
+        setActiveTab('historial');
+        fetchHistorial();
+      } else {
+        toast.error(response.data.mensaje || 'Error al crear solicitud');
+      }
+    } catch (error) {
+      console.error(`Error asignando apoyo ${tipo}:`, error);
+      toast.error(error.response?.data?.detail || 'Error al asignar a apoyo');
+    } finally {
+      setEnviandoSolicitud(false);
+    }
+  };
+
   // Enviar directamente a aprobación (sin gestor de apoyo)
   const enviarAAprobacion = async () => {
     if (!validarDatosM2()) return;
@@ -2706,6 +2791,11 @@ export default function MutacionesResoluciones() {
           toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.aprobacion_directa) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
+
         // Limpiar formulario
         resetFormularioM2();
         setShowMutacionDialog(false);
@@ -2926,6 +3016,11 @@ export default function MutacionesResoluciones() {
           toast.success(`Solicitud ${response.data.radicado} creada exitosamente. Pendiente de aprobación.`);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.aprobacion_directa) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
+
         // Limpiar formulario
         resetFormularioM3();
         setShowMutacionDialog(false);
@@ -3154,6 +3249,11 @@ export default function MutacionesResoluciones() {
           setShowPDFViewer(true);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.pdf_url) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
+
         resetFormularioM4();
         cargarHistorialResoluciones();
       } else {
@@ -3326,6 +3426,11 @@ export default function MutacionesResoluciones() {
           setShowPdfViewer(true);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.pdf_url) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
+
         // Limpiar formulario
         resetM5Form();
         setShowMutacionDialog(false);
@@ -3378,6 +3483,24 @@ export default function MutacionesResoluciones() {
       setRadicadosDisponiblesRectificacion(response.data.radicados || []);
     } catch (error) {
       console.error('Error buscando radicados Rectificación:', error);
+    }
+  };
+
+  // Buscar radicados para Complementación
+  const buscarRadicadosComplementacion = async (query) => {
+    if (query.length < 3) {
+      setRadicadosDisponiblesComplementacion([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API}/resoluciones/radicados-disponibles`, {
+        params: { busqueda: query },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRadicadosDisponiblesComplementacion(response.data.radicados || []);
+    } catch (error) {
+      console.error('Error buscando radicados Complementación:', error);
     }
   };
 
@@ -3626,6 +3749,11 @@ export default function MutacionesResoluciones() {
           setShowPDFViewer(true);
         }
         
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.pdf_url) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
+
         // Limpiar formulario
         resetRectificacionForm();
         setShowMutacionDialog(false);
@@ -3676,19 +3804,28 @@ export default function MutacionesResoluciones() {
 
     setGenerando(true);
     try {
+      const token = localStorage.getItem('token');
       const predio = complementacionData.predio;
       const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
       const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
       const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
 
       const payload = {
+        tipo: 'COMPLEMENTACION',
         tipo_mutacion: 'COMPLEMENTACION',
         municipio: complementacionData.municipio,
+        radicado: complementacionData.radicado,
         predio: predio,
+        predio_id: predio.id,
         solicitante: {
           nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '',
           documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || ''
         },
+        propietarios_anteriores: complementacionData.propietarios_anteriores,
+        propietarios_nuevos: complementacionData.propietarios_nuevos,
+        matricula_nueva: complementacionData.matricula_nueva,
+        direccion_nueva: complementacionData.direccion_nueva,
+        destino_nuevo: complementacionData.destino_nuevo,
         area_terreno_anterior: areaTerreno,
         area_construida_anterior: areaConstruida,
         avaluo_anterior: avaluo,
@@ -3706,12 +3843,32 @@ export default function MutacionesResoluciones() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.data.exito) {
+      if (response.data.exito || response.data.success) {
         toast.success(response.data.mensaje || 'Solicitud de Complementación procesada exitosamente');
+
+        // Mostrar PDF en popup si se generó
+        if (response.data.pdf_url) {
+          const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
+          setPdfViewerData({
+            url: pdfFullUrl,
+            title: `Resolución Complementación - ${response.data.numero_resolucion}`,
+            fileName: `${(response.data.numero_resolucion || '').replace(/\//g, '-')}.pdf`,
+            resolucionId: response.data.solicitud_id,
+            radicado: complementacionData.radicado,
+            correoSolicitante: ''
+          });
+          setEmailSent(false);
+          setShowPDFViewer(true);
+        }
+
+        // Si estamos en contexto de múltiples, actualizar estado de la mutación
+        if (response.data.pdf_url) {
+          await actualizarMutacionEnMultiples(token, response.data);
+        }
         resetComplementacionForm();
         setTipoMutacionSeleccionado(null);
         setActiveTab('historial');
-        cargarSolicitudesPendientes();
+        fetchHistorial();
       } else {
         toast.error(response.data.mensaje || 'Error al procesar la solicitud');
       }
@@ -3732,6 +3889,12 @@ export default function MutacionesResoluciones() {
       area_terreno_nueva: 0,
       area_construida_nueva: 0,
       avaluo_nuevo: 0,
+      matricula_nueva: '',
+      direccion_nueva: '',
+      destino_nuevo: '',
+      numero_documento_nuevo: '',
+      propietarios_anteriores: [],
+      propietarios_nuevos: [],
       documentos_soporte: 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición',
       observaciones: '',
       texto_considerando: ''
@@ -5652,7 +5815,7 @@ export default function MutacionesResoluciones() {
                             </div>
                             <div>
                               <Label className="text-xs">Número Documento *</Label>
-                              <Input value={prop.numero_documento || ''} onChange={(e) => { const valor = e.target.value.replace(/\D/g, '').slice(0, 12); actualizarPropietarioM5(index, 'numero_documento', valor); }} placeholder="Ej: 1091672736" />
+                              <Input value={prop.numero_documento || ''} onChange={(e) => { const valor = e.target.value.replace(/\D/g, '').slice(0, 12); actualizarPropietarioM5(index, 'numero_documento', valor); }} onBlur={(e) => { if (e.target.value) actualizarPropietarioM5(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }} placeholder="Ej: 1091672736" />
                               {prop.numero_documento && (<p className="text-xs text-emerald-600 mt-1">Formato final: <strong>{prop.numero_documento.padStart(12, '0')}</strong></p>)}
                             </div>
                           </div>
@@ -6388,6 +6551,38 @@ export default function MutacionesResoluciones() {
         )}
       </div>
 
+      {/* Radicado */}
+      {complementacionData.municipio && (
+        <div className="relative">
+          <Label className="text-sm font-medium">Radicado *</Label>
+          <Input
+            value={complementacionData.radicado}
+            onChange={(e) => {
+              setComplementacionData(prev => ({ ...prev, radicado: e.target.value }));
+              buscarRadicadosComplementacion(e.target.value);
+            }}
+            placeholder="Buscar radicado del sistema..."
+            data-testid="complementacion-radicado-input"
+          />
+          {radicadosDisponiblesComplementacion.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+              {radicadosDisponiblesComplementacion.map((r, idx) => (
+                <div
+                  key={idx}
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-amber-50"
+                  onClick={() => {
+                    setComplementacionData(prev => ({ ...prev, radicado: r.radicado }));
+                    setRadicadosDisponiblesComplementacion([]);
+                  }}
+                >
+                  {r.radicado} - {r.nombre_completo || r.creator_name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Buscar Predio */}
       {complementacionData.municipio && (
         <div className="space-y-2">
@@ -6398,7 +6593,7 @@ export default function MutacionesResoluciones() {
               onChange={async (e) => {
                 const valor = e.target.value;
                 setSearchPredioComplementacion(valor);
-                
+
                 if (valor.length >= 3) {
                   setSearchingPrediosComplementacion(true);
                   try {
@@ -6438,11 +6633,20 @@ export default function MutacionesResoluciones() {
                     const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                     const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
                     const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
-                    const matricula = predio.matricula_inmobiliaria || predio.r1_registros?.[0]?.matricula_inmobiliaria || '';
+                    const matricula = predio.matricula_inmobiliaria || predio.r2_registros?.[0]?.matricula_inmobiliaria || predio.r1_registros?.[0]?.matricula_inmobiliaria || '';
                     const direccion = predio.direccion || predio.r1_registros?.[0]?.direccion || '';
                     const destino = predio.destino_economico || predio.r1_registros?.[0]?.destino_economico || '';
-                    const numeroDoc = predio.propietarios?.[0]?.numero_documento || predio.numero_documento || '';
-                    
+
+                    // Cargar propietarios del predio
+                    const propsAnteriores = (predio.propietarios || []).map(p => ({
+                      nombre_propietario: p.nombre_propietario || p.nombre || '',
+                      tipo_documento: p.tipo_documento || 'C',
+                      numero_documento: p.numero_documento || '',
+                      estado_civil: p.estado_civil || ''
+                    }));
+                    // Clonar propietarios anteriores como nuevos para edición
+                    const propsNuevos = propsAnteriores.map(p => ({ ...p }));
+
                     setComplementacionData(prev => ({
                       ...prev,
                       predio: predio,
@@ -6452,7 +6656,9 @@ export default function MutacionesResoluciones() {
                       matricula_nueva: matricula,
                       direccion_nueva: direccion,
                       destino_nuevo: destino,
-                      numero_documento_nuevo: numeroDoc
+                      numero_documento_nuevo: '',
+                      propietarios_anteriores: propsAnteriores,
+                      propietarios_nuevos: propsNuevos
                     }));
                     setSearchPredioComplementacion('');
                     setSearchResultsComplementacion([]);
@@ -6506,12 +6712,162 @@ export default function MutacionesResoluciones() {
             </CardContent>
           </Card>
 
-          {/* Nuevos valores */}
+          {/* Propietarios Anteriores (CANCELAR) */}
+          <Card className="border-red-200 bg-red-50/30">
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-red-800">
+                <X className="w-4 h-4" />
+                Propietarios Actuales - CANCELAR ({complementacionData.propietarios_anteriores.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              {complementacionData.propietarios_anteriores.length === 0 ? (
+                <p className="text-center text-slate-500 py-2 text-sm">Sin propietarios registrados</p>
+              ) : (
+                complementacionData.propietarios_anteriores.map((prop, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded-lg border border-red-200 mb-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Nombre</Label>
+                        <Input value={prop.nombre_propietario} readOnly className="bg-slate-50" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Documento</Label>
+                        <Input value={`${prop.tipo_documento === 'C' ? 'CC' : prop.tipo_documento} ${prop.numero_documento}`} readOnly className="bg-slate-50" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Propietarios Nuevos (INSCRIBIR) */}
+          <Card className="border-emerald-200 bg-emerald-50/30">
+            <CardHeader className="py-3">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
+                  <Check className="w-4 h-4" />
+                  Propietarios a INSCRIBIR ({complementacionData.propietarios_nuevos.length})
+                </CardTitle>
+                <Button size="sm" onClick={() => {
+                  setComplementacionData(prev => ({
+                    ...prev,
+                    propietarios_nuevos: [...prev.propietarios_nuevos, {
+                      nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: ''
+                    }]
+                  }));
+                }} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Plus className="w-4 h-4 mr-1" /> Agregar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="py-2">
+              {complementacionData.propietarios_nuevos.length === 0 ? (
+                <p className="text-center text-slate-500 py-4">
+                  Haga clic en "Agregar" para añadir los nuevos propietarios
+                </p>
+              ) : (
+                complementacionData.propietarios_nuevos.map((prop, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded-lg border border-emerald-200 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <Badge className="bg-emerald-100 text-emerald-800">Propietario {idx + 1}</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setComplementacionData(prev => ({
+                            ...prev,
+                            propietarios_nuevos: prev.propietarios_nuevos.filter((_, i) => i !== idx)
+                          }));
+                        }}
+                        className="text-red-600 h-6"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Nombre Completo *</Label>
+                        <Input
+                          value={prop.nombre_propietario}
+                          onChange={(e) => {
+                            const newProps = [...complementacionData.propietarios_nuevos];
+                            newProps[idx] = { ...newProps[idx], nombre_propietario: e.target.value.toUpperCase() };
+                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
+                          }}
+                          placeholder="NOMBRE COMPLETO"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tipo Doc</Label>
+                        <Select
+                          value={prop.tipo_documento}
+                          onValueChange={(v) => {
+                            const newProps = [...complementacionData.propietarios_nuevos];
+                            newProps[idx] = { ...newProps[idx], tipo_documento: v };
+                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
+                          }}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="C">CC</SelectItem>
+                            <SelectItem value="N">NIT</SelectItem>
+                            <SelectItem value="T">TI</SelectItem>
+                            <SelectItem value="E">CE</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Número *</Label>
+                        <Input
+                          value={prop.numero_documento}
+                          onChange={(e) => {
+                            const newProps = [...complementacionData.propietarios_nuevos];
+                            newProps[idx] = { ...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12) };
+                            setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value) {
+                              const newProps = [...complementacionData.propietarios_nuevos];
+                              newProps[idx] = { ...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').padStart(12, '0') };
+                              setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
+                            }
+                          }}
+                          placeholder="12345678"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <Label className="text-xs">Estado Civil</Label>
+                      <RadioGroup
+                        value={prop.estado_civil || ''}
+                        onValueChange={(v) => {
+                          const newProps = [...complementacionData.propietarios_nuevos];
+                          newProps[idx] = { ...newProps[idx], estado_civil: v };
+                          setComplementacionData(prev => ({ ...prev, propietarios_nuevos: newProps }));
+                        }}
+                        className="flex flex-wrap gap-3 mt-1"
+                      >
+                        <div className="flex items-center space-x-1"><RadioGroupItem value="" id={`comp_estado_${idx}_sin`} /><Label htmlFor={`comp_estado_${idx}_sin`} className="text-xs cursor-pointer text-slate-500">Sin especificar</Label></div>
+                        <div className="flex items-center space-x-1"><RadioGroupItem value="S" id={`comp_estado_${idx}_sol`} /><Label htmlFor={`comp_estado_${idx}_sol`} className="text-xs cursor-pointer">S: Soltero/a</Label></div>
+                        <div className="flex items-center space-x-1"><RadioGroupItem value="C" id={`comp_estado_${idx}_cas`} /><Label htmlFor={`comp_estado_${idx}_cas`} className="text-xs cursor-pointer">C: Casado/a</Label></div>
+                        <div className="flex items-center space-x-1"><RadioGroupItem value="V" id={`comp_estado_${idx}_viu`} /><Label htmlFor={`comp_estado_${idx}_viu`} className="text-xs cursor-pointer">V: Viudo/a</Label></div>
+                        <div className="flex items-center space-x-1"><RadioGroupItem value="U" id={`comp_estado_${idx}_uni`} /><Label htmlFor={`comp_estado_${idx}_uni`} className="text-xs cursor-pointer">U: Unión libre</Label></div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Información del Predio a Complementar */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Edit className="w-4 h-4 text-slate-600" />
-                Información a Complementar
+                Datos del Predio a Complementar
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -6527,12 +6883,12 @@ export default function MutacionesResoluciones() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Número de Documento del Propietario</Label>
+                  <Label className="text-xs">Destino Económico</Label>
                   <Input
-                    value={complementacionData.numero_documento_nuevo}
-                    onChange={(e) => setComplementacionData(prev => ({ ...prev, numero_documento_nuevo: e.target.value }))}
-                    placeholder="Número de documento"
-                    data-testid="complementacion-numero-documento"
+                    value={complementacionData.destino_nuevo}
+                    onChange={(e) => setComplementacionData(prev => ({ ...prev, destino_nuevo: e.target.value }))}
+                    placeholder="Ej: A (Agropecuario), H (Habitacional), C (Comercial)"
+                    data-testid="complementacion-destino"
                   />
                 </div>
               </div>
@@ -6545,57 +6901,42 @@ export default function MutacionesResoluciones() {
                   data-testid="complementacion-direccion"
                 />
               </div>
-              <div>
-                <Label className="text-xs">Destino Económico</Label>
-                <Input
-                  value={complementacionData.destino_nuevo}
-                  onChange={(e) => setComplementacionData(prev => ({ ...prev, destino_nuevo: e.target.value }))}
-                  placeholder="Ej: A (Agropecuario), H (Habitacional), C (Comercial)"
-                  data-testid="complementacion-destino"
-                />
-              </div>
-              
+
               {/* Campos NO Editables - Áreas y Avalúo */}
               <div className="border-t pt-4 mt-4">
                 <p className="text-xs text-amber-600 mb-3 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   Las áreas y el avalúo no son editables en Complementación. Para modificar áreas use Rectificación de Área.
                 </p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-xs text-slate-400">Área Terreno (m²) - No editable</Label>
+                    <Label className="text-xs text-slate-400">Área Terreno (m²)</Label>
                     <Input
                       type="number"
-                      step="0.01"
                       value={complementacionData.area_terreno_nueva}
                       disabled
                       className="bg-slate-100 cursor-not-allowed"
-                      data-testid="complementacion-area-terreno"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Área Construida (m²) - No editable</Label>
+                    <Label className="text-xs text-slate-400">Área Construida (m²)</Label>
                     <Input
                       type="number"
-                      step="0.01"
                       value={complementacionData.area_construida_nueva}
                       disabled
                       className="bg-slate-100 cursor-not-allowed"
-                      data-testid="complementacion-area-construida"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400">Avalúo ($)</Label>
+                    <Input
+                      type="number"
+                      value={complementacionData.avaluo_nuevo}
+                      disabled
+                      className="bg-slate-100 cursor-not-allowed"
                     />
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <Label className="text-xs text-slate-400">Avalúo ($) - No editable</Label>
-                <Input
-                  type="number"
-                  value={complementacionData.avaluo_nuevo}
-                  disabled
-                  className="bg-slate-100 cursor-not-allowed"
-                  data-testid="complementacion-avaluo"
-                />
               </div>
             </CardContent>
           </Card>
@@ -7929,15 +8270,16 @@ export default function MutacionesResoluciones() {
                             value={m2Data.predio_resultante?.propietarios?.[0]?.numero_documento || ''}
                             onChange={(e) => setM2Data(prev => ({
                               ...prev,
-                              predio_resultante: { 
-                                ...prev.predio_resultante, 
+                              predio_resultante: {
+                                ...prev.predio_resultante,
                                 propietarios: [{
                                   ...(prev.predio_resultante?.propietarios?.[0] || {}),
-                                  numero_documento: e.target.value,
-                                  documento: e.target.value
+                                  numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12),
+                                  documento: e.target.value.replace(/\D/g, '').slice(0, 12)
                                 }]
                               }
                             }))}
+                            onBlur={(e) => { if (e.target.value) { const padded = e.target.value.replace(/\D/g, '').padStart(12, '0'); setM2Data(prev => ({ ...prev, predio_resultante: { ...prev.predio_resultante, propietarios: [{ ...(prev.predio_resultante?.propietarios?.[0] || {}), numero_documento: padded, documento: padded }] } })); } }}
                             placeholder="Número de documento"
                           />
                         </div>
@@ -8981,9 +9323,10 @@ export default function MutacionesResoluciones() {
                               </div>
                               <div>
                                 <Label className="text-xs">Número *</Label>
-                                <Input 
+                                <Input
                                   value={prop.numero_documento}
-                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value)}
+                                  onChange={(e) => actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                                  onBlur={(e) => { if (e.target.value) actualizarPropietarioNuevo(idx, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                                   placeholder="12345678"
                                 />
                               </div>
@@ -9096,10 +9439,32 @@ export default function MutacionesResoluciones() {
                         
                         if (response.data.exito) {
                           toast.success('Solicitud M1 enviada a aprobación');
+                          // Actualizar mutación en múltiples a PENDIENTE
+                          if (multiplesData.peticion_id && mutacionEnEdicion !== null) {
+                            const mut = multiplesData.mutaciones[mutacionEnEdicion];
+                            if (mut && mut.id) {
+                              try {
+                                await axios.patch(
+                                  `${API}/petitions/${multiplesData.peticion_id}/mutaciones/${mut.id}`,
+                                  { estado: 'PENDIENTE_APROBACION' },
+                                  { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                                setMultiplesData(prev => ({
+                                  ...prev,
+                                  mutaciones: prev.mutaciones.map((m, i) =>
+                                    i === mutacionEnEdicion ? { ...m, estado: 'PENDIENTE' } : m
+                                  )
+                                }));
+                                setMutacionEnEdicion(null);
+                              } catch (err) {
+                                console.error('Error actualizando mutación:', err);
+                              }
+                            }
+                          }
                           resetFormularioM1();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9130,9 +9495,46 @@ export default function MutacionesResoluciones() {
             )}
             {tipoMutacionSeleccionado?.codigo === 'M3' && m3Data.predio && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {/* Selector de Gestor de Apoyo */}
                 {!puedeAprobar && (
-                  <Button 
+                  <select
+                    value={gestorApoyoSeleccionado}
+                    onChange={(e) => setGestorApoyoSeleccionado(e.target.value)}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Gestor de apoyo (opcional)</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name}</option>
+                    ))}
+                  </select>
+                )}
+                {/* Botón Asignar a Apoyo */}
+                {!puedeAprobar && gestorApoyoSeleccionado && (
+                  <Button
+                    onClick={() => {
+                      if (!m3Data.predio || !m3Data.radicado) { toast.error('Debe seleccionar un predio y un radicado'); return; }
+                      asignarApoyoGenerico('M3', {
+                        tipo: 'M3', tipo_mutacion: 'M3', subtipo: m3Data.subtipo, municipio: m3Data.municipio,
+                        radicado: m3Data.radicado, predio: m3Data.predio, predio_id: m3Data.predio.id,
+                        codigo_predial: m3Data.predio.codigo_predial_nacional || m3Data.predio.codigo_homologado || null,
+                        destino_anterior: m3Data.destino_anterior || m3Data.predio.destino_economico || null,
+                        destino_nuevo: m3Data.destino_nuevo, construcciones_nuevas: m3Data.construcciones_nuevas,
+                        avaluo_anterior: m3Data.avaluo_anterior || m3Data.predio.avaluo || null,
+                        avaluo_nuevo: m3Data.avaluo_nuevo, observaciones: m3Data.observaciones,
+                        texto_considerando: m3Data.texto_considerando
+                      }, resetFormularioM3);
+                    }}
+                    disabled={enviandoSolicitud}
+                    variant="outline"
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  >
+                    {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Asignar a Apoyo
+                  </Button>
+                )}
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && !gestorApoyoSeleccionado && (
+                  <Button
                     onClick={async () => {
                       if (!m3Data.predio || !m3Data.radicado) {
                         toast.error('Debe seleccionar un predio y un radicado');
@@ -9160,19 +9562,19 @@ export default function MutacionesResoluciones() {
                           texto_considerando: m3Data.texto_considerando,
                           enviar_a_aprobacion: true
                         };
-                        
+
                         const response = await axios.post(
                           `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         if (response.data.exito) {
                           toast.success('Solicitud M3 enviada a aprobación');
                           resetFormularioM3();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9204,9 +9606,42 @@ export default function MutacionesResoluciones() {
             )}
             {tipoMutacionSeleccionado?.codigo === 'M4' && m4Data.predio && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {/* Selector de Gestor de Apoyo */}
                 {!puedeAprobar && (
-                  <Button 
+                  <select
+                    value={gestorApoyoSeleccionado}
+                    onChange={(e) => setGestorApoyoSeleccionado(e.target.value)}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Gestor de apoyo (opcional)</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name}</option>
+                    ))}
+                  </select>
+                )}
+                {/* Botón Asignar a Apoyo */}
+                {!puedeAprobar && gestorApoyoSeleccionado && (
+                  <Button
+                    onClick={() => {
+                      if (!m4Data.predio || !m4Data.radicado) { toast.error('Debe seleccionar un predio y un radicado'); return; }
+                      asignarApoyoGenerico('M4', {
+                        tipo: 'M4', tipo_mutacion: 'M4', subtipo: m4Data.subtipo, decision: m4Data.decision,
+                        municipio: m4Data.municipio, radicado: m4Data.radicado, predio: m4Data.predio,
+                        predio_id: m4Data.predio.id, avaluo_nuevo: m4Data.avaluo_nuevo,
+                        observaciones: m4Data.observaciones, texto_considerando: m4Data.texto_considerando
+                      }, resetFormularioM4);
+                    }}
+                    disabled={enviandoSolicitud}
+                    variant="outline"
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  >
+                    {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Asignar a Apoyo
+                  </Button>
+                )}
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && !gestorApoyoSeleccionado && (
+                  <Button
                     onClick={async () => {
                       if (!m4Data.predio || !m4Data.radicado) {
                         toast.error('Debe seleccionar un predio y un radicado');
@@ -9229,19 +9664,19 @@ export default function MutacionesResoluciones() {
                           texto_considerando: m4Data.texto_considerando,
                           enviar_a_aprobacion: true
                         };
-                        
+
                         const response = await axios.post(
                           `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         if (response.data.exito) {
                           toast.success('Solicitud M4 enviada a aprobación');
                           resetFormularioM4();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9273,9 +9708,44 @@ export default function MutacionesResoluciones() {
             )}
             {tipoMutacionSeleccionado?.codigo === 'M5' && m5Data.subtipo && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {/* Selector de Gestor de Apoyo */}
                 {!puedeAprobar && (
-                  <Button 
+                  <select
+                    value={gestorApoyoSeleccionado}
+                    onChange={(e) => setGestorApoyoSeleccionado(e.target.value)}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Gestor de apoyo (opcional)</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name}</option>
+                    ))}
+                  </select>
+                )}
+                {/* Botón Asignar a Apoyo */}
+                {!puedeAprobar && gestorApoyoSeleccionado && (
+                  <Button
+                    onClick={() => {
+                      if (!m5Data.predio || !m5Data.radicado) { toast.error('Debe seleccionar un predio y un radicado'); return; }
+                      asignarApoyoGenerico('M5', {
+                        tipo: 'M5', tipo_mutacion: 'M5', subtipo: m5Data.subtipo, municipio: m5Data.municipio,
+                        radicado: m5Data.radicado, predio: m5Data.predio, predio_id: m5Data.predio.id,
+                        predio_m5: m5Data.predio, vigencia_cancelacion: m5Data.vigencia,
+                        motivo_solicitud: m5Data.motivo_solicitud, es_doble_inscripcion: m5Data.es_doble_inscripcion,
+                        codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
+                        observaciones: m5Data.observaciones, texto_considerando: m5Data.texto_considerando
+                      }, resetM5Form);
+                    }}
+                    disabled={enviandoSolicitud}
+                    variant="outline"
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  >
+                    {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Asignar a Apoyo
+                  </Button>
+                )}
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && !gestorApoyoSeleccionado && (
+                  <Button
                     onClick={async () => {
                       if (!m5Data.predio || !m5Data.radicado) {
                         toast.error('Debe seleccionar un predio y un radicado');
@@ -9301,19 +9771,19 @@ export default function MutacionesResoluciones() {
                           texto_considerando: m5Data.texto_considerando,
                           enviar_a_aprobacion: true
                         };
-                        
+
                         const response = await axios.post(
                           `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         if (response.data.exito) {
                           toast.success('Solicitud M5 enviada a aprobación');
                           resetM5Form();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9346,9 +9816,54 @@ export default function MutacionesResoluciones() {
             )}
             {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {/* Selector de Gestor de Apoyo */}
                 {!puedeAprobar && (
-                  <Button 
+                  <select
+                    value={gestorApoyoSeleccionado}
+                    onChange={(e) => setGestorApoyoSeleccionado(e.target.value)}
+                    className="h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Gestor de apoyo (opcional)</option>
+                    {gestoresDisponibles.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name}</option>
+                    ))}
+                  </select>
+                )}
+                {/* Botón Asignar a Apoyo */}
+                {!puedeAprobar && gestorApoyoSeleccionado && (() => {
+                  const predio = rectificacionData.predio;
+                  const areaTerreno = predio?.area_terreno || predio?.r1_registros?.[0]?.area_terreno || 0;
+                  const areaConstruida = predio?.area_construida || predio?.r1_registros?.[0]?.area_construida || 0;
+                  const avaluo = predio?.avaluo || predio?.r1_registros?.[0]?.avaluo || 0;
+                  return (
+                    <Button
+                      onClick={() => {
+                        if (!rectificacionData.predio || !rectificacionData.radicado) { toast.error('Debe seleccionar un predio y un radicado'); return; }
+                        asignarApoyoGenerico('RECTIFICACION_AREA', {
+                          tipo: 'RECTIFICACION_AREA', tipo_mutacion: 'RECTIFICACION_AREA',
+                          municipio: rectificacionData.municipio, radicado: rectificacionData.radicado,
+                          predio: predio, predio_id: predio.id,
+                          solicitante: { nombre: predio.nombre_propietario || predio.propietarios?.[0]?.nombre_propietario || '', documento: predio.numero_documento || predio.propietarios?.[0]?.numero_documento || '' },
+                          area_terreno_anterior: areaTerreno, area_construida_anterior: areaConstruida, avaluo_anterior: avaluo,
+                          area_terreno_nueva: rectificacionData.area_terreno_nueva,
+                          area_construida_nueva: rectificacionData.area_construida_nueva,
+                          avaluo_nuevo: rectificacionData.avaluo_nuevo,
+                          motivo_solicitud: rectificacionData.motivo_solicitud,
+                          observaciones: rectificacionData.observaciones, texto_considerando: rectificacionData.texto_considerando
+                        }, resetRectificacionForm);
+                      }}
+                      disabled={enviandoSolicitud}
+                      variant="outline"
+                      className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                    >
+                      {enviandoSolicitud ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                      Asignar a Apoyo
+                    </Button>
+                  );
+                })()}
+                {/* Botón Enviar a Aprobación (si no puede aprobar) */}
+                {!puedeAprobar && !gestorApoyoSeleccionado && (
+                  <Button
                     onClick={async () => {
                       if (!rectificacionData.predio || !rectificacionData.radicado) {
                         toast.error('Debe seleccionar un predio y un radicado');
@@ -9361,7 +9876,7 @@ export default function MutacionesResoluciones() {
                         const areaTerreno = predio.area_terreno || predio.r1_registros?.[0]?.area_terreno || 0;
                         const areaConstruida = predio.area_construida || predio.r1_registros?.[0]?.area_construida || 0;
                         const avaluo = predio.avaluo || predio.r1_registros?.[0]?.avaluo || 0;
-                        
+
                         const payload = {
                           tipo: 'RECTIFICACION_AREA',
                           tipo_mutacion: 'RECTIFICACION_AREA',
@@ -9384,19 +9899,19 @@ export default function MutacionesResoluciones() {
                           texto_considerando: rectificacionData.texto_considerando,
                           enviar_a_aprobacion: true
                         };
-                        
+
                         const response = await axios.post(
                           `${API}/solicitudes-mutacion`,
                           payload,
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
-                        
+
                         if (response.data.exito) {
                           toast.success('Solicitud enviada a aprobación exitosamente');
                           resetRectificacionForm();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9478,7 +9993,7 @@ export default function MutacionesResoluciones() {
                           resetComplementacionForm();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
-                          cargarSolicitudesPendientes();
+                          fetchHistorial();
                         } else {
                           toast.error(response.data.mensaje || 'Error al enviar solicitud');
                         }
@@ -9745,7 +10260,8 @@ export default function MutacionesResoluciones() {
                               <Label className="text-xs">Número Doc.</Label>
                               <Input
                                 value={prop.numero_documento || ''}
-                                onChange={(e) => actualizarPropietarioEdicion(propIdx, 'numero_documento', e.target.value)}
+                                onChange={(e) => actualizarPropietarioEdicion(propIdx, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                                onBlur={(e) => { if (e.target.value) actualizarPropietarioEdicion(propIdx, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                                 className="h-8"
                               />
                             </div>
@@ -10324,7 +10840,8 @@ export default function MutacionesResoluciones() {
                             <Label className="text-xs">Número Doc. *</Label>
                             <Input
                               value={prop.numero_documento}
-                              onChange={(e) => actualizarPropietarioNuevoPredio(index, 'numero_documento', e.target.value.replace(/\D/g, ''))}
+                              onChange={(e) => actualizarPropietarioNuevoPredio(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                              onBlur={(e) => { if (e.target.value) actualizarPropietarioNuevoPredio(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                               placeholder="12345678"
                               className="h-8"
                             />
@@ -11039,8 +11556,8 @@ export default function MutacionesResoluciones() {
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                              mut.estado === 'APROBADA' ? 'bg-green-500 text-white' :
-                              mut.estado === 'PENDIENTE' ? 'bg-amber-500 text-white' :
+                              mut.estado === 'APROBADA' || mut.estado === 'FINALIZADO' ? 'bg-green-500 text-white' :
+                              mut.estado === 'PENDIENTE' || mut.estado === 'PENDIENTE_APROBACION' ? 'bg-amber-500 text-white' :
                               'bg-slate-300 text-slate-700'
                             }`}>
                               {index + 1}
@@ -11053,9 +11570,9 @@ export default function MutacionesResoluciones() {
                                 <span className="font-medium">{mut.nombre || TIPOS_MUTACION[mut.tipo]?.nombre}</span>
                               </div>
                               <p className="text-xs text-slate-500">
-                                {mut.estado === 'APROBADA' && mut.resolucion_id 
-                                  ? `Resolución: ${mut.resolucion_id}` 
-                                  : `Estado: ${mut.estado}`
+                                {(mut.estado === 'APROBADA' || mut.estado === 'FINALIZADO') && mut.resolucion_id
+                                  ? `Resolución: ${mut.resolucion_id}`
+                                  : `Estado: ${mut.estado === 'PENDIENTE_APROBACION' ? 'Pendiente de Aprobación' : mut.estado}`
                                 }
                               </p>
                             </div>

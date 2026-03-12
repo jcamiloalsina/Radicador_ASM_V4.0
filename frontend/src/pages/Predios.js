@@ -3896,13 +3896,13 @@ export default function Predios() {
                     </div>
                     <div>
                       <Label className="text-xs">Número Documento *</Label>
-                      <Input 
-                        value={prop.numero_documento || ''} 
+                      <Input
+                        value={prop.numero_documento || ''}
                         onChange={(e) => {
-                          // Solo permitir números y máximo 12 dígitos
                           const valor = e.target.value.replace(/\D/g, '').slice(0, 12);
                           actualizarPropietario(index, 'numero_documento', valor);
                         }}
+                        onBlur={(e) => { if (e.target.value) actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                         placeholder="Ej: 1091672736"
                       />
                       {prop.numero_documento && (

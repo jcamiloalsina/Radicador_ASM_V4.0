@@ -2455,9 +2455,10 @@ export default function GestionPrediosActualizacion() {
                     </div>
                     <div>
                       <Label className="text-xs">Número Documento *</Label>
-                      <Input 
-                        value={prop.numero_documento} 
-                        onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value)}
+                      <Input
+                        value={prop.numero_documento}
+                        onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                        onBlur={(e) => { if (e.target.value) actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }}
                       />
                     </div>
                     <div>
@@ -2810,7 +2811,7 @@ export default function GestionPrediosActualizacion() {
                     </div>
                     <div>
                       <Label className="text-xs">Número Documento *</Label>
-                      <Input value={prop.numero_documento || ''} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} />
+                      <Input value={prop.numero_documento || ''} onChange={(e) => actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} onBlur={(e) => { if (e.target.value) actualizarPropietario(index, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }} />
                     </div>
                   </div>
                 </div>

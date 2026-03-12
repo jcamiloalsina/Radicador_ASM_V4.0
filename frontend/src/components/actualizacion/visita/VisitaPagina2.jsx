@@ -111,7 +111,7 @@ const VisitaPagina2 = memo(({
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500">Número</Label>
-                    <Input value={prop.numero_documento} onChange={(e) => actualizarPropietario(idx, 'numero_documento', e.target.value)} className="h-8 text-sm" />
+                    <Input value={prop.numero_documento} onChange={(e) => actualizarPropietario(idx, 'numero_documento', e.target.value.replace(/\D/g, '').slice(0, 12))} onBlur={(e) => { if (e.target.value) actualizarPropietario(idx, 'numero_documento', e.target.value.replace(/\D/g, '').padStart(12, '0')); }} className="h-8 text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3 mb-2">
