@@ -1556,7 +1556,8 @@ export default function MutacionesResoluciones() {
       fecha_resolucion: '',
       radicado_peticion: '',
       propietarios_anteriores: [],
-      propietarios_nuevos: []
+      propietarios_nuevos: [],
+      texto_considerando: ''
     });
     setSearchPredioM1('');
     setSearchResultsM1([]);
@@ -2950,7 +2951,9 @@ export default function MutacionesResoluciones() {
       avaluo_anterior: 0,
       avaluo_nuevo: 0,
       fechas_inscripcion: [{ año: new Date().getFullYear(), avaluo: '', avaluo_source: 'manual' }],
-      observaciones: ''
+      observaciones: '',
+      solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+      texto_considerando: ''
     });
     setSearchPredioM3('');
     setSearchResultsM3([]);
@@ -3177,7 +3180,9 @@ export default function MutacionesResoluciones() {
       valor_autoestimado: 0,
       motivo_solicitud: '',
       observaciones: '',
-      perito_avaluador: ''
+      perito_avaluador: '',
+      solicitante: { nombre: '', documento: '', tipo_documento: 'CC' },
+      texto_considerando: ''
     });
     setSearchPredioM4('');
     setSearchResultsM4([]);
@@ -3346,7 +3351,8 @@ export default function MutacionesResoluciones() {
       motivo_solicitud: '',
       es_doble_inscripcion: false,
       codigo_predio_duplicado: '',
-      observaciones: ''
+      observaciones: '',
+      texto_considerando: ''
     });
     setSearchPredioM5('');
     setSearchResultsM5([]);
@@ -9073,8 +9079,12 @@ export default function MutacionesResoluciones() {
                           radicado: m1Data.radicado_peticion,
                           predio: m1Data.predio,
                           predio_id: m1Data.predio.id,
+                          codigo_predial: m1Data.predio.codigo_predial_nacional || m1Data.predio.codigo_homologado || null,
+                          predio_direccion: m1Data.predio.direccion || null,
+                          propietarios_anteriores: m1Data.propietarios_anteriores,
                           propietarios_nuevos: m1Data.propietarios_nuevos,
                           observaciones: m1Data.observaciones,
+                          texto_considerando: m1Data.texto_considerando || '',
                           enviar_a_aprobacion: true
                         };
                         
@@ -9139,8 +9149,12 @@ export default function MutacionesResoluciones() {
                           radicado: m3Data.radicado,
                           predio: m3Data.predio,
                           predio_id: m3Data.predio.id,
+                          codigo_predial: m3Data.predio.codigo_predial_nacional || m3Data.predio.codigo_homologado || null,
+                          predio_direccion: m3Data.predio.direccion || null,
+                          destino_anterior: m3Data.destino_anterior || m3Data.predio.destino_economico || null,
                           destino_nuevo: m3Data.destino_nuevo,
                           construcciones_nuevas: m3Data.construcciones_nuevas,
+                          avaluo_anterior: m3Data.avaluo_anterior || m3Data.predio.avaluo || null,
                           avaluo_nuevo: m3Data.avaluo_nuevo,
                           observaciones: m3Data.observaciones,
                           texto_considerando: m3Data.texto_considerando,
@@ -9278,8 +9292,11 @@ export default function MutacionesResoluciones() {
                           radicado: m5Data.radicado,
                           predio: m5Data.predio,
                           predio_id: m5Data.predio.id,
-                          zonas: m5Data.zonas,
-                          construcciones: m5Data.construcciones,
+                          predio_m5: m5Data.predio,
+                          vigencia_cancelacion: m5Data.vigencia,
+                          motivo_solicitud: m5Data.motivo_solicitud,
+                          es_doble_inscripcion: m5Data.es_doble_inscripcion,
+                          codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
                           observaciones: m5Data.observaciones,
                           texto_considerando: m5Data.texto_considerando,
                           enviar_a_aprobacion: true
@@ -9293,7 +9310,7 @@ export default function MutacionesResoluciones() {
                         
                         if (response.data.exito) {
                           toast.success('Solicitud M5 enviada a aprobación');
-                          resetFormularioM5();
+                          resetM5Form();
                           setTipoMutacionSeleccionado(null);
                           setActiveTab('historial');
                           cargarSolicitudesPendientes();

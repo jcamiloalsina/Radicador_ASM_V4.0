@@ -14752,13 +14752,15 @@ async def proponer_cambio_predio(
     # Notificar al gestor de apoyo si fue asignado
     if usa_gestor_apoyo:
         predio_codigo = predio_actual_data.get('codigo_predial_nacional', 'N/A') if predio_actual_data else 'N/A'
-        await crear_notificacion(
-            user_id=cambio.gestor_apoyo_id,
-            tipo="modificacion_asignada",
-            titulo="Modificación de predio asignada",
-            mensaje=f"{current_user['full_name']} te ha asignado la modificación del predio {predio_codigo}",
-            datos={"cambio_id": cambio_doc["id"], "predio_id": cambio.predio_id}
-        )
+        try:
+            await crear_notificacion(
+                usuario_id=cambio.gestor_apoyo_id,
+                titulo="Modificación de predio asignada",
+                mensaje=f"{current_user['full_name']} te ha asignado la modificación del predio {predio_codigo}",
+                tipo="modificacion_asignada"
+            )
+        except Exception as e:
+            logging.error(f"Error enviando notificación de asignación: {e}")
     
     # Construir mensaje de respuesta
     if aprueba_directo:
@@ -15136,7 +15138,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             "codigo_predial": codigo,
             "municipio": datos_predio.get("municipio", ""),
             "direccion": datos_predio.get("direccion", "Sin dirección"),
-            "matricula_inmobiliaria": datos_r1_r2_nuevos.get("matricula_inmobiliaria") or datos_predio.get("matricula_inmobiliaria", ""),
+            "matricula_inmobiliaria": datos_r1_r2_anterior.get("matricula_inmobiliaria") if predio_original else datos_predio.get("matricula_inmobiliaria", ""),
             "propietarios": [datos_predio.get("nombre_propietario", "")] if datos_predio.get("nombre_propietario") else [],
             "area_terreno": str(datos_predio.get("area_terreno", datos_predio.get("area_terreno_r1", 0))),
             "avaluo_catastral": f"${datos_predio.get('avaluo', 0):,.0f}".replace(",", "."),
@@ -17120,29 +17122,32 @@ async def aprobar_rechazar_cambio(
     
     # Notificar al usuario que propuso el cambio
     if cambio.get("propuesto_por"):
-        codigo_predio = cambio.get("datos_propuestos", {}).get("codigo_predial_nacional", 
+        codigo_predio = cambio.get("datos_propuestos", {}).get("codigo_predial_nacional",
                         cambio.get("datos_propuestos", {}).get("codigo_homologado", "N/A"))
-        
-        if request.aprobado:
-            # Notificar aprobación - incluir instrucción para sincronizar
-            await crear_notificacion(
-                usuario_id=cambio["propuesto_por"],
-                titulo="✅ Cambio de Predio Aprobado",
-                mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido aprobado por {current_user['full_name']}. Por favor, sincronice los datos del municipio para ver los cambios actualizados.",
-                tipo="success",
-                enlace=f"/dashboard/conservacion?municipio={cambio.get('datos_propuestos', {}).get('municipio', '')}",
-                enviar_email=False
-            )
-        else:
-            # Notificar rechazo
-            await crear_notificacion(
-                usuario_id=cambio["propuesto_por"],
-                titulo="❌ Cambio de Predio Rechazado",
-                mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido rechazado por {current_user['full_name']}. Motivo: {request.comentario or 'Sin comentario'}",
-                tipo="warning",
-                enlace="/dashboard/pendientes",
-                enviar_email=False
-            )
+
+        try:
+            if request.aprobado:
+                # Notificar aprobación - incluir instrucción para sincronizar
+                await crear_notificacion(
+                    usuario_id=cambio["propuesto_por"],
+                    titulo="✅ Cambio de Predio Aprobado",
+                    mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido aprobado por {current_user['full_name']}. Por favor, sincronice los datos del municipio para ver los cambios actualizados.",
+                    tipo="success",
+                    enlace=f"/dashboard/conservacion?municipio={cambio.get('datos_propuestos', {}).get('municipio', '')}",
+                    enviar_email=False
+                )
+            else:
+                # Notificar rechazo
+                await crear_notificacion(
+                    usuario_id=cambio["propuesto_por"],
+                    titulo="❌ Cambio de Predio Rechazado",
+                    mensaje=f"El cambio propuesto para el predio {codigo_predio} ha sido rechazado por {current_user['full_name']}. Motivo: {request.comentario or 'Sin comentario'}",
+                    tipo="warning",
+                    enlace="/dashboard/pendientes",
+                    enviar_email=False
+                )
+        except Exception as e:
+            logging.error(f"Error enviando notificación de aprobación/rechazo: {e}")
     
     # === WEBSOCKET NOTIFICATION ===
     # Broadcast real-time notification to all connected users
@@ -17285,13 +17290,15 @@ async def completar_asignacion_apoyo(
     
     # Notificar al creador original del cambio
     if cambio.get("propuesto_por"):
-        await crear_notificacion(
-            user_id=cambio["propuesto_por"],
-            tipo="modificacion_completada",
-            titulo="Modificación completada por gestor de apoyo",
-            mensaje=f"{current_user['full_name']} completó la modificación del predio {predio_codigo}. Pendiente de aprobación.",
-            datos={"cambio_id": cambio_id, "predio_id": cambio.get("predio_id")}
-        )
+        try:
+            await crear_notificacion(
+                usuario_id=cambio["propuesto_por"],
+                tipo="modificacion_completada",
+                titulo="Modificación completada por gestor de apoyo",
+                mensaje=f"{current_user['full_name']} completó la modificación del predio {predio_codigo}. Pendiente de aprobación."
+            )
+        except Exception as e:
+            logging.error(f"Error enviando notificación de completar apoyo: {e}")
     
     return {
         "mensaje": "Modificación completada y enviada a revisión",
@@ -30671,12 +30678,39 @@ async def crear_solicitud_mutacion(
         # Si NO puede aprobar: PENDIENTE_APROBACION (queda en cola para aprobación)
         estado_inicial = MutacionEstado.APROBADO if puede_aprobar_directo else MutacionEstado.PENDIENTE_APROBACION
         
+        # Resolver nombre del municipio si se envió un código DIVIPOLA
+        municipio_nombre = data.municipio
+        if data.municipio and data.municipio in MUNICIPIOS_POR_CODIGO:
+            municipio_nombre = MUNICIPIOS_POR_CODIGO[data.municipio]["nombre"]
+
+        # Enriquecer datos del predio si tenemos predio_id pero faltan codigo_predial o propietarios_anteriores
+        codigo_predial = data.codigo_predial
+        predio_direccion = data.predio_direccion
+        propietarios_anteriores = data.propietarios_anteriores
+        destino_anterior = data.destino_anterior
+        avaluo_anterior = data.avaluo_anterior
+
+        if data.predio_id and (not codigo_predial or not propietarios_anteriores):
+            predio_ref = await db.predios.find_one({"id": data.predio_id}, {"_id": 0})
+            if predio_ref:
+                if not codigo_predial:
+                    codigo_predial = predio_ref.get("codigo_predial_nacional") or predio_ref.get("codigo_homologado")
+                if not predio_direccion:
+                    predio_direccion = predio_ref.get("direccion")
+                if not propietarios_anteriores:
+                    propietarios_anteriores = predio_ref.get("propietarios", [])
+                if not destino_anterior:
+                    destino_anterior = predio_ref.get("destino_economico")
+                if not avaluo_anterior:
+                    avaluo_anterior = predio_ref.get("avaluo")
+
         solicitud = {
             "id": solicitud_id,
             "tipo": data.tipo,
             "subtipo": data.subtipo,
             "estado": estado_inicial,
-            "municipio": data.municipio,
+            "municipio": municipio_nombre,
+            "municipio_codigo": data.municipio,
             "radicado": radicado,
             "solicitante": data.solicitante,
             "predios_cancelados": data.predios_cancelados,
@@ -30684,21 +30718,21 @@ async def crear_solicitud_mutacion(
             "observaciones": data.observaciones,
             # Para M1
             "predio_id": data.predio_id,
-            "propietarios_anteriores": data.propietarios_anteriores,
+            "propietarios_anteriores": propietarios_anteriores,
             "propietarios_nuevos": data.propietarios_nuevos,
             # Para M3
-            "destino_anterior": data.destino_anterior,
+            "destino_anterior": destino_anterior,
             "destino_nuevo": data.destino_nuevo,
             "construcciones_nuevas": data.construcciones_nuevas,
-            "avaluo_anterior": data.avaluo_anterior,
+            "avaluo_anterior": avaluo_anterior,
             "avaluo_nuevo": data.avaluo_nuevo,
             "fechas_inscripcion": data.fechas_inscripcion,
             # Para M4
             "motivo_solicitud": data.motivo_solicitud,
             "valor_autoestimado": data.valor_autoestimado,
             "decision": data.decision or "aceptar",
-            "codigo_predial": data.codigo_predial,
-            "predio_direccion": data.predio_direccion,
+            "codigo_predial": codigo_predial,
+            "predio_direccion": predio_direccion,
             "perito_avaluador": data.perito_avaluador,
             # Para M5
             "vigencia_cancelacion": data.vigencia_cancelacion,
@@ -30907,7 +30941,21 @@ async def listar_pendientes_aprobacion(
             {"estado": MutacionEstado.PENDIENTE_APROBACION},
             {"_id": 0}
         ).sort("fecha_creacion", -1).to_list(500)
-        
+
+        # Enriquecer solicitudes con datos del predio si faltan
+        for sol in solicitudes:
+            if sol.get("predio_id") and not sol.get("codigo_predial"):
+                predio_ref = await db.predios.find_one({"id": sol["predio_id"]}, {"_id": 0, "historial": 0})
+                if predio_ref:
+                    sol["codigo_predial"] = predio_ref.get("codigo_predial_nacional") or predio_ref.get("codigo_homologado")
+                    sol["predio_direccion"] = sol.get("predio_direccion") or predio_ref.get("direccion")
+                    if not sol.get("propietarios_anteriores"):
+                        sol["propietarios_anteriores"] = predio_ref.get("propietarios", [])
+                    if not sol.get("destino_anterior"):
+                        sol["destino_anterior"] = predio_ref.get("destino_economico")
+                    if not sol.get("avaluo_anterior"):
+                        sol["avaluo_anterior"] = predio_ref.get("avaluo")
+
         return {
             "success": True,
             "solicitudes": solicitudes,

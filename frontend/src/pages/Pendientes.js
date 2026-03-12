@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog';
+import PDFViewerModal from '../components/PDFViewerModal';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -103,7 +104,8 @@ export default function Pendientes() {
   const [showMutacionModal, setShowMutacionModal] = useState(false);
   const [observacionesMutacion, setObservacionesMutacion] = useState('');
   const [procesandoMutacion, setProcesandoMutacion] = useState(false);
-  
+  const [pdfViewerData, setPdfViewerData] = useState({ isOpen: false, url: '', title: '', fileName: '' });
+
   // Estados para solicitudes de mutación asignadas como gestor de apoyo
   const [misSolicitudesMutacion, setMisSolicitudesMutacion] = useState([]);
   const [loadingSolicitudesMutacion, setLoadingSolicitudesMutacion] = useState(false);
@@ -410,15 +412,21 @@ export default function Pendientes() {
       
       toast.success(mensajes[accion] || 'Acción completada');
       
-      // Si fue aprobación y hay PDF, abrir el PDF
+      // Si fue aprobación y hay PDF, mostrar en visor
       if (accion === 'aprobar' && response.data.pdf_url) {
         const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
-        window.open(pdfFullUrl, '_blank');
-        if (response.data.numero_resolucion) {
-          toast.info(`Resolución ${response.data.numero_resolucion} generada`);
-        }
+        const numRes = response.data.numero_resolucion || 'Resolución';
+        setPdfViewerData({
+          isOpen: true,
+          url: pdfFullUrl,
+          title: `Resolución ${numRes}`,
+          fileName: `Resolucion_${numRes.replace(/\//g, '-')}.pdf`
+        });
+        toast.success(`Resolución ${numRes} generada exitosamente`);
+      } else if (accion === 'aprobar' && response.data.error_pdf) {
+        toast.warning('La solicitud fue aprobada pero hubo un error al generar el PDF. Puede regenerarlo desde el historial.');
       }
-      
+
       setShowMutacionModal(false);
       setSelectedMutacion(null);
       setObservacionesMutacion('');
@@ -1513,7 +1521,7 @@ export default function Pendientes() {
                                 </div>
                                 <div className="text-sm text-slate-600">
                                   <MapPin className="w-4 h-4 inline mr-1" />
-                                  {cambio.municipio || 'Sin municipio'} - Tipo: {cambio.tipo_cambio}
+                                  {cambio.datos_propuestos?.municipio || cambio.predio_actual?.municipio || 'Sin municipio'} - Tipo: {cambio.tipo_cambio}
                                 </div>
                                 <div className="flex items-center gap-2 mt-2">
                                   <Badge variant="outline" className="text-amber-600 border-amber-300">
@@ -1835,9 +1843,40 @@ export default function Pendientes() {
                               {mutacion.municipio} · Por: {mutacion.creado_por_nombre}
                             </p>
                             <p className="text-xs text-slate-500 mt-1">
-                              {mutacion.predios_cancelados?.length > 0 && `${mutacion.predios_cancelados.length} cancelados`}
-                              {mutacion.predios_cancelados?.length > 0 && mutacion.predios_inscritos?.length > 0 && ' → '}
-                              {mutacion.predios_inscritos?.length > 0 && `${mutacion.predios_inscritos.length} inscritos`}
+                              {/* M1: Cambio de propietario */}
+                              {mutacion.tipo === 'M1' && mutacion.propietarios_anteriores?.length > 0 && (
+                                <span>{mutacion.propietarios_anteriores[0]?.nombre_propietario || mutacion.propietarios_anteriores[0]?.nombre} → {mutacion.propietarios_nuevos?.[0]?.nombre_propietario || mutacion.propietarios_nuevos?.[0]?.nombre || '?'}</span>
+                              )}
+                              {/* M2: Predios cancelados/inscritos */}
+                              {mutacion.tipo === 'M2' && (<>
+                                {mutacion.predios_cancelados?.length > 0 && `${mutacion.predios_cancelados.length} cancelados`}
+                                {mutacion.predios_cancelados?.length > 0 && mutacion.predios_inscritos?.length > 0 && ' → '}
+                                {mutacion.predios_inscritos?.length > 0 && `${mutacion.predios_inscritos.length} inscritos`}
+                              </>)}
+                              {/* M3: Destino/avalúo */}
+                              {mutacion.tipo === 'M3' && (<>
+                                {mutacion.destino_anterior && mutacion.destino_nuevo && `Destino: ${mutacion.destino_anterior} → ${mutacion.destino_nuevo}`}
+                                {mutacion.destino_anterior && mutacion.destino_nuevo && mutacion.avaluo_anterior && ' · '}
+                                {mutacion.avaluo_anterior && `Avalúo: $${Number(mutacion.avaluo_anterior).toLocaleString()} → $${Number(mutacion.avaluo_nuevo || 0).toLocaleString()}`}
+                              </>)}
+                              {/* M4: Avalúo */}
+                              {mutacion.tipo === 'M4' && mutacion.avaluo_anterior && (
+                                <span>Avalúo: ${Number(mutacion.avaluo_anterior).toLocaleString()} → ${Number(mutacion.avaluo_nuevo || mutacion.valor_autoestimado || 0).toLocaleString()}</span>
+                              )}
+                              {/* M5: Cancelación/inscripción */}
+                              {mutacion.tipo === 'M5' && mutacion.predio_m5 && (
+                                <span>{mutacion.subtipo === 'cancelacion' ? 'Cancelar' : 'Inscribir'}: {mutacion.predio_m5.codigo_predial_nacional || mutacion.predio_m5.codigo_predial || 'N/A'}</span>
+                              )}
+                              {/* Rectificación */}
+                              {mutacion.tipo === 'Rectificación de Área' && (
+                                <span>Terreno: {Number(mutacion.area_terreno_anterior || 0).toLocaleString()} → {Number(mutacion.area_terreno_nueva || 0).toLocaleString()} m²</span>
+                              )}
+                              {/* Fallback para tipos sin datos específicos */}
+                              {!['M1','M2','M3','M4','M5','Rectificación de Área'].includes(mutacion.tipo) && (<>
+                                {mutacion.predios_cancelados?.length > 0 && `${mutacion.predios_cancelados.length} cancelados`}
+                                {mutacion.predios_cancelados?.length > 0 && mutacion.predios_inscritos?.length > 0 && ' → '}
+                                {mutacion.predios_inscritos?.length > 0 && `${mutacion.predios_inscritos.length} inscritos`}
+                              </>)}
                             </p>
                           </div>
                         </div>
@@ -2071,7 +2110,183 @@ export default function Pendientes() {
                   <div><span className="text-slate-500">Fecha:</span> {formatDate(selectedMutacion.fecha_creacion)}</div>
                 </div>
               </div>
-              
+
+              {/* Información específica de M1 - Cambio de Propietario */}
+              {selectedMutacion.tipo === 'M1' && (
+                <div className="space-y-3">
+                  {/* Predio afectado */}
+                  {(selectedMutacion.predio_id || selectedMutacion.codigo_predial) && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-medium mb-2">Predio Afectado</p>
+                      <p className="font-mono text-sm font-bold text-blue-800">{selectedMutacion.codigo_predial || 'Ver en sistema'}</p>
+                      {selectedMutacion.predio_direccion && (
+                        <p className="text-xs text-slate-500 mt-1">{selectedMutacion.predio_direccion}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Propietarios anteriores */}
+                    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                      <p className="text-xs text-red-600 font-semibold mb-2">Propietarios Anteriores</p>
+                      {selectedMutacion.propietarios_anteriores?.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedMutacion.propietarios_anteriores.map((prop, idx) => (
+                            <div key={idx} className="bg-white p-2 rounded border border-red-100 text-xs">
+                              <p className="font-medium text-red-700">{prop.nombre_propietario || prop.nombre || 'Sin nombre'}</p>
+                              {prop.numero_documento && (
+                                <p className="text-slate-500">{prop.tipo_documento || 'CC'} {prop.numero_documento}</p>
+                              )}
+                              {prop.derecho && <p className="text-slate-500">Derecho: {prop.derecho}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-xs text-slate-400 italic">Sin información</p>}
+                    </div>
+
+                    {/* Propietarios nuevos */}
+                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                      <p className="text-xs text-emerald-600 font-semibold mb-2">Propietarios Nuevos</p>
+                      {selectedMutacion.propietarios_nuevos?.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedMutacion.propietarios_nuevos.map((prop, idx) => (
+                            <div key={idx} className="bg-white p-2 rounded border border-emerald-100 text-xs">
+                              <p className="font-medium text-emerald-700">{prop.nombre_propietario || prop.nombre || 'Sin nombre'}</p>
+                              {prop.numero_documento && (
+                                <p className="text-slate-500">{prop.tipo_documento || 'CC'} {prop.numero_documento}</p>
+                              )}
+                              {prop.derecho && <p className="text-slate-500">Derecho: {prop.derecho}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-xs text-slate-400 italic">Sin información</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Información específica de M3 - Cambio de Destino Económico / Avalúo */}
+              {selectedMutacion.tipo === 'M3' && (
+                <div className="space-y-3">
+                  {/* Predio afectado */}
+                  {(selectedMutacion.predio_id || selectedMutacion.codigo_predial) && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-medium mb-2">Predio Afectado</p>
+                      <p className="font-mono text-sm font-bold text-blue-800">{selectedMutacion.codigo_predial || 'Ver en sistema'}</p>
+                      {selectedMutacion.predio_direccion && (
+                        <p className="text-xs text-slate-500 mt-1">{selectedMutacion.predio_direccion}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Cambio de destino económico */}
+                  {(selectedMutacion.destino_anterior || selectedMutacion.destino_nuevo) && (
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium mb-2">Cambio de Destino Económico</p>
+                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Anterior</p>
+                          <p className="text-sm font-bold text-red-600">{selectedMutacion.destino_anterior || '-'}</p>
+                        </div>
+                        <span className="text-slate-400 text-lg">→</span>
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Nuevo</p>
+                          <p className="text-sm font-bold text-emerald-600">{selectedMutacion.destino_nuevo || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cambio de avalúo */}
+                  {(selectedMutacion.avaluo_anterior !== undefined || selectedMutacion.avaluo_nuevo !== undefined) && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-medium mb-2">Cambio de Avalúo</p>
+                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Anterior</p>
+                          <p className="text-lg font-bold text-red-600">${(selectedMutacion.avaluo_anterior || 0).toLocaleString()}</p>
+                        </div>
+                        <span className="text-slate-400 text-lg">→</span>
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Nuevo</p>
+                          <p className="text-lg font-bold text-emerald-600">${(selectedMutacion.avaluo_nuevo || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Construcciones nuevas */}
+                  {selectedMutacion.construcciones_nuevas?.length > 0 && (
+                    <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-200">
+                      <p className="text-xs text-cyan-600 font-semibold mb-2">Construcciones Nuevas ({selectedMutacion.construcciones_nuevas.length})</p>
+                      <div className="space-y-2">
+                        {selectedMutacion.construcciones_nuevas.map((cons, idx) => (
+                          <div key={idx} className="bg-white p-2 rounded border border-cyan-100 text-xs grid grid-cols-2 gap-2">
+                            {cons.tipo && <div><span className="text-slate-500">Tipo:</span> <span className="font-medium">{cons.tipo}</span></div>}
+                            {cons.destino && <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{cons.destino}</span></div>}
+                            {cons.area && <div><span className="text-slate-500">Área:</span> <span className="font-medium">{Number(cons.area).toLocaleString()} m²</span></div>}
+                            {cons.pisos && <div><span className="text-slate-500">Pisos:</span> <span className="font-medium">{cons.pisos}</span></div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Información de Rectificación de Área */}
+              {selectedMutacion.tipo === 'Rectificación de Área' && (
+                <div className="space-y-3">
+                  {selectedMutacion.predio_rectificacion && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-medium mb-2">Predio a Rectificar</p>
+                      <p className="font-mono text-sm font-bold text-blue-800">
+                        {selectedMutacion.predio_rectificacion.codigo_predial_nacional || selectedMutacion.predio_rectificacion.codigo_predial || 'Ver en sistema'}
+                      </p>
+                      {selectedMutacion.predio_rectificacion.direccion && (
+                        <p className="text-xs text-slate-500 mt-1">{selectedMutacion.predio_rectificacion.direccion}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    <p className="text-xs text-amber-600 font-medium mb-2">Rectificación de Áreas</p>
+                    <div className="space-y-3">
+                      {/* Área terreno */}
+                      {(selectedMutacion.area_terreno_anterior !== undefined || selectedMutacion.area_terreno_nueva !== undefined) && (
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Área Terreno</p>
+                          <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-sm font-bold text-red-600">{(selectedMutacion.area_terreno_anterior || 0).toLocaleString()} m²</p>
+                            </div>
+                            <span className="text-slate-400">→</span>
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-sm font-bold text-emerald-600">{(selectedMutacion.area_terreno_nueva || 0).toLocaleString()} m²</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Área construida */}
+                      {(selectedMutacion.area_construida_anterior !== undefined || selectedMutacion.area_construida_nueva !== undefined) && (
+                        <div>
+                          <p className="text-xs text-slate-500 mb-1">Área Construida</p>
+                          <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-sm font-bold text-red-600">{(selectedMutacion.area_construida_anterior || 0).toLocaleString()} m²</p>
+                            </div>
+                            <span className="text-slate-400">→</span>
+                            <div className="bg-white p-2 rounded text-center">
+                              <p className="text-sm font-bold text-emerald-600">{(selectedMutacion.area_construida_nueva || 0).toLocaleString()} m²</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Predios Cancelados - Información completa tipo R1 */}
               {selectedMutacion.predios_cancelados?.length > 0 && (
                 <div className="bg-red-50 p-3 rounded-lg border border-red-200">
@@ -3553,6 +3768,14 @@ export default function Pendientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerData.isOpen}
+        onClose={() => setPdfViewerData({ isOpen: false, url: '', title: '', fileName: '' })}
+        pdfUrl={pdfViewerData.url}
+        title={pdfViewerData.title}
+        fileName={pdfViewerData.fileName}
+      />
     </div>
   );
 }
