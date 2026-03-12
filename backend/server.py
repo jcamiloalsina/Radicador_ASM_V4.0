@@ -31699,13 +31699,15 @@ async def agregar_mutacion_a_radicado(
         await db.radicados_multiples.update_one(
             {"id": radicado_id},
             {
-                "$push": {"mutaciones": nueva_mutacion},
-                "$push": {"historial": {
-                    "fecha": datetime.now(timezone.utc).isoformat(),
-                    "accion": f"mutacion_agregada_{data.tipo}",
-                    "usuario_id": current_user['id'],
-                    "usuario_nombre": current_user['full_name']
-                }}
+                "$push": {
+                    "mutaciones": nueva_mutacion,
+                    "historial": {
+                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "accion": f"mutacion_agregada_{data.tipo}",
+                        "usuario_id": current_user['id'],
+                        "usuario_nombre": current_user['full_name']
+                    }
+                }
             }
         )
         
@@ -31769,6 +31771,232 @@ async def eliminar_mutacion_de_radicado(
         raise
     except Exception as e:
         logging.error(f"Error eliminando mutación: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@api_router.post("/radicados-multiples/{radicado_id}/aprobar")
+async def aprobar_radicado_multiple(
+    radicado_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Aprueba todas las mutaciones de un radicado múltiple.
+    Genera resolución, envía email y aplica cambios al predio para cada mutación.
+    Al completar todas, marca el radicado como COMPLETADO.
+    """
+    try:
+        # Verificar permisos
+        puede_aprobar = (
+            current_user['role'] in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or
+            Permission.APPROVE_CHANGES in current_user.get('permissions', [])
+        )
+        if not puede_aprobar:
+            raise HTTPException(status_code=403, detail="No tiene permisos para aprobar")
+
+        radicado = await db.radicados_multiples.find_one({"id": radicado_id}, {"_id": 0})
+        if not radicado:
+            raise HTTPException(status_code=404, detail="Radicado múltiple no encontrado")
+
+        if radicado['estado'] == 'COMPLETADO':
+            raise HTTPException(status_code=400, detail="Este radicado ya fue completado")
+
+        mutaciones = radicado.get('mutaciones', [])
+        if not mutaciones:
+            raise HTTPException(status_code=400, detail="El radicado no tiene mutaciones para aprobar")
+
+        resultados = []
+        errores = []
+
+        for mutacion in mutaciones:
+            if mutacion.get('estado') in ['APROBADO', 'FINALIZADO']:
+                resultados.append({
+                    "id": mutacion['id'],
+                    "tipo": mutacion['tipo'],
+                    "estado": "ya_procesado",
+                    "mensaje": "Esta mutación ya fue procesada anteriormente"
+                })
+                continue
+
+            # Buscar la solicitud_mutacion vinculada
+            solicitud = await db.solicitudes_mutacion.find_one(
+                {"id": mutacion.get('solicitud_id') or mutacion['id']},
+                {"_id": 0}
+            )
+
+            if not solicitud:
+                # Si no hay solicitud vinculada, buscar por radicado + tipo
+                solicitud = await db.solicitudes_mutacion.find_one(
+                    {
+                        "radicado_multiple_id": radicado_id,
+                        "tipo": mutacion['tipo'],
+                        "id": mutacion['id']
+                    },
+                    {"_id": 0}
+                )
+
+            if not solicitud:
+                errores.append({
+                    "id": mutacion['id'],
+                    "tipo": mutacion['tipo'],
+                    "error": "No se encontró la solicitud de mutación vinculada"
+                })
+                continue
+
+            # Ejecutar la aprobación individual usando la lógica existente
+            try:
+                tipo_mutacion = solicitud.get('tipo', mutacion['tipo'])
+                pdf_result = None
+
+                if tipo_mutacion == "M2":
+                    pdf_result = await _generar_resolucion_m2_interno(solicitud, current_user)
+                elif tipo_mutacion == "M3":
+                    pdf_result = await _generar_resolucion_m3_interno(solicitud, current_user)
+                elif tipo_mutacion == "M4":
+                    pdf_result = await _generar_resolucion_m4_interno(solicitud, current_user)
+                elif tipo_mutacion == "M5":
+                    pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
+                elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
+                    pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
+                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                    pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
+                else:
+                    # M1
+                    cambio_doc = {
+                        "id": solicitud['id'],
+                        "tipo_cambio": "modificacion",
+                        "predio_id": solicitud.get('predio_id'),
+                        "datos_propuestos": {
+                            "propietarios": solicitud.get('propietarios_nuevos', []),
+                            "municipio": solicitud.get('municipio', ''),
+                            "codigo_predial_nacional": solicitud.get('codigo_predial', ''),
+                        },
+                        "radicado": solicitud.get('radicado'),
+                        "radicado_numero": solicitud.get('radicado'),
+                        "justificacion": solicitud.get('observaciones'),
+                        "propuesto_por": solicitud.get('creado_por_id'),
+                        "texto_considerando": solicitud.get('texto_considerando', ''),
+                    }
+                    pdf_result = await generar_resolucion_final(cambio_doc, current_user)
+
+                if pdf_result:
+                    # Actualizar la solicitud_mutacion a FINALIZADO
+                    await db.solicitudes_mutacion.update_one(
+                        {"id": solicitud['id']},
+                        {
+                            "$set": {
+                                "estado": MutacionEstado.FINALIZADO,
+                                "aprobado_por_id": current_user['id'],
+                                "aprobado_por_nombre": current_user['full_name'],
+                                "fecha_aprobacion": datetime.now(timezone.utc).isoformat(),
+                                "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                                "resolucion_id": pdf_result.get("id"),
+                                "pdf_url": pdf_result.get("pdf_url") or pdf_result.get("pdf_path"),
+                                "numero_resolucion": pdf_result.get("numero_resolucion")
+                            },
+                            "$push": {
+                                "historial": {
+                                    "fecha": datetime.now(timezone.utc).isoformat(),
+                                    "accion": "aprobar",
+                                    "usuario_id": current_user['id'],
+                                    "usuario_nombre": current_user['full_name'],
+                                    "observaciones": f"Aprobación masiva desde radicado múltiple {radicado.get('numero', radicado_id)}"
+                                }
+                            }
+                        }
+                    )
+
+                    resultados.append({
+                        "id": mutacion['id'],
+                        "tipo": tipo_mutacion,
+                        "estado": "finalizado",
+                        "numero_resolucion": pdf_result.get("numero_resolucion"),
+                        "pdf_url": pdf_result.get("pdf_url") or pdf_result.get("pdf_path")
+                    })
+                else:
+                    errores.append({
+                        "id": mutacion['id'],
+                        "tipo": tipo_mutacion,
+                        "error": "La generación de resolución no retornó resultado"
+                    })
+
+            except Exception as mut_error:
+                logging.error(f"Error aprobando mutación {mutacion['id']} tipo {mutacion['tipo']}: {str(mut_error)}")
+                errores.append({
+                    "id": mutacion['id'],
+                    "tipo": mutacion['tipo'],
+                    "error": str(mut_error)
+                })
+
+        # Actualizar estado de cada mutación dentro del radicado múltiple
+        for res in resultados:
+            await db.radicados_multiples.update_one(
+                {"id": radicado_id, "mutaciones.id": res['id']},
+                {
+                    "$set": {
+                        "mutaciones.$.estado": "FINALIZADO" if res['estado'] == "finalizado" else res['estado'],
+                        "mutaciones.$.resolucion_id": res.get('numero_resolucion'),
+                        "mutaciones.$.pdf_url": res.get('pdf_url')
+                    }
+                }
+            )
+
+        # Si todas las mutaciones fueron procesadas (exitosas o ya procesadas), marcar como COMPLETADO
+        todas_procesadas = len(errores) == 0 and len(resultados) == len(mutaciones)
+        nuevo_estado_radicado = "COMPLETADO" if todas_procesadas else "EN_PROCESO"
+
+        await db.radicados_multiples.update_one(
+            {"id": radicado_id},
+            {
+                "$set": {
+                    "estado": nuevo_estado_radicado,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                },
+                "$push": {
+                    "historial": {
+                        "fecha": datetime.now(timezone.utc).isoformat(),
+                        "accion": "aprobacion_masiva",
+                        "usuario_id": current_user['id'],
+                        "usuario_nombre": current_user['full_name'],
+                        "resultado": {
+                            "exitosas": len([r for r in resultados if r['estado'] == 'finalizado']),
+                            "ya_procesadas": len([r for r in resultados if r['estado'] == 'ya_procesado']),
+                            "errores": len(errores)
+                        }
+                    }
+                }
+            }
+        )
+
+        # Notificar al creador del radicado
+        try:
+            resumen = f"{len([r for r in resultados if r['estado'] == 'finalizado'])} aprobadas"
+            if errores:
+                resumen += f", {len(errores)} con errores"
+            await crear_notificacion(
+                usuario_id=radicado.get('creado_por_id', ''),
+                titulo=f"📋 Radicado múltiple {radicado.get('numero', '')} procesado",
+                mensaje=f"Resultado: {resumen}. {'Todas completadas.' if todas_procesadas else 'Algunas mutaciones requieren atención.'}",
+                tipo="success" if todas_procesadas else "warning",
+                enlace="/dashboard/mutaciones",
+                enviar_email=False
+            )
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "radicado_estado": nuevo_estado_radicado,
+            "resultados": resultados,
+            "errores": errores,
+            "mensaje": f"Procesadas {len(resultados)} mutaciones" + (f", {len(errores)} errores" if errores else "")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error aprobando radicado múltiple: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
@@ -32214,12 +32442,14 @@ async def generar_resolucion_manual(
                     {"id": peticion["id"]},
                     {
                         "$set": {
+                            "status": "completado",
                             "estado": "finalizado",
+                            "estado_tramite": "Finalizado",
                             "finalizado_por": current_user.get("id"),
                             "finalizado_por_nombre": current_user.get("full_name", ""),
                             "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
                             "resolucion_numero": request.numero_resolucion,
-                            "resolucion_pdf": f"/resoluciones/{filename}",
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
                             "updated_at": datetime.now(timezone.utc).isoformat()
                         },
                         "$push": {
@@ -32231,6 +32461,20 @@ async def generar_resolucion_manual(
                                 "usuario_nombre": current_user.get("full_name", ""),
                                 "fecha": datetime.now(timezone.utc).isoformat(),
                                 "observaciones": f"Resolución {request.numero_resolucion} generada"
+                            },
+                            "archivos_staff": {
+                                "id": f"res-{str(uuid.uuid4())[:8]}",
+                                "filename": filename,
+                                "original_name": f"Resolución {request.numero_resolucion}.pdf",
+                                "path": filepath,
+                                "uploaded_by": "sistema",
+                                "uploaded_by_name": "Sistema - Resolución manual",
+                                "uploaded_by_role": "sistema",
+                                "upload_date": datetime.now(timezone.utc).isoformat(),
+                                "es_documento_final": True,
+                                "es_resolucion": True,
+                                "numero_resolucion": request.numero_resolucion,
+                                "pdf_url": f"/api/resoluciones/descargar/{filename}"
                             }
                         }
                     }
