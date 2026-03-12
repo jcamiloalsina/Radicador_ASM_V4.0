@@ -15161,8 +15161,14 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             if predio_id:
                 historial_entry = {
                     "tipo": "M1",
+                    "tipo_mutacion": "M1",
                     "fecha": datetime.now(timezone.utc).isoformat(),
                     "resolucion": numero_resolucion,
+                    "numero_resolucion": numero_resolucion,
+                    "fecha_resolucion": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "radicado": cambio.get("radicado", cambio.get("radicado_numero", "")),
+                    "pdf_path": f"/api/resoluciones/descargar/{filename}",
+                    "generado_por": aprobador.get("full_name", ""),
                     "descripcion": "Cambio de propietario",
                     "propietarios_anteriores": propietarios_anteriores,
                     "propietarios_nuevos": propietarios_nuevos,
