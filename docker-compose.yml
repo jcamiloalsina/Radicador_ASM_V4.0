@@ -9,7 +9,7 @@ services:
       - mongodb_data:/data/db
       - ./backups:/backups
     environment:
-      - MONGO_INITDB_DATABASE=asomunicipios_db
+      - MONGO_INITDB_DATABASE=catastro_asomunicipios
     networks:
       - asomunicipios-network
 
@@ -23,8 +23,8 @@ services:
     depends_on:
       - mongodb
     environment:
-      - MONGO_URL=mongodb://mongodb:27017/asomunicipios_db
-      - DB_NAME=asomunicipios_db
+      - MONGO_URL=mongodb://mongodb:27017/catastro_asomunicipios
+      - DB_NAME=catastro_asomunicipios
       - JWT_SECRET=${JWT_SECRET}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
@@ -56,22 +56,6 @@ services:
     ports:
       - "8080:80"
 
-  # Nginx Reverse Proxy with SSL (optional, for HTTPS)
-  # nginx-proxy:
-  #   image: nginx:alpine
-  #   container_name: asomunicipios-proxy
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8080:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./nginx-proxy.conf:/etc/nginx/nginx.conf
-  #     - ./ssl:/etc/nginx/ssl
-  #   depends_on:
-  #     - frontend
-  #     - backend
-  #   networks:
-  #     - asomunicipios-network
 
 networks:
   asomunicipios-network:

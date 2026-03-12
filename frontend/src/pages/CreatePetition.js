@@ -8,7 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { ArrowLeft, Send, Upload, X, FileText, Info, Building2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, Upload, X, FileText, Building2, Plus, Trash2 } from 'lucide-react';
 import { TIPOS_TRAMITE, MUNICIPIOS, getTramiteCompleto } from '../data/catalogos';
 import { useAuth } from '../context/AuthContext';
 

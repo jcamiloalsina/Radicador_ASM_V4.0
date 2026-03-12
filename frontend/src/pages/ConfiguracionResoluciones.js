@@ -213,12 +213,12 @@ export default function ConfiguracionResoluciones() {
   }, []);
 
   // Verificar permisos
-  if (user?.role !== 'administrador') {
+  if (user?.role !== 'administrador' && user?.role !== 'coordinador') {
     return (
       <div className="p-8 text-center">
         <AlertTriangle className="w-12 h-12 mx-auto text-amber-500 mb-4" />
         <h2 className="text-xl font-semibold text-slate-700">Acceso Restringido</h2>
-        <p className="text-slate-500">Solo los administradores pueden acceder a esta configuración.</p>
+        <p className="text-slate-500">Solo administradores y coordinadores pueden acceder a esta configuración.</p>
       </div>
     );
   }

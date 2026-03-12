@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 load_dotenv('/app/backend/.env')
 
 MONGO_URL = os.environ.get('MONGO_URL')
-DB_NAME = os.environ.get('DB_NAME', 'asomunicipios_db')
+DB_NAME = os.environ.get('DB_NAME', 'catastro_asomunicipios')
 
 
 def conectar_db():

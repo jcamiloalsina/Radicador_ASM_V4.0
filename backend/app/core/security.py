@@ -85,15 +85,18 @@ def require_permission(permission: str):
 
 def validate_password(password: str) -> tuple[bool, str]:
     """
-    Validar requisitos de contraseña.
+    Validar requisitos de contraseña:
+    - Mínimo 6 caracteres
+    - Al menos una mayúscula, una minúscula, un número
+    - Caracteres especiales permitidos
     Returns: (is_valid, error_message)
     """
-    if len(password) < 8:
-        return False, "La contraseña debe tener al menos 8 caracteres"
+    if len(password) < 6:
+        return False, "La contraseña debe tener al menos 6 caracteres"
     if not any(c.isupper() for c in password):
-        return False, "La contraseña debe contener al menos una mayúscula"
+        return False, "La contraseña debe contener al menos una letra mayúscula"
     if not any(c.islower() for c in password):
-        return False, "La contraseña debe contener al menos una minúscula"
+        return False, "La contraseña debe contener al menos una letra minúscula"
     if not any(c.isdigit() for c in password):
         return False, "La contraseña debe contener al menos un número"
     return True, ""

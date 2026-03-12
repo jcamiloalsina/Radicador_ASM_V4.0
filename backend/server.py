@@ -49,48 +49,16 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# JWT Configuration
-# CRITICAL: JWT_SECRET debe ser configurado en producción con un valor seguro
-JWT_SECRET = os.environ.get('JWT_SECRET')
-if not JWT_SECRET:
-    logger.warning("⚠️ SEGURIDAD: JWT_SECRET no configurado. Usando valor por defecto INSEGURO.")
-    JWT_SECRET = 'INSECURE-DEFAULT-CHANGE-IN-PRODUCTION-' + str(uuid.uuid4())
-JWT_ALGORITHM = 'HS256'
-JWT_EXPIRATION_HOURS = 24
+# JWT Configuration (from centralized settings)
+from app.core.config import settings
+JWT_SECRET = settings.JWT_SECRET
+JWT_ALGORITHM = settings.JWT_ALGORITHM
+JWT_EXPIRATION_HOURS = settings.JWT_EXPIRATION_HOURS
 
-# ==================== FUNCIONES DE SEGURIDAD ====================
+# ==================== FUNCIONES DE SEGURIDAD (importadas de app/utils/helpers) ====================
 import re
 from pathlib import Path
-
-def is_safe_path(base_path: str, target_path: str) -> bool:
-    """
-    Verifica que el path objetivo esté dentro del directorio base.
-    Previene ataques de Path Traversal (../).
-    """
-    base = os.path.abspath(base_path)
-    target = os.path.abspath(target_path)
-    return target.startswith(base + os.sep) or target == base
-
-def secure_filename(filename: str) -> str:
-    """
-    Sanitiza el nombre de archivo removiendo caracteres peligrosos.
-    Previene ataques de Path Traversal y caracteres maliciosos.
-    """
-    if not filename:
-        return ""
-    # Remover path separators y caracteres peligrosos
-    filename = os.path.basename(filename)  # Solo el nombre del archivo
-    # Remover caracteres no permitidos
-    filename = re.sub(r'[^\w\s\-\.]', '', filename)
-    # Remover múltiples puntos consecutivos
-    filename = re.sub(r'\.{2,}', '.', filename)
-    # Remover espacios al inicio/fin
-    filename = filename.strip()
-    # Si el nombre quedó vacío, generar uno aleatorio
-    if not filename or filename.startswith('.'):
-        filename = f"file_{uuid.uuid4().hex[:8]}"
-    return filename
-
+from app.utils.helpers import is_safe_path, secure_filename
 # ==================== FIN FUNCIONES DE SEGURIDAD ====================
 
 # URL Base para verificación de certificados (OBLIGATORIO - debe configurarse en producción)
@@ -217,72 +185,12 @@ class ConnectionManager:
 ws_manager = ConnectionManager()
 
 
-# ===== HELPER FUNCTIONS =====
-
-# Diccionario de nombres comunes con tildes correctas
-NOMBRES_CON_TILDES = {
-    "maria": "María", "jose": "José", "jesus": "Jesús", "angel": "Ángel",
-    "andres": "Andrés", "raul": "Raúl", "cesar": "César", "hector": "Héctor",
-    "oscar": "Óscar", "nelson": "Nélson", "german": "Germán", "ivan": "Iván",
-    "nicolas": "Nicolás", "tomas": "Tomás", "simon": "Simón", "joaquin": "Joaquín",
-    "martin": "Martín", "agustin": "Agustín", "sebastian": "Sebastián", "adrian": "Adrián",
-    "dario": "Darío", "alvaro": "Álvaro", "ramon": "Ramón", "julian": "Julián",
-    "fabian": "Fabián", "maximo": "Máximo", "lazaro": "Lázaro", "moises": "Moisés",
-    "isaias": "Isaías", "efrain": "Efraín", "hernan": "Hernán", "ruben": "Rubén",
-    "felix": "Félix", "ines": "Inés", "belen": "Belén", "lucia": "Lucía",
-    "sofia": "Sofía", "rocio": "Rocío", "monica": "Mónica", "veronica": "Verónica",
-    "natalia": "Natalia", "cecilia": "Cecilia", "angela": "Ángela", "barbara": "Bárbara",
-    "beatriz": "Beatriz", "dolores": "Dolores", "pilar": "Pilar", "teresa": "Teresa",
-    "rosa": "Rosa", "elena": "Elena", "elvira": "Elvira", "esperanza": "Esperanza",
-    "eugenia": "Eugenia", "gloria": "Gloria", "graciela": "Graciela", "irene": "Irene",
-    "josefa": "Josefa", "julia": "Julia", "juana": "Juana", "lidia": "Lidia",
-    "lourdes": "Lourdes", "margarita": "Margarita", "mercedes": "Mercedes", "mercedes": "Mercedes",
-    "nuria": "Nuria", "patricia": "Patricia", "raquel": "Raquel", "rebeca": "Rebeca",
-    "sara": "Sara", "silvia": "Silvia", "susana": "Susana", "victoria": "Victoria",
-    "garcia": "García", "gonzalez": "González", "rodriguez": "Rodríguez", "fernandez": "Fernández",
-    "lopez": "López", "martinez": "Martínez", "sanchez": "Sánchez", "perez": "Pérez",
-    "gomez": "Gómez", "diaz": "Díaz", "jimenez": "Jiménez", "hernandez": "Hernández",
-    "alvarez": "Álvarez", "ruiz": "Ruiz", "ramirez": "Ramírez", "romero": "Romero",
-    "suarez": "Suárez", "benitez": "Benítez", "mendez": "Méndez", "gutierrez": "Gutiérrez",
-    "nuñez": "Núñez", "ortiz": "Ortiz", "vazquez": "Vázquez", "dominguez": "Domínguez",
-    "florez": "Flórez", "ayala": "Ayala", "parra": "Parra", "carrascal": "Carrascal"
-}
-
-def format_nombre_propio(nombre: str) -> str:
-    """
-    Formatea un nombre propio:
-    - Convierte a formato Título (inicial mayúscula)
-    - Aplica tildes automáticamente a nombres comunes
-    """
-    if not nombre:
-        return nombre
-    
-    palabras = nombre.strip().split()
-    resultado = []
-    
-    for palabra in palabras:
-        palabra_lower = palabra.lower()
-        # Buscar en el diccionario de nombres con tildes
-        if palabra_lower in NOMBRES_CON_TILDES:
-            resultado.append(NOMBRES_CON_TILDES[palabra_lower])
-        else:
-            # Capitalizar la primera letra
-            resultado.append(palabra.capitalize())
-    
-    return ' '.join(resultado)
-
+# ===== HELPER FUNCTIONS (importadas de app/utils/helpers) =====
+from app.utils.helpers import format_nombre_propio, NOMBRES_CON_TILDES
 
 # ===== MODELS =====
 
-class UserRole:
-    USUARIO = "usuario"  # Usuario externo (antes "usuario")
-    ATENCION_USUARIO = "atencion_usuario"
-    GESTOR = "gestor"
-    GESTOR_AUXILIAR = "gestor_auxiliar"  # Gestor auxiliar - apoyo en trabajo de campo
-    COORDINADOR = "coordinador"
-    ADMINISTRADOR = "administrador"
-    COMUNICACIONES = "comunicaciones"  # Puede consultar predios, ver visor, ver trámites, descargar/subir archivos
-    EMPRESA = "empresa"  # Similar a comunicaciones pero sin ver total peticiones ni descargar Excel
+from app.core.config import UserRole, Permission, PetitionStatus
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -315,41 +223,11 @@ class UserRoleUpdate(BaseModel):
     user_id: str
     new_role: str
 
-# Sistema de Permisos Granulares
-class Permission:
-    """Permisos disponibles en el sistema"""
-    UPLOAD_GDB = "upload_gdb"           # Subir archivos GDB
-    IMPORT_R1R2 = "import_r1r2"         # Importar archivos R1/R2
-    APPROVE_CHANGES = "approve_changes"  # Aprobar cambios de predios
-    ACCESO_ACTUALIZACION = "acceso_actualizacion"  # Acceso al módulo de Actualización
-    
-    @classmethod
-    def all_permissions(cls):
-        return [cls.UPLOAD_GDB, cls.IMPORT_R1R2, cls.APPROVE_CHANGES, cls.ACCESO_ACTUALIZACION]
-    
-    @classmethod
-    def get_description(cls, perm):
-        descriptions = {
-            cls.UPLOAD_GDB: "Subir archivos GDB (Base Gráfica)",
-            cls.IMPORT_R1R2: "Importar archivos R1/R2 (Excel)",
-            cls.APPROVE_CHANGES: "Aprobar/Rechazar cambios de predios",
-            cls.ACCESO_ACTUALIZACION: "Acceso al módulo de Actualización (trabajo de campo)"
-        }
-        return descriptions.get(perm, perm)
 
 class UserPermissionsUpdate(BaseModel):
     user_id: str
     permissions: List[str]
 
-class PetitionStatus:
-    RADICADO = "radicado"
-    ASIGNADO = "asignado"
-    EN_PROCESO = "en_proceso"  # Gestor(es) trabajando activamente
-    REVISION = "revision"      # Enviado a coordinador para revisión
-    APROBADO = "aprobado"      # Aprobado por coordinador, pendiente finalizar
-    RECHAZADO = "rechazado"
-    DEVUELTO = "devuelto"
-    FINALIZADO = "finalizado"
 
 class PetitionCreate(BaseModel):
     nombre_completo: str
@@ -829,58 +707,11 @@ class ActividadUpdate(BaseModel):
     actividad_padre_id: Optional[str] = None
 
 
-# ===== UTILITY FUNCTIONS =====
-
-
-def validate_password(password: str) -> tuple[bool, str]:
-    """
-    Validate password requirements:
-    - Minimum 6 characters
-    - At least one uppercase letter
-    - At least one lowercase letter
-    - At least one digit
-    - Special characters are allowed: !@#$%^&*()_+-=[]{}|;':\",./<>?
-    Returns: (is_valid, error_message)
-    """
-    if len(password) < 6:
-        return False, "La contraseña debe tener al menos 6 caracteres"
-    
-    if not re.search(r'[A-Z]', password):
-        return False, "La contraseña debe contener al menos una letra mayúscula"
-    
-    if not re.search(r'[a-z]', password):
-        return False, "La contraseña debe contener al menos una letra minúscula"
-    
-    if not re.search(r'\d', password):
-        return False, "La contraseña debe contener al menos un número"
-    
-    # Allow special characters - password is valid if it passes above checks
-    return True, ""
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
-def create_token(user_id: str, email: str, role: str) -> str:
-    expiration = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
-    payload = {
-        "user_id": user_id,
-        "email": email,
-        "role": role,
-        "exp": expiration
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-def decode_token(token: str) -> dict:
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+# ===== SECURITY FUNCTIONS (importadas de app/core/security) =====
+from app.core.security import (
+    hash_password, verify_password, create_token, decode_token,
+    check_permission, validate_password
+)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
@@ -890,20 +721,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
     return user
 
-async def check_permission(user: dict, permission: str) -> bool:
-    """
-    Verifica si un usuario tiene un permiso específico.
-    - Administradores tienen todos los permisos por defecto.
-    - Coordinadores tienen todos los permisos por defecto.
-    - Otros usuarios necesitan el permiso explícitamente asignado.
-    """
-    # Admin y Coordinador tienen todos los permisos por defecto
-    if user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
-        return True
-    
-    # Verificar si el usuario tiene el permiso explícitamente
-    user_permissions = user.get('permissions', [])
-    return permission in user_permissions
 
 def require_permission(permission: str):
     """Dependency factory para requerir un permiso específico"""
@@ -29151,8 +28968,8 @@ class ConfiguracionMunicipiosRequest(BaseModel):
 @api_router.get("/resoluciones/configuracion-municipios")
 async def obtener_configuracion_municipios(current_user: dict = Depends(get_current_user)):
     """Obtener configuración de numeración de resoluciones por municipio"""
-    if current_user['role'] != UserRole.ADMINISTRADOR:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden acceder")
+    if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
+        raise HTTPException(status_code=403, detail="Solo administradores y coordinadores pueden acceder")
     
     try:
         config = await db.resolucion_configuracion_municipios.find_one(
