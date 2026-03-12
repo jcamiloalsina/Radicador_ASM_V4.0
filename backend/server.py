@@ -15265,6 +15265,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     {"radicado": radicado},
                     {"$set": {
                         "status": "completado",
+                        "estado": "finalizado",
                         "estado_tramite": "Finalizado",
                         "resolucion_numero": numero_resolucion,
                         "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -15559,6 +15560,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     {"radicado": radicado},
                     {"$set": {
                         "status": "completado",
+                        "estado": "finalizado",
                         "estado_tramite": "Finalizado",
                         "resolucion_numero": numero_resolucion,
                         "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -15838,6 +15840,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                     {"radicado": radicado},
                     {"$set": {
                         "status": "completado",
+                        "estado": "finalizado",
                         "estado_tramite": "Finalizado",
                         "resolucion_numero": numero_resolucion,
                         "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -16104,6 +16107,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                         {"radicado": radicado},
                         {"$set": {
                             "status": "completado",
+                            "estado": "finalizado",
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -16386,6 +16390,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                         {"radicado": radicado},
                         {"$set": {
                             "status": "completado",
+                            "estado": "finalizado",
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -16786,6 +16791,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                         {"radicado": radicado},
                         {"$set": {
                             "status": "completado",
+                            "estado": "finalizado",
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
@@ -17042,6 +17048,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                         {"radicado": radicado},
                         {"$set": {
                             "status": "completado",
+                            "estado": "finalizado",
                             "estado_tramite": "Finalizado",
                             "resolucion_numero": numero_resolucion,
                             "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
