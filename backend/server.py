@@ -529,6 +529,7 @@ class MutacionEstado:
     PENDIENTE_CARTOGRAFIA = "pendiente_cartografia"  # Asignado a gestor de apoyo
     PENDIENTE_APROBACION = "pendiente_aprobacion"    # Esperando aprobación
     APROBADO = "aprobado"                            # Aprobado, PDF generado
+    FINALIZADO = "finalizado"                        # Trámite completado, cambios aplicados
     DEVUELTO = "devuelto"                            # Devuelto para correcciones
     RECHAZADO = "rechazado"                          # Rechazado definitivamente
 
@@ -15154,7 +15155,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         
         logging.info(f"Resolución {numero_resolucion} generada y guardada en {filepath}")
         
-        # === AGREGAR HISTORIAL DE RESOLUCIÓN AL PREDIO ===
+        # === APLICAR CAMBIOS Y AGREGAR HISTORIAL DE RESOLUCIÓN AL PREDIO ===
         try:
             predio_id = cambio.get("predio_id")
             if predio_id:
@@ -15167,15 +15168,40 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     "propietarios_nuevos": propietarios_nuevos,
                     "aprobado_por": aprobador.get("full_name", "")
                 }
-                
+
+                # Convertir propietarios_nuevos al formato de la colección predios
+                propietarios_para_predio = []
+                for p in propietarios_nuevos:
+                    propietarios_para_predio.append({
+                        "nombre_propietario": p.get("nombre", p.get("nombre_propietario", "")),
+                        "tipo_documento": p.get("tipo_documento", "CC"),
+                        "numero_documento": p.get("documento", p.get("numero_documento", "")),
+                        "estado_civil": p.get("estado_civil", ""),
+                        "derecho": p.get("derecho", ""),
+                    })
+
+                # Si no hay propietarios formateados, usar los originales de datos_propuestos
+                if not propietarios_para_predio and datos_propuestos.get("propietarios"):
+                    propietarios_para_predio = datos_propuestos["propietarios"]
+
+                update_set = {
+                    "ultima_actualizacion": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                # Aplicar propietarios nuevos al predio
+                if propietarios_para_predio:
+                    update_set["propietarios"] = propietarios_para_predio
+                    logging.info(f"✅ Aplicando {len(propietarios_para_predio)} propietarios nuevos al predio {predio_id}")
+
                 await db.predios.update_one(
                     {"id": predio_id},
                     {
                         "$push": {"historial_resoluciones": historial_entry},
-                        "$set": {"ultima_actualizacion": datetime.now(timezone.utc).isoformat()}
+                        "$set": update_set
                     }
                 )
-                logging.info(f"✅ Historial de resolución M1 agregado al predio {predio_id}")
+                logging.info(f"✅ Historial de resolución M1 y propietarios actualizados en predio {predio_id}")
         except Exception as hist_error:
             logging.error(f"Error agregando historial M1 al predio: {str(hist_error)}")
         
@@ -15187,11 +15213,23 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             if radicado:
                 peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
             
-            # Si hay petición con correo del solicitante, enviar el correo
+            # Determinar correo del solicitante: primero petición, luego solicitud de mutación
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
             if peticion and peticion.get("correo"):
                 email_solicitante = peticion.get("correo")
-                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                
+                nombre_solicitante = peticion.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: buscar en la solicitud de mutación asociada
+            if not email_solicitante and cambio.get("id"):
+                sol_mutacion = await db.solicitudes_mutacion.find_one({"id": cambio["id"]}, {"_id": 0, "solicitante": 1, "correo_solicitante": 1})
+                if sol_mutacion:
+                    sol_data = sol_mutacion.get("solicitante", {})
+                    email_solicitante = sol_mutacion.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                    nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
                 # Generar el contenido del correo
                 email_body = get_resolucion_aprobada_email(
                     numero_resolucion=numero_resolucion,
@@ -15201,7 +15239,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     codigo_predio=codigo,
                     tipo_mutacion="M1"
                 )
-                
+
                 # Enviar correo con el PDF adjunto
                 await send_email(
                     to_email=email_solicitante,
@@ -15210,10 +15248,13 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     attachment_path=filepath,
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
-                
+
                 logging.info(f"Correo de resolución enviado a {email_solicitante}")
-                
-                # === FINALIZAR LA PETICIÓN ===
+            else:
+                logging.info(f"No se encontró correo de solicitante para enviar resolución {numero_resolucion}")
+
+            # === FINALIZAR LA PETICIÓN ===
+            if peticion:
                 await db.petitions.update_one(
                     {"radicado": radicado},
                     {"$set": {
@@ -15226,24 +15267,7 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
                     }}
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
-            else:
-                logging.info(f"No se encontró correo de solicitante para enviar resolución {numero_resolucion}")
-                # Aún así finalizar la petición si existe
-                if peticion:
-                    await db.petitions.update_one(
-                        {"radicado": radicado},
-                        {"$set": {
-                            "status": "completado",
-                            "estado_tramite": "Finalizado",
-                            "resolucion_numero": numero_resolucion,
-                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }}
-                    )
-                    logging.info(f"Petición {radicado} finalizada (sin correo)")
-                
-                
+
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución: {str(email_error)}")
             # No interrumpir el flujo si falla el envío de correo
@@ -15521,7 +15545,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             }
         )
         
-        # === FINALIZAR LA PETICIÓN RELACIONADA ===
+        # === FINALIZAR PETICIÓN Y ENVIAR CORREO ===
         if radicado:
             peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
             if peticion:
@@ -15537,32 +15561,47 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     }}
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M2 {numero_resolucion}")
-                
-                # Enviar correo al solicitante
-                try:
-                    if peticion.get("correo"):
-                        email_solicitante = peticion.get("correo")
-                        nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                        
-                        email_body = get_resolucion_aprobada_email(
-                            numero_resolucion=numero_resolucion,
-                            radicado=radicado,
-                            nombre_solicitante=nombre_solicitante,
-                            municipio=municipio_nombre,
-                            codigo_predio=predios_cancelados[0].get('codigo_predial_nacional', '') if predios_cancelados else '',
-                            tipo_mutacion="Desenglobe (M2)"
-                        )
-                        
-                        await send_email(
-                            to_email=email_solicitante,
-                            subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
-                            body=email_body,
-                            attachment_path=filepath,
-                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
-                        )
-                        logging.info(f"✅ Correo de resolución M2 enviado a {email_solicitante}")
-                except Exception as email_error:
-                    logging.error(f"Error enviando correo M2: {str(email_error)}")
+
+        # Enviar correo al solicitante
+        try:
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
+            # Primero buscar en petición
+            if radicado:
+                peticion_email = await db.petitions.find_one({"radicado": radicado}, {"_id": 0, "correo": 1, "nombre_completo": 1})
+                if peticion_email and peticion_email.get("correo"):
+                    email_solicitante = peticion_email["correo"]
+                    nombre_solicitante = peticion_email.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predios_cancelados[0].get('codigo_predial_nacional', '') if predios_cancelados else '',
+                    tipo_mutacion="Desenglobe (M2)"
+                )
+
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución de Desenglobe Aprobada - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                logging.info(f"✅ Correo de resolución M2 enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución M2 {numero_resolucion}")
+        except Exception as email_error:
+            logging.error(f"Error enviando correo M2: {str(email_error)}")
         
         return {
             "success": True,
@@ -15785,7 +15824,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             }
         )
         
-        # === FINALIZAR LA PETICIÓN RELACIONADA ===
+        # === FINALIZAR LA PETICIÓN RELACIONADA Y ENVIAR CORREO ===
         if radicado:
             peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
             if peticion:
@@ -15801,33 +15840,48 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
                     }}
                 )
                 logging.info(f"Petición {radicado} finalizada con resolución M3 {numero_resolucion}")
-                
-                # Enviar correo al solicitante
-                try:
-                    if peticion.get("correo"):
-                        email_solicitante = peticion.get("correo")
-                        nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                        
-                        tipo_texto = "Englobe" if subtipo == "englobe" else "Agrupación"
-                        email_body = get_resolucion_aprobada_email(
-                            numero_resolucion=numero_resolucion,
-                            radicado=radicado,
-                            nombre_solicitante=nombre_solicitante,
-                            municipio=municipio_nombre,
-                            codigo_predio=predio.get('codigo_predial_nacional', ''),
-                            tipo_mutacion=f"{tipo_texto} (M3)"
-                        )
-                        
-                        await send_email(
-                            to_email=email_solicitante,
-                            subject=f"Resolución de {tipo_texto} Aprobada - {numero_resolucion}",
-                            body=email_body,
-                            attachment_path=filepath,
-                            attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
-                        )
-                        logging.info(f"✅ Correo de resolución M3 enviado a {email_solicitante}")
-                except Exception as email_error:
-                    logging.error(f"Error enviando correo M3: {str(email_error)}")
+
+        # Enviar correo al solicitante
+        try:
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
+            # Primero buscar en petición
+            if radicado:
+                peticion_email = await db.petitions.find_one({"radicado": radicado}, {"_id": 0, "correo": 1, "nombre_completo": 1})
+                if peticion_email and peticion_email.get("correo"):
+                    email_solicitante = peticion_email["correo"]
+                    nombre_solicitante = peticion_email.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
+                tipo_texto = "Cambio de Destino" if subtipo == "cambio_destino" else "Incorporación de Construcción"
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predio.get('codigo_predial_nacional', ''),
+                    tipo_mutacion=f"{tipo_texto} (M3)"
+                )
+
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución {tipo_texto} Aprobada - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                logging.info(f"✅ Correo de resolución M3 enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución M3 {numero_resolucion}")
+        except Exception as email_error:
+            logging.error(f"Error enviando correo M3: {str(email_error)}")
         
         return {
             "success": True,
@@ -16034,57 +16088,11 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             }
         )
         
-        # === ENVIAR CORREO CON LA RESOLUCIÓN AL SOLICITANTE ===
+        # === FINALIZAR PETICIÓN Y ENVIAR CORREO ===
         try:
-            # Buscar si hay una petición asociada para obtener el correo del solicitante
             peticion = None
             if radicado:
                 peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
-            
-            # Si hay petición con correo del solicitante, enviar el correo
-            if peticion and peticion.get("correo"):
-                email_solicitante = peticion.get("correo")
-                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                
-                # Generar el contenido del correo
-                subtipo_texto = "Revisión de Avalúo" if subtipo == "revision_avaluo" else "Autoestimación"
-                decision_texto = "APROBADA" if decision == "aceptar" else "RECHAZADA"
-                email_body = get_resolucion_aprobada_email(
-                    numero_resolucion=numero_resolucion,
-                    radicado=radicado,
-                    nombre_solicitante=nombre_solicitante,
-                    municipio=municipio_nombre,
-                    codigo_predio=predio.get('codigo_predial_nacional', ''),
-                    tipo_mutacion=f"M4 - {subtipo_texto} ({decision_texto})"
-                )
-                
-                # Enviar correo con el PDF adjunto
-                await send_email(
-                    to_email=email_solicitante,
-                    subject=f"Resolución {decision_texto} - {numero_resolucion}",
-                    body=email_body,
-                    attachment_path=filepath,
-                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
-                )
-                
-                logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
-                
-                # === FINALIZAR LA PETICIÓN ===
-                await db.petitions.update_one(
-                    {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                logging.info(f"Petición {radicado} finalizada con resolución M4 {numero_resolucion}")
-            else:
-                logging.info(f"No se encontró correo de solicitante para enviar resolución M4 {numero_resolucion}")
-                # Aún así finalizar la petición si existe
                 if peticion:
                     await db.petitions.update_one(
                         {"radicado": radicado},
@@ -16097,12 +16105,47 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
                             "updated_at": datetime.now(timezone.utc).isoformat()
                         }}
                     )
-                    logging.info(f"Petición {radicado} finalizada (sin correo)")
-                
-                
+                    logging.info(f"Petición {radicado} finalizada con resolución M4 {numero_resolucion}")
+
+            # Determinar correo del solicitante
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
+            if peticion and peticion.get("correo"):
+                email_solicitante = peticion["correo"]
+                nombre_solicitante = peticion.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
+                subtipo_texto = "Revisión de Avalúo" if subtipo == "revision_avaluo" else "Autoestimación"
+                decision_texto = "APROBADA" if decision == "aceptar" else "RECHAZADA"
+                email_body = get_resolucion_aprobada_email(
+                    numero_resolucion=numero_resolucion,
+                    radicado=radicado,
+                    nombre_solicitante=nombre_solicitante,
+                    municipio=municipio_nombre,
+                    codigo_predio=predio.get('codigo_predial_nacional', ''),
+                    tipo_mutacion=f"M4 - {subtipo_texto} ({decision_texto})"
+                )
+
+                await send_email(
+                    to_email=email_solicitante,
+                    subject=f"Resolución {decision_texto} - {numero_resolucion}",
+                    body=email_body,
+                    attachment_path=filepath,
+                    attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
+                )
+                logging.info(f"Correo de resolución M4 enviado a {email_solicitante}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución M4 {numero_resolucion}")
+
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución M4: {str(email_error)}")
-            # No interrumpir el flujo si falla el envío de correo
         
         return {
             "success": True,
@@ -16327,16 +16370,40 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
             }
         )
         
-        # Enviar correo si hay destinatario
+        # === FINALIZAR PETICIÓN Y ENVIAR CORREO ===
         try:
             peticion = None
             if radicado:
                 peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
-            
+                if peticion:
+                    await db.petitions.update_one(
+                        {"radicado": radicado},
+                        {"$set": {
+                            "status": "completado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    logging.info(f"Petición {radicado} finalizada con resolución M5 {numero_resolucion}")
+
+            # Determinar correo del solicitante
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
             if peticion and peticion.get("correo"):
-                email_solicitante = peticion.get("correo")
-                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                
+                email_solicitante = peticion["correo"]
+                nombre_solicitante = peticion.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
                 subtipo_texto = "Cancelación de Predio" if subtipo == "cancelacion" else "Inscripción de Predio Nuevo"
                 email_body = get_resolucion_aprobada_email(
                     numero_resolucion=numero_resolucion,
@@ -16346,7 +16413,7 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                     codigo_predio=predio_m5.get('codigo_predial_nacional', predio_m5.get('codigo_predial', '')),
                     tipo_mutacion=f"M5 - {subtipo_texto}"
                 )
-                
+
                 await send_email(
                     to_email=email_solicitante,
                     subject=f"Resolución {subtipo_texto} - {numero_resolucion}",
@@ -16354,36 +16421,9 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
                     attachment_path=filepath,
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
-                
                 logging.info(f"Correo de resolución M5 enviado a {email_solicitante}")
-                
-                # === FINALIZAR LA PETICIÓN ===
-                await db.petitions.update_one(
-                    {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                logging.info(f"Petición {radicado} finalizada con resolución M5 {numero_resolucion}")
-            elif peticion:
-                # Finalizar la petición aunque no haya correo
-                await db.petitions.update_one(
-                    {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                logging.info(f"Petición {radicado} finalizada (sin correo)")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución M5 {numero_resolucion}")
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución M5: {str(email_error)}")
         
@@ -16730,16 +16770,40 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             "numero_resolucion": numero_resolucion
         })
         
-        # Enviar correo y finalizar petición
+        # === FINALIZAR PETICIÓN Y ENVIAR CORREO ===
         try:
             peticion = None
             if radicado:
                 peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
-            
+                if peticion:
+                    await db.petitions.update_one(
+                        {"radicado": radicado},
+                        {"$set": {
+                            "status": "completado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+
+            # Determinar correo del solicitante
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
             if peticion and peticion.get("correo"):
-                email_solicitante = peticion.get("correo")
-                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
-                
+                email_solicitante = peticion["correo"]
+                nombre_solicitante = peticion.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
                 email_body = get_resolucion_aprobada_email(
                     numero_resolucion=numero_resolucion,
                     radicado=radicado,
@@ -16748,7 +16812,7 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     codigo_predio=codigo_predial,
                     tipo_mutacion="Rectificación de Área"
                 )
-                
+
                 await send_email(
                     to_email=email_solicitante,
                     subject=f"Resolución Rectificación de Área - {numero_resolucion}",
@@ -16757,21 +16821,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Rectificación de Área enviado a {email_solicitante}")
-            
-            # Finalizar la petición
-            if peticion:
-                await db.petitions.update_one(
-                    {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución M6 {numero_resolucion}")
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución Rectificación de Área: {str(email_error)}")
         
@@ -16973,19 +17024,43 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
             )
             logger.info(f"✅ Predio {predio_id} actualizado con datos complementados")
         
-        # Enviar correo al solicitante y finalizar petición
+        # === FINALIZAR PETICIÓN Y ENVIAR CORREO ===
         try:
             radicado = solicitud.get('radicado', '')
             peticion = None
-            
+
             if radicado:
                 peticion = await db.petitions.find_one({"radicado": radicado}, {"_id": 0})
-            
+                if peticion:
+                    await db.petitions.update_one(
+                        {"radicado": radicado},
+                        {"$set": {
+                            "status": "completado",
+                            "estado_tramite": "Finalizado",
+                            "resolucion_numero": numero_resolucion,
+                            "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
+                            "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+                    logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+
+            # Determinar correo del solicitante
+            email_solicitante = None
+            nombre_solicitante = "Estimado usuario"
+
             if peticion and peticion.get("correo"):
-                email_solicitante = peticion.get("correo")
-                nombre_solicitante = peticion.get("nombre_completo", "Estimado usuario")
+                email_solicitante = peticion["correo"]
+                nombre_solicitante = peticion.get("nombre_completo", nombre_solicitante)
+
+            # Fallback: solicitud de mutación
+            if not email_solicitante:
+                sol_data = solicitud.get("solicitante", {})
+                email_solicitante = solicitud.get("correo_solicitante") or sol_data.get("correo") or sol_data.get("email")
+                nombre_solicitante = sol_data.get("nombre", sol_data.get("nombre_completo", nombre_solicitante))
+
+            if email_solicitante:
                 codigo_predial = predio_data.get('codigo_predial_nacional', predio_data.get('codigo_predial', ''))
-                
                 email_body = get_resolucion_aprobada_email(
                     numero_resolucion=numero_resolucion,
                     radicado=radicado,
@@ -16994,7 +17069,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     codigo_predio=codigo_predial,
                     tipo_mutacion="Complementación de Información"
                 )
-                
+
                 await send_email(
                     to_email=email_solicitante,
                     subject=f"Resolución Complementación de Información - {numero_resolucion}",
@@ -17003,21 +17078,8 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     attachment_name=f"{numero_resolucion.replace('/', '-')}.pdf"
                 )
                 logging.info(f"Correo de resolución Complementación enviado a {email_solicitante}")
-            
-            # Finalizar la petición
-            if peticion:
-                await db.petitions.update_one(
-                    {"radicado": radicado},
-                    {"$set": {
-                        "status": "completado",
-                        "estado_tramite": "Finalizado",
-                        "resolucion_numero": numero_resolucion,
-                        "resolucion_pdf": f"/api/resoluciones/descargar/{filename}",
-                        "fecha_finalizacion": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
-                )
-                logging.info(f"Petición {radicado} finalizada con resolución {numero_resolucion}")
+            else:
+                logging.info(f"No se encontró correo de solicitante para resolución COMP {numero_resolucion}")
         except Exception as email_error:
             logging.error(f"Error enviando correo de resolución Complementación: {str(email_error)}")
         
@@ -31215,20 +31277,28 @@ async def ejecutar_accion_solicitud(
                         "predio_id": solicitud.get('predio_id'),
                         "datos_propuestos": {
                             "propietarios": solicitud.get('propietarios_nuevos', []),
+                            "municipio": solicitud.get('municipio', ''),
+                            "codigo_predial_nacional": solicitud.get('codigo_predial', ''),
                         },
+                        "radicado": solicitud.get('radicado'),
                         "radicado_numero": solicitud.get('radicado'),
-                        "justificacion": solicitud.get('observaciones')
+                        "justificacion": solicitud.get('observaciones'),
+                        "propuesto_por": solicitud.get('creado_por_id'),
+                        "texto_considerando": solicitud.get('texto_considerando', ''),
                     }
                     pdf_result = await generar_resolucion_final(cambio_doc, current_user)
-                
+
                 if pdf_result:
                     update_data["resolucion_id"] = pdf_result.get("id")
                     update_data["pdf_url"] = pdf_result.get("pdf_url") or pdf_result.get("pdf_path")
                     update_data["numero_resolucion"] = pdf_result.get("numero_resolucion")
-                    
+                    # Trámite completado exitosamente → FINALIZADO
+                    nuevo_estado = MutacionEstado.FINALIZADO
+                    update_data["fecha_finalizacion"] = datetime.now(timezone.utc).isoformat()
+
             except Exception as pdf_error:
                 logging.error(f"Error generando PDF para {tipo_mutacion}: {str(pdf_error)}")
-                # Continuar con la aprobación aunque falle el PDF
+                # Si falla el PDF, queda en APROBADO (no FINALIZADO) para reintentar
                 update_data["error_pdf"] = str(pdf_error)
             
             # Notificar al gestor original
