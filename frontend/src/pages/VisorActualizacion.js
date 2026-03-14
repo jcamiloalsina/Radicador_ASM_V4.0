@@ -2395,7 +2395,6 @@ export default function VisorActualizacion() {
       ));
       setSelectedPredio(prev => ({ ...prev, estado_visita: nuevoEstado, sin_cambios: datosVisita.sin_cambios }));
       
-      setShowFormularioVisita(false);
       setVisitaExistente(datosVisita);
       
       // Refrescar datos

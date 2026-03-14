@@ -377,8 +377,8 @@ class PredioR1Create(BaseModel):
     barrio: str = "00"
     manzana_vereda: str = "0000"
     terreno: str = "0001"
-    condicion_predio: str = "0000"
-    predio_horizontal: str = "000000000"
+    condicion_predio: str = "0"
+    predio_horizontal: str = "00000000"
     
     # Propietario
     nombre_propietario: str
@@ -388,7 +388,6 @@ class PredioR1Create(BaseModel):
     
     # Ubicación y características
     direccion: str
-    comuna: str = "0"
     destino_economico: str
     area_terreno: float
     area_construida: float = 0
@@ -4183,13 +4182,8 @@ async def descargar_flujo_radicacion_pdf():
     pdf_path = "/app/backend/static/flujo_radicacion_tramites.pdf"
     
     if not os.path.exists(pdf_path):
-        # Regenerar el PDF si no existe
-        try:
-            import subprocess
-            subprocess.run(["python", "/app/backend/generar_flujo_pdf.py"], check=True)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
-    
+        raise HTTPException(status_code=404, detail="PDF de flujo de radicación no disponible")
+
     return FileResponse(
         path=pdf_path,
         filename="Flujo_Radicacion_Tramites_Asomunicipios.pdf",
@@ -5258,14 +5252,16 @@ async def generate_codigo_predial(municipio: str, zona: str, sector: str, manzan
     # Construir código de 30 dígitos
     # depto(2) + mpio(3) + zona(2) + sector(2) + comuna(2) + barrio(2) + manzana(4) + terreno(4) + condicion(1) + ph(8: edificio2+piso2+unidad4)
     codigo = (
-        divipola["departamento"].zfill(2) +  # 2 dígitos
-        divipola["municipio"].zfill(3) +     # 3 dígitos
-        zona.zfill(2) +                       # 2 dígitos
-        sector.zfill(2) +                     # 2 dígitos
-        manzana_vereda.zfill(4) +            # 4 dígitos
-        terreno.zfill(4) +                    # 4 dígitos
-        condicion.zfill(1) +                  # 1 dígito
-        ph.zfill(8)                           # 8 dígitos (edificio2+piso2+unidad4)
+        divipola["departamento"].zfill(2) +  # 2 dígitos (pos 1-2)
+        divipola["municipio"].zfill(3) +     # 3 dígitos (pos 3-5)
+        zona.zfill(2) +                       # 2 dígitos (pos 6-7)
+        sector.zfill(2) +                     # 2 dígitos (pos 8-9)
+        "00" +                                # 2 dígitos comuna (pos 10-11)
+        "00" +                                # 2 dígitos barrio (pos 12-13)
+        manzana_vereda.zfill(4) +            # 4 dígitos (pos 14-17)
+        terreno.zfill(4) +                    # 4 dígitos (pos 18-21)
+        condicion.zfill(1) +                  # 1 dígito  (pos 22)
+        ph.zfill(8)                           # 8 dígitos (pos 23-30)
     )
     
     return codigo
@@ -7495,9 +7491,10 @@ async def get_estructura_codigo_predial(
         "comuna": {"posicion": "10-11", "valor": "", "editable": True, "descripcion": "Comuna"},
         "barrio": {"posicion": "12-13", "valor": "", "editable": True, "descripcion": "Barrio"},
         "manzana_vereda": {"posicion": "14-17", "valor": "", "editable": True, "descripcion": "Vereda o Manzana"},
-        "terreno": {"posicion": "18-21", "valor": "", "editable": True, "descripcion": "Condición del Predio (Terreno)"},
-        "edificio": {"posicion": "22", "valor": "0", "editable": True, "descripcion": "No. Edificio o Torre"},
-        "piso": {"posicion": "23-26", "valor": "0000", "editable": True, "descripcion": "No. del Piso"},
+        "terreno": {"posicion": "18-21", "valor": "", "editable": True, "descripcion": "No. Terreno"},
+        "condicion": {"posicion": "22", "valor": "0", "editable": True, "descripcion": "Condición del Predio (0=Normal, 2=Mejora, 9=PH)"},
+        "edificio": {"posicion": "23-24", "valor": "00", "editable": True, "descripcion": "No. Edificio o Torre"},
+        "piso": {"posicion": "25-26", "valor": "00", "editable": True, "descripcion": "No. del Piso"},
         "unidad": {"posicion": "27-30", "valor": "0000", "editable": True, "descripcion": "No. Unidad PH/Mejora"}
     }
     
