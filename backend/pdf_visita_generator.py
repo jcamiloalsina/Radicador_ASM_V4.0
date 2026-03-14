@@ -44,6 +44,13 @@ def generar_pdf_visita_completo(proyecto, predio, visita, propietarios, construc
     NO del usuario que genera el PDF. Esto permite que un coordinador genere el PDF 
     mostrando el nombre del gestor que realizó la visita.
     """
+    # Asegurar que los parámetros no sean None
+    visita = visita or {}
+    propietarios = propietarios or []
+    construcciones = construcciones or []
+    proyecto = proyecto or {}
+    predio = predio or {}
+
     # Importar imágenes del certificado
     try:
         from certificado_images import get_encabezado_image, get_pie_pagina_image

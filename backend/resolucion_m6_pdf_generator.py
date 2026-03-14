@@ -24,7 +24,7 @@ PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN_LEFT = 50
 MARGIN_RIGHT = 50
 MARGIN_TOP = 50
-MARGIN_BOTTOM = 80
+MARGIN_BOTTOM = 50
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
 # Colores institucionales - IDÉNTICOS a M1
@@ -238,7 +238,7 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         propietario_nombre = propietarios[0].get('nombre_propietario', propietarios[0].get('nombre', ''))
         propietario_documento = propietarios[0].get('numero_documento', '')
         propietario_tipo_doc = propietarios[0].get('tipo_documento', 'CC')
-        propietario_estado = propietarios[0].get('estado_civil', '')
+        _ec_raw = propietarios[0].get('estado_civil', ''); propietario_estado = _ec_raw if _ec_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
     else:
         propietario_nombre = solicitante.get('nombre', '')
         propietario_documento = solicitante.get('documento', '')
@@ -359,10 +359,10 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         y_position -= 14
         c.setFont(font_normal, 9)
         c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
-        y_position -= 20
-        
+        y_position -= 14
+
         return y_position
-    
+
     def verificar_espacio(espacio_necesario):
         """Verifica si hay espacio suficiente y crea nueva página si es necesario"""
         nonlocal y_position
@@ -412,8 +412,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         verificar_espacio(30)
         c.setFont(font_bold, 11)
         c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
-        y_position -= 20
-    
+        y_position -= 14
+
     # Helper: dibujar texto adaptativo en celda alta (2 líneas si es necesario)
     def draw_cell_text(c, text, x, col_w, y_top, row_h, default_fs=5):
         fs = default_fs
@@ -447,7 +447,7 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         """
         nonlocal y_position
 
-        verificar_espacio(140)
+        verificar_espacio(100)
 
         fuente_tabla = 8
 
@@ -526,7 +526,7 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
 
                 # ESTADO CIVIL
                 c.rect(x, y_position - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
-                estado_civil = prop.get('estado_civil', '')
+                estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
                 c.setFont(font_normal, fuente_tabla - 1)
                 c.drawCentredString(x + cancel_cols[4]/2, y_position - cancel_row_h/2 - 2, estado_civil[:10])
                 y_position -= cancel_row_h
@@ -667,7 +667,7 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
     # Fecha de resolución - Igual a M1
     c.setFont(font_bold, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y_position -= 25
+    y_position -= 15
     
     # Título
     titulo_formateado = plantilla["titulo"].format(municipio=municipio.upper())
@@ -676,14 +676,14 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
     for line in lines:
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
-    y_position -= 15
-    
+    y_position -= 8
+
     # ==========================================
     # CONSIDERANDOS
     # ==========================================
     dibujar_seccion_titulo("CONSIDERANDO:")
-    y_position -= 5
-    
+    y_position -= 3
+
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando_personalizado and texto_considerando_personalizado.strip():
         texto_procesado = texto_considerando_personalizado
@@ -702,13 +702,13 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
             pass
         c.setFillColor(NEGRO)
         dibujar_texto_justificado(texto_procesado)
-        y_position -= 15
+        y_position -= 8
     else:
         # Usar plantilla estándar
         c.setFillColor(NEGRO)
         dibujar_texto_justificado(plantilla["considerando_intro"])
-        y_position -= 10
-        
+        y_position -= 6
+
         texto_solicitud = plantilla["considerando_solicitud"].format(
             solicitante_nombre=solicitante_nombre,
             solicitante_documento=solicitante_documento,
@@ -716,35 +716,35 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
             codigo_predial=codigo_predial
         )
         dibujar_texto_justificado(texto_solicitud)
-        y_position -= 10
-        
+        y_position -= 6
+
         texto_area_actual = plantilla["considerando_area_actual"].format(
             area_terreno_anterior=formatear_area(area_terreno_anterior),
             area_construida_anterior=formatear_area(area_construida_anterior),
             avaluo_anterior=formatear_moneda(avaluo_anterior)
         )
         dibujar_texto_justificado(texto_area_actual)
-        y_position -= 10
-        
+        y_position -= 6
+
         texto_area_nueva = plantilla["considerando_area_nueva"].format(
             area_terreno_nueva=formatear_area(area_terreno_nueva),
             area_construida_nueva=formatear_area(area_construida_nueva),
             avaluo_nuevo=formatear_moneda(avaluo_nuevo)
         )
         dibujar_texto_justificado(texto_area_nueva)
-        y_position -= 10
-        
+        y_position -= 6
+
         dibujar_texto_justificado(plantilla["considerando_analisis"])
-        y_position -= 10
-        
+        y_position -= 6
+
         dibujar_texto_justificado(plantilla["considerando_legal"])
-        y_position -= 15
+        y_position -= 8
     
     # ==========================================
     # RESUELVE
     # ==========================================
     dibujar_seccion_titulo("RESUELVE:")
-    y_position -= 5
+    y_position -= 3
     
     # ARTÍCULO PRIMERO - IGUAL A M5
     verificar_espacio(40)
@@ -754,8 +754,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
     
     articulo_1 = plantilla["articulo_1_intro"].format(municipio=municipio)
     dibujar_texto_justificado(articulo_1)
-    y_position -= 10
-    
+    y_position -= 6
+
     # Tabla CANCELACIÓN (Datos anteriores)
     dibujar_tabla_predio(
         predio, 
@@ -765,8 +765,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         area_construida_val=area_construida_anterior,
         avaluo_val=avaluo_anterior
     )
-    y_position -= 10
-    
+    y_position -= 5
+
     # Tabla INSCRIPCIÓN (Datos nuevos/rectificados)
     dibujar_tabla_predio(
         predio, 
@@ -776,8 +776,8 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         area_construida_val=area_construida_nueva,
         avaluo_val=avaluo_nuevo
     )
-    y_position -= 15
-    
+    y_position -= 8
+
     # ARTÍCULOS RESTANTES - IGUAL A M5
     articulos = [
         ("Artículo 02.", plantilla["articulo_2"]),
@@ -793,23 +793,23 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         c.drawString(MARGIN_LEFT, y_position, titulo_art)
         y_position -= 14
         dibujar_texto_justificado(texto_art)
-        y_position -= 10
-    
+        y_position -= 6
+
     # ==========================================
     # CIERRE Y FIRMA + QR (IDÉNTICO A M5)
     # ==========================================
-    verificar_espacio(150)
+    verificar_espacio(100)
     
     # Cierre
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
-    y_position -= 20
+    y_position -= 10
     
     # Fecha textual - IGUAL A M5
     fecha_texto = f"Dada en Ocaña, a los {fecha_actual.day} días del mes de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][fecha_actual.month-1]} de {fecha_actual.year}"
     c.setFont(font_normal, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, fecha_texto)
-    y_position -= 30
+    y_position -= 15
     
     # === CALCULAR POSICIONES PARA FIRMA Y QR LADO A LADO (IGUAL A M5) ===
     firma_block_width = 200

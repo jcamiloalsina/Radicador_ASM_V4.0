@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -53,6 +53,8 @@ export default function Pendientes() {
   const { user } = useAuth();
   const { addListener } = useWebSocket() || {};
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const filtroTipo = searchParams.get('tipo');
   const [cambiosPendientes, setCambiosPendientes] = useState([]);
   const [prediosNuevos, setPrediosNuevos] = useState([]);
   const [cambiosHistorial, setCambiosHistorial] = useState([]);
@@ -1292,23 +1294,7 @@ export default function Pendientes() {
 
       {/* Vista para GESTORES (sin permiso de aprobar) */}
       {!puedeAprobar ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="mis-asignaciones" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Mis Asignaciones
-              {totalMisAsignaciones > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">{totalMisAsignaciones}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="historial" className="flex items-center gap-2">
-              <History className="w-4 h-4" />
-              Historial
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tab: Mis Asignaciones (Todo centralizado para gestores) */}
-          <TabsContent value="mis-asignaciones">
+        <div className="w-full">
             {(loadingAsignacionesApoyo || loadingPredios || loadingSolicitudesMutacion) ? (
               <Card>
                 <CardContent className="py-16 text-center">
@@ -1640,34 +1626,20 @@ export default function Pendientes() {
                 )}
               </div>
             )}
-          </TabsContent>
-
-          {/* Tab: Historial */}
-          <TabsContent value="historial">
-            {renderHistorialContent()}
-          </TabsContent>
-        </Tabs>
+        </div>
       ) : (
         /* Vista para COORDINADORES / APROBADORES - Simplificada */
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="pendientes" className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Pendientes por Aprobar
-              {(cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) > 0 && (
-                <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-800">
-                  {cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="historial" className="flex items-center gap-2">
-              <History className="w-4 h-4" />
-              Historial
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tab: Todos los Pendientes Unificados */}
-          <TabsContent value="pendientes">
+        <div className="w-full">
+            {/* Indicador de filtro activo */}
+            {filtroTipo && (
+              <div className="flex items-center gap-2 mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <Filter className="w-4 h-4 text-purple-600" />
+                <span className="text-sm text-purple-800">Filtrando por: <strong>{filtroTipo}</strong></span>
+                <Button variant="ghost" size="sm" className="ml-auto text-purple-600 hover:bg-purple-100 h-7 px-2" onClick={() => navigate('/dashboard/pendientes')}>
+                  <X className="w-3 h-3 mr-1" /> Quitar filtro
+                </Button>
+              </div>
+            )}
             {(cambiosPendientes.length + prediosEnRevision + mutacionesPendientes.length + reaparicionesPendientes) === 0 ? (
               <Card>
                 <CardContent className="py-16 text-center">
@@ -1815,8 +1787,8 @@ export default function Pendientes() {
                   );
                 })}
 
-                {/* Mutaciones M1/M2 */}
-                {mutacionesPendientes.map((mutacion) => (
+                {/* Mutaciones pendientes (filtradas por tipo si viene de dashboard) */}
+                {mutacionesPendientes.filter(m => !filtroTipo || m.tipo === filtroTipo).map((mutacion) => (
                   <Card key={`mut-${mutacion.id}`} className="hover:border-purple-300 transition-colors border-l-4 border-l-purple-500">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -1977,13 +1949,7 @@ export default function Pendientes() {
                 ))}
               </div>
             )}
-          </TabsContent>
-
-          {/* Tab: Historial */}
-          <TabsContent value="historial">
-            {renderHistorialContent()}
-          </TabsContent>
-        </Tabs>
+        </div>
       )}
 
       {/* Modal de Reaparición */}

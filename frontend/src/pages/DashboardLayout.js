@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, Shield, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, UserCheck, ScrollText, FolderOpen } from 'lucide-react';
+import { LogOut, FileText, Activity, Users, Menu, X, UserCog, BarChart3, MapPin, Map, Clock, AlertTriangle, ChevronDown, ChevronRight, FolderKanban, Layers, RefreshCcw, GitCompare, ShieldCheck, UserCheck, ScrollText, FolderOpen } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
@@ -105,17 +105,18 @@ export default function DashboardLayout() {
   const fetchCambiosPendientes = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Obtener todos los tipos de pendientes
-      const [cambiosRes, prediosNuevosRes, reaparicionesRes] = await Promise.all([
+      const [cambiosRes, prediosNuevosRes, reaparicionesRes, mutacionesRes] = await Promise.all([
         axios.get(`${API}/predios/cambios/stats`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { total_pendientes: 0 } })),
         axios.get(`${API}/predios-nuevos`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { predios: [] } })),
-        axios.get(`${API}/predios/reapariciones/solicitudes-pendientes`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { solicitudes: [] } }))
+        axios.get(`${API}/predios/reapariciones/solicitudes-pendientes`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { solicitudes: [] } })),
+        axios.get(`${API}/solicitudes-mutacion/pendientes-aprobacion`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { solicitudes: [] } }))
       ]);
-      
+
       const cambios = cambiosRes.data.total_pendientes || 0;
       const prediosData = prediosNuevosRes.data.predios || [];
-      
+
       // Para coordinadores: contar predios en revisión
       // Para gestores: contar predios asignados a ellos en estado creado/digitalizacion/devuelto
       const isCoord = user && ['coordinador', 'administrador'].includes(user.role);
@@ -123,15 +124,16 @@ export default function DashboardLayout() {
       if (isCoord) {
         prediosNuevos = prediosData.filter(p => (p.estado_flujo || p.estado) === 'revision').length;
       } else {
-        prediosNuevos = prediosData.filter(p => 
-          p.gestor_apoyo_id === user?.id && 
+        prediosNuevos = prediosData.filter(p =>
+          p.gestor_apoyo_id === user?.id &&
           ['creado', 'digitalizacion', 'devuelto'].includes(p.estado_flujo || p.estado)
         ).length;
       }
-      
+
       const reapariciones = (reaparicionesRes.data.solicitudes || []).length;
-      const total = cambios + prediosNuevos + reapariciones;
-      
+      const mutaciones = (mutacionesRes.data.solicitudes || []).length;
+      const total = cambios + prediosNuevos + reapariciones + mutaciones;
+
       setCambiosPendientesCount(total);
     } catch (error) {
       console.error('Error fetching pending changes:', error);
@@ -217,6 +219,7 @@ export default function DashboardLayout() {
       usuario: 'Usuario',
       atencion_usuario: 'Atención al Usuario',
       gestor: 'Gestor',
+      gestor_auxiliar: 'Gestor Auxiliar',
       coordinador: 'Coordinador',
       administrador: 'Administrador',
       comunicaciones: 'Comunicaciones'
@@ -265,10 +268,7 @@ export default function DashboardLayout() {
     if (canSeeMisAsignaciones && !canSeePendientes) {
       conservacionItems.push({ path: '/dashboard/pendientes?tab=mis-asignaciones', label: 'Mis Asignaciones', icon: UserCheck });
     }
-    // Pendientes: visible para coordinadores, admins, o gestores con permiso approve_changes
-    if (canSeePendientes) {
-      conservacionItems.push({ path: '/dashboard/pendientes', label: 'Pendientes', icon: Clock, badge: cambiosPendientesCount });
-    }
+    // Pendientes: accesible desde el Dashboard, no se muestra en el menú lateral
 
     const actualizacionItems = [];
     if (canAccessActualizacion) {

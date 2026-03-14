@@ -137,51 +137,106 @@ async def get_backup_history(current_user: dict = Depends(get_current_user)):
     return {"backups": backups}
 
 
-async def run_backup_task(backup_id: str, backup_path: str, backup_info: dict, collections_to_backup: list):
-    """Tarea de backup en segundo plano"""
+def _run_backup_sync(backup_id: str, backup_path: str, backup_info: dict, collections_to_backup: list, mongo_url: str, db_name: str):
+    """Ejecuta el backup en un hilo separado para no bloquear el event loop"""
     import zipfile
     import json
+    import threading
     from bson import json_util
-    
+    from pymongo import MongoClient
+    from zoneinfo import ZoneInfo
+
+    COLOMBIA_TZ = ZoneInfo('America/Bogota')
+
     global backup_progress
-    backup_progress[backup_id] = {"status": "running", "progress": 0, "current_collection": "", "error": None}
-    
+    backup_progress[backup_id] = {"status": "running", "progress": 0, "current_collection": "Conectando...", "error": None}
+
     try:
+        sync_client = MongoClient(mongo_url)
+        sync_db = sync_client[db_name]
+
         total_registros = 0
-        total_collections = len(collections_to_backup)
-        
+
+        # Fase 1: Contar documentos
+        backup_progress[backup_id]["current_collection"] = "Contando registros..."
+        collection_counts = {}
+        total_docs = 0
+        for coll_name in collections_to_backup:
+            count = sync_db[coll_name].estimated_document_count()
+            collection_counts[coll_name] = count
+            total_docs += count
+
+        logger.info(f"Backup {backup_id}: {total_docs:,} docs en {len(collections_to_backup)} colecciones")
+        docs_processed = 0
+
+        # Fase 2: Exportar
         with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             metadata = {
                 "backup_id": backup_id,
-                "db_name": db.name,
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "db_name": db_name,
+                "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                 "colecciones": collections_to_backup,
+                "total_docs": total_docs,
                 "version": "1.0"
             }
             zipf.writestr("_metadata.json", json.dumps(metadata, indent=2))
-            
+
             for idx, coll_name in enumerate(collections_to_backup):
-                backup_progress[backup_id]["current_collection"] = coll_name
-                backup_progress[backup_id]["progress"] = int((idx / total_collections) * 100)
-                
+                coll_count = collection_counts[coll_name]
+                backup_progress[backup_id]["current_collection"] = f"{coll_name} (0/{coll_count:,})"
+
                 docs = []
-                cursor = db[coll_name].find({})
-                async for doc in cursor:
+                batch_count = 0
+                for doc in sync_db[coll_name].find({}):
                     docs.append(doc)
-                
+                    batch_count += 1
+                    docs_processed += 1
+
+                    if batch_count % 2000 == 0:
+                        progress = int((docs_processed / max(total_docs, 1)) * 90)
+                        backup_progress[backup_id]["progress"] = progress
+                        backup_progress[backup_id]["current_collection"] = f"{coll_name} ({batch_count:,}/{coll_count:,})"
+
                 total_registros += len(docs)
-                json_data = json_util.dumps(docs, indent=2)
+
+                # Serializar por lotes para colecciones grandes
+                backup_progress[backup_id]["current_collection"] = f"{coll_name} (guardando {batch_count:,} docs...)"
+                if len(docs) > 10000:
+                    json_parts = []
+                    for ci in range(0, len(docs), 10000):
+                        chunk_docs = docs[ci:ci+10000]
+                        json_parts.append(json_util.dumps(chunk_docs)[1:-1])
+                        backup_progress[backup_id]["current_collection"] = f"{coll_name} (guardando {min(ci+10000, len(docs)):,}/{len(docs):,})"
+                    json_data = "[" + ",".join(json_parts) + "]"
+                    del json_parts
+                else:
+                    json_data = json_util.dumps(docs)
+
                 zipf.writestr(f"{coll_name}.json", json_data)
-        
+                del docs, json_data
+
+                progress = int((docs_processed / max(total_docs, 1)) * 90)
+                backup_progress[backup_id]["progress"] = progress
+
+        # Fase 3: Finalizar
+        backup_progress[backup_id]["current_collection"] = "Finalizando..."
+        backup_progress[backup_id]["progress"] = 95
+
         file_size = os.path.getsize(backup_path)
         backup_info["size_mb"] = round(file_size / (1024 * 1024), 2)
         backup_info["registros_total"] = total_registros
         backup_info["estado"] = "completado"
-        
-        await db.backup_history.insert_one(backup_info)
+
+        sync_db.backup_history.insert_one(backup_info)
         backup_progress[backup_id] = {"status": "completed", "progress": 100, "current_collection": "", "error": None}
-        
+        logger.info(f"Backup {backup_id} completado: {total_registros:,} registros, {backup_info['size_mb']} MB")
+
+        sync_client.close()
+
     except Exception as e:
+        logger.error(f"Error en backup {backup_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         backup_progress[backup_id] = {"status": "error", "progress": 0, "current_collection": "", "error": str(e)}
         if os.path.exists(backup_path):
             os.remove(backup_path)
@@ -189,31 +244,32 @@ async def run_backup_task(backup_id: str, backup_path: str, backup_info: dict, c
 
 @router.post("/backup")
 async def create_backup(
-    background_tasks: BackgroundTasks,
     tipo: str = "completo",
     colecciones: List[str] = Query(default=[]),
     current_user: dict = Depends(get_current_user)
 ):
     """Crear backup de la base de datos"""
+    import threading
+
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
-    
+
     backup_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     backup_filename = f"backup_{db.name}_{timestamp}.zip"
     backup_path = str(settings.BACKUP_DIR / backup_filename)
-    
+
     settings.BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     if tipo == "completo":
         collections_to_backup = await db.list_collection_names()
         collections_to_backup = [c for c in collections_to_backup if c != 'backup_history']
     else:
         collections_to_backup = colecciones if colecciones else []
-    
+
     if not collections_to_backup:
         raise HTTPException(status_code=400, detail="No hay colecciones para respaldar")
-    
+
     backup_info = {
         "id": backup_id,
         "filename": backup_filename,
@@ -227,8 +283,17 @@ async def create_backup(
         "registros_total": 0,
         "estado": "en_progreso"
     }
-    
-    background_tasks.add_task(run_backup_task, backup_id, backup_path, backup_info, collections_to_backup)
+
+    # Lanzar en hilo separado para no bloquear el event loop
+    mongo_url = os.environ['MONGO_URL']
+    db_name_str = os.environ['DB_NAME']
+    t = threading.Thread(
+        target=_run_backup_sync,
+        args=(backup_id, backup_path, backup_info, collections_to_backup, mongo_url, db_name_str),
+        daemon=True
+    )
+    t.start()
+    logger.info(f"Backup thread started: {backup_id}")
     
     return {
         "success": True,

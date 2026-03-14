@@ -23,7 +23,7 @@ PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN_LEFT = 50
 MARGIN_RIGHT = 50
 MARGIN_TOP = 50
-MARGIN_BOTTOM = 80
+MARGIN_BOTTOM = 50
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
 # Colores institucionales
@@ -382,10 +382,10 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         y_position -= 14
         c.setFont(font_normal, 9)
         c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
-        y_position -= 20
-        
+        y_position -= 14
+
         return y_position
-    
+
     def verificar_espacio(necesario):
         nonlocal y_position
         if y_position - necesario < MARGIN_BOTTOM + 1*cm:
@@ -433,8 +433,8 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         verificar_espacio(30)
         c.setFont(font_bold, 11)
         c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
-        y_position -= 20
-    
+        y_position -= 14
+
     # ==========================================
     # PÁGINA 1 - ENCABEZADO
     # ==========================================
@@ -447,7 +447,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No: {numero_resolucion}")
     y_position -= 14
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y_position -= 20
+    y_position -= 12
     
     # Título
     titulo = plantilla["titulo"].format(municipio=municipio.upper())
@@ -467,7 +467,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     
     # Considerando intro
     dibujar_texto_justificado(plantilla['considerando_intro'])
-    y_position -= 10
+    y_position -= 6
     
     # Usar texto personalizado si está disponible
     if texto_considerando_personalizado:
@@ -487,7 +487,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             texto_considerando = texto_considerando_personalizado
         
         dibujar_texto_justificado(texto_considerando)
-        y_position -= 10
+        y_position -= 6
     else:
         # Usar plantilla estándar
         # Considerando solicitud
@@ -510,18 +510,18 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
             )
         
         dibujar_texto_justificado(texto_solicitud)
-        y_position -= 10
-        
+        y_position -= 6
+
         # Considerando motivo (solo para revisión de avalúo)
         if subtipo == 'revision_avaluo' and motivo_solicitud:
             texto_motivo = plantilla['considerando_motivo'].format(motivo_solicitud=motivo_solicitud)
             dibujar_texto_justificado(texto_motivo)
-            y_position -= 10
+            y_position -= 6
         
         # Considerando legal autoestimación
         if subtipo == 'autoestimacion':
             dibujar_texto_justificado(plantilla['considerando_legal_autoestimacion'])
-            y_position -= 10
+            y_position -= 6
         
         # Considerando análisis
         if subtipo == 'revision_avaluo':
@@ -531,12 +531,12 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                 destino_economico=destino_economico
             )
             dibujar_texto_justificado(texto_analisis)
-            y_position -= 10
-            
+            y_position -= 6
+
             texto_mod = plantilla['considerando_modificacion'].format(codigo_predial=codigo_predial)
             dibujar_texto_justificado(texto_mod)
-            y_position -= 10
-            
+            y_position -= 6
+
             dibujar_texto_justificado(plantilla['considerando_legal'])
         else:
             # Para autoestimación, formatear con el nombre del perito avaluador
@@ -544,11 +544,11 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
                 perito_avaluador=perito_avaluador if perito_avaluador else "el profesional designado"
             )
             dibujar_texto_justificado(texto_analisis_autoest)
-            y_position -= 10
+            y_position -= 6
             dibujar_texto_justificado(plantilla['considerando_legal_final'])
     
-    y_position -= 15
-    
+    y_position -= 8
+
     # ==========================================
     # RESUELVE
     # ==========================================
@@ -563,7 +563,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     c.setFont(font_normal, 10)
     texto_art1 = plantilla['articulo_1_intro'].format(municipio=municipio)
     c.drawString(MARGIN_LEFT + 55, y_position, texto_art1)
-    y_position -= 20
+    y_position -= 12
     
     # Helper: dibujar texto adaptativo en celda alta (2 líneas si es necesario)
     def draw_cell_text(c, text, x, col_w, y_top, row_h, default_fs=5):
@@ -596,7 +596,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     def dibujar_tabla_avaluo(titulo_seccion, es_cancelacion=True):
         nonlocal y_position
 
-        verificar_espacio(120)
+        verificar_espacio(90)
 
         # Título de sección con fondo verde
         c.setFillColor(VERDE_INSTITUCIONAL)
@@ -604,21 +604,21 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         c.setFillColor(BLANCO)
         c.setFont(font_bold, 10)
         c.drawCentredString(PAGE_WIDTH/2, y_position - 9, titulo_seccion)
-        y_position -= 20
+        y_position -= 12
 
         c.setFillColor(NEGRO)
 
         # =====================
-        # FILA 1: N° PREDIAL, APELLIDOS Y NOMBRES, T.D., NRO. DOC., DESTINO - row height 20
+        # FILA 1: N° PREDIAL, APELLIDOS Y NOMBRES, T.D., NRO. DOC., DESTINO - row height 22
         # =====================
-        row_h = 20
+        row_h = 22
         c.setFillColor(colors.HexColor('#e8e8e8'))
         c.rect(MARGIN_LEFT, y_position - row_h, CONTENT_WIDTH, row_h, fill=1, stroke=1)
         c.setFillColor(NEGRO)
-        c.setFont(font_bold, 7)
+        c.setFont(font_bold, 7.5)
 
-        # Columnas redistribuidas: NPN 42%, Nombre 27%, T.D. 6%, Nro Doc 17%, Destino 8%
-        col_widths = [CONTENT_WIDTH * 0.42, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.08]
+        # Columnas redistribuidas: NPN 40%, Nombre 27%, T.D. 6%, Nro Doc 17%, Destino 10%
+        col_widths = [CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.27, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.10]
         headers = ["N° PREDIAL", "APELLIDOS Y NOMBRES", "T.D.", "NRO. DOC.", "DESTINO"]
         x = MARGIN_LEFT
         for i, header in enumerate(headers):
@@ -628,47 +628,47 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         y_position -= row_h
 
         # Datos del propietario (extraer de solicitante)
-        c.setFont(font_normal, 7)
+        c.setFont(font_normal, 7.5)
         tipo_doc = solicitante.get("tipo_documento", "CC") if isinstance(solicitante, dict) else "CC"
         nro_doc = str(solicitante.get("numero_documento", solicitante.get("documento", "")) if isinstance(solicitante, dict) else "").replace('.', '').replace(',', '').zfill(12)
         destino = predio.get("destino_economico", "R") if predio else "R"
 
-        # Fila de datos - row height 20
+        # Fila de datos
         verificar_espacio(row_h + 5)
         x = MARGIN_LEFT
         c.rect(x, y_position - row_h, col_widths[0], row_h, fill=0, stroke=1)
-        draw_cell_text(c, codigo_predial[:30] if codigo_predial else "", x, col_widths[0], y_position, row_h, default_fs=7)
+        draw_cell_text(c, codigo_predial[:30] if codigo_predial else "", x, col_widths[0], y_position, row_h, default_fs=7.5)
         x += col_widths[0]
 
         c.rect(x, y_position - row_h, col_widths[1], row_h, fill=0, stroke=1)
-        draw_cell_text(c, solicitante_nombre[:40] if solicitante_nombre else "", x, col_widths[1], y_position, row_h, default_fs=7)
+        draw_cell_text(c, solicitante_nombre[:40] if solicitante_nombre else "", x, col_widths[1], y_position, row_h, default_fs=7.5)
         x += col_widths[1]
 
         c.rect(x, y_position - row_h, col_widths[2], row_h, fill=0, stroke=1)
-        c.setFont(font_normal, 7)
+        c.setFont(font_normal, 7.5)
         c.drawCentredString(x + col_widths[2]/2, y_position - row_h/2 - 2, tipo_doc)
         x += col_widths[2]
 
         c.rect(x, y_position - row_h, col_widths[3], row_h, fill=0, stroke=1)
-        c.setFont(font_normal, 7)
+        c.setFont(font_normal, 7.5)
         c.drawCentredString(x + col_widths[3]/2, y_position - row_h/2 - 2, nro_doc[:15])
         x += col_widths[3]
 
         c.rect(x, y_position - row_h, col_widths[4], row_h, fill=0, stroke=1)
-        c.setFont(font_normal, 7)
+        c.setFont(font_normal, 7.5)
         c.drawCentredString(x + col_widths[4]/2, y_position - row_h/2 - 2, destino[:5])
         y_position -= row_h
 
         # =====================
-        # FILA 2: CÓD. HOMOLOGADO, DIRECCIÓN, D, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL - row height 20
+        # FILA 2: CÓD. HOMOLOGADO, DIRECCIÓN, D, A-TERRENO, A-CONS, AVALÚO, VIG. FISCAL - row height 22
         # =====================
-        predio_row_h = 20
+        predio_row_h = 22
         c.setFillColor(colors.HexColor('#e8e8e8'))
         c.rect(MARGIN_LEFT, y_position - predio_row_h, CONTENT_WIDTH, predio_row_h, fill=1, stroke=1)
         c.setFillColor(NEGRO)
         c.setFont(font_bold, 7)
 
-        col_widths2 = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
+        col_widths2 = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.03, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.15]
         headers2 = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "D", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
         x = MARGIN_LEFT
         for i, header in enumerate(headers2):
@@ -678,7 +678,7 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         y_position -= predio_row_h
 
         # Valores de la fila 2 - USAR DATOS DE R1/R2
-        c.setFont(font_normal, 7)
+        c.setFont(font_normal, 7.5)
         codigo_hom = codigo_homologado_predio  # Ya viene de R1
         direccion_predio = direccion_predio_r1 or ""  # Ya viene de R1
         area_terreno_val = area_terreno  # Ya viene de R1
@@ -714,38 +714,38 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         x = MARGIN_LEFT
         # CÓD. HOMOLOGADO
         c.rect(x, y_position - predio_row_h, col_widths2[0], predio_row_h, fill=0, stroke=1)
-        draw_cell_text(c, codigo_hom[:12] if codigo_hom else "", x, col_widths2[0], y_position, predio_row_h)
+        draw_cell_text(c, codigo_hom or "", x, col_widths2[0], y_position, predio_row_h, default_fs=6.5)
         x += col_widths2[0]
 
         # DIRECCIÓN
         c.rect(x, y_position - predio_row_h, col_widths2[1], predio_row_h, fill=0, stroke=1)
-        draw_cell_text(c, direccion_predio, x, col_widths2[1], y_position, predio_row_h)
+        draw_cell_text(c, direccion_predio, x, col_widths2[1], y_position, predio_row_h, default_fs=6.5)
         x += col_widths2[1]
 
         # D (Destino)
         c.rect(x, y_position - predio_row_h, col_widths2[2], predio_row_h, fill=0, stroke=1)
-        c.setFont(font_normal, 5)
+        c.setFont(font_normal, 6)
         c.drawCentredString(x + col_widths2[2]/2, y_position - predio_row_h/2 - 2, destino_economico[:1] if destino_economico else "A")
         x += col_widths2[2]
 
         # A-TERRENO
         c.rect(x, y_position - predio_row_h, col_widths2[3], predio_row_h, fill=0, stroke=1)
-        draw_cell_text(c, area_terreno_fmt, x, col_widths2[3], y_position, predio_row_h)
+        draw_cell_text(c, area_terreno_fmt, x, col_widths2[3], y_position, predio_row_h, default_fs=6.5)
         x += col_widths2[3]
 
         # A-CONS
         c.rect(x, y_position - predio_row_h, col_widths2[4], predio_row_h, fill=0, stroke=1)
-        draw_cell_text(c, area_construida_fmt, x, col_widths2[4], y_position, predio_row_h)
+        draw_cell_text(c, area_construida_fmt, x, col_widths2[4], y_position, predio_row_h, default_fs=6.5)
         x += col_widths2[4]
 
         # AVALÚO
         c.rect(x, y_position - predio_row_h, col_widths2[5], predio_row_h, fill=0, stroke=1)
-        draw_cell_text(c, formatear_moneda(valor_avaluo), x, col_widths2[5], y_position, predio_row_h)
+        draw_cell_text(c, formatear_moneda(valor_avaluo), x, col_widths2[5], y_position, predio_row_h, default_fs=6.5)
         x += col_widths2[5]
 
         # VIG. FISCAL
         c.rect(x, y_position - predio_row_h, col_widths2[6], predio_row_h, fill=0, stroke=1)
-        c.setFont(font_normal, 5)
+        c.setFont(font_normal, 6.5)
         c.drawCentredString(x + col_widths2[6]/2, y_position - predio_row_h/2 - 2, vig_fiscal)
         y_position -= predio_row_h
 
@@ -753,21 +753,21 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         # FILA 3: MATRÍCULA INMOBILIARIA
         # =====================
         c.setFillColor(colors.HexColor('#e8e8e8'))
-        c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH * 0.3, 12, fill=1, stroke=1)
+        c.rect(MARGIN_LEFT, y_position - 14, CONTENT_WIDTH * 0.3, 14, fill=1, stroke=1)
         c.setFillColor(NEGRO)
-        c.setFont(font_bold, 7)
-        c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 9, "MATRÍCULA INMOBILIARIA")
-        c.setFont(font_normal, 7)
-        c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
-        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
-        y_position -= 20
+        c.setFont(font_bold, 7.5)
+        c.drawCentredString(MARGIN_LEFT + (CONTENT_WIDTH * 0.3)/2, y_position - 10, "MATRÍCULA INMOBILIARIA")
+        c.setFont(font_normal, 7.5)
+        c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 14, CONTENT_WIDTH * 0.7, 14, fill=0, stroke=1)
+        c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 10, matricula)
+        y_position -= 22
     
     # Solo mostrar tablas si se acepta
     if decision == 'aceptar':
         dibujar_tabla_avaluo("CANCELACIÓN", es_cancelacion=True)
         dibujar_tabla_avaluo("INSCRIPCIÓN", es_cancelacion=False)
-    
-    y_position -= 10
+
+    y_position -= 6
     
     # Función para dibujar artículo con texto justificado
     def dibujar_articulo(num_articulo, texto):
@@ -875,8 +875,8 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         dibujar_articulo(6, plantilla['articulo_6'])
         dibujar_articulo(7, plantilla['articulo_7'])
     
-    y_position -= 15
-    
+    y_position -= 8
+
     # ==========================================
     # CIERRE
     # ==========================================
@@ -884,13 +884,13 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
     verificar_espacio(30)
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla['cierre'])
-    y_position -= 30
+    y_position -= 15
     
     # ==========================================
     # FIRMA Y QR DE VERIFICACIÓN (IDÉNTICO A M2)
     # ==========================================
     
-    verificar_espacio(120)
+    verificar_espacio(90)
     
     # Generar QR - URL igual a M1, M2, M3, M5
     qr_image = None

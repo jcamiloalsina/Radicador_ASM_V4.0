@@ -14,12 +14,9 @@ import {
   getGeometriasOffline, 
   saveProyectoOffline, 
   saveGeometriasOffline, 
-  getPrediosOffline, 
+  getPrediosOffline,
   savePrediosOffline,
-  initOfflineDB,
-  getOfflineStats,
   saveCambioPendiente,
-  getCambiosPendientes,
   saveConstruccionesOffline,
   getConstruccionesOffline
 } from '../utils/offlineDB';
@@ -80,7 +77,6 @@ import {
   Map as MapIcon,
   Edit,
   Save,
-  Camera,
   Clock,
   CheckSquare,
   Square,
@@ -101,9 +97,6 @@ import {
   Send,
   ListTodo,
   Building,
-  Mail,
-  ChevronLeft,
-  ChevronRight,
   AlertTriangle,
   Scale,
   Loader2,
@@ -342,7 +335,6 @@ export default function VisorActualizacion() {
   const [showPredioDetail, setShowPredioDetail] = useState(false);
   
   // Estados para nuevo flujo simplificado
-  const [showFormularioVisita, setShowFormularioVisita] = useState(false);
   const [showDetalleSimplificado, setShowDetalleSimplificado] = useState(false);
   const [visitaExistente, setVisitaExistente] = useState(null);
   const [savingVisita, setSavingVisita] = useState(false);
@@ -664,6 +656,8 @@ export default function VisorActualizacion() {
     justificacion: ''
   });
   const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [descargandoPdfsMasivo, setDescargandoPdfsMasivo] = useState(false);
+  const [showDescargarPdfsMenu, setShowDescargarPdfsMenu] = useState(false);
   
   // Helper para ejecutar función con timeout
   const withTimeout = (promise, timeoutMs, fallbackValue = null) => {
@@ -2337,6 +2331,8 @@ export default function VisorActualizacion() {
       
       if (response.data?.visita) {
         setVisitaExistente(response.data.visita);
+        // Actualizar selectedPredio con formato_visita para que VisitaFormModal tenga los datos
+        setSelectedPredio(prev => prev ? { ...prev, formato_visita: response.data.visita } : prev);
       } else {
         setVisitaExistente(null);
       }
@@ -2517,7 +2513,7 @@ export default function VisorActualizacion() {
         const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
         
         // Verificar que el predio esté visitado
-        if (selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado') {
+        if (selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'visitado_firmado' && selectedPredio.estado_visita !== 'actualizado') {
           toast.error('Debe marcar el predio como visitado antes de proponer cambios');
           setSaving(false);
           return;
@@ -2679,7 +2675,7 @@ export default function VisorActualizacion() {
   // Abrir modal de visita - PERMITE REABRIR si ya tiene visita guardada
   const abrirFormatoVisita = () => {
     // Verificar si el predio ya tiene una visita guardada
-    const visitaExistente = selectedPredio?.visita;
+    const visitaExistente = selectedPredio?.formato_visita;
     const estadoActual = selectedPredio?.estado_visita;
     
     // Si está "actualizado" (aprobado), NO permitir editar
@@ -2931,7 +2927,7 @@ export default function VisorActualizacion() {
     setShowRecuperarBorrador(false);
     setBorradorRecuperado(null);
     // Inicializar normalmente
-    const visitaExistente = selectedPredio?.visita;
+    const visitaExistente = selectedPredio?.formato_visita;
     const estadoActual = selectedPredio?.estado_visita;
     inicializarFormularioVisita(visitaExistente, estadoActual);
   };
@@ -3853,20 +3849,27 @@ export default function VisorActualizacion() {
       const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}/generar-pdf`,
         {},
-        { 
+        {
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 120000 // 2 minutos para generación de PDF
+          responseType: 'blob',
+          timeout: 120000
         }
       );
-      
-      // Descargar el PDF
+
+      // Descargar usando Blob URL (funciona mejor en móviles y con archivos grandes)
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${response.data.pdf_base64}`;
-      link.download = response.data.filename;
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const codigo = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+      link.download = disposition
+        ? disposition.split('filename=')[1]?.replace(/"/g, '')
+        : `informe_visita_${codigo}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+      window.URL.revokeObjectURL(url);
+
       toast.success('PDF generado exitosamente');
     } catch (error) {
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
@@ -3879,31 +3882,34 @@ export default function VisorActualizacion() {
       setGenerandoPdf(false);
     }
   };
-  
+
   // Generar PDF del informe de visita para una MEJORA
   const handleGenerarPdfMejora = async (codigoMejora) => {
     if (!codigoMejora) return;
-    
+
     setGenerandoPdf(true);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigoMejora}/generar-pdf`,
         {},
-        { 
+        {
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 120000 // 2 minutos para generación de PDF
+          responseType: 'blob',
+          timeout: 120000
         }
       );
-      
-      // Descargar el PDF
+
+      // Descargar usando Blob URL
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${response.data.pdf_base64}`;
-      link.download = response.data.filename;
+      link.href = url;
+      link.download = `informe_visita_${codigoMejora}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+      window.URL.revokeObjectURL(url);
+
       toast.success('PDF de mejora generado exitosamente');
     } catch (error) {
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
@@ -3917,6 +3923,52 @@ export default function VisorActualizacion() {
     }
   };
   
+  // Descargar PDFs de visitas masivamente (ZIP)
+  const handleDescargarPdfsMasivo = async (filtro) => {
+    setShowDescargarPdfsMenu(false);
+    setDescargandoPdfsMasivo(true);
+    const toastId = toast.loading(`Generando ZIP de PDFs (${filtro === 'hoy' ? 'visitas de hoy' : 'todas las visitas'})...`);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API}/actualizacion/proyectos/${proyectoId}/descargar-pdfs-visitas?filtro=${filtro}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob',
+          timeout: 300000 // 5 minutos
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition
+        ? disposition.split('filename=')[1]?.replace(/"/g, '')
+        : `visitas_${filtro}_${new Date().toISOString().slice(0,10)}.zip`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      const generados = response.headers['x-generados'] || '?';
+      toast.success(`ZIP descargado: ${generados} PDFs generados`, { id: toastId });
+    } catch (error) {
+      if (error.response?.status === 404) {
+        toast.error(`No se encontraron predios visitados${filtro === 'hoy' ? ' hoy' : ''}`, { id: toastId });
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('La descarga tardó demasiado. Intente de nuevo.', { id: toastId });
+      } else {
+        toast.error('Error al descargar PDFs', { id: toastId });
+      }
+      console.error(error);
+    } finally {
+      setDescargandoPdfsMasivo(false);
+    }
+  };
+
   // Revertir visita firmada (solo coordinadores)
   const handleRevertirVisita = async () => {
     if (!selectedPredio || !motivoReversion.trim()) {
@@ -4413,6 +4465,48 @@ export default function VisorActualizacion() {
             <span className="ml-1 text-xs">Nuevo Predio</span>
           </Button>
           
+          {/* Botón Descargar PDFs Visitas (solo coordinadores) */}
+          {(user?.role === 'administrador' || user?.role === 'coordinador') && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDescargarPdfsMenu(!showDescargarPdfsMenu)}
+                disabled={descargandoPdfsMasivo}
+                className="bg-blue-50 border-blue-500 text-blue-700 hover:bg-blue-100"
+                title="Descargar PDFs de visitas"
+              >
+                {descargandoPdfsMasivo ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4" />
+                )}
+                <span className="ml-1 text-xs">{descargandoPdfsMasivo ? 'Generando...' : 'PDFs Visitas'}</span>
+              </Button>
+              {showDescargarPdfsMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDescargarPdfsMenu(false)} />
+                  <div className="absolute top-full right-0 mt-1 bg-white border rounded-md shadow-lg z-50 min-w-[180px]">
+                    <button
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2"
+                      onClick={() => handleDescargarPdfsMasivo('hoy')}
+                    >
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      Visitas de hoy
+                    </button>
+                    <button
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2 border-t"
+                      onClick={() => handleDescargarPdfsMasivo('todos')}
+                    >
+                      <Download className="w-4 h-4 text-blue-500" />
+                      Todas las visitas
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Botón Finalizar Proyecto (solo coordinadores) */}
           {(user?.role === 'administrador' || user?.role === 'coordinador') && proyecto?.estado !== 'completado' && (
             <Button
@@ -5563,7 +5657,7 @@ export default function VisorActualizacion() {
                       )}
                     </div>
                     
-                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'actualizado' && (
+                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'visitado_firmado' && selectedPredio.estado_visita !== 'actualizado' && (
                       <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
                         El predio debe estar visitado para proponer cambios
@@ -6165,9 +6259,35 @@ export default function VisorActualizacion() {
                     {selectedPredio.estado_visita !== 'actualizado' && (
                       <Button
                         variant="outline"
-                        onClick={() => {
+                        onClick={async () => {
+                          // Si el predio ya fue visitado pero no tiene formato_visita cargado, cargarlo primero
+                          if ((selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') && !selectedPredio.formato_visita) {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const codigo = selectedPredio.codigo_predial || selectedPredio.numero_predial;
+                              const resp = await axios.get(
+                                `${API}/actualizacion/proyectos/${proyectoId}/predios/${codigo}/visita`,
+                                { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
+                              );
+                              if (resp.data?.visita) {
+                                // Usar callback para asegurar que el state se actualice antes de abrir el modal
+                                setSelectedPredio(prev => {
+                                  const updated = prev ? { ...prev, formato_visita: resp.data.visita } : prev;
+                                  // Abrir modal en el siguiente tick, después de que React procese el state update
+                                  setTimeout(() => {
+                                    setShowPredioDetail(false);
+                                    setShowVisitaModal(true);
+                                  }, 50);
+                                  return updated;
+                                });
+                                return; // El setTimeout abrirá el modal
+                              }
+                            } catch (err) {
+                              console.error('[Editar Visita] Error cargando formato_visita:', err);
+                            }
+                          }
                           setShowPredioDetail(false);
-                          setShowFormularioVisita(true);
+                          setShowVisitaModal(true);
                         }}
                         disabled={saving}
                         className={`flex-1 ${(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado')
@@ -6462,6 +6582,16 @@ export default function VisorActualizacion() {
                 : p
             ));
             
+            // Actualizar selectedPredio con formato_visita para futuras ediciones
+            if (!esMejora) {
+              setSelectedPredio(prev => prev ? {
+                ...prev,
+                estado_visita: nuevoEstado,
+                sin_cambios: formData.visitaData.sin_cambios,
+                formato_visita: datosActualizacion
+              } : prev);
+            }
+
             // Limpiar estado de mejora después de guardar
             setTipoVisita('terreno');
             setMejoraSeleccionada(null);
@@ -6532,10 +6662,12 @@ export default function VisorActualizacion() {
                 errorMsg = `[${statusCode}] ${errorMsg}`;
               }
               
-              // Si es error de red, intentar guardar offline
+              // Si es error de red, mostrar detalle real e intentar guardar offline
               if (error.code === 'ERR_NETWORK' || !error.response) {
-                errorMsg = 'Error de conexión con el servidor';
-                toast.error(errorMsg, { duration: 5000 });
+                const detalle = error.message || 'Sin respuesta del servidor';
+                errorMsg = `Error al enviar datos: ${detalle}`;
+                console.error('[Visita] Error sin respuesta del servidor:', { code: error.code, message: error.message });
+                toast.error(errorMsg, { duration: 8000 });
                 // Intentar guardar offline como fallback
                 try {
                   const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;

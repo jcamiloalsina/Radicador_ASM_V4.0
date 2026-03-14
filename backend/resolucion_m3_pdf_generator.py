@@ -25,7 +25,7 @@ PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN_LEFT = 2.0 * cm
 MARGIN_RIGHT = 2.0 * cm
 MARGIN_TOP = 2.8 * cm
-MARGIN_BOTTOM = 2.5 * cm
+MARGIN_BOTTOM = 1.5 * cm
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
 # Colores institucionales
@@ -271,8 +271,8 @@ def generate_resolucion_m3_pdf(
         y_position -= 14
         c.setFont(font_normal, 9)
         c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
-        y_position -= 20
-        
+        y_position -= 14
+
         return y_position
     
     def verificar_espacio(necesario):
@@ -320,8 +320,8 @@ def generate_resolucion_m3_pdf(
     def dibujar_articulo_justificado(numero_articulo, texto, font_size=10, line_height=14):
         """Dibuja un artículo con título en bold y texto justificado"""
         nonlocal y_position
-        verificar_espacio(80)
-        
+        verificar_espacio(40)
+
         # Título del artículo en bold
         c.setFont(font_bold, font_size)
         c.setFillColor(NEGRO)
@@ -373,7 +373,7 @@ def generate_resolucion_m3_pdf(
                 
                 y_position -= line_height
         
-        y_position -= 10  # Espacio después del artículo
+        y_position -= 6  # Espacio después del artículo
     
     # Helper: dibujar texto adaptativo en celda alta (2 líneas si es necesario)
     def draw_cell_text(c, text, x, col_w, y_top, row_h, default_fs=5):
@@ -406,7 +406,7 @@ def generate_resolucion_m3_pdf(
         """Dibuja tabla de predio - con encabezado verde y texto blanco"""
         nonlocal y_position
 
-        verificar_espacio(100)
+        verificar_espacio(80)
 
         # Título de sección con rectángulo verde y texto blanco
         c.setFillColor(VERDE_INSTITUCIONAL)
@@ -414,7 +414,7 @@ def generate_resolucion_m3_pdf(
         c.setFillColor(BLANCO)
         c.setFont(font_bold, 10)
         c.drawCentredString(PAGE_WIDTH/2, y_position - 9, titulo_seccion)
-        y_position -= 20
+        y_position -= 15
 
         c.setFillColor(NEGRO)
 
@@ -554,7 +554,7 @@ def generate_resolucion_m3_pdf(
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
-        y_position -= 15
+        y_position -= 13
         
         # VIGENCIAS FISCALES DE INSCRIPCIÓN - Solo AÑO VIGENCIA y AVALÚO CATASTRAL (sin FUENTE)
         fechas_inscripcion = data.get("fechas_inscripcion", [])
@@ -605,8 +605,8 @@ def generate_resolucion_m3_pdf(
                 
                 c.drawCentredString(x + col_widths_vig[1]/2, y_position - 9, avaluo_vig_fmt)
                 y_position -= 12
-            
-            y_position -= 5
+
+            y_position -= 3
     
     # ==========================================
     # INICIO DEL DOCUMENTO
@@ -615,14 +615,14 @@ def generate_resolucion_m3_pdf(
     y_position = draw_header()
     
     # Número de resolución y fecha
-    y_position -= 10
+    y_position -= 5
     c.setFillColor(NEGRO)
     c.setFont(font_bold, 12)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"RESOLUCIÓN No: {numero_resolucion}")
     y_position -= 16
     c.setFont(font_normal, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y_position -= 20
+    y_position -= 10
     
     # Título según subtipo
     if subtipo == "cambio_destino":
@@ -636,7 +636,7 @@ def generate_resolucion_m3_pdf(
         verificar_espacio(14)
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
-    y_position -= 10
+    y_position -= 6
     
     # ==========================================
     # CONSIDERANDO
@@ -645,11 +645,11 @@ def generate_resolucion_m3_pdf(
     verificar_espacio(30)
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, "CONSIDERANDO")
-    y_position -= 20
+    y_position -= 14
     c.setFillColor(NEGRO)
     
     dibujar_texto_justificado(plantilla["preambulo"], font_size=10, line_height=13)
-    y_position -= 10
+    y_position -= 6
     
     # Usar texto personalizado si está disponible, sino usar plantilla estándar
     if texto_considerando_personalizado:
@@ -685,7 +685,7 @@ def generate_resolucion_m3_pdf(
         )
     
     dibujar_texto_justificado(texto_considerando, font_size=10, line_height=13)
-    y_position -= 10
+    y_position -= 6
     
     # Documentos aportados
     verificar_espacio(60)
@@ -703,10 +703,10 @@ def generate_resolucion_m3_pdf(
         verificar_espacio(14)
         c.drawString(MARGIN_LEFT + 20, y_position, doc)
         y_position -= 12
-    y_position -= 10
+    y_position -= 6
     
     dibujar_texto_justificado(plantilla["resuelve_intro"], font_size=10, line_height=13)
-    y_position -= 15
+    y_position -= 8
     
     # ==========================================
     # RESUELVE
@@ -715,12 +715,12 @@ def generate_resolucion_m3_pdf(
     verificar_espacio(30)
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, "RESUELVE")
-    y_position -= 20
+    y_position -= 14
     c.setFillColor(NEGRO)
     
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, f"Artículo 1. Ordenar la inscripción en el catastro del Municipio de {municipio.upper()} los siguientes cambios:")
-    y_position -= 20
+    y_position -= 12
     
     # Datos de cancelación e inscripción
     destino_anterior = data.get("destino_anterior", predio.get("destino_economico", ""))
@@ -793,13 +793,13 @@ def generate_resolucion_m3_pdf(
             
             c.setFont(font_bold, 8)
             c.drawString(MARGIN_LEFT, y_position - 5, f"Total área incorporada: {total_area:,.0f} m²")
-            y_position -= 20
+            y_position -= 10
     
     # ==========================================
     # ARTÍCULOS ADICIONALES (Idéntico a M2)
     # ==========================================
     
-    y_position -= 20  # Espacio adicional después de las tablas
+    y_position -= 10  # Espacio adicional después de las tablas
     
     # Artículo 2 - Justificado
     dibujar_articulo_justificado(2, plantilla["articulo_2"])
@@ -809,18 +809,18 @@ def generate_resolucion_m3_pdf(
     
     # Artículo 4 - Justificado
     dibujar_articulo_justificado(4, plantilla["articulo_4"])
-    
-    y_position -= 20
+
+    y_position -= 10
     
     # ==========================================
     # FIRMA Y QR DE VERIFICACIÓN
     # ==========================================
     
-    verificar_espacio(120)
+    verificar_espacio(90)
     
     c.setFont(font_bold, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
-    y_position -= 20
+    y_position -= 10
     
     # Generar QR de verificación
     qr_image = None

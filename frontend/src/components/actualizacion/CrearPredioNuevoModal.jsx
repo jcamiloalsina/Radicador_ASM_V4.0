@@ -797,13 +797,13 @@ const CrearPredioNuevoModal = ({
       
       // Mensajes de error específicos
       if (error.name === 'AbortError') {
-        toast.error('⏱️ Tiempo de espera agotado. Intente de nuevo.');
+        toast.error('Tiempo de espera agotado. Los datos pueden ser muy grandes. Intente con menos fotos.', { duration: 8000 });
       } else if (error.message?.includes('Failed to fetch') || error.message?.includes('body stream')) {
-        toast.error('🔌 Error de conexión. Verifique su internet e intente de nuevo.');
+        toast.error(`Error al enviar datos: ${error.message}. Posible causa: datos muy grandes.`, { duration: 8000 });
       } else if (error.message?.includes('NetworkError')) {
-        toast.error('🌐 Error de red. El servidor no responde.');
+        toast.error(`Error de red: ${error.message}`, { duration: 8000 });
       } else {
-        toast.error(error.message || 'Error al crear el predio');
+        toast.error(error.message || 'Error al crear el predio', { duration: 8000 });
       }
     } finally {
       setLoading(false);

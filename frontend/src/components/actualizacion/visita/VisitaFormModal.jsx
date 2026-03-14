@@ -10,11 +10,11 @@
  * - DebouncedInput para campos de texto
  * - React.memo en todos los sub-componentes
  */
-import React, { useState, useCallback, useEffect, useRef, lazy, Suspense, memo } from 'react';
-import { 
+import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
+import {
   FileText, ChevronLeft, ChevronRight, Save, RefreshCw, X,
   Clock, Building, Home, Mail, Plus, Trash2, Camera, Image as ImageIcon,
-  MapPin, Pen, User, CheckCircle, AlertCircle
+  MapPin, Pen
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../ui/dialog';
 import { Button } from '../../ui/button';
@@ -1074,11 +1074,11 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
               className="w-full h-24 cursor-crosshair"
               onMouseDown={(e) => startDrawing(e, canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
               onMouseMove={(e) => draw(e, canvasVisitadoRef, isDrawingVisitado, 'firma_visitado_base64')}
-              onMouseUp={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
-              onMouseLeave={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onMouseUp={() => isDrawingVisitado && stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onMouseLeave={() => isDrawingVisitado && stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
               onTouchStart={(e) => startDrawing(e, canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
               onTouchMove={(e) => draw(e, canvasVisitadoRef, isDrawingVisitado, 'firma_visitado_base64')}
-              onTouchEnd={() => stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
+              onTouchEnd={() => isDrawingVisitado && stopDrawing(canvasVisitadoRef, setIsDrawingVisitado, 'firma_visitado_base64')}
             />
           </div>
           {data.firma_visitado_base64 && (
@@ -1115,11 +1115,11 @@ const Page5 = memo(({ data, setField, fotos, setFotos }) => {
               className="w-full h-24 cursor-crosshair"
               onMouseDown={(e) => startDrawing(e, canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
               onMouseMove={(e) => draw(e, canvasReconocedorRef, isDrawingReconocedor, 'firma_reconocedor_base64')}
-              onMouseUp={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
-              onMouseLeave={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onMouseUp={() => isDrawingReconocedor && stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onMouseLeave={() => isDrawingReconocedor && stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
               onTouchStart={(e) => startDrawing(e, canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
               onTouchMove={(e) => draw(e, canvasReconocedorRef, isDrawingReconocedor, 'firma_reconocedor_base64')}
-              onTouchEnd={() => stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
+              onTouchEnd={() => isDrawingReconocedor && stopDrawing(canvasReconocedorRef, setIsDrawingReconocedor, 'firma_reconocedor_base64')}
             />
           </div>
           {data.firma_reconocedor_base64 && (

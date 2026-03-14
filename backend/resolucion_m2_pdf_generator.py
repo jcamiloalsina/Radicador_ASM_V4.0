@@ -24,7 +24,7 @@ PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN_LEFT = 2.0 * cm
 MARGIN_RIGHT = 2.0 * cm
 MARGIN_TOP = 2.8 * cm  # Espacio para encabezado
-MARGIN_BOTTOM = 2.5 * cm  # Espacio para pie de página
+MARGIN_BOTTOM = 1.5 * cm  # Espacio para pie de página
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
 # Colores institucionales
@@ -276,10 +276,10 @@ def generate_resolucion_m2_pdf(
         c.setFillColor(NEGRO)
         c.setFont(font_bold, 11)
         c.drawCentredString(PAGE_WIDTH/2, y_position, "RESOLUCIÓN (Continuación)")
-        y_position -= 14
+        y_position -= 12
         c.setFont(font_normal, 9)
         c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
-        y_position -= 20
+        y_position -= 14
         
         return y_position
     
@@ -340,7 +340,7 @@ def generate_resolucion_m2_pdf(
         verificar_espacio(30)
         c.setFont(font_bold, 11)
         c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
-        y_position -= 20
+        y_position -= 14
     
     # =====================
     # PÁGINA 1 - ENCABEZADO
@@ -364,12 +364,12 @@ def generate_resolucion_m2_pdf(
     for line in lines:
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
-    y_position -= 10
-    
+    y_position -= 6
+
     # Preámbulo
     c.setFont(font_normal, 10)
     dibujar_texto_justificado(plantilla["preambulo"], font_size=10)
-    y_position -= 15
+    y_position -= 8
     
     # CONSIDERANDO
     dibujar_seccion_titulo("CONSIDERANDO")
@@ -394,7 +394,7 @@ def generate_resolucion_m2_pdf(
         except Exception:
             pass
         dibujar_texto_justificado(texto_procesado, font_size=10)
-        y_position -= 15
+        y_position -= 8
     else:
         # Usar plantilla estándar
         considerando_intro = plantilla["considerando_intro"].format(
@@ -405,7 +405,7 @@ def generate_resolucion_m2_pdf(
             radicado=radicado
         )
         dibujar_texto_justificado(considerando_intro, font_size=10)
-        y_position -= 10
+        y_position -= 6
         
         # Documentos soporte (bullets)
         # Obtener las matrículas de los predios a inscribir (los nuevos)
@@ -424,8 +424,8 @@ def generate_resolucion_m2_pdf(
             )
             c.drawString(MARGIN_LEFT + 10, y_position, f"• {doc_formateado}")
             y_position -= 14
-        y_position -= 10
-        
+        y_position -= 6
+
         # Considerando estudio
         if subtipo == "desengloble":
             considerando_estudio = plantilla["considerando_estudio_desengloble"].format(
@@ -435,11 +435,11 @@ def generate_resolucion_m2_pdf(
         else:
             considerando_estudio = plantilla["considerando_estudio_englobe"]
         dibujar_texto_justificado(considerando_estudio, font_size=10)
-        y_position -= 10
+        y_position -= 6
         
         # Considerando final
         dibujar_texto_justificado(plantilla["considerando_final"], font_size=10)
-        y_position -= 15
+        y_position -= 8
     
     # RESUELVE
     dibujar_seccion_titulo("RESUELVE")
@@ -450,7 +450,7 @@ def generate_resolucion_m2_pdf(
     c.setFont(font_normal, 10)
     art1_texto = plantilla["articulo_1"].format(municipio=municipio)
     c.drawString(MARGIN_LEFT + 55, y_position, art1_texto)
-    y_position -= 20
+    y_position -= 12
     
     # =====================
     # TABLA DE PREDIOS
@@ -487,7 +487,7 @@ def generate_resolucion_m2_pdf(
         """Dibuja un predio en formato tabla. tipo: C=Cancelación, I=Inscripción"""
         nonlocal y_position
 
-        verificar_espacio(140)  # Espacio mínimo para un predio (increased for taller rows)
+        verificar_espacio(100)  # Espacio mínimo para un predio (increased for taller rows)
 
         # Encabezado de sección con color verde institucional
         if tipo == "C":
@@ -502,7 +502,7 @@ def generate_resolucion_m2_pdf(
             c.setFillColor(BLANCO)
             c.setFont(font_bold, 10)
             c.drawCentredString(PAGE_WIDTH/2, y_position - 9, "INSCRIPCIÓN")
-        y_position -= 20
+        y_position -= 15
 
         c.setFillColor(NEGRO)
 
@@ -637,7 +637,7 @@ def generate_resolucion_m2_pdf(
         c.setFont(font_normal, 7)
         c.rect(MARGIN_LEFT + CONTENT_WIDTH * 0.3, y_position - 12, CONTENT_WIDTH * 0.7, 12, fill=0, stroke=1)
         c.drawCentredString(MARGIN_LEFT + CONTENT_WIDTH * 0.3 + (CONTENT_WIDTH * 0.7)/2, y_position - 9, matricula)
-        y_position -= 15
+        y_position -= 13
         
         # =====================
         # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
@@ -702,9 +702,9 @@ def generate_resolucion_m2_pdf(
                 c.drawCentredString(x + col_widths_vig[2]/2, y_position - 9, fuente_texto[:25])
                 y_position -= 12
             
-            y_position -= 5  # Espacio adicional después de las vigencias
-        
-        y_position -= 5  # Espacio entre predios
+            y_position -= 3  # Espacio adicional después de las vigencias
+
+        y_position -= 3  # Espacio entre predios
     
     # Dibujar predios cancelados
     for predio in predios_cancelados:
@@ -717,35 +717,35 @@ def generate_resolucion_m2_pdf(
     # =====================
     # ARTÍCULOS FINALES
     # =====================
-    verificar_espacio(100)
-    y_position -= 20
-    
+    verificar_espacio(60)
+    y_position -= 10
+
     # Artículo 2
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 2.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_2"], font_size=10)
-    y_position -= 10
+    y_position -= 6
     
     # Artículo 3
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 3.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_3"], font_size=10)
-    y_position -= 10
+    y_position -= 6
     
     # Artículo 4
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 4.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_4"], font_size=10)
-    y_position -= 20
+    y_position -= 10
     
     # CIERRE
     verificar_espacio(50)
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
-    y_position -= 20
+    y_position -= 10
     
     # Fecha de expedición
     verificar_espacio(20)
@@ -755,12 +755,12 @@ def generate_resolucion_m2_pdf(
     fecha_actual = datetime.now()
     fecha_texto = f"DADA EN OCAÑA A LOS {fecha_actual.day} DÍAS DE {meses_may[fecha_actual.month-1]} DE {fecha_actual.year}"
     c.drawString(MARGIN_LEFT, y_position, fecha_texto)
-    y_position -= 50
+    y_position -= 25
     
     # =====================
     # FIRMA Y QR
     # =====================
-    verificar_espacio(120)
+    verificar_espacio(90)
     
     # Cargar imagen de firma de Dalgie
     firma_dalgie = None

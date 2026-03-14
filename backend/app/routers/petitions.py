@@ -312,38 +312,165 @@ async def get_my_petitions(current_user: dict = Depends(get_current_user)):
 
 @router.get("/stats/dashboard")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
-    """Estadísticas del dashboard de peticiones"""
-    if current_user['role'] == UserRole.USUARIO:
-        query = {"user_id": current_user['id']}
-    elif current_user['role'] == UserRole.EMPRESA:
-        query = {"user_id": current_user['id']}
+    """Estadísticas completas del dashboard según rol del usuario"""
+    user_id = current_user['id']
+    user_role = current_user['role']
+    user_municipios = current_user.get('municipios', [])
+
+    # Verificar si tiene permiso de aprobar cambios
+    user_permisos = await db.user_permissions.find_one({"user_id": user_id})
+    puede_aprobar = user_permisos and user_permisos.get('permissions', {}).get('aprobar_cambios')
+    es_aprobador = user_role in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR] or puede_aprobar
+
+    # ===== ESTADÍSTICAS DE PETICIONES/RADICADOS =====
+    if user_role == UserRole.USUARIO:
+        query_peticiones = {"user_id": user_id}
+    elif user_role in [UserRole.GESTOR, 'gestor_auxiliar']:
+        query_peticiones = {"$or": [{"gestores_asignados": user_id}, {"user_id": user_id}]}
+    elif user_role == UserRole.EMPRESA:
+        return {
+            "total": 0, "radicado": 0, "asignado": 0, "rechazado": 0,
+            "revision": 0, "devuelto": 0, "finalizado": 0,
+            "predios_creados": 0, "predios_asignados": 0, "modificaciones_asignadas": 0,
+            "predios_revision": 0, "modificaciones_pendientes": 0, "reapariciones_pendientes": 0,
+            "mis_radicados": 0, "aprobados_mes": 0, "rechazados_mes": 0,
+            "mutaciones_pendientes": 0, "mutaciones_por_tipo": {},
+            "mensaje": "Sin acceso a estadísticas de peticiones"
+        }
     else:
-        query = {}
-    
-    pipeline = [
-        {"$match": query},
-        {"$group": {
-            "_id": "$estado",
-            "count": {"$sum": 1}
-        }}
-    ]
-    
-    stats_by_estado = await db.petitions.aggregate(pipeline).to_list(20)
-    
-    total = sum(s["count"] for s in stats_by_estado)
-    
-    stats_dict = {s["_id"]: s["count"] for s in stats_by_estado}
-    
+        query_peticiones = {}
+
+    # Contar peticiones
+    total = await db.petitions.count_documents(query_peticiones)
+    radicado = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.RADICADO})
+    asignado = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.ASIGNADO})
+    rechazado = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.RECHAZADO})
+    revision = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.REVISION})
+    devuelto = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.DEVUELTO})
+    finalizado = await db.petitions.count_documents({**query_peticiones, "estado": PetitionStatus.FINALIZADO})
+    mis_radicados = await db.petitions.count_documents({"user_id": user_id})
+
+    # ===== ESTADÍSTICAS DE PREDIOS/ASIGNACIONES (para gestores) =====
+    predios_creados = await db.predios_nuevos.count_documents({
+        "gestor_creador_id": user_id,
+        "estado_flujo": {"$in": ["creado", "digitalizacion", "devuelto", "revision"]}
+    })
+    predios_asignados = await db.predios_nuevos.count_documents({
+        "gestor_apoyo_id": user_id,
+        "estado_flujo": {"$in": ["creado", "digitalizacion", "devuelto"]}
+    })
+    modificaciones_asignadas = await db.cambios_pendientes.count_documents({
+        "gestor_apoyo_id": user_id, "estado": "pendiente"
+    })
+
+    # ===== ESTADÍSTICAS PARA APROBADORES =====
+    predios_revision = 0
+    modificaciones_pendientes = 0
+    reapariciones_pendientes = 0
+    aprobados_mes = 0
+    rechazados_mes = 0
+    mutaciones_pendientes_count = 0
+    mutaciones_por_tipo = {"M1": 0, "M2": 0, "M3": 0, "M4": 0, "M5": 0, "RECTIFICACION_AREA": 0, "COMP": 0}
+
+    if es_aprobador:
+        query_municipio = {}
+        if user_municipios:
+            query_municipio = {"municipio": {"$in": user_municipios}}
+
+        predios_revision = await db.predios_nuevos.count_documents({**query_municipio, "estado_flujo": "revision"})
+        modificaciones_pendientes = await db.cambios_pendientes.count_documents({**query_municipio, "estado": "pendiente"})
+        reapariciones_pendientes = await db.predios_reapariciones_solicitudes.count_documents({
+            **query_municipio, "estado": {"$in": ["pendiente", "revision"]}
+        })
+
+        # Mutaciones pendientes - total y desglose por tipo
+        query_mut = {}
+        if user_municipios:
+            query_mut = {"municipio": {"$in": user_municipios}}
+        mutaciones_pendientes_count = await db.solicitudes_mutacion.count_documents({
+            **query_mut, "estado": "pendiente_aprobacion"
+        })
+        pipeline = [
+            {"$match": {**query_mut, "estado": "pendiente_aprobacion"}},
+            {"$group": {"_id": "$tipo", "count": {"$sum": 1}}}
+        ]
+        async for doc in db.solicitudes_mutacion.aggregate(pipeline):
+            tipo = doc["_id"]
+            if tipo in mutaciones_por_tipo:
+                mutaciones_por_tipo[tipo] = doc["count"]
+
+        # Estadísticas del mes - contar resoluciones generadas y mutaciones rechazadas
+        from zoneinfo import ZoneInfo
+        COLOMBIA_TZ = ZoneInfo('America/Bogota')
+        inicio_mes = datetime.now(COLOMBIA_TZ).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+        aprobados_mes = await db.resoluciones.count_documents({
+            "fecha_generacion": {"$gte": inicio_mes}
+        })
+        rechazados_mes = await db.solicitudes_mutacion.count_documents({
+            "estado": "rechazado", "fecha_aprobacion": {"$gte": inicio_mes}
+        })
+
+    # ===== LISTAS DE TAREAS URGENTES =====
+    tareas_urgentes = {
+        "peticiones_asignadas": [], "predios_apoyo": [], "mutaciones_cartografia": [],
+        "modificaciones_aprobar": [], "mutaciones_aprobar": [], "predios_aprobar": []
+    }
+
+    if user_role in [UserRole.GESTOR, 'gestor_auxiliar', 'gestor']:
+        peticiones_cursor = db.petitions.find(
+            {"gestores_asignados": user_id, "estado": {"$in": ["asignado", "en_proceso"]}},
+            {"_id": 0, "id": 1, "radicado": 1, "tipo_tramite": 1, "municipio": 1, "created_at": 1, "estado": 1}
+        ).sort("created_at", -1).limit(5)
+        tareas_urgentes["peticiones_asignadas"] = await peticiones_cursor.to_list(5)
+
+        predios_apoyo_cursor = db.predios_nuevos.find(
+            {"gestor_apoyo_id": user_id, "estado_flujo": {"$in": ["creado", "digitalizacion", "devuelto"]}},
+            {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "municipio": 1, "direccion": 1, "created_at": 1, "estado_flujo": 1}
+        ).sort("created_at", -1).limit(5)
+        tareas_urgentes["predios_apoyo"] = await predios_apoyo_cursor.to_list(5)
+
+        mutaciones_cart_cursor = db.solicitudes_mutacion.find(
+            {"gestor_apoyo_id": user_id, "estado": "pendiente_cartografia"},
+            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1, "municipio_nombre": 1, "fecha_creacion": 1}
+        ).sort("fecha_creacion", -1).limit(5)
+        tareas_urgentes["mutaciones_cartografia"] = await mutaciones_cart_cursor.to_list(5)
+
+    if es_aprobador:
+        query_municipio_list = {}
+        if user_municipios:
+            query_municipio_list = {"municipio": {"$in": user_municipios}}
+
+        modificaciones_cursor = db.cambios_pendientes.find(
+            {**query_municipio_list, "estado": "pendiente"},
+            {"_id": 0, "id": 1, "codigo_predial": 1, "tipo_cambio": 1, "municipio": 1, "created_at": 1, "solicitante_nombre": 1}
+        ).sort("created_at", 1).limit(5)
+        tareas_urgentes["modificaciones_aprobar"] = await modificaciones_cursor.to_list(5)
+
+        mutaciones_aprobar_cursor = db.solicitudes_mutacion.find(
+            {**query_municipio_list, "estado": "pendiente_aprobacion"},
+            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1, "municipio_nombre": 1, "fecha_creacion": 1, "creado_por_nombre": 1}
+        ).sort("fecha_creacion", 1).limit(5)
+        tareas_urgentes["mutaciones_aprobar"] = await mutaciones_aprobar_cursor.to_list(5)
+
+        predios_rev_cursor = db.predios_nuevos.find(
+            {**query_municipio_list, "estado_flujo": "revision"},
+            {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "municipio": 1, "direccion": 1, "created_at": 1, "gestor_creador_nombre": 1}
+        ).sort("created_at", 1).limit(5)
+        tareas_urgentes["predios_aprobar"] = await predios_rev_cursor.to_list(5)
+
     return {
-        "total": total,
-        "radicados": stats_dict.get("radicado", 0),
-        "asignados": stats_dict.get("asignado", 0),
-        "en_proceso": stats_dict.get("en_proceso", 0),
-        "revision": stats_dict.get("revision", 0),
-        "aprobados": stats_dict.get("aprobado", 0),
-        "finalizados": stats_dict.get("finalizado", 0),
-        "rechazados": stats_dict.get("rechazado", 0),
-        "devueltos": stats_dict.get("devuelto", 0)
+        "total": total, "radicado": radicado, "asignado": asignado, "rechazado": rechazado,
+        "revision": revision, "devuelto": devuelto, "finalizado": finalizado,
+        "mis_radicados": mis_radicados,
+        "predios_creados": predios_creados, "predios_asignados": predios_asignados,
+        "modificaciones_asignadas": modificaciones_asignadas,
+        "predios_revision": predios_revision, "modificaciones_pendientes": modificaciones_pendientes,
+        "reapariciones_pendientes": reapariciones_pendientes,
+        "aprobados_mes": aprobados_mes, "rechazados_mes": rechazados_mes,
+        "es_aprobador": es_aprobador,
+        "tareas_urgentes": tareas_urgentes,
+        "mutaciones_pendientes": mutaciones_pendientes_count,
+        "mutaciones_por_tipo": mutaciones_por_tipo
     }
 
 

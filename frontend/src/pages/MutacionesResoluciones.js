@@ -13,7 +13,7 @@ import {
   FileText, Plus, Search, Download, History, 
   ArrowRight, X, Check, AlertCircle, Building,
   Users, User, MapPin, DollarSign, Calendar, Filter,
-  ChevronDown, ChevronUp, Trash2, Edit, Loader2, Lock, Layers,
+  ChevronDown, Trash2, Edit, Loader2, Lock, Layers,
   Settings, Save, Eye, RefreshCw, Hash, Upload, FileSpreadsheet,
   Unlock, AlertTriangle
 } from 'lucide-react';
@@ -71,13 +71,6 @@ const TIPOS_MUTACION = {
   },
   COMP: {
     codigo: 'COMP',
-    nombre: 'Complementación',
-    descripcion: 'Complementación de información catastral',
-    color: 'bg-slate-100 text-slate-800',
-    enabled: true
-  },
-  COMPLEMENTACION: {
-    codigo: 'COMPLEMENTACION',
     nombre: 'Complementación',
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
@@ -8712,26 +8705,49 @@ export default function MutacionesResoluciones() {
         <div className="text-center py-8 text-slate-500">No hay resoluciones en el historial</div>
       ) : (
         <div className="space-y-2">
-          {historialResoluciones.map((res, idx) => (
+          {historialResoluciones.map((res, idx) => {
+            const tipoInfo = TIPOS_MUTACION[res.tipo_mutacion] || {};
+            const nombreTipo = tipoInfo.nombre || res.tipo_mutacion || 'M1';
+            const codigoDisplay = tipoInfo.codigoDisplay || res.tipo_mutacion || 'M1';
+            const fechaFmt = res.fecha_resolucion
+              ? new Date(res.fecha_resolucion + 'T12:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : new Date(res.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return (
             <Card key={idx} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold">{res.numero_resolucion}</p>
-                    <p className="text-sm text-slate-600">
-                      {res.municipio} | {res.tipo_mutacion || 'M1'} | {res.fecha_resolucion || new Date(res.created_at).toLocaleDateString('es-CO')}
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <p className="font-semibold text-slate-900">{res.numero_resolucion}</p>
+                      <Badge className={tipoInfo.color || 'bg-blue-100 text-blue-800'}>
+                        {codigoDisplay}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {res.municipio} | {nombreTipo} | {fechaFmt}
+                    </p>
+                    {res.codigo_predial && (
+                      <p className="text-xs text-slate-500 mt-1 font-mono">
+                        Código: {res.codigo_predial}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-1">
+                      {res.elaborado_por_nombre && <>Elaboró: <span className="font-medium">{res.elaborado_por_nombre}</span></>}
+                      {res.elaborado_por_nombre && res.aprobado_por_nombre && ' | '}
+                      {res.aprobado_por_nombre && <>Aprobó: <span className="font-medium">{res.aprobado_por_nombre}</span></>}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <Badge className={TIPOS_MUTACION[res.tipo_mutacion]?.color || 'bg-blue-100 text-blue-800'}>
-                      {res.tipo_mutacion || 'M1'}
-                    </Badge>
+                  <div className="flex items-center gap-2 ml-4 shrink-0">
+                    {res.radicado && (
+                      <Badge variant="outline" className="text-xs text-slate-600">
+                        {res.radicado}
+                      </Badge>
+                    )}
                     {res.pdf_path && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
-                          // Normalizar pdf_path
                           let pdfUrl = res.pdf_path;
                           if (pdfUrl.startsWith('/resoluciones/') && !pdfUrl.startsWith('/api/')) {
                             pdfUrl = pdfUrl.replace('/resoluciones/', '/api/resoluciones/descargar/');
@@ -8756,7 +8772,8 @@ export default function MutacionesResoluciones() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

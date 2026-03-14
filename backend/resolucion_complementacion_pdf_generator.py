@@ -24,7 +24,7 @@ PAGE_WIDTH, PAGE_HEIGHT = letter
 MARGIN_LEFT = 50
 MARGIN_RIGHT = 50
 MARGIN_TOP = 50
-MARGIN_BOTTOM = 80
+MARGIN_BOTTOM = 50
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 
 # Colores institucionales
@@ -351,10 +351,10 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         y_position -= 14
         c.setFont(font_normal, 9)
         c.drawCentredString(PAGE_WIDTH/2, y_position, f"Resolución No: {numero_resolucion}")
-        y_position -= 20
-        
+        y_position -= 14
+
         return y_position
-    
+
     def verificar_espacio(necesario):
         nonlocal y_position
         if y_position - necesario < MARGIN_BOTTOM + 1*cm:
@@ -402,8 +402,8 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         verificar_espacio(30)
         c.setFont(font_bold, 11)
         c.drawCentredString(PAGE_WIDTH/2, y_position, titulo)
-        y_position -= 20
-    
+        y_position -= 14
+
     # Helper: dibujar texto adaptativo en celda alta (2 líneas si es necesario)
     def draw_cell_text(c, text, x, col_w, y_top, row_h, default_fs=5):
         fs = default_fs
@@ -440,7 +440,7 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         """
         nonlocal y_position
 
-        verificar_espacio(140)
+        verificar_espacio(100)
 
         fuente_tabla = 8
 
@@ -515,7 +515,7 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
 
                 # ESTADO CIVIL
                 c.rect(x, y_position - cancel_row_h, cancel_cols[4], cancel_row_h, fill=0, stroke=1)
-                estado_civil = prop.get('estado_civil', '')
+                estado_civil_raw = prop.get('estado_civil', ''); estado_civil = estado_civil_raw if estado_civil_raw.upper() in ['S', 'C', 'V', 'U', 'SOLTERO', 'CASADO', 'VIUDO', 'UNION', ''] else ''
                 c.setFont(font_normal, fuente_tabla - 1)
                 c.drawCentredString(x + cancel_cols[4]/2, y_position - cancel_row_h/2 - 2, estado_civil[:10])
                 y_position -= cancel_row_h
@@ -650,7 +650,7 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
     # Fecha de resolución
     c.setFont(font_bold, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, f"FECHA RESOLUCIÓN: {fecha_resolucion}")
-    y_position -= 25
+    y_position -= 15
     
     # Título
     titulo_formateado = plantilla["titulo"].format(municipio=municipio)
@@ -659,13 +659,13 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
     for line in lines:
         c.drawCentredString(PAGE_WIDTH/2, y_position, line)
         y_position -= 14
-    y_position -= 15
-    
+    y_position -= 8
+
     # ==========================================
     # CONSIDERANDOS
     # ==========================================
     dibujar_seccion_titulo("CONSIDERANDO:")
-    y_position -= 5
+    y_position -= 3
     
     # Si hay texto personalizado de considerandos, usarlo
     if texto_considerando_personalizado:
@@ -682,41 +682,41 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
             pass
         c.setFillColor(NEGRO)
         dibujar_texto_justificado(texto_procesado)
-        y_position -= 15
+        y_position -= 8
     else:
         # Usar plantilla estándar
         c.setFillColor(NEGRO)
         dibujar_texto_justificado(plantilla["considerando_intro"])
-        y_position -= 10
-        
+        y_position -= 6
+
         # Solicitud
         texto_solicitud = plantilla["considerando_solicitud"].format(radicado=radicado)
         dibujar_texto_justificado(texto_solicitud)
-        y_position -= 10
-        
+        y_position -= 6
+
         # Documentos
         texto_documentos = plantilla["considerando_documentos"].format(documentos_soporte=documentos_soporte)
         dibujar_texto_justificado(texto_documentos)
-        y_position -= 10
-        
+        y_position -= 6
+
         # Estudio
         texto_estudio = plantilla["considerando_estudio"].format(codigo_predial=codigo_predial)
         dibujar_texto_justificado(texto_estudio)
-        y_position -= 10
-        
+        y_position -= 6
+
         # Legal
         dibujar_texto_justificado(plantilla["considerando_legal"])
-        y_position -= 10
-        
+        y_position -= 6
+
         # Base
         dibujar_texto_justificado(plantilla["considerando_base"])
-        y_position -= 15
+        y_position -= 8
     
     # ==========================================
     # RESUELVE
     # ==========================================
     dibujar_seccion_titulo("RESUELVE:")
-    y_position -= 5
+    y_position -= 3
     
     # Artículo 001
     c.setFont(font_bold, 10)
@@ -725,8 +725,8 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
     
     texto_articulo1 = plantilla["articulo_1_intro"].format(municipio=municipio)
     dibujar_texto_justificado(texto_articulo1)
-    y_position -= 10
-    
+    y_position -= 6
+
     # Propietarios del data (enviados desde backend)
     props_anteriores_data = data.get('propietarios_anteriores', None)
     props_nuevos_data = data.get('propietarios_nuevos', None)
@@ -744,7 +744,7 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         avaluo_val=avaluo,
         propietarios_override=props_anteriores_data
     )
-    y_position -= 10
+    y_position -= 5
 
     # Tabla INSCRIPCIÓN (Datos nuevos/complementados)
     y_position = dibujar_tabla_predio_complementacion(
@@ -759,8 +759,8 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         direccion_override=direccion_nueva_data,
         destino_override=destino_nuevo_data
     )
-    y_position -= 10
-    
+    y_position -= 6
+
     # Artículo 02
     verificar_espacio(60)
     c.setFillColor(NEGRO)
@@ -768,38 +768,38 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
     c.drawString(MARGIN_LEFT, y_position, "Artículo 02.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_2"])
-    y_position -= 10
-    
+    y_position -= 6
+
     # Artículo 03
     verificar_espacio(60)
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 03.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_3"])
-    y_position -= 10
-    
+    y_position -= 6
+
     # Artículo 04
     verificar_espacio(40)
     c.setFont(font_bold, 10)
     c.drawString(MARGIN_LEFT, y_position, "Artículo 04.")
     y_position -= 14
     dibujar_texto_justificado(plantilla["articulo_4"])
-    y_position -= 20
+    y_position -= 10
     
     # ==========================================
     # CIERRE Y FIRMA + QR (IDÉNTICO A M5)
     # ==========================================
-    verificar_espacio(150)
+    verificar_espacio(100)
     
     # Cierre
     c.setFont(font_bold, 11)
     c.drawCentredString(PAGE_WIDTH/2, y_position, plantilla["cierre"])
-    y_position -= 20
+    y_position -= 10
     
     # Fecha textual
     c.setFont(font_normal, 10)
     c.drawCentredString(PAGE_WIDTH/2, y_position, fecha_texto)
-    y_position -= 30
+    y_position -= 15
     
     # === CALCULAR POSICIONES PARA FIRMA Y QR LADO A LADO (IGUAL A M5) ===
     firma_block_width = 200
