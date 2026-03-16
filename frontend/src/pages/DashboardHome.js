@@ -7,7 +7,7 @@ import {
   FileText, Clock, CheckCircle, XCircle, Plus, FileCheck,
   Building, Edit, ArrowRight, MapPin, Loader2, RefreshCw,
   AlertCircle, ChevronRight, Layers, TrendingUp, Eye,
-  BarChart3, Timer, UserCheck, Send
+  BarChart3, Timer, UserCheck, Send, ChevronDown, ChevronUp, Inbox
 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ export default function DashboardHome() {
   const [stats, setStats] = useState(null);
   const [misPeticiones, setMisPeticiones] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [radicadosExpanded, setRadicadosExpanded] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -138,6 +139,62 @@ export default function DashboardHome() {
     'devuelto': { label: 'Devuelto', color: 'bg-red-500', badgeColor: 'bg-red-100 text-red-700', step: 2 },
     'finalizado': { label: 'Finalizado', color: 'bg-emerald-500', badgeColor: 'bg-emerald-100 text-emerald-700', step: 4 },
     'rechazado': { label: 'Rechazado', color: 'bg-red-600', badgeColor: 'bg-red-100 text-red-700', step: 4 },
+  };
+
+  // Tarjeta de radicados asignados (reutilizable para roles internos)
+  const radicadosAsignados = stats?.tareas_urgentes?.peticiones_asignadas || [];
+  const renderRadicadosAsignados = () => {
+    if (radicadosAsignados.length === 0) return null;
+    return (
+      <Card className="border-blue-200 bg-blue-50/30">
+        <CardContent className="p-0">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50 transition-colors rounded-t-lg"
+            onClick={() => setRadicadosExpanded(!radicadosExpanded)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Inbox className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800">Mis radicados asignados</p>
+                <p className="text-xs text-slate-500">{radicadosAsignados.length} radicado{radicadosAsignados.length !== 1 ? 's' : ''} activo{radicadosAsignados.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-blue-600 text-white text-sm px-3">{radicadosAsignados.length}</Badge>
+              {radicadosExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+            </div>
+          </div>
+          {radicadosExpanded && (
+            <div className="border-t border-blue-200 divide-y divide-blue-100">
+              {radicadosAsignados.map((pet) => {
+                const estado = estadoConfig[pet.estado] || estadoConfig['radicado'];
+                return (
+                  <div
+                    key={pet.id}
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors"
+                    onClick={() => navigate(`/dashboard/peticiones/${pet.id}`)}
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full ${estado.color} shrink-0`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-slate-900">{pet.radicado || `Trámite ${pet.id?.slice(0,8)}`}</span>
+                        <Badge className={`${estado.badgeColor} text-xs`}>{estado.label}</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 truncate">
+                        {pet.tipo_tramite || 'Petición'}{pet.municipio ? ` · ${pet.municipio}` : ''}{pet.nombre_completo ? ` · ${pet.nombre_completo}` : ''}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   // ============================================================
@@ -308,6 +365,8 @@ export default function DashboardHome() {
       {/* ===== VISTA GESTOR ===== */}
       {esGestor && !esAprobador && (
         <div className="space-y-5">
+          {/* Radicados asignados */}
+          {renderRadicadosAsignados()}
           {/* Barra de carga de trabajo */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -432,6 +491,8 @@ export default function DashboardHome() {
       {/* ===== VISTA ATENCIÓN AL USUARIO ===== */}
       {esAtencion && !esAprobador && (
         <div className="space-y-5">
+          {/* Radicados asignados */}
+          {renderRadicadosAsignados()}
           {/* Funnel de trámites */}
           <Card className="border-slate-200">
             <CardHeader className="pb-3">
@@ -531,6 +592,8 @@ export default function DashboardHome() {
       {/* ===== VISTA COORDINADOR / ADMIN / GESTOR CON PERMISO ===== */}
       {esAprobador && (
         <div className="space-y-5">
+          {/* Radicados asignados */}
+          {renderRadicadosAsignados()}
           {/* Pendientes por tipo de mutación - tarjetas */}
           <div>
             <div className="flex items-center justify-between mb-3">

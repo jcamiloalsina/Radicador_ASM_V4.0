@@ -22,6 +22,16 @@ import PDFViewerModal from '../components/PDFViewerModal';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Helper para mostrar nombre legible del tipo de mutación
+const displayTipoMutacion = (tipo) => {
+  const nombres = {
+    'RECTIFICACION_AREA': 'Rectificación de Área',
+    'COMPLEMENTACION': 'Complementación',
+    'COMP': 'Complementación',
+  };
+  return nombres[tipo] || tipo;
+};
+
 // Helper para formatear fecha
 const formatDate = (dateStr) => {
   if (!dateStr) return 'No disponible';
@@ -1565,7 +1575,7 @@ export default function Pendientes() {
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   <Badge className="bg-purple-600 text-white">
-                                    {solicitud.tipo}
+                                    {displayTipoMutacion(solicitud.tipo)}
                                   </Badge>
                                   <span className="font-medium text-slate-800">
                                     {solicitud.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}
@@ -1634,7 +1644,7 @@ export default function Pendientes() {
             {filtroTipo && (
               <div className="flex items-center gap-2 mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <Filter className="w-4 h-4 text-purple-600" />
-                <span className="text-sm text-purple-800">Filtrando por: <strong>{filtroTipo}</strong></span>
+                <span className="text-sm text-purple-800">Filtrando por: <strong>{displayTipoMutacion(filtroTipo)}</strong></span>
                 <Button variant="ghost" size="sm" className="ml-auto text-purple-600 hover:bg-purple-100 h-7 px-2" onClick={() => navigate('/dashboard/pendientes')}>
                   <X className="w-3 h-3 mr-1" /> Quitar filtro
                 </Button>
@@ -1799,7 +1809,7 @@ export default function Pendientes() {
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge className="bg-purple-100 text-purple-800 border-purple-300">
-                                {mutacion.tipo}
+                                {displayTipoMutacion(mutacion.tipo)}
                               </Badge>
                               {mutacion.subtipo && (
                                 <Badge variant="outline" className="text-purple-600">
@@ -2055,7 +2065,7 @@ export default function Pendientes() {
                 <div className="bg-purple-50 p-3 rounded-lg">
                   <p className="text-xs text-purple-600 font-medium">Tipo de Mutación</p>
                   <p className="text-sm font-semibold text-purple-800">
-                    {selectedMutacion.tipo} {selectedMutacion.subtipo ? `- ${selectedMutacion.subtipo}` : ''}
+                    {displayTipoMutacion(selectedMutacion.tipo)} {selectedMutacion.subtipo ? `- ${selectedMutacion.subtipo}` : ''}
                   </p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-lg">
@@ -3664,7 +3674,7 @@ export default function Pendientes() {
             <div className="space-y-4">
               <div className="bg-purple-50 p-4 rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-purple-600 text-white">{selectedSolicitudMutacion.tipo}</Badge>
+                  <Badge className="bg-purple-600 text-white">{displayTipoMutacion(selectedSolicitudMutacion.tipo)}</Badge>
                   <span className="font-medium">
                     {selectedSolicitudMutacion.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}
                   </span>

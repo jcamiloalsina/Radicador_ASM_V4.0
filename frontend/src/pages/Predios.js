@@ -5924,7 +5924,7 @@ export default function Predios() {
                               </div>
                               <div>
                                 <div className="font-semibold text-emerald-800">
-                                  {r.tipo_mutacion && `${r.tipo_mutacion} - `}{r.numero_resolucion}
+                                  {r.tipo_mutacion && `${r.tipo_mutacion === 'RECTIFICACION_AREA' ? 'Rectificación de Área' : r.tipo_mutacion === 'COMPLEMENTACION' ? 'Complementación' : r.tipo_mutacion} - `}{r.numero_resolucion}
                                 </div>
                                 <div className="text-xs text-emerald-600 flex items-center gap-2 flex-wrap">
                                   {r.fecha_resolucion && (

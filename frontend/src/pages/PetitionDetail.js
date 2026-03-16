@@ -1623,7 +1623,7 @@ export default function PetitionDetail() {
                   <div className="flex-1">
                     <p className="font-medium text-emerald-800">{res.numero_resolucion}</p>
                     <p className="text-sm text-emerald-600">
-                      {res.tipo_mutacion && `Tipo: ${res.tipo_mutacion} • `}
+                      {res.tipo_mutacion && `Tipo: ${res.tipo_mutacion === 'RECTIFICACION_AREA' ? 'Rectificación de Área' : res.tipo_mutacion === 'COMPLEMENTACION' ? 'Complementación' : res.tipo_mutacion} • `}
                       Fecha: {res.fecha_resolucion || new Date(res.created_at).toLocaleDateString('es-CO')}
                     </p>
                     {res.predio_codigo && (

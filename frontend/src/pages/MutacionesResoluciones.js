@@ -63,7 +63,7 @@ const TIPOS_MUTACION = {
   },
   RECTIFICACION_AREA: { 
     codigo: 'RECTIFICACION_AREA', 
-    codigoDisplay: 'Ajuste Área',
+    codigoDisplay: 'Rectificación de Área',
     nombre: 'Rectificación de Área', 
     descripcion: 'Corrección del área de terreno de un predio',
     color: 'bg-cyan-100 text-cyan-800',
@@ -11582,7 +11582,7 @@ export default function MutacionesResoluciones() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <Badge className={TIPOS_MUTACION[mut.tipo]?.color || 'bg-slate-100'}>
-                                  {mut.tipo}
+                                  {TIPOS_MUTACION[mut.tipo]?.codigoDisplay || mut.tipo}
                                 </Badge>
                                 <span className="font-medium">{mut.nombre || TIPOS_MUTACION[mut.tipo]?.nombre}</span>
                               </div>
