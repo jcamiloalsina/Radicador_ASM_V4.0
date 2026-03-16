@@ -17061,8 +17061,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         
         documentos_soporte = solicitud.get('documentos_soporte', 'Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición')
         
-        # Generar número de resolución - MISMO consecutivo global que las demás mutaciones
-        year = datetime.now().year
+        # Generar número de resolución usando la función centralizada (misma que M2, M3, etc.)
         predio_ref = predio_db or predio_data
         codigo_predial_full = predio_ref.get('codigo_predial_nacional', predio_ref.get('codigo_predial', ''))
         codigo_municipio = codigo_predial_full[0:5] if len(codigo_predial_full) >= 5 else None
@@ -17076,19 +17075,13 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
         if not codigo_municipio:
             codigo_municipio = "54003"
 
+        # Usar función centralizada para obtener consecutivo global del municipio
+        res_numero = await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
+        numero_resolucion = res_numero["numero_resolucion"]
+        siguiente_numero = res_numero["siguiente_numero"]
+        year = res_numero["año"]
         depto = codigo_municipio[0:2] if len(codigo_municipio) >= 2 else "54"
         mpio = codigo_municipio[2:5] if len(codigo_municipio) >= 5 else "003"
-
-        # Consecutivo global: contar TODAS las resoluciones del municipio este año
-        config_municipios = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
-        numero_inicial = config_municipios.get(codigo_municipio, 0) if config_municipios else 0
-
-        count_resoluciones = await db.resoluciones.count_documents({
-            "año": year,
-            "codigo_municipio": codigo_municipio
-        })
-        siguiente_numero = numero_inicial + count_resoluciones + 1
-        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente_numero).zfill(4)}-{year}"
         
         # Código de verificación único
         codigo_verificacion = f"COMP-{str(uuid.uuid4())[:8].upper()}"
@@ -31418,12 +31411,19 @@ async def crear_solicitud_mutacion(
             Permission.APPROVE_CHANGES in current_user.get('permissions', [])
         )
         
-        # Generar radicado si no viene
+        # Generar radicado usando el consecutivo global RASMGC (mismo que peticiones)
         radicado = data.radicado
         if not radicado:
-            anio = datetime.now().year
-            count = await db.solicitudes_mutacion.count_documents({}) + 1
-            radicado = f"MUT-{data.tipo}-{count:05d}-{anio}"
+            now_rad = datetime.now()
+            date_str_rad = now_rad.strftime("%d-%m-%Y")
+            result_counter = await db.counters.find_one_and_update(
+                {"_id": "radicado_counter"},
+                {"$inc": {"sequence": 1}},
+                upsert=True,
+                return_document=ReturnDocument.AFTER
+            )
+            sequence_rad = str(result_counter["sequence"]).zfill(4)
+            radicado = f"RASMGC-{sequence_rad}-{date_str_rad}"
         
         # Determinar estado inicial
         # Si puede aprobar: APROBADO (genera PDF inmediato)

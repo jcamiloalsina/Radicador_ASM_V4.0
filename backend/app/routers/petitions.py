@@ -412,7 +412,8 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 
     # ===== LISTAS DE TAREAS URGENTES =====
     tareas_urgentes = {
-        "peticiones_asignadas": [], "predios_apoyo": [], "mutaciones_cartografia": [],
+        "peticiones_asignadas": [], "predios_apoyo": [],
+        "mutaciones_asignadas": [],
         "modificaciones_aprobar": [], "mutaciones_aprobar": [], "predios_aprobar": []
     }
 
@@ -424,18 +425,31 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         ).sort("created_at", -1).limit(20)
         tareas_urgentes["peticiones_asignadas"] = await peticiones_cursor.to_list(20)
 
+        # Mutaciones/complementaciones asignadas al usuario (por gestor_apoyo_id O creado_por_id)
+        # Incluye TODOS los estados activos, no solo pendiente_cartografia
+        mutaciones_asignadas_cursor = db.solicitudes_mutacion.find(
+            {
+                "$or": [
+                    {"gestor_apoyo_id": user_id},
+                    {"creado_por_id": user_id}
+                ],
+                "estado": {"$in": [
+                    "pendiente_cartografia", "pendiente_aprobacion",
+                    "aprobado", "devuelto"
+                ]}
+            },
+            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1,
+             "municipio_nombre": 1, "fecha_creacion": 1, "estado": 1,
+             "gestor_apoyo_id": 1, "creado_por_id": 1, "creado_por_nombre": 1}
+        ).sort("fecha_creacion", -1).limit(20)
+        tareas_urgentes["mutaciones_asignadas"] = await mutaciones_asignadas_cursor.to_list(20)
+
     if user_role in [UserRole.GESTOR, 'gestor_auxiliar', 'gestor']:
         predios_apoyo_cursor = db.predios_nuevos.find(
             {"gestor_apoyo_id": user_id, "estado_flujo": {"$in": ["creado", "digitalizacion", "devuelto"]}},
             {"_id": 0, "id": 1, "codigo_predial_nacional": 1, "municipio": 1, "direccion": 1, "created_at": 1, "estado_flujo": 1}
         ).sort("created_at", -1).limit(5)
         tareas_urgentes["predios_apoyo"] = await predios_apoyo_cursor.to_list(5)
-
-        mutaciones_cart_cursor = db.solicitudes_mutacion.find(
-            {"gestor_apoyo_id": user_id, "estado": "pendiente_cartografia"},
-            {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1, "municipio_nombre": 1, "fecha_creacion": 1}
-        ).sort("fecha_creacion", -1).limit(5)
-        tareas_urgentes["mutaciones_cartografia"] = await mutaciones_cart_cursor.to_list(5)
 
     if es_aprobador:
         query_municipio_list = {}

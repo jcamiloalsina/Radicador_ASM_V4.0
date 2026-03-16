@@ -136,13 +136,27 @@ export default function DashboardHome() {
     'asignado': { label: 'Asignado', color: 'bg-amber-500', badgeColor: 'bg-amber-100 text-amber-700', step: 2 },
     'en_proceso': { label: 'En proceso', color: 'bg-blue-500', badgeColor: 'bg-blue-100 text-blue-700', step: 2 },
     'revision': { label: 'En revisión', color: 'bg-purple-500', badgeColor: 'bg-purple-100 text-purple-700', step: 3 },
+    'pendiente_cartografia': { label: 'Cartografía', color: 'bg-pink-500', badgeColor: 'bg-pink-100 text-pink-700', step: 2 },
+    'pendiente_aprobacion': { label: 'Pendiente aprobación', color: 'bg-amber-500', badgeColor: 'bg-amber-100 text-amber-700', step: 3 },
+    'aprobado': { label: 'Aprobado', color: 'bg-emerald-500', badgeColor: 'bg-emerald-100 text-emerald-700', step: 3 },
     'devuelto': { label: 'Devuelto', color: 'bg-red-500', badgeColor: 'bg-red-100 text-red-700', step: 2 },
     'finalizado': { label: 'Finalizado', color: 'bg-emerald-500', badgeColor: 'bg-emerald-100 text-emerald-700', step: 4 },
     'rechazado': { label: 'Rechazado', color: 'bg-red-600', badgeColor: 'bg-red-100 text-red-700', step: 4 },
   };
 
-  // Tarjeta de radicados asignados (reutilizable para roles internos)
-  const radicadosAsignados = stats?.tareas_urgentes?.peticiones_asignadas || [];
+  // Tarjeta de radicados asignados - combina peticiones + mutaciones/complementaciones asignadas
+  const mutacionesAsignadas = (stats?.tareas_urgentes?.mutaciones_asignadas || []).map(m => ({
+    ...m,
+    _esMutacion: true,
+    tipo_tramite: m.tipo === 'COMPLEMENTACION' ? 'Complementación' : m.tipo === 'RECTIFICACION_AREA' ? 'Rectificación de Área' : m.tipo,
+    municipio: m.municipio_nombre,
+    nombre_completo: m.creado_por_nombre,
+    created_at: m.fecha_creacion,
+  }));
+  const radicadosAsignados = [
+    ...(stats?.tareas_urgentes?.peticiones_asignadas || []),
+    ...mutacionesAsignadas
+  ];
   const renderRadicadosAsignados = () => {
     if (radicadosAsignados.length === 0) return null;
     return (
@@ -170,20 +184,24 @@ export default function DashboardHome() {
             <div className="border-t border-blue-200 divide-y divide-blue-100">
               {radicadosAsignados.map((pet) => {
                 const estado = estadoConfig[pet.estado] || estadoConfig['radicado'];
+                const ruta = pet._esMutacion
+                  ? `/dashboard/pendientes?tab=mis-asignaciones`
+                  : `/dashboard/peticiones/${pet.id}`;
                 return (
                   <div
                     key={pet.id}
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors"
-                    onClick={() => navigate(`/dashboard/peticiones/${pet.id}`)}
+                    onClick={() => navigate(ruta)}
                   >
                     <div className={`w-2.5 h-2.5 rounded-full ${estado.color} shrink-0`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm text-slate-900">{pet.radicado || `Trámite ${pet.id?.slice(0,8)}`}</span>
                         <Badge className={`${estado.badgeColor} text-xs`}>{estado.label}</Badge>
+                        {pet._esMutacion && <Badge className="bg-slate-100 text-slate-600 text-xs">{pet.tipo_tramite}</Badge>}
                       </div>
                       <p className="text-xs text-slate-500 truncate">
-                        {pet.tipo_tramite || 'Petición'}{pet.municipio ? ` · ${pet.municipio}` : ''}{pet.nombre_completo ? ` · ${pet.nombre_completo}` : ''}
+                        {pet._esMutacion ? pet.tipo_tramite : (pet.tipo_tramite || 'Petición')}{pet.municipio ? ` · ${pet.municipio}` : ''}{pet.nombre_completo ? ` · ${pet.nombre_completo}` : ''}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
@@ -400,7 +418,7 @@ export default function DashboardHome() {
             const allTareas = [
               ...(stats?.tareas_urgentes?.peticiones_asignadas || []).map(t => ({ ...t, _tipo: 'peticion' })),
               ...(stats?.tareas_urgentes?.predios_apoyo || []).map(t => ({ ...t, _tipo: 'predio' })),
-              ...(stats?.tareas_urgentes?.mutaciones_cartografia || []).map(t => ({ ...t, _tipo: 'mutacion' })),
+              ...(stats?.tareas_urgentes?.mutaciones_asignadas || []).map(t => ({ ...t, _tipo: 'mutacion' })),
             ];
             if (allTareas.length === 0) return (
               <Card className="border-dashed border-slate-300 bg-slate-50">
