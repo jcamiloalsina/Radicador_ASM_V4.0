@@ -32824,16 +32824,14 @@ async def generar_resolucion_manual(
                 "firmante_cargo": plantilla.get("firmante_cargo", "SUBDIRECTORA FINANCIERA Y ADMINISTRATIVA"),
             }
         
-        # 5. Generar el PDF
-        from resolucion_pdf_generator import generate_resolucion_pdf
-        
+        # 5. Generar el PDF según el tipo de mutación
         # Generar código de verificación para QR (igual que certificado catastral)
         codigo_verificacion_res = generar_codigo_verificacion_resolucion()
-        
+
         # Formatear fecha con valores por defecto si está vacía
         fecha_resolucion = request.fecha_resolucion or datetime.now().strftime('%d/%m/%Y')
         fecha_formateada = fecha_resolucion.replace('/', '-')
-        
+
         # Para la sección INSCRIPCIÓN:
         # - Si hay datos_predio del request (datos nuevos), usarlos directamente
         # - Si no, usar datos de R1/R2 del predio actual
@@ -32863,43 +32861,88 @@ async def generar_resolucion_manual(
                 "codigo_homologado": datos_r1_r2_predio.get("codigo_homologado") or "",
                 "matricula_inmobiliaria": matricula_predio,
             }
-        
-        pdf_bytes = generate_resolucion_pdf(
-            numero_resolucion=request.numero_resolucion,
-            fecha_resolucion=fecha_formateada,
-            municipio=datos_predio.get("municipio", ""),
-            tipo_tramite="Mutación Primera" if request.tipo_mutacion == "M1" else f"Mutación {request.tipo_mutacion}",
-            radicado=request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
-            codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
-            npn=codigo or "",
-            # Datos de INSCRIPCIÓN
-            matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "",
-            direccion=datos_inscripcion.get("direccion") or "",
-            avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
-            vigencia_fiscal=f"01/01/{año_actual}",
-            area_terreno=str(datos_inscripcion.get("area_terreno") or 0),
-            area_construida=str(datos_inscripcion.get("area_construida") or 0),
-            destino_economico=datos_inscripcion.get("destino_economico") or "A",
-            codigo_homologado=datos_inscripcion.get("codigo_homologado") or "",
-            propietarios_anteriores=propietarios_anteriores,
-            propietarios_nuevos=propietarios_nuevos,
-            elaboro=current_user.get("full_name", ""),
-            aprobo=current_user.get("full_name", ""),
-            plantilla=plantilla_textos,
-            # Datos anteriores para la sección CANCELACIÓN (de R1/R2 del predio original)
-            area_terreno_anterior=datos_anteriores["area_terreno"],
-            area_construida_anterior=datos_anteriores["area_construida"],
-            avaluo_anterior=datos_anteriores["avaluo"],
-            direccion_anterior=datos_anteriores["direccion"],
-            destino_economico_anterior=datos_anteriores["destino_economico"],
-            codigo_homologado_anterior=datos_anteriores["codigo_homologado"],
-            matricula_anterior=datos_anteriores["matricula_inmobiliaria"],
-            # Código de verificación para QR idéntico al certificado catastral
-            codigo_verificacion=codigo_verificacion_res,
-            verificacion_base_url=VERIFICACION_BASE_URL,
-            # Texto personalizado para considerandos
-            texto_considerando=request.texto_considerando,
-        )
+
+        tipo_mut_upper = request.tipo_mutacion.upper()
+
+        if tipo_mut_upper in ["COMP", "COMPLEMENTACION"]:
+            # Generar PDF de Complementación
+            from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
+
+            solicitante_props = predio.get('propietarios', [])
+            solicitante = {
+                "nombre": solicitante_props[0].get("nombre_propietario", "") if solicitante_props else "",
+                "documento": solicitante_props[0].get("numero_documento", "") if solicitante_props else ""
+            }
+
+            pdf_data_comp = {
+                "numero_resolucion": request.numero_resolucion,
+                "municipio": datos_predio.get("municipio", ""),
+                "radicado": request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
+                "codigo_verificacion": codigo_verificacion_res,
+                "elaborado_por": current_user.get("full_name", ""),
+                "revisado_por": current_user.get("full_name", ""),
+                "documentos_soporte": request.datos_predio.get("documentos_soporte", "") if request.datos_predio else "",
+                "texto_considerando": request.texto_considerando or "",
+                "predio": predio,
+                "solicitante": solicitante,
+                "propietarios_anteriores": propietarios_anteriores or [{
+                    "nombre": p.get("nombre_propietario", ""),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": formatear_documento(p.get("numero_documento", "")),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                } for p in solicitante_props],
+                "propietarios_nuevos": propietarios_nuevos or [{
+                    "nombre": p.get("nombre_propietario", ""),
+                    "tipo_documento": p.get("tipo_documento", "CC"),
+                    "documento": formatear_documento(p.get("numero_documento", "")),
+                    "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
+                } for p in solicitante_props],
+                "matricula_nueva": datos_inscripcion.get("matricula_inmobiliaria", ""),
+                "direccion_nueva": datos_inscripcion.get("direccion", ""),
+                "destino_nuevo": datos_inscripcion.get("destino_economico", ""),
+                "area_terreno_nueva": datos_inscripcion.get("area_terreno", 0),
+                "area_construida_nueva": datos_inscripcion.get("area_construida", 0),
+                "avaluo_nuevo": datos_inscripcion.get("avaluo", 0),
+                "vigencia_cancelacion": año_actual - 1,
+                "vigencia_inscripcion": año_actual,
+            }
+            pdf_bytes = generate_complementacion_resolution_pdf(pdf_data_comp)
+        else:
+            # M1 y demás tipos - usar generador estándar
+            from resolucion_pdf_generator import generate_resolucion_pdf
+
+            pdf_bytes = generate_resolucion_pdf(
+                numero_resolucion=request.numero_resolucion,
+                fecha_resolucion=fecha_formateada,
+                municipio=datos_predio.get("municipio", ""),
+                tipo_tramite="Mutación Primera" if tipo_mut_upper == "M1" else f"Mutación {request.tipo_mutacion}",
+                radicado=request.radicado_peticion or f"MANUAL-{datetime.now().strftime('%Y%m%d')}",
+                codigo_catastral_anterior=codigo[:15] if len(codigo) >= 15 else codigo,
+                npn=codigo or "",
+                matricula_inmobiliaria=datos_inscripcion.get("matricula_inmobiliaria") or "",
+                direccion=datos_inscripcion.get("direccion") or "",
+                avaluo=f"${datos_inscripcion.get('avaluo', 0):,.0f}".replace(",", ".") if datos_inscripcion.get('avaluo') else "$0",
+                vigencia_fiscal=f"01/01/{año_actual}",
+                area_terreno=str(datos_inscripcion.get("area_terreno") or 0),
+                area_construida=str(datos_inscripcion.get("area_construida") or 0),
+                destino_economico=datos_inscripcion.get("destino_economico") or "A",
+                codigo_homologado=datos_inscripcion.get("codigo_homologado") or "",
+                propietarios_anteriores=propietarios_anteriores,
+                propietarios_nuevos=propietarios_nuevos,
+                elaboro=current_user.get("full_name", ""),
+                aprobo=current_user.get("full_name", ""),
+                plantilla=plantilla_textos,
+                area_terreno_anterior=datos_anteriores["area_terreno"],
+                area_construida_anterior=datos_anteriores["area_construida"],
+                avaluo_anterior=datos_anteriores["avaluo"],
+                direccion_anterior=datos_anteriores["direccion"],
+                destino_economico_anterior=datos_anteriores["destino_economico"],
+                codigo_homologado_anterior=datos_anteriores["codigo_homologado"],
+                matricula_anterior=datos_anteriores["matricula_inmobiliaria"],
+                codigo_verificacion=codigo_verificacion_res,
+                verificacion_base_url=VERIFICACION_BASE_URL,
+                texto_considerando=request.texto_considerando,
+            )
         
         # 7. Guardar el PDF
         resoluciones_dir = "/app/uploads/resoluciones"
