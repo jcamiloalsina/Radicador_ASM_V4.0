@@ -14700,7 +14700,7 @@ async def proponer_cambio_predio(
                         {"$set": {
                             "historial.$.pdf_path": resolucion_data.get("pdf_path"),
                             "historial.$.numero_resolucion": resolucion_data.get("numero_resolucion"),
-                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion", "M1")
+                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion")
                         }}
                     )
                 
@@ -15068,11 +15068,12 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             f.write(pdf_bytes)
         
         # Registrar la resolución en la base de datos
+        tipo_resolucion = cambio.get("tipo_mutacion") or cambio.get("tipo") or "M1"
         resolucion_doc = {
             "id": str(uuid.uuid4()),
             "numero_resolucion": numero_resolucion,
-            "tipo": "M1",
-            "tipo_mutacion": "M1",
+            "tipo": tipo_resolucion,
+            "tipo_mutacion": tipo_resolucion,
             "año": año_actual,
             "consecutivo": siguiente_numero,
             "codigo_municipio": codigo_municipio,  # Para filtrar por municipio
@@ -17420,7 +17421,7 @@ async def aprobar_rechazar_cambio(
                         {"$set": {
                             "historial.$.pdf_path": resolucion_data.get("pdf_path"),
                             "historial.$.numero_resolucion": resolucion_data.get("numero_resolucion"),
-                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion", "M1")
+                            "historial.$.tipo_mutacion": resolucion_data.get("tipo_mutacion")
                         }}
                     )
                 
