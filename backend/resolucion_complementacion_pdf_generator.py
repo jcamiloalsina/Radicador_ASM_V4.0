@@ -681,7 +681,15 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         except Exception:
             pass
         c.setFillColor(NEGRO)
-        dibujar_texto_justificado(texto_procesado)
+        # Respetar saltos de línea/párrafo tal como fueron escritos
+        parrafos = texto_procesado.split('\n')
+        for idx_p, parrafo in enumerate(parrafos):
+            parrafo_limpio = parrafo.strip()
+            if parrafo_limpio:
+                dibujar_texto_justificado(parrafo_limpio)
+            # Espacio entre párrafos (salto de línea visible)
+            if idx_p < len(parrafos) - 1:
+                y_position -= 6
         y_position -= 8
     else:
         # Usar plantilla estándar

@@ -486,7 +486,15 @@ def generate_resolucion_m4_pdf(data: dict) -> bytes:
         except Exception:
             texto_considerando = texto_considerando_personalizado
         
-        dibujar_texto_justificado(texto_considerando)
+        # Respetar saltos de línea/párrafo tal como fueron escritos
+        parrafos = texto_considerando.split('\n')
+        for idx_p, parrafo in enumerate(parrafos):
+            parrafo_limpio = parrafo.strip()
+            if parrafo_limpio:
+                dibujar_texto_justificado(parrafo_limpio)
+            # Espacio entre párrafos (salto de línea visible)
+            if idx_p < len(parrafos) - 1:
+                y_position -= 6
         y_position -= 6
     else:
         # Usar plantilla estándar

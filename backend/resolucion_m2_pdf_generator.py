@@ -393,7 +393,15 @@ def generate_resolucion_m2_pdf(
             texto_procesado = texto_procesado.replace('(subtipo)', subtipo or '')
         except Exception:
             pass
-        dibujar_texto_justificado(texto_procesado, font_size=10)
+        # Respetar saltos de línea/párrafo tal como fueron escritos
+        parrafos = texto_procesado.split('\n')
+        for idx_p, parrafo in enumerate(parrafos):
+            parrafo_limpio = parrafo.strip()
+            if parrafo_limpio:
+                dibujar_texto_justificado(parrafo_limpio, font_size=10)
+            # Espacio entre párrafos (salto de línea visible)
+            if idx_p < len(parrafos) - 1:
+                y_position -= 6
         y_position -= 8
     else:
         # Usar plantilla estándar

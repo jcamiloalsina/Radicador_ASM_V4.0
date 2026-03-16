@@ -361,7 +361,15 @@ def generate_resolucion_pdf(
             texto_procesado = texto_procesado.replace('(avaluo)', avaluo or '')
         except Exception:
             pass
-        y = dibujar_texto_justificado(texto_procesado, y)
+        # Respetar saltos de línea/párrafo tal como fueron escritos
+        parrafos = texto_procesado.split('\n')
+        for idx_p, parrafo in enumerate(parrafos):
+            parrafo_limpio = parrafo.strip()
+            if parrafo_limpio:
+                y = dibujar_texto_justificado(parrafo_limpio, y)
+            # Espacio entre párrafos (salto de línea visible)
+            if idx_p < len(parrafos) - 1:
+                y -= 6
         y -= espaciado_secciones
     else:
         # Usar la plantilla estándar

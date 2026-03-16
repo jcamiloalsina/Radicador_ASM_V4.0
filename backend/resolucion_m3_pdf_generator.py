@@ -684,7 +684,18 @@ def generate_resolucion_m3_pdf(
             vigencia=datetime.now().year
         )
     
-    dibujar_texto_justificado(texto_considerando, font_size=10, line_height=13)
+    if texto_considerando_personalizado:
+        # Respetar saltos de línea/párrafo tal como fueron escritos
+        parrafos = texto_considerando.split('\n')
+        for idx_p, parrafo in enumerate(parrafos):
+            parrafo_limpio = parrafo.strip()
+            if parrafo_limpio:
+                dibujar_texto_justificado(parrafo_limpio, font_size=10, line_height=13)
+            # Espacio entre párrafos (salto de línea visible)
+            if idx_p < len(parrafos) - 1:
+                y_position -= 6
+    else:
+        dibujar_texto_justificado(texto_considerando, font_size=10, line_height=13)
     y_position -= 6
     
     # Documentos aportados
