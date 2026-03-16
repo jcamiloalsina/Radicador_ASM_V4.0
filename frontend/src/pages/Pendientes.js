@@ -27,7 +27,6 @@ const displayTipoMutacion = (tipo) => {
   const nombres = {
     'RECTIFICACION_AREA': 'Rectificación de Área',
     'COMPLEMENTACION': 'Complementación',
-    'COMP': 'Complementación',
   };
   return nombres[tipo] || tipo;
 };

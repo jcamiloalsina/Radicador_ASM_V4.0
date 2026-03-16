@@ -69,8 +69,8 @@ const TIPOS_MUTACION = {
     color: 'bg-cyan-100 text-cyan-800',
     enabled: true
   },
-  COMP: {
-    codigo: 'COMP',
+  COMPLEMENTACION: {
+    codigo: 'COMPLEMENTACION',
     nombre: 'Complementación',
     descripcion: 'Complementación de información catastral',
     color: 'bg-slate-100 text-slate-800',
@@ -9060,7 +9060,7 @@ export default function MutacionesResoluciones() {
           
           {tipoMutacionSeleccionado?.codigo === 'RECTIFICACION_AREA' && renderFormularioRectificacionArea()}
           
-          {tipoMutacionSeleccionado?.codigo === 'COMP' && renderFormularioComplementacion()}
+          {tipoMutacionSeleccionado?.codigo === 'COMPLEMENTACION' && renderFormularioComplementacion()}
           
           {tipoMutacionSeleccionado?.codigo === 'BLOQUEO' && renderFormularioBloqueo()}
           
@@ -9959,7 +9959,7 @@ export default function MutacionesResoluciones() {
                 )}
               </div>
             )}
-            {tipoMutacionSeleccionado?.codigo === 'COMP' && (
+            {tipoMutacionSeleccionado?.codigo === 'COMPLEMENTACION' && (
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Botón Enviar a Aprobación (si no puede aprobar) */}
                 {!puedeAprobar && (

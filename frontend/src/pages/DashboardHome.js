@@ -391,7 +391,7 @@ export default function DashboardHome() {
               { label: 'Predios creados', value: stats?.predios_creados || 0, icon: FileText, iconClass: 'text-blue-500', pulseClass: 'bg-blue-500', hoverBorder: 'hover:border-blue-400' },
               { label: 'Predios apoyo', value: stats?.predios_asignados || 0, icon: MapPin, iconClass: 'text-purple-500', pulseClass: 'bg-purple-500', hoverBorder: 'hover:border-purple-400' },
               { label: 'Modificaciones', value: stats?.modificaciones_asignadas || 0, icon: Edit, iconClass: 'text-amber-500', pulseClass: 'bg-amber-500', hoverBorder: 'hover:border-amber-400' },
-              { label: 'Cartografía', value: stats?.tareas_urgentes?.mutaciones_cartografia?.length || 0, icon: Layers, iconClass: 'text-pink-500', pulseClass: 'bg-pink-500', hoverBorder: 'hover:border-pink-400' },
+              { label: 'Mutaciones asignadas', value: stats?.tareas_urgentes?.mutaciones_asignadas?.length || 0, icon: Layers, iconClass: 'text-pink-500', pulseClass: 'bg-pink-500', hoverBorder: 'hover:border-pink-400' },
             ].map((item, i) => {
               const ItemIcon = item.icon;
               return (

@@ -1415,153 +1415,6 @@ async def send_test_email(request: TestEmailRequest, current_user: dict = Depend
         raise HTTPException(status_code=500, detail=f"Error al enviar correo: {str(e)}")
 
 
-@api_router.get("/test-pdf-m6")
-async def test_pdf_m6():
-    """
-    Genera un PDF de prueba para RECTIFICACIÓN DE ÁREA (M6) - Solo para verificar el estilo visual.
-    Este endpoint es temporal y debe ser eliminado después de verificar el estilo.
-    """
-    from resolucion_m6_pdf_generator import generate_m6_resolution_pdf
-    
-    # Datos de prueba para generar PDF
-    test_data = {
-        "numero_resolucion": "RES-M6-TEST-001-2026",
-        "fecha_resolucion": "07/03/2026",
-        "municipio": "Sardinata",
-        "radicado": "RAD-TEST-12345",
-        "codigo_verificacion": "VERIF-TEST-ABC123",
-        "elaborado_por": "Sistema de Pruebas",
-        "revisado_por": "Administrador",
-        "predio": {
-            "codigo_predial_nacional": "543850100010033000000000000",
-            "codigo_predial": "543850100010033000000000000",
-            "codigo_homologado": "T0100033",
-            "direccion": "VEREDA EL CENTRO",
-            "destino_economico": "R",
-            "matricula_inmobiliaria": "280-12345",
-            "avaluo": 25000000,
-            "propietarios": [
-                {
-                    "nombre_propietario": "JUAN CARLOS PEREZ RODRIGUEZ",
-                    "tipo_documento": "CC",
-                    "numero_documento": "1234567890",
-                    "estado_civil": "C"
-                }
-            ]
-        },
-        "solicitante": {
-            "nombre": "JUAN CARLOS PEREZ RODRIGUEZ",
-            "documento": "1234567890"
-        },
-        "area_terreno_anterior": 1500.50,
-        "area_terreno_nueva": 1650.75,
-        "area_construida_anterior": 120.00,
-        "area_construida_nueva": 185.50,
-        "avaluo_anterior": 25000000,
-        "avaluo_nuevo": 32500000
-    }
-    
-    try:
-        pdf_bytes = generate_m6_resolution_pdf(test_data)
-        
-        # Guardar en disco para poder descargar - usar la ruta correcta
-        filename = f"test_m6_rectificacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf_dir = "/app/uploads/resoluciones"
-        pdf_path = f"{pdf_dir}/{filename}"
-        
-        os.makedirs(pdf_dir, exist_ok=True)
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
-        
-        return {
-            "success": True,
-            "message": "PDF de prueba M6 generado exitosamente",
-            "download_url": f"/api/resoluciones/descargar/{filename}",
-            "filename": filename
-        }
-    except Exception as e:
-        import traceback
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }
-
-
-@api_router.get("/test-pdf-complementacion")
-async def test_pdf_complementacion():
-    """
-    Genera un PDF de prueba para COMPLEMENTACIÓN DE INFORMACIÓN.
-    Este endpoint es temporal y debe ser eliminado después de verificar el estilo.
-    """
-    from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
-    
-    # Datos de prueba para generar PDF
-    test_data = {
-        "numero_resolucion": "RES-54-003-00XX-2026",
-        "municipio": "Ábrego",
-        "radicado": "RAD-COMPL-12345",
-        "codigo_verificacion": "VERIF-COMPL-ABC123",
-        "elaborado_por": "Armando Cárdenas",
-        "revisado_por": "Juan C. Alsina",
-        "documentos_soporte": "Oficio de solicitud, Cédula del propietario, Certificado de libertad y tradición con número de matrícula inmobiliaria X",
-        "predio": {
-            "codigo_predial_nacional": "540030101000000280006000000000",
-            "codigo_predial": "540030101000000280006000000000",
-            "codigo_homologado": "T0100028",
-            "direccion": "VEREDA LA ESPERANZA",
-            "destino_economico": "R",
-            "matricula_inmobiliaria": "280-54321",
-            "avaluo": 18000000,
-            "area_terreno": 850.00,
-            "area_construida": 95.50,
-            "propietarios": [
-                {
-                    "nombre_propietario": "MARIA ELENA GOMEZ SILVA",
-                    "tipo_documento": "CC",
-                    "numero_documento": "9876543210",
-                    "estado_civil": "S"
-                }
-            ]
-        },
-        "solicitante": {
-            "nombre": "MARIA ELENA GOMEZ SILVA",
-            "documento": "9876543210"
-        },
-        "area_terreno_nueva": 920.75,
-        "area_construida_nueva": 125.00,
-        "avaluo_nuevo": 22500000,
-        "vigencia_cancelacion": 2025,
-        "vigencia_inscripcion": 2026
-    }
-    
-    try:
-        pdf_bytes = generate_complementacion_resolution_pdf(test_data)
-        
-        # Guardar en disco para poder descargar
-        filename = f"test_complementacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf_dir = "/app/uploads/resoluciones"
-        pdf_path = f"{pdf_dir}/{filename}"
-        
-        os.makedirs(pdf_dir, exist_ok=True)
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
-        
-        return {
-            "success": True,
-            "message": "PDF de prueba Complementación generado exitosamente",
-            "download_url": f"/api/resoluciones/descargar/{filename}",
-            "filename": filename
-        }
-    except Exception as e:
-        import traceback
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }
-
-
 @api_router.post("/admin/send-ficha-tecnica")
 async def send_ficha_tecnica_email(request: TestEmailRequest, current_user: dict = Depends(get_current_user)):
     """Envía la ficha técnica por correo con PDF adjunto (solo admin)"""
@@ -31542,7 +31395,7 @@ async def crear_solicitud_mutacion(
                     pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
                 elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
                     pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
-                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                elif tipo_mutacion == "COMPLEMENTACION":
                     pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                 else:
                     # M1 - Lógica existente para cambio de propietarios
@@ -31951,7 +31804,7 @@ async def ejecutar_accion_solicitud(
                     # Generar resolución Rectificación de Área
                     pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
                 
-                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                elif tipo_mutacion == "COMPLEMENTACION":
                     # Generar resolución Complementación de Información
                     pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                     
@@ -32405,7 +32258,7 @@ async def aprobar_radicado_multiple(
                     pdf_result = await _generar_resolucion_m5_interno(solicitud, current_user)
                 elif tipo_mutacion in ["M6", "RECTIFICACION_AREA"]:
                     pdf_result = await _generar_resolucion_m6_interno(solicitud, current_user)
-                elif tipo_mutacion in ["COMP", "COMPLEMENTACION"]:
+                elif tipo_mutacion == "COMPLEMENTACION":
                     pdf_result = await _generar_resolucion_complementacion_interno(solicitud, current_user)
                 else:
                     # M1
@@ -32864,7 +32717,7 @@ async def generar_resolucion_manual(
 
         tipo_mut_upper = request.tipo_mutacion.upper()
 
-        if tipo_mut_upper in ["COMP", "COMPLEMENTACION"]:
+        if tipo_mut_upper == "COMPLEMENTACION":
             # Generar PDF de Complementación
             from resolucion_complementacion_pdf_generator import generate_complementacion_resolution_pdf
 
