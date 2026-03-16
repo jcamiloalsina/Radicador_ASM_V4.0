@@ -487,7 +487,7 @@ def generate_resolucion_pdf(
         c.setFillColor(negro)
         c.setFont(font_bold, fuente_tabla - 1)
 
-        predio_cols = [content_width * 0.13, content_width * 0.22, content_width * 0.04, content_width * 0.17, content_width * 0.13, content_width * 0.16, content_width * 0.15]
+        predio_cols = [content_width * 0.16, content_width * 0.19, content_width * 0.04, content_width * 0.17, content_width * 0.13, content_width * 0.16, content_width * 0.15]
         predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "D", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
         x = left_margin
         for i, header in enumerate(predio_headers):

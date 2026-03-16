@@ -567,7 +567,7 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         verificar_espacio(45)
 
         predio_row_h = 20
-        predio_cols = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
+        predio_cols = [CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.19, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
         predio_headers = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "D", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
 
         # Headers

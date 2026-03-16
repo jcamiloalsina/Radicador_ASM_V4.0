@@ -1559,7 +1559,7 @@ export default function MutacionesResoluciones() {
           setPdfViewerData({
             url: pdfFullUrl,
             title: `Resolución ${response.data.numero_resolucion}`,
-            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            fileName: `${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
             resolucionId: response.data.id,
             radicado: m1Data.radicado_peticion,
             correoSolicitante: '' // Se puede obtener del radicado si es necesario
@@ -2772,7 +2772,7 @@ export default function MutacionesResoluciones() {
           setPdfViewerData({
             url: pdfFullUrl,
             title: `Resolución ${response.data.numero_resolucion} - ${m2Data.subtipo === 'desengloble' ? 'Desenglobe' : 'Englobe'}`,
-            fileName: `Resolucion_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            fileName: `${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
             resolucionId: response.data.id,
             radicado: m2Data.radicado,
             correoSolicitante: ''
@@ -2997,7 +2997,7 @@ export default function MutacionesResoluciones() {
           setPdfViewerData({
             url: pdfFullUrl,
             title: `Resolución M3 - ${response.data.numero_resolucion}`,
-            fileName: `Resolucion_M3_${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
+            fileName: `${response.data.numero_resolucion.replace(/\//g, '-')}.pdf`,
             resolucionId: response.data.id,
             radicado: m3Data.radicado,
             correoSolicitante: ''
@@ -3734,7 +3734,7 @@ export default function MutacionesResoluciones() {
           setPdfViewerData({
             url: pdfFullUrl,
             title: `Resolución ${response.data.numero_resolucion}`,
-            fileName: `Resolucion_Rectificacion_Area_${response.data.numero_resolucion?.replace(/\//g, '-') || 'N'}.pdf`,
+            fileName: `${(response.data.numero_resolucion || 'N').replace(/\//g, '-')}.pdf`,
             resolucionId: response.data.id,
             radicado: rectificacionData.radicado
           });
@@ -8755,7 +8755,7 @@ export default function MutacionesResoluciones() {
                           setPdfViewerData({
                             url: `${process.env.REACT_APP_BACKEND_URL}${pdfUrl}`,
                             title: `Resolución ${res.numero_resolucion}`,
-                            fileName: `Resolucion_${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
+                            fileName: `${res.numero_resolucion.replace(/\//g, '-')}.pdf`,
                             resolucionId: res.id,
                             radicado: res.radicado || '',
                             correoSolicitante: ''

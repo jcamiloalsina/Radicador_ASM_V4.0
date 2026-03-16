@@ -433,7 +433,7 @@ export default function Pendientes() {
           isOpen: true,
           url: pdfFullUrl,
           title: `Resolución ${numRes}`,
-          fileName: `Resolucion_${numRes.replace(/\//g, '-')}.pdf`
+          fileName: `${numRes.replace(/\//g, '-')}.pdf`
         });
         toast.success(`Resolución ${numRes} generada exitosamente`);
       } else if (accion === 'aprobar' && response.data.error_pdf) {

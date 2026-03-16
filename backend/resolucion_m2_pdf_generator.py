@@ -573,7 +573,7 @@ def generate_resolucion_m2_pdf(
         c.setFillColor(NEGRO)
         c.setFont(font_bold, 7)
 
-        col_widths2 = [CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.22, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
+        col_widths2 = [CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.19, CONTENT_WIDTH * 0.04, CONTENT_WIDTH * 0.17, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.15]
         headers2 = ["CÓD. HOMOLOGADO", "DIRECCIÓN", "D", "A-TERRENO", "A-CONS", "AVALÚO", "VIG. FISCAL"]
         x = MARGIN_LEFT
         for i, header in enumerate(headers2):
