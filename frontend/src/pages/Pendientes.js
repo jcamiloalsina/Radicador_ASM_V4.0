@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import axios from 'axios';
 import { 
-  Clock, CheckCircle, XCircle, Building, User, MapPin, 
-  FileText, Eye, Loader2, AlertTriangle, ArrowRight, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink, Plus, Trash2
+  Clock, CheckCircle, XCircle, Building, User, MapPin,
+  FileText, Eye, Loader2, AlertTriangle, ArrowRight, ArrowLeft, Edit, RefreshCw, History, ChevronDown, ChevronUp, Filter, X, Calendar, Link2, ExternalLink, Plus, Trash2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -1640,9 +1640,13 @@ export default function Pendientes() {
       ) : (
         /* Vista para COORDINADORES / APROBADORES - Simplificada */
         <div className="w-full">
-            {/* Indicador de filtro activo */}
+            {/* Indicador de filtro activo con botón Atrás */}
             {filtroTipo && (
               <div className="flex items-center gap-2 mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <Button variant="ghost" size="sm" className="text-purple-600 hover:bg-purple-100 h-7 px-2" onClick={() => navigate('/dashboard')}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Inicio
+                </Button>
+                <span className="text-slate-300">|</span>
                 <Filter className="w-4 h-4 text-purple-600" />
                 <span className="text-sm text-purple-800">Filtrando por: <strong>{displayTipoMutacion(filtroTipo)}</strong></span>
                 <Button variant="ghost" size="sm" className="ml-auto text-purple-600 hover:bg-purple-100 h-7 px-2" onClick={() => navigate('/dashboard/pendientes')}>
