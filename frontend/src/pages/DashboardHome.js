@@ -636,7 +636,7 @@ export default function DashboardHome() {
                 { label: 'M4', desc: 'Revisión de avalúo', tipo: 'M4', value: stats?.mutaciones_por_tipo?.M4 || 0, color: 'border-purple-300 bg-purple-50', iconColor: 'text-purple-600 bg-purple-100' },
                 { label: 'M5', desc: 'Inscripción / Cancelación', tipo: 'M5', value: stats?.mutaciones_por_tipo?.M5 || 0, color: 'border-indigo-300 bg-indigo-50', iconColor: 'text-indigo-600 bg-indigo-100' },
                 { label: 'Rectificación', desc: 'Rectificación de área', tipo: 'RECTIFICACION_AREA', value: stats?.mutaciones_por_tipo?.RECTIFICACION_AREA || 0, color: 'border-orange-300 bg-orange-50', iconColor: 'text-orange-600 bg-orange-100' },
-                { label: 'Complementación', desc: 'Complementación catastral', tipo: 'COMP', value: stats?.mutaciones_por_tipo?.COMP || 0, color: 'border-teal-300 bg-teal-50', iconColor: 'text-teal-600 bg-teal-100' },
+                { label: 'Complementación', desc: 'Complementación catastral', tipo: 'COMPLEMENTACION', value: stats?.mutaciones_por_tipo?.COMPLEMENTACION || 0, color: 'border-teal-300 bg-teal-50', iconColor: 'text-teal-600 bg-teal-100' },
               ].filter(item => item.value > 0).map((item, i) => {
                 return (
                   <Card

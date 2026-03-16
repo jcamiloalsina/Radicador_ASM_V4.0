@@ -370,7 +370,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     aprobados_mes = 0
     rechazados_mes = 0
     mutaciones_pendientes_count = 0
-    mutaciones_por_tipo = {"M1": 0, "M2": 0, "M3": 0, "M4": 0, "M5": 0, "RECTIFICACION_AREA": 0, "COMP": 0}
+    mutaciones_por_tipo = {"M1": 0, "M2": 0, "M3": 0, "M4": 0, "M5": 0, "RECTIFICACION_AREA": 0, "COMPLEMENTACION": 0}
 
     if es_aprobador:
         query_municipio = {}
@@ -425,22 +425,16 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         ).sort("created_at", -1).limit(20)
         tareas_urgentes["peticiones_asignadas"] = await peticiones_cursor.to_list(20)
 
-        # Mutaciones/complementaciones asignadas al usuario (por gestor_apoyo_id O creado_por_id)
-        # Incluye TODOS los estados activos, no solo pendiente_cartografia
+        # Mutaciones/complementaciones asignadas al usuario como gestor de apoyo
+        # Solo estados de trabajo activo (NO pendiente_aprobacion, eso va en tarjetas de aprobación)
         mutaciones_asignadas_cursor = db.solicitudes_mutacion.find(
             {
-                "$or": [
-                    {"gestor_apoyo_id": user_id},
-                    {"creado_por_id": user_id}
-                ],
-                "estado": {"$in": [
-                    "pendiente_cartografia", "pendiente_aprobacion",
-                    "aprobado", "devuelto"
-                ]}
+                "gestor_apoyo_id": user_id,
+                "estado": {"$in": ["pendiente_cartografia", "devuelto"]}
             },
             {"_id": 0, "id": 1, "tipo": 1, "subtipo": 1, "radicado": 1,
              "municipio_nombre": 1, "fecha_creacion": 1, "estado": 1,
-             "gestor_apoyo_id": 1, "creado_por_id": 1, "creado_por_nombre": 1}
+             "creado_por_nombre": 1}
         ).sort("fecha_creacion", -1).limit(20)
         tareas_urgentes["mutaciones_asignadas"] = await mutaciones_asignadas_cursor.to_list(20)
 
