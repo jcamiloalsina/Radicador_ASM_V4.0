@@ -1851,11 +1851,18 @@ export default function Pendientes() {
                                 <span>{mutacion.subtipo === 'cancelacion' ? 'Cancelar' : 'Inscribir'}: {mutacion.predio_m5.codigo_predial_nacional || mutacion.predio_m5.codigo_predial || 'N/A'}</span>
                               )}
                               {/* Rectificación */}
-                              {mutacion.tipo === 'Rectificación de Área' && (
+                              {mutacion.tipo === 'RECTIFICACION_AREA' && (
                                 <span>Terreno: {Number(mutacion.area_terreno_anterior || 0).toLocaleString()} → {Number(mutacion.area_terreno_nueva || 0).toLocaleString()} m²</span>
                               )}
+                              {/* Complementación */}
+                              {mutacion.tipo === 'COMPLEMENTACION' && (
+                                <span>
+                                  {mutacion.codigo_predial || mutacion.predio?.codigo_predial_nacional || ''}
+                                  {mutacion.predio_direccion ? ` · ${mutacion.predio_direccion}` : ''}
+                                </span>
+                              )}
                               {/* Fallback para tipos sin datos específicos */}
-                              {!['M1','M2','M3','M4','M5','Rectificación de Área'].includes(mutacion.tipo) && (<>
+                              {!['M1','M2','M3','M4','M5','RECTIFICACION_AREA','COMPLEMENTACION'].includes(mutacion.tipo) && (<>
                                 {mutacion.predios_cancelados?.length > 0 && `${mutacion.predios_cancelados.length} cancelados`}
                                 {mutacion.predios_cancelados?.length > 0 && mutacion.predios_inscritos?.length > 0 && ' → '}
                                 {mutacion.predios_inscritos?.length > 0 && `${mutacion.predios_inscritos.length} inscritos`}
@@ -2212,7 +2219,7 @@ export default function Pendientes() {
               )}
 
               {/* Información de Rectificación de Área */}
-              {selectedMutacion.tipo === 'Rectificación de Área' && (
+              {selectedMutacion.tipo === 'RECTIFICACION_AREA' && (
                 <div className="space-y-3">
                   {selectedMutacion.predio_rectificacion && (
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
@@ -2574,6 +2581,115 @@ export default function Pendientes() {
                 </div>
               )}
               
+              {/* Información específica de Complementación */}
+              {selectedMutacion.tipo === 'COMPLEMENTACION' && (
+                <div className="space-y-3">
+                  {/* Predio afectado */}
+                  {(selectedMutacion.codigo_predial || selectedMutacion.predio?.codigo_predial_nacional) && (
+                    <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
+                      <p className="text-xs text-teal-600 font-medium mb-2">Predio Afectado</p>
+                      <p className="font-mono text-sm font-bold text-teal-800">
+                        {selectedMutacion.codigo_predial || selectedMutacion.predio?.codigo_predial_nacional}
+                      </p>
+                      {selectedMutacion.predio_direccion && (
+                        <p className="text-xs text-slate-500 mt-1">{selectedMutacion.predio_direccion}</p>
+                      )}
+                      {selectedMutacion.predio?.codigo_homologado && (
+                        <p className="text-xs text-slate-400 mt-1">Homologado: {selectedMutacion.predio.codigo_homologado}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Solicitante */}
+                  {selectedMutacion.solicitante && (
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-medium mb-1">Solicitante</p>
+                      <p className="text-sm font-medium text-blue-800">{selectedMutacion.solicitante.nombre}</p>
+                      {selectedMutacion.solicitante.documento && (
+                        <p className="text-xs text-slate-500">Doc: {selectedMutacion.solicitante.documento}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Áreas y Avalúo */}
+                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    <p className="text-xs text-amber-600 font-medium mb-2">Datos del Predio</p>
+                    <div className="space-y-2">
+                      {/* Área terreno */}
+                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Área Terreno Anterior</p>
+                          <p className="text-sm font-bold text-slate-700">{Number(selectedMutacion.area_terreno_anterior || 0).toLocaleString()} m²</p>
+                        </div>
+                        <span className="text-slate-400">→</span>
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Nueva</p>
+                          <p className="text-sm font-bold text-teal-700">{Number(selectedMutacion.area_terreno_nueva || 0).toLocaleString()} m²</p>
+                        </div>
+                      </div>
+                      {/* Área construida */}
+                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Área Construida Anterior</p>
+                          <p className="text-sm font-bold text-slate-700">{Number(selectedMutacion.area_construida_anterior || 0).toLocaleString()} m²</p>
+                        </div>
+                        <span className="text-slate-400">→</span>
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Nueva</p>
+                          <p className="text-sm font-bold text-teal-700">{Number(selectedMutacion.area_construida_nueva || 0).toLocaleString()} m²</p>
+                        </div>
+                      </div>
+                      {/* Avalúo */}
+                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Avalúo Anterior</p>
+                          <p className="text-sm font-bold text-slate-700">${Number(selectedMutacion.avaluo_anterior || 0).toLocaleString()}</p>
+                        </div>
+                        <span className="text-slate-400">→</span>
+                        <div className="bg-white p-2 rounded text-center">
+                          <p className="text-xs text-slate-500">Nuevo</p>
+                          <p className="text-sm font-bold text-teal-700">${Number(selectedMutacion.avaluo_nuevo || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cambios complementarios */}
+                  {(selectedMutacion.matricula_nueva || selectedMutacion.direccion_nueva || selectedMutacion.destino_nuevo) && (
+                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                      <p className="text-xs text-emerald-600 font-medium mb-2">Datos Complementarios</p>
+                      <div className="grid grid-cols-1 gap-2 text-sm">
+                        {selectedMutacion.matricula_nueva && (
+                          <div><span className="text-slate-500">Matrícula nueva:</span> <span className="font-medium">{selectedMutacion.matricula_nueva}</span></div>
+                        )}
+                        {selectedMutacion.direccion_nueva && (
+                          <div><span className="text-slate-500">Dirección nueva:</span> <span className="font-medium">{selectedMutacion.direccion_nueva}</span></div>
+                        )}
+                        {selectedMutacion.destino_nuevo && (
+                          <div><span className="text-slate-500">Destino nuevo:</span> <span className="font-medium">{selectedMutacion.destino_nuevo}</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Texto considerando (si es extenso, mostrar colapsado) */}
+                  {selectedMutacion.texto_considerando && (
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                      <p className="text-xs text-slate-500 font-medium mb-1">Texto Considerando</p>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap max-h-40 overflow-y-auto">{selectedMutacion.texto_considerando}</p>
+                    </div>
+                  )}
+
+                  {/* Documentos soporte */}
+                  {selectedMutacion.documentos_soporte && (
+                    <div className="bg-slate-50 p-3 rounded-lg">
+                      <p className="text-xs text-slate-500 font-medium">Documentos Soporte</p>
+                      <p className="text-sm text-slate-700 mt-1">{selectedMutacion.documentos_soporte}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Observaciones */}
               {selectedMutacion.observaciones && (
                 <div className="bg-slate-50 p-3 rounded-lg">
@@ -2581,7 +2697,7 @@ export default function Pendientes() {
                   <p className="text-sm text-slate-700 mt-1">{selectedMutacion.observaciones}</p>
                 </div>
               )}
-              
+
               {/* Área para escribir observaciones al aprobar/devolver/rechazar */}
               <div>
                 <Label htmlFor="obs-mutacion">Observaciones (opcional para aprobar, requerido para devolver/rechazar)</Label>
