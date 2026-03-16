@@ -14992,8 +14992,10 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
             propietarios_nuevos = propietarios_anteriores
         
         # Obtener usuario que propuso el cambio
-        proponente = await db.users.find_one({"id": cambio.get("propuesto_por")}, {"_id": 0, "full_name": 1})
-        elaboro = proponente.get("full_name", "") if proponente else ""
+        elaboro = cambio.get("creado_por_nombre", "")
+        if not elaboro:
+            proponente = await db.users.find_one({"id": cambio.get("propuesto_por")}, {"_id": 0, "full_name": 1})
+            elaboro = proponente.get("full_name", "") if proponente else ""
         
         # Generar código de verificación para el QR (igual que certificado catastral)
         codigo_verificacion_res = generar_codigo_verificacion_resolucion()
@@ -15375,7 +15377,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "predios_inscritos": predios_inscritos,
             "solicitante": solicitante,
             "observaciones": solicitud.get('observaciones', ''),
-            "elaborado_por": aprobador.get("full_name", ""),
+            "elaborado_por": solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             "revisado_por": aprobador.get("full_name", ""),
             "codigo_verificacion": codigo_verificacion_m2
         }
@@ -15398,7 +15400,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             solicitante=solicitante,
             predios_cancelados=predios_cancelados,
             predios_inscritos=predios_inscritos,
-            elaboro=aprobador.get("full_name", ""),
+            elaboro=solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             aprobo=aprobador.get("full_name", ""),
             texto_considerando=solicitud.get('texto_considerando')
         )
@@ -15739,7 +15741,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0),
             "fechas_inscripcion": fechas_inscripcion,
             "solicitante": solicitud.get('solicitante') or {"nombre": "No especificado", "documento": ""},
-            "elaborado_por": aprobador.get("full_name", ""),
+            "elaborado_por": solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             "revisado_por": aprobador.get("full_name", ""),
             "codigo_verificacion": codigo_verificacion_m3,
             "texto_considerando": solicitud.get('texto_considerando')  # Texto personalizado para considerandos
@@ -16039,7 +16041,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "motivo_solicitud": solicitud.get('motivo_solicitud', ''),
             "valor_autoestimado": solicitud.get('valor_autoestimado') or solicitud.get('avaluo_nuevo', 0),
             "perito_avaluador": solicitud.get('perito_avaluador', ''),
-            "elaborado_por": aprobador.get("full_name", ""),
+            "elaborado_por": solicitud.get('creado_por_nombre') or aprobador.get("full_name", ""),
             "revisado_por": aprobador.get("full_name", ""),
             "codigo_verificacion": codigo_verificacion_m4,
             "texto_considerando": solicitud.get('texto_considerando')  # Texto personalizado para considerandos
@@ -16325,14 +16327,8 @@ async def _generar_resolucion_m5_interno(solicitud: dict, aprobador: dict) -> di
         municipio_nombre = numero_info['municipio']
         
         # Preparar datos para el PDF
-        # Obtener usuario que elaboró (proponente de la solicitud)
-        elaboro_nombre = ""
-        proponente_id = solicitud.get('creado_por', solicitud.get('created_by'))
-        if proponente_id:
-            proponente = await db.users.find_one({"id": proponente_id})
-            if proponente:
-                elaboro_nombre = proponente.get('full_name', '')
-        
+        elaboro_nombre = solicitud.get('creado_por_nombre', '')
+
         # Generar código de verificación para el QR
         codigo_verificacion = generar_codigo_verificacion_resolucion()
         
@@ -16659,13 +16655,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
         datos_r1_r2 = obtener_datos_r1_r2_m6(predio_db or predio_data)
         
         # Obtener nombre del elaborador
-        elaboro_nombre = ""
-        proponente_id = solicitud.get('creado_por', solicitud.get('created_by'))
-        if proponente_id:
-            proponente = await db.users.find_one({"id": proponente_id})
-            if proponente:
-                elaboro_nombre = proponente.get('full_name', '')
-        
+        elaboro_nombre = solicitud.get('creado_por_nombre', '')
+
         # Generar código de verificación para QR
         codigo_verificacion = generar_codigo_verificacion_resolucion()
         
@@ -17129,7 +17120,7 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
             "municipio": municipio,
             "radicado": solicitud.get('radicado', ''),
             "codigo_verificacion": codigo_verificacion,
-            "elaborado_por": solicitud.get('elaborado_por', aprobador['full_name']),
+            "elaborado_por": solicitud.get('creado_por_nombre', aprobador['full_name']),
             "revisado_por": aprobador['full_name'],
             "documentos_soporte": documentos_soporte,
             "texto_considerando": solicitud.get('texto_considerando', ''),
