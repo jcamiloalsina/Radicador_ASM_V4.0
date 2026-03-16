@@ -29871,7 +29871,7 @@ async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> 
         "codigo_municipio": codigo_municipio
     })
     
-    siguiente = max(numero_inicial + count, 1)
+    siguiente = numero_inicial + count + 1
     
     # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
     depto = codigo_municipio[:2]
@@ -29921,7 +29921,7 @@ async def obtener_siguiente_numero_resolucion(
             "codigo_municipio": codigo_municipio
         })
         
-        siguiente = max(numero_inicial + count, 1)
+        siguiente = numero_inicial + count + 1
         
         # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
         depto = codigo_municipio[:2]

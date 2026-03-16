@@ -350,7 +350,7 @@ async def obtener_siguiente_numero_resolucion(
         "codigo_municipio": codigo_municipio
     })
     
-    siguiente = max(numero_inicial + count, 1)
+    siguiente = numero_inicial + count + 1
     
     # Formato: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
     depto = codigo_municipio[:2]
