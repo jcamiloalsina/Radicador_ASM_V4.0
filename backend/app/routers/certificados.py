@@ -47,21 +47,23 @@ async def listar_certificados_verificables(
     
     ahora = datetime.now(timezone.utc)
     fecha_limite_por_vencer = ahora + timedelta(days=7)
-    
+    ahora_str = ahora.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+    limite_str = fecha_limite_por_vencer.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+
     query = {}
     if estado == "por_vencer":
         query = {
             "estado": "activo",
             "fecha_vencimiento": {
-                "$lte": fecha_limite_por_vencer.isoformat(),
-                "$gt": ahora.isoformat()
+                "$lte": limite_str,
+                "$gt": ahora_str
             }
         }
     elif estado == "vencido":
         query = {
             "$or": [
                 {"estado": "vencido"},
-                {"estado": "activo", "fecha_vencimiento": {"$lte": ahora.isoformat()}}
+                {"estado": "activo", "fecha_vencimiento": {"$lte": ahora_str}}
             ]
         }
     elif estado:
@@ -97,34 +99,37 @@ async def estadisticas_certificados(current_user: dict = Depends(get_current_use
     if current_user['role'] not in [UserRole.COORDINADOR, UserRole.ADMINISTRADOR, UserRole.ATENCION_USUARIO]:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
+    # Usar formato con +00:00 para comparar correctamente con las fechas en DB
     ahora = datetime.now(timezone.utc)
     fecha_limite_por_vencer = ahora + timedelta(days=7)
-    
+    ahora_str = ahora.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+    limite_str = fecha_limite_por_vencer.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+
     total = await db.certificados_verificables.count_documents({})
-    
+
     activos = await db.certificados_verificables.count_documents({
         "estado": "activo",
         "$or": [
-            {"fecha_vencimiento": {"$gt": ahora.isoformat()}},
+            {"fecha_vencimiento": {"$gt": ahora_str}},
             {"fecha_vencimiento": {"$exists": False}}
         ]
     })
-    
+
     por_vencer = await db.certificados_verificables.count_documents({
         "estado": "activo",
         "fecha_vencimiento": {
-            "$lte": fecha_limite_por_vencer.isoformat(),
-            "$gt": ahora.isoformat()
+            "$lte": limite_str,
+            "$gt": ahora_str
         }
     })
-    
+
     vencidos = await db.certificados_verificables.count_documents({
         "$or": [
             {"estado": "vencido"},
-            {"estado": "activo", "fecha_vencimiento": {"$lte": ahora.isoformat()}}
+            {"estado": "activo", "fecha_vencimiento": {"$lte": ahora_str}}
         ]
     })
-    
+
     anulados = await db.certificados_verificables.count_documents({"estado": "anulado"})
     
     return {
