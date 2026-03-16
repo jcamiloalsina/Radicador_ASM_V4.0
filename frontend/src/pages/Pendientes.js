@@ -2588,101 +2588,67 @@ export default function Pendientes() {
               {/* Información específica de Complementación */}
               {selectedMutacion.tipo === 'COMPLEMENTACION' && (
                 <div className="space-y-3">
-                  {/* Predio afectado */}
+                  {/* Predio de referencia */}
                   {(selectedMutacion.codigo_predial || selectedMutacion.predio?.codigo_predial_nacional) && (
                     <div className="bg-teal-50 p-3 rounded-lg border border-teal-200">
-                      <p className="text-xs text-teal-600 font-medium mb-2">Predio Afectado</p>
+                      <p className="text-xs text-teal-600 font-medium mb-2">Predio de Referencia</p>
                       <p className="font-mono text-sm font-bold text-teal-800">
                         {selectedMutacion.codigo_predial || selectedMutacion.predio?.codigo_predial_nacional}
                       </p>
                       {selectedMutacion.predio_direccion && (
-                        <p className="text-xs text-slate-500 mt-1">{selectedMutacion.predio_direccion}</p>
+                        <p className="text-xs text-slate-500 mt-1">Dirección actual: {selectedMutacion.predio_direccion}</p>
                       )}
                       {selectedMutacion.predio?.codigo_homologado && (
                         <p className="text-xs text-slate-400 mt-1">Homologado: {selectedMutacion.predio.codigo_homologado}</p>
                       )}
-                    </div>
-                  )}
-
-                  {/* Solicitante */}
-                  {selectedMutacion.solicitante && (
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <p className="text-xs text-blue-600 font-medium mb-1">Solicitante</p>
-                      <p className="text-sm font-medium text-blue-800">{selectedMutacion.solicitante.nombre}</p>
-                      {selectedMutacion.solicitante.documento && (
-                        <p className="text-xs text-slate-500">Doc: {selectedMutacion.solicitante.documento}</p>
+                      {selectedMutacion.solicitante && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Propietario: {selectedMutacion.solicitante.nombre}
+                          {selectedMutacion.solicitante.documento ? ` (${selectedMutacion.solicitante.documento})` : ''}
+                        </p>
                       )}
                     </div>
                   )}
 
-                  {/* Áreas y Avalúo */}
-                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                    <p className="text-xs text-amber-600 font-medium mb-2">Datos del Predio</p>
-                    <div className="space-y-2">
-                      {/* Área terreno */}
-                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Área Terreno Anterior</p>
-                          <p className="text-sm font-bold text-slate-700">{Number(selectedMutacion.area_terreno_anterior || 0).toLocaleString()} m²</p>
-                        </div>
-                        <span className="text-slate-400">→</span>
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Nueva</p>
-                          <p className="text-sm font-bold text-teal-700">{Number(selectedMutacion.area_terreno_nueva || 0).toLocaleString()} m²</p>
-                        </div>
-                      </div>
-                      {/* Área construida */}
-                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Área Construida Anterior</p>
-                          <p className="text-sm font-bold text-slate-700">{Number(selectedMutacion.area_construida_anterior || 0).toLocaleString()} m²</p>
-                        </div>
-                        <span className="text-slate-400">→</span>
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Nueva</p>
-                          <p className="text-sm font-bold text-teal-700">{Number(selectedMutacion.area_construida_nueva || 0).toLocaleString()} m²</p>
-                        </div>
-                      </div>
-                      {/* Avalúo */}
-                      <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Avalúo Anterior</p>
-                          <p className="text-sm font-bold text-slate-700">${Number(selectedMutacion.avaluo_anterior || 0).toLocaleString()}</p>
-                        </div>
-                        <span className="text-slate-400">→</span>
-                        <div className="bg-white p-2 rounded text-center">
-                          <p className="text-xs text-slate-500">Nuevo</p>
-                          <p className="text-sm font-bold text-teal-700">${Number(selectedMutacion.avaluo_nuevo || 0).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Cambios complementarios */}
-                  {(selectedMutacion.matricula_nueva || selectedMutacion.direccion_nueva || selectedMutacion.destino_nuevo) && (
-                    <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                      <p className="text-xs text-emerald-600 font-medium mb-2">Datos Complementarios</p>
-                      <div className="grid grid-cols-1 gap-2 text-sm">
-                        {selectedMutacion.matricula_nueva && (
-                          <div><span className="text-slate-500">Matrícula nueva:</span> <span className="font-medium">{selectedMutacion.matricula_nueva}</span></div>
-                        )}
-                        {selectedMutacion.direccion_nueva && (
-                          <div><span className="text-slate-500">Dirección nueva:</span> <span className="font-medium">{selectedMutacion.direccion_nueva}</span></div>
-                        )}
-                        {selectedMutacion.destino_nuevo && (
-                          <div><span className="text-slate-500">Destino nuevo:</span> <span className="font-medium">{selectedMutacion.destino_nuevo}</span></div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Texto considerando (si es extenso, mostrar colapsado) */}
+                  {/* Texto considerando - ES LO PRINCIPAL de complementación */}
                   {selectedMutacion.texto_considerando && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <p className="text-xs text-slate-500 font-medium mb-1">Texto Considerando</p>
-                      <p className="text-xs text-slate-700 whitespace-pre-wrap max-h-40 overflow-y-auto">{selectedMutacion.texto_considerando}</p>
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-600 font-semibold mb-2">Detalle de la Complementación</p>
+                      <div className="text-sm text-slate-700 whitespace-pre-wrap max-h-60 overflow-y-auto leading-relaxed">
+                        {selectedMutacion.texto_considerando}
+                      </div>
                     </div>
                   )}
+
+                  {/* Campos que se complementan/corrigen (solo si hay cambios) */}
+                  {(() => {
+                    const cambios = [];
+                    if (selectedMutacion.direccion_nueva) cambios.push({ label: 'Dirección', anterior: selectedMutacion.predio_direccion, nuevo: selectedMutacion.direccion_nueva });
+                    if (selectedMutacion.matricula_nueva) cambios.push({ label: 'Matrícula inmobiliaria', anterior: selectedMutacion.predio?.r2_registros?.[0]?.matricula_inmobiliaria || '-', nuevo: selectedMutacion.matricula_nueva });
+                    if (selectedMutacion.destino_nuevo && selectedMutacion.destino_nuevo !== selectedMutacion.destino_anterior) cambios.push({ label: 'Destino económico', anterior: selectedMutacion.destino_anterior, nuevo: selectedMutacion.destino_nuevo });
+                    if (selectedMutacion.area_terreno_nueva && selectedMutacion.area_terreno_nueva !== selectedMutacion.area_terreno_anterior) cambios.push({ label: 'Área terreno', anterior: `${Number(selectedMutacion.area_terreno_anterior || 0).toLocaleString()} m²`, nuevo: `${Number(selectedMutacion.area_terreno_nueva).toLocaleString()} m²` });
+                    if (selectedMutacion.area_construida_nueva && selectedMutacion.area_construida_nueva !== selectedMutacion.area_construida_anterior) cambios.push({ label: 'Área construida', anterior: `${Number(selectedMutacion.area_construida_anterior || 0).toLocaleString()} m²`, nuevo: `${Number(selectedMutacion.area_construida_nueva).toLocaleString()} m²` });
+                    if (selectedMutacion.avaluo_nuevo && selectedMutacion.avaluo_nuevo !== selectedMutacion.avaluo_anterior) cambios.push({ label: 'Avalúo', anterior: `$${Number(selectedMutacion.avaluo_anterior || 0).toLocaleString()}`, nuevo: `$${Number(selectedMutacion.avaluo_nuevo).toLocaleString()}` });
+
+                    if (cambios.length === 0) return null;
+                    return (
+                      <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                        <p className="text-xs text-emerald-600 font-semibold mb-2">Cambios a Aplicar</p>
+                        <div className="space-y-2">
+                          {cambios.map((c, i) => (
+                            <div key={i} className="bg-white p-2 rounded border border-emerald-100">
+                              <p className="text-xs text-slate-500 font-medium">{c.label}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-sm text-red-600 line-through">{c.anterior || 'Sin dato'}</span>
+                                <span className="text-slate-400">→</span>
+                                <span className="text-sm font-bold text-emerald-700">{c.nuevo}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Documentos soporte */}
                   {selectedMutacion.documentos_soporte && (
