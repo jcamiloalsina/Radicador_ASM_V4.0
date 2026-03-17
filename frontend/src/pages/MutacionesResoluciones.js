@@ -8889,9 +8889,18 @@ export default function MutacionesResoluciones() {
             const tipoInfo = TIPOS_MUTACION[res.tipo_mutacion] || {};
             const nombreTipo = tipoInfo.nombre || res.tipo_mutacion || 'M1';
             const codigoDisplay = tipoInfo.codigoDisplay || res.tipo_mutacion || 'M1';
-            const fechaFmt = res.fecha_resolucion
-              ? new Date(res.fecha_resolucion + 'T12:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
-              : new Date(res.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            let fechaFmt = '';
+            if (res.fecha_resolucion) {
+              // Soportar DD/MM/YYYY y YYYY-MM-DD
+              const f = res.fecha_resolucion;
+              const parts = f.includes('/') ? f.split('/') : null;
+              const dateObj = parts && parts.length === 3
+                ? new Date(parts[2], parts[1] - 1, parts[0])
+                : new Date(f + 'T12:00:00');
+              fechaFmt = isNaN(dateObj) ? f : dateObj.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } else if (res.created_at) {
+              fechaFmt = new Date(res.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
             return (
             <Card key={idx} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
