@@ -99,8 +99,17 @@ async def get_predios(
                 ]
             }
         else:
-            # Búsqueda de texto: usar índice $text (mucho más rápido que $regex)
-            search_filter = {"$text": {"$search": search_stripped}}
+            # Búsqueda de texto con regex para soportar coincidencias parciales
+            search_filter = {
+                "$or": [
+                    {"codigo_predial_nacional": {"$regex": search_stripped, "$options": "i"}},
+                    {"codigo_homologado": {"$regex": search_stripped, "$options": "i"}},
+                    {"propietarios.nombre_propietario": {"$regex": search_stripped, "$options": "i"}},
+                    {"propietarios.numero_documento": {"$regex": search_stripped, "$options": "i"}},
+                    {"direccion": {"$regex": search_stripped, "$options": "i"}},
+                    {"r2_registros.matricula_inmobiliaria": {"$regex": search_stripped, "$options": "i"}},
+                ]
+            }
     
     # Combinar filtros
     if geometria_filter and search_filter:

@@ -2622,12 +2622,26 @@ export default function Predios() {
     openDeleteModal(predio);
   };
 
-  const openEditDialog = (predio) => {
+  const openEditDialog = async (predio) => {
+    // Cargar predio completo si no tiene r2_registros (viene de lista paginada)
+    let predioCompleto = predio;
+    if (!predio.r2_registros && predio.id) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/predios/${predio.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        predioCompleto = res.data;
+      } catch (e) {
+        // Continuar con datos parciales
+      }
+    }
+    predio = predioCompleto;
+
     // Determinar si usar formato automático (R2→R1) o manual
-    // Automático si: creado_en_plataforma=true O area_editada_en_plataforma=true
     const esFormatoAutomatico = predio.creado_en_plataforma === true || predio.area_editada_en_plataforma === true;
     setUsarFormatoAutomatico(esFormatoAutomatico);
-    
+
     // Preparar todos los datos antes de hacer setState
     let newPropietarios;
     if (predio.propietarios && predio.propietarios.length > 0) {
@@ -2766,9 +2780,22 @@ export default function Predios() {
     setShowEditDialog(true);
   };
 
-  const openDetailDialog = (predio) => {
+  const openDetailDialog = async (predio) => {
+    // Mostrar inmediatamente con datos de la lista
     setSelectedPredio(predio);
     setShowDetailDialog(true);
+    // Cargar predio completo (con r2_registros) en background
+    if (predio.id) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/predios/${predio.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSelectedPredio(res.data);
+      } catch (e) {
+        // Si falla, se queda con los datos de la lista
+      }
+    }
   };
 
   const resetForm = () => {
@@ -3321,7 +3348,7 @@ export default function Predios() {
                           </td>
                           <td className="py-3 px-4">
                             {(predio.matricula_inmobiliaria || predio.r2_registros?.[0]?.matricula_inmobiliaria) ? (
-                              <span className="font-medium text-slate-800">{predio.matricula_inmobiliaria || predio.r2_registros[0].matricula_inmobiliaria}</span>
+                              <span className="font-medium text-slate-800">{predio.matricula_inmobiliaria || predio.r2_registros?.[0]?.matricula_inmobiliaria}</span>
                             ) : (
                               <span className="text-xs text-slate-400 italic">Sin información de matrícula</span>
                             )}
