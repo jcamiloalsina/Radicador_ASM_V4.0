@@ -60,6 +60,7 @@ const DetallePredioActualizacion = ({
   onToggleConstrucciones,
   onClose,
   onOpenVisita,
+  onOpenRevisita, // Re-visitar (editable) un predio ya visitado
   onOpenVisitaMejora, // Nueva: para visita de mejora específica
   onGenerarPdfMejora, // Nueva: para generar PDF de mejora
   onOpenEdicion,
@@ -448,20 +449,42 @@ const DetallePredioActualizacion = ({
       
       {/* Botones de Acción - Siempre visibles fuera del scroll */}
       <div className="border-t p-3 space-y-2 bg-white">
-        {/* Formulario de Visita - Solo si está pendiente o visitado */}
-        {(estado === 'pendiente' || estado === 'visitado') && (esGestor || esCoordinador) && (
-          <Button
-            className={`w-full ${esMejoraDirecta ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-            size="sm"
-            onClick={onOpenVisita}
-            data-testid="open-visita-btn"
-          >
-            <ClipboardList className="w-4 h-4 mr-2" />
-            {estado === 'visitado' 
-              ? (esMejoraDirecta ? 'Ver/Editar Visita Mejora' : 'Ver/Editar Visita') 
-              : (esMejoraDirecta ? 'Registrar Visita Mejora' : 'Registrar Visita')
-            }
-          </Button>
+        {/* Formulario de Visita */}
+        {(esGestor || esCoordinador) && (
+          <>
+            {estado === 'pendiente' ? (
+              <Button
+                className={`w-full ${esMejoraDirecta ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                size="sm"
+                onClick={onOpenVisita}
+                data-testid="open-visita-btn"
+              >
+                <ClipboardList className="w-4 h-4 mr-2" />
+                {esMejoraDirecta ? 'Registrar Visita Mejora' : 'Registrar Visita'}
+              </Button>
+            ) : (estado === 'visitado' || estado === 'visitado_firmado') && (
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-slate-600 hover:bg-slate-700"
+                  size="sm"
+                  onClick={onOpenVisita}
+                  data-testid="open-visita-btn"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Ver Formulario
+                </Button>
+                <Button
+                  className={`flex-1 ${esMejoraDirecta ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  size="sm"
+                  onClick={onOpenRevisita}
+                  data-testid="open-revisita-btn"
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Re-visitar
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Editar Predio */}

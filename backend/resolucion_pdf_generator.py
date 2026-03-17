@@ -89,6 +89,8 @@ def generate_resolucion_pdf(
     verificacion_base_url: str = None,
     # Texto personalizado para considerandos
     texto_considerando: str = None,
+    # Fechas de inscripción catastral
+    fechas_inscripcion: list = None,
 ) -> bytes:
     """
     Genera un PDF de resolución catastral usando los mismos márgenes
@@ -706,9 +708,68 @@ def generate_resolucion_pdf(
         'matricula': matricula_inmobiliaria,
     }
     y = dibujar_datos_predio(y, datos_inscripcion, es_cancelacion=False)
-    
+
+    # =====================
+    # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
+    # =====================
+    _fechas_inscripcion = fechas_inscripcion or []
+    if _fechas_inscripcion and len(_fechas_inscripcion) > 0:
+        y = check_page_break(y, 40 + len(_fechas_inscripcion) * 12)
+
+        # Título
+        c.setFont(font_bold, 8)
+        c.setFillColor(negro)
+        c.drawString(left_margin, y, "INSCRIPCIÓN CATASTRAL:")
+        y -= 12
+
+        # Header
+        insc_cols = [content_width * 0.2, content_width * 0.35, content_width * 0.45]
+        insc_headers = ["AÑO", "AVALÚO", "DECRETO"]
+        insc_row_h = 14
+
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(left_margin, y - insc_row_h, content_width, insc_row_h, fill=1, stroke=1)
+        c.setFillColor(negro)
+        c.setFont(font_bold, 7)
+        x = left_margin
+        for i, header in enumerate(insc_headers):
+            c.drawCentredString(x + insc_cols[i]/2, y - insc_row_h/2 - 2, header)
+            c.rect(x, y - insc_row_h, insc_cols[i], insc_row_h, fill=0, stroke=1)
+            x += insc_cols[i]
+        y -= insc_row_h
+
+        # Data rows
+        c.setFont(font_normal, 7)
+        for fecha in _fechas_inscripcion:
+            y = check_page_break(y, insc_row_h)
+            x = left_margin
+
+            # Año
+            c.rect(x, y - insc_row_h, insc_cols[0], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[0]/2, y - insc_row_h/2 - 2, str(fecha.get("año", "")))
+            x += insc_cols[0]
+
+            # Avalúo
+            avaluo_val = fecha.get("avaluo", 0)
+            try:
+                avaluo_fmt = f"${float(avaluo_val):,.0f}".replace(",", ".") if avaluo_val else "$0"
+            except:
+                avaluo_fmt = str(avaluo_val)
+            c.rect(x, y - insc_row_h, insc_cols[1], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[1]/2, y - insc_row_h/2 - 2, avaluo_fmt)
+            x += insc_cols[1]
+
+            # Decreto
+            c.rect(x, y - insc_row_h, insc_cols[2], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[2]/2, y - insc_row_h/2 - 2, str(fecha.get("decreto", "")))
+            x += insc_cols[2]
+
+            y -= insc_row_h
+
+        y -= 6
+
     y -= espaciado_secciones
-    
+
     # Artículo 2
     y = check_page_break(y, 50)
     c.setFont(font_bold, fuente_cuerpo)

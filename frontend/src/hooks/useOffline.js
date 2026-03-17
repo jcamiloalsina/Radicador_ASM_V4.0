@@ -147,30 +147,7 @@ export function useOffline() {
       let lastSync = null;
       let lastPetitionsSync = null;
       
-      // PRIMERO: Leer de localStorage (respaldo rápido y confiable)
-      try {
-        const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-        if (offlineStats.prediosCount) {
-          prediosCount = offlineStats.prediosCount;
-          console.log('[useOffline] Found', prediosCount, 'predios in localStorage cache');
-        }
-        if (offlineStats.geometriasCount) {
-          geometriasCount = offlineStats.geometriasCount;
-        }
-        if (offlineStats.lastSync) {
-          lastSync = offlineStats.lastSync;
-        }
-      } catch (lsError) {
-        console.log('[useOffline] No localStorage stats');
-      }
-      
-      // Si ya tenemos datos de localStorage, no es necesario escanear todas las DBs
-      if (prediosCount > 0 || geometriasCount > 0) {
-        setOfflineData({ prediosCount, petitionsCount, proyectosCount, geometriasCount, lastSync, lastPetitionsSync });
-        return;
-      }
-      
-      // FALLBACK: Intentar leer de la base de datos principal (asomunicipios-offline)
+      // Leer stats directamente desde IndexedDB (fuente única de verdad)
       try {
         const db = await openDB();
         

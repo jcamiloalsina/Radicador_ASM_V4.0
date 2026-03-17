@@ -230,32 +230,42 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
       prediosUnicos.set(codigoPredial, predio);
     }
     
-    let saved = 0;
-    for (const [codigoPredial, predio] of prediosUnicos) {
-      // IMPORTANTE: Usar proyectoId SIEMPRE como prefijo para consistencia
-      // Esto evita que el mismo predio tenga IDs diferentes según se pase municipio o no
-      const id = `${proyectoId}_${codigoPredial}`;
-      
-      // Obtener registro existente para preservar datos locales
-      const existing = await new Promise(resolve => {
-        const req = store.get(id);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
+    // Pre-cargar registros existentes con cambios locales (batch, no uno por uno)
+    const existingLocals = new Map();
+    const allKeys = [...prediosUnicos.keys()].map(cp => `${proyectoId}_${cp}`);
+    for (const key of allKeys) {
+      const req = store.get(key);
+      await new Promise(resolve => {
+        req.onsuccess = () => {
+          const r = req.result;
+          if (r && (r._cambios_locales || r._visita_local)) {
+            existingLocals.set(key, { _cambios_locales: r._cambios_locales, _visita_local: r._visita_local });
+          }
+          resolve();
+        };
+        req.onerror = () => resolve();
       });
-      
+    }
+
+    // Batch puts sin await intermedio
+    let saved = 0;
+    const now = new Date().toISOString();
+    for (const [codigoPredial, predio] of prediosUnicos) {
+      const id = `${proyectoId}_${codigoPredial}`;
+      const local = existingLocals.get(id);
+
       const record = {
         id,
         proyecto_id: proyectoId,
         municipio: municipio || predio.municipio,
         codigo_predial: codigoPredial,
         ...predio,
-        // Preservar datos locales no sincronizados
-        _cambios_locales: existing?._cambios_locales || null,
-        _visita_local: existing?._visita_local || null,
-        saved_offline_at: new Date().toISOString(),
-        last_server_sync: new Date().toISOString()
+        _cambios_locales: local?._cambios_locales || null,
+        _visita_local: local?._visita_local || null,
+        saved_offline_at: now,
+        last_server_sync: now
       };
-      
+
       store.put(record);
       saved++;
     }
@@ -266,26 +276,6 @@ export async function savePrediosOffline(proyectoId, predios, municipio) {
     });
 
     console.log(`[OfflineDB] ${saved} predios guardados para proyecto ${proyectoId}${predios.length !== saved ? ` (${predios.length - saved} duplicados ignorados)` : ''}`);
-    
-    // Guardar en localStorage como respaldo (para el indicador global)
-    // IMPORTANTE: Usar proyectoId SIEMPRE como clave para consistencia
-    try {
-      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      const key = `predios_${proyectoId}`;
-      offlineStats[key] = saved; // Reemplazar, no acumular
-      // Calcular total de todos los proyectos
-      let totalPredios = 0;
-      for (const k in offlineStats) {
-        if (k.startsWith('predios_') && typeof offlineStats[k] === 'number') {
-          totalPredios += offlineStats[k];
-        }
-      }
-      offlineStats.prediosCount = totalPredios;
-      offlineStats.lastSync = new Date().toISOString();
-      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
-    } catch (lsError) {
-      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
-    }
     
     window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'predios', count: saved } }));
     return saved;
@@ -409,26 +399,6 @@ export async function saveGeometriasOffline(proyectoId, geometrias) {
     });
 
     console.log(`[OfflineDB] ${geometrias.length} geometrías guardadas`);
-    
-    // Guardar en localStorage como respaldo (para el indicador global)
-    // Usar una clave única para no duplicar conteos
-    try {
-      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      const key = `geometrias_${geometrias[0]?.proyecto_id || 'default'}`;
-      offlineStats[key] = geometrias.length; // Reemplazar, no acumular
-      // Calcular total de todas las geometrías
-      let totalGeo = 0;
-      for (const k in offlineStats) {
-        if (k.startsWith('geometrias_') && typeof offlineStats[k] === 'number') {
-          totalGeo += offlineStats[k];
-        }
-      }
-      offlineStats.geometriasCount = totalGeo;
-      offlineStats.lastSync = new Date().toISOString();
-      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
-    } catch (lsError) {
-      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
-    }
     
     window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'geometrias', count: geometrias.length } }));
     return geometrias.length;
@@ -559,16 +529,6 @@ export async function saveConstruccionesOffline(proyectoId, construcciones) {
     });
 
     console.log(`[OfflineDB] ${construcciones.features.length} construcciones guardadas para proyecto ${proyectoId}`);
-    
-    // Actualizar localStorage stats
-    try {
-      const offlineStats = JSON.parse(localStorage.getItem('asomunicipios_offline_stats') || '{}');
-      offlineStats[`construcciones_${proyectoId}`] = construcciones.features.length;
-      offlineStats.lastSync = new Date().toISOString();
-      localStorage.setItem('asomunicipios_offline_stats', JSON.stringify(offlineStats));
-    } catch (lsError) {
-      console.warn('[OfflineDB] No se pudo actualizar localStorage:', lsError);
-    }
     
     window.dispatchEvent(new CustomEvent('offlineDataUpdated', { detail: { type: 'construcciones', count: construcciones.features.length } }));
     return construcciones.features.length;
@@ -718,18 +678,26 @@ async function comprimirDatosVisita(datos) {
 export async function getCambiosPendientes(proyectoId = null) {
   const database = await initOfflineDB();
   if (!database) return [];
-  
+
   return new Promise((resolve) => {
     try {
       const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readonly');
       const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
-      const request = store.getAll();
-      
+
+      // Usar índice 'sincronizado' para obtener solo no sincronizados
+      let request;
+      try {
+        const index = store.index('sincronizado');
+        request = index.getAll(false); // Solo sincronizado === false
+      } catch (e) {
+        // Fallback si el índice no existe
+        request = store.getAll();
+      }
+
       request.onsuccess = () => {
         let results = request.result || [];
-        // Filtrar no sincronizados
+        // Filtro de seguridad (por si usó fallback)
         results = results.filter(c => !c.sincronizado);
-        // Filtrar por proyecto si se especifica
         if (proyectoId) {
           results = results.filter(c => c.proyecto_id === proyectoId);
         }
@@ -1038,18 +1006,42 @@ export async function clearProjectOfflineData(proyectoId) {
     const txGeom = database.transaction(STORES.GEOMETRIAS, 'readwrite');
     const storeGeom = txGeom.objectStore(STORES.GEOMETRIAS);
     const indexGeom = storeGeom.index('proyecto_id');
-    
+
     const geomToDelete = await new Promise(resolve => {
       const req = indexGeom.getAllKeys(proyectoId);
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => resolve([]);
     });
-    
+
     for (const key of geomToDelete) {
       storeGeom.delete(key);
     }
-    
-    console.log(`[OfflineDB] Datos del proyecto ${proyectoId} eliminados`);
+
+    // Limpiar construcciones del proyecto
+    try {
+      const txConst = database.transaction(STORES.CONSTRUCCIONES, 'readwrite');
+      const storeConst = txConst.objectStore(STORES.CONSTRUCCIONES);
+      storeConst.delete(`construcciones_${proyectoId}`);
+      await new Promise((resolve) => { txConst.oncomplete = resolve; txConst.onerror = resolve; });
+    } catch (e) { /* store may not exist */ }
+
+    // Limpiar cambios pendientes del proyecto
+    try {
+      const txCambios = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
+      const storeCambios = txCambios.objectStore(STORES.CAMBIOS_PENDIENTES);
+      const indexCambios = storeCambios.index('proyecto_id');
+      const cambiosToDelete = await new Promise(resolve => {
+        const req = indexCambios.getAllKeys(proyectoId);
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+      for (const key of cambiosToDelete) {
+        storeCambios.delete(key);
+      }
+      await new Promise((resolve) => { txCambios.oncomplete = resolve; txCambios.onerror = resolve; });
+    } catch (e) { /* ignore */ }
+
+    console.log(`[OfflineDB] Datos del proyecto ${proyectoId} eliminados (predios, geometrías, construcciones, cambios)`);
     return true;
   } catch (e) {
     return false;
@@ -1064,6 +1056,74 @@ export async function getLastSync(proyectoId) {
 
 export async function setLastSync(proyectoId) {
   return await saveConfig(`last_sync_${proyectoId}`, new Date().toISOString());
+}
+
+// ==================== LIMPIEZA AUTOMÁTICA (TTL) ====================
+
+/**
+ * Limpia datos antiguos de IndexedDB.
+ * - Cambios sincronizados con más de maxAgeDays días
+ * - Llamar al iniciar la app o periódicamente
+ */
+export async function cleanupOldData(maxAgeDays = 30) {
+  const database = await initOfflineDB();
+  if (!database) return { cleaned: 0 };
+
+  let cleaned = 0;
+  const cutoffDate = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+
+  try {
+    // Limpiar cambios pendientes ya sincronizados y antiguos
+    const tx = database.transaction(STORES.CAMBIOS_PENDIENTES, 'readwrite');
+    const store = tx.objectStore(STORES.CAMBIOS_PENDIENTES);
+    const allChanges = await new Promise(resolve => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+
+    for (const cambio of allChanges) {
+      if (cambio.sincronizado && cambio.fecha && cambio.fecha < cutoffDate) {
+        store.delete(cambio.id);
+        cleaned++;
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    if (cleaned > 0) {
+      console.log(`[OfflineDB] Limpieza TTL: ${cleaned} cambios antiguos eliminados`);
+    }
+  } catch (e) {
+    console.warn('[OfflineDB] Error en limpieza TTL:', e);
+  }
+
+  return { cleaned };
+}
+
+// ==================== MONITOREO DE CUOTA ====================
+
+/**
+ * Verifica el uso de almacenamiento. Retorna porcentaje usado.
+ */
+export async function checkStorageQuota() {
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const estimate = await navigator.storage.estimate();
+      const usagePercent = Math.round((estimate.usage / estimate.quota) * 100);
+      return {
+        usageMB: Math.round(estimate.usage / 1048576),
+        quotaMB: Math.round(estimate.quota / 1048576),
+        usagePercent
+      };
+    }
+  } catch (e) {
+    // Ignorar en navegadores sin soporte
+  }
+  return null;
 }
 
 // Exportar constantes

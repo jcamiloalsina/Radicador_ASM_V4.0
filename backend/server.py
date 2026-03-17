@@ -6493,27 +6493,47 @@ async def get_predios_eliminados(
     total = await db.predios_eliminados.count_documents(query)
     predios = await db.predios_eliminados.find(query, {"_id": 0}).sort("eliminado_en", -1).skip(skip).limit(limit).to_list(limit)
     
-    # Enriquecer con el nombre del usuario que generó la resolución de eliminación
-    for predio in predios:
-        res_num = predio.get('resolucion_eliminacion') or predio.get('resolucion')
-        if res_num and not predio.get('eliminado_por'):
-            # Buscar la resolución
-            resolucion = await db.resoluciones.find_one(
-                {'numero_resolucion': res_num}, 
-                {'_id': 0, 'generado_por': 1, 'usuario_nombre': 1}
+    # Enriquecer con nombres de usuario en batch (evitar N+1)
+    res_nums = list({
+        predio.get('resolucion_eliminacion') or predio.get('resolucion')
+        for predio in predios
+        if (predio.get('resolucion_eliminacion') or predio.get('resolucion')) and not predio.get('eliminado_por')
+    })
+
+    if res_nums:
+        resoluciones_cursor = db.resoluciones.find(
+            {'numero_resolucion': {'$in': res_nums}},
+            {'_id': 0, 'numero_resolucion': 1, 'generado_por': 1, 'usuario_nombre': 1}
+        )
+        resoluciones_map = {}
+        user_ids_needed = []
+        async for res in resoluciones_cursor:
+            resoluciones_map[res['numero_resolucion']] = res
+            if not res.get('usuario_nombre') and res.get('generado_por'):
+                user_ids_needed.append(res['generado_por'])
+
+        # Batch de usuarios si se necesitan
+        users_map = {}
+        if user_ids_needed:
+            users_cursor = db.users.find(
+                {'id': {'$in': user_ids_needed}},
+                {'_id': 0, 'id': 1, 'full_name': 1}
             )
-            if resolucion:
-                if resolucion.get('usuario_nombre'):
-                    predio['eliminado_por'] = resolucion['usuario_nombre']
-                elif resolucion.get('generado_por'):
-                    # Buscar el nombre del usuario
-                    user = await db.users.find_one(
-                        {'id': resolucion['generado_por']}, 
-                        {'_id': 0, 'full_name': 1}
-                    )
-                    if user and user.get('full_name'):
-                        predio['eliminado_por'] = user['full_name']
-    
+            async for u in users_cursor:
+                users_map[u['id']] = u.get('full_name', '')
+
+        # Asignar nombres
+        for predio in predios:
+            if predio.get('eliminado_por'):
+                continue
+            res_num = predio.get('resolucion_eliminacion') or predio.get('resolucion')
+            if res_num and res_num in resoluciones_map:
+                res = resoluciones_map[res_num]
+                if res.get('usuario_nombre'):
+                    predio['eliminado_por'] = res['usuario_nombre']
+                elif res.get('generado_por') and res['generado_por'] in users_map:
+                    predio['eliminado_por'] = users_map[res['generado_por']]
+
     return {
         "total": total,
         "predios": predios
@@ -9940,7 +9960,7 @@ async def import_predios_excel(
             "predios_en_excel": predios_nuevos_count,
             "predios_a_eliminar_estimados": len(cnp_eliminados),
             "timestamp": datetime.now(COLOMBIA_TZ).isoformat(),
-            "usuario": current_user.get('email'),
+            "usuario": current_user.get('full_name') or current_user.get('email'),
             "force": force
         }
         await db.logs_importacion.insert_one(resumen_pre_importacion)
@@ -13023,48 +13043,47 @@ async def estadisticas_certificados(
     
     ahora = datetime.now(COLOMBIA_TZ)
     fecha_limite_por_vencer = ahora + timedelta(days=7)
-    
-    # Total de certificados
-    total = await db.certificados_verificables.count_documents({})
-    
-    # Activos (no vencidos)
-    activos = await db.certificados_verificables.count_documents({
-        "estado": "activo",
-        "$or": [
-            {"fecha_vencimiento": {"$gt": ahora.isoformat()}},
-            {"fecha_vencimiento": {"$exists": False}}
-        ]
-    })
-    
-    # Por vencer (próximos 7 días)
-    por_vencer = await db.certificados_verificables.count_documents({
-        "estado": "activo",
-        "fecha_vencimiento": {
-            "$lte": fecha_limite_por_vencer.isoformat(),
-            "$gt": ahora.isoformat()
-        }
-    })
-    
-    # Vencidos
-    vencidos = await db.certificados_verificables.count_documents({
-        "$or": [
-            {"estado": "vencido"},
-            {
-                "estado": "activo",
-                "fecha_vencimiento": {"$lte": ahora.isoformat()}
-            }
-        ]
-    })
-    
-    # Anulados
-    anulados = await db.certificados_verificables.count_documents({"estado": "anulado"})
-    
+    ahora_str = ahora.isoformat()
+    limite_str = fecha_limite_por_vencer.isoformat()
+
+    pipeline = [
+        {"$facet": {
+            "total": [{"$count": "n"}],
+            "activos": [
+                {"$match": {"estado": "activo", "$or": [
+                    {"fecha_vencimiento": {"$gt": ahora_str}},
+                    {"fecha_vencimiento": {"$exists": False}}
+                ]}},
+                {"$count": "n"}
+            ],
+            "por_vencer": [
+                {"$match": {"estado": "activo", "fecha_vencimiento": {"$lte": limite_str, "$gt": ahora_str}}},
+                {"$count": "n"}
+            ],
+            "vencidos": [
+                {"$match": {"$or": [
+                    {"estado": "vencido"},
+                    {"estado": "activo", "fecha_vencimiento": {"$lte": ahora_str}}
+                ]}},
+                {"$count": "n"}
+            ],
+            "anulados": [
+                {"$match": {"estado": "anulado"}},
+                {"$count": "n"}
+            ]
+        }}
+    ]
+
+    result = await db.certificados_verificables.aggregate(pipeline).to_list(1)
+    stats = result[0] if result else {}
+    get_count = lambda key: stats.get(key, [{}])[0].get("n", 0) if stats.get(key) else 0
+
     return {
-        "total": total,
-        "activos": activos,
-        "por_vencer": por_vencer,
-        "vencidos": vencidos,
-        "anulados": anulados
+        "total": get_count("total"),
+        "activos": get_count("activos"),
+        "por_vencer": get_count("por_vencer"),
+        "vencidos": get_count("vencidos"),
+        "anulados": get_count("anulados")
     }
 
 
@@ -13225,33 +13244,11 @@ async def create_predio(predio_data: PredioCreate, current_user: dict = Depends(
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
     
-    # Verificar que no sea un código eliminado
+    # Verificar si es un código eliminado
     eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo_predial})
     if eliminado:
-        # Verificar si tiene aprobación de reaparición
-        aprobacion = await db.predios_reapariciones_aprobadas.find_one({
-            "codigo_predial_nacional": codigo_predial,
-            "estado": "aprobado"
-        })
-        
-        if not aprobacion:
-            # Verificar si ya hay solicitud pendiente
-            solicitud_pendiente = await db.predios_reapariciones_solicitudes.find_one({
-                "codigo_predial_nacional": codigo_predial,
-                "estado": "pendiente"
-            })
-            
-            error_detail = {
-                "error": "PREDIO_ELIMINADO",
-                "mensaje": f"Este código predial fue ELIMINADO en vigencia {eliminado.get('vigencia_eliminacion')}",
-                "codigo_predial": codigo_predial,
-                "municipio": eliminado.get("municipio"),
-                "vigencia_eliminacion": eliminado.get("vigencia_eliminacion"),
-                "puede_solicitar_reaparicion": solicitud_pendiente is None,
-                "tiene_solicitud_pendiente": solicitud_pendiente is not None,
-                "instrucciones": "Use el endpoint /api/predios/reapariciones/solicitar para solicitar la reaparición con justificación técnica" if not solicitud_pendiente else "Ya existe una solicitud pendiente de aprobación"
-            }
-            raise HTTPException(status_code=400, detail=error_detail)
+        # Permitir creación — marcar como reaparición
+        pass
     
     # Generar código homologado - Primero intentar de la colección de códigos cargados
     codigo_homologado = await asignar_codigo_homologado(r1.municipio, None)  # Se actualizará con el ID real después
@@ -13475,6 +13472,7 @@ class PredioM5Create(BaseModel):
     avaluo_catastral: float = 0
     propietarios: List[dict]  # Lista de propietarios
     es_predio_nuevo: bool = True
+    es_reaparicion: bool = False
     origen: Optional[str] = "M5_inscripcion"
 
 @api_router.post("/predios/m5/crear")
@@ -13512,7 +13510,17 @@ async def crear_predio_m5(
     existing = await db.predios.find_one({"codigo_predial_nacional": codigo, "deleted": {"$ne": True}})
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
-    
+
+    # Verificar si es predio eliminado (reaparición)
+    eliminado_m5 = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo})
+    if eliminado_m5 and not predio_data.es_reaparicion:
+        raise HTTPException(status_code=409, detail={
+            "error": "PREDIO_ELIMINADO",
+            "mensaje": f"Este código fue eliminado en vigencia {eliminado_m5.get('vigencia_eliminacion', 'N/A')}. Confirme si desea continuar.",
+            "vigencia_eliminacion": eliminado_m5.get("vigencia_eliminacion"),
+            "motivo": eliminado_m5.get("motivo", ""),
+        })
+
     # Generar código homologado
     codigo_homologado = await asignar_codigo_homologado(municipio_nombre, None)
     if not codigo_homologado:
@@ -13590,17 +13598,29 @@ async def crear_predio_m5(
         "created_by": current_user["id"],
         "created_by_name": current_user["full_name"],
         "deleted": False,
+        "es_reaparicion": predio_data.es_reaparicion,
         "historial": [{
-            "accion": "Predio creado desde M5 - Inscripción",
+            "accion": "Predio reaparecido desde M5" if predio_data.es_reaparicion else "Predio creado desde M5 - Inscripción",
             "usuario": current_user["full_name"],
             "usuario_id": current_user["id"],
             "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }]
     }
-    
+
     await db.predios.insert_one(predio)
-    
-    # Eliminar _id antes de retornar
+
+    # Si es reaparición, marcar en predios_eliminados
+    if predio_data.es_reaparicion and eliminado_m5:
+        await db.predios_eliminados.update_one(
+            {"codigo_predial_nacional": codigo},
+            {"$set": {
+                "reaparecido": True,
+                "reaparecido_en": datetime.now(COLOMBIA_TZ).isoformat(),
+                "reaparecido_por": current_user.get('full_name') or current_user.get('email'),
+                "predio_nuevo_id": predio['id']
+            }}
+        )
+
     predio.pop("_id", None)
     
     return {
@@ -13669,18 +13689,16 @@ async def crear_predio_nuevo(
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un predio con este código predial")
     
-    # Verificar que no sea un código eliminado sin aprobación
+    # Verificar si es un código eliminado
     eliminado = await db.predios_eliminados.find_one({"codigo_predial_nacional": codigo_predial})
-    if eliminado:
-        aprobacion = await db.predios_reapariciones_aprobadas.find_one({
-            "codigo_predial_nacional": codigo_predial,
-            "estado": "aprobado"
+    es_reaparicion = data.get("es_reaparicion", False)
+    if eliminado and not es_reaparicion:
+        raise HTTPException(status_code=409, detail={
+            "error": "PREDIO_ELIMINADO",
+            "mensaje": f"Este código fue eliminado en vigencia {eliminado.get('vigencia_eliminacion', 'N/A')}. Confirme si desea continuar.",
+            "vigencia_eliminacion": eliminado.get("vigencia_eliminacion"),
+            "motivo": eliminado.get("motivo", ""),
         })
-        if not aprobacion:
-            raise HTTPException(status_code=400, detail={
-                "error": "PREDIO_ELIMINADO",
-                "mensaje": "Este código predial fue ELIMINADO. Debe solicitar reaparición."
-            })
     
     # Generar código homologado - Primero intentar de la colección de códigos cargados del Excel
     codigo_homologado = await asignar_codigo_homologado(r1.municipio, None)
@@ -13784,26 +13802,44 @@ async def crear_predio_nuevo(
         # Observaciones
         "observaciones": predio_data.observaciones,
         
+        # Reaparición
+        "es_reaparicion": es_reaparicion,
+
         # Metadata
         "vigencia": datetime.now().year,
         "created_at": datetime.now(COLOMBIA_TZ).isoformat(),
         "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
         "deleted": False,
-        
+
         # Historial de trazabilidad
         "historial_flujo": [{
             "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-            "accion": "Predio creado",
+            "accion": "Predio reaparecido" if es_reaparicion else "Predio creado",
             "estado_anterior": None,
             "estado_nuevo": PredioNuevoEstado.CREADO,
             "usuario_id": current_user['id'],
             "usuario_nombre": current_user['full_name'],
-            "observaciones": f"Predio creado y asignado a {gestor_apoyo['full_name']} para digitalización"
+            "observaciones": (
+                f"Predio reaparecido (eliminado en vigencia {eliminado.get('vigencia_eliminacion', 'N/A')}). "
+                f"Asignado a {gestor_apoyo['full_name']} para digitalización"
+            ) if es_reaparicion else f"Predio creado y asignado a {gestor_apoyo['full_name']} para digitalización"
         }]
     }
-    
+
     # Guardar en colección de predios en proceso
     await db.predios_nuevos.insert_one(predio_nuevo)
+
+    # Si es reaparición, mover el eliminado a historial y registrar
+    if es_reaparicion and eliminado:
+        await db.predios_eliminados.update_one(
+            {"codigo_predial_nacional": codigo_predial},
+            {"$set": {
+                "reaparecido": True,
+                "reaparecido_en": datetime.now(COLOMBIA_TZ).isoformat(),
+                "reaparecido_por": current_user.get('full_name') or current_user.get('email'),
+                "predio_nuevo_id": predio_nuevo['id']
+            }}
+        )
     
     # Crear notificación para el gestor de apoyo
     notificacion = {
@@ -23359,7 +23395,7 @@ async def crear_predio_actualizacion(
         # Historial
         "historial_cambios": [{
             "fecha": ahora,
-            "usuario": current_user.get('email'),
+            "usuario": current_user.get('full_name') or current_user.get('email'),
             "rol": current_user['role'],
             "accion": "creacion",
             "campos_modificados": list(data.keys())
@@ -23382,17 +23418,11 @@ async def actualizar_predio_proyecto(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    """Actualiza un predio del proyecto (trabajo de campo)
-    
-    FLUJO DE ACTUALIZACIÓN:
-    1. Gestor visita el predio → completa formulario de visita → estado "visitado"
-    2. Gestor propone cambios a datos prediales → va a "Gestión de Propuestas"
-    3. Coordinador aprueba la propuesta → cambios se aplican → estado "actualizado"
-    
-    - Gestores SOLO pueden: marcar visita, agregar datos de visita, completar formulario
-    - Cambios a datos prediales (dirección, áreas, propietarios, etc.) 
-      requieren crear una PROPUESTA que el coordinador debe aprobar
-    - Todo queda registrado en historial
+    """Actualiza un predio del proyecto.
+
+    Todos los roles autorizados pueden editar datos prediales directamente.
+    Los gestores NO pueden marcar como 'actualizado' (solo coordinadores).
+    Todo queda registrado en historial.
     """
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para actualizar predios")
@@ -23414,65 +23444,53 @@ async def actualizar_predio_proyecto(
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
     es_coordinador = current_user['role'] in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR]
-    
-    # Campos que gestores pueden modificar directamente (datos de visita)
+
+    # Campos de visita
     campos_visita = [
         'estado_visita', 'observaciones_campo', 'ubicacion_gps',
         'visitado_por', 'visitado_en', 'visitado_por_nombre',
         'visita', 'datos_notificacion', 'fotos',
-        'sin_cambios'  # Marcar si el predio fue visitado sin modificaciones
+        'sin_cambios'
     ]
-    
-    # Campos que requieren aprobación del coordinador (datos prediales)
+
+    # Campos prediales
     campos_prediales = [
         'direccion', 'destino_economico', 'area_terreno', 'area_construida',
         'matricula_inmobiliaria', 'avaluo_catastral', 'estrato', 'comuna',
         'propietarios', 'zonas_fisicas', 'zonas_terreno', 'construcciones',
         'actualizado_por', 'actualizado_en', 'actualizado_por_nombre',
-        'informacion_construcciones', 'calificacion_construccion', 
+        'informacion_construcciones', 'calificacion_construccion',
         'resumen_areas', 'es_ph', 'datos_ph', 'datos_condominio',
         'avaluo', 'codigo_homologado', 'habitaciones', 'banos', 'locales', 'pisos', 'uso',
         'codigo_predial'
     ]
-    
-    # Verificar si el gestor está intentando modificar datos prediales
-    if not es_coordinador:
-        campos_prediales_modificados = [k for k in data.keys() if k in campos_prediales]
-        
-        # Gestores solo pueden marcar como 'visitado', no como 'actualizado'
-        if data.get('estado_visita') == 'actualizado':
-            raise HTTPException(
-                status_code=403, 
-                detail="Los gestores no pueden marcar como 'actualizado' directamente. Debe crear una propuesta de cambio que será revisada por el coordinador."
-            )
-        
-        # Si intenta modificar campos prediales, debe crear propuesta
-        if campos_prediales_modificados:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Los cambios a datos prediales ({', '.join(campos_prediales_modificados)}) requieren crear una propuesta de cambio. El predio debe estar visitado y luego usar 'Proponer Cambios' para enviar una solicitud al coordinador."
-            )
-        
-        # Solo permitir campos de visita para gestores
-        update_data = {k: v for k, v in data.items() if k in campos_visita}
+
+    # Gestores no pueden marcar como 'actualizado'
+    if not es_coordinador and data.get('estado_visita') == 'actualizado':
+        raise HTTPException(
+            status_code=403,
+            detail="Los gestores no pueden marcar como 'actualizado' directamente."
+        )
+
+    # Todos los roles autorizados pueden editar todos los campos
+    campos_permitidos = campos_visita + campos_prediales
+    update_data = {k: v for k, v in data.items() if k in campos_permitidos}
+
+    # Determinar acción para historial
+    if data.get('estado_visita') == 'actualizado':
+        accion = "actualizacion_directa"
+        update_data['actualizado_por'] = current_user.get('full_name') or current_user.get('email')
+        update_data['actualizado_por_nombre'] = current_user.get('full_name')
+        update_data['actualizado_por_email'] = current_user.get('email')
+        update_data['actualizado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
+    elif data.get('estado_visita') == 'visitado':
         accion = "visita_registrada"
-        
-        # Agregar información del gestor que visitó
-        if data.get('estado_visita') == 'visitado':
-            update_data['visitado_por'] = current_user.get('email')
-            update_data['visitado_por_nombre'] = current_user.get('full_name')
-            update_data['visitado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
+        update_data['visitado_por'] = current_user.get('full_name') or current_user.get('email')
+        update_data['visitado_por_nombre'] = current_user.get('full_name')
+        update_data['visitado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
     else:
-        # Coordinadores pueden modificar todo
-        campos_permitidos = campos_visita + campos_prediales
-        update_data = {k: v for k, v in data.items() if k in campos_permitidos}
-        accion = "actualizacion_directa" if data.get('estado_visita') == 'actualizado' else "visita"
-        
-        # Si coordinador marca como actualizado, registrar quién aprobó
-        if data.get('estado_visita') == 'actualizado':
-            update_data['actualizado_por'] = current_user.get('email')
-            update_data['actualizado_por_nombre'] = current_user.get('full_name')
-            update_data['actualizado_en'] = datetime.now(COLOMBIA_TZ).isoformat()
+        # Edición directa de datos prediales
+        accion = "edicion_datos" if any(k in campos_prediales for k in data.keys()) else "visita"
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No hay campos válidos para actualizar")
@@ -23482,7 +23500,7 @@ async def actualizar_predio_proyecto(
     # Agregar al historial de cambios con detalle completo
     historial_entry = {
         "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),
         "usuario_nombre": current_user.get('full_name'),
         "rol": current_user['role'],
         "accion": accion,
@@ -23565,7 +23583,7 @@ async def aprobar_predio_sin_cambios(
     # Agregar al historial
     historial_entry = {
         "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),
         "rol": current_user['role'],
         "accion": "aprobado_sin_cambios",
         "comentario": data.get('comentario', 'Aprobado sin cambios')
@@ -23578,7 +23596,7 @@ async def aprobar_predio_sin_cambios(
             "$set": {
                 "estado_visita": "actualizado",
                 "aprobado_sin_cambios": True,
-                "aprobado_por": current_user.get('email'),
+                "aprobado_por": current_user.get('full_name') or current_user.get('email'),
                 "aprobado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                 "updated_at": datetime.now(COLOMBIA_TZ)
             },
@@ -23625,7 +23643,7 @@ async def aprobar_masivo_sin_cambios(
         if predio:
             historial_entry = {
                 "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                "usuario": current_user.get('email'),
+                "usuario": current_user.get('full_name') or current_user.get('email'),
                 "rol": current_user['role'],
                 "accion": "aprobado_sin_cambios_masivo",
                 "comentario": comentario
@@ -23637,7 +23655,7 @@ async def aprobar_masivo_sin_cambios(
                     "$set": {
                         "estado_visita": "actualizado",
                         "aprobado_sin_cambios": True,
-                        "aprobado_por": current_user.get('email'),
+                        "aprobado_por": current_user.get('full_name') or current_user.get('email'),
                         "aprobado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                         "updated_at": datetime.now(COLOMBIA_TZ)
                     },
@@ -23758,7 +23776,7 @@ async def guardar_visita_predio(
     update_data = {
         "formato_visita": visita_data,
         "estado_visita": estado_visita,
-        "visitado_por": current_user.get('email'),
+        "visitado_por": current_user.get('full_name') or current_user.get('email'),
         "visitado_por_nombre": current_user.get('full_name'),
         "visitado_en": ahora.isoformat(),
         "updated_at": ahora,
@@ -23951,16 +23969,16 @@ async def actualizar_estado_predio(
     
     # Registrar quién hizo el cambio
     if nuevo_estado == 'visitado':
-        update_data["visitado_por"] = current_user.get('email')
+        update_data["visitado_por"] = current_user.get('full_name') or current_user.get('email')
         update_data["visitado_en"] = ahora.isoformat()
     elif nuevo_estado == 'actualizado':
-        update_data["actualizado_por"] = current_user.get('email')
+        update_data["actualizado_por"] = current_user.get('full_name') or current_user.get('email')
         update_data["actualizado_en"] = ahora.isoformat()
     
     # Registrar en historial
     historial_entry = {
         "fecha": ahora.isoformat(),
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),
         "rol": current_user['role'],
         "accion": "cambio_estado",
         "comentario": f"Estado cambiado de '{estado_anterior}' a '{nuevo_estado}'"
@@ -24820,7 +24838,7 @@ async def crear_propuesta_cambio(
             "$push": {
                 "historial_cambios": {
                     "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                    "usuario": current_user.get('email'),
+                    "usuario": current_user.get('full_name') or current_user.get('email'),
                     "usuario_nombre": current_user.get('full_name', current_user.get('email')),
                     "tipo_revision": tipo_revision,
                     "tipo_revision_nombre": tipos_revision_nombres.get(tipo_revision, 'Revisión de Campo'),
@@ -25123,7 +25141,7 @@ async def aprobar_propuesta(
         {
             "$set": {
                 "estado": "aprobada",
-                "revisado_por": current_user.get('email'),
+                "revisado_por": current_user.get('full_name') or current_user.get('email'),
                 "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                 "comentario_revision": data.get('comentario', '')
             }
@@ -25225,7 +25243,7 @@ async def aprobar_propuesta(
             # Metadatos
             "creado_por": propuesta.get('creado_por'),
             "creado_por_nombre": propuesta.get('creado_por_nombre'),
-            "aprobado_por": current_user.get('email'),
+            "aprobado_por": current_user.get('full_name') or current_user.get('email'),
             "aprobado_por_nombre": current_user.get('full_name'),
             "created_at": propuesta.get('created_at'),
             "updated_at": ahora,
@@ -25240,7 +25258,7 @@ async def aprobar_propuesta(
                 },
                 {
                     "fecha": ahora,
-                    "usuario": current_user.get('email'),
+                    "usuario": current_user.get('full_name') or current_user.get('email'),
                     "accion": "predio_nuevo_aprobado",
                     "descripcion": f"Predio nuevo aprobado por coordinador. Código homologado: {codigo_homologado}"
                 }
@@ -25274,7 +25292,7 @@ async def aprobar_propuesta(
             "origen": "propuesta_aprobada",
             "creado_por": propuesta.get('creado_por'),
             "creado_por_nombre": propuesta.get('creado_por_nombre'),
-            "aprobado_por": current_user.get('email'),
+            "aprobado_por": current_user.get('full_name') or current_user.get('email'),
             "aprobado_por_nombre": current_user.get('full_name'),
             "created_at": ahora,
             "updated_at": ahora
@@ -25316,7 +25334,7 @@ async def aprobar_propuesta(
     update_data = {
         **datos_propuestos,
         "estado_visita": "actualizado",  # Cambiar estado a actualizado
-        "actualizado_por": current_user.get('email'),
+        "actualizado_por": current_user.get('full_name') or current_user.get('email'),
         "actualizado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "updated_at": datetime.now(COLOMBIA_TZ)
     }
@@ -25334,7 +25352,7 @@ async def aprobar_propuesta(
             "$push": {
                 "historial_cambios": {
                     "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                    "usuario": current_user.get('email'),
+                    "usuario": current_user.get('full_name') or current_user.get('email'),
                     "accion": "propuesta_aprobada_actualizado",
                     "propuesta_id": propuesta_id,
                     "cambios_aplicados": datos_propuestos
@@ -25369,7 +25387,7 @@ async def rechazar_propuesta(
     # Actualizar propuesta
     update_data = {
         "estado": "rechazada_definitiva" if es_rechazo_definitivo else "subsanacion",
-        "revisado_por": current_user.get('email'),
+        "revisado_por": current_user.get('full_name') or current_user.get('email'),
         "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
         "comentario_revision": data.get('comentario', ''),
         "intentos_subsanacion": intentos
@@ -25379,7 +25397,7 @@ async def rechazar_propuesta(
     historial_entry = {
         "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": "rechazado_definitivo" if es_rechazo_definitivo else "rechazado_subsanacion",
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),
         "comentario": data.get('comentario', ''),
         "intento": intentos
     }
@@ -25405,7 +25423,7 @@ async def rechazar_propuesta(
             "$push": {
                 "historial_cambios": {
                     "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                    "usuario": current_user.get('email'),
+                    "usuario": current_user.get('full_name') or current_user.get('email'),
                     "accion": "propuesta_rechazada_definitiva" if es_rechazo_definitivo else "propuesta_enviada_subsanacion",
                     "propuesta_id": propuesta_id,
                     "motivo": data.get('comentario', ''),
@@ -25481,7 +25499,7 @@ async def subsanar_propuesta(
     historial_entry = {
         "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
         "accion": "subsanado_reenviado",
-        "usuario": current_user.get('email'),
+        "usuario": current_user.get('full_name') or current_user.get('email'),
         "justificacion": justificacion,
         "intento": propuesta.get('intentos_subsanacion', 1)
     }
@@ -25494,7 +25512,7 @@ async def subsanar_propuesta(
                 "datos_propuestos": nuevos_datos,
                 "justificacion_subsanacion": justificacion,
                 "fecha_subsanacion": datetime.now(COLOMBIA_TZ).isoformat(),
-                "subsanado_por": current_user.get('email')
+                "subsanado_por": current_user.get('full_name') or current_user.get('email')
             },
             "$push": {"historial_revision": historial_entry}
         }
@@ -25577,7 +25595,7 @@ async def aprobar_propuestas_masivo(
                 {
                     "$set": {
                         "estado": "aprobada",
-                        "revisado_por": current_user.get('email'),
+                        "revisado_por": current_user.get('full_name') or current_user.get('email'),
                         "revisado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                         "comentario_revision": data.get('comentario', 'Aprobación masiva')
                     }
@@ -25631,7 +25649,7 @@ async def aprobar_propuestas_masivo(
                     "estado_visita": "visitado",
                     "creado_por": propuesta.get('creado_por'),
                     "creado_por_nombre": propuesta.get('creado_por_nombre'),
-                    "aprobado_por": current_user.get('email'),
+                    "aprobado_por": current_user.get('full_name') or current_user.get('email'),
                     "aprobado_por_nombre": current_user.get('full_name'),
                     "created_at": propuesta.get('created_at'),
                     "updated_at": ahora,
@@ -25644,7 +25662,7 @@ async def aprobar_propuestas_masivo(
                         },
                         {
                             "fecha": ahora,
-                            "usuario": current_user.get('email'),
+                            "usuario": current_user.get('full_name') or current_user.get('email'),
                             "accion": "predio_nuevo_aprobado",
                             "descripcion": f"Predio nuevo aprobado (masivo). Código homologado: {codigo_homologado}"
                         }
@@ -25672,7 +25690,7 @@ async def aprobar_propuestas_masivo(
                 update_data = {
                     **datos_propuestos,
                     "estado_visita": "actualizado",
-                    "actualizado_por": current_user.get('email'),
+                    "actualizado_por": current_user.get('full_name') or current_user.get('email'),
                     "actualizado_en": datetime.now(COLOMBIA_TZ).isoformat(),
                     "updated_at": datetime.now(COLOMBIA_TZ)
                 }
@@ -25690,7 +25708,7 @@ async def aprobar_propuestas_masivo(
                         "$push": {
                             "historial_cambios": {
                                 "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-                                "usuario": current_user.get('email'),
+                                "usuario": current_user.get('full_name') or current_user.get('email'),
                                 "accion": "propuesta_aprobada_masivo_actualizado",
                                 "propuesta_id": propuesta_id
                             }
@@ -26918,7 +26936,7 @@ async def crear_predio_nuevo_actualizacion(
             
             "historial": [{
                 "fecha": ahora,
-                "usuario": current_user.get('email'),
+                "usuario": current_user.get('full_name') or current_user.get('email'),
                 "accion": "propuesta_creada",
                 "descripcion": "Propuesta de predio nuevo enviada para aprobación"
             }]
@@ -26990,7 +27008,7 @@ async def crear_predio_nuevo_actualizacion(
         # Historial
         "historial_cambios": [{
             "fecha": ahora,
-            "usuario": current_user.get('email'),
+            "usuario": current_user.get('full_name') or current_user.get('email'),
             "accion": "predio_nuevo_creado",
             "descripcion": f"Predio nuevo creado en campo. Código homologado asignado: {codigo_homologado}"
         }]
@@ -27282,7 +27300,7 @@ async def finalizar_proyecto_actualizacion(
         {
             "$set": {
                 "estado": ProyectoActualizacionEstado.COMPLETADO,
-                "finalizado_por": current_user.get('email'),
+                "finalizado_por": current_user.get('full_name') or current_user.get('email'),
                 "finalizado_por_nombre": current_user.get('full_name'),
                 "fecha_finalizacion": ahora,
                 "resultados_finalizacion": resultados
@@ -33922,6 +33940,14 @@ async def crear_indices_mongodb():
         await db.predios.create_index([("municipio", 1), ("vigencia", 1)], background=True)
         await db.predios.create_index("tiene_geometria", background=True)
         await db.predios.create_index([("municipio", 1), ("vigencia", 1), ("tiene_geometria", 1)], background=True)
+        # Índice de texto para búsqueda rápida
+        await db.predios.create_index([
+            ("codigo_predial_nacional", "text"),
+            ("codigo_homologado", "text"),
+            ("direccion", "text"),
+            ("propietarios.nombre_propietario", "text"),
+            ("propietarios.numero_documento", "text"),
+        ], background=True, default_language="spanish", name="idx_predios_text_search")
         logger.info("✅ Índices de 'predios' creados")
         
         # Índices para colección petitions

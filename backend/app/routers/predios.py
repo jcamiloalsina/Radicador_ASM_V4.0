@@ -7,6 +7,7 @@ import logging
 from typing import Optional, List
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import JSONResponse
 
 from ..core.database import db
 from ..core.security import get_current_user
@@ -30,10 +31,10 @@ async def get_predios(
     tiene_geometria: Optional[str] = None,
     search: Optional[str] = None,
     skip: int = 0,
-    limit: int = 50000,
+    limit: int = 100,
     current_user: dict = Depends(get_current_user)
 ):
-    """Lista predios con filtros opcionales"""
+    """Lista predios con filtros opcionales (paginación server-side)"""
     if current_user['role'] == UserRole.USUARIO:
         raise HTTPException(status_code=403, detail="No tiene permiso")
     
@@ -82,21 +83,24 @@ async def get_predios(
     # Filtro de búsqueda
     search_filter = None
     if search:
-        is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search.strip()))
-        
+        search_stripped = search.strip()
+        is_matricula_search = bool(re.match(r'^\d{3}-\d+$', search_stripped))
+        is_numeric = search_stripped.isdigit()
+
         if is_matricula_search:
-            search_filter = {"r2_registros.matricula_inmobiliaria": search.strip()}
-        else:
+            search_filter = {"r2_registros.matricula_inmobiliaria": search_stripped}
+        elif is_numeric:
+            # Búsqueda numérica: código predial o documento (usar regex para match parcial)
             search_filter = {
                 "$or": [
-                    {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
-                    {"codigo_homologado": {"$regex": search, "$options": "i"}},
-                    {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
-                    {"propietarios.numero_documento": {"$regex": search, "$options": "i"}},
-                    {"direccion": {"$regex": search, "$options": "i"}},
-                    {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}}
+                    {"codigo_predial_nacional": {"$regex": search_stripped}},
+                    {"codigo_homologado": {"$regex": search_stripped}},
+                    {"propietarios.numero_documento": {"$regex": search_stripped}},
                 ]
             }
+        else:
+            # Búsqueda de texto: usar índice $text (mucho más rápido que $regex)
+            search_filter = {"$text": {"$search": search_stripped}}
     
     # Combinar filtros
     if geometria_filter and search_filter:
@@ -108,27 +112,63 @@ async def get_predios(
     
     total = await db.predios.count_documents(query)
     
+    # Campos ligeros para la tabla (sin r2_registros completo ni arrays pesados)
+    projection = {
+        "_id": 0,
+        "id": 1,
+        "codigo_predial_nacional": 1,
+        "codigo_homologado": 1,
+        "municipio": 1,
+        "nombre_municipio": 1,
+        "vigencia": 1,
+        "direccion": 1,
+        "destino_economico": 1,
+        "area_terreno": 1,
+        "area_construida": 1,
+        "avaluo": 1,
+        "matricula_inmobiliaria": 1,
+        "propietarios": 1,
+        "nombre_propietario": 1,
+        "tipo_documento": 1,
+        "numero_documento": 1,
+        "tiene_geometria": 1,
+        "tiene_geometria_gdb": 1,
+        "bloqueado": 1,
+        "bloqueo_info": 1,
+        "zona": 1,
+    }
+
+    # Si la matrícula puede venir en r2_registros, extraerla en el pipeline
     pipeline = [
         {"$match": query},
-        {"$addFields": {"zona_orden": {"$substr": ["$codigo_predial_nacional", 5, 2]}}},
+        {"$addFields": {
+            "zona_orden": {"$substr": ["$codigo_predial_nacional", 5, 2]},
+            "matricula_inmobiliaria": {
+                "$ifNull": [
+                    "$matricula_inmobiliaria",
+                    {"$arrayElemAt": ["$r2_registros.matricula_inmobiliaria", 0]}
+                ]
+            }
+        }},
         {"$sort": {"zona_orden": 1, "codigo_predial_nacional": 1}},
         {"$skip": skip},
         {"$limit": limit},
-        {"$project": {"_id": 0, "zona_orden": 0}}
+        {"$project": {**projection, "zona_orden": 0}}
     ]
-    
+
     predios = await db.predios.aggregate(pipeline).to_list(limit)
-    
-    return {"total": total, "predios": predios}
+
+    return {"total": total, "predios": predios, "skip": skip, "limit": limit}
 
 
 @router.get("/catalogos")
 async def get_predios_catalogos(current_user: dict = Depends(get_current_user)):
-    """Obtener catálogos de municipios y destinos económicos"""
-    return {
+    """Obtener catálogos de municipios y destinos económicos (cacheable)"""
+    data = {
         "municipios": list(MUNICIPIOS_DIVIPOLA.keys()),
         "destinos_economicos": DESTINO_ECONOMICO
     }
+    return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.get("/stats/summary")
@@ -241,7 +281,7 @@ async def get_estructura_codigo_predial(
     info_municipio = MUNICIPIOS_DIVIPOLA[municipio]
     prefijo = info_municipio["codigo"]
     
-    return {
+    data = {
         "municipio": municipio,
         "codigo_departamento": info_municipio["departamento"],
         "codigo_municipio": info_municipio["municipio"],
@@ -261,6 +301,7 @@ async def get_estructura_codigo_predial(
             "unidad": {"inicio": 26, "fin": 30}
         }
     }
+    return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=86400"})
 
 
 @router.get("/verificar-codigo-completo/{codigo}")
@@ -281,6 +322,7 @@ async def verificar_codigo_completo(
     if predio_existente:
         return {
             "existe": True,
+            "estado": "existente",
             "mensaje": "Este código predial ya está en uso",
             "predio": predio_existente
         }
@@ -295,12 +337,20 @@ async def verificar_codigo_completo(
         return {
             "existe": True,
             "eliminado": True,
+            "estado": "eliminado",
             "mensaje": "Este código corresponde a un predio eliminado",
-            "puede_reutilizar": True
+            "puede_reutilizar": True,
+            "detalles_eliminacion": {
+                "vigencia_eliminacion": predio_eliminado.get("vigencia_eliminacion"),
+                "motivo": predio_eliminado.get("motivo", ""),
+                "eliminado_en": predio_eliminado.get("eliminado_en"),
+                "eliminado_por": predio_eliminado.get("eliminado_por"),
+            }
         }
     
     return {
         "existe": False,
+        "estado": "disponible",
         "disponible": True,
         "mensaje": "El código está disponible"
     }

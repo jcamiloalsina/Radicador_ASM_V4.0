@@ -1177,10 +1177,11 @@ Page5.displayName = 'Page5';
 const VisitaFormModal = ({ 
   open, 
   onClose, 
-  onSave, 
-  predio, 
+  onSave,
+  predio,
   proyecto,
-  saving = false 
+  saving = false,
+  readOnly = false
 }) => {
   // Todo el estado es LOCAL - no afecta al padre
   const [pagina, setPagina] = useState(1);
@@ -1294,11 +1295,11 @@ const VisitaFormModal = ({
   }, [data, construcciones, calificaciones, propietarios, fotos, onSave]);
 
   const handleClose = useCallback(() => {
-    if (data.persona_atiende) {
+    if (!readOnly && data.persona_atiende) {
       if (!window.confirm('¿Cerrar sin guardar? Los cambios se perderán.')) return;
     }
     onClose();
-  }, [data.persona_atiende, onClose]);
+  }, [data.persona_atiende, onClose, readOnly]);
 
   if (!open) return null;
 
@@ -1307,12 +1308,16 @@ const VisitaFormModal = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-600" />Formato de Visita</span>
+            <span className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" />
+              Formato de Visita
+              {readOnly && <Badge className="bg-slate-200 text-slate-600 ml-2">Solo lectura</Badge>}
+            </span>
             <Badge className="bg-emerald-100 text-emerald-700">{pagina}/5</Badge>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-2">
+        <div className={`flex-1 overflow-y-auto pr-2 ${readOnly ? 'pointer-events-none opacity-80 select-none' : ''}`}>
           {pagina === 1 && <Page1 data={data} setField={setField} predio={predio} proyecto={proyecto} />}
           {pagina === 2 && <Page2 data={data} setField={setField} propietarios={propietarios} setPropietarios={setPropietarios} />}
           {pagina === 3 && <Page3 construcciones={construcciones} setConstrucciones={setConstrucciones} calificaciones={calificaciones} setCalificaciones={setCalificaciones} />}
@@ -1330,6 +1335,8 @@ const VisitaFormModal = ({
             {pagina > 1 && <Button variant="outline" onClick={() => setPagina(p => p - 1)}><ChevronLeft className="w-4 h-4 mr-1" />Anterior</Button>}
             {pagina < 5 ? (
               <Button onClick={() => setPagina(p => p + 1)} className="bg-emerald-600 hover:bg-emerald-700">Siguiente<ChevronRight className="w-4 h-4 ml-1" /></Button>
+            ) : readOnly ? (
+              <Button variant="outline" onClick={onClose}>Cerrar</Button>
             ) : (
               <Button onClick={handleGuardar} disabled={saving || !data.persona_atiende.trim()} className="bg-emerald-600 hover:bg-emerald-700">
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Guardar

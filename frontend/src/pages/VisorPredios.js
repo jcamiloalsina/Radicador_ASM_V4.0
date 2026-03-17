@@ -260,10 +260,17 @@ export default function VisorPredios() {
   const [coordenadasPlanas, setCoordenadasPlanas] = useState({ norte: '', este: '' });
   const [marcadorCoordenadas, setMarcadorCoordenadas] = useState(null); // [lat, lng] del marcador
   const [resumenCargasMensuales, setResumenCargasMensuales] = useState(null); // Resumen de cargas GDB del mes
-  const [construcciones, setConstrucciones] = useState(null); // Construcciones del predio seleccionado
-  const [mostrarConstrucciones, setMostrarConstrucciones] = useState(false); // Toggle para mostrar/ocultar construcciones
-  const [tieneConstrucciones, setTieneConstrucciones] = useState(false); // Si el predio tiene construcciones disponibles
-  const [cargandoConstrucciones, setCargandoConstrucciones] = useState(false); // Estado de carga
+  // Estado agrupado de construcciones
+  const [constState, setConstState] = useState({ data: null, mostrar: false, tiene: false, cargando: false });
+  // Aliases para compatibilidad
+  const construcciones = constState.data;
+  const mostrarConstrucciones = constState.mostrar;
+  const tieneConstrucciones = constState.tiene;
+  const cargandoConstrucciones = constState.cargando;
+  const setConstrucciones = (v) => setConstState(prev => ({ ...prev, data: v }));
+  const setMostrarConstrucciones = (v) => setConstState(prev => ({ ...prev, mostrar: v }));
+  const setTieneConstrucciones = (v) => setConstState(prev => ({ ...prev, tiene: v }));
+  const setCargandoConstrucciones = (v) => setConstState(prev => ({ ...prev, cargando: v }));
   const [ortoimagenes, setOrtoimagenes] = useState([]); // Lista de ortoimágenes disponibles
   const [ortoimagenActiva, setOrtoimagenActiva] = useState(null); // Ortoimagen seleccionada para mostrar
   const [showUploadOrtoDialog, setShowUploadOrtoDialog] = useState(false); // Modal de subida de ortoimagen
@@ -845,34 +852,26 @@ export default function VisorPredios() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Guardar TODAS las geometrías para uso offline (sin filtro de zona)
+      // Guardar geometrías para uso offline
       if (response.data.features && response.data.features.length > 0) {
-        await saveGeometriasMunicipioOffline(filterMunicipio, response.data);
-        setGeometriasOfflineCount(response.data.features.length);
-        
+        if (saveAllForOffline || !filterZona || filterZona === 'todos') {
+          // Guardar todo para offline
+          await saveGeometriasMunicipioOffline(filterMunicipio, response.data);
+          setGeometriasOfflineCount(response.data.features.length);
+        }
+
         if (saveAllForOffline) {
           toast.success(`${response.data.total} geometrías sincronizadas para uso offline`);
+        } else {
+          toast.success(`${response.data.total} predios de Base Gráfica cargados`);
         }
       }
-      
-      // Si hay filtro de zona activo, aplicar filtro para mostrar solo esa zona
-      let displayData = response.data;
-      if (!saveAllForOffline && filterZona && filterZona !== 'todos') {
-        displayData = {
-          ...response.data,
-          features: response.data.features.filter(f => 
-            f.properties?.zona === filterZona || f.properties?.ZONA === filterZona
-          ),
-          total: 0
-        };
-        displayData.total = displayData.features.length;
-        toast.success(`${displayData.total} predios de zona ${filterZona} cargados (${response.data.total} total guardados offline)`);
-      } else if (!saveAllForOffline) {
-        toast.success(`${response.data.total} predios de Base Gráfica cargados`);
+
+      // El servidor ya filtra por zona, mostrar directamente
+      if (!saveAllForOffline) {
+        setAllGeometries(response.data);
       }
-      
-      setAllGeometries(displayData);
-      return displayData;
+      return response.data;
     } catch (error) {
       console.error('Error loading geometries from server:', error);
       throw error;
@@ -1004,70 +1003,54 @@ export default function VisorPredios() {
     
     try {
       const token = localStorage.getItem('token');
-      
-      // Buscar todos los registros del predio (diferentes vigencias)
-      const predioResponse = await axios.get(`${API}/predios?search=${searchCode}&limit=10`, {
+
+      // Buscar predio (solo 1 resultado necesario)
+      const predioResponse = await axios.get(`${API}/predios?search=${searchCode}&limit=5`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Verificar si la respuesta indica acceso denegado (para rol empresa)
+
       if (predioResponse.data.sin_acceso) {
         setSinAcceso(true);
-        setSelectedPredio({ codigo_predial_nacional: searchCode }); // Solo mostrar el código buscado
+        setSelectedPredio({ codigo_predial_nacional: searchCode });
         toast.warning('No tiene acceso a este predio');
         setLoading(false);
         return;
       }
-      
+
       if (predioResponse.data.predios.length === 0) {
         toast.error('Predio no encontrado en la base de datos');
         setLoading(false);
         return;
       }
-      
-      // Ordenar por vigencia descendente y tomar la última vigencia cargada en R1/R2
-      const prediosOrdenados = predioResponse.data.predios.sort((a, b) => 
+
+      const prediosOrdenados = predioResponse.data.predios.sort((a, b) =>
         (b.vigencia || 0) - (a.vigencia || 0)
       );
       const predio = prediosOrdenados[0];
       setSelectedPredio(predio);
-      
-      // Get geometry
-      const authToken = localStorage.getItem('token');
-      const geoResponse = await axios.get(`${API}/predios/codigo/${predio.codigo_predial_nacional}/geometria`, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      
-      setGeometry(geoResponse.data);
-      
-      // Verificar si el predio tiene construcciones (sin cargarlas)
-      try {
-        const codigoParaBuscar = predio.codigo_gdb || predio.codigo_predial_nacional;
-        console.log('Buscando construcciones para:', codigoParaBuscar);
-        
-        const constResponse = await axios.get(`${API}/gdb/construcciones/${codigoParaBuscar}`, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        });
-        
-        console.log('Respuesta construcciones:', constResponse.data);
-        
-        if (constResponse.data && constResponse.data.construcciones && constResponse.data.construcciones.length > 0) {
-          console.log('Construcciones encontradas:', constResponse.data.construcciones.length);
-          setTieneConstrucciones(true);
-          // NO cargar automáticamente - el usuario debe activar el toggle
-          setConstrucciones(null);
-          setMostrarConstrucciones(false);
-        } else {
-          console.log('No hay construcciones');
-          setTieneConstrucciones(false);
-          setConstrucciones(null);
-        }
-      } catch (constError) {
-        console.error('Error verificando construcciones:', constError);
+
+      // Geometría y construcciones en PARALELO
+      const codigoGeo = predio.codigo_predial_nacional;
+      const codigoConst = predio.codigo_gdb || predio.codigo_predial_nacional;
+
+      const [geoResponse, constResponse] = await Promise.allSettled([
+        axios.get(`${API}/predios/codigo/${codigoGeo}/geometria`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/gdb/construcciones/${codigoConst}`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      if (geoResponse.status === 'fulfilled') {
+        setGeometry(geoResponse.value.data);
+      }
+
+      if (constResponse.status === 'fulfilled' && constResponse.value.data?.construcciones?.length > 0) {
+        setTieneConstrucciones(true);
+        setConstrucciones(null);
+        setMostrarConstrucciones(false);
+      } else {
         setTieneConstrucciones(false);
         setConstrucciones(null);
       }
-      
+
       toast.success('Predio encontrado');
     } catch (error) {
       // Verificar si es error de acceso denegado (403)
@@ -3092,7 +3075,7 @@ export default function VisorPredios() {
                 {/* Mostrar predios individuales solo si está activado y se seleccionó un municipio */}
                 {mostrarPredios && allGeometries && allGeometries.features && allGeometries.features.length > 0 && (
                   <GeoJSON
-                    key={`predios-${filterMunicipio}-${filterZona}-${allGeometries.total}-${Date.now()}`}
+                    key={`predios-${filterMunicipio}-${filterZona}-${allGeometries.total}`}
                     data={allGeometries}
                     style={(feature) => ({
                       color: feature.properties?.tipo === 'Urbano' ? '#DC2626' : '#2563EB',
@@ -3131,46 +3114,33 @@ export default function VisorPredios() {
                             );
                             const predio = prediosOrdenados[0];
                             setSelectedPredio(predio);
-                            
-                            // Obtener geometría para el área GDB
-                            try {
-                              const geoResponse = await fetch(`${API}/predios/codigo/${predio.codigo_predial_nacional}/geometria`, {
+
+                            // Geometría y construcciones en PARALELO
+                            const codigoConst = predio.codigo_gdb || predio.codigo_predial_nacional;
+                            const [geoRes, constRes] = await Promise.allSettled([
+                              fetch(`${API}/predios/codigo/${predio.codigo_predial_nacional}/geometria`, {
                                 headers: { Authorization: `Bearer ${token}` }
-                              });
-                              if (geoResponse.ok) {
-                                const geoData = await geoResponse.json();
-                                setGeometry(geoData);
-                              }
-                            } catch (e) {
-                              // Si no hay geometría, usar la del feature actual
-                              setGeometry({
-                                type: 'Feature',
-                                geometry: feature.geometry,
-                                properties: feature.properties
-                              });
+                              }).then(r => r.ok ? r.json() : null),
+                              fetch(`${API}/gdb/construcciones/${codigoConst}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                              }).then(r => r.json()).catch(() => null)
+                            ]);
+
+                            if (geoRes.status === 'fulfilled' && geoRes.value) {
+                              setGeometry(geoRes.value);
+                            } else {
+                              setGeometry({ type: 'Feature', geometry: feature.geometry, properties: feature.properties });
                             }
-                            
-                            // VERIFICAR CONSTRUCCIONES
-                            try {
-                              const codigoParaBuscar = predio.codigo_gdb || predio.codigo_predial_nacional;
-                              const constResponse = await fetch(`${API}/gdb/construcciones/${codigoParaBuscar}`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                              });
-                              const constData = await constResponse.json();
-                              
-                              if (constData && constData.construcciones && constData.construcciones.length > 0) {
-                                setTieneConstrucciones(true);
-                                setConstrucciones(null);
-                                setMostrarConstrucciones(false);
-                              } else {
-                                setTieneConstrucciones(false);
-                                setConstrucciones(null);
-                              }
-                            } catch (constError) {
+
+                            if (constRes.status === 'fulfilled' && constRes.value?.construcciones?.length > 0) {
+                              setTieneConstrucciones(true);
+                              setConstrucciones(null);
+                              setMostrarConstrucciones(false);
+                            } else {
                               setTieneConstrucciones(false);
                               setConstrucciones(null);
                             }
-                            
+
                             toast.success('Predio seleccionado');
                           } else {
                             toast.warning('Predio no encontrado en la base de datos');

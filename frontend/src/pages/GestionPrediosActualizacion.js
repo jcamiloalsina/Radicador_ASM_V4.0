@@ -1638,29 +1638,11 @@ export default function GestionPrediosActualizacion() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {/* Coordinadores pueden editar directamente */}
-                              {esCoordinador && (
-                                <DropdownMenuItem onClick={() => abrirEditar(predio)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Editar Predio
-                                </DropdownMenuItem>
-                              )}
-                              
-                              {/* Gestores pueden proponer cambios (solo si está visitado) */}
-                              {!esCoordinador && predio.estado_visita === 'visitado' && (
-                                <DropdownMenuItem onClick={() => abrirProponerCambios(predio)}>
-                                  <Edit className="w-4 h-4 mr-2 text-amber-600" />
-                                  Proponer Cambios
-                                </DropdownMenuItem>
-                              )}
-                              
-                              {/* Mensaje si no puede proponer cambios */}
-                              {!esCoordinador && predio.estado_visita !== 'visitado' && (
-                                <DropdownMenuItem disabled className="text-slate-400 text-xs">
-                                  <AlertCircle className="w-4 h-4 mr-2" />
-                                  Visite primero para proponer cambios
-                                </DropdownMenuItem>
-                              )}
+                              {/* Todos pueden editar directamente */}
+                              <DropdownMenuItem onClick={() => abrirEditar(predio)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Editar Predio
+                              </DropdownMenuItem>
                               
                               {/* Ver PDF de visita - solo si tiene visita */}
                               {(predio.estado_visita === 'visitado' || predio.estado_visita === 'actualizado') && (

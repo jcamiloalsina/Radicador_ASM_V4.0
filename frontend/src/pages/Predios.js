@@ -232,9 +232,9 @@ export default function Predios() {
   const [radicadosDisponibles, setRadicadosDisponibles] = useState([]);
   const [cargandoNumeroResolucion, setCargandoNumeroResolucion] = useState(false);
   
-  // Paginación del lado del cliente para mejorar rendimiento
+  // Paginación server-side
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 100; // Mostrar 100 predios por página
+  const pageSize = 100;
   
   const [codigoManual, setCodigoManual] = useState({
     zona: '00',          // Posición 6-7 (2 dígitos) - 00=rural, 01=urbano, 02-99=corregimiento
@@ -729,17 +729,18 @@ export default function Predios() {
   }, [filterMunicipio, downloadForOffline]);
 
   useEffect(() => {
-    fetchCatalogos();
-    fetchVigencias();
-    fetchPrediosStats();
-    fetchCambiosStats();
-    fetchReaparicionesConteo();
-    fetchSubsanacionesConteo();
-    fetchGdbStats();
-    fetchGestoresDisponibles();
-    fetchPeticionesParaModificacion();
-    
-    // Verificar sincronización automática de los lunes
+    // Ejecutar todas las cargas iniciales en paralelo
+    Promise.all([
+      fetchCatalogos(),
+      fetchVigencias(),
+      fetchPrediosStats(),
+      fetchCambiosStats(),
+      fetchReaparicionesConteo(),
+      fetchSubsanacionesConteo(),
+      fetchGdbStats(),
+      fetchGestoresDisponibles(),
+      fetchPeticionesParaModificacion()
+    ]).catch(() => {});
     checkAutoSyncMonday();
   }, []);
   
@@ -1720,12 +1721,11 @@ export default function Predios() {
   };
 
   // Función interna que carga desde el servidor (forzado)
-  const fetchPrediosFromServer = async () => {
+  const fetchPrediosFromServer = async (page = 1) => {
     try {
       setLoading(true);
       setIsRevalidating(true);
-      
-      // Si está offline, mostrar mensaje
+
       if (!navigator.onLine) {
         toast.warning('No hay conexión. Use los datos offline disponibles.');
         setLoading(false);
@@ -1733,7 +1733,7 @@ export default function Predios() {
         setDataSource('offline');
         return;
       }
-      
+
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (filterMunicipio) params.append('municipio', filterMunicipio);
@@ -1741,57 +1741,24 @@ export default function Predios() {
       if (search) params.append('search', search);
       if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
       if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
-      
-      console.log('[Predios] Forzando recarga desde servidor...');
-      
+      params.append('skip', String((page - 1) * pageSize));
+      params.append('limit', String(pageSize));
+
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const prediosRecibidos = res.data.predios || [];
-      console.log('[Predios] Recibidos del servidor:', prediosRecibidos.length, 'predios');
-      
-      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
-      const normalizarTexto = (texto) => {
-        if (!texto) return '';
-        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      };
-      
-      const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => {
-            const municipioNorm = normalizarTexto(p.municipio);
-            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
-            const filtroNorm = normalizarTexto(filterMunicipio);
-            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
-          })
-        : prediosRecibidos;
-      
-      // Ordenar por CNP antes de guardar
-      const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
-      setPredios(prediosOrdenados);
-      setTotal(prediosOrdenados.length);
-      setCurrentPage(1);
-      
-      // Actualizar estados de caché
+      setPredios(prediosRecibidos);
+      setTotal(res.data.total || 0);
+      setCurrentPage(page);
+
       const now = new Date().toISOString();
       setLastSyncTime(now);
       setDataSource('server');
       setLoading(false);
       setIsRevalidating(false);
-      
-      // IMPORTANTE: Solo actualizar caché offline para la vigencia ACTUAL
-      const vigenciaActual = String(new Date().getFullYear());
-      const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
-      
-      if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual) {
-        downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
-          localStorage.setItem(`sync_${filterMunicipio}_date`, now);
-          console.log(`[Cache] ${prediosOrdenados.length} predios actualizados en caché`);
-        }).catch(err => {
-          console.warn('[Cache] Error guardando:', err);
-        });
-      }
-      
+
     } catch (error) {
       console.error('[Predios] Error cargando desde servidor:', error);
       setLoading(false);
@@ -1799,83 +1766,46 @@ export default function Predios() {
     }
   };
 
-  const fetchPredios = async () => {
+  const fetchPredios = async (page = 1) => {
     const vigenciaActual = String(new Date().getFullYear());
     const esVigenciaActual = !filterVigencia || String(filterVigencia) === vigenciaActual;
-    
-    // ====== ESTRATEGIA STALE-WHILE-REVALIDATE (SWR) ======
-    // 1. Mostrar caché INMEDIATAMENTE (sin bloquear UI)
-    // 2. Revalidar del servidor en SEGUNDO PLANO
-    // 3. Actualizar UI silenciosamente cuando lleguen datos frescos
-    
-    let mostrandoCache = false;
-    
-    // PASO 1: Intentar cargar desde caché PRIMERO (solo para vigencia actual sin búsqueda)
-    if (filterMunicipio && esVigenciaActual && !search) {
-      try {
-        const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
-        if (cachedPredios && cachedPredios.length > 0) {
-          // Filtrar solo predios de la vigencia actual en el caché
-          let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
-          
-          if (filterGeometria === 'con') {
-            filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
-          } else if (filterGeometria === 'sin') {
-            filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
-          }
-          
-          const prediosOrdenados = sortPrediosByCNP(filtered);
-          
-          // ✅ Mostrar datos del cache INMEDIATAMENTE - SIN ESPERAR AL SERVIDOR
-          setPredios(prediosOrdenados);
-          setTotal(prediosOrdenados.length);
-          setLoading(false); // ⚡ Quitar loading inmediatamente
-          
-          // Cargar tiempo de última sincronización
-          const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
-          setLastSyncTime(syncTime);
-          setDataSource('cache');
-          mostrandoCache = true;
-          
-          console.log(`[SWR] ✅ Mostrando ${prediosOrdenados.length} predios desde caché INMEDIATAMENTE`);
-          
-          // Si está offline, terminar aquí
-          if (!navigator.onLine) {
+
+    // Si está offline, intentar caché
+    if (!navigator.onLine) {
+      if (filterMunicipio && esVigenciaActual && !search) {
+        try {
+          const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+          if (cachedPredios && cachedPredios.length > 0) {
+            let filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+            if (filterGeometria === 'con') filtered = filtered.filter(p => p.tiene_geometria_gdb === true);
+            else if (filterGeometria === 'sin') filtered = filtered.filter(p => p.tiene_geometria_gdb !== true);
+            const prediosOrdenados = sortPrediosByCNP(filtered);
+            // Paginación client-side sobre datos offline
+            const start = (page - 1) * pageSize;
+            setPredios(prediosOrdenados.slice(start, start + pageSize));
+            setTotal(prediosOrdenados.length);
+            setCurrentPage(page);
+            setLoading(false);
             setDataSource('offline');
+            const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+            setLastSyncTime(syncTime);
             return;
           }
+        } catch (e) {
+          console.warn('[Offline] Error accediendo caché:', e);
         }
-      } catch (cacheError) {
-        console.warn('[SWR] Error accediendo caché:', cacheError);
       }
-    }
-    
-    // Si no hay caché, mostrar loading (solo en este caso)
-    if (!mostrandoCache) {
-      setLoading(true);
-      setDataSource('loading');
-    } else {
-      // Si hay caché, marcar que estamos actualizando en segundo plano
-      setIsRevalidating(true);
-    }
-    
-    // Si está offline y no hay caché, mostrar mensaje y salir
-    if (!navigator.onLine) {
-      if (!esVigenciaActual) {
-        toast.warning('Las vigencias anteriores requieren conexión a internet', { duration: 3000 });
-      } else if (!mostrandoCache) {
-        toast.warning('No hay datos offline disponibles para este municipio');
-      }
-      if (!mostrandoCache) {
-        setPredios([]);
-        setTotal(0);
-      }
+      toast.warning('No hay conexión a internet');
+      setPredios([]);
+      setTotal(0);
       setLoading(false);
       setDataSource('offline');
       return;
     }
-    
-    // PASO 2: Consultar servidor EN SEGUNDO PLANO
+
+    // Online: paginación server-side
+    setLoading(true);
+    setDataSource('loading');
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
@@ -1884,82 +1814,45 @@ export default function Predios() {
       if (search) params.append('search', search);
       if (filterGeometria === 'con') params.append('tiene_geometria', 'true');
       if (filterGeometria === 'sin') params.append('tiene_geometria', 'false');
-      
-      console.log(`[SWR] 🔄 Actualizando desde servidor en segundo plano...`);
-      
+      params.append('skip', String((page - 1) * pageSize));
+      params.append('limit', String(pageSize));
+
       const res = await axios.get(`${API}/predios?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const prediosRecibidos = res.data.predios || [];
-      
-      // Filtrar solo predios del municipio correcto (comparación case-insensitive y sin tildes)
-      const normalizarTexto = (texto) => {
-        if (!texto) return '';
-        return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      };
-      
-      const prediosFiltrados = filterMunicipio 
-        ? prediosRecibidos.filter(p => {
-            const municipioNorm = normalizarTexto(p.municipio);
-            const nombreMunicipioNorm = normalizarTexto(p.nombre_municipio);
-            const filtroNorm = normalizarTexto(filterMunicipio);
-            return municipioNorm === filtroNorm || nombreMunicipioNorm === filtroNorm;
-          })
-        : prediosRecibidos;
-      
-      const prediosOrdenados = sortPrediosByCNP(prediosFiltrados);
-      
-      // PASO 3: Actualizar UI con datos frescos (silenciosamente si ya mostraba caché)
-      setPredios(prediosOrdenados);
-      setTotal(prediosOrdenados.length);
+      setPredios(prediosRecibidos);
+      setTotal(res.data.total || 0);
+      setCurrentPage(page);
       setLoading(false);
       setIsRevalidating(false);
       setDataSource('server');
-      
+
       const now = new Date().toISOString();
       setLastSyncTime(now);
-      
-      console.log(`[SWR] ✅ ${prediosOrdenados.length} predios actualizados desde servidor`);
-      
-      // PASO 4: Guardar en caché (solo vigencia actual, en segundo plano)
-      if (filterMunicipio && prediosOrdenados.length > 0 && esVigenciaActual && !search) {
-        downloadForOffline(prediosOrdenados, null, filterMunicipio).then(() => {
-          localStorage.setItem(`sync_${filterMunicipio}_date`, now);
-          localStorage.setItem(`sync_${filterMunicipio}_vigencia`, vigenciaActual);
-          console.log(`[SWR] 💾 ${prediosOrdenados.length} predios guardados en caché`);
-        }).catch(err => {
-          console.warn('[SWR] Error guardando en caché:', err);
-        });
-      }
-      
+
     } catch (error) {
-      console.error('[SWR] Error cargando desde servidor:', error);
+      console.error('[Predios] Error cargando:', error);
+      setLoading(false);
       setIsRevalidating(false);
-      
-      // Si hay error pero ya mostrábamos caché, mantener esos datos
-      if (mostrandoCache) {
-        console.log('[SWR] Error de servidor, manteniendo datos del caché');
-        setDataSource('cache');
-        // No mostrar error si ya tenemos datos visibles
-      } else {
-        // Si no hay caché, intentar cargar como fallback
-        setLoading(false);
-        if (filterMunicipio && esVigenciaActual) {
-          try {
-            const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
-            if (cachedPredios && cachedPredios.length > 0) {
-              const filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
-              setPredios(filtered);
-              setTotal(filtered.length);
-              setDataSource('cache');
-              const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
-              setLastSyncTime(syncTime);
-              toast.warning('Error de conexión - Mostrando datos desde caché', { duration: 3000 });
-            }
-          } catch (e) {
-            console.warn('[SWR] Error recuperando caché:', e);
+      // Fallback a caché
+      if (filterMunicipio && esVigenciaActual && !search) {
+        try {
+          const cachedPredios = await getPrediosByMunicipioOffline(filterMunicipio);
+          if (cachedPredios && cachedPredios.length > 0) {
+            const filtered = cachedPredios.filter(p => String(p.vigencia) === vigenciaActual);
+            const start = (page - 1) * pageSize;
+            setPredios(sortPrediosByCNP(filtered).slice(start, start + pageSize));
+            setTotal(filtered.length);
+            setCurrentPage(page);
+            setDataSource('cache');
+            const syncTime = localStorage.getItem(`sync_${filterMunicipio}_date`);
+            setLastSyncTime(syncTime);
+            toast.warning('Error de conexión - Mostrando datos desde caché', { duration: 3000 });
           }
+        } catch (e) {
+          console.warn('[Cache] Error recuperando:', e);
         }
       }
     }
@@ -2191,6 +2084,20 @@ export default function Predios() {
       return;
     }
 
+    // Si es predio eliminado, pedir confirmación antes de continuar
+    if (verificacionCodigo.estado === 'eliminado' && !window.__reaparicionConfirmada) {
+      const vigElim = verificacionCodigo.detalles_eliminacion?.vigencia_eliminacion || 'N/A';
+      const motivo = verificacionCodigo.detalles_eliminacion?.motivo || 'Sin motivo registrado';
+      const confirmar = window.confirm(
+        `Este código fue eliminado en la vigencia ${vigElim}.\n` +
+        `Motivo: ${motivo}\n\n` +
+        `Solo se conservará el código, toda la información R1/R2 debe ser diligenciada nuevamente.\n\n` +
+        `¿Desea continuar con la creación?`
+      );
+      if (!confirmar) return;
+      window.__reaparicionConfirmada = true;
+    }
+
     // Validar que haya al menos un propietario con datos (nuevo formato simplificado)
     if (!propietarios[0].nombre_propietario || !propietarios[0].numero_documento) {
       toast.error('Debe ingresar al menos un propietario con nombre completo y número de documento');
@@ -2228,9 +2135,11 @@ export default function Predios() {
       
       // === NUEVO FLUJO CON WORKFLOW ===
       if (usarNuevoFlujo) {
+        const esReaparicion = verificacionCodigo.estado === 'eliminado';
         const predioNuevoData = {
           // Marcar como creado en plataforma para sincronización automática R2→R1
           creado_en_plataforma: true,
+          es_reaparicion: esReaparicion,
           r1: {
             municipio: formData.municipio || filterMunicipio,
             zona: codigoManual.zona,
@@ -2327,7 +2236,10 @@ export default function Predios() {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        toast.success('Predio creado y asignado al Gestor de Apoyo para digitalización');
+        toast.success(esReaparicion
+          ? 'Predio reaparecido creado y asignado al Gestor de Apoyo'
+          : 'Predio creado y asignado al Gestor de Apoyo para digitalización'
+        );
         const gestorNombre = gestoresDisponibles.find(g => g.id === gestorAsignado)?.full_name;
         toast.info(`Asignado a ${gestorNombre}. El predio aparecerá en "Predios en Proceso".`, { duration: 5000 });
         
@@ -2431,9 +2343,16 @@ export default function Predios() {
       await forceRefreshPredios();
       fetchCambiosStats();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al crear predio');
+      const detail = error.response?.data?.detail;
+      // Si el backend responde 409 (predio eliminado sin flag), informar al usuario
+      if (error.response?.status === 409 && detail?.error === 'PREDIO_ELIMINADO') {
+        toast.warning(detail.mensaje || 'Este código pertenece a un predio eliminado.');
+      } else {
+        toast.error(typeof detail === 'string' ? detail : detail?.mensaje || 'Error al crear predio');
+      }
     } finally {
       setIsSavingCreate(false);
+      delete window.__reaparicionConfirmada;
     }
   };
 
@@ -2919,6 +2838,7 @@ export default function Predios() {
     setObservacionesCreacion('');
     setUsarNuevoFlujo(false);
     setEditingPredioNuevoId(null); // Limpiar ID de predio en edición
+    delete window.__reaparicionConfirmada; // Limpiar flag de reaparición
   };
 
   const formatCurrency = (value) => {
@@ -3366,13 +3286,9 @@ export default function Predios() {
                         </td>
                       </tr>
                     ) : (
-                      // Paginación: mostrar solo los predios de la página actual
+                      // Predios ya vienen paginados del servidor
                       (() => {
-                        const startIndex = (currentPage - 1) * pageSize;
-                        const endIndex = startIndex + pageSize;
-                        const paginatedPredios = predios.slice(startIndex, endIndex);
-                        
-                        return paginatedPredios.map((predio) => (
+                        return predios.map((predio) => (
                         <tr key={predio.id} className={`border-b border-slate-100 hover:bg-slate-50 ${predio.bloqueado ? 'bg-red-50' : ''}`}>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
@@ -3443,9 +3359,9 @@ export default function Predios() {
               {/* Controles de Paginación */}
               <Pagination
                 currentPage={currentPage}
-                totalItems={predios.length}
+                totalItems={total}
                 pageSize={pageSize}
-                onPageChange={setCurrentPage}
+                onPageChange={(page) => fetchPredios(page)}
                 itemLabel="predios"
               />
             </>
@@ -3763,7 +3679,7 @@ export default function Predios() {
                   </div>
                   {terrenoInfo.terrenos_eliminados?.length > 0 && (
                     <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
-                      <span className="font-medium">⚠️ Terrenos eliminados (no reutilizables sin aprobación): </span>
+                      <span className="font-medium">⚠️ Terrenos eliminados (requieren confirmación para reutilizar): </span>
                       {terrenoInfo.terrenos_eliminados.map(t => t.numero).join(', ')}
                     </div>
                   )}
@@ -3792,7 +3708,9 @@ export default function Predios() {
                     <div className="mt-2 text-sm text-amber-700">
                       <p>Vigencia eliminación: {verificacionCodigo.detalles_eliminacion?.vigencia_eliminacion}</p>
                       <p>Motivo: {verificacionCodigo.detalles_eliminacion?.motivo}</p>
-                      <p className="mt-2 font-medium">Si continúa, se creará una solicitud de reactivación para aprobación del coordinador.</p>
+                      <p className="mt-2 font-medium">
+                        Puede continuar creando el predio con información nueva (R1/R2). Solo se conserva el código.
+                      </p>
                     </div>
                   )}
                   

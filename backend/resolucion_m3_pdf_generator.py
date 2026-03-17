@@ -575,8 +575,8 @@ def generate_resolucion_m3_pdf(
             c.setFillColor(BLANCO)
             c.setFont(font_bold, 7)
             
-            col_widths_vig = [CONTENT_WIDTH * 0.40, CONTENT_WIDTH * 0.60]
-            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL"]
+            col_widths_vig = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.40]
+            headers_vig = ["AÑO VIGENCIA", "AVALÚO CATASTRAL", "DECRETO"]
             x = MARGIN_LEFT
             for i, header in enumerate(headers_vig):
                 c.drawCentredString(x + col_widths_vig[i]/2, y_position - 9, header)
@@ -596,14 +596,19 @@ def generate_resolucion_m3_pdf(
                 except:
                     avaluo_vig_fmt = str(avaluo_fecha)
                 
+                decreto = str(fecha.get("decreto", ""))
+
                 c.setStrokeColor(colors.lightgrey)
                 c.rect(MARGIN_LEFT, y_position - 12, CONTENT_WIDTH, 12, stroke=1, fill=0)
-                
+
                 x = MARGIN_LEFT
                 c.drawCentredString(x + col_widths_vig[0]/2, y_position - 9, año)
                 x += col_widths_vig[0]
-                
+
                 c.drawCentredString(x + col_widths_vig[1]/2, y_position - 9, avaluo_vig_fmt)
+                x += col_widths_vig[1]
+
+                c.drawCentredString(x + col_widths_vig[2]/2, y_position - 9, decreto)
                 y_position -= 12
 
             y_position -= 3

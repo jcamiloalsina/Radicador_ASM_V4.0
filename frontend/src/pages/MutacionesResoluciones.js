@@ -470,6 +470,9 @@ export default function MutacionesResoluciones() {
   });
   const [configuracionAños, setConfiguracionAños] = useState({ año_inicial: 2022, años_futuro: 2 });
 
+  // Estado compartido de fechas de inscripción catastral para mutaciones individuales (M1, M4, M5, Rect, Comp)
+  const [fechasInscripcionGeneral, setFechasInscripcionGeneral] = useState([]);
+
   // Estado para códigos homologados reservados (temporalmente)
   const [codigosReservados, setCodigosReservados] = useState([]);
   const [sessionIdReserva, setSessionIdReserva] = useState(null);
@@ -741,6 +744,95 @@ export default function MutacionesResoluciones() {
       }
     }
   };
+
+  // Sección reutilizable de Inscripción Catastral para mutaciones individuales
+  const renderInscripcionCatastral = (fechas, setFechas) => (
+    <div className="border-t border-slate-200 pt-3 mt-3">
+      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-3">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            Inscripción Catastral (opcional)
+          </h4>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setFechas([...fechas, { año: new Date().getFullYear(), avaluo: '', decreto: '' }])}
+            className="h-6 text-xs text-slate-600 hover:bg-slate-100"
+          >
+            <Plus className="w-3 h-3 mr-1" /> Agregar
+          </Button>
+        </div>
+
+        {fechas.map((fecha, fidx) => (
+          <div key={fidx} className="flex items-end gap-2 mb-2 p-2 bg-white rounded border border-slate-200">
+            <div className="w-24">
+              <Label className="text-xs text-slate-600">Año</Label>
+              <Select
+                value={String(fecha.año || '')}
+                onValueChange={(v) => {
+                  const updated = [...fechas];
+                  updated[fidx] = { ...updated[fidx], año: parseInt(v) };
+                  setFechas(updated);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Año..." />
+                </SelectTrigger>
+                <SelectContent side="bottom" align="start">
+                  {añosDisponibles.map(año => (
+                    <SelectItem key={año} value={String(año)}>{año}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <Label className="text-xs text-slate-600">Avalúo</Label>
+              <Input
+                type="text"
+                className="h-8 text-xs"
+                placeholder="$0"
+                value={fecha.avaluo ? `$${Number(fecha.avaluo).toLocaleString()}` : ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  const updated = [...fechas];
+                  updated[fidx] = { ...updated[fidx], avaluo: val };
+                  setFechas(updated);
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-xs text-slate-600">Decreto</Label>
+              <Input
+                type="text"
+                className="h-8 text-xs"
+                placeholder="Ej: Decreto 123 de 2026"
+                value={fecha.decreto || ''}
+                onChange={(e) => {
+                  const updated = [...fechas];
+                  updated[fidx] = { ...updated[fidx], decreto: e.target.value };
+                  setFechas(updated);
+                }}
+              />
+            </div>
+            {fechas.length > 1 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const updated = fechas.filter((_, i) => i !== fidx);
+                  setFechas(updated);
+                }}
+                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   // Cargar historial de resoluciones
   const fetchHistorial = useCallback(async () => {
@@ -1545,14 +1637,15 @@ export default function MutacionesResoluciones() {
           ...m1Data.predio,
           propietarios: m1Data.propietarios_nuevos
         },
-        texto_considerando: m1Data.texto_considerando || ''
+        texto_considerando: m1Data.texto_considerando || '',
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         toast.success(`Resolución ${response.data.numero_resolucion} generada exitosamente`);
-        
+
         // Mostrar PDF en popup en lugar de abrir nueva ventana
         if (response.data.pdf_url) {
           const pdfFullUrl = `${process.env.REACT_APP_BACKEND_URL}${response.data.pdf_url}`;
@@ -1598,6 +1691,7 @@ export default function MutacionesResoluciones() {
     setSearchPredioM1('');
     setSearchResultsM1([]);
     setRadicadosDisponibles([]);
+    setFechasInscripcionGeneral([]);
   };
 
   // =====================
@@ -2226,6 +2320,18 @@ export default function MutacionesResoluciones() {
     if (!verificacionCodigoNuevo || verificacionCodigoNuevo.estado === 'existente') {
       toast.error('Verifique que el código esté disponible');
       return;
+    }
+
+    // Si es predio eliminado, pedir confirmación
+    if (verificacionCodigoNuevo.estado === 'eliminado') {
+      const det = verificacionCodigoNuevo.detalles_eliminacion || {};
+      const confirmar = window.confirm(
+        `Este código fue eliminado en vigencia ${det.vigencia_eliminacion || 'N/A'}.\n` +
+        `Motivo: ${det.motivo || 'Sin motivo registrado'}\n\n` +
+        `Solo se conservará el código, toda la información R1/R2 es la que está diligenciando.\n\n` +
+        `¿Desea continuar?`
+      );
+      if (!confirmar) return;
     }
     
     if (!propietariosNuevo[0]?.nombre_propietario || !propietariosNuevo[0]?.numero_documento) {
@@ -3222,7 +3328,8 @@ export default function MutacionesResoluciones() {
         motivo_solicitud: m4Data.motivo_solicitud,
         observaciones: m4Data.observaciones,
         perito_avaluador: m4Data.subtipo === 'autoestimacion' ? m4Data.perito_avaluador : null,
-        texto_considerando: m4Data.texto_considerando || ''
+        texto_considerando: m4Data.texto_considerando || '',
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -3280,6 +3387,7 @@ export default function MutacionesResoluciones() {
     setSearchPredioM4('');
     setSearchResultsM4([]);
     setRadicadosDisponiblesM4([]);
+    setFechasInscripcionGeneral([]);
   };
 
   // ===== FUNCIONES PARA M5 - CANCELACIÓN / INSCRIPCIÓN =====
@@ -3399,7 +3507,8 @@ export default function MutacionesResoluciones() {
         codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
         predio_m5: m5Data.predio,
         observaciones: m5Data.observaciones,
-        texto_considerando: m5Data.texto_considerando || ''
+        texto_considerando: m5Data.texto_considerando || '',
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -3455,6 +3564,7 @@ export default function MutacionesResoluciones() {
     setSearchPredioM5('');
     setSearchResultsM5([]);
     setRadicadosDisponiblesM5([]);
+    setFechasInscripcionGeneral([]);
   };
 
   // =====================
@@ -3719,7 +3829,8 @@ export default function MutacionesResoluciones() {
         zonas_terreno_anteriores: zonasTerreno_Rect_Anterior,
         zonas_terreno_nuevas: zonasTerreno_Rect_Nueva,
         construcciones_anteriores: construcciones_Rect_Anterior,
-        construcciones_nuevas: construcciones_Rect_Nueva
+        construcciones_nuevas: construcciones_Rect_Nueva,
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
       const response = await axios.post(`${API}/solicitudes-mutacion`, payload, {
@@ -3786,6 +3897,7 @@ export default function MutacionesResoluciones() {
       id: 'A', piso: '0', habitaciones: '0', banos: '0', locales: '0',
       tipificacion: '', uso: '', puntaje: '0', area_construida: '0'
     }]);
+    setFechasInscripcionGeneral([]);
   };
 
   // Generar resolución de Complementación de Información
@@ -3827,7 +3939,8 @@ export default function MutacionesResoluciones() {
         avaluo_nuevo: complementacionData.avaluo_nuevo,
         documentos_soporte: complementacionData.documentos_soporte,
         observaciones: complementacionData.observaciones,
-        texto_considerando: complementacionData.texto_considerando || ''
+        texto_considerando: complementacionData.texto_considerando || '',
+        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
       };
 
       const response = await axios.post(
@@ -3895,6 +4008,7 @@ export default function MutacionesResoluciones() {
     setSearchPredioComplementacion('');
     setSearchResultsComplementacion([]);
     setRadicadosDisponiblesComplementacion([]);
+    setFechasInscripcionGeneral([]);
   };
 
   // Construir código predial de 30 dígitos para M5
@@ -4157,7 +4271,7 @@ export default function MutacionesResoluciones() {
     setGuardandoPredioM5(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       const predioPayload = {
         codigo_predial_nacional: codigoCompleto,
         municipio: m5Data.municipio,
@@ -4175,9 +4289,33 @@ export default function MutacionesResoluciones() {
         origen: 'M5_inscripcion'
       };
 
-      const response = await axios.post(`${API}/predios/m5/crear`, predioPayload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Primer intento — si el backend responde 409 (predio eliminado), pedir confirmación
+      let response;
+      try {
+        response = await axios.post(`${API}/predios/m5/crear`, predioPayload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        if (err.response?.status === 409 && err.response?.data?.detail?.error === 'PREDIO_ELIMINADO') {
+          const det = err.response.data.detail;
+          const confirmar = window.confirm(
+            `Este código fue eliminado en vigencia ${det.vigencia_eliminacion || 'N/A'}.\n` +
+            `Motivo: ${det.motivo || 'Sin motivo registrado'}\n\n` +
+            `¿Desea continuar creando el predio como reaparición?`
+          );
+          if (!confirmar) {
+            setGuardandoPredioM5(false);
+            return;
+          }
+          // Reintentar con flag de reaparición
+          predioPayload.es_reaparicion = true;
+          response = await axios.post(`${API}/predios/m5/crear`, predioPayload, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } else {
+          throw err;
+        }
+      }
 
       if (response.data.id) {
         toast.success('Predio creado exitosamente');
@@ -4731,6 +4869,16 @@ export default function MutacionesResoluciones() {
                           }}
                         />
                       </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Decreto</Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="Ej: Decreto 123 de 2026"
+                          value={fecha.decreto || ''}
+                          onChange={(e) => actualizarFechaInscripcionM3(fidx, 'decreto', e.target.value)}
+                        />
+                      </div>
                       {m3Data.fechas_inscripcion.length > 1 && (
                         <Button
                           size="sm"
@@ -5195,6 +5343,9 @@ export default function MutacionesResoluciones() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Inscripción Catastral */}
+          {renderInscripcionCatastral(fechasInscripcionGeneral, setFechasInscripcionGeneral)}
         </>
       )}
     </div>
@@ -6040,6 +6191,9 @@ export default function MutacionesResoluciones() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Inscripción Catastral */}
+          {renderInscripcionCatastral(fechasInscripcionGeneral, setFechasInscripcionGeneral)}
         </>
       )}
     </div>
@@ -6491,6 +6645,9 @@ export default function MutacionesResoluciones() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Inscripción Catastral */}
+          {renderInscripcionCatastral(fechasInscripcionGeneral, setFechasInscripcionGeneral)}
         </>
       )}
     </div>
@@ -6993,6 +7150,9 @@ export default function MutacionesResoluciones() {
               />
             </CardContent>
           </Card>
+
+          {/* Inscripción Catastral */}
+          {renderInscripcionCatastral(fechasInscripcionGeneral, setFechasInscripcionGeneral)}
         </>
       )}
     </div>
@@ -7776,6 +7936,16 @@ export default function MutacionesResoluciones() {
                             actualizarFechaInscripcion('cancelado', idx, fidx, 'avaluo', val);
                             actualizarFechaInscripcion('cancelado', idx, fidx, 'avaluo_source', 'manual');
                           }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Decreto</Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="Ej: Decreto 123 de 2026"
+                          value={fecha.decreto || ''}
+                          onChange={(e) => actualizarFechaInscripcion('cancelado', idx, fidx, 'decreto', e.target.value)}
                         />
                       </div>
                       {(predio.fechas_inscripcion?.length > 1) && (
@@ -8619,6 +8789,16 @@ export default function MutacionesResoluciones() {
                           }}
                         />
                       </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-slate-600">Decreto</Label>
+                        <Input
+                          type="text"
+                          className="h-8 text-xs"
+                          placeholder="Ej: Decreto 123 de 2026"
+                          value={fecha.decreto || ''}
+                          onChange={(e) => actualizarFechaInscripcion('inscrito', idx, fidx, 'decreto', e.target.value)}
+                        />
+                      </div>
                       {(predio.fechas_inscripcion?.length > 1) && (
                         <Button
                           size="sm"
@@ -8635,7 +8815,7 @@ export default function MutacionesResoluciones() {
               </div>
             </div>
           ))}
-          
+
           {m2Data.predios_inscritos.length === 0 && (
             <p className="text-center text-slate-500 py-4">
               Haga clic en "Nuevo Predio" para añadir predios a inscribir
@@ -9394,6 +9574,9 @@ export default function MutacionesResoluciones() {
                     </CardContent>
                   </Card>
 
+                  {/* Inscripción Catastral */}
+                  {renderInscripcionCatastral(fechasInscripcionGeneral, setFechasInscripcionGeneral)}
+
                   {/* Preview */}
                   {m1Data.numero_resolucion && (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border">
@@ -9409,7 +9592,7 @@ export default function MutacionesResoluciones() {
               )}
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => {
               setShowMutacionDialog(false);
@@ -9445,9 +9628,10 @@ export default function MutacionesResoluciones() {
                           propietarios_nuevos: m1Data.propietarios_nuevos,
                           observaciones: m1Data.observaciones,
                           texto_considerando: m1Data.texto_considerando || '',
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
                           enviar_a_aprobacion: true
                         };
-                        
+
                         const response = await axios.post(
                           `${API}/solicitudes-mutacion`,
                           payload,
@@ -9538,7 +9722,8 @@ export default function MutacionesResoluciones() {
                         destino_nuevo: m3Data.destino_nuevo, construcciones_nuevas: m3Data.construcciones_nuevas,
                         avaluo_anterior: m3Data.avaluo_anterior || m3Data.predio.avaluo || null,
                         avaluo_nuevo: m3Data.avaluo_nuevo, observaciones: m3Data.observaciones,
-                        texto_considerando: m3Data.texto_considerando
+                        texto_considerando: m3Data.texto_considerando,
+                        fechas_inscripcion: m3Data.fechas_inscripcion || []
                       }, resetFormularioM3);
                     }}
                     disabled={enviandoSolicitud}
@@ -9577,6 +9762,7 @@ export default function MutacionesResoluciones() {
                           avaluo_nuevo: m3Data.avaluo_nuevo,
                           observaciones: m3Data.observaciones,
                           texto_considerando: m3Data.texto_considerando,
+                          fechas_inscripcion: m3Data.fechas_inscripcion || [],
                           enviar_a_aprobacion: true
                         };
 
@@ -9645,7 +9831,8 @@ export default function MutacionesResoluciones() {
                         tipo: 'M4', tipo_mutacion: 'M4', subtipo: m4Data.subtipo, decision: m4Data.decision,
                         municipio: m4Data.municipio, radicado: m4Data.radicado, predio: m4Data.predio,
                         predio_id: m4Data.predio.id, avaluo_nuevo: m4Data.avaluo_nuevo,
-                        observaciones: m4Data.observaciones, texto_considerando: m4Data.texto_considerando
+                        observaciones: m4Data.observaciones, texto_considerando: m4Data.texto_considerando,
+                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
                       }, resetFormularioM4);
                     }}
                     disabled={enviandoSolicitud}
@@ -9679,6 +9866,7 @@ export default function MutacionesResoluciones() {
                           avaluo_nuevo: m4Data.avaluo_nuevo,
                           observaciones: m4Data.observaciones,
                           texto_considerando: m4Data.texto_considerando,
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
                           enviar_a_aprobacion: true
                         };
 
@@ -9749,7 +9937,8 @@ export default function MutacionesResoluciones() {
                         predio_m5: m5Data.predio, vigencia_cancelacion: m5Data.vigencia,
                         motivo_solicitud: m5Data.motivo_solicitud, es_doble_inscripcion: m5Data.es_doble_inscripcion,
                         codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
-                        observaciones: m5Data.observaciones, texto_considerando: m5Data.texto_considerando
+                        observaciones: m5Data.observaciones, texto_considerando: m5Data.texto_considerando,
+                        fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
                       }, resetM5Form);
                     }}
                     disabled={enviandoSolicitud}
@@ -9786,6 +9975,7 @@ export default function MutacionesResoluciones() {
                           codigo_predio_duplicado: m5Data.codigo_predio_duplicado,
                           observaciones: m5Data.observaciones,
                           texto_considerando: m5Data.texto_considerando,
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
                           enviar_a_aprobacion: true
                         };
 
@@ -9866,7 +10056,8 @@ export default function MutacionesResoluciones() {
                           area_construida_nueva: rectificacionData.area_construida_nueva,
                           avaluo_nuevo: rectificacionData.avaluo_nuevo,
                           motivo_solicitud: rectificacionData.motivo_solicitud,
-                          observaciones: rectificacionData.observaciones, texto_considerando: rectificacionData.texto_considerando
+                          observaciones: rectificacionData.observaciones, texto_considerando: rectificacionData.texto_considerando,
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo)
                         }, resetRectificacionForm);
                       }}
                       disabled={enviandoSolicitud}
@@ -9914,6 +10105,7 @@ export default function MutacionesResoluciones() {
                           motivo_solicitud: rectificacionData.motivo_solicitud,
                           observaciones: rectificacionData.observaciones,
                           texto_considerando: rectificacionData.texto_considerando,
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
                           enviar_a_aprobacion: true
                         };
 
@@ -9996,6 +10188,7 @@ export default function MutacionesResoluciones() {
                           documentos_soporte: complementacionData.documentos_soporte,
                           observaciones: complementacionData.observaciones,
                           texto_considerando: complementacionData.texto_considerando,
+                          fechas_inscripcion: fechasInscripcionGeneral.filter(f => f.año && f.avaluo),
                           enviar_a_aprobacion: true
                         };
                         

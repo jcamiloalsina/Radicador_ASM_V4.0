@@ -105,39 +105,53 @@ async def estadisticas_certificados(current_user: dict = Depends(get_current_use
     ahora_str = ahora.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     limite_str = fecha_limite_por_vencer.strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
 
-    total = await db.certificados_verificables.count_documents({})
+    pipeline = [
+        {"$facet": {
+            "total": [{"$count": "n"}],
+            "activos": [
+                {"$match": {
+                    "estado": "activo",
+                    "$or": [
+                        {"fecha_vencimiento": {"$gt": ahora_str}},
+                        {"fecha_vencimiento": {"$exists": False}}
+                    ]
+                }},
+                {"$count": "n"}
+            ],
+            "por_vencer": [
+                {"$match": {
+                    "estado": "activo",
+                    "fecha_vencimiento": {"$lte": limite_str, "$gt": ahora_str}
+                }},
+                {"$count": "n"}
+            ],
+            "vencidos": [
+                {"$match": {
+                    "$or": [
+                        {"estado": "vencido"},
+                        {"estado": "activo", "fecha_vencimiento": {"$lte": ahora_str}}
+                    ]
+                }},
+                {"$count": "n"}
+            ],
+            "anulados": [
+                {"$match": {"estado": "anulado"}},
+                {"$count": "n"}
+            ]
+        }}
+    ]
 
-    activos = await db.certificados_verificables.count_documents({
-        "estado": "activo",
-        "$or": [
-            {"fecha_vencimiento": {"$gt": ahora_str}},
-            {"fecha_vencimiento": {"$exists": False}}
-        ]
-    })
+    result = await db.certificados_verificables.aggregate(pipeline).to_list(1)
+    stats = result[0] if result else {}
 
-    por_vencer = await db.certificados_verificables.count_documents({
-        "estado": "activo",
-        "fecha_vencimiento": {
-            "$lte": limite_str,
-            "$gt": ahora_str
-        }
-    })
+    get_count = lambda key: stats.get(key, [{}])[0].get("n", 0) if stats.get(key) else 0
 
-    vencidos = await db.certificados_verificables.count_documents({
-        "$or": [
-            {"estado": "vencido"},
-            {"estado": "activo", "fecha_vencimiento": {"$lte": ahora_str}}
-        ]
-    })
-
-    anulados = await db.certificados_verificables.count_documents({"estado": "anulado"})
-    
     return {
-        "total": total,
-        "activos": activos,
-        "por_vencer": por_vencer,
-        "vencidos": vencidos,
-        "anulados": anulados
+        "total": get_count("total"),
+        "activos": get_count("activos"),
+        "por_vencer": get_count("por_vencer"),
+        "vencidos": get_count("vencidos"),
+        "anulados": get_count("anulados")
     }
 
 

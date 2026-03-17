@@ -19,7 +19,9 @@ import {
   saveProyectoOffline,
   getProyectoOffline,
   updatePredioOffline,
-  clearAllCambiosPendientes
+  clearAllCambiosPendientes,
+  cleanupOldData,
+  checkStorageQuota
 } from '../utils/offlineDB';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -318,10 +320,11 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         setSyncProgress({ current: i + 1, total: cambios.length, message: `Sincronizando ${i + 1}/${cambios.length}...` });
         
         try {
-          // Configuración común con timeout extendido para datos grandes
-          const config = { 
+          // Timeout adaptativo: visitas con fotos = 3min, resto = 60s
+          const hasImages = cambio.tipo === 'visita' && (cambio.datos?.fotos?.length > 0 || cambio.datos?.firma_visitado_base64);
+          const config = {
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 180000 // 3 minutos por cambio (aumentado para conexiones lentas)
+            timeout: hasImages ? 180000 : 60000
           };
           
           // Comprimir datos de visita antes de enviar
@@ -428,14 +431,17 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
         setSyncProgress({ current: 0, total: 3, message: 'Descargando datos del proyecto...' });
       }
 
+      const errors = [];
+
       // 1. Descargar proyecto
       try {
         const proyectoRes = await axios.get(`${API}/api/actualizacion/proyectos/${proyectoId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }, timeout: 30000
         });
         await saveProyectoOffline(proyectoRes.data);
       } catch (e) {
-        console.log('[Sync] Error descargando proyecto:', e.message);
+        errors.push('proyecto');
+        console.warn('[Sync] Error descargando proyecto:', e.message);
       }
 
       if (showProgress) {
@@ -445,43 +451,49 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
       // 2. Descargar predios
       try {
         const prediosRes = await axios.get(`${API}/api/actualizacion/proyectos/${proyectoId}/predios`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }, timeout: 60000
         });
         const prediosData = prediosRes.data.predios || prediosRes.data || [];
         const proyecto = await getProyectoOffline(proyectoId);
         const municipio = proyecto?.municipio;
         await savePrediosOffline(proyectoId, prediosData, municipio);
       } catch (e) {
-        console.log('[Sync] Error descargando predios:', e.message);
+        errors.push('predios');
+        console.warn('[Sync] Error descargando predios:', e.message);
       }
 
       if (showProgress) {
         setSyncProgress({ current: 2, total: 3, message: 'Descargando geometrías...' });
       }
 
-      // 3. Descargar geometrías (solo si es necesario)
+      // 3. Descargar geometrías
       try {
         const geomRes = await axios.get(`${API}/api/actualizacion/proyectos/${proyectoId}/geometrias`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }, timeout: 60000
         });
         const geometrias = geomRes.data.geometrias || geomRes.data?.features || [];
         if (geometrias.length > 0) {
           await saveGeometriasOffline(proyectoId, geometrias);
         }
       } catch (e) {
-        console.log('[Sync] Error descargando geometrías:', e.message);
+        errors.push('geometrías');
+        console.warn('[Sync] Error descargando geometrías:', e.message);
       }
 
       await setLastSync(proyectoId);
       setLastSyncState(new Date().toISOString());
-      
+
       if (showProgress) {
-        setSyncProgress({ current: 3, total: 3, message: 'Sincronización completa' });
+        setSyncProgress({ current: 3, total: 3, message: errors.length ? `Completado con ${errors.length} error(es)` : 'Sincronización completa' });
+      }
+
+      if (errors.length > 0) {
+        console.warn(`[Sync] Descarga parcial — fallaron: ${errors.join(', ')}`);
       }
 
       await refreshStats();
       setHasOffline(true);
-      
+
       console.log('[Sync] Datos descargados correctamente');
       return true;
     } catch (e) {
@@ -593,14 +605,24 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
     const init = async () => {
       try {
         await initOfflineDB();
-        
+
+        // Limpieza automática de datos antiguos (una vez al iniciar)
+        cleanupOldData(30).catch(() => {});
+
+        // Verificar cuota de almacenamiento
+        const quota = await checkStorageQuota();
+        if (quota && quota.usagePercent > 80) {
+          console.warn(`[OfflineDB] Almacenamiento al ${quota.usagePercent}% (${quota.usageMB}MB / ${quota.quotaMB}MB)`);
+          toast.warning(`Almacenamiento offline al ${quota.usagePercent}%. Considere limpiar datos antiguos.`, { duration: 5000 });
+        }
+
         if (proyectoId && mountedRef.current) {
           const hasData = await hasOfflineData(proyectoId);
           setHasOffline(hasData);
-          
+
           const lastSyncTime = await getLastSync(proyectoId);
           setLastSyncState(lastSyncTime);
-          
+
           await refreshStats();
         }
       } catch (e) {

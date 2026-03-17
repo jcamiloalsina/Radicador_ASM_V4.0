@@ -409,6 +409,7 @@ export default function VisorActualizacion() {
   
   // Estados para formato de visita
   const [showVisitaModal, setShowVisitaModal] = useState(false);
+  const [visitaReadOnly, setVisitaReadOnly] = useState(false);
   const [visitaPagina, setVisitaPagina] = useState(1); // Página actual del formulario (1-5)
   const [tipoVisita, setTipoVisita] = useState('terreno'); // 'terreno' o 'mejora'
   const [visitaData, setVisitaDataRaw] = useState({
@@ -2343,20 +2344,28 @@ export default function VisorActualizacion() {
 
   // Abrir el formulario de visita original
   const abrirFormularioVisita = () => {
-    // Si el predio ya está visitado, mostrar confirmación de re-visita
+    // Si el predio ya tiene visita, abrir en solo lectura
     if (selectedPredio?.estado_visita === 'visitado' || selectedPredio?.estado_visita === 'visitado_firmado') {
-      setPredioParaRevisita(selectedPredio);
-      setShowConfirmRevisita(true);
+      setVisitaReadOnly(true);
+      setShowVisitaModal(true);
       return;
     }
-    // Si no está visitado, abrir directamente
+    // Si no está visitado, abrir para editar
+    setVisitaReadOnly(false);
     abrirFormatoVisita();
   };
-  
+
+  // Abrir formulario para re-visita (editable, sobrescribe datos)
+  const abrirRevisita = () => {
+    setVisitaReadOnly(false);
+    abrirFormatoVisita();
+  };
+
   // Confirmar re-visita (sobrescribir datos existentes)
   const confirmarRevisita = () => {
     setShowConfirmRevisita(false);
     setPredioParaRevisita(null);
+    setVisitaReadOnly(false);
     abrirFormatoVisita();
   };
   
@@ -2487,7 +2496,7 @@ export default function VisorActualizacion() {
           `${API}/actualizacion/proyectos/${proyectoId}/predios/${selectedPredio.codigo_predial || selectedPredio.numero_predial}`,
           {
             ...dataToSave,
-            actualizado_por: user?.email,
+            actualizado_por: user?.full_name || user?.email,
             actualizado_en: new Date().toISOString(),
             estado_visita: 'actualizado'
           },
@@ -5184,6 +5193,7 @@ export default function VisorActualizacion() {
               onToggleConstrucciones={toggleConstruccionesPredio}
               onClose={cerrarDetalleSimplificado}
               onOpenVisita={abrirFormularioVisita}
+              onOpenRevisita={abrirRevisita}
               onOpenVisitaMejora={(mejora) => {
                 // Obtener el código de la mejora
                 const codigoMejora = mejora?.properties?.codigo || '';
@@ -6259,8 +6269,9 @@ export default function VisorActualizacion() {
                       <Button
                         variant="outline"
                         onClick={async () => {
-                          // Si el predio ya fue visitado pero no tiene formato_visita cargado, cargarlo primero
-                          if ((selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') && !selectedPredio.formato_visita) {
+                          const yaVisitado = selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado';
+                          // Si ya fue visitado pero no tiene formato_visita cargado, cargarlo primero
+                          if (yaVisitado && !selectedPredio.formato_visita) {
                             try {
                               const token = localStorage.getItem('token');
                               const codigo = selectedPredio.codigo_predial || selectedPredio.numero_predial;
@@ -6269,23 +6280,23 @@ export default function VisorActualizacion() {
                                 { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
                               );
                               if (resp.data?.visita) {
-                                // Usar callback para asegurar que el state se actualice antes de abrir el modal
                                 setSelectedPredio(prev => {
                                   const updated = prev ? { ...prev, formato_visita: resp.data.visita } : prev;
-                                  // Abrir modal en el siguiente tick, después de que React procese el state update
                                   setTimeout(() => {
                                     setShowPredioDetail(false);
+                                    setVisitaReadOnly(true);
                                     setShowVisitaModal(true);
                                   }, 50);
                                   return updated;
                                 });
-                                return; // El setTimeout abrirá el modal
+                                return;
                               }
                             } catch (err) {
-                              console.error('[Editar Visita] Error cargando formato_visita:', err);
+                              console.error('[Ver Visita] Error cargando formato_visita:', err);
                             }
                           }
                           setShowPredioDetail(false);
+                          setVisitaReadOnly(yaVisitado);
                           setShowVisitaModal(true);
                         }}
                         disabled={saving}
@@ -6294,7 +6305,7 @@ export default function VisorActualizacion() {
                           : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'}`}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') ? 'Editar Visita' : 'Registrar Visita'}
+                        {(selectedPredio.estado_visita === 'visitado' || selectedPredio.estado_visita === 'visitado_firmado') ? 'Ver Formulario' : 'Registrar Visita'}
                       </Button>
                     )}
                     
@@ -6410,8 +6421,10 @@ export default function VisorActualizacion() {
       {/* Modal de Formato de Visita - NUEVO: Estado completamente encapsulado para máximo rendimiento */}
       <VisitaFormModal
         open={showVisitaModal}
+        readOnly={visitaReadOnly}
         onClose={() => {
           setShowVisitaModal(false);
+          setVisitaReadOnly(false);
           // Limpiar estado de mejora al cerrar
           setTipoVisita('terreno');
           setMejoraSeleccionada(null);

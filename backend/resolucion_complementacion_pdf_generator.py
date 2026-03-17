@@ -767,6 +767,65 @@ def generar_resolucion_complementacion_pdf(data: dict) -> bytes:
         direccion_override=direccion_nueva_data,
         destino_override=destino_nuevo_data
     )
+    # =====================
+    # FECHAS DE INSCRIPCIÓN CATASTRAL (si existen)
+    # =====================
+    fechas_inscripcion = data.get("fechas_inscripcion", [])
+    if fechas_inscripcion and len(fechas_inscripcion) > 0:
+        verificar_espacio(40 + len(fechas_inscripcion) * 12)
+
+        # Título
+        c.setFont(font_bold, 8)
+        c.setFillColor(NEGRO)
+        c.drawString(MARGIN_LEFT, y_position, "INSCRIPCIÓN CATASTRAL:")
+        y_position -= 12
+
+        # Header
+        insc_cols = [CONTENT_WIDTH * 0.2, CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.45]
+        insc_headers = ["AÑO", "AVALÚO", "DECRETO"]
+        insc_row_h = 14
+
+        c.setFillColor(colors.HexColor('#e8e8e8'))
+        c.rect(MARGIN_LEFT, y_position - insc_row_h, CONTENT_WIDTH, insc_row_h, fill=1, stroke=1)
+        c.setFillColor(NEGRO)
+        c.setFont(font_bold, 7)
+        x = MARGIN_LEFT
+        for i, header in enumerate(insc_headers):
+            c.drawCentredString(x + insc_cols[i]/2, y_position - insc_row_h/2 - 2, header)
+            c.rect(x, y_position - insc_row_h, insc_cols[i], insc_row_h, fill=0, stroke=1)
+            x += insc_cols[i]
+        y_position -= insc_row_h
+
+        # Data rows
+        c.setFont(font_normal, 7)
+        for fecha in fechas_inscripcion:
+            verificar_espacio(insc_row_h)
+            x = MARGIN_LEFT
+
+            # Año
+            c.rect(x, y_position - insc_row_h, insc_cols[0], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[0]/2, y_position - insc_row_h/2 - 2, str(fecha.get("año", "")))
+            x += insc_cols[0]
+
+            # Avalúo
+            avaluo_val = fecha.get("avaluo", 0)
+            try:
+                avaluo_fmt = f"${float(avaluo_val):,.0f}".replace(",", ".") if avaluo_val else "$0"
+            except:
+                avaluo_fmt = str(avaluo_val)
+            c.rect(x, y_position - insc_row_h, insc_cols[1], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[1]/2, y_position - insc_row_h/2 - 2, avaluo_fmt)
+            x += insc_cols[1]
+
+            # Decreto
+            c.rect(x, y_position - insc_row_h, insc_cols[2], insc_row_h, fill=0, stroke=1)
+            c.drawCentredString(x + insc_cols[2]/2, y_position - insc_row_h/2 - 2, str(fecha.get("decreto", "")))
+            x += insc_cols[2]
+
+            y_position -= insc_row_h
+
+        y_position -= 6
+
     y_position -= 6
 
     # Artículo 02
