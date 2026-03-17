@@ -30917,7 +30917,7 @@ async def generar_resolucion_m3(
             "tipo_mutacion": "M3",
             "subtipo": request.subtipo,
             "municipio": municipio_nombre,
-            "codigo_municipio": siguiente_data.get("codigo_municipio", request.municipio),
+            "codigo_municipio": resultado_resolucion.get("codigo_municipio", request.municipio),
             "radicado": request.radicado,
             "predio_id": predio.get("id"),
             "codigo_predial": predio.get("codigo_predial_nacional"),
