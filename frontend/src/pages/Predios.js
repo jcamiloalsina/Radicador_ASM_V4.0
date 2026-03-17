@@ -6037,11 +6037,75 @@ export default function Predios() {
                               </div>
                             )}
                             
-                            {/* Si no hay propietarios mostrados, indicar */}
-                            {!r.propietarios_anteriores?.length && !r.propietarios_nuevos?.length && !r.campos_modificados?.length && (
-                              <p className="text-xs text-slate-500 italic">
-                                Sin detalles de cambios registrados
-                              </p>
+                            {/* Detalles de avalúo (M4, M3, Rectificación, Complementación) */}
+                            {(r.avaluo_anterior !== undefined || r.avaluo_nuevo !== undefined) && (
+                              <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                                <p className="text-xs font-semibold text-amber-700 mb-1">
+                                  {r.tipo_mutacion === 'M4' ? 'Revisión de Avalúo' : 'Cambios en Avalúo'}
+                                  {r.decision && ` — ${r.decision === 'favorable' ? 'Favorable' : r.decision === 'parcialmente_favorable' ? 'Parcialmente favorable' : 'Desfavorable'}`}:
+                                </p>
+                                <div className="text-xs flex items-center gap-1">
+                                  <span className="text-red-600 line-through">$ {Number(r.avaluo_anterior || 0).toLocaleString('es-CO')}</span>
+                                  <span className="text-slate-400">→</span>
+                                  <span className="text-emerald-700 font-medium">$ {Number(r.avaluo_nuevo || 0).toLocaleString('es-CO')}</span>
+                                </div>
+                                {r.motivo && (
+                                  <p className="text-xs text-amber-600 mt-1">Motivo: {r.motivo}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Detalles de área (Rectificación, Complementación) */}
+                            {(r.area_terreno_anterior !== undefined || r.area_terreno_nueva !== undefined ||
+                              r.area_construida_anterior !== undefined || r.area_construida_nueva !== undefined) && (
+                              <div className="bg-purple-50 border border-purple-200 rounded p-2">
+                                <p className="text-xs font-semibold text-purple-700 mb-1">Cambios en Áreas:</p>
+                                <div className="space-y-1">
+                                  {(r.area_terreno_anterior !== undefined || r.area_terreno_nueva !== undefined) && (
+                                    <div className="text-xs flex items-center gap-1">
+                                      <span className="font-medium text-purple-700">Terreno:</span>
+                                      <span className="text-red-600 line-through">{Number(r.area_terreno_anterior || 0).toLocaleString('es-CO')} m²</span>
+                                      <span className="text-slate-400">→</span>
+                                      <span className="text-emerald-700 font-medium">{Number(r.area_terreno_nueva || 0).toLocaleString('es-CO')} m²</span>
+                                    </div>
+                                  )}
+                                  {(r.area_construida_anterior !== undefined || r.area_construida_nueva !== undefined) && (
+                                    <div className="text-xs flex items-center gap-1">
+                                      <span className="font-medium text-purple-700">Construida:</span>
+                                      <span className="text-red-600 line-through">{Number(r.area_construida_anterior || 0).toLocaleString('es-CO')} m²</span>
+                                      <span className="text-slate-400">→</span>
+                                      <span className="text-emerald-700 font-medium">{Number(r.area_construida_nueva || 0).toLocaleString('es-CO')} m²</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Detalles de destino económico (M3) */}
+                            {(r.destino_anterior || r.destino_nuevo) && (
+                              <div className="bg-cyan-50 border border-cyan-200 rounded p-2">
+                                <p className="text-xs font-semibold text-cyan-700 mb-1">Cambio de Destino Económico:</p>
+                                <div className="text-xs flex items-center gap-1">
+                                  <span className="text-red-600 line-through">{r.destino_anterior || 'N/A'}</span>
+                                  <span className="text-slate-400">→</span>
+                                  <span className="text-emerald-700 font-medium">{r.destino_nuevo || 'N/A'}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Detalles M2 (Englobe/Desenglobe) */}
+                            {r.cambios && (
+                              <div className="bg-indigo-50 border border-indigo-200 rounded p-2">
+                                <p className="text-xs font-semibold text-indigo-700 mb-1">Detalle:</p>
+                                <p className="text-xs text-indigo-600">{r.cambios.tipo || r.cambios.descripcion || JSON.stringify(r.cambios)}</p>
+                              </div>
+                            )}
+
+                            {/* Descripción general si existe */}
+                            {r.descripcion && !r.cambios && (
+                              <div className="bg-slate-50 border border-slate-200 rounded p-2">
+                                <p className="text-xs text-slate-600">{r.descripcion}</p>
+                              </div>
                             )}
                           </div>
                         </div>
