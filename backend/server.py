@@ -6350,7 +6350,27 @@ async def get_predios(
         query.update(search_filter)
     
     total = await db.predios.count_documents(query)
-    
+
+    # Conteo por zona (urbano/rural/corregimiento)
+    zona_pipeline = [
+        {"$match": query},
+        {"$addFields": {
+            "_zona_code": {"$substr": ["$codigo_predial_nacional", 5, 2]}
+        }},
+        {"$group": {"_id": "$_zona_code", "count": {"$sum": 1}}}
+    ]
+    zona_results = await db.predios.aggregate(zona_pipeline).to_list(100)
+
+    zona_counts = {"urbano": 0, "rural": 0, "corregimiento": 0}
+    for zr in zona_results:
+        zc = zr["_id"] or ""
+        if zc == "00":
+            zona_counts["rural"] += zr["count"]
+        elif zc == "01":
+            zona_counts["urbano"] += zr["count"]
+        elif zc >= "02":
+            zona_counts["corregimiento"] += zr["count"]
+
     # Usar agregación para extraer zona del código predial y ordenar
     # La zona está en las posiciones 6-7 (índice 5-7) del codigo_predial_nacional
     pipeline = [
@@ -6368,7 +6388,8 @@ async def get_predios(
     
     return {
         "total": total,
-        "predios": predios
+        "predios": predios,
+        "zona_counts": zona_counts
     }
 
 @api_router.get("/predios/stats/summary")

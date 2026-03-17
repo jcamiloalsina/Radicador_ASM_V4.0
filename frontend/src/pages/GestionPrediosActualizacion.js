@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -2136,10 +2137,10 @@ export default function GestionPrediosActualizacion() {
                       onValueChange={(v) => setFormData({...formData, destino_economico: v})}
                       className="flex flex-wrap gap-3"
                     >
-                      {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
-                        <div key={k} className="flex items-center space-x-1">
-                          <RadioGroupItem value={k} id={`destino_create_${k}`} />
-                          <Label htmlFor={`destino_create_${k}`} className="text-xs cursor-pointer">{k} - {v}</Label>
+                      {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                        <div key={d.value} className="flex items-center space-x-1">
+                          <RadioGroupItem value={d.value} id={`destino_create_${d.value}`} />
+                          <Label htmlFor={`destino_create_${d.value}`} className="text-xs cursor-pointer">{d.label}</Label>
                         </div>
                       ))}
                     </RadioGroup>
@@ -2482,10 +2483,10 @@ export default function GestionPrediosActualizacion() {
                     onValueChange={(v) => setFormData({...formData, destino_economico: v})}
                     className="flex flex-wrap gap-3"
                   >
-                    {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
-                      <div key={k} className="flex items-center space-x-1">
-                        <RadioGroupItem value={k} id={`destino_edit_${k}`} />
-                        <Label htmlFor={`destino_edit_${k}`} className="text-xs cursor-pointer">{k} - {v}</Label>
+                    {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                      <div key={d.value} className="flex items-center space-x-1">
+                        <RadioGroupItem value={d.value} id={`destino_edit_${d.value}`} />
+                        <Label htmlFor={`destino_edit_${d.value}`} className="text-xs cursor-pointer">{d.label}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -2616,7 +2617,7 @@ export default function GestionPrediosActualizacion() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Destino Económico</p>
-                  <p className="font-medium">{predioSeleccionado.destino_economico || 'N/A'}</p>
+                  <p className="font-medium">{getDestinoLabel(predioSeleccionado.destino_economico)}</p>
                 </div>
               </div>
               

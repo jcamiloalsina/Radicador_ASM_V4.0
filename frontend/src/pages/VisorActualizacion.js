@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo, startTransition } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import { MapContainer, TileLayer, GeoJSON, Marker, CircleMarker, useMap, useMapEvents, ImageOverlay } from 'react-leaflet';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -5308,7 +5309,7 @@ export default function VisorActualizacion() {
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Destino Económico</p>
-                        <p className="text-sm font-medium">{selectedPredio.destino_economico || '-'}</p>
+                        <p className="text-sm font-medium">{getDestinoLabel(selectedPredio.destino_economico)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Avalúo Catastral</p>
@@ -5854,26 +5855,9 @@ export default function VisorActualizacion() {
                             <SelectValue placeholder="Seleccionar" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="A">A - Habitacional</SelectItem>
-                            <SelectItem value="B">B - Industrial</SelectItem>
-                            <SelectItem value="C">C - Comercial</SelectItem>
-                            <SelectItem value="D">D - Agropecuario</SelectItem>
-                            <SelectItem value="E">E - Minero</SelectItem>
-                            <SelectItem value="F">F - Cultural</SelectItem>
-                            <SelectItem value="G">G - Recreacional</SelectItem>
-                            <SelectItem value="H">H - Salubridad</SelectItem>
-                            <SelectItem value="I">I - Institucional</SelectItem>
-                            <SelectItem value="J">J - Educativo</SelectItem>
-                            <SelectItem value="K">K - Religioso</SelectItem>
-                            <SelectItem value="L">L - Agrícola</SelectItem>
-                            <SelectItem value="M">M - Pecuario</SelectItem>
-                            <SelectItem value="N">N - Agroindustrial</SelectItem>
-                            <SelectItem value="O">O - Forestal</SelectItem>
-                            <SelectItem value="P">P - Uso Público</SelectItem>
-                            <SelectItem value="Q">Q - Lote Urbanizable No Urbanizado</SelectItem>
-                            <SelectItem value="R">R - Lote Urbanizado No Edificado</SelectItem>
-                            <SelectItem value="S">S - Lote No Urbanizable</SelectItem>
-                            <SelectItem value="T">T - Servicios Especiales</SelectItem>
+                            {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                              <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -6734,18 +6718,18 @@ export default function VisorActualizacion() {
                   <h4 className="font-semibold text-slate-700 mb-2">Datos Existentes</h4>
                   <div className="space-y-2 text-sm">
                     <div><span className="text-slate-500">Dirección:</span> {selectedPredio.direccion || '-'}</div>
-                    <div><span className="text-slate-500">Destino:</span> {selectedPredio.destino_economico || '-'}</div>
+                    <div><span className="text-slate-500">Destino:</span> {getDestinoLabel(selectedPredio.destino_economico)}</div>
                     <div><span className="text-slate-500">Área Terreno:</span> {selectedPredio.area_terreno || '-'} m²</div>
                     <div><span className="text-slate-500">Área Construida:</span> {selectedPredio.area_construida || '-'} m²</div>
                     <div><span className="text-slate-500">Propietarios:</span> {selectedPredio.propietarios?.length || 0}</div>
                   </div>
                 </div>
-                
+
                 <div className="bg-emerald-50 p-3 rounded-lg">
                   <h4 className="font-semibold text-emerald-700 mb-2">Propuesta de Cambio</h4>
                   <div className="space-y-2 text-sm">
                     <div><span className="text-slate-500">Dirección:</span> {editData.direccion || '-'}</div>
-                    <div><span className="text-slate-500">Destino:</span> {editData.destino_economico || '-'}</div>
+                    <div><span className="text-slate-500">Destino:</span> {getDestinoLabel(editData.destino_economico)}</div>
                     <div><span className="text-slate-500">Área Terreno:</span> {editData.area_terreno || '-'} m²</div>
                     <div><span className="text-slate-500">Área Construida:</span> {editData.area_construida || '-'} m²</div>
                     <div><span className="text-slate-500">Propietarios:</span> {propietarios.filter(p => p.nombre).length}</div>

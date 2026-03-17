@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -4349,29 +4350,8 @@ export default function MutacionesResoluciones() {
     }
   };
 
-  // Catálogo de destinos económicos
-  const DESTINOS_ECONOMICOS = [
-    { codigo: 'A', nombre: 'A - Habitacional' },
-    { codigo: 'B', nombre: 'B - Industrial' },
-    { codigo: 'C', nombre: 'C - Comercial' },
-    { codigo: 'D', nombre: 'D - Agropecuario' },
-    { codigo: 'E', nombre: 'E - Minero' },
-    { codigo: 'F', nombre: 'F - Cultural' },
-    { codigo: 'G', nombre: 'G - Recreacional' },
-    { codigo: 'H', nombre: 'H - Salubridad' },
-    { codigo: 'I', nombre: 'I - Institucional' },
-    { codigo: 'J', nombre: 'J - Educativo' },
-    { codigo: 'K', nombre: 'K - Religioso' },
-    { codigo: 'L', nombre: 'L - Agrícola' },
-    { codigo: 'M', nombre: 'M - Pecuario' },
-    { codigo: 'N', nombre: 'N - Agroindustrial' },
-    { codigo: 'O', nombre: 'O - Forestal' },
-    { codigo: 'P', nombre: 'P - Uso Público' },
-    { codigo: 'Q', nombre: 'Q - Lote Urbanizable No Urbanizado' },
-    { codigo: 'R', nombre: 'R - Lote Urbanizable No Edificado' },
-    { codigo: 'S', nombre: 'S - Lote No Urbanizable' },
-    { codigo: 'T', nombre: 'T - Servicios Especiales' }
-  ];
+  // Catálogo de destinos económicos (importado desde utils/destinoEconomico.js)
+  const DESTINOS_ECONOMICOS_ARRAY = DESTINOS_ECONOMICOS_OPTIONS.map(opt => ({ codigo: opt.value, nombre: opt.label }));
 
   // Renderizar formulario M3
   const renderFormularioM3 = () => (
@@ -4609,7 +4589,7 @@ export default function MutacionesResoluciones() {
                       <p className="font-bold text-lg mt-2">{m3Data.predio.codigo_predial_nacional}</p>
                       <p className="text-sm text-slate-600">{m3Data.predio.direccion}</p>
                       <p className="text-xs text-slate-500 mt-1">
-                        Destino: {m3Data.predio.destino_economico} | 
+                        Destino: {getDestinoLabel(m3Data.predio.destino_economico)} |
                         Área T: {formatAreaHectareas(m3Data.predio.area_terreno)} | 
                         Área C: {(m3Data.predio.area_construida || 0).toLocaleString()} m²
                       </p>
@@ -4646,7 +4626,7 @@ export default function MutacionesResoluciones() {
                   <div>
                     <Label className="text-xs text-blue-700">Destino Anterior</Label>
                     <div className="bg-blue-100 p-2 rounded text-sm font-medium text-blue-800">
-                      {m3Data.destino_anterior} - {DESTINOS_ECONOMICOS.find(d => d.codigo === m3Data.destino_anterior)?.nombre.split(' - ')[1] || 'Desconocido'}
+                      {getDestinoLabel(m3Data.destino_anterior)}
                     </div>
                   </div>
                   <div>
@@ -4658,7 +4638,7 @@ export default function MutacionesResoluciones() {
                       data-testid="m3-destino-nuevo-select"
                     >
                       <option value="">Seleccionar nuevo destino</option>
-                      {DESTINOS_ECONOMICOS.filter(d => d.codigo !== m3Data.destino_anterior).map(d => (
+                      {DESTINOS_ECONOMICOS_ARRAY.filter(d => d.codigo !== m3Data.destino_anterior).map(d => (
                         <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
                       ))}
                     </select>
@@ -5209,7 +5189,7 @@ export default function MutacionesResoluciones() {
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Destino</span>
-                        <span className="font-medium">{m4Data.predio.destino_economico || 'N/A'}</span>
+                        <span className="font-medium">{getDestinoLabel(m4Data.predio.destino_economico)}</span>
                       </div>
                       <div className="bg-white rounded p-2">
                         <span className="text-xs text-slate-500 block">Área Terreno</span>
@@ -5683,7 +5663,7 @@ export default function MutacionesResoluciones() {
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Matrícula</span><span className="font-medium">{getMatriculaInmobiliaria(predio)}</span></div>
-                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{m5Data.predio.destino_economico || 'N/A'}</span></div>
+                        <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Destino</span><span className="font-medium">{getDestinoLabel(m5Data.predio.destino_economico)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Área</span><span className="font-medium">{formatAreaHectareas(m5Data.predio.area_terreno)}</span></div>
                         <div className="bg-slate-50 rounded p-2"><span className="text-xs text-slate-500 block">Avalúo</span><span className="font-bold text-emerald-700">${(m5Data.predio.avaluo || 0).toLocaleString()}</span></div>
                       </div>
@@ -5977,7 +5957,7 @@ export default function MutacionesResoluciones() {
                           <div className="col-span-2">
                             <Label className="mb-2 block">Destino Económico *</Label>
                             <RadioGroup value={datosR1M5.destino_economico} onValueChange={(v) => setDatosR1M5(prev => ({...prev, destino_economico: v}))} className="flex flex-wrap gap-3">
-                              {DESTINOS_ECONOMICOS.slice(0, 10).map(d => (
+                              {DESTINOS_ECONOMICOS_ARRAY.map(d => (
                                 <div key={d.codigo} className="flex items-center space-x-1">
                                   <RadioGroupItem value={d.codigo} id={`m5_destino_${d.codigo}`} />
                                   <Label htmlFor={`m5_destino_${d.codigo}`} className="text-xs cursor-pointer">{d.nombre}</Label>
@@ -8230,7 +8210,7 @@ export default function MutacionesResoluciones() {
                           </div>
                           <div>
                             <p className="text-slate-500">Destino:</p>
-                            <p>{m2Data.predio_resultante.destino_economico}</p>
+                            <p>{getDestinoLabel(m2Data.predio_resultante.destino_economico)}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Área Terreno:</p>
@@ -10373,29 +10353,19 @@ export default function MutacionesResoluciones() {
                           onClick={() => setShowDestinoDropdown(!showDestinoDropdown)}
                         >
                           <span>
-                            {predioEditando.destino_economico === 'A' ? 'A - Habitacional' :
-                             predioEditando.destino_economico === 'B' ? 'B - Industrial' :
-                             predioEditando.destino_economico === 'C' ? 'C - Comercial' :
-                             predioEditando.destino_economico === 'D' ? 'D - Agropecuario' :
-                             predioEditando.destino_economico === 'E' ? 'E - Minero' :
-                             predioEditando.destino_economico === 'L' ? 'L - Agrícola' :
-                             predioEditando.destino_economico === 'R' ? 'R - Residencial' : 'Seleccionar'}
+                            {predioEditando.destino_economico ? getDestinoLabel(predioEditando.destino_economico) : 'Seleccionar'}
                           </span>
                           <ChevronDown className="h-4 w-4 opacity-50" />
                         </div>
                         {showDestinoDropdown && (
                           <div className="absolute z-[99999] mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            {[
-                              {v: 'A', l: 'A - Habitacional'}, {v: 'B', l: 'B - Industrial'},
-                              {v: 'C', l: 'C - Comercial'}, {v: 'D', l: 'D - Agropecuario'},
-                              {v: 'E', l: 'E - Minero'}, {v: 'L', l: 'L - Agrícola'}, {v: 'R', l: 'R - Residencial'}
-                            ].map(opt => (
+                            {DESTINOS_ECONOMICOS_OPTIONS.map(opt => (
                               <div
-                                key={opt.v}
-                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${predioEditando.destino_economico === opt.v ? 'bg-blue-100' : ''}`}
-                                onClick={() => { setPredioEditando(prev => ({...prev, destino_economico: opt.v})); setShowDestinoDropdown(false); }}
+                                key={opt.value}
+                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${predioEditando.destino_economico === opt.value ? 'bg-blue-100' : ''}`}
+                                onClick={() => { setPredioEditando(prev => ({...prev, destino_economico: opt.value})); setShowDestinoDropdown(false); }}
                               >
-                                {opt.l}
+                                {opt.label}
                               </div>
                             ))}
                           </div>
@@ -11106,49 +11076,28 @@ export default function MutacionesResoluciones() {
                     <div>
                       <Label className="text-sm font-medium">Destino Económico *</Label>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-                        {[
-                          {v: 'A', l: 'A - Habitacional'},
-                          {v: 'B', l: 'B - Industrial'},
-                          {v: 'C', l: 'C - Comercial'},
-                          {v: 'D', l: 'D - Agropecuario'},
-                          {v: 'E', l: 'E - Minero'},
-                          {v: 'F', l: 'F - Cultural'},
-                          {v: 'G', l: 'G - Recreacional'},
-                          {v: 'H', l: 'H - Salubridad'},
-                          {v: 'I', l: 'I - Institucional'},
-                          {v: 'J', l: 'J - Educativo'},
-                          {v: 'K', l: 'K - Religioso'},
-                          {v: 'L', l: 'L - Agrícola'},
-                          {v: 'M', l: 'M - Pecuario'},
-                          {v: 'N', l: 'N - Agroindustrial'},
-                          {v: 'O', l: 'O - Forestal'},
-                          {v: 'P', l: 'P - Uso Público'},
-                          {v: 'Q', l: 'Q - Lote Urbanizable No Urbanizado'},
-                          {v: 'R', l: 'R - Lote Urbanizable No Edificado'},
-                          {v: 'S', l: 'S - Lote No Urbanizable'},
-                          {v: 'T', l: 'T - Servicios Especiales'}
-                        ].map(opt => (
-                          <label 
-                            key={opt.v} 
+                        {DESTINOS_ECONOMICOS_OPTIONS.map(opt => (
+                          <label
+                            key={opt.value}
                             className="flex items-center gap-1.5 cursor-pointer text-sm"
                           >
-                            <div 
+                            <div
                               className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                nuevoPredioInscrito?.destino_economico === opt.v 
-                                  ? 'border-emerald-500 bg-emerald-500' 
+                                nuevoPredioInscrito?.destino_economico === opt.value
+                                  ? 'border-emerald-500 bg-emerald-500'
                                   : 'border-emerald-400'
                               }`}
-                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v}))}
+                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.value}))}
                             >
-                              {nuevoPredioInscrito?.destino_economico === opt.v && (
+                              {nuevoPredioInscrito?.destino_economico === opt.value && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-white" />
                               )}
                             </div>
-                            <span 
+                            <span
                               className="text-slate-700"
-                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.v}))}
+                              onClick={() => setNuevoPredioInscrito(prev => ({...prev, destino_economico: opt.value}))}
                             >
-                              {opt.l}
+                              {opt.label}
                             </span>
                           </label>
                         ))}

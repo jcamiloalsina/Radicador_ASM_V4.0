@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -1841,7 +1842,7 @@ export default function Pendientes() {
                               </>)}
                               {/* M3: Destino/avalúo */}
                               {mutacion.tipo === 'M3' && (<>
-                                {mutacion.destino_anterior && mutacion.destino_nuevo && `Destino: ${mutacion.destino_anterior} → ${mutacion.destino_nuevo}`}
+                                {mutacion.destino_anterior && mutacion.destino_nuevo && `Destino: ${getDestinoLabel(mutacion.destino_anterior)} → ${getDestinoLabel(mutacion.destino_nuevo)}`}
                                 {mutacion.destino_anterior && mutacion.destino_nuevo && mutacion.avaluo_anterior && ' · '}
                                 {mutacion.avaluo_anterior && `Avalúo: $${Number(mutacion.avaluo_anterior).toLocaleString()} → $${Number(mutacion.avaluo_nuevo || 0).toLocaleString()}`}
                               </>)}
@@ -2173,12 +2174,12 @@ export default function Pendientes() {
                       <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
                         <div className="bg-white p-2 rounded text-center">
                           <p className="text-xs text-slate-500">Anterior</p>
-                          <p className="text-sm font-bold text-red-600">{selectedMutacion.destino_anterior || '-'}</p>
+                          <p className="text-sm font-bold text-red-600">{getDestinoLabel(selectedMutacion.destino_anterior)}</p>
                         </div>
                         <span className="text-slate-400 text-lg">→</span>
                         <div className="bg-white p-2 rounded text-center">
                           <p className="text-xs text-slate-500">Nuevo</p>
-                          <p className="text-sm font-bold text-emerald-600">{selectedMutacion.destino_nuevo || '-'}</p>
+                          <p className="text-sm font-bold text-emerald-600">{getDestinoLabel(selectedMutacion.destino_nuevo)}</p>
                         </div>
                       </div>
                     </div>
@@ -2292,7 +2293,7 @@ export default function Pendientes() {
                             <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
                           )}
                           {predio.destino_economico && (
-                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{getDestinoLabel(predio.destino_economico)}</span></div>
                           )}
                           {predio.area_terreno && (
                             <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
@@ -2356,7 +2357,7 @@ export default function Pendientes() {
                             <div><span className="text-slate-500">Matrícula:</span> <span className="font-medium">{predio.matricula_inmobiliaria}</span></div>
                           )}
                           {predio.destino_economico && (
-                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{predio.destino_economico}</span></div>
+                            <div><span className="text-slate-500">Destino:</span> <span className="font-medium">{getDestinoLabel(predio.destino_economico)}</span></div>
                           )}
                           {predio.area_terreno && (
                             <div><span className="text-slate-500">Área terreno:</span> <span className="font-medium">{Number(predio.area_terreno).toLocaleString()} m²</span></div>
@@ -3274,26 +3275,9 @@ export default function Pendientes() {
                           onChange={(e) => setEditingPredioData({...editingPredioData, destino_economico: e.target.value})}
                         >
                           <option value="">Seleccione...</option>
-                          <option value="A">A - Habitacional</option>
-                          <option value="B">B - Industrial</option>
-                          <option value="C">C - Comercial</option>
-                          <option value="D">D - Agropecuario</option>
-                          <option value="E">E - Minero</option>
-                          <option value="F">F - Cultural</option>
-                          <option value="G">G - Recreacional</option>
-                          <option value="H">H - Salubridad</option>
-                          <option value="I">I - Institucional</option>
-                          <option value="J">J - Educativo</option>
-                          <option value="K">K - Religioso</option>
-                          <option value="L">L - Agrícola</option>
-                          <option value="M">M - Pecuario</option>
-                          <option value="N">N - Agroindustrial</option>
-                          <option value="O">O - Forestal</option>
-                          <option value="P">P - Uso Público</option>
-                          <option value="Q">Q - Lote Urbanizable No Urbanizado</option>
-                          <option value="R">R - Lote Urbanizado No Edificado</option>
-                          <option value="S">S - Lote No Urbanizable</option>
-                          <option value="T">T - Servicios Especiales</option>
+                          {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                            <option key={d.value} value={d.value}>{d.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -3441,7 +3425,7 @@ export default function Pendientes() {
                   <div><span className="text-slate-500">Área Terreno:</span> {selectedPredioNuevo.area_terreno?.toLocaleString()} m²</div>
                   <div><span className="text-slate-500">Área Construida:</span> {selectedPredioNuevo.area_construida?.toLocaleString() || 0} m²</div>
                   <div><span className="text-slate-500">Avalúo:</span> ${selectedPredioNuevo.avaluo?.toLocaleString()}</div>
-                  <div><span className="text-slate-500">Destino:</span> {selectedPredioNuevo.destino_economico}</div>
+                  <div><span className="text-slate-500">Destino:</span> {getDestinoLabel(selectedPredioNuevo.destino_economico)}</div>
                   <div className="col-span-2"><span className="text-slate-500">Propietario:</span> {selectedPredioNuevo.nombre_propietario} ({selectedPredioNuevo.tipo_documento}: {selectedPredioNuevo.numero_documento})</div>
                 </div>
               </div>

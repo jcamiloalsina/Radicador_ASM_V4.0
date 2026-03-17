@@ -8,6 +8,7 @@
  * - useCallback() memoiza handlers para evitar recreación en cada render
  */
 import React, { memo, useCallback } from 'react';
+import { DESTINOS_ECONOMICOS_OPTIONS } from '../../../utils/destinoEconomico';
 import { Clock, Building, Home } from 'lucide-react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -193,10 +194,10 @@ const VisitaPagina1 = memo(({
           <div>
             <Label className="text-xs text-slate-500 mb-2 block">Destino Económico <span className="text-emerald-600">(verificar)</span></Label>
             <div className="grid grid-cols-4 gap-2">
-              {[{v:'A',l:'A - Habitacional'},{v:'B',l:'B - Industrial'},{v:'C',l:'C - Comercial'},{v:'D',l:'D - Agropecuario'},{v:'E',l:'E - Minero'},{v:'F',l:'F - Cultural'},{v:'G',l:'G - Recreacional'},{v:'H',l:'H - Salubridad'},{v:'I',l:'I - Institucional'},{v:'J',l:'J - Educativo'},{v:'K',l:'K - Religioso'},{v:'L',l:'L - Agrícola'},{v:'M',l:'M - Pecuario'},{v:'N',l:'N - Agroindustrial'},{v:'O',l:'O - Forestal'},{v:'P',l:'P - Uso Público'},{v:'Q',l:'Q - Lote Urbanizable No Urbanizado'},{v:'R',l:'R - Lote Urbanizado No Edificado'},{v:'S',l:'S - Lote No Urbanizable'},{v:'T',l:'T - Servicios Especiales'}].map(i => (
-                <label key={i.v} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="destino" checked={visitaData.destino_economico_visita === i.v} onChange={() => handleFieldChange('destino_economico_visita', i.v)} className="text-emerald-600" />
-                  <span className="text-xs">{i.l}</span>
+              {DESTINOS_ECONOMICOS_OPTIONS.map(i => (
+                <label key={i.value} className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="destino" checked={visitaData.destino_economico_visita === i.value} onChange={() => handleFieldChange('destino_economico_visita', i.value)} className="text-emerald-600" />
+                  <span className="text-xs">{i.label}</span>
                 </label>
               ))}
             </div>

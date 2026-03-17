@@ -1,4 +1,5 @@
 import React from 'react';
+import { getDestinoLabel } from '../../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -442,7 +443,7 @@ const DetallePredioActualizacion = ({
         {predio.destino_economico && (
           <div className="border-t pt-2">
             <p className="text-xs text-slate-500">Destino Económico</p>
-            <p className="font-medium">{predio.destino_economico}</p>
+            <p className="font-medium">{getDestinoLabel(predio.destino_economico)}</p>
           </div>
         )}
       </CardContent>

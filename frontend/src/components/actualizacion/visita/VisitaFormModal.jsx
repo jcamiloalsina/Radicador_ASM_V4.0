@@ -11,6 +11,7 @@
  * - React.memo en todos los sub-componentes
  */
 import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
+import { DESTINOS_ECONOMICOS_OPTIONS } from '../../../utils/destinoEconomico';
 import {
   FileText, ChevronLeft, ChevronRight, Save, RefreshCw, X,
   Clock, Building, Home, Mail, Plus, Trash2, Camera, Image as ImageIcon,
@@ -281,15 +282,12 @@ const Page1 = memo(({ data, setField, predio, proyecto }) => (
         <div>
           <Label className="text-xs text-slate-500 mb-2 block">Destino Económico</Label>
           <div className="grid grid-cols-4 gap-1 text-xs">
-            {['A-Habitacional','B-Industrial','C-Comercial','D-Agropecuario','E-Minero','F-Cultural','G-Recreacional','H-Salubridad','I-Institucional','J-Educativo','K-Religioso','L-Agrícola','M-Pecuario','N-Agroindustrial','O-Forestal','P-Uso Público','Q-Lote Urbanizable No Urbanizado','R-Lote Urbanizado No Edificado','S-Lote No Urbanizable','T-Servicios Especiales'].map(d => {
-              const [v, l] = d.split('-');
-              return (
-                <label key={v} className="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" checked={data.destino_economico_visita === v} onChange={() => setField('destino_economico_visita', v)} />
-                  {d}
-                </label>
-              );
-            })}
+            {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+              <label key={d.value} className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" checked={data.destino_economico_visita === d.value} onChange={() => setField('destino_economico_visita', d.value)} />
+                {d.label}
+              </label>
+            ))}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">

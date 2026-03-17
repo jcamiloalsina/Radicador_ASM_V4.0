@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getDestinoLabel } from '../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -387,7 +388,7 @@ export default function PrediosEnProceso() {
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500">Destino Económico</Label>
-                    <p>{selectedPredio.destino_economico}</p>
+                    <p>{getDestinoLabel(selectedPredio.destino_economico)}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500">Área Terreno (m²)</Label>

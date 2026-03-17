@@ -81,7 +81,7 @@ MUNICIPIOS_POR_CODIGO = {v["codigo"]: {"nombre": k, **v} for k, v in MUNICIPIOS_
 # Catálogo de destino económico
 DESTINO_ECONOMICO = {
     "A": "Habitacional",
-    "B": "Industrial", 
+    "B": "Industrial",
     "C": "Comercial",
     "D": "Agropecuario",
     "E": "Minero",
@@ -92,14 +92,14 @@ DESTINO_ECONOMICO = {
     "J": "Educativo",
     "K": "Religioso",
     "L": "Agrícola",
-    "M": "Forestal",
-    "N": "Uso Público",
-    "O": "Lote",
-    "P": "Parqueadero",
-    "Q": "Servicios",
-    "R": "Pecuario",
-    "S": "Agroindustrial",
-    "T": "Mixto"
+    "M": "Pecuario",
+    "N": "Agroindustrial",
+    "O": "Forestal",
+    "P": "Uso Público",
+    "Q": "Lote Urbanizable No Urbanizado",
+    "R": "Lote Urbanizable No Edificado",
+    "S": "Lote No Urbanizable",
+    "T": "Servicios Especiales"
 }
 
 # Tipos de documento

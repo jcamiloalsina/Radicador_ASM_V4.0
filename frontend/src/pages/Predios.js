@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,7 +15,7 @@ import axios from 'axios';
 import { 
   Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
-  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight, Lock
+  Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight, Lock, TreePine
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
@@ -181,6 +182,7 @@ export default function Predios() {
   const [subsanacionesConteo, setSubsanacionesConteo] = useState(0);
   const [reaparicionesConteo, setReaparicionesConteo] = useState({});
   const [gdbStats, setGdbStats] = useState(null); // Estadísticas de geometrías GDB
+  const [zonaCounts, setZonaCounts] = useState(null); // Conteos por zona urbana/rural
   const [selectedPredio, setSelectedPredio] = useState(null);
   // Estado para determinar si el predio usa formato automático (R2→R1) o manual
   const [usarFormatoAutomatico, setUsarFormatoAutomatico] = useState(false);
@@ -1784,6 +1786,15 @@ export default function Predios() {
             const start = (page - 1) * pageSize;
             setPredios(prediosOrdenados.slice(start, start + pageSize));
             setTotal(prediosOrdenados.length);
+            // Calcular conteos por zona desde caché offline
+            const offlineZonaCounts = { urbano: 0, rural: 0, corregimiento: 0 };
+            filtered.forEach(p => {
+              const zc = (p.codigo_predial_nacional || '').substring(5, 7);
+              if (zc === '00') offlineZonaCounts.rural++;
+              else if (zc === '01') offlineZonaCounts.urbano++;
+              else if (zc >= '02') offlineZonaCounts.corregimiento++;
+            });
+            setZonaCounts(offlineZonaCounts);
             setCurrentPage(page);
             setLoading(false);
             setDataSource('offline');
@@ -1798,6 +1809,7 @@ export default function Predios() {
       toast.warning('No hay conexión a internet');
       setPredios([]);
       setTotal(0);
+      setZonaCounts(null);
       setLoading(false);
       setDataSource('offline');
       return;
@@ -1824,6 +1836,7 @@ export default function Predios() {
       const prediosRecibidos = res.data.predios || [];
       setPredios(prediosRecibidos);
       setTotal(res.data.total || 0);
+      setZonaCounts(res.data.zona_counts || null);
       setCurrentPage(page);
       setLoading(false);
       setIsRevalidating(false);
@@ -2916,6 +2929,7 @@ export default function Predios() {
     setFilterMunicipio('');
     setFilterVigencia('');
     setPredios([]);
+    setZonaCounts(null);
     setSearch('');
   };
 
@@ -3234,6 +3248,24 @@ export default function Predios() {
                     {gdbStats.por_municipio[filterMunicipio]?.total || 0} en Base Gráfica
                   </Badge>
                 )}
+                {zonaCounts && filterMunicipio && (
+                  <>
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700">
+                      <TreePine className="w-3 h-3 mr-1" />
+                      {(zonaCounts.rural || 0).toLocaleString()} Rural
+                    </Badge>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      <Building className="w-3 h-3 mr-1" />
+                      {(zonaCounts.urbano || 0).toLocaleString()} Urbano
+                    </Badge>
+                    {zonaCounts.corregimiento > 0 && (
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {(zonaCounts.corregimiento || 0).toLocaleString()} Corregimiento
+                      </Badge>
+                    )}
+                  </>
+                )}
                 {/* Nota: Botones de Nuevo Predio y Predios Eliminados removidos.
                     Toda edición se hace desde Mutaciones y Resoluciones */}
                 {/* Botón de Subsanaciones - Para gestores y coordinadores */}
@@ -3378,7 +3410,7 @@ export default function Predios() {
                           </td>
                           <td className="py-3 px-4 text-center">
                             <Badge className="bg-emerald-100 text-emerald-800">
-                              {predio.destino_economico}
+                              {getDestinoLabel(predio.destino_economico)}
                             </Badge>
                           </td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900">
@@ -3891,10 +3923,10 @@ export default function Predios() {
                       onValueChange={(v) => setFormData({...formData, destino_economico: v})}
                       className="flex flex-wrap gap-3"
                     >
-                      {catalogos?.destino_economico && Object.entries(catalogos.destino_economico).map(([k, v]) => (
-                        <div key={k} className="flex items-center space-x-1">
-                          <RadioGroupItem value={k} id={`destino_${k}`} />
-                          <Label htmlFor={`destino_${k}`} className="text-xs cursor-pointer">{k} - {v}</Label>
+                      {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                        <div key={d.value} className="flex items-center space-x-1">
+                          <RadioGroupItem value={d.value} id={`destino_${d.value}`} />
+                          <Label htmlFor={`destino_${d.value}`} className="text-xs cursor-pointer">{d.label}</Label>
                         </div>
                       ))}
                     </RadioGroup>
@@ -5386,8 +5418,8 @@ export default function Predios() {
                                   if (propuestos.destino_economico !== undefined && propuestos.destino_economico !== original.destino_economico) {
                                     cambiosReales.push({
                                       label: 'Destino Económico',
-                                      antes: original.destino_economico || 'N/A',
-                                      despues: propuestos.destino_economico
+                                      antes: getDestinoLabel(original.destino_economico),
+                                      despues: getDestinoLabel(propuestos.destino_economico)
                                     });
                                   }
                                   // Comparar area_terreno
@@ -5717,7 +5749,7 @@ export default function Predios() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-3 gap-4 text-sm">
-                  <div><span className="text-slate-500">Destino:</span> <strong>{selectedPredio.destino_economico} - {catalogos?.destino_economico?.[selectedPredio.destino_economico]}</strong></div>
+                  <div><span className="text-slate-500">Destino:</span> <strong>{getDestinoLabel(selectedPredio.destino_economico)}</strong></div>
                   <div>
                     <span className="text-slate-500">Área Terreno (R1):</span> <strong>{formatAreaHectareas(selectedPredio.area_terreno)}</strong>
                   </div>

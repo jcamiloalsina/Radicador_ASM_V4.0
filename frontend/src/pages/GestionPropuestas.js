@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getDestinoLabel, DESTINOS_ECONOMICOS_OPTIONS } from '../utils/destinoEconomico';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
@@ -952,8 +953,8 @@ export default function GestionPropuestas() {
                   <CampoComparativo 
                     label="Destino Económico"
                     icon={Home}
-                    valorAnterior={propuestaDetalle.datos_existentes?.destino_economico}
-                    valorNuevo={modoEdicion ? datosEditados.destino_economico : propuestaDetalle.datos_propuestos?.destino_economico}
+                    valorAnterior={getDestinoLabel(propuestaDetalle.datos_existentes?.destino_economico)}
+                    valorNuevo={getDestinoLabel(modoEdicion ? datosEditados.destino_economico : propuestaDetalle.datos_propuestos?.destino_economico)}
                   />
                   <CampoComparativo 
                     label="Área Terreno"
@@ -1021,26 +1022,9 @@ export default function GestionPropuestas() {
                           <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="A">A - Habitacional</SelectItem>
-                          <SelectItem value="B">B - Industrial</SelectItem>
-                          <SelectItem value="C">C - Comercial</SelectItem>
-                          <SelectItem value="D">D - Agropecuario</SelectItem>
-                          <SelectItem value="E">E - Minero</SelectItem>
-                          <SelectItem value="F">F - Cultural</SelectItem>
-                          <SelectItem value="G">G - Recreacional</SelectItem>
-                          <SelectItem value="H">H - Salubridad</SelectItem>
-                          <SelectItem value="I">I - Institucional</SelectItem>
-                          <SelectItem value="J">J - Educativo</SelectItem>
-                          <SelectItem value="K">K - Religioso</SelectItem>
-                          <SelectItem value="L">L - Agrícola</SelectItem>
-                          <SelectItem value="M">M - Pecuario</SelectItem>
-                          <SelectItem value="N">N - Agroindustrial</SelectItem>
-                          <SelectItem value="O">O - Forestal</SelectItem>
-                          <SelectItem value="P">P - Uso Público</SelectItem>
-                          <SelectItem value="Q">Q - Lote Urbanizable No Urbanizado</SelectItem>
-                          <SelectItem value="R">R - Lote Urbanizado No Edificado</SelectItem>
-                          <SelectItem value="S">S - Lote No Urbanizable</SelectItem>
-                          <SelectItem value="T">T - Servicios Especiales</SelectItem>
+                          {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                            <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

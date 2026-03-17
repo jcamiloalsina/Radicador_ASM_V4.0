@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
+import { DESTINOS_ECONOMICOS } from '../../utils/destinoEconomico';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -51,25 +52,7 @@ const TIPOS_DOCUMENTO = {
   'P': 'Pasaporte'
 };
 
-const DESTINOS_ECONOMICOS = {
-  'A': 'Habitacional',
-  'B': 'Industrial',
-  'C': 'Comercial',
-  'D': 'Agropecuario',
-  'E': 'Minero',
-  'F': 'Cultural',
-  'G': 'Recreacional',
-  'H': 'Salubridad',
-  'I': 'Institucional',
-  'J': 'Educativo',
-  'K': 'Religioso',
-  'L': 'Agrícola',
-  'M': 'Pecuario',
-  'O': 'Forestal',
-  'P': 'Uso Público',
-  'Q': 'Lote Urbanizable',
-  'R': 'Lote Urbanizado'
-};
+// DESTINOS_ECONOMICOS importado desde utils/destinoEconomico.js
 
 // Estado inicial del formulario de visita
 const getInitialVisitaData = () => ({
