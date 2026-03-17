@@ -15389,6 +15389,8 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        # Usar el código de municipio normalizado (no el nombre)
+        codigo_municipio_resolucion = resultado_resolucion.get("codigo_municipio", municipio)
         
         # Generar código de verificación para QR
         codigo_verificacion_m2 = generar_codigo_verificacion_resolucion()
@@ -15607,7 +15609,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             "tipo_mutacion": "M2",
             "subtipo": solicitud.get('subtipo', 'desenglobe'),
             "municipio": municipio_nombre,
-            "codigo_municipio": municipio,
+            "codigo_municipio": codigo_municipio_resolucion,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
             "creado_por_id": solicitud.get('creado_por_id'),
@@ -15794,6 +15796,8 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        # Usar el código de municipio normalizado (no el nombre)
+        codigo_municipio_resolucion = resultado_resolucion.get("codigo_municipio", municipio)
         
         # Generar código de verificación para QR
         codigo_verificacion_m3 = generar_codigo_verificacion_resolucion()
@@ -15948,7 +15952,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             "tipo_mutacion": "M3",
             "subtipo": subtipo,
             "municipio": municipio_nombre,
-            "codigo_municipio": municipio,
+            "codigo_municipio": codigo_municipio_resolucion,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
             "creado_por_id": solicitud.get('creado_por_id'),
@@ -16134,6 +16138,8 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
+        # Usar el código de municipio normalizado (no el nombre)
+        codigo_municipio_resolucion = resultado_resolucion.get("codigo_municipio", municipio)
         
         # Generar código de verificación para QR
         codigo_verificacion_m4 = generar_codigo_verificacion_resolucion()
@@ -16237,7 +16243,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             "subtipo": subtipo,
             "decision": decision,
             "municipio": municipio_nombre,
-            "codigo_municipio": municipio,
+            "codigo_municipio": codigo_municipio_resolucion,
             "radicado": radicado,
             "solicitud_id": solicitud.get('id'),
             "creado_por_id": solicitud.get('creado_por_id'),
@@ -30315,7 +30321,7 @@ async def generar_resolucion_m2(
             "tipo_mutacion": "M2",
             "subtipo": request.subtipo,
             "municipio": municipio_nombre,
-            "codigo_municipio": request.municipio,
+            "codigo_municipio": siguiente_data.get("codigo_municipio", request.municipio),
             "radicado": request.radicado,
             "solicitante": request.solicitante.dict(),
             "predios_cancelados": request.predios_cancelados,
@@ -30557,7 +30563,7 @@ async def generar_resolucion_m2(
                 "zonas_homogeneas": predio_inscrito.get('zonas_homogeneas', []),
                 "r2_registros": r2_registros,  # NUEVO: Incluir información R2
                 "municipio": municipio_nombre,
-                "codigo_municipio": request.municipio,
+                "codigo_municipio": siguiente_data.get("codigo_municipio", request.municipio),
                 "vigencia": datetime.now().year,
                 "creado_en_plataforma": True,
                 "area_editada_en_plataforma": True,
@@ -30911,7 +30917,7 @@ async def generar_resolucion_m3(
             "tipo_mutacion": "M3",
             "subtipo": request.subtipo,
             "municipio": municipio_nombre,
-            "codigo_municipio": request.municipio,
+            "codigo_municipio": siguiente_data.get("codigo_municipio", request.municipio),
             "radicado": request.radicado,
             "predio_id": predio.get("id"),
             "codigo_predial": predio.get("codigo_predial_nacional"),
