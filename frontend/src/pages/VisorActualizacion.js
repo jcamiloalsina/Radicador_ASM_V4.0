@@ -2521,12 +2521,7 @@ export default function VisorActualizacion() {
         // Gestor: Crear propuesta de cambio para aprobación del coordinador
         const codigoPredial = selectedPredio.codigo_predial || selectedPredio.numero_predial;
         
-        // Verificar que el predio esté visitado
-        if (selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'visitado_firmado' && selectedPredio.estado_visita !== 'actualizado') {
-          toast.error('Debe marcar el predio como visitado antes de proponer cambios');
-          setSaving(false);
-          return;
-        }
+        // Permitir editar el predio sin importar el estado de visita
         
         // Determinar la justificación según el tipo de revisión
         const tiposRevision = {
@@ -5672,12 +5667,7 @@ export default function VisorActualizacion() {
                       )}
                     </div>
                     
-                    {selectedPredio.estado_visita !== 'visitado' && selectedPredio.estado_visita !== 'visitado_firmado' && selectedPredio.estado_visita !== 'actualizado' && (
-                      <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        El predio debe estar visitado para proponer cambios
-                      </div>
-                    )}
+                    {/* Restricción de visita eliminada - se permite editar sin visita */}
                     
                     {propuestas.length > 0 ? (
                       <div className="space-y-2">
