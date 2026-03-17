@@ -196,16 +196,28 @@ export function useOffline() {
       // IMPORTANTE: Leer de offlineDB.js (asomunicipios_offline_v2) que es donde se guardan
       // los predios del visor de actualización
       try {
-        const v2DB = await new Promise((resolve, reject) => {
-          const request = indexedDB.open('asomunicipios_offline_v2', 1);
+        // Detectar versión existente de la DB v2 para no provocar upgrade
+        let v2Version = 0;
+        if (indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          const found = dbs.find(d => d.name === 'asomunicipios_offline_v2');
+          v2Version = found?.version || 0;
+        } else {
+          v2Version = 2; // Fallback: asumir versión actual
+        }
+
+        if (v2Version === 0) {
+          // DB no existe, no intentar abrir
+          throw new Error('v2 DB does not exist');
+        }
+
+        const v2DB = await new Promise((resolve) => {
+          const request = indexedDB.open('asomunicipios_offline_v2', v2Version);
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => resolve(null);
-          request.onupgradeneeded = (event) => {
-            // Si no existía, abortar para no crear DB vacía
-            if (event.oldVersion === 0) {
-              request.transaction.abort();
-              resolve(null);
-            }
+          request.onupgradeneeded = () => {
+            request.transaction.abort();
+            resolve(null);
           };
         });
         
