@@ -1832,6 +1832,22 @@ export default function Predios() {
       const now = new Date().toISOString();
       setLastSyncTime(now);
 
+      // Guardar en caché offline en background (todos los predios del municipio, primera carga)
+      if (filterMunicipio && esVigenciaActual && !search && page === 1) {
+        // Descargar todos para offline sin bloquear la UI
+        axios.get(`${API}/predios?municipio=${filterMunicipio}&vigencia=${filterVigencia || ''}&limit=50000`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(allRes => {
+          const allPredios = allRes.data.predios || [];
+          if (allPredios.length > 0) {
+            downloadForOffline(allPredios, null, filterMunicipio).then(() => {
+              localStorage.setItem(`sync_${filterMunicipio}_date`, now);
+              console.log(`[Cache] ${allPredios.length} predios guardados offline para ${filterMunicipio}`);
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+
     } catch (error) {
       console.error('[Predios] Error cargando:', error);
       setLoading(false);
