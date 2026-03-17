@@ -3760,6 +3760,11 @@ export default function VisorActualizacion() {
       observaciones_campo: predio.observaciones_campo || '',
       estado_visita: predio.estado_visita || 'pendiente',
       matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      tipo_titulo: predio.tipo_titulo || '',
+      numero_titulo: predio.numero_titulo || '',
+      notaria: predio.notaria || '',
+      fecha_titulo: predio.fecha_titulo || '',
+      ciudad_titulo: predio.ciudad_titulo || '',
       avaluo_catastral: predio.avaluo_catastral || '',
       comuna: predio.comuna || '',
       estrato: predio.estrato || ''
@@ -5867,6 +5872,31 @@ export default function VisorActualizacion() {
                           value={editData.matricula_inmobiliaria || ''}
                           onChange={(e) => setEditData(prev => ({ ...prev, matricula_inmobiliaria: e.target.value }))}
                         />
+                      </div>
+                      <div>
+                        <Label>Tipo de Título</Label>
+                        <select className="w-full h-10 rounded-md border border-input bg-white px-3 py-2 text-sm" value={editData.tipo_titulo || ''} onChange={(e) => setEditData(prev => ({ ...prev, tipo_titulo: e.target.value }))}>
+                          <option value="">Seleccionar...</option>
+                          <option value="Escritura">Escritura</option>
+                          <option value="Sentencia">Sentencia</option>
+                          <option value="Resolución">Resolución</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label>Número de Título</Label>
+                        <Input value={editData.numero_titulo || ''} onChange={(e) => setEditData(prev => ({ ...prev, numero_titulo: e.target.value }))} placeholder="Ej: 1234" />
+                      </div>
+                      <div>
+                        <Label>Notaría</Label>
+                        <Input value={editData.notaria || ''} onChange={(e) => setEditData(prev => ({ ...prev, notaria: e.target.value }))} placeholder="Ej: Notaría Primera" />
+                      </div>
+                      <div>
+                        <Label>Fecha del Título</Label>
+                        <Input type="date" value={editData.fecha_titulo || ''} onChange={(e) => setEditData(prev => ({ ...prev, fecha_titulo: e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Ciudad</Label>
+                        <Input value={editData.ciudad_titulo || ''} onChange={(e) => setEditData(prev => ({ ...prev, ciudad_titulo: e.target.value }))} placeholder="Ej: Ocaña" />
                       </div>
                       <div>
                         <Label>Área Terreno (m²)</Label>

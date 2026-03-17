@@ -1234,15 +1234,20 @@ export default function PetitionDetail() {
                                         throw new Error(errorMsg);
                                       }
                                       const blob = await response.blob();
+                                      const contentType = response.headers.get('content-type') || '';
+                                      const isZip = contentType.includes('zip');
                                       const url = window.URL.createObjectURL(blob);
                                       const a = document.createElement('a');
                                       a.href = url;
-                                      a.download = `Certificado_${petition.radicado}.pdf`;
+                                      a.download = isZip ? `Certificados_${petition.radicado}.zip` : `Certificado_${petition.radicado}.pdf`;
                                       document.body.appendChild(a);
                                       a.click();
                                       document.body.removeChild(a);
                                       window.URL.revokeObjectURL(url);
-                                      toast.success('Certificado descargado. Recuerde agregar el sello/certificado manual y finalizar el trámite.');
+                                      const msg = isZip
+                                        ? 'Certificados descargados en ZIP. Recuerde agregar el sello/certificado manual y finalizar el trámite.'
+                                        : 'Certificado descargado. Recuerde agregar el sello/certificado manual y finalizar el trámite.';
+                                      toast.success(msg);
                                       fetchPetition();
                                     } catch (error) {
                                       toast.error(error.message || 'Error al generar el certificado');

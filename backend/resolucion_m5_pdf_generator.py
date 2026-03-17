@@ -294,7 +294,13 @@ def generar_resolucion_m5_pdf(data: dict) -> bytes:
         print(f"Error cargando pie de página: {e}")
     
     try:
-        firma_img = ImageReader(get_firma_dalgie_image())
+        firma_img = None
+        for fp in ["/app/logos/firma_dalgie_blanco.png", "/app/backend/logos/firma_dalgie_blanco.png"]:
+            if os.path.exists(fp):
+                firma_img = ImageReader(fp)
+                break
+        if not firma_img:
+            firma_img = ImageReader(get_firma_dalgie_image())
     except Exception as e:
         print(f"Error cargando firma: {e}")
     

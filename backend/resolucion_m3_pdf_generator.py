@@ -174,11 +174,20 @@ def generate_resolucion_m3_pdf(
         print(f"Error cargando pie de página: {e}")
     
     try:
-        if imagen_firma_b64:
+        firma_loaded = False
+        for firma_path in ["/app/logos/firma_dalgie_blanco.png", "/app/backend/logos/firma_dalgie_blanco.png", "logos/firma_dalgie_blanco.png"]:
+            if os.path.exists(firma_path):
+                firma_dalgie = ImageReader(firma_path)
+                firma_loaded = True
+                break
+        if not firma_loaded and imagen_firma_b64:
             firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
-        else:
-            # get_firma_dalgie_image() ya retorna un BytesIO
-            firma_dalgie = ImageReader(get_firma_dalgie_image())
+        if not firma_loaded and not imagen_firma_b64:
+            firma_data = get_firma_dalgie_image()
+            if isinstance(firma_data, io.BytesIO):
+                firma_dalgie = ImageReader(firma_data)
+            else:
+                firma_dalgie = ImageReader(firma_data)
     except Exception as e:
         print(f"Error cargando firma: {e}")
     

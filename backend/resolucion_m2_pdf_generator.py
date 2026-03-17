@@ -779,14 +779,19 @@ def generate_resolucion_m2_pdf(
     # Cargar imagen de firma de Dalgie
     firma_dalgie = None
     try:
-        firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
-        if os.path.exists(firma_path):
-            firma_dalgie = ImageReader(firma_path)
-        elif imagen_firma_b64:
+        # Buscar en múltiples rutas posibles
+        for firma_path in ["/app/logos/firma_dalgie_blanco.png", "/app/backend/logos/firma_dalgie_blanco.png", "logos/firma_dalgie_blanco.png"]:
+            if os.path.exists(firma_path):
+                firma_dalgie = ImageReader(firma_path)
+                break
+        if not firma_dalgie and imagen_firma_b64:
             firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(imagen_firma_b64)))
-        else:
+        if not firma_dalgie:
             firma_data = get_firma_dalgie_image()
-            firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(firma_data)))
+            if isinstance(firma_data, io.BytesIO):
+                firma_dalgie = ImageReader(firma_data)
+            elif isinstance(firma_data, (bytes, str)):
+                firma_dalgie = ImageReader(io.BytesIO(base64.b64decode(firma_data)))
     except Exception as e:
         print(f"Error cargando firma: {e}")
     

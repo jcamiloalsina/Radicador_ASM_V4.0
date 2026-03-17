@@ -6392,6 +6392,96 @@ async def get_predios(
         "zona_counts": zona_counts
     }
 
+@api_router.get("/predios/buscar-incluyendo-pendientes")
+async def buscar_predios_incluyendo_pendientes(
+    search: str = "",
+    municipio: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Busca predios en la colección principal Y en solicitudes M2 pendientes de aprobación"""
+    if current_user['role'] == UserRole.USUARIO:
+        raise HTTPException(status_code=403, detail="No tiene permiso")
+
+    if not search or len(search) < 3:
+        return {"predios": [], "predios_pendientes": []}
+
+    token = None  # noqa
+
+    # 1. Buscar en predios normales (vigencia actual)
+    vigencia_actual = datetime.now().year
+    query = {
+        "vigencia": vigencia_actual,
+        "$and": [
+            {"$or": [{"deleted": False}, {"deleted": {"$exists": False}}, {"deleted": None}]},
+            {"$or": [{"pendiente_eliminacion": False}, {"pendiente_eliminacion": {"$exists": False}}, {"pendiente_eliminacion": None}]}
+        ]
+    }
+    if municipio:
+        query["municipio"] = {"$regex": f"^{municipio}$", "$options": "i"}
+
+    search_filter = {
+        "$or": [
+            {"codigo_predial_nacional": {"$regex": search, "$options": "i"}},
+            {"matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
+            {"r2_registros.matricula_inmobiliaria": {"$regex": search, "$options": "i"}},
+            {"propietarios.nombre_propietario": {"$regex": search, "$options": "i"}},
+        ]
+    }
+    query.update(search_filter)
+
+    predios_normales = await db.predios.find(query, {"_id": 0}).sort("codigo_predial_nacional", 1).limit(20).to_list(20)
+
+    # 2. Buscar en solicitudes pendientes de cualquier tipo (predios_inscritos de M1/M2)
+    predios_pendientes = []
+    sol_query = {
+        "estado": {"$in": ["pendiente_aprobacion", "en_revision", "asignado_apoyo", "digitalizacion", "pendiente", "aprobado"]}
+    }
+    if municipio:
+        # Buscar por código de municipio o nombre
+        sol_query["$or"] = [
+            {"municipio": {"$regex": municipio, "$options": "i"}},
+        ]
+        # También buscar por nombre en MUNICIPIOS_POR_CODIGO
+        for cod, info in MUNICIPIOS_POR_CODIGO.items():
+            if info.get('nombre', '').lower() == municipio.lower():
+                sol_query["$or"].append({"municipio": cod})
+                break
+
+    solicitudes = await db.solicitudes_mutacion.find(sol_query, {"_id": 0}).to_list(100)
+
+    for sol in solicitudes:
+        for predio in sol.get('predios_inscritos', []):
+            cpn = predio.get('codigo_predial_nacional') or predio.get('codigo_predial') or predio.get('npn', '')
+            mat = predio.get('matricula_inmobiliaria', '')
+            nombre_prop = ''
+            props = predio.get('propietarios', [])
+            if props:
+                nombre_prop = props[0].get('nombre_propietario', '') if isinstance(props[0], dict) else str(props[0])
+
+            # Verificar si coincide con la búsqueda
+            search_lower = search.lower()
+            if (search_lower in cpn.lower() or
+                search_lower in mat.lower() or
+                search_lower in nombre_prop.lower()):
+                # Verificar que no esté ya en predios normales
+                ya_existe = any(p.get('codigo_predial_nacional') == cpn for p in predios_normales)
+                if not ya_existe:
+                    mun_nombre = MUNICIPIOS_POR_CODIGO.get(sol.get('municipio', ''), {}).get('nombre', sol.get('municipio', ''))
+                    predios_pendientes.append({
+                        **predio,
+                        "codigo_predial_nacional": cpn,
+                        "municipio": mun_nombre,
+                        "vigencia": datetime.now().year,
+                        "solicitud_id": sol.get('id'),
+                        "solicitud_estado": sol.get('estado'),
+                        "solicitud_radicado": sol.get('radicado'),
+                        "es_pendiente_aprobacion": True,
+                        "origen": f"M2 pendiente - Rad. {sol.get('radicado', 'N/A')}"
+                    })
+
+    return {"predios": predios_normales, "predios_pendientes": predios_pendientes}
+
+
 @api_router.get("/predios/stats/summary")
 async def get_predios_stats(current_user: dict = Depends(get_current_user)):
     """Obtiene estadísticas de predios - SOLO la vigencia más alta GLOBAL del sistema"""
@@ -11508,171 +11598,153 @@ async def generar_certificado_desde_peticion(
     if 'certificado' not in tipo:
         raise HTTPException(status_code=400, detail="Esta petición no es de tipo certificado catastral")
     
-    # Buscar el predio relacionado - SIEMPRE usar datos más recientes de la BD
-    predio = None
-    predio_relacionado = petition.get('predio_relacionado')
-    codigo_buscado = petition.get('codigo_predial_buscado')
-    matricula_buscada = petition.get('matricula_buscada')
-    
-    # PRIMERO: Buscar por código predial (más confiable y siempre actualizado)
-    if codigo_buscado:
-        # Buscar primero predios activos (no eliminados)
-        predio = await db.predios.find_one(
-            {"codigo_predial_nacional": codigo_buscado, "deleted": {"$ne": True}}, 
-            {"_id": 0}
-        )
-        if not predio:
-            # Si no hay activo, buscar cualquiera con ese código
-            predio = await db.predios.find_one({"codigo_predial_nacional": codigo_buscado}, {"_id": 0})
-        logger.info(f"[Certificado] Búsqueda por código {codigo_buscado}: {'encontrado' if predio else 'no encontrado'}")
-    
-    # SEGUNDO: Si no se encontró por código, buscar por predio_id guardado en la petición
-    if not predio and predio_relacionado and predio_relacionado.get('predio_id'):
-        predio = await db.predios.find_one(
-            {"id": predio_relacionado['predio_id'], "deleted": {"$ne": True}}, 
-            {"_id": 0}
-        )
-        if not predio:
-            predio = await db.predios.find_one({"id": predio_relacionado['predio_id']}, {"_id": 0})
-        logger.info(f"[Certificado] Búsqueda por predio_id {predio_relacionado.get('predio_id')}: {'encontrado' if predio else 'no encontrado'}")
-    
-    # TERCERO: Buscar por matrícula inmobiliaria
-    if not predio and matricula_buscada:
-        predio = await db.predios.find_one(
-            {"r2_registros.matricula_inmobiliaria": matricula_buscada, "deleted": {"$ne": True}}, 
-            {"_id": 0}
-        )
-        if not predio:
-            predio = await db.predios.find_one(
-                {"r2_registros.matricula_inmobiliaria": matricula_buscada}, 
-                {"_id": 0}
-            )
-        logger.info(f"[Certificado] Búsqueda por matrícula {matricula_buscada}: {'encontrado' if predio else 'no encontrado'}")
-    
-    # Log de datos del predio encontrado para debugging
-    if predio:
-        propietarios_info = predio.get('propietarios', [])
-        nombre_prop = propietarios_info[0].get('nombre_propietario', 'N/A') if propietarios_info else predio.get('nombre_propietario', 'N/A')
-        logger.info(f"[Certificado] Predio encontrado - CNP: {predio.get('codigo_predial_nacional')}, Propietario: {nombre_prop}, updated_at: {predio.get('updated_at', 'N/A')}")
-    
-    if not predio:
-        raise HTTPException(
-            status_code=404, 
-            detail="No se encontró el predio asociado a esta petición. La petición debe incluir un código predial nacional o matrícula inmobiliaria válidos. Si la petición es antigua, solicite al peticionario radicar una nueva con los datos correctos."
-        )
-    
-    # Verificar que el predio tenga información de propietarios (R1/R2)
-    propietarios = predio.get('propietarios', [])
-    if not propietarios or len(propietarios) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Certificado no disponible. El predio no tiene información de propietarios (R1/R2) registrada en la base de datos catastral."
-        )
-    
-    # Generar código de verificación
-    codigo_verificacion = generar_codigo_verificacion()
-    
-    # Registrar en la base de datos de certificados verificables
-    propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios] if propietarios else ['N/A']
-    
-    # Obtener área terreno y avalúo del predio
-    area_terreno = predio.get('area_terreno', 0)
-    avaluo = predio.get('avaluo', 0)
-    
-    # Formatear área para mostrar
-    if area_terreno and area_terreno >= 10000:
-        ha = int(area_terreno // 10000)
-        m2_restantes = int(area_terreno % 10000)
-        area_str = f"{ha} ha {m2_restantes} m²"
-    elif area_terreno:
-        area_str = f"{int(area_terreno)} m²"
-    else:
-        area_str = "N/A"
-    
-    # Formatear avalúo
-    avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
-    
-    certificado_record = {
-        "id": str(uuid.uuid4()),
-        "codigo_verificacion": codigo_verificacion,
-        "predio_id": predio.get('id'),
-        "codigo_predial": predio.get('codigo_predial_nacional'),
-        "municipio": predio.get('municipio'),
-        "direccion": predio.get('direccion'),
-        "propietarios": propietarios_nombres,
-        "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
-        "generado_por": current_user['id'],
-        "generado_por_nombre": current_user['full_name'],
-        "estado": "activo",
-        "hash_documento": "",
-        # Datos adicionales para verificación
-        "area_terreno": area_str,
-        "avaluo_catastral": avaluo_str,
-        # Vinculación con la petición
-        "petition_id": petition_id,
-        "radicado": petition.get('radicado'),
-        "generado_desde_peticion": True
-    }
-    
-    # Calcular hash después de generar el PDF
-    hash_doc = generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}")
-    certificado_record["hash_documento"] = hash_doc
-    
-    await db.certificados_verificables.insert_one(certificado_record)
-    
+    # Construir lista de predios a procesar
+    predios_relacionados = petition.get('predios_relacionados', [])
+
+    # Si no hay lista múltiple, construir desde el predio individual
+    if not predios_relacionados:
+        predio_relacionado = petition.get('predio_relacionado')
+        codigo_buscado = petition.get('codigo_predial_buscado')
+        matricula_buscada = petition.get('matricula_buscada')
+        predios_relacionados = []
+        if predio_relacionado:
+            predios_relacionados.append(predio_relacionado)
+        elif codigo_buscado or matricula_buscada:
+            predios_relacionados.append({
+                "codigo_predial": codigo_buscado,
+                "matricula": matricula_buscada
+            })
+
+    if not predios_relacionados:
+        raise HTTPException(status_code=404, detail="No se encontraron predios asociados a esta petición.")
+
+    # Helper para buscar un predio en la BD
+    async def buscar_predio_en_bd(predio_ref):
+        """Busca un predio por código predial, predio_id o matrícula"""
+        predio = None
+        cod = predio_ref.get('codigo_predial', '').strip() if predio_ref.get('codigo_predial') else ''
+        pid = predio_ref.get('predio_id', '')
+        mat = predio_ref.get('matricula', '').strip() if predio_ref.get('matricula') else ''
+
+        if cod:
+            predio = await db.predios.find_one({"codigo_predial_nacional": cod, "deleted": {"$ne": True}}, {"_id": 0})
+            if not predio:
+                predio = await db.predios.find_one({"codigo_predial_nacional": cod}, {"_id": 0})
+        if not predio and pid:
+            predio = await db.predios.find_one({"id": pid, "deleted": {"$ne": True}}, {"_id": 0})
+            if not predio:
+                predio = await db.predios.find_one({"id": pid}, {"_id": 0})
+        if not predio and mat:
+            predio = await db.predios.find_one({"r2_registros.matricula_inmobiliaria": mat, "deleted": {"$ne": True}}, {"_id": 0})
+            if not predio:
+                predio = await db.predios.find_one({"r2_registros.matricula_inmobiliaria": mat}, {"_id": 0})
+        return predio
+
     # Firmante siempre es Dalgie Esperanza Torrado Rizo
     firmante = {
         "full_name": "DALGIE ESPERANZA TORRADO RIZO",
         "cargo": "Subdirectora Financiera y Administrativa"
     }
-    
-    # Quien proyecta es el usuario actual
     proyectado_por = current_user['full_name']
-    
-    # Generar PDF con verificación y radicado de la petición
-    pdf_bytes = generate_certificado_catastral(
-        predio, 
-        firmante, 
-        proyectado_por, 
-        codigo_verificacion,
-        radicado=petition.get('radicado')  # Pasar el radicado de la petición
-    )
-    
-    # Guardar PDF permanentemente con timestamp para evitar caché
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    cert_filename = f"certificado_{petition_id}_{codigo_verificacion}_{timestamp}.pdf"
-    cert_path = UPLOAD_DIR / cert_filename
-    with open(cert_path, 'wb') as f:
-        f.write(pdf_bytes)
-    
-    logger.info(f"[Certificado] PDF generado: {cert_filename} - Propietario en PDF: {propietarios_nombres}")
-    
-    # Extraer matrícula del R2 si existe
-    matricula_r2 = None
-    r2_registros = predio.get("r2_registros", [])
-    if r2_registros:
-        matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
-    
-    # Preparar información del predio relacionado
-    predio_relacionado_info = {
-        "predio_id": predio.get("id"),
-        "codigo_predial": predio.get("codigo_predial_nacional"),
-        "matricula": matricula_r2,
-        "direccion": predio.get("direccion"),
-        "municipio": predio.get("municipio")
-    }
-    
-    # Actualizar la petición para indicar que se generó el certificado
+
+    # Generar certificado para cada predio
+    pdfs_generados = []  # Lista de (cert_path, filename, predio, codigo_verificacion)
+    codigos_verificacion = []
+    predios_info = []
+    errores = []
+
+    for idx, predio_ref in enumerate(predios_relacionados):
+        predio = await buscar_predio_en_bd(predio_ref)
+        if not predio:
+            errores.append(f"Predio {predio_ref.get('codigo_predial') or predio_ref.get('matricula') or idx+1}: no encontrado")
+            continue
+
+        propietarios = predio.get('propietarios', [])
+        if not propietarios:
+            errores.append(f"Predio {predio.get('codigo_predial_nacional')}: sin propietarios")
+            continue
+
+        codigo_verificacion = generar_codigo_verificacion()
+        codigos_verificacion.append(codigo_verificacion)
+
+        propietarios_nombres = [p.get('nombre_propietario', 'N/A') for p in propietarios]
+        area_terreno = predio.get('area_terreno', 0)
+        avaluo = predio.get('avaluo', 0)
+
+        if area_terreno and area_terreno >= 10000:
+            area_str = f"{int(area_terreno // 10000)} ha {int(area_terreno % 10000)} m²"
+        elif area_terreno:
+            area_str = f"{int(area_terreno)} m²"
+        else:
+            area_str = "N/A"
+        avaluo_str = f"$ {int(avaluo):,}".replace(',', '.') if avaluo else "N/A"
+
+        certificado_record = {
+            "id": str(uuid.uuid4()),
+            "codigo_verificacion": codigo_verificacion,
+            "predio_id": predio.get('id'),
+            "codigo_predial": predio.get('codigo_predial_nacional'),
+            "municipio": predio.get('municipio'),
+            "direccion": predio.get('direccion'),
+            "propietarios": propietarios_nombres,
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "generado_por": current_user['id'],
+            "generado_por_nombre": current_user['full_name'],
+            "estado": "activo",
+            "hash_documento": generar_hash_documento(f"{predio.get('codigo_predial_nacional', '')}-{codigo_verificacion}-{datetime.now(COLOMBIA_TZ).isoformat()}"),
+            "area_terreno": area_str,
+            "avaluo_catastral": avaluo_str,
+            "petition_id": petition_id,
+            "radicado": petition.get('radicado'),
+            "generado_desde_peticion": True
+        }
+        await db.certificados_verificables.insert_one(certificado_record)
+
+        pdf_bytes = generate_certificado_catastral(
+            predio, firmante, proyectado_por, codigo_verificacion,
+            radicado=petition.get('radicado')
+        )
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        cert_filename = f"certificado_{petition_id}_{codigo_verificacion}_{timestamp}.pdf"
+        cert_path = UPLOAD_DIR / cert_filename
+        with open(cert_path, 'wb') as f:
+            f.write(pdf_bytes)
+
+        logger.info(f"[Certificado] PDF generado ({idx+1}/{len(predios_relacionados)}): {cert_filename}")
+
+        matricula_r2 = None
+        r2_registros = predio.get("r2_registros", [])
+        if r2_registros:
+            matricula_r2 = r2_registros[0].get("matricula_inmobiliaria")
+
+        predios_info.append({
+            "predio_id": predio.get("id"),
+            "codigo_predial": predio.get("codigo_predial_nacional"),
+            "matricula": matricula_r2,
+            "direccion": predio.get("direccion"),
+            "municipio": predio.get("municipio")
+        })
+        pdfs_generados.append((cert_path, cert_filename, predio, codigo_verificacion))
+
+    if not pdfs_generados:
+        detail = "No se pudo generar ningún certificado."
+        if errores:
+            detail += " Errores: " + "; ".join(errores)
+        raise HTTPException(status_code=404, detail=detail)
+
+    # Actualizar la petición
     update_data = {
         "certificado_generado": True,
-        "certificado_codigo": codigo_verificacion,
+        "certificado_codigo": codigos_verificacion[0] if len(codigos_verificacion) == 1 else ", ".join(codigos_verificacion),
         "certificado_fecha": datetime.now(COLOMBIA_TZ).isoformat(),
-        "certificado_archivo": str(cert_path),
-        "predio_relacionado": predio_relacionado_info,  # Guardar la info del predio
+        "certificado_archivo": str(pdfs_generados[0][0]) if len(pdfs_generados) == 1 else ", ".join(str(p[0]) for p in pdfs_generados),
+        "predio_relacionado": predios_info[0] if len(predios_info) == 1 else predios_info[0],
+        "predios_relacionados": predios_info,
+        "certificados_count": len(pdfs_generados),
         "updated_at": datetime.now(COLOMBIA_TZ).isoformat()
     }
-    
-    # Si enviar_correo es True, también finalizar el trámite
+
     if enviar_correo:
         update_data["estado"] = PetitionStatus.FINALIZADO
         
@@ -11683,7 +11755,7 @@ async def generar_certificado_desde_peticion(
             "usuario_rol": current_user['role'],
             "estado_anterior": petition.get('estado'),
             "estado_nuevo": PetitionStatus.FINALIZADO,
-            "notas": f"Certificado catastral generado con código {codigo_verificacion}. Enviado al correo del peticionario.",
+            "notas": f"{len(pdfs_generados)} certificado(s) generado(s). Códigos: {', '.join(codigos_verificacion)}. Enviado al correo del peticionario.",
             "fecha": datetime.now(COLOMBIA_TZ).isoformat()
         }
         
@@ -11700,8 +11772,9 @@ async def generar_certificado_desde_peticion(
             radicado_pet = petition.get('radicado', petition_id)
             correo_destino = petition.get('correo')
             nombre_peticionario = petition.get('nombre_completo', 'Estimado usuario')
-            codigo_predial = predio.get('codigo_predial_nacional', 'N/A')
-            verificacion_url = f"{VERIFICACION_BASE_URL}/verificar/{codigo_verificacion}"
+            codigo_predial = pdfs_generados[0][2].get('codigo_predial_nacional', 'N/A')
+            primer_codigo_verif = codigos_verificacion[0]
+            verificacion_url = f"{VERIFICACION_BASE_URL}/verificar/{primer_codigo_verif}"
             
             email_html = f"""
             <html>
@@ -11722,7 +11795,7 @@ async def generar_certificado_desde_peticion(
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0; color: #64748b;">Código de Verificación:</td>
-                                <td style="padding: 8px 0; font-family: monospace; font-weight: bold;">{codigo_verificacion}</td>
+                                <td style="padding: 8px 0; font-family: monospace; font-weight: bold;">{primer_codigo_verif}</td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0; color: #64748b;">Código Predial:</td>
@@ -11753,12 +11826,12 @@ async def generar_certificado_desde_peticion(
             </html>
             """
             
-            # Enviar correo con adjunto
+            # Enviar correo con adjunto (primer certificado)
             await enviar_correo_con_adjunto(
                 destinatario=correo_destino,
                 asunto=f"✅ Certificado Catastral Listo - {radicado_pet}",
                 contenido_html=email_html,
-                adjunto_path=str(cert_path),
+                adjunto_path=str(pdfs_generados[0][0]),
                 adjunto_nombre=f"Certificado_Catastral_{radicado_pet}.pdf"
             )
             
@@ -11772,7 +11845,7 @@ async def generar_certificado_desde_peticion(
                 usuario_id=petition.get('user_id'),
                 tipo="success",
                 titulo="✅ Certificado Catastral Listo",
-                mensaje=f"Su certificado catastral ({radicado_pet}) ha sido generado y enviado a su correo. También puede descargarlo desde la plataforma.",
+                mensaje=f"Su(s) {len(pdfs_generados)} certificado(s) catastral(es) ({radicado_pet}) ha(n) sido generado(s) y enviado(s) a su correo.",
                 enlace=f"/dashboard/peticiones/{petition_id}"
             )
         except Exception as e:
@@ -11784,15 +11857,33 @@ async def generar_certificado_desde_peticion(
             {"$set": update_data}
         )
     
-    # Nombre del archivo para descarga
     radicado_file = petition.get('radicado', petition_id)
-    codigo_file = predio.get('codigo_predial_nacional', '')
-    filename = f"Certificado_Catastral_{radicado_file}_{codigo_file}.pdf"
-    
+
+    # Si es un solo certificado, retornar PDF directo (comportamiento original)
+    if len(pdfs_generados) == 1:
+        cert_path_single, _, predio_single, _ = pdfs_generados[0]
+        codigo_file = predio_single.get('codigo_predial_nacional', '')
+        filename = f"Certificado_Catastral_{radicado_file}_{codigo_file}.pdf"
+        return FileResponse(
+            path=cert_path_single,
+            filename=filename,
+            media_type='application/pdf'
+        )
+
+    # Múltiples certificados: retornar ZIP con todos los PDFs
+    import zipfile
+    zip_filename = f"Certificados_{radicado_file}_{datetime.now().strftime('%Y%m%d%H%M%S')}.zip"
+    zip_path = UPLOAD_DIR / zip_filename
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for cert_path_item, _, predio_item, _ in pdfs_generados:
+            codigo_pred = predio_item.get('codigo_predial_nacional', '')
+            pdf_name = f"Certificado_{radicado_file}_{codigo_pred}.pdf"
+            zipf.write(cert_path_item, pdf_name)
+
     return FileResponse(
-        path=cert_path,
-        filename=filename,
-        media_type='application/pdf'
+        path=zip_path,
+        filename=zip_filename,
+        media_type='application/zip'
     )
 
 
@@ -14795,16 +14886,40 @@ async def generar_resolucion_final(cambio: dict, aprobador: dict) -> dict:
         año_actual = datetime.now().year
         config_municipios = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
         numero_inicial = config_municipios.get(codigo_municipio, 0) if config_municipios else 0
-        
+
         # Contar resoluciones existentes este año PARA ESTE MUNICIPIO
         count_resoluciones = await db.resoluciones.count_documents({
             "año": año_actual,
             "codigo_municipio": codigo_municipio
         })
-        siguiente_numero = numero_inicial + count_resoluciones + 1
-        
+
+        # También buscar el máximo consecutivo por patrón de número de resolución
+        patron_res = f"RES-{depto}-{mpio}-"
+        sufijo_año = f"-{año_actual}"
+        max_consecutivo = 0
+        async for res in db.resoluciones.find(
+            {"numero_resolucion": {"$regex": f"^{patron_res}\\d{{4}}{sufijo_año}$"}},
+            {"numero_resolucion": 1, "_id": 0}
+        ):
+            try:
+                num_str = res["numero_resolucion"].replace(patron_res, "").replace(sufijo_año, "")
+                num = int(num_str)
+                if num > max_consecutivo:
+                    max_consecutivo = num
+            except (ValueError, KeyError):
+                pass
+
+        siguiente_por_count = numero_inicial + count_resoluciones + 1
+        siguiente_por_max = max_consecutivo + 1
+        siguiente_numero = max(siguiente_por_count, siguiente_por_max)
+
         # Formato número de resolución
         numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente_numero).zfill(4)}-{año_actual}"
+
+        # Verificación final: asegurar que no exista duplicado
+        while await db.resoluciones.find_one({"numero_resolucion": numero_resolucion}):
+            siguiente_numero += 1
+            numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente_numero).zfill(4)}-{año_actual}"
         fecha_resolucion = datetime.now().strftime("%d-%m-%Y")
         
         # Obtener plantilla M1
@@ -15271,7 +15386,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
         
         # Generar número de resolución
-        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
@@ -15369,10 +15484,27 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
             
             elif tipo_cancelacion == 'parcial':
                 # Cancelación PARCIAL: actualizar predio con nuevos datos
+                historial_resolucion_entry = {
+                    "tipo_mutacion": "Mutación Segunda (Desenglobe Parcial)",
+                    "numero_resolucion": numero_resolucion,
+                    "fecha_resolucion": fecha_resolucion,
+                    "radicado": radicado,
+                    "generado_por": aprobador.get('full_name'),
+                    "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+                    "cambios": {
+                        "area_terreno_anterior": predio_original.get('area_terreno'),
+                        "area_terreno_nueva": predio_cancelado.get('nueva_area_terreno'),
+                        "avaluo_anterior": predio_original.get('avaluo'),
+                        "avaluo_nuevo": predio_cancelado.get('nuevo_avaluo')
+                    }
+                }
                 update_data = {
                     "area_terreno": predio_cancelado.get('nueva_area_terreno', predio_cancelado.get('area_terreno')),
                     "area_construida": predio_cancelado.get('nueva_area_construida', predio_cancelado.get('area_construida')),
                     "avaluo": predio_cancelado.get('nuevo_avaluo', predio_cancelado.get('avaluo')),
+                    "numero_resolucion": numero_resolucion,
+                    "fecha_resolucion": fecha_resolucion,
+                    "tipo_mutacion": "Mutación Segunda (Desenglobe Parcial)",
                     "area_editada_en_plataforma": True,
                     "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                     "historial": (predio_original.get("historial") or []) + [{
@@ -15393,15 +15525,31 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 
                 await db.predios.update_one(
                     {"id": predio_id_real},
-                    {"$set": update_data}
+                    {
+                        "$set": update_data,
+                        "$push": {"historial_resoluciones": historial_resolucion_entry}
+                    }
                 )
-                logging.info(f"Predio {npn_cancelado} actualizado PARCIALMENTE (área ajustada)")
+                logging.info(f"Predio {npn_cancelado} actualizado PARCIALMENTE (área ajustada, historial_resoluciones actualizado)")
         
         # 2. Crear predios inscritos
+        # Determinar vigencia actual del sistema
+        vigencia_actual = datetime.now().year
+        # Extraer departamento del código de municipio (primeros 2 dígitos)
+        departamento_codigo = municipio[:2] if municipio and len(municipio) >= 2 else ''
+
         for predio_nuevo in predios_inscritos:
+            # Mapear campos del frontend al esquema de predios
+            codigo_predial = predio_nuevo.get('codigo_predial_nacional') or predio_nuevo.get('codigo_predial') or predio_nuevo.get('npn', '')
+
             predio_doc = {
                 **predio_nuevo,
                 "id": predio_nuevo.get('id') or str(uuid.uuid4()),
+                "codigo_predial_nacional": codigo_predial,
+                "vigencia": vigencia_actual,
+                "municipio": municipio_nombre,
+                "departamento": departamento_codigo,
+                "zona": codigo_predial[5:7] if len(codigo_predial) >= 7 else '',
                 "status": "aprobado",
                 "estado_aprobacion": PredioEstadoAprobacion.APROBADO,
                 "deleted": False,
@@ -15411,7 +15559,7 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 "numero_resolucion": numero_resolucion,
                 "fecha_resolucion": fecha_resolucion,
                 "solicitud_id": solicitud.get('id'),
-            "creado_por_id": solicitud.get('creado_por_id'),
+                "creado_por_id": solicitud.get('creado_por_id'),
                 "historial": [{
                     "accion": "Predio creado por Desenglobe (M2)",
                     "tipo_cambio": "desenglobe",
@@ -15419,9 +15567,27 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                     "usuario_id": aprobador.get('id'),
                     "fecha": datetime.now(COLOMBIA_TZ).isoformat(),
                     "numero_resolucion": numero_resolucion
+                }],
+                "historial_resoluciones": [{
+                    "tipo_mutacion": "Mutación Segunda (Inscripción por Desenglobe)",
+                    "numero_resolucion": numero_resolucion,
+                    "fecha_resolucion": fecha_resolucion,
+                    "radicado": radicado,
+                    "generado_por": aprobador.get('full_name'),
+                    "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat()
                 }]
             }
-            
+
+            # Asegurar que matricula_inmobiliaria y r2_registros estén presentes para búsquedas
+            mat = predio_nuevo.get('matricula_inmobiliaria', '')
+            if mat and 'matricula_inmobiliaria' not in predio_doc:
+                predio_doc['matricula_inmobiliaria'] = mat
+            if mat and not predio_doc.get('r2_registros'):
+                predio_doc['r2_registros'] = [{
+                    "matricula_inmobiliaria": mat,
+                    "zonas": predio_nuevo.get('zonas_homogeneas', [])
+                }]
+
             # Verificar si el predio ya existe
             existente = await db.predios.find_one({"id": predio_doc['id']}, {"_id": 0})
             if existente:
@@ -15625,7 +15791,7 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
         
         # Generar número de resolución
-        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
@@ -15704,40 +15870,75 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             }
             
         elif subtipo == "incorporacion_construccion":
-            # Agregar construcciones al R2
+            # Agregar construcciones al campo 'construcciones' del predio
             construcciones_nuevas = solicitud.get('construcciones_nuevas', [])
-            r2_actuales = predio.get('r2_registros', [])
-            
-            # Agregar las nuevas construcciones
-            for const in construcciones_nuevas:
-                r2_actuales.append({
-                    **const,
+            construcciones_actuales = predio.get('construcciones', [])
+
+            # Determinar el siguiente ID de construcción (A, B, C...)
+            ids_existentes = [c.get('id', '') for c in construcciones_actuales]
+            next_letter_idx = len(ids_existentes)
+
+            for const_nueva in construcciones_nuevas:
+                letra_id = chr(65 + next_letter_idx)  # A=65, B=66, etc.
+                next_letter_idx += 1
+                construcciones_actuales.append({
+                    "id": letra_id,
+                    "piso": const_nueva.get('pisos', 0),
+                    "habitaciones": const_nueva.get('habitaciones', 0),
+                    "banos": const_nueva.get('banos', 0),
+                    "locales": const_nueva.get('locales', 0),
+                    "tipificacion": const_nueva.get('tipificacion', ''),
+                    "uso": const_nueva.get('uso', ''),
+                    "puntaje": const_nueva.get('puntaje', 0),
+                    "area_construida": const_nueva.get('area_construida', 0),
                     "fecha_incorporacion": datetime.now(COLOMBIA_TZ).isoformat(),
                     "resolucion": numero_resolucion
                 })
-            
+
             # Recalcular área construida total
-            area_construida_total = sum(c.get('area_construida', 0) for c in r2_actuales)
-            
-            update_predio["r2_registros"] = r2_actuales
+            area_construida_total = sum(c.get('area_construida', 0) for c in construcciones_actuales)
+
+            # Actualizar también el area_construida en r2_registros si existe
+            r2_registros = predio.get('r2_registros', [])
+            if r2_registros and r2_registros[0].get('zonas'):
+                for zona in r2_registros[0]['zonas']:
+                    zona['area_construida'] = area_construida_total
+
+            update_predio["construcciones"] = construcciones_actuales
+            update_predio["r2_registros"] = r2_registros
             update_predio["area_construida"] = area_construida_total
-            
+
             historial_entry["detalles"] = {
                 "construcciones_agregadas": len(construcciones_nuevas),
-                "area_total_nueva": area_construida_total,
+                "area_construida_total": area_construida_total,
                 "avaluo_anterior": solicitud.get('avaluo_anterior', 0),
                 "avaluo_nuevo": solicitud.get('avaluo_nuevo', 0)
             }
         
+        # Preparar entrada de historial_resoluciones para el frontend
+        historial_resolucion_entry = {
+            "tipo_mutacion": f"Mutación Tercera ({subtipo.replace('_', ' ').title()})",
+            "numero_resolucion": numero_resolucion,
+            "fecha_resolucion": fecha_resolucion,
+            "radicado": radicado,
+            "generado_por": aprobador.get('full_name'),
+            "fecha_generacion": datetime.now(COLOMBIA_TZ).isoformat(),
+            "pdf_path": f"/api/resoluciones/descargar/{filename}",
+            "cambios": historial_entry.get("detalles", {})
+        }
+
         # Aplicar actualización al predio
         await db.predios.update_one(
             {"id": predio_id},
             {
                 "$set": update_predio,
-                "$push": {"historial": historial_entry}
+                "$push": {
+                    "historial": historial_entry,
+                    "historial_resoluciones": historial_resolucion_entry
+                }
             }
         )
-        
+
         # Guardar resolución en la colección
         resolucion_doc = {
             "id": str(uuid.uuid4()),
@@ -15930,7 +16131,7 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
         municipio_nombre = MUNICIPIOS_POR_CODIGO.get(municipio, {}).get('nombre', municipio)
         
         # Generar número de resolución
-        resultado_resolucion = await obtener_siguiente_numero_resolucion(municipio)
+        resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", f"RES-XX-XXX-0000-{datetime.now().year}")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         
@@ -29903,20 +30104,44 @@ async def obtener_siguiente_numero_resolucion_interno(codigo_municipio: str) -> 
     # Obtener configuración por municipio
     config = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
     numero_inicial = config.get(codigo_municipio, 0) if config else 0
-    
+
+    depto = codigo_municipio[:2]
+    mpio = codigo_municipio[2:]
+
     # Contar resoluciones ya generadas este año PARA ESTE MUNICIPIO
     count = await db.resoluciones.count_documents({
         "año": año,
         "codigo_municipio": codigo_municipio
     })
-    
-    siguiente = numero_inicial + count + 1
-    
-    # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
-    depto = codigo_municipio[:2]
-    mpio = codigo_municipio[2:]
+
+    # También buscar el máximo consecutivo existente por patrón de número de resolución
+    # para capturar resoluciones que no tengan año/codigo_municipio correctos
+    patron_res = f"RES-{depto}-{mpio}-"
+    sufijo_año = f"-{año}"
+    max_consecutivo_existente = 0
+    async for res in db.resoluciones.find(
+        {"numero_resolucion": {"$regex": f"^{patron_res}\\d{{4}}{sufijo_año}$"}},
+        {"numero_resolucion": 1, "_id": 0}
+    ):
+        try:
+            num_str = res["numero_resolucion"].replace(patron_res, "").replace(sufijo_año, "")
+            num = int(num_str)
+            if num > max_consecutivo_existente:
+                max_consecutivo_existente = num
+        except (ValueError, KeyError):
+            pass
+
+    siguiente_por_count = numero_inicial + count + 1
+    siguiente_por_max = max_consecutivo_existente + 1
+    siguiente = max(siguiente_por_count, siguiente_por_max)
+
     numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
-    
+
+    # Verificación final: asegurar que no exista ya
+    while await db.resoluciones.find_one({"numero_resolucion": numero_resolucion}):
+        siguiente += 1
+        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
+
     return {
         "success": True,
         "siguiente_numero": siguiente,
@@ -29935,52 +30160,7 @@ async def obtener_siguiente_numero_resolucion(
 ):
     """Obtener el siguiente número de resolución para un municipio por código"""
     try:
-        año = datetime.now().year
-        
-        # Validar que el código de municipio sea válido
-        if codigo_municipio not in MUNICIPIOS_R1R2:
-            # Intentar buscar por nombre
-            codigo_encontrado = None
-            for codigo, nombre in MUNICIPIOS_R1R2.items():
-                if nombre.lower() in codigo_municipio.lower() or codigo_municipio.lower() in nombre.lower():
-                    codigo_encontrado = codigo
-                    break
-            if codigo_encontrado:
-                codigo_municipio = codigo_encontrado
-            else:
-                codigo_municipio = "54003"  # Default Ábrego
-        
-        # Obtener configuración por municipio
-        config = await db.resolucion_configuracion_municipios.find_one({"id": "config_municipios"})
-        numero_inicial = config.get(codigo_municipio, 0) if config else 0
-        
-        # Contar resoluciones ya generadas este año PARA ESTE MUNICIPIO
-        count = await db.resoluciones.count_documents({
-            "año": año,
-            "codigo_municipio": codigo_municipio
-        })
-        
-        siguiente = numero_inicial + count + 1
-        
-        # Formato del número de resolución: RES-{DEPTO}-{MPIO}-{CONSECUTIVO}-{AÑO}
-        depto = codigo_municipio[:2]
-        mpio = codigo_municipio[2:]
-        numero_resolucion = f"RES-{depto}-{mpio}-{str(siguiente).zfill(4)}-{año}"
-        
-        # Usar zona horaria de Colombia
-        colombia_tz = ZoneInfo("America/Bogota")
-        fecha_colombia = datetime.now(colombia_tz).strftime("%d/%m/%Y")
-        logging.info(f"[DEBUG] Fecha Colombia calculada: {fecha_colombia}")
-        
-        return {
-            "success": True,
-            "siguiente_numero": siguiente,
-            "numero_resolucion": numero_resolucion,
-            "año": año,
-            "codigo_municipio": codigo_municipio,
-            "municipio": MUNICIPIOS_R1R2.get(codigo_municipio, "Desconocido"),
-            "fecha_resolucion": fecha_colombia
-        }
+        return await obtener_siguiente_numero_resolucion_interno(codigo_municipio)
     except Exception as e:
         logging.error(f"Error obteniendo siguiente número: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -30605,7 +30785,7 @@ async def generar_resolucion_m3(
         municipio_nombre = municipio_doc.get("nombre", request.municipio) if municipio_doc else request.municipio
         
         # Generar número de resolución
-        resultado_resolucion = await obtener_siguiente_numero_resolucion(request.municipio)
+        resultado_resolucion = await obtener_siguiente_numero_resolucion_interno(request.municipio)
         numero_resolucion = resultado_resolucion.get("numero_resolucion", "RES-XX-XXX-0000-2026")
         fecha_resolucion = resultado_resolucion.get("fecha_resolucion", datetime.now().strftime("%d/%m/%Y"))
         

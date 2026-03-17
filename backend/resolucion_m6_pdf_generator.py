@@ -271,7 +271,13 @@ def generate_m6_resolution_pdf(data: dict) -> bytes:
         pie_pagina_img = None
     
     try:
-        firma_img = ImageReader(get_firma_dalgie_image())
+        firma_img = None
+        for fp in ["/app/logos/firma_dalgie_blanco.png", "/app/backend/logos/firma_dalgie_blanco.png"]:
+            if os.path.exists(fp):
+                firma_img = ImageReader(fp)
+                break
+        if not firma_img:
+            firma_img = ImageReader(get_firma_dalgie_image())
     except:
         firma_img = None
     

@@ -847,14 +847,20 @@ def generate_resolucion_pdf(
             print("Firma cargada desde parámetro imagen_firma_b64")
         else:
             # Intentar cargar desde archivo local primero
-            firma_path = "/app/backend/logos/firma_dalgie_blanco.png"
-            if os.path.exists(firma_path):
-                firma_dalgie = ImageReader(firma_path)
-                print(f"Firma cargada desde archivo: {firma_path}")
-            else:
+            firma_loaded = False
+            for firma_path in ["/app/logos/firma_dalgie_blanco.png", "/app/backend/logos/firma_dalgie_blanco.png", "logos/firma_dalgie_blanco.png"]:
+                if os.path.exists(firma_path):
+                    firma_dalgie = ImageReader(firma_path)
+                    print(f"Firma cargada desde archivo: {firma_path}")
+                    firma_loaded = True
+                    break
+            if not firma_loaded:
                 # Fallback a imagen en base64 embebida
                 firma_data = get_firma_dalgie_image()
-                firma_dalgie = ImageReader(firma_data)
+                if isinstance(firma_data, io.BytesIO):
+                    firma_dalgie = ImageReader(firma_data)
+                else:
+                    firma_dalgie = ImageReader(firma_data)
                 print("Firma cargada desde base64 embebida (fallback)")
     except Exception as e:
         print(f"Error cargando firma de Dalgie: {e}")

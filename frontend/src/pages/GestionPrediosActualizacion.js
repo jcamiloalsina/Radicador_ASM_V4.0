@@ -156,7 +156,12 @@ export default function GestionPrediosActualizacion() {
     area_terreno: '',
     area_construida: '',
     avaluo_catastral: '',
-    matricula_inmobiliaria: ''
+    matricula_inmobiliaria: '',
+    tipo_titulo: '',
+    numero_titulo: '',
+    notaria: '',
+    fecha_titulo: '',
+    ciudad_titulo: ''
   });
   
   // Estado para múltiples propietarios (formato XTF) - IGUAL A CONSERVACIÓN
@@ -741,9 +746,14 @@ export default function GestionPrediosActualizacion() {
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo_catastral: predio.avaluo_catastral || predio.avaluo || '',
-      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      tipo_titulo: predio.tipo_titulo || '',
+      numero_titulo: predio.numero_titulo || '',
+      notaria: predio.notaria || '',
+      fecha_titulo: predio.fecha_titulo || '',
+      ciudad_titulo: predio.ciudad_titulo || ''
     });
-    
+
     // Cargar propietarios - el modal de editar usa nombre_propietario (nombre completo)
     if (predio.propietarios?.length > 0) {
       setPropietarios(predio.propietarios.map(p => {
@@ -841,9 +851,14 @@ export default function GestionPrediosActualizacion() {
       area_terreno: predio.area_terreno || '',
       area_construida: predio.area_construida || '',
       avaluo_catastral: predio.avaluo_catastral || predio.avaluo || '',
-      matricula_inmobiliaria: predio.matricula_inmobiliaria || ''
+      matricula_inmobiliaria: predio.matricula_inmobiliaria || '',
+      tipo_titulo: predio.tipo_titulo || '',
+      numero_titulo: predio.numero_titulo || '',
+      notaria: predio.notaria || '',
+      fecha_titulo: predio.fecha_titulo || '',
+      ciudad_titulo: predio.ciudad_titulo || ''
     });
-    
+
     // Cargar propietarios existentes - mapear diferentes formatos
     if (predio.propietarios?.length > 0) {
       setPropietarios(predio.propietarios.map(p => {
@@ -2149,7 +2164,36 @@ export default function GestionPrediosActualizacion() {
                     <Label>Matrícula Inmobiliaria</Label>
                     <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} placeholder="Ej: 270-8920" />
                   </div>
-                  
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Tipo de Título</Label>
+                      <select className="w-full h-10 rounded-md border border-input bg-white px-3 py-2 text-sm" value={formData.tipo_titulo} onChange={(e) => setFormData({...formData, tipo_titulo: e.target.value})}>
+                        <option value="">Seleccionar...</option>
+                        <option value="Escritura">Escritura</option>
+                        <option value="Sentencia">Sentencia</option>
+                        <option value="Resolución">Resolución</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Número</Label>
+                      <Input value={formData.numero_titulo} onChange={(e) => setFormData({...formData, numero_titulo: e.target.value})} placeholder="Ej: 1234" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Notaría</Label>
+                    <Input value={formData.notaria} onChange={(e) => setFormData({...formData, notaria: e.target.value})} placeholder="Ej: Notaría Primera de Ocaña" />
+                  </div>
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Fecha del Título</Label>
+                      <Input type="date" value={formData.fecha_titulo} onChange={(e) => setFormData({...formData, fecha_titulo: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label>Ciudad</Label>
+                      <Input value={formData.ciudad_titulo} onChange={(e) => setFormData({...formData, ciudad_titulo: e.target.value})} placeholder="Ej: Ocaña" />
+                    </div>
+                  </div>
+
                   {/* Áreas calculadas del R2 */}
                   <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
@@ -2194,13 +2238,42 @@ export default function GestionPrediosActualizacion() {
               {/* Matrícula Inmobiliaria */}
               <div>
                 <Label>Matrícula Inmobiliaria</Label>
-                <Input 
-                  value={formData.matricula_inmobiliaria} 
-                  onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} 
-                  placeholder="Ej: 270-8920" 
+                <Input
+                  value={formData.matricula_inmobiliaria}
+                  onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})}
+                  placeholder="Ej: 270-8920"
                 />
               </div>
-              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Tipo de Título</Label>
+                  <select className="w-full h-10 rounded-md border border-input bg-white px-3 py-2 text-sm" value={formData.tipo_titulo} onChange={(e) => setFormData({...formData, tipo_titulo: e.target.value})}>
+                    <option value="">Seleccionar...</option>
+                    <option value="Escritura">Escritura</option>
+                    <option value="Sentencia">Sentencia</option>
+                    <option value="Resolución">Resolución</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Número</Label>
+                  <Input value={formData.numero_titulo} onChange={(e) => setFormData({...formData, numero_titulo: e.target.value})} placeholder="Ej: 1234" />
+                </div>
+              </div>
+              <div>
+                <Label>Notaría</Label>
+                <Input value={formData.notaria} onChange={(e) => setFormData({...formData, notaria: e.target.value})} placeholder="Ej: Notaría Primera de Ocaña" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Fecha del Título</Label>
+                  <Input type="date" value={formData.fecha_titulo} onChange={(e) => setFormData({...formData, fecha_titulo: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Ciudad</Label>
+                  <Input value={formData.ciudad_titulo} onChange={(e) => setFormData({...formData, ciudad_titulo: e.target.value})} placeholder="Ej: Ocaña" />
+                </div>
+              </div>
+
               {/* ═══════════ ZONAS DE TERRENO ═══════════ */}
               <div className="border-t border-slate-200 pt-4">
                 <div className="flex justify-between items-center mb-3">
@@ -2507,9 +2580,34 @@ export default function GestionPrediosActualizacion() {
                   <Label>Matrícula Inmobiliaria</Label>
                   <Input value={formData.matricula_inmobiliaria} onChange={(e) => setFormData({...formData, matricula_inmobiliaria: e.target.value})} />
                 </div>
+                <div>
+                  <Label>Tipo de Título</Label>
+                  <select className="w-full h-10 rounded-md border border-input bg-white px-3 py-2 text-sm" value={formData.tipo_titulo} onChange={(e) => setFormData({...formData, tipo_titulo: e.target.value})}>
+                    <option value="">Seleccionar...</option>
+                    <option value="Escritura">Escritura</option>
+                    <option value="Sentencia">Sentencia</option>
+                    <option value="Resolución">Resolución</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Número</Label>
+                  <Input value={formData.numero_titulo} onChange={(e) => setFormData({...formData, numero_titulo: e.target.value})} placeholder="Ej: 1234" />
+                </div>
+                <div>
+                  <Label>Notaría</Label>
+                  <Input value={formData.notaria} onChange={(e) => setFormData({...formData, notaria: e.target.value})} placeholder="Ej: Notaría Primera" />
+                </div>
+                <div>
+                  <Label>Fecha del Título</Label>
+                  <Input type="date" value={formData.fecha_titulo} onChange={(e) => setFormData({...formData, fecha_titulo: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Ciudad</Label>
+                  <Input value={formData.ciudad_titulo} onChange={(e) => setFormData({...formData, ciudad_titulo: e.target.value})} placeholder="Ej: Ocaña" />
+                </div>
               </div>
             </div>
-            
+
             {/* Zonas Físicas R2 - IGUAL QUE CONSERVACIÓN */}
             <div className="border border-slate-200 rounded-lg p-4">
               <div className="flex justify-between items-center mb-3">

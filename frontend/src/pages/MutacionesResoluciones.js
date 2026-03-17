@@ -1412,31 +1412,20 @@ export default function MutacionesResoluciones() {
       toast.error('Ingrese al menos 3 caracteres para buscar');
       return;
     }
-    
+
     setSearchingPrediosM1(true);
     try {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m1Data.municipio)?.nombre || '';
-      
-      // Primero obtener la vigencia actual del sistema
-      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+
+      const response = await axios.get(`${API}/predios/buscar-incluyendo-pendientes`, {
+        params: { search: searchPredioM1, municipio: municipioNombre },
         headers: { Authorization: `Bearer ${token}` }
       });
-      const vigenciaActual = statsResponse.data.vigencia_actual;
-      
-      // Buscar predios con la vigencia actual
-      const response = await axios.get(`${API}/predios`, {
-        params: { 
-          search: searchPredioM1,
-          municipio: municipioNombre,
-          vigencia: vigenciaActual,
-          limit: 20
-        },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setSearchResultsM1(response.data.predios || []);
-      if (response.data.predios?.length === 0) {
+
+      const todos = [...(response.data.predios || []), ...(response.data.predios_pendientes || []).map(p => ({ ...p, _es_pendiente: true }))];
+      setSearchResultsM1(todos);
+      if (todos.length === 0) {
         toast.info('No se encontraron predios con ese criterio');
       }
     } catch (error) {
@@ -2943,31 +2932,34 @@ export default function MutacionesResoluciones() {
       toast.error('Ingrese al menos 3 caracteres para buscar');
       return;
     }
-    
+
     setSearchingPrediosM3(true);
     try {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m3Data.municipio)?.nombre || '';
-      
-      // Obtener vigencia actual
-      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const vigenciaActual = statsResponse.data.vigencia_actual;
-      
-      const response = await axios.get(`${API}/predios`, {
-        params: { 
+
+      // Buscar en predios aprobados Y en solicitudes M2 pendientes
+      const response = await axios.get(`${API}/predios/buscar-incluyendo-pendientes`, {
+        params: {
           search: searchPredioM3,
-          municipio: municipioNombre,
-          vigencia: vigenciaActual,
-          limit: 20
+          municipio: municipioNombre
         },
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      setSearchResultsM3(response.data.predios || []);
-      if (response.data.predios?.length === 0) {
+
+      const prediosNormales = response.data.predios || [];
+      const prediosPendientes = (response.data.predios_pendientes || []).map(p => ({
+        ...p,
+        _es_pendiente: true
+      }));
+
+      const todos = [...prediosNormales, ...prediosPendientes];
+      setSearchResultsM3(todos);
+
+      if (todos.length === 0) {
         toast.info('No se encontraron predios con ese criterio');
+      } else if (prediosPendientes.length > 0) {
+        toast.info(`${prediosNormales.length} predio(s) aprobado(s) + ${prediosPendientes.length} de M2 pendiente(s)`);
       }
     } catch (error) {
       toast.error('Error buscando predios');
@@ -2987,6 +2979,11 @@ export default function MutacionesResoluciones() {
     }));
     setSearchResultsM3([]);
     setSearchPredioM3('');
+    // Scroll al formulario específico después de seleccionar
+    setTimeout(() => {
+      const target = document.querySelector('[data-testid="m3-predio-seleccionado"]');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   };
 
   // Buscar radicados para M3
@@ -3015,7 +3012,7 @@ export default function MutacionesResoluciones() {
       ...prev,
       construcciones_nuevas: [...prev.construcciones_nuevas, {
         tipo_construccion: 'C',
-        pisos: 1,
+        pisos: 0,
         habitaciones: 0,
         banos: 0,
         locales: 0,
@@ -3208,29 +3205,20 @@ export default function MutacionesResoluciones() {
       toast.error('Ingrese al menos 3 caracteres para buscar');
       return;
     }
-    
+
     setSearchingPrediosM4(true);
     try {
       const token = localStorage.getItem('token');
       const municipioNombre = MUNICIPIOS.find(m => m.codigo === m4Data.municipio)?.nombre || '';
-      
-      const statsResponse = await axios.get(`${API}/predios/stats/summary`, {
+
+      const response = await axios.get(`${API}/predios/buscar-incluyendo-pendientes`, {
+        params: { search: searchPredioM4, municipio: municipioNombre },
         headers: { Authorization: `Bearer ${token}` }
       });
-      const vigenciaActual = statsResponse.data.vigencia_actual;
-      
-      const response = await axios.get(`${API}/predios`, {
-        params: { 
-          search: searchPredioM4,
-          municipio: municipioNombre,
-          vigencia: vigenciaActual,
-          limit: 20
-        },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setSearchResultsM4(response.data.predios || []);
-      if (response.data.predios?.length === 0) {
+
+      const todos = [...(response.data.predios || []), ...(response.data.predios_pendientes || []).map(p => ({ ...p, _es_pendiente: true }))];
+      setSearchResultsM4(todos);
+      if (todos.length === 0) {
         toast.info('No se encontraron predios con ese criterio');
       }
     } catch (error) {
@@ -3423,22 +3411,21 @@ export default function MutacionesResoluciones() {
       toast.warning('Ingrese al menos 3 caracteres para buscar');
       return;
     }
-    
+
     setSearchingPrediosM5(true);
     try {
       const token = localStorage.getItem('token');
-      const codigoMunicipio = MUNICIPIOS.find(m => m.nombre === m5Data.municipio)?.codigo;
-      
-      // Usar el endpoint buscar-municipio que tiene la lógica correcta de búsqueda
-      const response = await axios.get(`${API}/predios/buscar-municipio/${codigoMunicipio}`, {
-        params: { 
-          q: searchPredioM5,
-          limit: 20
-        },
+
+      const response = await axios.get(`${API}/predios/buscar-incluyendo-pendientes`, {
+        params: { search: searchPredioM5, municipio: m5Data.municipio },
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      setSearchResultsM5(response.data.predios || response.data || []);
+
+      const todos = [...(response.data.predios || []), ...(response.data.predios_pendientes || []).map(p => ({ ...p, _es_pendiente: true }))];
+      setSearchResultsM5(todos);
+      if (todos.length === 0) {
+        toast.info('No se encontraron predios con ese criterio');
+      }
     } catch (error) {
       console.error('Error buscando predios:', error);
       toast.error('Error al buscar predios');
@@ -4559,19 +4546,24 @@ export default function MutacionesResoluciones() {
               {searchResultsM3.length > 0 && (
                 <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
                   {searchResultsM3.map((predio, idx) => {
-                    const nombrePropietario = predio.propietarios?.length > 0 
+                    const nombrePropietario = predio.propietarios?.length > 0
                       ? predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre
                       : predio.nombre_propietario || '';
+                    const esPendiente = predio._es_pendiente || predio.es_pendiente_aprobacion;
                     return (
-                      <div 
+                      <div
                         key={idx}
-                        className="p-2 hover:bg-amber-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                        className={`p-2 cursor-pointer border-b last:border-b-0 flex justify-between items-center ${esPendiente ? 'hover:bg-orange-50 bg-orange-50/40' : 'hover:bg-amber-50'}`}
                         onClick={() => seleccionarPredioM3(predio)}
                         data-testid={`m3-search-result-${idx}`}
                       >
                         <div>
-                          <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                          <p className="font-medium text-sm">
+                            {predio.codigo_predial_nacional || predio.numero_predio}
+                            {esPendiente && <span className="ml-2 text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">Pendiente aprobación</span>}
+                          </p>
                           <p className="text-xs text-slate-600">{predio.direccion} - {nombrePropietario}</p>
+                          {esPendiente && <p className="text-xs text-orange-600">{predio.origen}</p>}
                         </div>
                         <Plus className="w-4 h-4 text-amber-600" />
                       </div>
@@ -5144,17 +5136,24 @@ export default function MutacionesResoluciones() {
               {/* Resultados de búsqueda */}
               {searchResultsM4.length > 0 && (
                 <div className="border rounded-lg max-h-48 overflow-y-auto">
-                  {searchResultsM4.map(predio => (
-                    <div
-                      key={predio.id}
-                      className="p-3 hover:bg-green-50 cursor-pointer border-b last:border-b-0"
-                      onClick={() => seleccionarPredioM4(predio)}
-                    >
-                      <div className="font-medium text-sm">{predio.codigo_predial_nacional || predio.npn}</div>
-                      <div className="text-xs text-slate-500">{predio.direccion}</div>
-                      <div className="text-xs text-slate-400">Avalúo actual: ${(predio.avaluo || 0).toLocaleString('es-CO')}</div>
-                    </div>
-                  ))}
+                  {searchResultsM4.map((predio, idx) => {
+                    const esPendiente = predio._es_pendiente || predio.es_pendiente_aprobacion;
+                    return (
+                      <div
+                        key={predio.id || idx}
+                        className={`p-3 cursor-pointer border-b last:border-b-0 ${esPendiente ? 'hover:bg-orange-50 bg-orange-50/40' : 'hover:bg-green-50'}`}
+                        onClick={() => seleccionarPredioM4(predio)}
+                      >
+                        <div className="font-medium text-sm">
+                          {predio.codigo_predial_nacional || predio.npn}
+                          {esPendiente && <span className="ml-2 text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">Pendiente aprobación</span>}
+                        </div>
+                        <div className="text-xs text-slate-500">{predio.direccion}</div>
+                        <div className="text-xs text-slate-400">Avalúo actual: ${(predio.avaluo || 0).toLocaleString('es-CO')}</div>
+                        {esPendiente && <div className="text-xs text-orange-600">{predio.origen}</div>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -5501,19 +5500,26 @@ export default function MutacionesResoluciones() {
               {/* Resultados de búsqueda */}
               {searchResultsM5.length > 0 && (
                 <div className="border rounded-lg max-h-48 overflow-y-auto">
-                  {searchResultsM5.map((predio, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 hover:bg-red-50 cursor-pointer border-b last:border-b-0"
-                      onClick={() => seleccionarPredioM5(predio)}
-                    >
-                      <p className="font-mono text-sm font-medium text-red-700">{predio.codigo_predial_nacional || predio.NPN}</p>
-                      <p className="text-xs text-slate-500">{predio.direccion}</p>
-                      {predio.propietarios?.[0] && (
-                        <p className="text-xs text-slate-400">{predio.propietarios[0].nombre_propietario}</p>
-                      )}
-                    </div>
-                  ))}
+                  {searchResultsM5.map((predio, idx) => {
+                    const esPendiente = predio._es_pendiente || predio.es_pendiente_aprobacion;
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-3 cursor-pointer border-b last:border-b-0 ${esPendiente ? 'hover:bg-orange-50 bg-orange-50/40' : 'hover:bg-red-50'}`}
+                        onClick={() => seleccionarPredioM5(predio)}
+                      >
+                        <p className="font-mono text-sm font-medium text-red-700">
+                          {predio.codigo_predial_nacional || predio.NPN}
+                          {esPendiente && <span className="ml-2 text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded font-sans">Pendiente aprobación</span>}
+                        </p>
+                        <p className="text-xs text-slate-500">{predio.direccion}</p>
+                        {predio.propietarios?.[0] && (
+                          <p className="text-xs text-slate-400">{predio.propietarios[0].nombre_propietario}</p>
+                        )}
+                        {esPendiente && <p className="text-xs text-orange-600">{predio.origen}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -5636,12 +5642,19 @@ export default function MutacionesResoluciones() {
                     
                     {searchResultsM5.length > 0 && (
                       <div className="border rounded-lg max-h-48 overflow-y-auto">
-                        {searchResultsM5.map((predio, idx) => (
-                          <div key={idx} className="p-3 hover:bg-emerald-50 cursor-pointer border-b" onClick={() => seleccionarPredioM5(predio)}>
-                            <p className="font-mono text-sm font-medium text-emerald-700">{predio.codigo_predial_nacional || predio.codigo_homologado}</p>
-                            <p className="text-xs text-slate-500">{predio.direccion}</p>
-                          </div>
-                        ))}
+                        {searchResultsM5.map((predio, idx) => {
+                          const esPendiente = predio._es_pendiente || predio.es_pendiente_aprobacion;
+                          return (
+                            <div key={idx} className={`p-3 cursor-pointer border-b ${esPendiente ? 'hover:bg-orange-50 bg-orange-50/40' : 'hover:bg-emerald-50'}`} onClick={() => seleccionarPredioM5(predio)}>
+                              <p className="font-mono text-sm font-medium text-emerald-700">
+                                {predio.codigo_predial_nacional || predio.codigo_homologado}
+                                {esPendiente && <span className="ml-2 text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded font-sans">Pendiente</span>}
+                              </p>
+                              <p className="text-xs text-slate-500">{predio.direccion}</p>
+                              {esPendiente && <p className="text-xs text-orange-600">{predio.origen}</p>}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -9291,18 +9304,23 @@ export default function MutacionesResoluciones() {
                   {searchResultsM1.length > 0 && (
                     <div className="border rounded-lg max-h-40 overflow-y-auto bg-white">
                       {searchResultsM1.map((predio, idx) => {
-                        const nombrePropietario = predio.propietarios?.length > 0 
+                        const nombrePropietario = predio.propietarios?.length > 0
                           ? predio.propietarios[0].nombre_propietario || predio.propietarios[0].nombre
                           : predio.nombre_propietario || '';
+                        const esPendiente = predio._es_pendiente || predio.es_pendiente_aprobacion;
                         return (
-                          <div 
+                          <div
                             key={idx}
-                            className="p-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center"
+                            className={`p-2 cursor-pointer border-b last:border-b-0 flex justify-between items-center ${esPendiente ? 'hover:bg-orange-50 bg-orange-50/40' : 'hover:bg-blue-50'}`}
                             onClick={() => seleccionarPredioM1(predio)}
                           >
                             <div>
-                              <p className="font-medium text-sm">{predio.codigo_predial_nacional || predio.numero_predio}</p>
+                              <p className="font-medium text-sm">
+                                {predio.codigo_predial_nacional || predio.numero_predio}
+                                {esPendiente && <span className="ml-2 text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded">Pendiente aprobación</span>}
+                              </p>
                               <p className="text-xs text-slate-600">{predio.direccion} - {nombrePropietario}</p>
+                              {esPendiente && <p className="text-xs text-orange-600">{predio.origen}</p>}
                             </div>
                             <Plus className="w-4 h-4 text-blue-600" />
                           </div>
