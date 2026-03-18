@@ -54,8 +54,9 @@ export default function AllPetitions() {
   };
 
   useEffect(() => {
-    if (user?.role === 'usuario') {
+    if (user?.role === 'usuario' || user?.role === 'empresa') {
       navigate('/dashboard');
+      return;
     } else {
       fetchPetitions();
       if (isCoordinatorOrAdmin) {

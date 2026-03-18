@@ -231,8 +231,8 @@ export default function DashboardLayout() {
   const menuData = useMemo(() => {
     if (!user) return { baseMenuItems: [], conservacionItems: [], actualizacionItems: [], adminItems: [] };
 
-    const isStaff = user.role !== 'usuario';
-    const canSeeAllPetitions = isStaff && user.role !== 'empresa';
+    const isStaff = !['usuario', 'empresa'].includes(user.role);
+    const canSeeAllPetitions = isStaff;
     const isCoordAdmin = ['administrador', 'coordinador'].includes(user.role);
     const canManageUsers = ['administrador', 'coordinador', 'atencion_usuario'].includes(user.role);
     const canAccessActualizacion = ['administrador', 'coordinador', 'gestor'].includes(user.role);

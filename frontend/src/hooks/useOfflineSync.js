@@ -256,10 +256,20 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
           sincronizados++;
         } catch (error) {
           console.error(`[Sync] Error sincronizando cambio ${cambio.id}:`, error);
-          if (error.code === 'ECONNABORTED') {
+          if (error.response?.status === 403) {
+            // Permiso denegado - eliminar cambio porque nunca se sincronizará
+            console.error(`[Sync] Permiso denegado para cambio ${cambio.id} - eliminando`);
+            await eliminarCambioSincronizado(cambio.id);
+            if (showToasts) {
+              toast.error('Cambio eliminado: no tiene permiso para esta acción');
+            }
+            errores++;
+          } else if (error.code === 'ECONNABORTED') {
             console.error(`[Sync] Timeout en cambio ${cambio.id} - se reintentará`);
+            errores++;
+          } else {
+            errores++;
           }
-          errores++;
         }
       }
 
@@ -534,6 +544,17 @@ export function useOfflineSync(proyectoId, modulo = 'actualizacion') {
   // Guardar cambio localmente cuando está offline
   const saveChangeOffline = useCallback(async (tipo, datos) => {
     try {
+      // Validar que el usuario tenga permisos para hacer cambios
+      const userData = localStorage.getItem('asm_offline_user_data');
+      if (userData) {
+        const userInfo = JSON.parse(userData);
+        const rolesConPermiso = ['administrador', 'coordinador', 'gestor', 'gestor_auxiliar'];
+        if (!rolesConPermiso.includes(userInfo.role)) {
+          toast.error('No tiene permiso para realizar cambios');
+          return null;
+        }
+      }
+
       const cambioId = await saveCambioPendiente({
         tipo,
         proyecto_id: proyectoId,

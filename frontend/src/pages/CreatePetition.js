@@ -196,6 +196,12 @@ export default function CreatePetition() {
       return;
     }
     
+    // Verificar conexión antes de enviar
+    if (!navigator.onLine) {
+      toast.error('Sin conexión a internet. Debe estar conectado para crear peticiones.');
+      return;
+    }
+
     setLoading(true);
     try {
       const formDataToSend = new FormData();
