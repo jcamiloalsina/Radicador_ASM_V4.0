@@ -521,6 +521,10 @@ class PredioNuevoCreate(BaseModel):
     peticiones_ids: Optional[List[str]] = []  # IDs de peticiones relacionadas
     # Observaciones
     observaciones: Optional[str] = None
+    # PH (Propiedad Horizontal) padre-hijo
+    es_ph: Optional[bool] = False
+    coeficiente_copropiedad: Optional[float] = None
+    predio_matriz_cpn: Optional[str] = None
 
 class PredioNuevoAccion(BaseModel):
     """Modelo para acciones en el flujo de trabajo"""
@@ -8125,7 +8129,11 @@ async def crear_predio_con_workflow(
             "matricula_inmobiliaria": request.get("matricula_inmobiliaria", ""),
             # Marcador de predio creado en plataforma (sincronización automática R2→R1)
             "creado_en_plataforma": request.get("creado_en_plataforma", True),
-            "area_editada_en_plataforma": False
+            "area_editada_en_plataforma": False,
+            # PH (Propiedad Horizontal)
+            "es_ph": request.get("es_ph", False),
+            "coeficiente_copropiedad": request.get("coeficiente_copropiedad"),
+            "predio_matriz_cpn": request.get("predio_matriz_cpn")
         },
         "justificacion": justificacion,
         "estado": "pendiente_aprobacion",
@@ -13831,7 +13839,23 @@ async def crear_predio_m5(
         
         # Lista completa de propietarios
         "propietarios": predio_data.propietarios,
-        
+
+        # R1/R2 para exportación Excel
+        "r1_registros": [{
+            "codigo_predial_nacional": codigo,
+            "codigo_homologado": codigo_homologado,
+            "direccion": predio_data.direccion,
+            "destino_economico": predio_data.destino_economico,
+            "area_terreno": predio_data.area_terreno,
+            "area_construida": predio_data.area_construida,
+            "avaluo": predio_data.avaluo_catastral
+        }],
+        "r2_registros": [{
+            "codigo_predial_nacional": codigo,
+            "matricula_inmobiliaria": predio_data.matricula_inmobiliaria or '',
+            "zonas": []
+        }],
+
         # Metadata
         "vigencia": datetime.now().year,
         "es_predio_nuevo": True,
@@ -13871,6 +13895,138 @@ async def crear_predio_m5(
         "codigo_homologado": predio["codigo_homologado"],
         "numero_predio": predio["numero_predio"],
         "message": "Predio creado exitosamente"
+    }
+
+
+# ===== INFO PH (PROPIEDAD HORIZONTAL) PADRE-HIJO =====
+
+@api_router.get("/predios/ph-info/{cpn_prefijo}")
+async def obtener_info_ph(
+    cpn_prefijo: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene info PH padre-hijo para conservación.
+    cpn_prefijo = primeros 22 dígitos del CPN (hasta condición inclusive).
+    Estructura CPN 30 dígitos: prefijo(5)+zona(2)+sector(2)+comuna(2)+barrio(2)+manzana(4)+terreno(4)+condicion(1) = 22
+    + predio_horizontal(8: edificio2+piso2+unidad4)
+    Padre: prefijo22 + '00000000', Hijos: prefijo22 + != '00000000'
+    """
+    if len(cpn_prefijo) != 22:
+        raise HTTPException(status_code=400, detail="El prefijo debe tener 22 dígitos (hasta condición)")
+
+    cpn_padre = cpn_prefijo + "00000000"
+
+    # Buscar padre
+    padre = await db.predios.find_one(
+        {"codigo_predial_nacional": cpn_padre, "deleted": {"$ne": True}},
+        {"_id": 0, "codigo_predial_nacional": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "nombre_propietario": 1, "direccion": 1}
+    )
+
+    # Buscar hijos (mismo prefijo 22, posiciones 22-29 != 00000000)
+    hijos_cursor = db.predios.find(
+        {
+            "codigo_predial_nacional": {"$regex": f"^{cpn_prefijo}"},
+            "deleted": {"$ne": True}
+        },
+        {"_id": 0, "codigo_predial_nacional": 1, "area_terreno": 1, "area_construida": 1, "coeficiente_copropiedad": 1}
+    )
+
+    hijos = []
+    async for h in hijos_cursor:
+        cpn = h.get("codigo_predial_nacional", "")
+        if len(cpn) >= 30 and cpn[22:30] != "00000000":
+            hijos.append(h)
+
+    coef_acumulado = sum(float(h.get("coeficiente_copropiedad", 0)) for h in hijos)
+
+    return {
+        "padre": padre,
+        "hijos": hijos,
+        "coeficiente_acumulado": round(coef_acumulado, 4),
+        "coeficiente_disponible": round(100.0 - coef_acumulado, 4)
+    }
+
+
+@api_router.get("/actualizacion/proyectos/{proyecto_id}/predios/ph-info/{cpn_prefijo}")
+async def obtener_info_ph_actualizacion(
+    proyecto_id: str,
+    cpn_prefijo: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene info PH padre-hijo para actualización.
+    cpn_prefijo = primeros 22 dígitos del CPN (hasta condición inclusive).
+    Busca en predios_actualizacion y fallback a predios.
+    """
+    if len(cpn_prefijo) != 22:
+        raise HTTPException(status_code=400, detail="El prefijo debe tener 22 dígitos (hasta condición)")
+
+    cpn_padre = cpn_prefijo + "00000000"
+
+    # Buscar padre en predios_actualizacion primero
+    padre = await db.predios_actualizacion.find_one(
+        {"proyecto_id": proyecto_id, "codigo_predial": cpn_padre},
+        {"_id": 0, "codigo_predial": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "direccion": 1}
+    )
+
+    # Fallback: buscar padre en predios principales
+    if not padre:
+        padre_principal = await db.predios.find_one(
+            {"codigo_predial_nacional": cpn_padre, "deleted": {"$ne": True}},
+            {"_id": 0, "codigo_predial_nacional": 1, "area_terreno": 1, "area_construida": 1, "avaluo": 1, "direccion": 1}
+        )
+        if padre_principal:
+            padre = {
+                "codigo_predial": padre_principal.get("codigo_predial_nacional"),
+                "area_terreno": padre_principal.get("area_terreno"),
+                "area_construida": padre_principal.get("area_construida"),
+                "avaluo": padre_principal.get("avaluo"),
+                "direccion": padre_principal.get("direccion"),
+                "origen": "conservacion"
+            }
+
+    # Buscar hijos en predios_actualizacion
+    hijos = []
+    hijos_cursor = db.predios_actualizacion.find(
+        {
+            "proyecto_id": proyecto_id,
+            "codigo_predial": {"$regex": f"^{cpn_prefijo}"}
+        },
+        {"_id": 0, "codigo_predial": 1, "area_terreno": 1, "area_construida": 1, "coeficiente_copropiedad": 1}
+    )
+    async for h in hijos_cursor:
+        cpn = h.get("codigo_predial", "")
+        if len(cpn) >= 30 and cpn[22:30] != "00000000":
+            hijos.append(h)
+
+    # También buscar hijos en predios principales
+    hijos_principal_cursor = db.predios.find(
+        {
+            "codigo_predial_nacional": {"$regex": f"^{cpn_prefijo}"},
+            "deleted": {"$ne": True}
+        },
+        {"_id": 0, "codigo_predial_nacional": 1, "area_terreno": 1, "area_construida": 1, "coeficiente_copropiedad": 1}
+    )
+    hijos_cpns = set(h.get("codigo_predial", "") for h in hijos)
+    async for h in hijos_principal_cursor:
+        cpn = h.get("codigo_predial_nacional", "")
+        if len(cpn) >= 30 and cpn[22:30] != "00000000" and cpn not in hijos_cpns:
+            hijos.append({
+                "codigo_predial": cpn,
+                "area_terreno": h.get("area_terreno"),
+                "area_construida": h.get("area_construida"),
+                "coeficiente_copropiedad": h.get("coeficiente_copropiedad", 0),
+                "origen": "conservacion"
+            })
+
+    coef_acumulado = sum(float(h.get("coeficiente_copropiedad", 0)) for h in hijos)
+
+    return {
+        "padre": padre,
+        "hijos": hijos,
+        "coeficiente_acumulado": round(coef_acumulado, 4),
+        "coeficiente_disponible": round(100.0 - coef_acumulado, 4)
     }
 
 
@@ -13942,9 +14098,28 @@ async def crear_predio_nuevo(
             "motivo": eliminado.get("motivo", ""),
         })
     
+    # Validar coeficiente PH si aplica
+    if predio_data.es_ph and predio_data.coeficiente_copropiedad is not None:
+        coef = predio_data.coeficiente_copropiedad
+        if coef <= 0 or coef > 100:
+            raise HTTPException(status_code=400, detail="El coeficiente de copropiedad debe estar entre 0 y 100%")
+        # Validar que no supere el disponible
+        prefijo22 = codigo_predial[:22]
+        hijos_cursor = db.predios.find(
+            {"codigo_predial_nacional": {"$regex": f"^{prefijo22}"}, "deleted": {"$ne": True}},
+            {"_id": 0, "codigo_predial_nacional": 1, "coeficiente_copropiedad": 1}
+        )
+        coef_acumulado = 0.0
+        async for h in hijos_cursor:
+            cpn_h = h.get("codigo_predial_nacional", "")
+            if len(cpn_h) >= 30 and cpn_h[22:30] != "00000000":
+                coef_acumulado += float(h.get("coeficiente_copropiedad", 0))
+        if coef + coef_acumulado > 100:
+            raise HTTPException(status_code=400, detail=f"El coeficiente ({coef}%) + acumulado hijos ({coef_acumulado:.2f}%) supera 100%")
+
     # Generar código homologado - Primero intentar de la colección de códigos cargados del Excel
     codigo_homologado = await asignar_codigo_homologado(r1.municipio, None)
-    
+
     if codigo_homologado:
         # Obtener el último número de predio para mantener secuencia
         last_predio = await db.predios.find_one(
@@ -14025,12 +14200,17 @@ async def crear_predio_nuevo(
         # === FLUJO DE TRABAJO ===
         "es_predio_nuevo": True,
         "estado_flujo": PredioNuevoEstado.CREADO,
-        
+
+        # PH (Propiedad Horizontal)
+        "es_ph": predio_data.es_ph or False,
+        "coeficiente_copropiedad": predio_data.coeficiente_copropiedad,
+        "predio_matriz_cpn": predio_data.predio_matriz_cpn,
+
         # Gestor creador
         "gestor_creador_id": current_user['id'],
         "gestor_creador_nombre": current_user['full_name'],
         "gestor_creador_email": current_user.get('email'),
-        
+
         # Gestor de apoyo (digitalización)
         "gestor_apoyo_id": predio_data.gestor_apoyo_id,
         "gestor_apoyo_nombre": gestor_apoyo['full_name'],
@@ -15650,10 +15830,17 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                         "area_nueva": predio_cancelado.get('nueva_area_terreno')
                     }]
                 }
-                
+
                 # Si hay propietarios editados, actualizarlos
                 if predio_cancelado.get('propietarios'):
                     update_data["propietarios"] = predio_cancelado['propietarios']
+                # Persistir dirección, destino y matrícula si fueron editados
+                if predio_cancelado.get('direccion'):
+                    update_data["direccion"] = predio_cancelado['direccion']
+                if predio_cancelado.get('destino_economico'):
+                    update_data["destino_economico"] = predio_cancelado['destino_economico']
+                if predio_cancelado.get('matricula_inmobiliaria'):
+                    update_data["matricula_inmobiliaria"] = predio_cancelado['matricula_inmobiliaria']
                 
                 await db.predios.update_one(
                     {"id": predio_id_real},
@@ -15718,6 +15905,18 @@ async def _generar_resolucion_m2_interno(solicitud: dict, aprobador: dict) -> di
                 predio_doc['r2_registros'] = [{
                     "matricula_inmobiliaria": mat,
                     "zonas": predio_nuevo.get('zonas_homogeneas', [])
+                }]
+
+            # Asegurar r1_registros con destino_economico, dirección y áreas para exportación Excel R1
+            if not predio_doc.get('r1_registros'):
+                predio_doc['r1_registros'] = [{
+                    "codigo_predial_nacional": codigo_predial,
+                    "codigo_homologado": predio_nuevo.get('codigo_homologado', ''),
+                    "direccion": predio_nuevo.get('direccion', ''),
+                    "destino_economico": predio_nuevo.get('destino_economico', 'A'),
+                    "area_terreno": predio_nuevo.get('area_terreno', 0),
+                    "area_construida": predio_nuevo.get('area_construida', 0),
+                    "avaluo": predio_nuevo.get('avaluo', 0)
                 }]
 
             # Verificar si el predio ya existe
@@ -15994,8 +16193,10 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             # Cambiar destino económico
             destino_anterior = predio.get('destino_economico', '')
             destino_nuevo = solicitud.get('destino_nuevo', '')
-            
+
             update_predio["destino_economico"] = destino_nuevo
+            # Actualizar R1 para exportación Excel
+            update_predio["r1_registros.0.destino_economico"] = destino_nuevo
             historial_entry["detalles"] = {
                 "destino_anterior": destino_anterior,
                 "destino_nuevo": destino_nuevo,
@@ -16041,6 +16242,9 @@ async def _generar_resolucion_m3_interno(solicitud: dict, aprobador: dict) -> di
             update_predio["construcciones"] = construcciones_actuales
             update_predio["r2_registros"] = r2_registros
             update_predio["area_construida"] = area_construida_total
+            # Actualizar R1 con nueva área construida para exportación Excel
+            update_predio["r1_registros.0.area_construida"] = area_construida_total
+            update_predio["r1_registros.0.avaluo"] = solicitud.get('avaluo_nuevo', predio.get('avaluo', 0))
 
             historial_entry["detalles"] = {
                 "construcciones_agregadas": len(construcciones_nuevas),
@@ -16318,8 +16522,9 @@ async def _generar_resolucion_m4_interno(solicitud: dict, aprobador: dict) -> di
             update_predio = {
                 "updated_at": datetime.now(COLOMBIA_TZ).isoformat(),
                 "avaluo": avaluo_nuevo,
+                "r1_registros.0.avaluo": avaluo_nuevo,
             }
-            
+
             # Historial para mostrar en el frontend (historial_resoluciones)
             historial_resolucion_entry = {
                 "tipo_mutacion": "M4",
@@ -17041,10 +17246,12 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             }
             
             # Preparar actualización del predio
+            destino_rect = solicitud.get('destino_economico') or datos_r1_r2.get('destino_economico', 'A')
             update_fields = {
                 "area_terreno": area_terreno_nueva,
                 "area_construida": area_construida_nueva,
                 "avaluo": avaluo_nuevo,
+                "destino_economico": destino_rect,
                 "ultima_rectificacion_area": fecha_resolucion,
                 "resolucion_rectificacion": numero_resolucion,
                 "area_editada_en_plataforma": True,  # Marcar como editado en plataforma (área automática)
@@ -17097,7 +17304,8 @@ async def _generar_resolucion_m6_interno(solicitud: dict, aprobador: dict) -> di
             r1_update = {
                 "r1_registros.0.area_terreno": area_terreno_nueva,
                 "r1_registros.0.area_construida": area_construida_nueva,
-                "r1_registros.0.avaluo": avaluo_nuevo
+                "r1_registros.0.avaluo": avaluo_nuevo,
+                "r1_registros.0.destino_economico": destino_rect
             }
             
             # Agregar zonas homogéneas a R1 si existen
@@ -17495,7 +17703,22 @@ async def _generar_resolucion_complementacion_interno(solicitud: dict, aprobador
                     "numero_documento": p.get("numero_documento", p.get("documento", "")),
                     "estado_civil": validar_estado_civil(p.get("estado_civil", "")),
                 } for p in propietarios_nuevos_raw]
-            
+
+            # Actualizar R1 para que la exportación Excel refleje los cambios
+            r1_update_comp = {}
+            if destino_nuevo:
+                r1_update_comp["r1_registros.0.destino_economico"] = destino_nuevo
+            if direccion_nueva:
+                r1_update_comp["r1_registros.0.direccion"] = direccion_nueva
+            r1_update_comp["r1_registros.0.area_terreno"] = area_terreno_nueva
+            r1_update_comp["r1_registros.0.area_construida"] = area_construida_nueva
+            r1_update_comp["r1_registros.0.avaluo"] = avaluo_nuevo
+            update_fields.update(r1_update_comp)
+
+            # Actualizar R2 con matrícula para exportación Excel
+            if matricula_nueva:
+                update_fields["r2_registros.0.matricula_inmobiliaria"] = matricula_nueva
+
             await db.predios.update_one(
                 {"id": predio_id},
                 {
@@ -18456,7 +18679,23 @@ async def aplicar_cambio_predio(cambio: dict, aprobador: dict) -> dict:
                 "zonas": r2_data.get("zonas", [])
             }]
             del datos["r2"]  # Eliminar campo r2 para evitar duplicados
-        
+
+        # Sincronizar matrícula a r2_registros para exportación Excel R2
+        if "matricula_inmobiliaria" in datos and "r2_registros" not in datos:
+            datos["r2_registros.0.matricula_inmobiliaria"] = datos["matricula_inmobiliaria"]
+
+        # Sincronizar campos R1 para exportación Excel R1
+        campos_r1_sync = {
+            "destino_economico": "r1_registros.0.destino_economico",
+            "direccion": "r1_registros.0.direccion",
+            "area_terreno": "r1_registros.0.area_terreno",
+            "area_construida": "r1_registros.0.area_construida",
+            "avaluo": "r1_registros.0.avaluo",
+        }
+        for campo, r1_campo in campos_r1_sync.items():
+            if campo in datos:
+                datos[r1_campo] = datos[campo]
+
         await db.predios.update_one(
             {"id": predio_id},
             {
@@ -23873,7 +24112,25 @@ async def actualizar_predio_proyecto(
             "$push": {"historial_cambios": historial_entry}
         }
     )
-    
+
+    # Registrar en log de actividades
+    municipio_predio = predio.get('municipio', proyecto.get('municipio', ''))
+    await registrar_log_actividad(
+        accion=f"editar_predio_actualizacion_{accion}",
+        categoria="actualizacion",
+        descripcion=f"Predio {codigo_predial} editado ({accion}) en proyecto {proyecto_id}",
+        usuario_id=current_user.get("id"),
+        usuario_nombre=current_user.get("full_name"),
+        usuario_rol=current_user.get("role"),
+        municipio=municipio_predio,
+        detalles={
+            "proyecto_id": proyecto_id,
+            "codigo_predial": codigo_predial,
+            "accion": accion,
+            "campos_modificados": list(update_data.keys())
+        }
+    )
+
     return {
         "message": "Predio actualizado exitosamente",
         "codigo_predial": codigo_predial
@@ -25123,26 +25380,7 @@ async def crear_propuesta_cambio(
     if not predio:
         raise HTTPException(status_code=404, detail="Predio no encontrado")
     
-    # Verificar que el predio esté visitado
-    if predio.get('estado_visita') not in ['visitado', 'visitado_firmado', 'actualizado']:
-        raise HTTPException(status_code=400, detail="El predio debe estar visitado antes de proponer cambios")
-    
-    # Verificar que tenga el formulario de visita completo
-    formato_visita = predio.get('formato_visita')
-    if not formato_visita:
-        raise HTTPException(
-            status_code=400, 
-            detail="Debe completar el Formato de Visita antes de enviar a aprobación. Abra el predio y complete el formulario de visita."
-        )
-    
-    # Validar campos mínimos requeridos del formato de visita
-    campos_requeridos = ['fecha_visita', 'persona_atiende']
-    campos_faltantes = [campo for campo in campos_requeridos if not formato_visita.get(campo)]
-    if campos_faltantes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El Formato de Visita está incompleto. Faltan los siguientes campos: {', '.join(campos_faltantes)}"
-        )
+    # Nota: Ya no se requiere visita previa para proponer cambios
     
     # Verificar que no haya una propuesta pendiente para este código
     propuesta_existente = await db.propuestas_cambio_actualizacion.find_one({
@@ -25238,6 +25476,24 @@ async def crear_propuesta_cambio(
         }
     )
     
+    # Registrar en log de actividades
+    await registrar_log_actividad(
+        accion="propuesta_cambio_actualizacion",
+        categoria="actualizacion",
+        descripcion=f"Propuesta de cambio ({tipos_revision_nombres.get(tipo_revision, tipo_revision)}) creada para predio {codigo_predial} en proyecto {proyecto_id}",
+        usuario_id=current_user.get("id"),
+        usuario_nombre=current_user.get("full_name"),
+        usuario_rol=current_user.get("role"),
+        municipio=municipio,
+        detalles={
+            "proyecto_id": proyecto_id,
+            "codigo_predial": codigo_predial,
+            "propuesta_id": propuesta["id"],
+            "tipo_revision": tipo_revision,
+            "campos_propuestos": list(data.get('datos_propuestos', {}).keys())
+        }
+    )
+
     return {
         "message": "Propuesta de cambio creada exitosamente",
         "propuesta_id": propuesta["id"],
@@ -25611,6 +25867,11 @@ async def aprobar_propuesta(
             "municipio": municipio,
             "es_nuevo": True,
             "es_mejora": es_mejora,
+
+            # PH (Propiedad Horizontal)
+            "es_ph": datos_propuestos.get('es_ph', False),
+            "coeficiente_copropiedad": datos_propuestos.get('coeficiente_copropiedad'),
+            "predio_matriz_cpn": datos_propuestos.get('predio_matriz_cpn'),
 
             # Datos R1
             "direccion": r1.get('direccion', ''),
@@ -27273,25 +27534,40 @@ async def crear_predio_nuevo_actualizacion(
         raise HTTPException(status_code=400, detail="Ya existe una propuesta pendiente para este código")
     
     ahora = datetime.now(COLOMBIA_TZ).isoformat()
-    
-    # ============ VALIDACIÓN DEL FORMATO DE VISITA ============
-    # Para gestores, el formato de visita es OBLIGATORIO antes de enviar a aprobación
-    if current_user['role'] == UserRole.GESTOR:
-        if not formato_visita:
-            raise HTTPException(
-                status_code=400,
-                detail="Debe completar el Formato de Visita antes de enviar el predio nuevo a aprobación."
-            )
-        
-        # Validar campos mínimos requeridos
-        campos_requeridos = ['fecha_visita', 'persona_atiende']
-        campos_faltantes = [campo for campo in campos_requeridos if not formato_visita.get(campo)]
-        if campos_faltantes:
-            raise HTTPException(
-                status_code=400,
-                detail=f"El Formato de Visita está incompleto. Faltan: {', '.join(campos_faltantes)}"
-            )
-    
+
+    # PH (Propiedad Horizontal) datos
+    es_ph = predio_data.get('es_ph', False)
+    coeficiente_copropiedad = predio_data.get('coeficiente_copropiedad')
+    predio_matriz_cpn = predio_data.get('predio_matriz_cpn')
+
+    # Validar coeficiente PH si aplica
+    if es_ph and coeficiente_copropiedad is not None:
+        coef = float(coeficiente_copropiedad)
+        if coef <= 0 or coef > 100:
+            raise HTTPException(status_code=400, detail="El coeficiente de copropiedad debe estar entre 0 y 100%")
+        prefijo22 = codigo_predial[:22]
+        # Buscar hijos existentes en actualizacion
+        coef_acumulado = 0.0
+        hijos_act_cursor = db.predios_actualizacion.find(
+            {"proyecto_id": proyecto_id, "codigo_predial": {"$regex": f"^{prefijo22}"}},
+            {"_id": 0, "codigo_predial": 1, "coeficiente_copropiedad": 1}
+        )
+        async for h in hijos_act_cursor:
+            cpn_h = h.get("codigo_predial", "")
+            if len(cpn_h) >= 30 and cpn_h[22:30] != "00000000":
+                coef_acumulado += float(h.get("coeficiente_copropiedad", 0))
+        # También buscar en predios principales
+        hijos_princ_cursor = db.predios.find(
+            {"codigo_predial_nacional": {"$regex": f"^{prefijo22}"}, "deleted": {"$ne": True}},
+            {"_id": 0, "codigo_predial_nacional": 1, "coeficiente_copropiedad": 1}
+        )
+        async for h in hijos_princ_cursor:
+            cpn_h = h.get("codigo_predial_nacional", "")
+            if len(cpn_h) >= 30 and cpn_h[22:30] != "00000000":
+                coef_acumulado += float(h.get("coeficiente_copropiedad", 0))
+        if coef + coef_acumulado > 100:
+            raise HTTPException(status_code=400, detail=f"El coeficiente ({coef}%) + acumulado hijos ({coef_acumulado:.2f}%) supera 100%")
+
     # ============ FLUJO SEGÚN ROL ============
     # Si es GESTOR: crear propuesta pendiente de aprobación
     # Determinar si es mejora basándose en el dígito de condición (posición 21)
@@ -27303,12 +27579,12 @@ async def crear_predio_nuevo_actualizacion(
         propuesta = {
             "id": propuesta_id,
             "proyecto_id": proyecto_id,
-            "tipo": "predio_nuevo",  # Tipo de propuesta: predio nuevo
+            "tipo": "predio_nuevo",
             "es_mejora": es_mejora,
             "codigo_predial": codigo_predial,
             "municipio": municipio,
             "estado": "pendiente",
-            
+
             # Todos los datos del predio nuevo
             "datos_propuestos": {
                 "r1": r1,
@@ -27316,7 +27592,10 @@ async def crear_predio_nuevo_actualizacion(
                 "propietarios": propietarios,
                 "zonas_fisicas": zonas_fisicas,
                 "construcciones": construcciones,
-                "formato_visita": formato_visita
+                "formato_visita": formato_visita,
+                "es_ph": es_ph,
+                "coeficiente_copropiedad": coeficiente_copropiedad,
+                "predio_matriz_cpn": predio_matriz_cpn
             },
             
             # Metadatos - usar nombres consistentes
@@ -27372,6 +27651,11 @@ async def crear_predio_nuevo_actualizacion(
         "es_nuevo": True,
         "es_mejora": es_mejora,
 
+        # PH (Propiedad Horizontal)
+        "es_ph": es_ph or False,
+        "coeficiente_copropiedad": float(coeficiente_copropiedad) if coeficiente_copropiedad else None,
+        "predio_matriz_cpn": predio_matriz_cpn,
+
         # Datos R1
         "direccion": r1.get('direccion', ''),
         "destino_economico": r1.get('destino_economico', ''),
@@ -27379,14 +27663,14 @@ async def crear_predio_nuevo_actualizacion(
         "area_construida": float(r1.get('area_construida', 0)),
         "avaluo": float(r1.get('avaluo', 0)),
         "matricula_inmobiliaria": r2.get('matricula_inmobiliaria', ''),
-        
+
         # Propietarios
         "propietarios": propietarios,
-        
+
         # Zonas físicas y construcciones (R2)
         "zonas_fisicas": zonas_fisicas,
         "r2": r2,
-        
+
         # Formato de visita
         "formato_visita": formato_visita,
         "estado_visita": "visitado",
@@ -30725,7 +31009,16 @@ async def generar_resolucion_m2(
                 "matricula_inmobiliaria": matricula,
                 "propietarios": predio_inscrito.get('propietarios', []),
                 "zonas_homogeneas": predio_inscrito.get('zonas_homogeneas', []),
-                "r2_registros": r2_registros,  # NUEVO: Incluir información R2
+                "r1_registros": [{
+                    "codigo_predial_nacional": npn,
+                    "codigo_homologado": predio_inscrito.get('codigo_homologado', ''),
+                    "direccion": predio_inscrito.get('direccion', ''),
+                    "destino_economico": predio_inscrito.get('destino_economico', 'A'),
+                    "area_terreno": predio_inscrito.get('area_terreno', 0),
+                    "area_construida": predio_inscrito.get('area_construida', 0),
+                    "avaluo": predio_inscrito.get('avaluo', 0)
+                }],
+                "r2_registros": r2_registros,
                 "municipio": municipio_nombre,
                 "codigo_municipio": siguiente_data.get("codigo_municipio", request.municipio),
                 "vigencia": datetime.now().year,

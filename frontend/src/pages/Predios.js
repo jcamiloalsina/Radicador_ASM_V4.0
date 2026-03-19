@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { toast } from 'sonner';
 import axios from 'axios';
 import { 
-  Plus, Search, Edit, Trash2, MapPin, FileText, Building, 
+  Plus, Search, Edit, Trash2, MapPin, FileText, Building, Building2,
   User, DollarSign, LayoutGrid, Eye, History, Download, AlertTriangle, Users,
   Clock, CheckCircle, XCircle, Bell, Map, Upload, Loader2, RefreshCw, AlertCircle, WifiOff, FileEdit, Database, X, Calendar, Hash, ArrowRight, Lock, TreePine
 } from 'lucide-react';
@@ -366,7 +366,11 @@ export default function Predios() {
   const [peticionesDisponibles, setPeticionesDisponibles] = useState([]); // Lista de peticiones para seleccionar
   const [observacionesCreacion, setObservacionesCreacion] = useState('');
   const [usarNuevoFlujo, setUsarNuevoFlujo] = useState(false); // Toggle para usar el nuevo flujo
-  
+
+  // PH (Propiedad Horizontal) padre-hijo
+  const [infoPH, setInfoPH] = useState(null);
+  const [coeficientePH, setCoeficientePH] = useState('');
+
   const [formData, setFormData] = useState({
     municipio: '',
     zona: '00',
@@ -1272,7 +1276,45 @@ export default function Predios() {
     const soloNumeros = valor.replace(/[^0-9]/g, '');
     // Limitar al máximo de dígitos
     const valorFinal = soloNumeros.slice(0, maxLength);
-    setCodigoManual(prev => ({ ...prev, [campo]: valorFinal }));
+    const nuevosCodigos = { ...codigoManual, [campo]: valorFinal };
+    setCodigoManual(nuevosCodigos);
+
+    // Detectar hijo PH y buscar info
+    const condicion = nuevosCodigos.condicion || '0';
+    const phSufijo = (nuevosCodigos.edificio || '00') + (nuevosCodigos.piso || '00') + (nuevosCodigos.unidad || '0000');
+    if ((condicion === '8' || condicion === '9') && phSufijo !== '00000000' && phSufijo.replace(/0/g, '') !== '') {
+      const divipola = estructuraCodigo?.prefijo_fijo || '';
+      if (divipola) {
+        const prefijo22 = divipola +
+          (nuevosCodigos.zona || '00').padStart(2, '0') +
+          (nuevosCodigos.sector || '00').padStart(2, '0') +
+          (nuevosCodigos.comuna || '00').padStart(2, '0') +
+          (nuevosCodigos.barrio || '00').padStart(2, '0') +
+          (nuevosCodigos.manzana_vereda || '0000').padStart(4, '0') +
+          (nuevosCodigos.terreno || '0001').padStart(4, '0') +
+          condicion;
+        if (prefijo22.length === 22) {
+          fetchInfoPH(prefijo22);
+        }
+      }
+    } else {
+      setInfoPH(null);
+      setCoeficientePH('');
+    }
+  };
+
+  // Consultar info PH padre-hijo (conservación)
+  const fetchInfoPH = async (prefijo22) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/predios/ph-info/${prefijo22}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setInfoPH(res.data);
+    } catch (error) {
+      console.log('Error consultando PH info:', error);
+      setInfoPH(null);
+    }
   };
 
   // Verificar si hay datos ingresados en el formulario
@@ -2146,8 +2188,15 @@ export default function Predios() {
     }
     
     // Calcular áreas desde R2
-    const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
-    
+    let { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
+
+    // Si es PH con coeficiente, las áreas se calculan desde el padre
+    if (infoPH && infoPH.padre && coeficientePH && parseFloat(coeficientePH) > 0) {
+      const coef = parseFloat(coeficientePH) / 100;
+      areaTerrenoTotal = Math.round((parseFloat(infoPH.padre.area_terreno) || 0) * coef * 100) / 100;
+      areaConstruidaTotal = Math.round((parseFloat(infoPH.padre.area_construida) || 0) * coef * 100) / 100;
+    }
+
     // Preparar propietarios con formato correcto y documento con padding de 12 dígitos
     const propietariosFormateados = propietarios
       .filter(p => p.nombre_propietario && p.numero_documento)
@@ -2169,6 +2218,12 @@ export default function Predios() {
           // Marcar como creado en plataforma para sincronización automática R2→R1
           creado_en_plataforma: true,
           es_reaparicion: esReaparicion,
+          // PH (Propiedad Horizontal)
+          ...(infoPH ? {
+            es_ph: true,
+            coeficiente_copropiedad: parseFloat(coeficientePH) || null,
+            predio_matriz_cpn: infoPH.padre ? (infoPH.padre.codigo_predial_nacional || infoPH.padre.codigo_predial) : null
+          } : {}),
           r1: {
             municipio: formData.municipio || filterMunicipio,
             zona: codigoManual.zona,
@@ -2283,6 +2338,12 @@ export default function Predios() {
       const predioData = {
         codigo_predial_nacional: codigoCompleto,
         municipio: formData.municipio || filterMunicipio,
+        // PH (Propiedad Horizontal)
+        ...(infoPH ? {
+          es_ph: true,
+          coeficiente_copropiedad: parseFloat(coeficientePH) || null,
+          predio_matriz_cpn: infoPH.padre ? (infoPH.padre.codigo_predial_nacional || infoPH.padre.codigo_predial) : null
+        } : {}),
         // IMPORTANTE: Incluir el código homologado seleccionado/siguiente
         codigo_homologado: siguienteCodigoHomologado?.codigo || null,
         // Acto administrativo obligatorio (= número de resolución)
@@ -3671,8 +3732,7 @@ export default function Predios() {
                         max="9"
                         value={codigoManual.condicion} 
                         onChange={(e) => {
-                          const v = e.target.value.slice(0, 1);
-                          setCodigoManual({...codigoManual, condicion: v});
+                          handleCodigoChange('condicion', e.target.value, 1);
                         }}
                         maxLength={1}
                         className="font-mono text-center"
@@ -3714,6 +3774,86 @@ export default function Predios() {
                       />
                     </div>
                   </div>
+
+                  {/* Panel PH (Propiedad Horizontal) */}
+                  {infoPH && (
+                    <div className="mt-4 border border-purple-200 bg-purple-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Propiedad Horizontal (PH)
+                      </h4>
+                      {infoPH.padre ? (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                            <div>
+                              <span className="text-slate-500">Matriz CPN:</span>
+                              <p className="font-mono text-xs">{infoPH.padre.codigo_predial_nacional || infoPH.padre.codigo_predial}</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Área Terreno Matriz:</span>
+                              <p className="font-bold">{infoPH.padre.area_terreno} m²</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Área Construida Matriz:</span>
+                              <p className="font-bold">{infoPH.padre.area_construida} m²</p>
+                            </div>
+                          </div>
+                          {infoPH.hijos.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-xs text-slate-600 mb-1">Hijos existentes ({infoPH.hijos.length}):</p>
+                              <div className="max-h-24 overflow-y-auto text-xs">
+                                {infoPH.hijos.map((hijo, i) => (
+                                  <div key={i} className="flex justify-between py-0.5 border-b border-purple-100">
+                                    <span className="font-mono">{(hijo.codigo_predial_nacional || hijo.codigo_predial || '').slice(-7)}</span>
+                                    <span>{hijo.coeficiente_copropiedad || 0}%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div className="text-sm">
+                              <span className="text-slate-500">Coef. acumulado:</span>
+                              <span className="font-bold text-purple-700 ml-1">{infoPH.coeficiente_acumulado}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-slate-500">Disponible:</span>
+                              <span className="font-bold text-emerald-700 ml-1">{infoPH.coeficiente_disponible}%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Coeficiente de Copropiedad (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              max={infoPH.coeficiente_disponible}
+                              value={coeficientePH}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCoeficientePH(val);
+                                if (val && infoPH.padre) {
+                                  const coef = parseFloat(val) / 100;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    area_terreno: Math.round((parseFloat(infoPH.padre.area_terreno) || 0) * coef * 100) / 100,
+                                    area_construida: Math.round((parseFloat(infoPH.padre.area_construida) || 0) * coef * 100) / 100
+                                  }));
+                                }
+                              }}
+                              placeholder="Ej: 5.25"
+                              className="mt-1"
+                            />
+                            {coeficientePH && parseFloat(coeficientePH) > infoPH.coeficiente_disponible && (
+                              <p className="text-red-600 text-xs mt-1">Supera el % disponible ({infoPH.coeficiente_disponible}%)</p>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-amber-700">No se encontró predio matriz PH. Las áreas deben ingresarse manualmente.</p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Botón de verificar */}
                   <div className="mt-4 flex gap-3">

@@ -143,6 +143,10 @@ export default function GestionPrediosActualizacion() {
   const [buscandoPrediosManzana, setBuscandoPrediosManzana] = useState(false);
   const [siguienteTerrenoSugerido, setSiguienteTerrenoSugerido] = useState('0001');
   
+  // PH (Propiedad Horizontal) padre-hijo
+  const [infoPH, setInfoPH] = useState(null);
+  const [coeficientePH, setCoeficientePH] = useState('');
+
   // Permitir edición de CPN solo a coordinadores
   const canEditCodigoPredial = ['administrador', 'coordinador'].includes(user?.role);
   
@@ -437,8 +441,48 @@ export default function GestionPrediosActualizacion() {
   const handleCodigoChange = (campo, valor, maxLen) => {
     // Solo permitir dígitos y limitar la longitud
     const valorLimpio = valor.replace(/[^0-9]/g, '').slice(0, maxLen);
-    setCodigoManual(prev => ({ ...prev, [campo]: valorLimpio }));
+    const nuevosCodigos = { ...codigoManual, [campo]: valorLimpio };
+    setCodigoManual(nuevosCodigos);
     setVerificacionCodigo(null); // Resetear verificación al cambiar
+
+    // Detectar hijo PH y buscar info
+    const condicion = nuevosCodigos.condicion || '0';
+    const phSufijo = (nuevosCodigos.edificio || '00') + (nuevosCodigos.piso || '00') + (nuevosCodigos.unidad || '0000');
+    if ((condicion === '8' || condicion === '9') && phSufijo !== '00000000' && phSufijo.replace(/0/g, '') !== '') {
+      // Es hijo PH - construir prefijo 22 dígitos (hasta condición inclusive)
+      const divipola = estructuraCodigo?.prefijo_fijo || '';
+      if (divipola) {
+        const prefijo22 = divipola +
+          (nuevosCodigos.zona || '00').padStart(2, '0') +
+          (nuevosCodigos.sector || '00').padStart(2, '0') +
+          (nuevosCodigos.comuna || '00').padStart(2, '0') +
+          (nuevosCodigos.barrio || '00').padStart(2, '0') +
+          (nuevosCodigos.manzana_vereda || '0000').padStart(4, '0') +
+          (nuevosCodigos.terreno || '0001').padStart(4, '0') +
+          condicion;
+        if (prefijo22.length === 22) {
+          fetchInfoPH(prefijo22);
+        }
+      }
+    } else {
+      setInfoPH(null);
+      setCoeficientePH('');
+    }
+  };
+
+  // Consultar info PH padre-hijo
+  const fetchInfoPH = async (prefijo22) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(
+        `${API}/actualizacion/proyectos/${proyectoId}/predios/ph-info/${prefijo22}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setInfoPH(res.data);
+    } catch (error) {
+      console.log('Error consultando PH info:', error);
+      setInfoPH(null);
+    }
   };
   
   // Función para obtener el valor formateado con padding (solo para mostrar el código completo)
@@ -1153,8 +1197,16 @@ export default function GestionPrediosActualizacion() {
       }
       
       // Calcular áreas desde R2
-      const { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
-      
+      let { areaTerrenoTotal, areaConstruidaTotal } = calcularAreasTotales();
+
+      // Si es PH con coeficiente, las áreas se calculan desde el padre
+      const esPHConCoeficiente = infoPH && infoPH.padre && coeficientePH && parseFloat(coeficientePH) > 0;
+      if (esPHConCoeficiente) {
+        const coef = parseFloat(coeficientePH) / 100;
+        areaTerrenoTotal = Math.round((parseFloat(infoPH.padre.area_terreno) || 0) * coef * 100) / 100;
+        areaConstruidaTotal = Math.round((parseFloat(infoPH.padre.area_construida) || 0) * coef * 100) / 100;
+      }
+
       // Preparar propietarios en formato para exportación R1/R2
       const propietariosExport = propietarios.map(p => ({
         ...p,
@@ -1162,7 +1214,7 @@ export default function GestionPrediosActualizacion() {
         numero_documento: formatearNumeroDocumento(p.numero_documento),
         estado_civil: p.estado || p.estado_civil || ''
       }));
-      
+
       // Preparar datos completos para R1/R2
       const datosCompletos = {
         ...formData,
@@ -1178,13 +1230,19 @@ export default function GestionPrediosActualizacion() {
           ...zt,
           ...(construcciones[i] || {})
         })),
-        // Áreas calculadas
+        // Áreas calculadas (o PH si aplica)
         area_terreno: areaTerrenoTotal,
         area_construida: areaConstruidaTotal,
         avaluo: formData.avaluo_catastral,
-        avaluo_catastral: formData.avaluo_catastral
+        avaluo_catastral: formData.avaluo_catastral,
+        // PH (Propiedad Horizontal)
+        ...(infoPH ? {
+          es_ph: true,
+          coeficiente_copropiedad: parseFloat(coeficientePH) || null,
+          predio_matriz_cpn: infoPH.padre ? (infoPH.padre.codigo_predial || infoPH.padre.codigo_predial_nacional) : null
+        } : {})
       };
-      
+
       if (esNuevo) {
         // CORREGIDO: Usar endpoint /predios-nuevos que respeta flujo de aprobación
         // - Gestores: crea propuesta pendiente de aprobación
@@ -2004,11 +2062,91 @@ export default function GestionPrediosActualizacion() {
                     </div>
                   </div>
                   
+                  {/* Panel PH (Propiedad Horizontal) */}
+                  {infoPH && (
+                    <div className="mt-4 border border-purple-200 bg-purple-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Propiedad Horizontal (PH)
+                      </h4>
+                      {infoPH.padre ? (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                            <div>
+                              <span className="text-slate-500">Matriz CPN:</span>
+                              <p className="font-mono text-xs">{infoPH.padre.codigo_predial || infoPH.padre.codigo_predial_nacional}</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Área Terreno Matriz:</span>
+                              <p className="font-bold">{infoPH.padre.area_terreno} m²</p>
+                            </div>
+                            <div>
+                              <span className="text-slate-500">Área Construida Matriz:</span>
+                              <p className="font-bold">{infoPH.padre.area_construida} m²</p>
+                            </div>
+                          </div>
+                          {infoPH.hijos.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-xs text-slate-600 mb-1">Hijos existentes ({infoPH.hijos.length}):</p>
+                              <div className="max-h-24 overflow-y-auto text-xs">
+                                {infoPH.hijos.map((hijo, i) => (
+                                  <div key={i} className="flex justify-between py-0.5 border-b border-purple-100">
+                                    <span className="font-mono">{(hijo.codigo_predial || hijo.codigo_predial_nacional || '').slice(-7)}</span>
+                                    <span>{hijo.coeficiente_copropiedad || 0}%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div className="text-sm">
+                              <span className="text-slate-500">Coef. acumulado:</span>
+                              <span className="font-bold text-purple-700 ml-1">{infoPH.coeficiente_acumulado}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-slate-500">Disponible:</span>
+                              <span className="font-bold text-emerald-700 ml-1">{infoPH.coeficiente_disponible}%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm">Coeficiente de Copropiedad (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              max={infoPH.coeficiente_disponible}
+                              value={coeficientePH}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCoeficientePH(val);
+                                if (val && infoPH.padre) {
+                                  const coef = parseFloat(val) / 100;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    area_terreno: Math.round((parseFloat(infoPH.padre.area_terreno) || 0) * coef * 100) / 100,
+                                    area_construida: Math.round((parseFloat(infoPH.padre.area_construida) || 0) * coef * 100) / 100
+                                  }));
+                                }
+                              }}
+                              placeholder="Ej: 5.25"
+                              className="mt-1"
+                            />
+                            {coeficientePH && parseFloat(coeficientePH) > infoPH.coeficiente_disponible && (
+                              <p className="text-red-600 text-xs mt-1">Supera el % disponible ({infoPH.coeficiente_disponible}%)</p>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-amber-700">No se encontró predio matriz PH. Las áreas deben ingresarse manualmente.</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Botón verificar */}
                   <div className="mt-4">
-                    <Button 
-                      onClick={verificarCodigoCompleto} 
-                      variant="outline" 
+                    <Button
+                      onClick={verificarCodigoCompleto}
+                      variant="outline"
                       className="w-full"
                       disabled={verificandoCodigo}
                     >
@@ -2022,7 +2160,7 @@ export default function GestionPrediosActualizacion() {
                   </div>
                 </div>
               )}
-              
+
               {/* Resultado de verificación */}
               {verificacionCodigo && (
                 <div className={`p-4 rounded-lg border ${
