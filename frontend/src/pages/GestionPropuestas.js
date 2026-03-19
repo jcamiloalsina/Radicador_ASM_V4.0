@@ -47,7 +47,10 @@ import {
   DollarSign,
   Ruler,
   AlertCircle,
-  Send
+  Send,
+  MessageSquare,
+  Clock,
+  FileEdit
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -190,6 +193,10 @@ export default function GestionPropuestas() {
   const [seleccionadasSinCambios, setSeleccionadasSinCambios] = useState([]);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [datosEditados, setDatosEditados] = useState({});
+  const [showSubsanarModal, setShowSubsanarModal] = useState(false);
+  const [propuestaSubsanar, setPropuestaSubsanar] = useState(null);
+  const [datosSubsanacion, setDatosSubsanacion] = useState({});
+  const [justificacionSubsanacion, setJustificacionSubsanacion] = useState('');
   
   // Cargar proyectos
   useEffect(() => {
@@ -392,6 +399,43 @@ export default function GestionPropuestas() {
     }
   };
   
+  // Abrir modal de subsanación (gestor)
+  const abrirSubsanacion = (propuesta) => {
+    setPropuestaSubsanar(propuesta);
+    setDatosSubsanacion(propuesta.datos_propuestos || {});
+    setJustificacionSubsanacion('');
+    setShowSubsanarModal(true);
+  };
+
+  // Enviar subsanación
+  const handleSubsanar = async () => {
+    if (!justificacionSubsanacion.trim()) {
+      toast.error('Debe incluir una justificación para la subsanación');
+      return;
+    }
+
+    setProcesando(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `${API}/actualizacion/propuestas/${propuestaSubsanar.id}/subsanar`,
+        {
+          datos_propuestos: datosSubsanacion,
+          justificacion_subsanacion: justificacionSubsanacion
+        },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      toast.success('Propuesta subsanada y reenviada al coordinador');
+      setShowSubsanarModal(false);
+      setPropuestaSubsanar(null);
+      fetchPropuestas();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al subsanar propuesta');
+    } finally {
+      setProcesando(false);
+    }
+  };
+
   // Toggle selección sin cambios
   const toggleSeleccionSinCambios = (codigo) => {
     setSeleccionadasSinCambios(prev => 
@@ -481,8 +525,9 @@ export default function GestionPropuestas() {
   
   // Verificar permisos
   const esCoordinador = user?.role === 'coordinador' || user?.role === 'administrador';
-  
-  if (!esCoordinador) {
+  const esGestor = user?.role === 'gestor';
+
+  if (!esCoordinador && !esGestor) {
     return (
       <div className="p-8 text-center">
         <p className="text-red-600">No tiene permiso para acceder a esta página</p>
@@ -504,9 +549,14 @@ export default function GestionPropuestas() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Gestión de Propuestas de Cambio</h1>
+            <h1 className="text-2xl font-bold text-slate-800">
+              {esGestor ? 'Mis Propuestas de Cambio' : 'Gestión de Propuestas de Cambio'}
+            </h1>
             <p className="text-sm text-slate-500">
-              Módulo Actualización - Aprueba, edita o rechaza propuestas de los gestores de campo
+              {esGestor
+                ? 'Seguimiento de tus propuestas enviadas y subsanación de propuestas devueltas'
+                : 'Módulo Actualización - Aprueba, edita o rechaza propuestas de los gestores de campo'
+              }
             </p>
           </div>
         </div>
@@ -531,22 +581,24 @@ export default function GestionPropuestas() {
           className={filtroTipo === 'propuestas' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
         >
           <GitCompare className="w-4 h-4 mr-2" />
-          Propuestas de Cambio
+          {esGestor ? 'Mis Propuestas' : 'Propuestas de Cambio'}
           {propuestas.length > 0 && filtroEstado === 'pendiente' && (
             <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">{propuestas.length}</span>
           )}
         </Button>
-        <Button
-          variant={filtroTipo === 'sin_cambios' ? 'default' : 'outline'}
-          onClick={() => setFiltroTipo('sin_cambios')}
-          className={filtroTipo === 'sin_cambios' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-        >
-          <CheckSquare className="w-4 h-4 mr-2" />
-          Predios Sin Cambios
-          {prediosSinCambios.length > 0 && (
-            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">{prediosSinCambios.length}</span>
-          )}
-        </Button>
+        {esCoordinador && (
+          <Button
+            variant={filtroTipo === 'sin_cambios' ? 'default' : 'outline'}
+            onClick={() => setFiltroTipo('sin_cambios')}
+            className={filtroTipo === 'sin_cambios' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+          >
+            <CheckSquare className="w-4 h-4 mr-2" />
+            Predios Sin Cambios
+            {prediosSinCambios.length > 0 && (
+              <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">{prediosSinCambios.length}</span>
+            )}
+          </Button>
+        )}
       </div>
       
       {/* Filtros */}
@@ -590,8 +642,8 @@ export default function GestionPropuestas() {
             Actualizar
           </Button>
           
-          {filtroTipo === 'propuestas' && filtroEstado === 'pendiente' && seleccionadas.length > 0 && (
-            <Button 
+          {esCoordinador && filtroTipo === 'propuestas' && filtroEstado === 'pendiente' && seleccionadas.length > 0 && (
+            <Button
               onClick={handleAprobarMasivo}
               disabled={procesando}
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -600,9 +652,9 @@ export default function GestionPropuestas() {
               Aprobar Masivo ({seleccionadas.length})
             </Button>
           )}
-          
-          {filtroTipo === 'sin_cambios' && seleccionadasSinCambios.length > 0 && (
-            <Button 
+
+          {esCoordinador && filtroTipo === 'sin_cambios' && seleccionadasSinCambios.length > 0 && (
+            <Button
               onClick={handleAprobarMasivoSinCambios}
               disabled={procesando}
               className="bg-blue-600 hover:bg-blue-700"
@@ -643,7 +695,7 @@ export default function GestionPropuestas() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  {filtroEstado === 'pendiente' && (
+                  {esCoordinador && filtroEstado === 'pendiente' && (
                     <TableHead className="w-12">
                       <button onClick={toggleSeleccionarTodas} className="p-1 hover:bg-slate-200 rounded">
                         {seleccionadas.length === propuestas.length ? (
@@ -657,17 +709,18 @@ export default function GestionPropuestas() {
                   <TableHead>Código Predial</TableHead>
                   <TableHead>Municipio</TableHead>
                   <TableHead>Justificación</TableHead>
-                  <TableHead>Gestor</TableHead>
+                  {esCoordinador && <TableHead>Gestor</TableHead>}
                   <TableHead>Fecha</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Tipo Revisión</TableHead>
+                  {esGestor && filtroEstado === 'subsanacion' && <TableHead>Comentario Coordinador</TableHead>}
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {propuestas.map((propuesta) => (
                   <TableRow key={propuesta.id} className="hover:bg-slate-50">
-                    {filtroEstado === 'pendiente' && (
+                    {esCoordinador && filtroEstado === 'pendiente' && (
                       <TableCell>
                         <button onClick={() => toggleSeleccion(propuesta.id)} className="p-1 hover:bg-slate-200 rounded">
                           {seleccionadas.includes(propuesta.id) ? (
@@ -697,27 +750,40 @@ export default function GestionPropuestas() {
                         <Badge className="mt-1 bg-purple-100 text-purple-600 text-xs">Cambio</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {propuesta.creado_por_nombre || propuesta.propuesto_por_nombre || propuesta.creado_por || '-'}
-                    </TableCell>
+                    {esCoordinador && (
+                      <TableCell className="text-sm">
+                        {propuesta.creado_por_nombre || propuesta.propuesto_por_nombre || propuesta.creado_por || '-'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-sm text-slate-500">
                       {new Date(propuesta.creado_en).toLocaleDateString('es-CO')}
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className={
                           propuesta.estado === 'aprobada' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                          propuesta.estado === 'rechazada' ? 'bg-red-100 text-red-700 border-red-300' :
+                          propuesta.estado === 'rechazada' || propuesta.estado === 'rechazada_definitiva' ? 'bg-red-100 text-red-700 border-red-300' :
                           propuesta.estado === 'subsanacion' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                          propuesta.estado === 'reenviada' ? 'bg-blue-100 text-blue-700 border-blue-300' :
                           'bg-amber-100 text-amber-700 border-amber-300'
                         }
                       >
-                        {propuesta.estado === 'subsanacion' ? 'En subsanación' : propuesta.estado}
+                        {propuesta.estado === 'pendiente' && (esGestor ? 'Esperando aprobación' : 'Pendiente')}
+                        {propuesta.estado === 'aprobada' && 'Aprobada'}
+                        {propuesta.estado === 'subsanacion' && (esGestor ? 'Requiere corrección' : 'En subsanación')}
+                        {propuesta.estado === 'reenviada' && (esGestor ? 'Reenviada' : 'Reenviada (subsanada)')}
+                        {propuesta.estado === 'rechazada' && 'Rechazada'}
+                        {propuesta.estado === 'rechazada_definitiva' && 'Rechazada definitiva'}
                       </Badge>
+                      {propuesta.intentos_subsanacion > 0 && (
+                        <span className="block text-xs text-slate-400 mt-1">
+                          Intento {propuesta.intentos_subsanacion}/3
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className={
                           propuesta.tipo_revision === 'campo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
@@ -729,25 +795,33 @@ export default function GestionPropuestas() {
                         {propuesta.tipo_revision_nombre || propuesta.tipo_revision || 'Campo'}
                       </Badge>
                     </TableCell>
+                    {esGestor && filtroEstado === 'subsanacion' && (
+                      <TableCell className="max-w-xs">
+                        <p className="text-sm text-orange-700 italic truncate">
+                          {propuesta.comentario_revision || '-'}
+                        </p>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => verDetalle(propuesta)} title="Ver detalle">
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {(propuesta.estado === 'pendiente' || propuesta.estado === 'reenviada') && (
+                        {/* Botones de coordinador: aprobar/rechazar */}
+                        {esCoordinador && (propuesta.estado === 'pendiente' || propuesta.estado === 'reenviada') && (
                           <>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                               onClick={() => handleAprobar(propuesta.id)}
                               title="Aprobar"
                             >
                               <Check className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => verDetalle(propuesta)}
                               title="Rechazar"
@@ -755,6 +829,18 @@ export default function GestionPropuestas() {
                               <X className="w-4 h-4" />
                             </Button>
                           </>
+                        )}
+                        {/* Botón de gestor: subsanar */}
+                        {esGestor && propuesta.estado === 'subsanacion' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            onClick={() => abrirSubsanacion(propuesta)}
+                            title="Subsanar y reenviar"
+                          >
+                            <FileEdit className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -1250,8 +1336,79 @@ export default function GestionPropuestas() {
                 </div>
               )}
               
-              {/* Acciones si está pendiente o reenviada */}
-              {(propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
+              {/* Historial de revisiones (visible para todos) */}
+              {propuestaDetalle.historial_revision && propuestaDetalle.historial_revision.length > 0 && (
+                <div className="bg-slate-50 rounded-lg p-4 border">
+                  <h4 className="font-medium text-slate-700 flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4" />
+                    Historial de Revisiones
+                  </h4>
+                  <div className="space-y-2">
+                    {propuestaDetalle.historial_revision.map((entry, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg text-sm ${
+                        entry.accion === 'subsanado_reenviado' ? 'bg-blue-50 border border-blue-200' :
+                        entry.accion === 'rechazado_subsanacion' ? 'bg-orange-50 border border-orange-200' :
+                        'bg-red-50 border border-red-200'
+                      }`}>
+                        <div className="flex justify-between items-start">
+                          <span className="font-medium">
+                            {entry.accion === 'subsanado_reenviado' && 'Subsanada y reenviada'}
+                            {entry.accion === 'rechazado_subsanacion' && `Devuelta para subsanación (Intento ${entry.intento}/3)`}
+                            {entry.accion === 'rechazado_definitivo' && 'Rechazada definitivamente'}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {entry.fecha ? new Date(entry.fecha).toLocaleString('es-CO') : ''}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 mt-1">Por: {entry.usuario}</p>
+                        {(entry.comentario || entry.justificacion) && (
+                          <p className="italic mt-1 text-slate-600">&ldquo;{entry.comentario || entry.justificacion}&rdquo;</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Info de subsanación para gestor (cuando está en subsanacion) */}
+              {esGestor && propuestaDetalle.estado === 'subsanacion' && (
+                <div className="bg-orange-50 border border-orange-300 rounded-lg p-4">
+                  <h4 className="font-semibold text-orange-800 flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Acción requerida: Subsanar propuesta
+                  </h4>
+                  <p className="text-sm text-orange-700 mb-2">
+                    El coordinador ha devuelto esta propuesta. Intentos utilizados: <strong>{propuestaDetalle.intentos_subsanacion || 1}/3</strong>
+                  </p>
+                  {propuestaDetalle.comentario_revision && (
+                    <div className="bg-white p-3 rounded border border-orange-200 mb-3">
+                      <p className="text-xs text-orange-600 font-medium mb-1">Comentario del coordinador:</p>
+                      <p className="text-sm text-slate-700 italic">&ldquo;{propuestaDetalle.comentario_revision}&rdquo;</p>
+                    </div>
+                  )}
+                  <Button
+                    onClick={() => abrirSubsanacion(propuestaDetalle)}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    <FileEdit className="w-4 h-4 mr-2" />
+                    Subsanar y Reenviar
+                  </Button>
+                </div>
+              )}
+
+              {/* Indicador para gestor cuando propuesta está pendiente */}
+              {esGestor && (propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700 flex items-center gap-2">
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  {propuestaDetalle.estado === 'reenviada'
+                    ? 'Esta propuesta fue subsanada y está esperando nueva revisión del coordinador.'
+                    : 'Esta propuesta está esperando revisión por parte del coordinador.'
+                  }
+                </div>
+              )}
+
+              {/* Acciones de coordinador si está pendiente o reenviada */}
+              {esCoordinador && (propuestaDetalle.estado === 'pendiente' || propuestaDetalle.estado === 'reenviada') && (
                 <>
                   <div>
                     <Label className="text-slate-600">Comentario de Revisión {!modoEdicion && '(requerido para rechazar)'}</Label>
@@ -1263,7 +1420,7 @@ export default function GestionPropuestas() {
                       className="mt-1"
                     />
                   </div>
-                  
+
                   <div className="bg-amber-50 text-amber-700 p-3 rounded-lg text-sm flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>
@@ -1271,11 +1428,11 @@ export default function GestionPropuestas() {
                       Al <strong>aprobar</strong>, los cambios se aplicarán al predio.
                     </span>
                   </div>
-                  
+
                   <DialogFooter className="flex gap-2 pt-2">
                     {!modoEdicion && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={activarEdicion}
                         className="border-blue-400 text-blue-700 hover:bg-blue-50"
                       >
@@ -1283,9 +1440,9 @@ export default function GestionPropuestas() {
                         Editar antes de aprobar
                       </Button>
                     )}
-                    
-                    <Button 
-                      variant="outline" 
+
+                    <Button
+                      variant="outline"
                       onClick={() => handleRechazar(propuestaDetalle.id)}
                       disabled={procesando || !comentarioRevision.trim()}
                       className="flex-1 border-red-400 text-red-700 hover:bg-red-50"
@@ -1293,8 +1450,8 @@ export default function GestionPropuestas() {
                       {procesando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
                       Rechazar
                     </Button>
-                    
-                    <Button 
+
+                    <Button
                       onClick={() => handleAprobar(propuestaDetalle.id)}
                       disabled={procesando}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700"
@@ -1305,6 +1462,239 @@ export default function GestionPropuestas() {
                   </DialogFooter>
                 </>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Subsanación (Gestor) */}
+      <Dialog open={showSubsanarModal} onOpenChange={(open) => {
+        setShowSubsanarModal(open);
+        if (!open) {
+          setPropuestaSubsanar(null);
+          setDatosSubsanacion({});
+          setJustificacionSubsanacion('');
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileEdit className="w-5 h-5 text-orange-600" />
+              Subsanar Propuesta
+              {propuestaSubsanar?.intentos_subsanacion > 0 && (
+                <Badge className="ml-2 bg-orange-100 text-orange-700">
+                  Intento {propuestaSubsanar.intentos_subsanacion}/3
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {propuestaSubsanar && (
+            <div className="space-y-5">
+              {/* Código predial */}
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
+                <p className="text-xs text-orange-600 uppercase font-semibold tracking-wider">Código Predial</p>
+                <p className="font-mono text-lg font-bold text-orange-800">{propuestaSubsanar.codigo_predial}</p>
+              </div>
+
+              {/* Comentario del coordinador */}
+              {propuestaSubsanar.comentario_revision && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-medium text-red-700 flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Motivo de devolución por el coordinador
+                  </h4>
+                  <p className="text-sm text-red-800 italic">&ldquo;{propuestaSubsanar.comentario_revision}&rdquo;</p>
+                  {propuestaSubsanar.revisado_por && (
+                    <p className="text-xs text-red-600 mt-2">
+                      Revisado por: {propuestaSubsanar.revisado_por} - {propuestaSubsanar.revisado_en ? new Date(propuestaSubsanar.revisado_en).toLocaleString('es-CO') : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Formulario de edición de datos propuestos */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-700 mb-3 flex items-center gap-2">
+                  <Edit className="w-4 h-4" />
+                  Corregir datos propuestos
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Dirección</Label>
+                    <Input
+                      value={datosSubsanacion.direccion || ''}
+                      onChange={(e) => setDatosSubsanacion({...datosSubsanacion, direccion: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Destino Económico</Label>
+                    <Select
+                      value={datosSubsanacion.destino_economico || ''}
+                      onValueChange={(v) => setDatosSubsanacion({...datosSubsanacion, destino_economico: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DESTINOS_ECONOMICOS_OPTIONS.map(d => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Área Terreno (m2)</Label>
+                    <Input
+                      type="number"
+                      value={datosSubsanacion.area_terreno || ''}
+                      onChange={(e) => setDatosSubsanacion({...datosSubsanacion, area_terreno: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Área Construida (m2)</Label>
+                    <Input
+                      type="number"
+                      value={datosSubsanacion.area_construida || ''}
+                      onChange={(e) => setDatosSubsanacion({...datosSubsanacion, area_construida: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Avalúo</Label>
+                    <Input
+                      type="number"
+                      value={datosSubsanacion.avaluo || ''}
+                      onChange={(e) => setDatosSubsanacion({...datosSubsanacion, avaluo: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Matrícula Inmobiliaria</Label>
+                    <Input
+                      value={datosSubsanacion.matricula || ''}
+                      onChange={(e) => setDatosSubsanacion({...datosSubsanacion, matricula: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Estrato</Label>
+                    <Select
+                      value={datosSubsanacion.estrato || ''}
+                      onValueChange={(v) => setDatosSubsanacion({...datosSubsanacion, estrato: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="3">3</SelectItem>
+                        <SelectItem value="4">4</SelectItem>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="6">6</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Propietarios editables */}
+                {datosSubsanacion.propietarios && datosSubsanacion.propietarios.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <Label className="text-xs text-blue-700 font-medium mb-2 block">Propietarios</Label>
+                    <div className="space-y-2">
+                      {datosSubsanacion.propietarios.map((prop, idx) => (
+                        <div key={idx} className="grid grid-cols-4 gap-2 bg-white p-2 rounded border">
+                          <div>
+                            <Label className="text-[10px]">Tipo Doc</Label>
+                            <Select
+                              value={prop.tipo_documento || 'C'}
+                              onValueChange={(v) => {
+                                const newProps = [...datosSubsanacion.propietarios];
+                                newProps[idx] = {...newProps[idx], tipo_documento: v};
+                                setDatosSubsanacion({...datosSubsanacion, propietarios: newProps});
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="C">C - Cédula</SelectItem>
+                                <SelectItem value="E">E - Extranjería</SelectItem>
+                                <SelectItem value="N">N - NIT</SelectItem>
+                                <SelectItem value="T">T - Tarjeta ID</SelectItem>
+                                <SelectItem value="P">P - Pasaporte</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Número</Label>
+                            <Input
+                              className="h-8 text-xs"
+                              value={prop.numero_documento || ''}
+                              onChange={(e) => {
+                                const newProps = [...datosSubsanacion.propietarios];
+                                newProps[idx] = {...newProps[idx], numero_documento: e.target.value.replace(/\D/g, '').slice(0, 12)};
+                                setDatosSubsanacion({...datosSubsanacion, propietarios: newProps});
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Primer Nombre</Label>
+                            <Input
+                              className="h-8 text-xs"
+                              value={prop.primer_nombre || ''}
+                              onChange={(e) => {
+                                const newProps = [...datosSubsanacion.propietarios];
+                                newProps[idx] = {...newProps[idx], primer_nombre: e.target.value.toUpperCase()};
+                                setDatosSubsanacion({...datosSubsanacion, propietarios: newProps});
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px]">Primer Apellido</Label>
+                            <Input
+                              className="h-8 text-xs"
+                              value={prop.primer_apellido || ''}
+                              onChange={(e) => {
+                                const newProps = [...datosSubsanacion.propietarios];
+                                newProps[idx] = {...newProps[idx], primer_apellido: e.target.value.toUpperCase()};
+                                setDatosSubsanacion({...datosSubsanacion, propietarios: newProps});
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Justificación de subsanación */}
+              <div>
+                <Label className="text-slate-600">Justificación de la subsanación (requerido)</Label>
+                <Textarea
+                  value={justificacionSubsanacion}
+                  onChange={(e) => setJustificacionSubsanacion(e.target.value)}
+                  placeholder="Explique los cambios realizados para corregir la propuesta..."
+                  rows={3}
+                  className="mt-1"
+                />
+              </div>
+
+              <DialogFooter className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSubsanarModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubsanar}
+                  disabled={procesando || !justificacionSubsanacion.trim()}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {procesando ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                  Subsanar y Reenviar al Coordinador
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

@@ -370,6 +370,9 @@ export default function VisorActualizacion() {
   const [estadisticasAvanzadas, setEstadisticasAvanzadas] = useState(null);
   const [loadingEstadisticas, setLoadingEstadisticas] = useState(false);
   const [showEstadisticasPanel, setShowEstadisticasPanel] = useState(false);
+
+  // Propuestas pendientes de subsanación (para gestores)
+  const [propuestasSubsanacion, setPropuestasSubsanacion] = useState(0);
   
   // Estado para exportación Excel R1/R2
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -874,7 +877,26 @@ export default function VisorActualizacion() {
       fetchEstadisticasAvanzadas();
     }
   }, [showEstadisticasPanel, estadisticasAvanzadas, loadingEstadisticas, fetchEstadisticasAvanzadas]);
-  
+
+  // Cargar conteo de propuestas en subsanación para gestores
+  useEffect(() => {
+    if (user?.role === 'gestor' && proyectoId) {
+      const fetchSubsanacion = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.get(
+            `${API}/actualizacion/propuestas/subsanacion-pendiente`,
+            { headers: { Authorization: `Bearer ${token}` }}
+          );
+          setPropuestasSubsanacion(response.data.total || 0);
+        } catch (error) {
+          console.error('Error cargando propuestas subsanación:', error);
+        }
+      };
+      fetchSubsanacion();
+    }
+  }, [user?.role, proyectoId]);
+
   // Función para exportar Excel R1/R2
   const handleExportExcelR1R2 = useCallback(async (soloActualizados = false) => {
     if (!proyectoId) return;
@@ -4874,6 +4896,24 @@ export default function VisorActualizacion() {
         </div>
       )}
       
+      {/* Banner de propuestas en subsanación para gestores */}
+      {user?.role === 'gestor' && propuestasSubsanacion > 0 && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-orange-700">
+            <AlertCircle className="w-4 h-4" />
+            <span>
+              Tienes <strong>{propuestasSubsanacion}</strong> {propuestasSubsanacion === 1 ? 'propuesta devuelta' : 'propuestas devueltas'} que {propuestasSubsanacion === 1 ? 'requiere' : 'requieren'} corrección
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard/gestion-propuestas')}
+            className="text-xs bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 transition-colors"
+          >
+            Ver propuestas
+          </button>
+        </div>
+      )}
+
       {/* Map Container */}
       <div className="flex-1 relative">
         {/* Indicador de progreso de descarga de predios R1/R2 */}
@@ -6440,9 +6480,9 @@ export default function VisorActualizacion() {
           try {
             // IMPORTANTE: Usar el predio correcto según el tipo de visita
             const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
-            const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+            const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial || (tipoVisita === 'mejora' ? mejoraSeleccionada?.properties?.codigo : null);
             const esMejora = tipoVisita === 'mejora';
-            
+
             if (!codigoPredial) {
               toast.error('No se pudo identificar el predio/mejora para guardar la visita');
               return;
@@ -6637,7 +6677,7 @@ export default function VisorActualizacion() {
               console.error('[Visita] Error de conexión:', error.message);
               try {
                 const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
-                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial || (tipoVisita === 'mejora' ? mejoraSeleccionada?.properties?.codigo : null);
                 await saveCambioPendiente({
                   tipo: 'visita',
                   proyecto_id: proyectoId,
@@ -6655,7 +6695,7 @@ export default function VisorActualizacion() {
             if (!isOnline || error.code === 'ERR_NETWORK') {
               try {
                 const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
-                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+                const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial || (tipoVisita === 'mejora' ? mejoraSeleccionada?.properties?.codigo : null);
                 await saveCambioPendiente({
                   tipo: 'visita',
                   proyecto_id: proyectoId,
@@ -6687,7 +6727,7 @@ export default function VisorActualizacion() {
                 // Intentar guardar offline como fallback
                 try {
                   const predioActual = tipoVisita === 'mejora' ? predioMejoraSeleccionada : selectedPredio;
-                  const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial;
+                  const codigoPredial = predioActual?.codigo_predial || predioActual?.numero_predial || (tipoVisita === 'mejora' ? mejoraSeleccionada?.properties?.codigo : null);
                   await saveCambioPendiente({
                     tipo: 'visita',
                     proyecto_id: proyectoId,

@@ -1831,7 +1831,15 @@ async def register(user_data: UserRegister):
         await enviar_codigo_verificacion(user_data.email, verification_code, nombre_formateado)
     except Exception as e:
         logger.error(f"Error enviando código de verificación: {e}")
-    
+
+    # Registrar registro de usuario en log de actividades
+    await registrar_log_actividad(
+        accion="registrar_usuario",
+        categoria="usuarios",
+        descripcion=f"Nuevo usuario registrado: {user_data.email}",
+        detalles={"email": user_data.email, "rol": "usuario"}
+    )
+
     # NO devolver token hasta que el email esté verificado
     return {
         "message": "Se ha enviado un código de verificación a su correo electrónico",
@@ -2012,7 +2020,18 @@ async def login(credentials: UserLogin):
     
     # Obtener permisos del usuario
     permissions = user.get('permissions', [])
-    
+
+    # Registrar login en log de actividades
+    await registrar_log_actividad(
+        accion="login",
+        categoria="autenticacion",
+        descripcion=f"{user['full_name']} inició sesión",
+        usuario_id=user['id'],
+        usuario_nombre=user['full_name'],
+        usuario_rol=user['role'],
+        detalles={"email": user['email']}
+    )
+
     return {
         "token": token,
         "user": {
@@ -2238,7 +2257,23 @@ async def update_user_role(role_update: UserRoleUpdate, current_user: dict = Dep
         {"id": role_update.user_id},
         {"$set": {"role": role_update.new_role}}
     )
-    
+
+    # Registrar cambio de rol en log de actividades
+    await registrar_log_actividad(
+        accion="cambiar_rol",
+        categoria="usuarios",
+        descripcion=f"{current_user['full_name']} cambió rol de {user['full_name']} a {role_update.new_role}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        detalles={
+            "usuario_afectado": user['full_name'],
+            "email": user['email'],
+            "rol_anterior": user.get('role', ''),
+            "rol": role_update.new_role
+        }
+    )
+
     return {"message": "Rol actualizado exitosamente", "new_role": role_update.new_role}
 
 
@@ -2301,7 +2336,22 @@ async def update_user_municipios(
         {"id": user_id},
         {"$set": {"municipios_asignados": municipios_validos}}
     )
-    
+
+    # Registrar asignación de municipios en log de actividades
+    await registrar_log_actividad(
+        accion="asignar_municipios",
+        categoria="usuarios",
+        descripcion=f"{current_user['full_name']} asignó {len(municipios_validos)} municipios a {user['full_name']}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        detalles={
+            "usuario_afectado": user['full_name'],
+            "email": user.get('email', ''),
+            "municipios": municipios_validos
+        }
+    )
+
     return {
         "message": "Municipios asignados correctamente",
         "user_id": user_id,
@@ -2504,7 +2554,7 @@ async def update_user_permissions(
         if removed_permissions:
             removed_desc = [Permission.get_description(p) for p in removed_permissions]
             message_parts.append(f"Permisos revocados: {', '.join(removed_desc)}")
-        
+
         await crear_notificacion(
             usuario_id=update.user_id,
             titulo="Actualización de Permisos",
@@ -2512,7 +2562,22 @@ async def update_user_permissions(
             tipo="permisos",
             enviar_email=True  # Enviar notificación por email
         )
-    
+
+    # Registrar cambio de permisos en log de actividades
+    await registrar_log_actividad(
+        accion="cambiar_permisos",
+        categoria="usuarios",
+        descripcion=f"{current_user['full_name']} actualizó permisos de {user['full_name']}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        detalles={
+            "usuario_afectado": user['full_name'],
+            "email": user.get('email', ''),
+            "permisos_nuevos": update.permissions
+        }
+    )
+
     return {
         "message": "Permisos actualizados exitosamente",
         "user_id": update.user_id,
@@ -2749,7 +2814,23 @@ async def create_petition(
                 mensaje=f"Nueva petición {radicado} de {nombre_completo} - {tipo_tramite}",
                 enlace=f"/dashboard/peticiones/{petition.id}"
             )
-    
+
+    # Registrar creación de petición en log de actividades
+    await registrar_log_actividad(
+        accion="crear_peticion",
+        categoria="peticiones",
+        descripcion=f"Petición {radicado} creada - {tipo_tramite} en {municipio}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        municipio=municipio,
+        detalles={
+            "radicado": radicado,
+            "tipo_tramite": tipo_tramite,
+            "codigo": codigo_predial or ""
+        }
+    )
+
     return petition
 
 @api_router.get("/petitions")
@@ -3783,13 +3864,29 @@ async def update_petition(petition_id: str, update_data: PetitionUpdate, current
                         email_body
                     )
     
+    # Registrar actualización de petición en log de actividades
+    cambios = list(update_dict.keys())
+    await registrar_log_actividad(
+        accion="actualizar_peticion",
+        categoria="peticiones",
+        descripcion=f"{current_user['full_name']} actualizó petición {petition.get('radicado', petition_id)} - campos: {', '.join(cambios)}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        municipio=petition.get('municipio', ''),
+        detalles={
+            "radicado": petition.get('radicado', ''),
+            "campos_actualizados": cambios
+        }
+    )
+
     updated_petition = await db.petitions.find_one({"id": petition_id}, {"_id": 0})
-    
+
     if isinstance(updated_petition['created_at'], str):
         updated_petition['created_at'] = datetime.fromisoformat(updated_petition['created_at'])
     if isinstance(updated_petition['updated_at'], str):
         updated_petition['updated_at'] = datetime.fromisoformat(updated_petition['updated_at'])
-    
+
     return updated_petition
 
 @api_router.post("/petitions/{petition_id}/reenviar")
@@ -10288,7 +10385,25 @@ async def import_predios_excel(
             "imported_by": current_user['full_name'],
             "timestamp": datetime.now(COLOMBIA_TZ).isoformat()
         }, exclude_user=current_user['id'])
-        
+
+        # Registrar importación en log de actividades
+        await registrar_log_actividad(
+            accion="importar_predios",
+            categoria="importacion",
+            descripcion=f"{current_user['full_name']} importó {len(predios_list)} predios para {municipio} vigencia {vigencia_int}",
+            usuario_id=current_user['id'],
+            usuario_nombre=current_user['full_name'],
+            usuario_rol=current_user['role'],
+            municipio=municipio,
+            detalles={
+                "total_predios": len(predios_list),
+                "predios_nuevos": predios_nuevos_count,
+                "predios_eliminados": predios_eliminados_count,
+                "archivo": file.filename,
+                "vigencia": vigencia_int
+            }
+        )
+
         return {
             "message": f"Importación exitosa para {municipio}",
             "vigencia": vigencia_int,
@@ -10300,7 +10415,7 @@ async def import_predios_excel(
             "predios_nuevos": predios_nuevos_count,
             "municipio": municipio
         }
-        
+
     except HTTPException:
         # Re-lanzar HTTPExceptions sin modificar
         raise
@@ -12130,7 +12245,22 @@ async def regenerar_certificado_desde_peticion(
                 )
         except Exception as e:
             print(f"Error enviando correo de certificado regenerado: {e}")
-    
+
+    # Registrar regeneración de certificado en log de actividades
+    await registrar_log_actividad(
+        accion="regenerar_certificado",
+        categoria="certificados",
+        descripcion=f"{current_user['full_name']} regeneró certificado para petición {petition.get('radicado', petition_id)}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        municipio=petition.get('municipio', ''),
+        detalles={
+            "radicado": petition.get('radicado', ''),
+            "codigo": predio.get('codigo_predial_nacional', '')
+        }
+    )
+
     # Nombre del archivo para descarga
     filename = f"Certificado_Catastral_{petition.get('radicado', petition_id)}.pdf"
     
@@ -24051,6 +24181,21 @@ async def guardar_visita_predio(
         logger.error(f"[Visita] Error MongoDB al guardar visita {codigo_predial}: {e}")
         raise HTTPException(status_code=500, detail=f"Error al guardar en base de datos: {str(e)}")
 
+    # Registrar visita en log de actividades
+    await registrar_log_actividad(
+        accion="guardar_visita",
+        categoria="visitas",
+        descripcion=f"{current_user['full_name']} registró visita para predio {codigo_predial}" + (" (firmada)" if estado_visita == "visitado_firmado" else ""),
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        detalles={
+            "codigo": codigo_predial,
+            "estado_visita": estado_visita,
+            "sin_cambios": visita_data.get('sin_cambios', False)
+        }
+    )
+
     return {
         "message": "Visita guardada correctamente" + (" y firmada (bloqueada para edición)" if estado_visita == "visitado_firmado" else ""),
         "estado_visita": estado_visita,
@@ -24144,7 +24289,22 @@ async def revertir_visita_firmada(
     )
     
     logger.info(f"Visita revertida por {current_user['email']}: predio {codigo_predial}, motivo: {motivo}")
-    
+
+    # Registrar reversión de visita en log de actividades
+    await registrar_log_actividad(
+        accion="revertir_visita",
+        categoria="visitas",
+        descripcion=f"{current_user['full_name']} revirtió visita del predio {codigo_predial}. Motivo: {motivo}",
+        usuario_id=current_user['id'],
+        usuario_nombre=current_user['full_name'],
+        usuario_rol=current_user['role'],
+        detalles={
+            "codigo": codigo_predial,
+            "estado_anterior": estado_actual,
+            "motivo": motivo
+        }
+    )
+
     return {
         "message": "Visita revertida exitosamente. El gestor puede volver a realizar la visita.",
         "codigo_predial": codigo_predial,
@@ -25094,9 +25254,13 @@ async def listar_propuestas_proyecto(
     """Lista todas las propuestas de cambio de un proyecto"""
     if current_user['role'] not in [UserRole.ADMINISTRADOR, UserRole.COORDINADOR, UserRole.GESTOR]:
         raise HTTPException(status_code=403, detail="No tiene permiso para ver propuestas")
-    
+
     query = {"proyecto_id": proyecto_id}
-    
+
+    # Si es gestor, solo puede ver sus propias propuestas
+    if current_user['role'] == UserRole.GESTOR:
+        query["creado_por"] = current_user.get('email')
+
     if estado:
         if estado == 'subsanacion':
             # Incluir tanto subsanacion como reenviada
