@@ -270,7 +270,11 @@ export default function GestionPrediosActualizacion() {
   const actualizarPropietario = (index, campo, valor) => {
     setPropietarios(prev => {
       const nuevos = [...prev];
-      nuevos[index] = { ...nuevos[index], [campo]: valor };
+      const updated = { ...nuevos[index], [campo]: valor };
+      // Sincronizar estado/estado_civil para que ambos modales sean consistentes
+      if (campo === 'estado') updated.estado_civil = valor;
+      if (campo === 'estado_civil') updated.estado = valor;
+      nuevos[index] = updated;
       return nuevos;
     });
   };
@@ -290,7 +294,8 @@ export default function GestionPrediosActualizacion() {
       prop.primer_nombre,
       prop.segundo_nombre
     ].filter(p => p && p.trim());
-    return partes.join(' ');
+    // Si hay campos individuales, usarlos; si no, preservar nombre_propietario existente
+    return partes.length > 0 ? partes.join(' ') : (prop.nombre_propietario || '');
   };
   
   // Calcular áreas totales desde zonas y construcciones (SEPARADOS)
@@ -754,34 +759,54 @@ export default function GestionPrediosActualizacion() {
       ciudad_titulo: predio.ciudad_titulo || ''
     });
 
-    // Cargar propietarios - el modal de editar usa nombre_propietario (nombre completo)
+    // Cargar propietarios - preservar TODOS los campos existentes
     if (predio.propietarios?.length > 0) {
       setPropietarios(predio.propietarios.map(p => {
-        // Si ya tiene nombre_propietario, usarlo directamente
-        if (p.nombre_propietario) {
-          return {
-            nombre_propietario: p.nombre_propietario || '',
-            tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
-            numero_documento: p.numero_documento || p.documento || '',
-            estado_civil: p.estado_civil || p.estado || ''
-          };
+        // Preservar campos individuales si existen
+        const tiene_campos_separados = p.primer_apellido || p.primer_nombre;
+
+        // Si solo tiene nombre_propietario (combinado), intentar descomponer
+        let primer_apellido = p.primer_apellido || '';
+        let segundo_apellido = p.segundo_apellido || '';
+        let primer_nombre = p.primer_nombre || '';
+        let segundo_nombre = p.segundo_nombre || '';
+
+        if (!tiene_campos_separados && p.nombre_propietario) {
+          // Intentar descomponer: "APELLIDO1 APELLIDO2 NOMBRE1 NOMBRE2" o dejar en primer_apellido
+          const partes = p.nombre_propietario.trim().split(/\s+/);
+          if (partes.length >= 4) {
+            primer_apellido = partes[0];
+            segundo_apellido = partes[1];
+            primer_nombre = partes[2];
+            segundo_nombre = partes.slice(3).join(' ');
+          } else if (partes.length === 3) {
+            primer_apellido = partes[0];
+            segundo_apellido = partes[1];
+            primer_nombre = partes[2];
+          } else if (partes.length === 2) {
+            primer_apellido = partes[0];
+            primer_nombre = partes[1];
+          } else {
+            primer_apellido = p.nombre_propietario;
+          }
         }
-        // Si tiene campos separados, combinarlos
-        const nombreCompleto = [
-          p.primer_apellido,
-          p.segundo_apellido,
-          p.primer_nombre,
-          p.segundo_nombre
-        ].filter(x => x).join(' ');
+
+        const estadoVal = p.estado || p.estado_civil || '';
         return {
-          nombre_propietario: nombreCompleto || '',
+          ...p,
+          primer_apellido,
+          segundo_apellido,
+          primer_nombre,
+          segundo_nombre,
+          nombre_propietario: p.nombre_propietario || generarNombreCompleto({ primer_apellido, segundo_apellido, primer_nombre, segundo_nombre }),
           tipo_documento: p.tipo_documento || p.tipo_doc || 'C',
           numero_documento: p.numero_documento || p.documento || '',
-          estado_civil: p.estado_civil || p.estado || ''
+          estado: estadoVal,
+          estado_civil: estadoVal
         };
       }));
     } else {
-      setPropietarios([{ nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado_civil: '' }]);
+      setPropietarios([{ primer_apellido: '', segundo_apellido: '', primer_nombre: '', segundo_nombre: '', nombre_propietario: '', tipo_documento: 'C', numero_documento: '', estado: '', estado_civil: '' }]);
     }
     
     // Cargar zonas de terreno
@@ -834,13 +859,8 @@ export default function GestionPrediosActualizacion() {
     setShowEditarModal(true);
   };
   
-  // Abrir modal para proponer cambios (GESTORES - predio debe estar visitado)
+  // Abrir modal para proponer cambios (GESTORES)
   const abrirProponerCambios = (predio) => {
-    if (predio.estado_visita !== 'visitado') {
-      toast.error('El predio debe estar visitado para proponer cambios');
-      return;
-    }
-    
     setPredioSeleccionado(predio);
     setFormData({
       codigo_predial: predio.codigo_predial || predio.numero_predial || '',
@@ -1140,7 +1160,7 @@ export default function GestionPrediosActualizacion() {
         ...p,
         nombre_propietario: generarNombreCompleto(p),
         numero_documento: formatearNumeroDocumento(p.numero_documento),
-        estado_civil: p.estado || ''
+        estado_civil: p.estado || p.estado_civil || ''
       }));
       
       // Preparar datos completos para R1/R2
