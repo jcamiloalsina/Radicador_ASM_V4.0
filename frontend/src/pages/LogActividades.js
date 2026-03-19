@@ -7,11 +7,13 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { 
-  Activity, Search, Filter, Calendar, User, 
+import {
+  Activity, Search, Filter, Calendar, User,
   AlertCircle, CheckCircle, XCircle, Settings,
   FileText, Upload, Download, LogIn, Trash2,
-  ChevronLeft, ChevronRight, RefreshCw, Clock
+  ChevronLeft, ChevronRight, RefreshCw, Clock,
+  Lock, Unlock, FileCheck, FolderPlus, ClipboardCheck,
+  UserPlus, Shield, MapPin, Eye
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,11 +27,29 @@ const ACCIONES_CONFIG = {
   aprobar: { label: 'Aprobar', color: 'bg-green-600', icon: CheckCircle },
   rechazar: { label: 'Rechazar', color: 'bg-red-500', icon: XCircle },
   login: { label: 'Login', color: 'bg-purple-600', icon: LogIn },
+  logout: { label: 'Logout', color: 'bg-purple-400', icon: LogIn },
   exportar: { label: 'Exportar', color: 'bg-amber-600', icon: Download },
   importar: { label: 'Importar', color: 'bg-cyan-600', icon: Upload },
   config: { label: 'Config', color: 'bg-violet-600', icon: Settings },
   view: { label: 'Ver', color: 'bg-slate-500', icon: FileText },
-  auto: { label: 'Auto', color: 'bg-slate-400', icon: Clock }
+  auto: { label: 'Auto', color: 'bg-slate-400', icon: Clock },
+  generar_resolucion: { label: 'Resolución', color: 'bg-orange-600', icon: FileCheck },
+  bloquear_predio: { label: 'Bloquear', color: 'bg-red-700', icon: Lock },
+  desbloquear_predio: { label: 'Desbloquear', color: 'bg-green-500', icon: Unlock },
+  finalizar_tramite: { label: 'Finalizar', color: 'bg-teal-600', icon: ClipboardCheck },
+  upload: { label: 'Subir Archivo', color: 'bg-indigo-500', icon: Upload },
+  delete: { label: 'Eliminar Archivo', color: 'bg-red-600', icon: Trash2 },
+  create: { label: 'Crear Carpeta', color: 'bg-indigo-400', icon: FolderPlus },
+  registrar_usuario: { label: 'Registrar Usuario', color: 'bg-purple-500', icon: UserPlus },
+  cambiar_rol: { label: 'Cambiar Rol', color: 'bg-violet-500', icon: Shield },
+  asignar_municipios: { label: 'Asignar Municipios', color: 'bg-blue-500', icon: MapPin },
+  cambiar_permisos: { label: 'Cambiar Permisos', color: 'bg-violet-600', icon: Shield },
+  crear_peticion: { label: 'Crear Petición', color: 'bg-emerald-500', icon: FileText },
+  actualizar_peticion: { label: 'Actualizar Petición', color: 'bg-blue-500', icon: FileText },
+  importar_predios: { label: 'Importar Predios', color: 'bg-cyan-700', icon: Upload },
+  regenerar_certificado: { label: 'Regenerar Certificado', color: 'bg-teal-500', icon: FileCheck },
+  guardar_visita: { label: 'Guardar Visita', color: 'bg-amber-500', icon: Eye },
+  revertir_visita: { label: 'Revertir Visita', color: 'bg-red-400', icon: XCircle }
 };
 
 // Configuración de categorías
@@ -37,11 +57,14 @@ const CATEGORIAS_CONFIG = {
   predios: { label: 'Predios', color: 'bg-blue-100 text-blue-800' },
   usuarios: { label: 'Usuarios', color: 'bg-purple-100 text-purple-800' },
   peticiones: { label: 'Peticiones', color: 'bg-emerald-100 text-emerald-800' },
+  tramites: { label: 'Trámites', color: 'bg-lime-100 text-lime-800' },
   resoluciones: { label: 'Resoluciones', color: 'bg-orange-100 text-orange-800' },
   certificados: { label: 'Certificados', color: 'bg-teal-100 text-teal-800' },
   sistema: { label: 'Sistema', color: 'bg-red-100 text-red-800' },
   importacion: { label: 'Importación', color: 'bg-cyan-100 text-cyan-800' },
-  visitas: { label: 'Visitas', color: 'bg-amber-100 text-amber-800' }
+  archivos: { label: 'Archivos', color: 'bg-indigo-100 text-indigo-800' },
+  visitas: { label: 'Visitas', color: 'bg-amber-100 text-amber-800' },
+  autenticacion: { label: 'Autenticación', color: 'bg-purple-100 text-purple-800' }
 };
 
 // Municipios
@@ -412,7 +435,7 @@ export default function LogActividades() {
                         <td className="px-4 py-3 max-w-md">
                           <div className="text-white text-sm">{log.descripcion}</div>
                           {log.detalles && Object.keys(log.detalles).length > 0 && (
-                            <div className="text-slate-500 text-xs mt-1 space-x-2">
+                            <div className="text-slate-500 text-xs mt-1 flex flex-wrap gap-x-3 gap-y-1">
                               {log.detalles.npn && (
                                 <span>NPN: <code className="bg-slate-900 px-1 rounded text-emerald-400">{log.detalles.npn}</code></span>
                               )}
@@ -421,6 +444,27 @@ export default function LogActividades() {
                               )}
                               {log.detalles.codigo && (
                                 <span>Código: <code className="bg-slate-900 px-1 rounded text-emerald-400">{log.detalles.codigo}</code></span>
+                              )}
+                              {log.detalles.codigo_predial && (
+                                <span>Predial: <code className="bg-slate-900 px-1 rounded text-emerald-400">{log.detalles.codigo_predial}</code></span>
+                              )}
+                              {log.detalles.tipo_mutacion && (
+                                <span>Mutación: <code className="bg-slate-900 px-1 rounded text-amber-400">{log.detalles.tipo_mutacion}</code></span>
+                              )}
+                              {log.detalles.numero_resolucion && (
+                                <span>Res: <code className="bg-slate-900 px-1 rounded text-orange-400">{log.detalles.numero_resolucion}</code></span>
+                              )}
+                              {log.detalles.email && (
+                                <span>Email: <code className="bg-slate-900 px-1 rounded text-blue-400">{log.detalles.email}</code></span>
+                              )}
+                              {log.detalles.rol && (
+                                <span>Rol: <code className="bg-slate-900 px-1 rounded text-violet-400">{log.detalles.rol}</code></span>
+                              )}
+                              {log.detalles.archivo && (
+                                <span>Archivo: <code className="bg-slate-900 px-1 rounded text-cyan-400">{log.detalles.archivo}</code></span>
+                              )}
+                              {log.detalles.total_predios && (
+                                <span>Predios: <code className="bg-slate-900 px-1 rounded text-cyan-400">{log.detalles.total_predios}</code></span>
                               )}
                             </div>
                           )}
